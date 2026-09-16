@@ -63,6 +63,10 @@ let cleanups: Array<() => void>;
 let errors: string[];
 let autoOpen: boolean;
 let modalOpened: () => void;
+let closed: ReturnType<typeof vi.fn>;
+
+const approvedIds = ['vote-display', 'vote-state', 'report-environment', 'roadmap-create', 'mobile-viewport', 'dialog-close', 'intro-back', 'deck-widgets', 'hatask-input', 'hatady-motion', 'hatady-moderation', 'hatask-record-review'];
+const approvedPreviews = ['vote-setting', 'environment', 'viewport', 'intro-back', 'deck'];
 
 async function flush() { for (let i = 0; i < 10; i++) await nextTick(); }
 
@@ -76,7 +80,7 @@ function globals(instance: App) {
 	instance.config.warnHandler = warning => errors.push(warning);
 }
 
-async function mount() { app = createApp(MkHataWhatsNew, { onClosed: () => {} }); globals(app); app.mount(host); await flush(); }
+async function mount() { app = createApp(MkHataWhatsNew, { onClosed: closed }); globals(app); app.mount(host); await flush(); }
 
 function requiredElement<T extends Element = HTMLElement>(selector: string, parent: Element = host): T {
 	const element = parent.querySelector<T>(selector);
@@ -89,6 +93,7 @@ async function next() { requiredElement<HTMLButtonElement>('[aria-label="次へ"
 beforeEach(() => {
 	bodyHeight = 600; width = 870; hidden = false; reduced = false; errors = []; cleanups = [];
 	autoOpen = true;
+	closed = vi.fn();
 	resizeCallbacks = new Set(); motionListeners = new Set(); motions = [];
 	vi.clearAllMocks();
 	prefer.r.animation.value = false; store.r.darkMode.value = false; hatadyNotice.value = null;
@@ -167,6 +172,7 @@ describe('production update introduction', () => {
 		if (method === 'programmatic close') requiredElement<HTMLButtonElement>('[aria-label="更新案内を閉じる"]').click();
 		else requiredElement('[data-modal]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 		await flush();
+		expect(closed).toHaveBeenCalledTimes(1);
 		expect(motions.every(item => item.done)).toBe(true);
 		const count = motions.length;
 		await finishMotion();
@@ -212,60 +218,88 @@ describe('production update introduction', () => {
 		expect(motions.length).toBe(count);
 		expect(host.querySelector('[data-story]')).toBeNull();
 	});
-	test('renders all approved pages with read-only real product components and stable notification ownership', async () => {
+	test.each([600, 380])('all approved topics and decorative previews retain notification ownership at body height %s', async height => {
+		bodyHeight = height;
 		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
 		cleanups.push(registerNotificationPageContext(context, () => true));
 		const received = vi.fn(); cleanups.push(registerHataFeedNoticeHost({ active: () => true, notify: received }));
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
-		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.7)');
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.7.1)');
 		expect(host.querySelector('header')?.textContent).not.toContain('HATASKEY RELEASE');
-		expect(host.textContent).toContain('V3.1');
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('vote-display');
+		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		store.r.darkMode.value = true; await flush();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-mode')).toBe('dark');
-		for (const id of ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu']) {
-			requiredElement<HTMLButtonElement>(`[data-theme-choice="${id}"]`).click(); await flush();
-			expect(host.querySelector(`[data-theme-choice="${id}"]`)?.getAttribute('aria-pressed')).toBe('true');
-			expect(host.querySelector('[data-theme-choice="koke"]')?.textContent).toContain('NEW');
-		}
 		hatadyNotify('実際の画面への通知');
 		const notice = hatadyNotice.value;
-		await next();
-		expect(host.textContent).toContain('V2.0');
-		expect(host.textContent).toContain('月の郵便室');
-		expect(host.querySelectorAll('[data-hy-entrance="home"]')).toHaveLength(6);
-		expect(hatadyNotice.value).toBe(notice);
-		expect(getNotificationPageContext()).toBe(context);
-		await next();
-		expect(host.textContent).toContain('V3.0');
-		expect(host.querySelectorAll('[data-hatafeed-home-panel]')).toHaveLength(4);
+		const seen: string[] = [], previews: string[] = [];
+		const total = height < 470 ? 12 : 6;
+		for (let pageNumber = 1; pageNumber <= total; pageNumber++) {
+			expect(requiredElement('[data-story]').getAttribute('data-story')).toBe('updates');
+			expect(host.querySelector('footer')?.textContent).toContain(`${pageNumber} / ${total}`);
+			const cards = [...host.querySelectorAll<HTMLElement>('[data-change-id]')];
+			expect(cards).toHaveLength(height < 470 ? 1 : 2);
+			for (const card of cards) {
+				const id = card.getAttribute('data-change-id') ?? '';
+				seen.push(id);
+				const copy = HATA_WHATS_NEW.groups.flatMap(group => group.cards).find(item => item.id === id);
+				expect(card.querySelector('h3')?.textContent).toBe(copy?.title);
+				expect([...card.querySelectorAll('li')].map(point => point.textContent)).toEqual(copy?.points);
+			}
+			for (const preview of host.querySelectorAll<HTMLElement>('[data-preview-root]')) {
+				previews.push(preview.getAttribute('data-preview') ?? '');
+				expect(preview.getAttribute('aria-hidden')).toBe('true');
+				expect(preview.hasAttribute('inert')).toBe(true);
+				expect(preview.querySelector('button, input, select, textarea, a[href], [tabindex]')).toBeNull();
+			}
+			expect(host.querySelector('[data-theme-choice], [data-hy-entrance], [data-hatafeed-home-panel], [data-hataintro-canvas]')).toBeNull();
+			expect(hatadyNotice.value).toBe(notice);
+			expect(getNotificationPageContext()).toBe(context);
+			if (pageNumber < total) await next();
+		}
+		expect(seen).toEqual(approvedIds);
+		expect(previews).toEqual(approvedPreviews);
+		expect(host.querySelector('[aria-label="次へ"]')).toBeNull();
 		hataFeedNotify('本体での更新'); expect(received).toHaveBeenCalledWith('本体での更新');
-		expect(getNotificationPageContext()).toBe(context);
-		await next();
-		expect(host.querySelector('[data-story]')?.getAttribute('data-story')).toBe('hataintro');
-		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-page')).toBe('4');
-		expect(host.textContent).toContain('使い方が、見てわかる。');
-		expect(host.querySelectorAll('[data-hataintro-panel]')).toHaveLength(3);
-		expect(requiredElement('[data-hataintro-canvas]').hasAttribute('inert')).toBe(true);
-		expect(requiredElement('.hata-intro').style.colorScheme).toBe('dark');
-		expect(requiredElement('[data-story] .hg-search-box input').getAttribute('placeholder')).toBe('例：絵文字、公開範囲、映画 記録');
-		expect(getNotificationPageContext()).toBe(context);
-		const seen: string[] = [];
-		while (host.querySelector('[aria-label="次へ"]')) { await next(); for (const card of host.querySelectorAll<HTMLElement>('[data-change-id]')) seen.push(card.getAttribute('data-change-id') ?? ''); }
-		expect(seen).toEqual(HATA_WHATS_NEW.groups.flatMap(group => group.cards.map(card => card.id)));
-		expect(host.querySelector('footer')?.textContent).toContain('12 / 12');
+		expect(closed).not.toHaveBeenCalled();
+		for (let pageNumber = total - 1; pageNumber >= 1; pageNumber--) {
+			requiredElement<HTMLButtonElement>('[aria-label="戻る"]').click(); await flush();
+			const offset = (pageNumber - 1) * (height < 470 ? 1 : 2);
+			expect([...host.querySelectorAll('[data-change-id]')].map(card => card.getAttribute('data-change-id'))).toEqual(approvedIds.slice(offset, offset + (height < 470 ? 1 : 2)));
+			expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
+		}
+		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		expect(misskeyApi).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled(); expect(prefer.commit).not.toHaveBeenCalled();
 	});
-	test('short pages remain readable and resizing preserves the second topic', async () => {
+	test.each(approvedIds.filter((_, index) => index % 2 === 1))('resizing between paired and short pages preserves second topic %s', async id => {
 		bodyHeight = 380; width = 390;
-		await mount(); await next(); await next(); await next(); await next(); await next();
-		expect(host.querySelector('[data-summary]')?.getAttribute('data-summary')).toBe('hatask-sharing');
-		bodyHeight = 600; resizeCallbacks.forEach(callback => callback()); await flush();
-		expect(host.querySelector('[data-change-id="hatask-sharing"]')).not.toBeNull();
-		bodyHeight = 380; resizeCallbacks.forEach(callback => callback()); await flush();
-		expect(host.querySelector('[data-summary]')?.getAttribute('data-summary')).toBe('hatask-sharing');
-		expect(host.querySelector('footer')?.textContent).toContain('/ 20');
+		await mount();
+		for (let index = 0; index < approvedIds.indexOf(id); index++) await next();
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe(id);
+		for (const height of [600, 469, 470, 380]) {
+			bodyHeight = height; resizeCallbacks.forEach(callback => callback()); await flush();
+			expect(host.querySelector(`[data-change-id="${id}"]`)).not.toBeNull();
+			expect(host.querySelectorAll('[data-change-id]')).toHaveLength(height < 470 ? 1 : 2);
+			if (height < 470) expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe(id);
+			expect(host.querySelector('footer')?.textContent).toContain(height < 470 ? '/ 12' : '/ 6');
+		}
+	});
+	test('finishing the notice emits closed once and leaves persistence to the caller', async () => {
+		const save = vi.spyOn(localStorage, 'setItem');
+		await mount();
+		for (let pageNumber = 1; pageNumber < 6; pageNumber++) await next();
+		expect(closed).not.toHaveBeenCalled();
+		const finish = requiredElement<HTMLButtonElement>('footer > button:last-child');
+		expect(finish.textContent).toContain('わかった');
+		finish.click(); await flush();
+		expect(closed).toHaveBeenCalledTimes(1);
+		expect(host.querySelector('[data-story]')).toBeNull();
+		finish.click();
+		requiredElement('[data-modal]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flush();
+		expect(closed).toHaveBeenCalledTimes(1);
+		expect(save).not.toHaveBeenCalled();
 	});
 	test('back/forward labels stay accessible while visible buttons are icons, and motion stops on close', async () => {
 		prefer.r.animation.value = true;
@@ -340,7 +374,7 @@ describe('production update introduction', () => {
 		const css = fs.readFileSync(path.join(folder, 'hata-whats-new/release.module.css'), 'utf8');
 		const compiled = await compileStyleAsync({ source: css, filename: 'release.module.css', id: 'release', modules: true });
 		expect(compiled.errors).toEqual([]);
-		const sources = ['MkHataWhatsNew.vue', ...['HataskShowcase.vue', 'HatadyShowcase.vue', 'HataFeedShowcase.vue', 'HataIntroShowcase.vue', 'NotificationPreview.vue'].map(name => `hata-whats-new/${name}`)].map(name => fs.readFileSync(path.join(folder, name), 'utf8')).join('\n');
+		const sources = ['MkHataWhatsNew.vue', ...['UpdatePreview.vue', 'HataskShowcase.vue', 'HatadyShowcase.vue', 'HataFeedShowcase.vue', 'HataIntroShowcase.vue', 'NotificationPreview.vue'].map(name => `hata-whats-new/${name}`)].map(name => fs.readFileSync(path.join(folder, name), 'utf8')).join('\n');
 		const missing = (source: string) => [...source.matchAll(/\$style\.([\w]+)/g)].map(match => match[1]).filter(name => !compiled.modules?.[name]);
 		expect(missing(`${sources}\n$style.missingExample`)).toContain('missingExample');
 		expect(missing(sources)).toEqual([]);
@@ -349,5 +383,37 @@ describe('production update introduction', () => {
 		expect(centered(css)).toBe(true);
 		expect(css).toContain('mask-image: linear-gradient(to bottom');
 		expect(css).toContain('overflow: clip; container: release-body / size');
+	});
+	test('narrow or short containers hide decorative previews and keep a single copy column', async () => {
+		const css = fs.readFileSync(path.join(process.cwd(), 'src/components/hata-whats-new/release.module.css'), 'utf8');
+		const contract = async (source: string) => {
+			const compiled = await compileStyleAsync({ source, filename: 'release.module.css', id: 'release', modules: true });
+			expect(compiled.errors).toEqual([]);
+			expect(compiled.rawResult?.root).toBeDefined();
+			const result = { narrowHidden: false, shortHidden: false, narrowSingle: false, shortSingle: false };
+			compiled.rawResult?.root.walkAtRules('container', container => {
+				const query = container.params.replaceAll(/\s/g, '');
+				if (query !== 'release(max-width:620px)' && query !== 'release-body(max-height:560px)') return;
+				container.walkRules(rule => {
+					if (compiled.modules?.updatePreview && rule.selector.includes(`.${compiled.modules.updatePreview}`)) {
+						rule.walkDecls('display', declaration => {
+							if (declaration.value !== 'none') return;
+							if (query === 'release(max-width:620px)') result.narrowHidden = true;
+							else result.shortHidden = true;
+						});
+					}
+					if (compiled.modules?.updateCard && rule.selector.includes(`.${compiled.modules.updateCard}`)) {
+						rule.walkDecls('grid-template', declaration => {
+							if (declaration.value.replaceAll(/\s/g, '') !== 'minmax(0,1fr)/minmax(0,1fr)') return;
+							if (query === 'release(max-width:620px)') result.narrowSingle = true;
+							else result.shortSingle = true;
+						});
+					}
+				});
+			});
+			return result;
+		};
+		expect(await contract(css.replaceAll('.updatePreview', '.missingPreviewExample'))).toMatchObject({ narrowHidden: false, shortHidden: false });
+		expect(await contract(css)).toEqual({ narrowHidden: true, shortHidden: true, narrowSingle: true, shortSingle: true });
 	});
 });

@@ -393,3 +393,46 @@
 		column-gap: 6px;
 	}
 }
+
+/* Compact illustrations of the subsequent fixes; the existing release layout owns spacing and motion. */
+.updatePreview { display: grid; place-items: center; min-width: 0; min-height: 0; padding: 22px; background: var(--preview-soft); color: var(--MI_THEME-fg); }
+.miniSettings, .miniDeck, .miniPhone { width: 100%; max-width: 340px; min-width: 0; padding: 18px; border: 1px solid var(--MI_THEME-divider); border-radius: 18px; background: var(--MI_THEME-panel); box-shadow: 0 10px 24px color-mix(in srgb, var(--MI_THEME-fg) 6%, transparent); }
+.miniEyebrow { display: flex; align-items: center; gap: 7px; color: var(--MI_THEME-fgMuted); font-size: 11px; }
+.miniEyebrow > small { margin-left: auto; font-size: 10px; }
+.miniSettingRow { display: flex; align-items: center; gap: 12px; margin: 20px 0 15px; font-size: 12px; }
+.miniSettingRow strong { flex: 1; }
+.miniSwitch { display: flex; justify-content: end; flex: none; width: 38px; height: 22px; padding: 3px; border-radius: 999px; background: var(--MI_THEME-accent); }
+.miniSwitch > i { display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--release-on-accent); }
+.miniChoicePills { display: flex; gap: 6px; font-size: 10px; color: var(--MI_THEME-fgMuted); }
+.miniChoicePills > span { padding: 3px 8px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; }
+.miniInput { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; margin-top: 8px; border: 1px solid var(--MI_THEME-divider); border-radius: 8px; font-size: 10px; }
+.miniInput > span { color: var(--MI_THEME-fgMuted); }
+.miniInput > strong { font-weight: 500; }
+.miniPhone { max-width: 236px; padding: 8px 10px 12px; border-radius: 22px; }
+.miniPhoneTop { display: flex; justify-content: space-between; padding: 0 4px 12px; font-size: 9px; }
+.miniNavbar { display: flex; align-items: center; gap: 9px; min-height: 32px; padding: 7px 10px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; font-size: 11px; }
+.miniNavbar > strong { flex: 1; }
+.miniNote { display: flex; gap: 9px; margin: 12px 0; padding: 10px; border-radius: 10px; background: var(--preview-soft); }
+.miniAvatar { display: grid; place-items: center; width: 25px; height: 25px; flex: none; border-radius: 50%; background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); }
+.miniNote > div { flex: 1; }
+.miniNote b { font-size: 10px; }
+.miniLine { display: block; height: 4px; border-radius: 2px; margin-top: 8px; background: var(--MI_THEME-divider); }
+.miniLine[data-short] { width: 64%; }
+.miniNavBottom { display: flex; justify-content: space-around; font-size: 12px; color: var(--MI_THEME-fgMuted); }
+.miniGuideHead { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.miniGuideHead > strong { font-family: Righteous, sans-serif; font-size: 21px; font-weight: 400; color: var(--MI_THEME-accent); }
+.miniRound { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--MI_THEME-divider); border-radius: 50%; }
+.miniGuide > b { font-size: 12px; }
+.miniSearch { display: flex; align-items: center; gap: 7px; margin-top: 12px; padding: 10px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; color: var(--MI_THEME-fgMuted); font-size: 10px; }
+.miniDeck { max-width: 240px; padding: 12px; background: var(--preview-soft); }
+.miniDeck .miniNavbar { border: 0; padding-top: 0; }
+.miniWidget { padding: 12px; margin-top: 8px; border: 1px solid var(--MI_THEME-divider); border-radius: 10px; background: var(--MI_THEME-panel); font-size: 11px; }
+.miniWidget > div, .miniWidgetSmall { display: flex; align-items: center; gap: 8px; }
+.miniWidgetSmall > span { margin-left: auto; color: var(--MI_THEME-accent); }
+@container release (max-width: 620px) {
+  .updatePreview { display: none; }
+  .updateCard { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+}
+@container release-body (max-height: 560px) {
+  .updatePreview { display: none; }
+}

@@ -1,218 +1,171 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 // The version remains aligned with package.json; boot records it only on close.
 import type { HataskPlannerTheme } from '@/components/hatask/hatask-planner-types.js';
-export type HataWhatsNewCard = { id: string; label: string; icon: string; title: string; preview?: 'notification' | 'cleanup'; text?: string[]; points?: string[] };
+export type HataWhatsNewCard = { id: string; label: string; icon: string; title: string; preview?: 'vote-setting' | 'environment' | 'viewport' | 'intro-back' | 'deck'; text?: string[]; points?: string[] };
 export type HataWhatsNewGroup = { label: string; title: string; cards: HataWhatsNewCard[] };
-export type HataWhatsNewStory = { id: string; label: string; title?: string; cards?: HataWhatsNewCard[] };
+export type HataWhatsNewStory = { id: string; label: string; title: string; cards: HataWhatsNewCard[] };
 export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = {
-	version: '2026.9.0-hata.12.7',
+	version: '2026.9.0-hata.12.7.1',
 	groups: [
 		{
-			'label': 'Hataskの改善',
-			'title': 'いつもの予定を、もっと自分らしく。',
+			'label': '絵文字投票',
+			'title': '投票の表示を、自分のペースで。',
 			'cards': [
 				{
-					'id': 'hatask-appearance',
-					'label': 'ホームとテーマ',
-					'icon': 'ti ti-palette',
-					'title': '使い慣れた配置を、好きな見た目で。',
-					'points': [
-						'暁の配置を各テーマへ広げ、新しい「苔」を追加。',
-						'ホームのお気に入りを選び、本体テーマに合わせた明暗切り替えも。',
-					],
-				},
-				{
-					'id': 'hatask-sharing',
-					'label': '予定の共有',
-					'icon': 'ti ti-users',
-					'title': '予定を見せる相手を、選べます。',
-					'points': [
-						'指定したメンバーだけで、予定・参加確認・締切のお知らせを共有。',
-						'メンバーの組み合わせをテンプレートに保存。辞退した招待の表示も切り替えられます。',
-					],
-				},
-			],
-		},
-		{
-			'label': 'Hatadyの記録',
-			'title': '残したいことを、ひとつずつ。',
-			'cards': [
-				{
-					'id': 'hatady-records',
-					'label': '記録と下書き',
-					'icon': 'ti ti-pencil',
-					'title': '「＋」から、順番に入力。',
-					'points': [
-						'勉強・読書、映画、ゲーム、運動、作業を、活動に合った項目で記録。',
-						'公開範囲を選び、最後に確認。途中なら、端末に下書きを残して閉じられます。',
-					],
-				},
-				{
-					'id': 'hatady-collection',
-					'label': 'コレクションと検索',
-					'icon': 'ti ti-books',
-					'title': '作品のそばに、これまでの記録。',
-					'points': [
-						'作品の詳細、感想や記録、読書のしおり・メモを見やすく整理。',
-						'活動の種類や日付で絞り込み。作品や記録を検索して、続きから振り返れます。',
-					],
-				},
-			],
-		},
-		{
-			'label': 'Hatadyの振り返り',
-			'title': '積み重ねも、つながりも。',
-			'cards': [
-				{
-					'id': 'hatady-profile',
-					'label': 'プロフィール・統計',
-					'icon': 'ti ti-chart-bar',
-					'title': '自分のペースが、見える画面に。',
-					'points': [
-						'週ごとの記録や目標、継続の様子をカードとグラフで表示。',
-						'プロフィールの色や並び方、表示テーマを好みに合わせて調整できます。',
-					],
-				},
-				{
-					'id': 'hatady-conversation',
-					'label': '会話・通知・書き出し',
-					'icon': 'ti ti-message-circle',
-					'title': '記録のまわりの操作も、ひと続きに。',
-					'points': [
-						'コメントやリアクション、通報の画面を整理。通知は絞り込み・削除・取り消しに対応。',
-						'記録の書き出しも新しい画面に。必要な範囲や形式を選べます。',
-					],
-				},
-			],
-		},
-		{
-			'label': 'HataFeedの改善',
-			'title': '報告から、その後の確認まで。',
-			'cards': [
-				{
-					'id': 'hatafeed-submit',
-					'label': 'イシュー・絵文字申請',
-					'icon': 'ti ti-message-report',
-					'title': '報告も申請も、「＋」から。',
-					'points': [
-						'プロジェクトを確かめ、イシューや絵文字申請を順番に作成。途中の入力は端末の下書きへ。',
-						'申請の状態やスタッフのコメントはホームから確認。スタッフは未処理の申請を一件ずつ続けて審査できます。',
-					],
-				},
-				{
-					'id': 'hatafeed-navigation',
-					'label': '一覧・設定・案内',
+					'id': 'vote-display',
+					'label': '表示の設定',
 					'icon': 'ti ti-adjustments',
-					'title': '探す場所と、整える場所を明確に。',
+					'title': '絵文字投票の表示を選べます。',
+					'preview': 'vote-setting',
 					'points': [
-						'イシューの検索、ロードマップ、ベータ機能へ上のタブから移動。通知の種類も絞り込めます。',
-						'テーマ・プロジェクト・書き出し・チュートリアルを設定へ整理。編集や書き出しは権限に応じて表示します。',
+						'環境設定の「タイムライン」から、LTLの絵文字投票をオン・オフに。',
+						'オフにすると、Hataskey UIとデッキUIで投票の画面や演出を表示しません。',
+					],
+				},
+				{
+					'id': 'vote-state',
+					'label': '表示と終了',
+					'icon': 'ti ti-mood-smile',
+					'title': '参加から、結果を閉じるまで。',
+					'points': [
+						'Hataskey UIの上部ナビバーで、進行中の投票を確認できるようにしました。',
+						'投票候補と終了時の状態管理を見直し、辞退・結果を閉じたあとの表示を修正しました。',
 					],
 				},
 			],
 		},
 		{
-			'label': 'Hatadint',
-			'title': '描く時間を、もっと自由に。',
+			'label': 'HataFeed',
+			'title': '状況を伝えて、改善につなげる。',
 			'cards': [
 				{
-					'id': 'hatadint-tools',
-					'label': 'お絵かきツール',
-					'icon': 'ti ti-brush',
-					'title': 'Hatadintとして、制作画面を刷新。',
+					'id': 'report-environment',
+					'label': '不具合の報告',
+					'icon': 'ti ti-device-mobile',
+					'title': '使っていた環境も、一緒に。',
+					'preview': 'environment',
 					'points': [
-						'ペンや鉛筆、図形、選択・変形、レイヤー、画像の追加を使いやすく整理。',
-						'PC・タブレットは左右のパネル、スマホは下部の操作から。2本指で拡大・移動できます。',
+						'イシュー作成に、使用端末・OSとバージョン・ブラウザや開き方の入力欄を追加。',
+						'入力は任意。確認画面と下書きにも引き継がれ、報告の説明にまとめて送られます。',
 					],
 				},
 				{
-					'id': 'hatadint-save',
-					'label': '作品と下書きの保存',
-					'icon': 'ti ti-device-floppy',
-					'title': '描いた続きを、残せます。',
+					'id': 'roadmap-create',
+					'label': 'スタッフ向け',
+					'icon': 'ti ti-route',
+					'title': '改善予定を、その場で追加。',
 					'points': [
-						'端末の下書き保存・復元、PNG書き出し、ドライブ保存、投稿への添付に対応。',
-						'下書きはアカウント別に保存。ドライブ保存・添付の前には、初回の利用確認を行います。',
+						'ロードマップの「改善予定を追加」を見つけやすくしました。',
+						'予定があるときも、上部の操作から追加できます。',
 					],
 				},
 			],
 		},
 		{
-			'label': '通知と画面の操作',
-			'title': 'いつもの操作も、心地よく。',
+			'label': '画面の表示と操作',
+			'title': '画面の端まで、操作しやすく。',
 			'cards': [
 				{
-					'id': 'notification-refresh',
-					'label': '通知',
-					'icon': 'ti ti-bell',
-					'title': '通知の表示方法を刷新。',
-					'preview': 'notification',
-					'text': [
-						'Hatadyのリデザインに合わせて、通知の表示を新しく。',
-						'Hataskey内のいくつかの通知表示も統合しました。',
+					'id': 'mobile-viewport',
+					'label': 'iPhone・iPad',
+					'icon': 'ti ti-device-ipad',
+					'title': '上部バーと画面の端に、ゆとりを。',
+					'preview': 'viewport',
+					'points': [
+						'上端の表示領域を調整し、ナビバーやページの位置を見直しました。',
+						'メニュー・小窓・画像ビューアも、画面の表示領域に合わせて配置します。',
 					],
 				},
 				{
-					'id': 'window-controls',
-					'label': 'ウィンドウとナビゲーション',
+					'id': 'dialog-close',
+					'label': 'ダイアログ',
 					'icon': 'ti ti-app-window',
-					'title': '小さな画面でも、操作しやすく。',
+					'title': '閉じたあとも、そのまま操作。',
 					'points': [
-						'Hatady・HataFeedのウィンドウと操作ボタンを統一し、入力内容に合わせて高さを調整。',
-						'編集中に閉じる場合は、下書きを保存・保存せず閉じる・編集に戻る、から選べます。',
+						'ダイアログを閉じたあと、背面の画面を操作できなくなる問題を修正。',
+						'ページ移動や小窓を閉じるときの後片付けも見直しました。',
+						'タイムライン上部とシンプルUIの投稿欄では、表示時の自動フォーカスを止めました。',
 					],
 				},
 			],
 		},
 		{
-			'label': '使い方とサポート',
-			'title': '知りたいことへ、迷わず。',
+			'label': '戻る・編集の操作',
+			'title': '必要な操作を、すぐそばに。',
 			'cards': [
 				{
-					'id': 'product-guides',
-					'label': '機能紹介・チュートリアル',
+					'id': 'intro-back',
+					'label': 'HataIntro',
+					'icon': 'ti ti-arrow-left',
+					'title': '左上の矢印で、戻れます。',
+					'preview': 'intro-back',
+					'points': [
+						'ガイド内では前のページへ。目次では元の画面へ戻るか、小窓を閉じられます。',
+						'ガイド内の検索条件や選んだ項目も復元。戻る画面がないときはホームへ移動します。',
+					],
+				},
+				{
+					'id': 'deck-widgets',
+					'label': 'デッキUI',
+					'icon': 'ti ti-layout-columns',
+					'title': 'ウィジェットを、すっきり配置。',
+					'preview': 'deck',
+					'points': [
+						'重複していた編集ボタンと、その余白を取り除きました。',
+						'編集はカラムのメニューから。通常デッキとHataskey UI内のデッキに適用しています。',
+					],
+				},
+			],
+		},
+		{
+			'label': 'Hatask・Hatady',
+			'title': '日々の操作を、ひとつずつ改善。',
+			'cards': [
+				{
+					'id': 'hatask-input',
+					'label': 'Hatask',
+					'icon': 'ti ti-calendar',
+					'title': '公開範囲も、入力欄も見やすく。',
+					'points': [
+						'公開範囲メニューの位置と、メンバー選択画面の重なりを修正。',
+						'クイック入力のフォーカス枠を内側に収め、端で切れないようにしました。',
+					],
+				},
+				{
+					'id': 'hatady-motion',
+					'label': 'Hatady',
 					'icon': 'ti ti-book',
-					'title': '使い方を、画面の見本と一緒に。',
+					'title': '一覧とページ切り替えを見直し。',
 					'points': [
-						'HataIntroに、操作の見本・検索・詳しい機能解説をまとめました。',
-						'Hatady・HataFeedの使い方や新しい画面の案内は、設定からいつでも見直せます。',
-					],
-				},
-				{
-					'id': 'hatask-support',
-					'label': 'サーバー支援',
-					'icon': 'ti ti-heart-handshake',
-					'title': '支援の案内と、利用状況をひとつに。',
-					'points': [
-						'Hataskに、支援先・特典・支援者を確認できる画面を追加。',
-						'管理者の確認後は、自分に適用された内容と反映状況を表示。案内や特典は管理画面から設定できます。',
+						'一覧の表示とページ切り替えの描画処理を見直しました。',
+						'ページをめくる演出を保ちながら、画面外の項目などの処理を抑えています。',
+						'通知は画面を開いて表示できたあとに既読になります。',
 					],
 				},
 			],
 		},
 		{
-			'label': '案内と細かな改善',
-			'title': '必要なものを、見つけやすく。',
+			'label': 'スタッフ向けの記録確認',
+			'title': '記録を確認し、対応状況を共有。',
 			'cards': [
 				{
-					'id': 'retired-guides',
-					'label': '案内の整理',
-					'icon': 'ti ti-circle-check',
-					'title': '役目を終えた案内を、すっきり。',
-					'preview': 'cleanup',
-					'text': [
-						'リアクションミュートのベータ移行、Hatask v2・暁の登場案内を整理。',
-						'デッキ表示、メニューの縮小・拡大、HataFeedへの初回吹き出しも削除しました。',
+					'id': 'hatady-moderation',
+					'label': 'Hatady・スタッフ向け',
+					'icon': 'ti ti-shield',
+					'title': '記録やコメントを、管理画面から。',
+					'points': [
+						'管理者・モデレーターが記録や作品を検索し、確認状態とスタッフ用メモを共有できます。',
+						'非公開記録、本人用のしおり・内容メモもスタッフの確認対象です。',
 					],
 				},
 				{
-					'id': 'search-polish',
-					'label': '検索・管理画面',
-					'icon': 'ti ti-search',
-					'title': '新しい画面に合わせて、細部も改善。',
+					'id': 'hatask-record-review',
+					'label': 'Hatask・スタッフ向け',
+					'icon': 'ti ti-shield-search',
+					'title': '予定や日々の記録を、まとめて確認。',
 					'points': [
-						'設定検索に新しい表示設定を反映。非公開チャンネルは検索結果から除外します。',
-						'同意管理にHatadintの確認状況を追加し、絞り込みや検索中の表示を改善しました。',
+						'管理者・モデレーター向けに「記録確認」を追加。非公開・指定メンバー向けの記録も確認できます。',
+						'元の記録を変えずに確認状態を共有し、内容が変わった記録は未確認に戻します。',
 					],
 				},
 			],
@@ -252,13 +205,9 @@ export const HATA_WHATS_NEW_THEMES: { id: HataskPlannerTheme; name: string; desc
 	},
 ];
 export function getHataWhatsNewStories(bodyHeight: number): HataWhatsNewStory[] {
-	return [
-		{ id: 'hatask', label: 'Hatask' }, { id: 'hatady', label: 'Hatady' }, { id: 'hatafeed', label: 'HataFeed' },
-		{ id: 'hataintro', label: 'HataIntro' },
-		...HATA_WHATS_NEW.groups.flatMap(group => bodyHeight < 470
-			? group.cards.map(card => ({ ...group, id: card.id, cards: [card] }))
-			: [{ ...group, id: group.cards[0].id }]),
-	];
+	return HATA_WHATS_NEW.groups.flatMap(group => bodyHeight < 470
+		? group.cards.map(card => ({ ...group, id: card.id, cards: [card] }))
+		: [{ ...group, id: group.cards[0].id }]);
 }
 export function getHataWhatsNewDisplayVersion(version: string): string {
 	const match = version.match(/-hata\.(\d+(?:\.\d+)+)$/);

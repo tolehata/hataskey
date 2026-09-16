@@ -7,75 +7,15 @@ The caller keeps the dialog queue and records the displayed version on closed.
 	<section ref="releaseRoot" :class="$style.releasePanel" data-release-opening-shell :data-opening="!contentReady" :data-page="page" :data-motion="motion" :data-arrival="arrival" :data-mode="mode" role="dialog" aria-modal="true" aria-labelledby="hata-whats-new-title">
 		<ReleaseOpening v-if="opened && !contentReady" ref="opening" :motion="motion"/>
 		<header :class="$style.releaseHeader">
-			<div :class="$style.releaseHeading" data-release-heading><MkHatakyuIllustration v-if="useHatakyuBranding()" :class="$style.releaseMascot" asset="treasureFound" :size="40"/><h1 id="hata-whats-new-title">{{ copy.title }}<wbr><span style="white-space: nowrap;">(hata-12.7)</span></h1></div>
+			<div :class="$style.releaseHeading" data-release-heading><MkHatakyuIllustration v-if="useHatakyuBranding()" :class="$style.releaseMascot" asset="treasureFound" :size="40"/><h1 id="hata-whats-new-title">{{ copy.title }}<wbr><span style="white-space: nowrap;">({{ displayVersion }})</span></h1></div>
 			<button :class="$style.closeButton" aria-label="更新案内を閉じる" @click="dismiss"><i class="ti ti-x" aria-hidden="true"></i></button>
 		</header>
 
 		<div ref="pageBody" :class="$style.releaseBody" :inert="!contentReady" :aria-hidden="!contentReady" role="region" aria-label="更新内容の本文">
-			<section v-if="opened && contentReady && page === 1" :class="[$style.introPage, $style.storyPage]" data-story="hatask">
-				<div :class="$style.introCopy" data-reveal="lead">
-					<div :class="$style.productHeading"><span :class="$style.productWordmark">Hatask <span :class="$style.productVersion">V3.1</span></span><span :class="$style.productEdition">暁のデザインを他テーマに拡張</span></div>
-					<h2 ref="pageTitle" tabindex="-1">いつもの毎日を、<wbr>好きな見た目で。</h2>
-					<p>予定も、やることも、日々の記録も。あなたに合うテーマで。<br>新たに「苔」デザインが追加されました。</p>
-				</div>
-				<div data-reveal="stage"><HataskShowcase :theme="theme" :mode="mode" :motion="motion"/></div>
-				<div :class="$style.themeSection" data-reveal="support">
-					<div :class="$style.themeChoices" role="group" aria-label="Hataskのテーマをプレビュー">
-						<button v-for="item in themes" :key="item.id" :data-theme-choice="item.id" :aria-pressed="theme === item.id" @click="theme = item.id">
-							<span>{{ item.name }}</span><span v-if="item.id === 'koke'" :class="$style.newLabel">NEW</span><i v-if="theme === item.id" class="ti ti-check" aria-hidden="true"></i>
-						</button>
-					</div>
-					<p :class="$style.themeDescription" role="status">{{ selectedTheme.description }}</p>
-				</div>
-			</section>
-
-			<section v-else-if="opened && contentReady && page === 2" :class="[$style.introPage, $style.storyPage]" data-story="hatady">
-				<div :class="$style.introCopy" data-reveal="lead">
-					<div :class="$style.productHeading"><span :class="$style.productWordmark">Hatady <span :class="$style.productVersion">V2.0</span></span><span :class="$style.productEdition">全面リデザイン</span></div>
-					<h2 ref="pageTitle" tabindex="-1">積み重ねが、<wbr>ひと目で。</h2>
-					<p>ホームからプロフィールまで。記録を楽しむ画面が、新しくなりました。</p>
-				</div>
-				<div data-reveal="stage"><HatadyShowcase :mode="mode" :motion="motion"/></div>
-				<div :class="$style.featureNotes" data-reveal="support">
-					<div><i class="ti ti-layout-dashboard" aria-hidden="true"></i><span><strong>見渡せるホーム</strong><small>記録と積み重ねを、ひとつに。</small></span></div>
-					<div><i class="ti ti-plus" aria-hidden="true"></i><span><strong>記録は「＋」から</strong><small>読書も映画も、同じ入り口。</small></span></div>
-					<div><i class="ti ti-books" aria-hidden="true"></i><span><strong>作品のそばに記録</strong><small>好きな作品と、これまでの日々。</small></span></div>
-				</div>
-			</section>
-
-			<section v-else-if="opened && contentReady && page === 3" :class="[$style.introPage, $style.storyPage]" data-story="hatafeed">
-				<div :class="$style.introCopy" data-reveal="lead">
-					<div :class="$style.productHeading"><span :class="$style.productWordmark">HataFeed <span :class="$style.productVersion">V3.0</span></span><span :class="$style.productEdition">全面リデザイン</span></div>
-					<h2 ref="pageTitle" tabindex="-1">声を届けて、<wbr>変化を見渡す。</h2>
-					<p>改善予定も、絵文字申請も、最近の動きも。<br>状況がひと目でわかる、新しいホームへ。</p>
-				</div>
-				<div data-reveal="stage"><HataFeedShowcase :mode="mode" :motion="motion"/></div>
-				<div :class="$style.featureNotes" data-reveal="support">
-					<div><i class="ti ti-layout-dashboard" aria-hidden="true"></i><span><strong>状況をひと目で</strong><small>改善予定と、申請のその後。</small></span></div>
-					<div><i class="ti ti-plus" aria-hidden="true"></i><span><strong>報告・申請は「＋」</strong><small>伝えたいことを、順番に。</small></span></div>
-					<div><i class="ti ti-route" aria-hidden="true"></i><span><strong>これからを知る</strong><small>ロードマップも、同じ場所に。</small></span></div>
-				</div>
-			</section>
-
-			<section v-else-if="opened && contentReady && page === 4" :class="[$style.introPage, $style.storyPage]" data-story="hataintro">
-				<div :class="$style.introCopy" data-reveal="lead">
-					<div :class="$style.productHeading"><span :class="$style.productWordmark">HataIntro</span><span :class="$style.productEdition">使い方ガイド</span></div>
-					<h2 ref="pageTitle" tabindex="-1">使い方が、<wbr>見てわかる。</h2>
-					<p>はじめての操作も、使い慣れてからの疑問も。<br>画面の見本を触りながら、必要な使い方を確かめられます。</p>
-				</div>
-				<div data-reveal="stage"><HataIntroShowcase :mode="mode" :motion="motion"/></div>
-				<div :class="$style.featureNotes" data-reveal="support">
-					<div><i class="ti ti-search" aria-hidden="true"></i><span><strong>言葉から探す</strong><small>機能名が分からなくても。</small></span></div>
-					<div><i class="ti ti-hand-click" aria-hidden="true"></i><span><strong>見本で試す</strong><small>手順と動きを、その場で。</small></span></div>
-					<div><i class="ti ti-book" aria-hidden="true"></i><span><strong>詳しく確かめる</strong><small>仕組みや注意点まで。</small></span></div>
-				</div>
-			</section>
-
-			<section v-else-if="opened && contentReady" :key="currentStory.id" :class="[$style.updatesPage, $style.storyPage]" data-story="updates" :data-summary="currentStory.id" :data-single="currentStory.cards?.length === 1">
+			<section v-if="opened && contentReady" :key="currentStory.id" :class="[$style.updatesPage, $style.storyPage]" data-story="updates" :data-summary="currentStory.id" :data-single="currentStory.cards.length === 1">
 				<div :class="$style.updatesHeading" data-reveal="lead"><p :class="$style.eyebrow">{{ currentStory.label }}</p><h2 ref="pageTitle" tabindex="-1">{{ currentStory.title }}</h2></div>
 				<article v-for="(card, index) in currentStory.cards" :key="card.id" :class="$style.updateCard" :data-digest="!card.preview" :data-change-id="card.id" :data-reveal="index === 0 ? 'stage' : 'support'">
-					<NotificationPreview v-if="card.preview === 'notification'" :motion="motion"/>
-					<div v-else-if="card.preview === 'cleanup'" :class="$style.cleanupPreview" aria-hidden="true"><span :class="$style.archiveSheet"><i class="ti ti-speakerphone"></i><span></span><span></span></span><span :class="$style.cleanNote"><i class="ti ti-circle-check"></i><b>いま必要な案内を。</b></span></div>
+					<UpdatePreview v-if="card.preview" :kind="card.preview"/>
 					<div :class="$style.updateCopy">
 						<div :class="$style.digestLabel"><i v-if="!card.preview" :class="card.icon" aria-hidden="true"></i><span :class="$style.updateLabel">{{ card.label }}</span></div>
 						<h3>{{ card.title }}</h3>
@@ -96,19 +36,13 @@ The caller keeps the dialog queue and records the displayed version on closed.
 </MkModal>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
-import HataskShowcase from './hata-whats-new/HataskShowcase.vue';
-import HatadyShowcase from './hata-whats-new/HatadyShowcase.vue';
-import HataFeedShowcase from './hata-whats-new/HataFeedShowcase.vue';
-import HataIntroShowcase from './hata-whats-new/HataIntroShowcase.vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import ReleaseOpening from './hata-whats-new/ReleaseOpening.vue';
-import NotificationPreview from './hata-whats-new/NotificationPreview.vue';
+import UpdatePreview from './hata-whats-new/UpdatePreview.vue';
 import { createReveal } from './hata-whats-new/reveal.js';
-import type { HataskPlannerTheme } from '@/components/hatask/hatask-planner-types.js';
-import { getHataWhatsNewStories, HATA_WHATS_NEW_THEMES as themes } from '@/utility/hata-whats-new.js';
+import { getHataWhatsNewStories, getHataWhatsNewDisplayVersion, HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
 import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
 import MkModal from '@/components/MkModal.vue';
-import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
 import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { prefer } from '@/preferences.js';
 import { store } from '@/store.js';
@@ -116,6 +50,7 @@ import { i18n } from '@/i18n.js';
 
 const emit = defineEmits<{ closed: [] }>();
 const copy = i18n.ts._hata._whatsNew._window;
+const displayVersion = getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version);
 const modal = useTemplateRef('modal');
 const releaseRoot = useTemplateRef('releaseRoot');
 const pageTitle = useTemplateRef('pageTitle');
@@ -123,24 +58,19 @@ const pageBody = useTemplateRef('pageBody');
 const opening = useTemplateRef('opening');
 const noteBodyHeight = ref(600);
 const stories = computed(() => getHataWhatsNewStories(noteBodyHeight.value));
-const pageId = ref('hatask');
-const page = computed(() => Math.max(0, stories.value.findIndex(story => story.id === pageId.value || story.cards?.some(card => card.id === pageId.value))) + 1);
+const pageId = ref(HATA_WHATS_NEW.groups[0].cards[0].id);
+const page = computed(() => Math.max(0, stories.value.findIndex(story => story.id === pageId.value || story.cards.some(card => card.id === pageId.value))) + 1);
 const totalPages = computed(() => stories.value.length);
 const currentStory = computed(() => stories.value[page.value - 1]);
 const opened = ref(true);
 const contentReady = ref(false);
 const changing = ref(true);
 const arrival = ref('settled');
-const theme = ref<HataskPlannerTheme>('akatsuki');
-const selectedTheme = computed(() => themes.find(item => item.id === theme.value) ?? themes[0]);
 const mode = computed(() => store.r.darkMode.value ? 'dark' : 'light');
 const media = window.matchMedia('(prefers-reduced-motion: reduce)');
 const reduced = ref(media.matches);
 const motion = computed(() => opened.value && prefer.r.animation.value && !reduced.value);
 const reveal = createReveal();
-// A preview must never claim the live application's notification surface.
-const notificationContext = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
-provide(hataskeyNotificationToastsKey, notificationContext);
 let bodyObserver: ResizeObserver | undefined;
 let transitionRevision = 0;
 let entranceRevision = 0;
@@ -211,7 +141,6 @@ function stop() {
 	opening.value?.cancel();
 	reveal.cancel();
 	bodyObserver?.disconnect();
-	notificationContext.clear();
 }
 
 function dismiss() { if (!opened.value) return; stop(); modal.value?.close(); }
