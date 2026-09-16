@@ -65,17 +65,22 @@ export function createHatadyListEntrance(container: HTMLElement): HatadyListEntr
 			return;
 		}
 		const home = items.every(node => node.dataset.hyEntrance === 'home');
-		// Read the grid's visual order once, before any entrance transform changes its bounds.
-		const ordered = home ? items.map(node => ({ node, rect: node.getBoundingClientRect() }))
-			.sort((a, b) => Math.abs(a.rect.top - b.rect.top) > 2 ? a.rect.top - b.rect.top : a.rect.left - b.rect.left)
-			.map(item => item.node) : items;
-		ordered.forEach((node, index) => {
-			const kind = entranceKind(node);
-			if (!kind || !node.isConnected || typeof node.animate !== 'function') return;
-			const effect = effects[kind];
+		const bounds = container.getBoundingClientRect();
+		// Measure the whole batch before attributes, flair or animations dirty
+		// layout. Cards outside the scroll viewport already have their final state.
+		const ordered = items.map(node => ({ node, rect: node.getBoundingClientRect() }))
+			.filter(({ rect }) => !(bounds.height > 0 && rect.height > 0 && (rect.bottom <= bounds.top || rect.top >= bounds.bottom)));
+		if (home) ordered.sort((a, b) => Math.abs(a.rect.top - b.rect.top) > 2 ? a.rect.top - b.rect.top : a.rect.left - b.rect.left);
+		const prepared = ordered.map(({ node }) => {
 			const before = view.getComputedStyle(node);
 			const baseTransform = before.transform && before.transform !== 'none' ? before.transform : '';
 			const baseOpacity = Number.parseFloat(before.opacity) || (before.opacity === '0' ? 0 : 1);
+			return { node, baseTransform, baseOpacity };
+		});
+		prepared.forEach(({ node, baseTransform, baseOpacity }, index) => {
+			const kind = entranceKind(node);
+			if (!kind || !node.isConnected || typeof node.animate !== 'function') return;
+			const effect = effects[kind];
 			const originalOrigin = node.style.getPropertyValue('transform-origin');
 			const originalPriority = node.style.getPropertyPriority('transform-origin');
 			const originalMotion = node.getAttribute('data-hy-list-motion');

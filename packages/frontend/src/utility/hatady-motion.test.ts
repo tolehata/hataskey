@@ -82,6 +82,32 @@ function mountPage(width = 1920) {
 }
 
 describe('Hatady paper viewport and cleanup', () => {
+	test('inserts the complete paper and restores every scroll before starting any animation', () => {
+		const { main, capture } = mountPage(380);
+		main.scrollTop = 320;
+		main.querySelector<HTMLElement>('[data-nested-scroll]')!.scrollTop = 45;
+		const phases: { strips: number; scrolls: number[]; nested: number[] }[] = [];
+		const animate = vi.mocked(HTMLElement.prototype.animate).getMockImplementation()!;
+		vi.mocked(HTMLElement.prototype.animate).mockImplementation(function (this: HTMLElement, frames, options) {
+			const copies = Array.from(main.querySelectorAll<HTMLElement>('.hy-paper-copy'));
+			phases.push({
+				strips: main.querySelectorAll('.hy-paper-strip').length,
+				scrolls: copies.map(copy => copy.scrollTop),
+				nested: copies.map(copy => copy.querySelector<HTMLElement>('[data-nested-scroll]')!.scrollTop),
+			});
+			return animate.call(this, frames, options);
+		});
+		capture().play(125);
+		const stripCount = main.querySelectorAll('.hy-paper-strip').length;
+		expect(stripCount).toBeGreaterThan(1);
+		expect(phases).toHaveLength(stripCount * 3 + 1);
+		for (const phase of phases) {
+			expect(phase.strips).toBe(stripCount);
+			expect(phase.scrolls).toEqual(Array(stripCount).fill(320));
+			expect(phase.nested).toEqual(Array(stripCount).fill(45));
+		}
+	});
+
 	test.each([1920, 380])('paper covers the %ipx viewport while both real and copied pages retain the compiled width constraint', width => {
 		const { main, capture } = mountPage(width);
 		const page = main.firstElementChild!;

@@ -152,8 +152,11 @@ export function captureHatadyPageTurn(
 		syncCapsuleSelections(container);
 		leaf.style.top = `${container.scrollTop}px`;
 		motionPreference.addEventListener('change', cancel);
-		container.append(leaf);
 		try {
+			const scrollRestores: { node: HTMLElement; top: number; left: number }[] = [];
+			const effects: { node: HTMLElement; keyframes: Keyframe[] }[] = [];
+			// Assemble every strip off-document. Alternating live DOM insertion,
+			// scroll restoration and animate() forces layout between paper strips.
 			for (let index = 0; index < count; index++) {
 				const strip = window.document.createElement('div');
 				strip.className = 'hy-paper-strip';
@@ -171,37 +174,45 @@ export function captureHatadyPageTurn(
 				scene.append(strip);
 				content.querySelectorAll<HTMLElement>('[data-hy-paper-scroll]').forEach(node => {
 					const saved = scrolls[Number(node.dataset.hyPaperScroll)];
-					node.scrollTop = saved[0];
-					node.scrollLeft = saved[1];
+					scrollRestores.push({ node, top: saved[0], left: saved[1] });
 					node.removeAttribute('data-hy-paper-scroll');
 				});
-				content.scrollTop = offset;
-				animations.push(
-					strip.animate(
-						frames.map((frame) => {
-							const part = frame.strips[index];
-							return { offset: frame.t, transform: `translate3d(${part.x}px,0,${part.z}px) rotateY(${part.angle}deg)` };
-						}),
-						{ duration: width < 600 ? 760 : 840, easing: 'linear', fill: 'both' },
-					),
-				);
+				scrollRestores.push({ node: content, top: offset, left: 0 });
+				effects.push({
+					node: strip,
+					keyframes: frames.map((frame) => {
+						const part = frame.strips[index];
+						return { offset: frame.t, transform: `translate3d(${part.x}px,0,${part.z}px) rotateY(${part.angle}deg)` };
+					}),
+				});
 				for (const face of [front, back]) {
 					const shade = window.document.createElement('div');
 					shade.className = 'hy-paper-shade';
 					face.append(shade);
-					animations.push(
-						shade.animate(
-							frames.map((frame) => ({ offset: frame.t, opacity: frame.strips[index].shade * (face === back ? 0.8 : 1) })),
-							{ duration: width < 600 ? 760 : 840, easing: 'linear', fill: 'both' },
-						),
-					);
+					effects.push({
+						node: shade,
+						keyframes: frames.map((frame) => ({ offset: frame.t, opacity: frame.strips[index].shade * (face === back ? 0.8 : 1) })),
+					});
 				}
 			}
-			animations.push(shadow.animate(frames.map(frame => ({
-				offset: frame.t,
-				opacity: Math.sin(Math.PI * (1 - Math.cos(Math.PI * frame.t)) / 2) * 0.32,
-				transform: `scaleX(${0.1 + 0.9 * Math.abs(frame.tipX - (direction < 0 ? width : 0)) / width})`,
-			})), { duration: width < 600 ? 760 : 840, easing: 'linear', fill: 'both' }));
+			effects.push({
+				node: shadow,
+				keyframes: frames.map(frame => ({
+					offset: frame.t,
+					opacity: Math.sin(Math.PI * (1 - Math.cos(Math.PI * frame.t)) / 2) * 0.32,
+					transform: `scaleX(${0.1 + 0.9 * Math.abs(frame.tipX - (direction < 0 ? width : 0)) / width})`,
+				})),
+			});
+			container.append(leaf);
+			// Scroll setters need connected boxes. Restore them together before
+			// animations can invalidate those boxes again.
+			for (const { node, top, left } of scrollRestores) {
+				node.scrollTop = top;
+				node.scrollLeft = left;
+			}
+			for (const { node, keyframes } of effects) {
+				animations.push(node.animate(keyframes, { duration: width < 600 ? 760 : 840, easing: 'linear', fill: 'both' }));
+			}
 			if (startTime != null) for (const animation of animations) animation.startTime = startTime;
 			Promise.all(animations.map((animation) => animation.finished.catch(() => {}))).then(cancel);
 			timer = window.setTimeout(cancel, 1100);

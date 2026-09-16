@@ -77,6 +77,48 @@ async function settle(): Promise<void> {
 }
 
 describe('Hatady category list entrances', () => {
+	test('finishes measuring every card before writing animation styles or inserting flair', () => {
+		const { container, motion } = mount();
+		const nodes = ['movie', 'game', 'work'].map(kind => append(container, kind));
+		const measured: { node: Element; active: number; flair: number }[] = [];
+		const getStyle = window.getComputedStyle.bind(window);
+		vi.spyOn(window, 'getComputedStyle').mockImplementation((node, pseudo) => {
+			measured.push({ node, active: container.querySelectorAll('[data-hy-list-motion]').length, flair: container.querySelectorAll('.hy-list-flair').length });
+			return getStyle(node, pseudo);
+		});
+		motion.play(500);
+		expect(measured.map(item => item.node)).toEqual(nodes);
+		expect(measured.map(item => [item.active, item.flair])).toEqual([[0, 0], [0, 0], [0, 0]]);
+		expect(recorded).toHaveLength(6);
+		expect(recorded.every(item => item.animation.startTime === 500)).toBe(true);
+	});
+
+	test('animates only visible cards while keeping offscreen content and later async arrivals intact', () => {
+		const { container, motion } = mount();
+		vi.spyOn(container, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 700, height: 600 } as DOMRect);
+		const visible = [append(container, 'movie'), append(container, 'game')];
+		const outside = Array.from({ length: 40 }, () => append(container, 'movie'));
+		const setRect = (node: HTMLElement, top: number, height: number) => vi.spyOn(node, 'getBoundingClientRect').mockReturnValue({ top, bottom: top + height, height } as DOMRect);
+		setRect(visible[0], 120, 140);
+		setRect(visible[1], 680, 140);
+		const above = setRect(outside[0], 0, 100);
+		outside.slice(1).forEach((node, index) => setRect(node, 700 + index * 140, 140));
+		motion.play(250);
+		expect(recorded.filter(item => !item.target.classList.contains('hy-list-flair')).map(item => item.target)).toEqual(visible);
+		expect(recorded).toHaveLength(4);
+		expect(container.querySelectorAll('button')).toHaveLength(42);
+		expect(outside.every(node => !node.hasAttribute('data-hy-list-motion') && !node.querySelector('.hy-list-flair'))).toBe(true);
+		// Scrolling into a card must not restart an entrance from this tab visit.
+		above.mockReturnValue({ top: 150, bottom: 250, height: 100 } as DOMRect);
+		motion.play(300);
+		expect(recorded).toHaveLength(4);
+		const arrived = append(container, 'work');
+		setRect(arrived, 200, 100);
+		motion.play(350);
+		expect(recorded.filter(item => item.target === arrived)).toHaveLength(1);
+		expect(recorded).toHaveLength(6);
+	});
+
 	test('keeps the approved category timings, DOM stagger, shared clock and three trailing effects', () => {
 		const { container, motion } = mount();
 		const kinds = ['study', 'book', 'movie', 'game', 'exercise', 'work', 'study', 'work'];
