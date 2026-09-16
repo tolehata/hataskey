@@ -3,7 +3,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <MkStickyContainer>
 	<div :class="[$style.root, 'hatady-scope']" :data-hatady-theme="hatadyTheme" :data-hatady-lang="versatileLang">
-		<header :class="$style.header">
+		<header :class="$style.header" :data-staff-nav="canModerate">
 			<button :class="$style.brand" @click="setTab('home')">Hatady</button>
 			<button :class="[$style.mobileExit, 'hy-icon-button']" type="button" aria-label="Hatadyを終了" title="Hatadyを終了" @click="exitHatady">
 				<i class="ti ti-logout-2" aria-hidden="true"></i>
@@ -446,7 +446,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				</p>
 			</section>
 			<HatadyProfile
-				v-else
+				v-else-if="activeTab === 'profile'"
 				:key="revision"
 				inline
 				@changed="refresh"
@@ -454,6 +454,10 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				@openBook="openBookDetail"
 				@openMedia="openMediaDetailById"
 				@openProfile="openProfile"
+			/>
+			<HatadyModeration
+				v-if="canModerate && moderationVisited"
+				v-show="activeTab === 'moderation'"
 			/>
 		</main>
 	</div>
@@ -480,6 +484,7 @@ import HyMediaCover from '@/components/HyMediaCover.vue';
 import HatadyHome from '@/components/HatadyHome.vue';
 import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
 import HatadyProfile from '@/components/HatadyProfile.vue';
+import HatadyModeration from '@/components/HatadyModeration.vue';
 import { hyBookmarkColor } from '@/utility/hatady.js';
 import { loadHySubjects } from '@/utility/hatady-subjects.js';
 import {
@@ -507,12 +512,14 @@ const router = useRouter(),
 	mainEl = useTemplateRef('mainEl'),
 	bell = useTemplateRef('bell'),
 	menu = useTemplateRef('menu');
-const tabs = [
+const canModerate = computed(() => !!($i?.isAdmin || $i?.isModerator));
+const tabs = computed(() => [
 	{ value: 'home', label: 'ホーム', icon: 'ti ti-home' },
 	{ value: 'records', label: '記録', icon: 'ti ti-notebook' },
 	{ value: 'collection', label: 'コレクション', icon: 'ti ti-books' },
 	{ value: 'profile', label: 'プロフィール', icon: 'ti ti-user' },
-];
+	...(canModerate.value ? [{ value: 'moderation', label: '管理', icon: 'ti ti-shield' }] : []),
+]);
 
 function saved(key: string): string | null {
 	try {
@@ -536,7 +543,7 @@ function initialTab(): string {
 		? 'collection'
 		: old === 'mylog' || old === 'discover'
 			? 'records'
-			: tabs.some((tab) => tab.value === old)
+			: tabs.value.some((tab) => tab.value === old)
 				? old!
 				: 'home';
 }
@@ -545,6 +552,18 @@ const activeTab = ref(initialTab()),
 	revision = ref(0),
 	stats = ref<any>(null),
 	unread = ref(0);
+// Keep review-note drafts when visiting another Hatady tab; discard the private
+// component immediately if the viewer no longer has the staff role.
+const moderationVisited = ref(activeTab.value === 'moderation');
+watch(activeTab, value => {
+	if (value === 'moderation') moderationVisited.value = true;
+}, { flush: 'sync' });
+watch(canModerate, allowed => {
+	if (!allowed) {
+		moderationVisited.value = false;
+		if (activeTab.value === 'moderation') void setTab('home');
+	}
+}, { flush: 'sync' });
 const recordScope = ref(saved('hatadyActiveTab') === 'discover' ? 'recent' : 'mine');
 const previousKinds = normalizeHatadyLogKinds(saved('hatadyLogKinds'));
 const recordKind = ref(
@@ -638,10 +657,10 @@ function onPageScroll(): void {
 }
 
 async function setTab(value: string, animate = false): Promise<void> {
-	if (!tabs.some((tab) => tab.value === value) || activeTab.value === value) return;
+	if (!tabs.value.some((tab) => tab.value === value) || activeTab.value === value) return;
 	if (mainEl.value) scrollPositions.set(activeTab.value, mainEl.value.scrollTop);
-	const before = tabs.findIndex((tab) => tab.value === activeTab.value),
-		after = tabs.findIndex((tab) => tab.value === value);
+	const before = tabs.value.findIndex((tab) => tab.value === activeTab.value),
+		after = tabs.value.findIndex((tab) => tab.value === value);
 	if (animate) preparePageMotion(after > before ? 1 : -1);
 	else cancelPageMotion();
 	activeTab.value = value;
@@ -982,10 +1001,13 @@ async function loadStats(): Promise<void> {
 	}
 }
 
+let unreadRequest = 0;
+
 async function loadUnread(): Promise<void> {
+	const request = ++unreadRequest;
 	try {
 		const result = (await misskeyApi('hata/hatady/notifications/unread-count', {})) as any;
-		unread.value = result.count;
+		if (request === unreadRequest) unread.value = result.count;
 	} catch {
 		/* A failed refresh cannot mark notifications read. */
 	}
@@ -1136,7 +1158,10 @@ async function openNotifications(event?: MouseEvent): Promise<void> {
 		(await import('@/components/HatadyNotifications.vue')).default,
 		{ anchorElement },
 		{
-			read: loadUnread,
+			read: (allRead?: boolean) => {
+				if (allRead) unread.value = 0;
+				void loadUnread();
+			},
 			openLog: openConversation,
 			openProfile,
 			openMedia: openMediaDetailById,
@@ -1274,6 +1299,7 @@ onUnmounted(() => {
 	stopTutorial?.();
 	recordsRequest++;
 	collectionRequest++;
+	unreadRequest++;
 	window.clearInterval(unreadTimer);
 	resize?.disconnect();
 	cancelPageMotion();
@@ -1800,6 +1826,24 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 	.header {
 		padding-inline: 10px;
 		column-gap: 6px;
+	}
+}
+@container hatady (max-width: 600px) {
+	/* Five staff destinations retain their labels and 44px targets beside the
+	 * independent exit control, including the longest selected tab on phones. */
+	.header[data-staff-nav='true'] .nav :deep([role='group']) {
+		flex-wrap: wrap;
+		justify-content: center;
+		border-radius: 26px;
+		overflow: clip;
+	}
+	.header[data-staff-nav='true'] .nav :deep(button[data-active='true']) {
+		flex: 0 0 auto;
+		min-width: 44px;
+	}
+	.header[data-staff-nav='true'] .nav :deep(button > span) {
+		inline-size: auto;
+		max-width: none;
 	}
 }
 @container hatady (max-width: 480px) {

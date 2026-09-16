@@ -45,7 +45,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- フィルタ -->
 		<div :class="$style.filters">
 			<HyCapsule v-model="activeFilter" :options="filters" label="通知の種類"/>
-			<button type="button" :class="$style.readAll" @click="markAllRead">
+			<button type="button" :class="$style.readAll" :disabled="loading || markingRead" @click="markAllRead">
 				<i class="ti ti-checks"></i>
 				{{ copy.markAllRead }}
 			</button>
@@ -136,7 +136,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { versatileLang } from '@@/js/intl-const.js';
 import HyDialog from '@/components/HyDialog.vue';
 import HyCapsule from '@/components/HyCapsule.vue';
@@ -149,7 +149,7 @@ import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
 defineProps<{ anchorElement?: HTMLElement | null }>();
 const emit = defineEmits<{
-	(ev: 'read'): void;
+	(ev: 'read', allRead?: boolean): void;
 	(ev: 'openLog', logId: string): void;
 	(ev: 'openMedia', workId: string): void;
 	(ev: 'openSession', sessionId: string, workId?: string): void;
@@ -164,7 +164,9 @@ const shortDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'shor
 
 const items = ref<any[]>([]);
 const loading = ref(true);
+const markingRead = ref(false);
 const activeFilter = ref('all');
+let active = true;
 
 const filters = [
 	{ value: 'all', label: copy.filterAll, icon: 'ti ti-bell' },
@@ -281,22 +283,28 @@ async function reload() {
 			untilId = cursor;
 		}
 		items.value = collected;
+		return true;
 	} catch {
 		error.value = '通知を読み込めませんでした';
+		return false;
 	} finally {
 		loading.value = false;
 	}
 }
 
 async function markAllRead() {
+	if (!active || loading.value || markingRead.value) return;
+	markingRead.value = true;
+	error.value = '';
 	try {
 		await misskeyApi('hata/hatady/notifications/mark-all-read', {});
+		for (const n of items.value) n.isRead = true;
+		emit('read', true);
 	} catch {
 		error.value = '既読にできませんでした';
-		return;
+	} finally {
+		markingRead.value = false;
 	}
-	for (const n of items.value) n.isRead = true;
-	emit('read');
 }
 
 function onClickNotif(n: any) {
@@ -351,7 +359,10 @@ function cancelDelete() {
 
 function closeOrCancel() {
 	if (deletingIds.value) cancelDelete();
-	else dialog.value?.close();
+	else {
+		active = false;
+		dialog.value?.close();
+	}
 }
 
 async function confirmDelete() {
@@ -401,7 +412,16 @@ async function undoDelete() {
 	}
 }
 
-onMounted(reload);
+onMounted(async () => {
+	if (!(await reload())) return;
+	// Wait until the loaded list is rendered, and never acknowledge a popup
+	// that was closed while its notifications were still loading.
+	await nextTick();
+	if (!active) return;
+	if (items.value.some(n => !n.isRead)) await markAllRead();
+	else emit('read');
+});
+onBeforeUnmount(() => { active = false; });
 </script>
 
 <style lang="scss" module>
