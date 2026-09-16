@@ -60,4 +60,6 @@ function navigate(id: string) { if (id !== 'home') signin(); }
 function action(value: HataskAkatsukiAction) { if (value.type === 'toggle-todo') { const todo = todos.value.find(item => item.id === value.id); if (todo) todo.completed = !todo.completed; } else signin(); }
 </script>
 <style lang="scss" src="../components/hatask/hatask-themes.scss"></style>
-<style lang="scss" src="../components/hatask/hatask-fonts.scss"></style>
+<style lang="scss">
+@use "../components/hatask/hatask-fonts.scss";
+</style>

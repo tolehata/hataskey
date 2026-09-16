@@ -4698,7 +4698,9 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-root[data-theme]:not([data-theme="akatsuki"]) .htk-primary, .htk-modal-ov[data-theme]:not([data-theme="akatsuki"]) .htk-primary{color:var(--htk-on-ink)}
 </style>
 
-<style lang="scss" src="../components/hatask/hatask-fonts.scss"></style>
+<style lang="scss">
+@use "../components/hatask/hatask-fonts.scss";
+</style>
 
 <!-- グローバルスタイル: Hatask起動時にMisskeyの標準ナビバーを非表示にする -->
 <style lang="scss">

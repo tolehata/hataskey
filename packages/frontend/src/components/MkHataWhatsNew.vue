@@ -168,4 +168,6 @@ onMounted(() => {
 onBeforeUnmount(() => { disposed = true; stop(); media.removeEventListener('change', syncMotion); window.document.removeEventListener('visibilitychange', visibility); });
 </script>
 <style module src="./hata-whats-new/release.module.css"></style>
-<style lang="scss" src="./hatask/hatask-fonts.scss"></style>
+<style lang="scss">
+@use "./hatask/hatask-fonts.scss";
+</style>
