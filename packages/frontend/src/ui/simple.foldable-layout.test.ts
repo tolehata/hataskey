@@ -27,18 +27,20 @@ describe('Hataskey UI foldable layout', () => {
 		expect(normalizedDeclaration('.mainColumnInner', 'position')).toBe('relative');
 		expect(normalizedDeclaration('.topBar', 'left')).toBe('0');
 		expect(normalizedDeclaration('.topBar', 'right')).toBe('0');
-		expect(normalizedDeclaration('.topBar', 'top')).toBe('var(--simple-announcements-height,0px)');
+		expect(normalizedDeclaration('.root[data-hata-foldable=\'true\'] .topBar', 'top')).toBe('var(--simple-announcements-height,0px)');
 		expect(normalizedDeclaration('.topBar', 'justify-content')).toBe('center');
 	});
 
 	test('通常のモバイルはfixed、通常PCはabsoluteという既存の配置を維持する', () => {
 		expect(normalizedDeclaration('.topBar', 'position')).toBe('fixed');
 		expect(normalizedDeclaration('.desktopLayout .topBar', 'position')).toBe('absolute');
+		expect(normalizedDeclaration('.topBar', 'top')).toBe('calc(var(--simple-announcements-height,0px)+var(--MI-fixed-top-inset,0px))');
+		expect(normalizedDeclaration('.desktopLayout .topBar', 'top')).toBe('var(--simple-announcements-height,0px)');
 	});
 
 	test('折りたたみ端末だけの補正を外すと旧viewport基準の配置として検出できる', () => {
 		const selector = '.root[data-hata-foldable=\'true\'] .topBar';
-		const oldLayout = source.replace(`${selector} {\n    position: absolute;\n}`, '');
+		const oldLayout = source.replace(/\.root\[data-hata-foldable='true'\] \.topBar\s*\{[^}]*\}/u, '');
 		expect(oldLayout).not.toBe(source);
 		expect(normalizedDeclaration(selector, 'position', oldLayout)).toBeUndefined();
 		expect(normalizedDeclaration(selector, 'position')).toBe('absolute');

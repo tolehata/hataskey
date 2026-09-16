@@ -180,7 +180,9 @@ function leave(el: Element) {
 $widgets-hide-threshold: 1090px;
 
 .root {
-	height: 100dvh;
+	// This existing containment already moves viewport-fixed descendants with the shell.
+	--MI-fixed-top-inset: 0px;
+	height: var(--MI-viewport-height, 100dvh);
 	overflow: clip;
 	contain: strict;
 	display: flex;

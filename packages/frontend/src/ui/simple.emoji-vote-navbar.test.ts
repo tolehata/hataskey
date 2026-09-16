@@ -130,12 +130,13 @@ afterEach(() => {
 
 async function flush() { await Vue.nextTick(); await Vue.nextTick(); await Vue.nextTick(); }
 
-function fixture(options: { host?: boolean; tab?: string; deck?: boolean; page?: boolean; hidden?: boolean } = {}) {
+function fixture(options: { host?: boolean; tab?: string; deck?: boolean; page?: boolean; hidden?: boolean; voteEnabled?: boolean; inline?: boolean } = {}) {
 	const tab = Vue.ref(options.tab ?? 'local');
 	const deckActive = Vue.ref(options.deck ?? false);
 	const isPageView = Vue.ref(options.page ?? false);
 	const hostAvailable = Vue.ref(options.host ?? true);
 	const showTopBar = Vue.ref(false);
+	const voteEnabled = Vue.ref(options.voteEnabled ?? true);
 	const phase = Vue.ref('voting');
 	const declined = Vue.ref(false);
 	const round = Vue.ref({ id: 'round', noteId: 'trigger', total: 0, phase: 'voting' });
@@ -155,6 +156,7 @@ function fixture(options: { host?: boolean; tab?: string; deck?: boolean; page?:
 			const bindings = {
 				computed: Vue.computed, watch: Vue.watch, onBeforeUnmount: Vue.onBeforeUnmount,
 				props, emit, paginator, isHatasaba: true, getLtlEmojiVoteAnchor, visibleItems: notes,
+				prefer: { r: { ltlEmojiVoteEnabled: voteEnabled } },
 				emojiVoteRound: round, emojiVotePhase: phase, emojiVoteDeclined: declined, $i: null,
 			};
 			const selected = execute(timeline.setup, ['emojiVoteActive', 'emojiVoteAnchor'], bindings, navbarStateStatements);
@@ -189,7 +191,9 @@ function fixture(options: { host?: boolean; tab?: string; deck?: boolean; page?:
 	});
 	const mountPoint = window.document.createElement('div');
 	window.document.body.append(mountPoint);
-	const app = Vue.createApp(root);
+	const app = options.inline
+		? Vue.createApp(child, { src: 'local', withSensitive: true, emojiVoteActive: true, emojiVoteNavbar: false })
+		: Vue.createApp(root);
 	app.config.globalProperties.$style = classes;
 	app.config.globalProperties.$i = null;
 	apps.push(app);
@@ -202,12 +206,52 @@ function fixture(options: { host?: boolean; tab?: string; deck?: boolean; page?:
 	}
 
 	return {
-		mountPoint, required, tab, deckActive, isPageView, hostAvailable, showTopBar, phase, declined, round, notes, paginator, notificationToasts, navbarNewNotes,
+		mountPoint, required, tab, deckActive, isPageView, hostAvailable, showTopBar, voteEnabled, phase, declined, round, notes, paginator, notificationToasts, navbarNewNotes,
 		get state() { return state; },
 	};
 }
 
 describe('Hataskey emoji vote navbar production wiring', () => {
+	it('keeps the navbar in its ordinary state when the vote preference starts disabled', async () => {
+		const view = fixture({ voteEnabled: false });
+		await flush();
+		expect(view.mountPoint.querySelector('[data-vote-card]')).toBeNull();
+		expect(view.mountPoint.querySelector('[data-emoji-vote-outline]')).toBeNull();
+		expect(view.required('.topBar').dataset.emojiVote).toBe('false');
+		expect(view.state.emojiVoteNavbarStackStyle.value).toEqual({});
+		view.voteEnabled.value = true;
+		await flush();
+		expect(view.required('[data-vote-card]').dataset.voteCard).toBe('navbar');
+	});
+
+	it('removes a result and its outline on a live preference change while retaining ordinary notices', async () => {
+		const view = fixture();
+		view.phase.value = 'result';
+		view.round.value = { ...view.round.value, total: 5, phase: 'result' };
+		view.navbarNewNotes.value = { text: '新しいノート' };
+		await flush();
+		expect(view.required('.topPillFrame').dataset.emojiCelebrating).toBe('true');
+		view.voteEnabled.value = false;
+		await flush();
+		expect(view.mountPoint.querySelector('[data-vote-card]')).toBeNull();
+		expect(view.mountPoint.querySelector('[data-emoji-vote-outline]')).toBeNull();
+		expect(view.state.emojiVoteNavbarStackStyle.value).toEqual({});
+		expect(view.required('.topPill').dataset.newNotes).toBe('true');
+		expect(view.required('.topBar').dataset.hidden).toBe('false');
+	});
+
+	it('gates the same inline vote branch used by deck LTL columns', async () => {
+		const view = fixture({ inline: true, voteEnabled: false });
+		await flush();
+		expect(view.mountPoint.querySelector('[data-vote-card]')).toBeNull();
+		view.voteEnabled.value = true;
+		await flush();
+		expect(view.required('[data-vote-card]').dataset.voteCard).toBe('inline');
+		view.voteEnabled.value = false;
+		await flush();
+		expect(view.mountPoint.querySelector('[data-vote-card]')).toBeNull();
+	});
+
 	it('reserves navbar placement before its target arrives and mounts only one card in the target afterwards', async () => {
 		const view = fixture({ host: false });
 		await flush();

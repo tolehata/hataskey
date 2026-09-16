@@ -59,6 +59,7 @@ import contains from '@/utility/contains.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
+import { getViewportTopInset } from '@/utility/viewport-inset.js';
 
 type WindowButton = {
 	title: string;
@@ -171,10 +172,10 @@ function maximize() {
 	unResizedLeft = rootEl.value.style.left;
 	unResizedWidth = rootEl.value.style.width;
 	unResizedHeight = rootEl.value.style.height;
-	rootEl.value.style.top = '0';
+	rootEl.value.style.top = getViewportTopInset(rootEl.value) + 'px';
 	rootEl.value.style.left = '0';
 	rootEl.value.style.width = '100%';
-	rootEl.value.style.height = '100%';
+	rootEl.value.style.height = getViewportTopInset() > 0 ? 'var(--MI-viewport-height, 100dvh)' : '100%';
 }
 
 function unMaximize() {
@@ -184,6 +185,7 @@ function unMaximize() {
 	rootEl.value.style.left = unResizedLeft;
 	rootEl.value.style.width = unResizedWidth;
 	rootEl.value.style.height = unResizedHeight;
+	if (getViewportTopInset() > 0) onBrowserResize();
 }
 
 function minimize() {
@@ -198,19 +200,18 @@ function minimize() {
 
 function unMinimize() {
 	if (rootEl.value == null) return;
-	const main = rootEl.value;
 
 	minimized.value = false;
 	rootEl.value.style.width = unResizedWidth;
 	rootEl.value.style.height = unResizedHeight;
-	const browserWidth = window.innerWidth;
-	const browserHeight = window.innerHeight;
-	const windowWidth = main.offsetWidth;
-	const windowHeight = main.offsetHeight;
-
-	const position = main.getBoundingClientRect();
-	if (position.top + windowHeight > browserHeight) main.style.top = browserHeight - windowHeight + 'px';
-	if (position.left + windowWidth > browserWidth) main.style.left = browserWidth - windowWidth + 'px';
+	if (getViewportTopInset() > 0) {
+		onBrowserResize();
+	} else {
+		const main = rootEl.value;
+		const position = main.getBoundingClientRect();
+		if (position.top + main.offsetHeight > window.innerHeight) main.style.top = window.innerHeight - main.offsetHeight + 'px';
+		if (position.left + main.offsetWidth > window.innerWidth) main.style.left = window.innerWidth - main.offsetWidth + 'px';
+	}
 }
 
 function onBodyMousedown() {
@@ -265,13 +266,15 @@ function onHeaderMousedown(evt: MouseEvent | TouchEvent) {
 	const moveBaseX = beforeMaximized ? parseInt(unResizedWidth, 10) / 2 : clickX - position.left; // TODO: parseIntやめる
 	const moveBaseY = beforeMaximized ? 20 : clickY - position.top;
 	const browserWidth = window.innerWidth;
-	const browserHeight = window.innerHeight;
+	const topInset = getViewportTopInset(main);
+	const originTop = getViewportTopInset() - topInset;
+	const browserHeight = window.innerHeight - originTop;
 	const windowWidth = main.offsetWidth;
 	const windowHeight = main.offsetHeight;
 
 	function move(x: number, y: number) {
 		let moveLeft = x - moveBaseX;
-		let moveTop = y - moveBaseY;
+		let moveTop = y - moveBaseY - originTop;
 
 		// 下はみ出し
 		if (moveTop + windowHeight > browserHeight) moveTop = browserHeight - windowHeight;
@@ -280,7 +283,7 @@ function onHeaderMousedown(evt: MouseEvent | TouchEvent) {
 		if (moveLeft < 0) moveLeft = 0;
 
 		// 上はみ出し
-		if (moveTop < 0) moveTop = 0;
+		if (moveTop < topInset) moveTop = topInset;
 
 		// 右はみ出し
 		if (moveLeft + windowWidth > browserWidth) moveLeft = browserWidth - windowWidth;
@@ -313,11 +316,12 @@ function onTopHandleMousedown(evt: MouseEvent | TouchEvent) {
 	const base = getPositionY(evt);
 	const height = parseInt(getComputedStyle(main, '').height, 10);
 	const top = parseInt(getComputedStyle(main, '').top, 10);
+	const topInset = getViewportTopInset(main);
 
 	// 動かした時
 	dragListen(me => {
 		const move = getPositionY(me) - base;
-		if (top + move > 0) {
+		if (top + move > topInset) {
 			if (height + -move > minHeight) {
 				applyTransformHeight(height + -move);
 				applyTransformTop(top + move);
@@ -326,8 +330,8 @@ function onTopHandleMousedown(evt: MouseEvent | TouchEvent) {
 				applyTransformTop(top + (height - minHeight));
 			}
 		} else { // 上のはみ出し時
-			applyTransformHeight(top + height);
-			applyTransformTop(0);
+			applyTransformHeight(top + height - topInset);
+			applyTransformTop(topInset);
 		}
 	});
 }
@@ -365,7 +369,7 @@ function onBottomHandleMousedown(evt: MouseEvent | TouchEvent) {
 	const base = getPositionY(evt);
 	const height = parseInt(getComputedStyle(main, '').height, 10);
 	const top = parseInt(getComputedStyle(main, '').top, 10);
-	const browserHeight = window.innerHeight;
+	const browserHeight = window.innerHeight - getViewportTopInset() + getViewportTopInset(main);
 
 	// 動かした時
 	dragListen(me => {
@@ -436,7 +440,8 @@ function onBottomLeftHandleMousedown(evt: MouseEvent | TouchEvent) {
 // 高さを適用
 function applyTransformHeight(height) {
 	resized.value = true;
-	if (height > window.innerHeight) height = window.innerHeight;
+	const availableHeight = window.innerHeight - getViewportTopInset();
+	if (height > availableHeight) height = availableHeight;
 	if (rootEl.value) rootEl.value.style.height = height + 'px';
 }
 
@@ -448,7 +453,7 @@ function applyTransformWidth(width) {
 
 // Y座標を適用
 function applyTransformTop(top) {
-	if (rootEl.value) rootEl.value.style.top = top + 'px';
+	if (rootEl.value) rootEl.value.style.top = (getViewportTopInset() > 0 ? Math.max(getViewportTopInset(rootEl.value), top) : top) + 'px';
 }
 
 // X座標を適用
@@ -460,15 +465,24 @@ function onBrowserResize() {
 	const main = rootEl.value;
 	if (main == null) return;
 
+	const viewportInset = getViewportTopInset();
+	const topInset = getViewportTopInset(main);
+	if (maximized.value && viewportInset > 0) {
+		main.style.top = topInset + 'px';
+		return;
+	}
+
+	const originTop = getViewportTopInset() - topInset;
 	const position = main.getBoundingClientRect();
 	const browserWidth = window.innerWidth;
-	const browserHeight = window.innerHeight;
+	const browserHeight = window.innerHeight - originTop;
 	const windowWidth = main.offsetWidth;
-	const windowHeight = main.offsetHeight;
+	const windowHeight = viewportInset > 0 ? Math.min(main.offsetHeight, browserHeight - topInset) : main.offsetHeight;
+	if (main.offsetHeight > windowHeight) applyTransformHeight(windowHeight);
 	if (position.left < 0) main.style.left = '0'; // 左はみ出し
-	if (position.top + windowHeight > browserHeight) main.style.top = browserHeight - windowHeight + 'px'; // 下はみ出し
+	if (position.top - originTop + windowHeight > browserHeight) applyTransformTop(browserHeight - windowHeight); // 下はみ出し
 	if (position.left + windowWidth > browserWidth) main.style.left = browserWidth - windowWidth + 'px'; // 右はみ出し
-	if (position.top < 0) main.style.top = '0'; // 上はみ出し
+	if (position.top - originTop < topInset) main.style.top = topInset + 'px'; // 上はみ出し
 }
 
 onMounted(() => {
@@ -476,7 +490,7 @@ onMounted(() => {
 	if (props.initialHeight) applyTransformHeight(props.initialHeight);
 
 	if (rootEl.value) {
-		applyTransformTop((window.innerHeight / 2) - (rootEl.value.offsetHeight / 2));
+		applyTransformTop(getViewportTopInset(rootEl.value) + ((window.innerHeight - getViewportTopInset() - rootEl.value.offsetHeight) / 2));
 		applyTransformLeft((window.innerWidth / 2) - (rootEl.value.offsetWidth / 2));
 	}
 
@@ -521,7 +535,7 @@ defineExpose({
 	--MI-stickyBottom: 0;
 
 	position: fixed;
-	top: 0;
+	top: var(--MI-fixed-top-inset, 0px);
 	left: 0;
 
 	&.maximized {
@@ -618,7 +632,7 @@ defineExpose({
 // Opt-in for content-sized forms. Existing fixed/resizable windows keep their
 // size container; these callers need their intrinsic content height instead.
 .root[data-content-height='true'] .content { container-type: inline-size; min-height: 0; }
-.root[data-auto-height='true'] > .body { height: auto; max-height: calc(100dvh - 32px); }
+.root[data-auto-height='true'] > .body { height: auto; max-height: calc(var(--MI-viewport-height, 100dvh) - 32px); }
 .root[data-auto-height='true'] .content { flex: 0 1 auto; }
 
 $handleSize: 8px;

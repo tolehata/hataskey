@@ -66,7 +66,7 @@ function goToDeck() {
 .contents {
 	display: flex;
 	flex-direction: column;
-	height: 100dvh;
+	height: var(--MI-viewport-height, 100dvh);
 }
 
 .deckNav {

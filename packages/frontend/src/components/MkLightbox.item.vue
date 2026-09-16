@@ -1256,7 +1256,8 @@ defineExpose({
 	transition: opacity 200ms ease, bottom 200ms ease;
 }
 .footer.infoShowing {
-	bottom: 0px;
+	// Keep controls visible when the shell contains the full-viewport image canvas.
+	bottom: calc(var(--MI-viewport-top-inset, 0px) - var(--MI-fixed-top-inset, 0px));
 	opacity: 1;
 }
 .header {
@@ -1269,7 +1270,7 @@ defineExpose({
 	transition: opacity 200ms ease, top 200ms ease;
 }
 .header.infoShowing {
-	top: 0px;
+	top: var(--MI-fixed-top-inset, 0px);
 	opacity: 1;
 }
 

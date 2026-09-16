@@ -77,7 +77,7 @@ function setTab(tab: string) { if (tab !== 'home') signin(); }
 	display: flex;
 	position: relative;
 	flex-direction: column;
-	height: calc(100dvh - var(--MI-stickyTop, 0px));
+	height: calc(var(--MI-viewport-height, 100dvh) - var(--MI-stickyTop, 0px));
 	min-height: 0;
 	background: var(--hy-bg);
 	overflow: hidden;

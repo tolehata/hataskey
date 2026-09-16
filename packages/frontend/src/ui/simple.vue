@@ -2168,7 +2168,7 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" module>
-.root { display:flex; flex-direction:column; height:100dvh; background:var(--MI_THEME-bg); overflow:hidden; user-select:none; -webkit-tap-highlight-color:transparent; }
+.root { display:flex; flex-direction:column; height:var(--MI-viewport-height, 100dvh); background:var(--MI_THEME-bg); overflow:hidden; user-select:none; -webkit-tap-highlight-color:transparent; }
 
 // ===== デスクトップレイアウト =====
 .desktopLayout {
@@ -2179,7 +2179,7 @@ onUnmounted(() => {
 .sidebar {
     width:220px;
     flex-shrink:0;
-    height:100dvh;
+    height:var(--MI-viewport-height, 100dvh);
     background:var(--MI_THEME-navBg);
     display:flex;
     flex-direction:column;
@@ -3115,7 +3115,7 @@ onUnmounted(() => {
     min-width:0;
     display:flex;
     flex-direction:column;
-    height:100dvh;
+    height:var(--MI-viewport-height, 100dvh);
     position:relative;
     overflow:hidden;
 }
@@ -3127,7 +3127,7 @@ onUnmounted(() => {
     min-width:0;
     display:flex;
     flex-direction:column;
-    height:100dvh;
+    height:var(--MI-viewport-height, 100dvh);
     overflow:hidden;
     transition:flex .3s cubic-bezier(.22,1,.36,1);
 }
@@ -3175,7 +3175,7 @@ onUnmounted(() => {
     min-width:0;
     display:flex;
     flex-direction:column;
-    height:100dvh;
+    height:var(--MI-viewport-height, 100dvh);
     position:relative;
     overflow:hidden;
 }
@@ -3190,7 +3190,7 @@ onUnmounted(() => {
 .userPanelDesktop {
     width:340px;
     flex-shrink:0;
-    height:100dvh;
+    height:var(--MI-viewport-height, 100dvh);
     border-left:1px solid var(--MI_THEME-divider);
     background:var(--MI_THEME-bg);
     overflow:hidden;
@@ -3204,7 +3204,7 @@ onUnmounted(() => {
 // ===== ユーザーパネル（モバイル: フルスクリーン） =====
 .userPanelMobileOverlay {
     position:fixed;
-    inset:0;
+    inset:var(--MI-fixed-top-inset, 0px) 0 0;
     z-index:3200000;
     background:var(--MI_THEME-bg);
     animation:supMobileIn .3s cubic-bezier(.22,1,.36,1) both;
@@ -3217,7 +3217,7 @@ onUnmounted(() => {
     --widget-bar-width:350px;
     width:var(--widget-bar-width);
     flex-shrink:0;
-    height:100dvh;
+    height:var(--MI-viewport-height, 100dvh);
     box-sizing:border-box;
     overflow:hidden;
     border-left:none;
@@ -3299,7 +3299,7 @@ onUnmounted(() => {
 
 // ===== トップバー（ピル型、スクロール連動） =====
 .topBar {
-    position:fixed; top:var(--simple-announcements-height, 0px); left:0; right:0; z-index:200;
+    position:fixed; top:calc(var(--simple-announcements-height, 0px) + var(--MI-fixed-top-inset, 0px)); left:0; right:0; z-index:200;
     display:flex; justify-content:center; align-items:flex-start; gap:6px;
     padding:calc(10px + env(safe-area-inset-top,0px)) 16px 8px;
 	box-sizing:border-box; min-width:0;
@@ -3309,6 +3309,7 @@ onUnmounted(() => {
 }
 .desktopLayout .topBar {
     position:absolute;
+    top:var(--simple-announcements-height, 0px);
     left:0; right:0;
 }
 .topBar[data-hidden='true'] {
@@ -3354,7 +3355,7 @@ onUnmounted(() => {
     order:2; width:100%; min-width:0; max-height:0; overflow:hidden;
 }
 .emojiVoteNavbarViewport[data-active='true'] {
-    max-height:min(420px,max(96px,calc(100dvh - var(--simple-announcements-height,0px) - env(safe-area-inset-top,0px) - 160px)));
+    max-height:min(420px,max(96px,calc(var(--MI-viewport-height, 100dvh) - var(--simple-announcements-height,0px) - env(safe-area-inset-top,0px) - 160px)));
     overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin;
 }
 .topPill {
@@ -3700,6 +3701,7 @@ onUnmounted(() => {
 // 折りたたみ端末では画面全幅ではなく、タイムライン列を基準にピルを中央へ置く。
 .root[data-hata-foldable='true'] .topBar {
     position: absolute;
+    top: var(--simple-announcements-height, 0px);
 }
 
 // 右ウィジェット列の先頭を、バナー下にある左のノート列と同じ高さへ揃える。
@@ -3737,7 +3739,7 @@ onUnmounted(() => {
 }
 .drawerNav {
     position:fixed;
-    top:0;
+    top:var(--MI-fixed-top-inset, 0px);
     left:0;
     bottom:0;
     z-index:900001;

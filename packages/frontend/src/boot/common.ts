@@ -32,8 +32,10 @@ import { $i } from '@/i.js';
 import { launchPlugins } from '@/plugin.js';
 import { popup } from '@/os.js';
 import { initTelemetry } from '@/telemetry.js';
+import { initViewportInset } from '@/utility/viewport-inset.js';
 
 export async function common(createVue: () => Promise<App<Element>>) {
+	initViewportInset();
 	console.info(`CherryPick v${version}`);
 
 	if (_DEV_) {

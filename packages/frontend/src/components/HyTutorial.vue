@@ -290,7 +290,7 @@ onUnmounted(() => {
 }
 .tutorial :deep(._modalBg + div) {
 	box-sizing: border-box;
-	height: 100dvh;
+	height: var(--MI-viewport-height, 100dvh);
 	padding:
 		max(var(--tutorial-inset), env(safe-area-inset-top, 0px))
 		max(var(--tutorial-inset), env(safe-area-inset-right, 0px))

@@ -278,10 +278,10 @@ if ($i) {
 
 .menuDrawer {
 	position: fixed;
-	top: 0;
+	top: var(--MI-fixed-top-inset, 0px);
 	left: 0;
 	z-index: 1001;
-	height: 100dvh;
+	height: var(--MI-viewport-height, 100dvh);
 }
 
 .widgetsDrawerBg {
@@ -290,11 +290,11 @@ if ($i) {
 
 .widgetsDrawer {
 	position: fixed;
-	top: 0;
+	top: var(--MI-fixed-top-inset, 0px);
 	right: 0;
 	z-index: 1001;
 	width: 310px;
-	height: 100dvh;
+	height: var(--MI-viewport-height, 100dvh);
 	padding: var(--MI-margin) var(--MI-margin) calc(var(--MI-margin) + env(safe-area-inset-bottom, 0px)) !important;
 	box-sizing: border-box;
 	overflow: auto;
@@ -332,12 +332,12 @@ if ($i) {
 	}
 
 	&[data-position='leftTop'] {
-		top: var(--MI-margin);
+		top: calc(var(--MI-margin) + var(--MI-fixed-top-inset, 0px));
 		left: 0;
 	}
 
 	&[data-position='rightTop'] {
-		top: var(--MI-margin);
+		top: calc(var(--MI-margin) + var(--MI-fixed-top-inset, 0px));
 		right: 0;
 	}
 
@@ -449,7 +449,7 @@ if ($i) {
 	display: block;
 	position: fixed;
 	z-index: 4000000;
-	top: 15px;
+	top: calc(15px + var(--MI-fixed-top-inset, 0px));
 	right: 15px;
 	pointer-events: none;
 

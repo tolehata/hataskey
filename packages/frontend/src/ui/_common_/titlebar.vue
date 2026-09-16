@@ -41,6 +41,10 @@ function goBack() {
 	font-size: 90%;
 }
 
+:global(html[data-ios-top-inset]) .root {
+	position: relative;
+}
+
 .title {
 	display: flex;
 	justify-content: center;

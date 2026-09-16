@@ -36,7 +36,7 @@ provideReactiveMetadata(pageMetadata);
 .root {
 	display: flex;
 	width: 100%;
-	height: 100dvh;
+	height: var(--MI-viewport-height, 100dvh);
 	min-width: 0;
 	min-height: 0;
 	overflow: hidden;

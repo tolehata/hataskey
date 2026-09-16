@@ -42,6 +42,6 @@ provideReactiveMetadata(pageMetadata);
 <style lang="scss" module>
 .root {
 	position: relative;
-	height: 100dvh;
+	height: var(--MI-viewport-height, 100dvh);
 }
 </style>

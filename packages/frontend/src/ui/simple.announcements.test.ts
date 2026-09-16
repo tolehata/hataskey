@@ -242,7 +242,7 @@ describe('HataskeyUIのお知らせバナー', () => {
 		expect(banner).toMatch(/flex-shrink:\s*0/u);
 		expect(banner).toMatch(/position:\s*relative/u);
 		expect(banner).toMatch(/z-index:\s*201/u);
-		expect(navbar).toMatch(/top:\s*var\(--simple-announcements-height,\s*0px\)/u);
+		expect(navbar).toMatch(/top:\s*calc\(var\(--simple-announcements-height,\s*0px\)\s*\+\s*var\(--MI-fixed-top-inset,\s*0px\)\)/u);
 		expect(navbar).toMatch(/position:\s*fixed/u);
 		expect(compiled.code).toMatch(/\.desktopLayout\s+\.topBar\s*\{\s*position:\s*absolute/u);
 		expect(compiled.code.replace(/["']/gu, '')).toMatch(/\.root\[data-hata-foldable=true\]\s+\.topBar\s*\{\s*position:\s*absolute/u);

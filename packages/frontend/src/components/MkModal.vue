@@ -42,7 +42,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { nextTick, normalizeClass, onMounted, onUnmounted, provide, watch, ref, useTemplateRef, computed } from 'vue';
+import { nextTick, normalizeClass, onBeforeUnmount, onMounted, onUnmounted, provide, watch, ref, useTemplateRef, computed } from 'vue';
 import type { Keymap } from '@/utility/hotkey.js';
 import * as os from '@/os.js';
 import { isTouchUsing } from '@/utility/touch.js';
@@ -51,6 +51,7 @@ import { focusTrap } from '@/utility/focus-trap.js';
 import { focusParent } from '@/utility/focus.js';
 import { prefer } from '@/preferences.js';
 import { DI } from '@/di.js';
+import { getViewportTopInset } from '@/utility/viewport-inset.js';
 
 function getFixedContainer(el: Element | null): Element | null {
 	if (el == null || el.tagName === 'BODY') return null;
@@ -168,7 +169,7 @@ function onBgClick() {
 }
 
 if (type.value === 'drawer') {
-	maxHeight.value = window.innerHeight / 1.5;
+	maxHeight.value = (window.innerHeight - getViewportTopInset()) / 1.5;
 }
 
 const keymap = {
@@ -189,6 +190,12 @@ const align = () => {
 	if (content.value == null) return;
 
 	const anchorRect = props.anchorElement.getBoundingClientRect();
+	const viewportInset = getViewportTopInset();
+	const topInset = getViewportTopInset(content.value);
+	// A contained shell has already moved its fixed-position origin below the band.
+	const originTop = viewportInset - topInset;
+	const anchorTop = anchorRect.top - originTop;
+	const viewportBottom = window.innerHeight - originTop;
 
 	const width = content.value!.offsetWidth;
 	const height = content.value!.offsetHeight;
@@ -197,7 +204,7 @@ const align = () => {
 	let top;
 
 	const x = anchorRect.left + (fixed.value ? 0 : window.scrollX);
-	const y = anchorRect.top + (fixed.value ? 0 : window.scrollY);
+	const y = anchorTop + (fixed.value ? 0 : window.scrollY);
 
 	if (props.anchor.x === 'center') {
 		left = x + (props.anchorElement.offsetWidth / 2) - (width / 2);
@@ -221,20 +228,20 @@ const align = () => {
 			left = (window.innerWidth - SCROLLBAR_THICKNESS) - width;
 		}
 
-		const underSpace = ((window.innerHeight - SCROLLBAR_THICKNESS) - MARGIN) - top;
-		const upperSpace = (anchorRect.top - MARGIN);
+		const underSpace = ((viewportBottom - SCROLLBAR_THICKNESS) - MARGIN) - top;
+		const upperSpace = anchorTop - topInset - MARGIN;
 
 		// 画面から縦にはみ出る場合
-		if (top + height > ((window.innerHeight - SCROLLBAR_THICKNESS) - MARGIN)) {
+		if (top + height > ((viewportBottom - SCROLLBAR_THICKNESS) - MARGIN)) {
 			if (props.noOverlap && props.anchor.x === 'center') {
 				if (underSpace >= (upperSpace / 3)) {
 					maxHeight.value = underSpace;
 				} else {
 					maxHeight.value = upperSpace;
-					top = (upperSpace + MARGIN) - height;
+					top = (upperSpace + topInset + MARGIN) - height;
 				}
 			} else {
-				top = ((window.innerHeight - SCROLLBAR_THICKNESS) - MARGIN) - height;
+				top = ((viewportBottom - SCROLLBAR_THICKNESS) - MARGIN) - height;
 			}
 		} else {
 			maxHeight.value = underSpace;
@@ -245,28 +252,29 @@ const align = () => {
 			left = (window.innerWidth - SCROLLBAR_THICKNESS) - width + window.scrollX - 1;
 		}
 
-		const underSpace = ((window.innerHeight - SCROLLBAR_THICKNESS) - MARGIN) - (top - window.scrollY);
-		const upperSpace = (anchorRect.top - MARGIN);
+		const underSpace = ((viewportBottom - SCROLLBAR_THICKNESS) - MARGIN) - (top - window.scrollY);
+		const upperSpace = anchorTop - topInset - MARGIN;
 
 		// 画面から縦にはみ出る場合
-		if (top + height - window.scrollY > ((window.innerHeight - SCROLLBAR_THICKNESS) - MARGIN)) {
+		if (top + height - window.scrollY > ((viewportBottom - SCROLLBAR_THICKNESS) - MARGIN)) {
 			if (props.noOverlap && props.anchor.x === 'center') {
 				if (underSpace >= (upperSpace / 3)) {
 					maxHeight.value = underSpace;
 				} else {
 					maxHeight.value = upperSpace;
-					top = window.scrollY + ((upperSpace + MARGIN) - height);
+					top = window.scrollY + ((upperSpace + topInset + MARGIN) - height);
 				}
 			} else {
-				top = ((window.innerHeight - SCROLLBAR_THICKNESS) - MARGIN) - height + window.scrollY - 1;
+				top = ((viewportBottom - SCROLLBAR_THICKNESS) - MARGIN) - height + window.scrollY - 1;
 			}
 		} else {
 			maxHeight.value = underSpace;
 		}
 	}
 
-	if (top < 0) {
-		top = MARGIN;
+	const minimumTop = viewportInset > 0 ? topInset + (fixed.value ? 0 : window.scrollY) : 0;
+	if (top < minimumTop) {
+		top = minimumTop + MARGIN;
 	}
 
 	if (left < 0) {
@@ -276,9 +284,9 @@ const align = () => {
 	let transformOriginX = 'center';
 	let transformOriginY = 'center';
 
-	if (top >= anchorRect.top + props.anchorElement.offsetHeight + (fixed.value ? 0 : window.scrollY)) {
+	if (top >= anchorTop + props.anchorElement.offsetHeight + (fixed.value ? 0 : window.scrollY)) {
 		transformOriginY = 'top';
-	} else if ((top + height) <= anchorRect.top + (fixed.value ? 0 : window.scrollY)) {
+	} else if ((top + height) <= anchorTop + (fixed.value ? 0 : window.scrollY)) {
 		transformOriginY = 'bottom';
 	}
 
@@ -351,6 +359,7 @@ onMounted(() => {
 			}
 		} else {
 			releaseFocusTrap?.();
+			releaseFocusTrap = null;
 			focusParent(props.returnFocusTo ?? props.anchorElement, true, false);
 		}
 	}, { immediate: true });
@@ -358,6 +367,14 @@ onMounted(() => {
 	nextTick(() => {
 		alignObserver.observe(content.value!);
 	});
+});
+
+// A conditional parent can remove this modal without calling close(). Release
+// while its DOM ancestors still exist, so background inert state is restored.
+onBeforeUnmount(() => {
+	releaseFocusTrap?.();
+	releaseFocusTrap = null;
+	if (showing.value && props.anchorElement) props.anchorElement.style.pointerEvents = 'auto';
 });
 
 onUnmounted(() => {
@@ -509,7 +526,7 @@ defineExpose({
 	&.dialog {
 		> .content {
 			position: fixed;
-			top: 0;
+			top: var(--MI-fixed-top-inset, 0px);
 			bottom: 0;
 			left: 0;
 			right: 0;
@@ -536,10 +553,10 @@ defineExpose({
 
 	&.drawer {
 		position: fixed;
-		top: 0;
+		top: var(--MI-fixed-top-inset, 0px);
 		left: 0;
 		width: 100%;
-		height: 100%;
+		height: calc(100% - var(--MI-fixed-top-inset, 0px));
 		overflow: clip;
 
 		> .content {

@@ -21,6 +21,9 @@ $code-monospace-font: "JetBrains Mono", "Pretendard JP", Pretendard, Consolas, M
 	--MI-marginHalf: 10px;
 
 	--MI-margin: var(--MI-marginFull);
+	--MI-viewport-top-inset: 0px;
+	--MI-fixed-top-inset: var(--MI-viewport-top-inset);
+	--MI-viewport-height: calc(100dvh - var(--MI-viewport-top-inset));
 
 	// switch dynamically
 	--MI-minBottomSpacingMobile: calc(72px + max(12px, env(safe-area-inset-bottom, 0px)));
@@ -35,6 +38,11 @@ $code-monospace-font: "JetBrains Mono", "Pretendard JP", Pretendard, Consolas, M
 	@media (max-width: 500px) {
 		--MI-margin: var(--MI-marginHalf);
 	}
+}
+
+// Keep controls below the native iOS top-edge blur, in Safari and installed apps.
+html[data-ios-top-inset] {
+	--MI-viewport-top-inset: 16px;
 }
 
 html {
@@ -191,6 +199,11 @@ body,
 body {
 	/* NOTE: htmlにも overflow: clip を設定したいところだが、設定すると何故か少なくともChromeで html が main thread scrolling になりパフォーマンスが(多分)落ちる */
 	overflow: clip;
+}
+
+#cherrypick_app {
+	box-sizing: border-box;
+	padding-top: var(--MI-viewport-top-inset);
 }
 
 a {
