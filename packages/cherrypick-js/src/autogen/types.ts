@@ -554,6 +554,36 @@ export type paths = {
          */
         post: operations['admin___hata___consent-list'];
     };
+    '/admin/hatask/records/list': {
+        /**
+         * admin/hatask/records/list
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:admin:show-user*
+         */
+        post: operations['admin___hatask___records___list'];
+    };
+    '/admin/hatask/records/review': {
+        /**
+         * admin/hatask/records/review
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:user-note*
+         */
+        post: operations['admin___hatask___records___review'];
+    };
+    '/admin/hatask/records/show': {
+        /**
+         * admin/hatask/records/show
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:admin:show-user*
+         */
+        post: operations['admin___hatask___records___show'];
+    };
     '/admin/hatask/support/register': {
         /**
          * admin/hatask/support/register
@@ -3015,6 +3045,36 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *write:account*
          */
         post: operations['hata___hatady___admin___delete-book'];
+    };
+    '/hata/hatady/admin/moderation/list': {
+        /**
+         * hata/hatady/admin/moderation/list
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:resolve-abuse-user-report*
+         */
+        post: operations['hata___hatady___admin___moderation___list'];
+    };
+    '/hata/hatady/admin/moderation/review': {
+        /**
+         * hata/hatady/admin/moderation/review
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:resolve-abuse-user-report*
+         */
+        post: operations['hata___hatady___admin___moderation___review'];
+    };
+    '/hata/hatady/admin/moderation/show': {
+        /**
+         * hata/hatady/admin/moderation/show
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:resolve-abuse-user-report*
+         */
+        post: operations['hata___hatady___admin___moderation___show'];
     };
     '/hata/hatady/bookmarks/create': {
         /**
@@ -12008,6 +12068,350 @@ export interface operations {
             };
             /** @description I'm Ai */
             418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    admin___hatask___records___list: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @default  */
+                    query?: string;
+                    /**
+                     * @default all
+                     * @enum {string}
+                     */
+                    kind?: 'all' | 'event' | 'todo' | 'mood' | 'meal' | 'flower';
+                    /**
+                     * @default all
+                     * @enum {string}
+                     */
+                    state?: 'all' | 'unread' | 'flagged' | 'reviewed';
+                    /**
+                     * @default all
+                     * @enum {string}
+                     */
+                    visibility?: 'all' | 'private' | 'specified' | 'public' | 'followers';
+                    /** Format: misskey:id */
+                    userId?: string | null;
+                    dateFrom?: string | null;
+                    dateTo?: string | null;
+                    /**
+                     * @default newest
+                     * @enum {string}
+                     */
+                    sort?: 'newest' | 'oldest';
+                    /** @default 30 */
+                    limit?: number;
+                    cursor?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        items: {
+                            id: string;
+                            user: components['schemas']['UserLite'];
+                            /** @enum {string} */
+                            kind: 'event' | 'todo' | 'mood' | 'meal' | 'flower';
+                            title: string;
+                            body: string;
+                            date: string;
+                            time: string;
+                            /** @enum {string} */
+                            visibility: 'private' | 'specified' | 'public' | 'followers';
+                            dateFallback: boolean;
+                            contentVersion: string;
+                            revision: number;
+                            /** @enum {string} */
+                            state: 'unread' | 'flagged' | 'reviewed';
+                            stale: boolean;
+                            reviewer: components['schemas']['UserLite'] | null;
+                            /** Format: date-time */
+                            reviewedAt: string | null;
+                        }[];
+                        total: number;
+                        nextCursor: string | null;
+                        kinds: {
+                            event: number;
+                            todo: number;
+                            mood: number;
+                            meal: number;
+                            flower: number;
+                        };
+                        states: {
+                            unread: number;
+                            flagged: number;
+                            reviewed: number;
+                        };
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    admin___hatask___records___review: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    id: string;
+                    /** @enum {string} */
+                    state: 'unread' | 'flagged' | 'reviewed';
+                    expectedRevision: number;
+                    expectedContentVersion: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        item: {
+                            id: string;
+                            user: components['schemas']['UserLite'];
+                            /** @enum {string} */
+                            kind: 'event' | 'todo' | 'mood' | 'meal' | 'flower';
+                            title: string;
+                            body: string;
+                            date: string;
+                            time: string;
+                            /** @enum {string} */
+                            visibility: 'private' | 'specified' | 'public' | 'followers';
+                            dateFallback: boolean;
+                            contentVersion: string;
+                            revision: number;
+                            /** @enum {string} */
+                            state: 'unread' | 'flagged' | 'reviewed';
+                            stale: boolean;
+                            reviewer: components['schemas']['UserLite'] | null;
+                            /** Format: date-time */
+                            reviewedAt: string | null;
+                        };
+                        audience: components['schemas']['UserLite'][];
+                        fields: {
+                            label: string;
+                            value: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    admin___hatask___records___show: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        item: {
+                            id: string;
+                            user: components['schemas']['UserLite'];
+                            /** @enum {string} */
+                            kind: 'event' | 'todo' | 'mood' | 'meal' | 'flower';
+                            title: string;
+                            body: string;
+                            date: string;
+                            time: string;
+                            /** @enum {string} */
+                            visibility: 'private' | 'specified' | 'public' | 'followers';
+                            dateFallback: boolean;
+                            contentVersion: string;
+                            revision: number;
+                            /** @enum {string} */
+                            state: 'unread' | 'flagged' | 'reviewed';
+                            stale: boolean;
+                            reviewer: components['schemas']['UserLite'] | null;
+                            /** Format: date-time */
+                            reviewedAt: string | null;
+                        };
+                        audience: components['schemas']['UserLite'][];
+                        fields: {
+                            label: string;
+                            value: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -32077,6 +32481,506 @@ export interface operations {
             204: {
                 headers: {
                     [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hata___hatady___admin___moderation___list: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @default 30 */
+                    limit?: number;
+                    cursor?: string;
+                    /**
+                     * @default all
+                     * @enum {string}
+                     */
+                    category?: 'all' | 'collection' | 'record' | 'comment' | 'reaction';
+                    /**
+                     * @default all
+                     * @enum {string}
+                     */
+                    status?: 'all' | 'unreviewed' | 'flagged' | 'reviewed';
+                    /**
+                     * @default all
+                     * @enum {string}
+                     */
+                    activity?: 'all' | 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                    /**
+                     * @default all
+                     * @enum {string}
+                     */
+                    visibility?: 'all' | 'public' | 'followers' | 'private';
+                    query?: string;
+                    since?: number;
+                    until?: number;
+                    /**
+                     * @default desc
+                     * @enum {string}
+                     */
+                    sort?: 'asc' | 'desc';
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        items: {
+                            key: string;
+                            /** @enum {string} */
+                            targetType: 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                            /** Format: misskey:id */
+                            targetId: string;
+                            /** @enum {string} */
+                            category: 'collection' | 'record' | 'comment' | 'reaction';
+                            /** @enum {string} */
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            actor: components['schemas']['UserLite'];
+                            title: string;
+                            body: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** @enum {string} */
+                            visibility: 'public' | 'followers' | 'private';
+                            emoji: string | null;
+                            parentKey: string | null;
+                            contentVersion: string;
+                            review: {
+                                /** @enum {string} */
+                                state: 'unreviewed' | 'flagged' | 'reviewed';
+                                note: string;
+                                revision: number;
+                                reviewer: components['schemas']['UserLite'] | null;
+                                /** Format: date-time */
+                                reviewedAt: string | null;
+                                stale: boolean;
+                            };
+                        }[];
+                        nextCursor: string | null;
+                        total: number;
+                        counts: {
+                            unreviewed: number;
+                            flagged: number;
+                            reviewed: number;
+                        };
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hata___hatady___admin___moderation___review: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @enum {string} */
+                    targetType: 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                    /** Format: misskey:id */
+                    targetId: string;
+                    /** @enum {string} */
+                    state: 'unreviewed' | 'flagged' | 'reviewed';
+                    note: string;
+                    expectedRevision: number;
+                    expectedContentVersion: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        item: {
+                            key: string;
+                            /** @enum {string} */
+                            targetType: 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                            /** Format: misskey:id */
+                            targetId: string;
+                            /** @enum {string} */
+                            category: 'collection' | 'record' | 'comment' | 'reaction';
+                            /** @enum {string} */
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            actor: components['schemas']['UserLite'];
+                            title: string;
+                            body: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** @enum {string} */
+                            visibility: 'public' | 'followers' | 'private';
+                            emoji: string | null;
+                            parentKey: string | null;
+                            contentVersion: string;
+                            review: {
+                                /** @enum {string} */
+                                state: 'unreviewed' | 'flagged' | 'reviewed';
+                                note: string;
+                                revision: number;
+                                reviewer: components['schemas']['UserLite'] | null;
+                                /** Format: date-time */
+                                reviewedAt: string | null;
+                                stale: boolean;
+                            };
+                        };
+                        fields: {
+                            label: string;
+                            value: string;
+                        }[];
+                        ancestors: {
+                            key: string;
+                            /** @enum {string} */
+                            targetType: 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                            /** Format: misskey:id */
+                            targetId: string;
+                            /** @enum {string} */
+                            category: 'collection' | 'record' | 'comment' | 'reaction';
+                            /** @enum {string} */
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            actor: components['schemas']['UserLite'];
+                            title: string;
+                            body: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** @enum {string} */
+                            visibility: 'public' | 'followers' | 'private';
+                            emoji: string | null;
+                            parentKey: string | null;
+                            contentVersion: string;
+                            review: {
+                                /** @enum {string} */
+                                state: 'unreviewed' | 'flagged' | 'reviewed';
+                                note: string;
+                                revision: number;
+                                reviewer: components['schemas']['UserLite'] | null;
+                                /** Format: date-time */
+                                reviewedAt: string | null;
+                                stale: boolean;
+                            };
+                        }[];
+                        related: {
+                            key: string;
+                            /** @enum {string} */
+                            targetType: 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                            /** Format: misskey:id */
+                            targetId: string;
+                            /** @enum {string} */
+                            category: 'collection' | 'record' | 'comment' | 'reaction';
+                            /** @enum {string} */
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            actor: components['schemas']['UserLite'];
+                            title: string;
+                            body: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** @enum {string} */
+                            visibility: 'public' | 'followers' | 'private';
+                            emoji: string | null;
+                            parentKey: string | null;
+                            contentVersion: string;
+                            review: {
+                                /** @enum {string} */
+                                state: 'unreviewed' | 'flagged' | 'reviewed';
+                                note: string;
+                                revision: number;
+                                reviewer: components['schemas']['UserLite'] | null;
+                                /** Format: date-time */
+                                reviewedAt: string | null;
+                                stale: boolean;
+                            };
+                        }[];
+                        relatedHasMore: boolean;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hata___hatady___admin___moderation___show: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @enum {string} */
+                    targetType: 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                    /** Format: misskey:id */
+                    targetId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        item: {
+                            key: string;
+                            /** @enum {string} */
+                            targetType: 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                            /** Format: misskey:id */
+                            targetId: string;
+                            /** @enum {string} */
+                            category: 'collection' | 'record' | 'comment' | 'reaction';
+                            /** @enum {string} */
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            actor: components['schemas']['UserLite'];
+                            title: string;
+                            body: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** @enum {string} */
+                            visibility: 'public' | 'followers' | 'private';
+                            emoji: string | null;
+                            parentKey: string | null;
+                            contentVersion: string;
+                            review: {
+                                /** @enum {string} */
+                                state: 'unreviewed' | 'flagged' | 'reviewed';
+                                note: string;
+                                revision: number;
+                                reviewer: components['schemas']['UserLite'] | null;
+                                /** Format: date-time */
+                                reviewedAt: string | null;
+                                stale: boolean;
+                            };
+                        };
+                        fields: {
+                            label: string;
+                            value: string;
+                        }[];
+                        ancestors: {
+                            key: string;
+                            /** @enum {string} */
+                            targetType: 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                            /** Format: misskey:id */
+                            targetId: string;
+                            /** @enum {string} */
+                            category: 'collection' | 'record' | 'comment' | 'reaction';
+                            /** @enum {string} */
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            actor: components['schemas']['UserLite'];
+                            title: string;
+                            body: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** @enum {string} */
+                            visibility: 'public' | 'followers' | 'private';
+                            emoji: string | null;
+                            parentKey: string | null;
+                            contentVersion: string;
+                            review: {
+                                /** @enum {string} */
+                                state: 'unreviewed' | 'flagged' | 'reviewed';
+                                note: string;
+                                revision: number;
+                                reviewer: components['schemas']['UserLite'] | null;
+                                /** Format: date-time */
+                                reviewedAt: string | null;
+                                stale: boolean;
+                            };
+                        }[];
+                        related: {
+                            key: string;
+                            /** @enum {string} */
+                            targetType: 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                            /** Format: misskey:id */
+                            targetId: string;
+                            /** @enum {string} */
+                            category: 'collection' | 'record' | 'comment' | 'reaction';
+                            /** @enum {string} */
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            actor: components['schemas']['UserLite'];
+                            title: string;
+                            body: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** @enum {string} */
+                            visibility: 'public' | 'followers' | 'private';
+                            emoji: string | null;
+                            parentKey: string | null;
+                            contentVersion: string;
+                            review: {
+                                /** @enum {string} */
+                                state: 'unreviewed' | 'flagged' | 'reviewed';
+                                note: string;
+                                revision: number;
+                                reviewer: components['schemas']['UserLite'] | null;
+                                /** Format: date-time */
+                                reviewedAt: string | null;
+                                stale: boolean;
+                            };
+                        }[];
+                        relatedHasMore: boolean;
+                    };
                 };
             };
             /** @description Client error */

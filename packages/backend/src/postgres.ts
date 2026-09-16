@@ -81,6 +81,7 @@ import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { MiHataskEvent } from '@/models/HataskEvent.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
 import { MiHataskFlower } from '@/models/HataskFlower.js';
+import { MiHataskRecordReview } from '@/models/HataskRecordReview.js';
 import { MiUtageSession } from '@/models/UtageSession.js';
 import { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
 import { MiFeedbackAgree } from '@/models/FeedbackAgree.js';
@@ -106,6 +107,7 @@ import { MiHatadyMediaWork } from '@/models/HatadyMediaWork.js';
 import { MiHatadyMediaSession } from '@/models/HatadyMediaSession.js';
 import { MiHatadyMediaComment } from '@/models/HatadyMediaComment.js';
 import { MiHatadyMediaReaction } from '@/models/HatadyMediaReaction.js';
+import { MiHatadyModerationReview } from '@/models/HatadyModerationReview.js';
 import { MiHataskEmotionAnalysis } from '@/models/HataskEmotionAnalysis.js';
 import { MiUserSecurityKey } from '@/models/UserSecurityKey.js';
 import { MiWebhook } from '@/models/Webhook.js';
@@ -245,6 +247,7 @@ export const entities = [
 	MiHataskEvent,
 	MiHataskRsvp,
 	MiHataskFlower,
+	MiHataskRecordReview,
 	MiUtageSession,
 	MiFeedbackIssue,
 	MiFeedbackAgree,
@@ -270,6 +273,7 @@ export const entities = [
 	MiHatadyMediaSession,
 	MiHatadyMediaComment,
 	MiHatadyMediaReaction,
+	MiHatadyModerationReview,
 	MiHataskEmotionAnalysis,
 	MiUserList,
 	MiUserListFavorite,

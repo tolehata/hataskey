@@ -564,6 +564,9 @@ export * as 'hata/hatady/memos/create' from './endpoints/hata/hatady/memos/creat
 export * as 'hata/hatady/memos/update' from './endpoints/hata/hatady/memos/update.js';
 export * as 'hata/hatady/memos/delete' from './endpoints/hata/hatady/memos/delete.js';
 export * as 'hata/hatady/admin/books' from './endpoints/hata/hatady/admin/books.js';
+export * as 'hata/hatady/admin/moderation/list' from './endpoints/hata/hatady/admin/moderation/list.js';
+export * as 'hata/hatady/admin/moderation/show' from './endpoints/hata/hatady/admin/moderation/show.js';
+export * as 'hata/hatady/admin/moderation/review' from './endpoints/hata/hatady/admin/moderation/review.js';
 export * as 'hata/hatady/admin/delete-book' from './endpoints/hata/hatady/admin/delete-book.js';
 export * as 'hata/hatady/stats' from './endpoints/hata/hatady/stats.js';
 export * as 'hata/hatady/timeline' from './endpoints/hata/hatady/timeline.js';
@@ -625,6 +628,9 @@ export * as 'admin/registration-applications' from './endpoints/admin/registrati
 export * as 'admin/approve-registration' from './endpoints/admin/approve-registration.js';
 export * as 'admin/reject-registration' from './endpoints/admin/reject-registration.js';
 export * as 'hatask/events/create' from './endpoints/hatask/events/create.js';
+export * as 'admin/hatask/records/list' from './endpoints/admin/hatask/records/list.js';
+export * as 'admin/hatask/records/show' from './endpoints/admin/hatask/records/show.js';
+export * as 'admin/hatask/records/review' from './endpoints/admin/hatask/records/review.js';
 export * as 'hatask/events/list' from './endpoints/hatask/events/list.js';
 export * as 'hatask/events/owned' from './endpoints/hatask/events/owned.js';
 export * as 'hatask/events/update' from './endpoints/hatask/events/update.js';

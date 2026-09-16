@@ -133,6 +133,7 @@ import { MiHatadyMediaWork } from '@/models/HatadyMediaWork.js';
 import { MiHatadyMediaSession } from '@/models/HatadyMediaSession.js';
 import { MiHatadyMediaComment } from '@/models/HatadyMediaComment.js';
 import { MiHatadyMediaReaction } from '@/models/HatadyMediaReaction.js';
+import { MiHatadyModerationReview } from '@/models/HatadyModerationReview.js';
 import { MiHataskEmotionAnalysis } from '@/models/HataskEmotionAnalysis.js';
 import type { QueryDeepPartialEntity } from 'typeorm';
 
@@ -319,6 +320,7 @@ export {
 	MiHatadyMediaSession,
 	MiHatadyMediaComment,
 	MiHatadyMediaReaction,
+	MiHatadyModerationReview,
 	MiHataskEmotionAnalysis,
 };
 

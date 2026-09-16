@@ -86,6 +86,12 @@ import type {
 	AdminGetUserIpsResponse,
 	AdminHataConsentListRequest,
 	AdminHataConsentListResponse,
+	AdminHataskRecordsListRequest,
+	AdminHataskRecordsListResponse,
+	AdminHataskRecordsReviewRequest,
+	AdminHataskRecordsReviewResponse,
+	AdminHataskRecordsShowRequest,
+	AdminHataskRecordsShowResponse,
 	AdminHataskSupportRegisterRequest,
 	AdminHataskSupportRegisterResponse,
 	AdminHataskSupportShowRequest,
@@ -515,6 +521,12 @@ import type {
 	HataHatadyAdminBooksRequest,
 	HataHatadyAdminBooksResponse,
 	HataHatadyAdminDeleteBookRequest,
+	HataHatadyAdminModerationListRequest,
+	HataHatadyAdminModerationListResponse,
+	HataHatadyAdminModerationReviewRequest,
+	HataHatadyAdminModerationReviewResponse,
+	HataHatadyAdminModerationShowRequest,
+	HataHatadyAdminModerationShowResponse,
 	HataHatadyBookmarksCreateRequest,
 	HataHatadyBookmarksCreateResponse,
 	HataHatadyBookmarksDeleteRequest,
@@ -1029,6 +1041,9 @@ export type Endpoints = {
 	'admin/get-table-stats': { req: EmptyRequest; res: AdminGetTableStatsResponse };
 	'admin/get-user-ips': { req: AdminGetUserIpsRequest; res: AdminGetUserIpsResponse };
 	'admin/hata/consent-list': { req: AdminHataConsentListRequest; res: AdminHataConsentListResponse };
+	'admin/hatask/records/list': { req: AdminHataskRecordsListRequest; res: AdminHataskRecordsListResponse };
+	'admin/hatask/records/review': { req: AdminHataskRecordsReviewRequest; res: AdminHataskRecordsReviewResponse };
+	'admin/hatask/records/show': { req: AdminHataskRecordsShowRequest; res: AdminHataskRecordsShowResponse };
 	'admin/hatask/support/register': { req: AdminHataskSupportRegisterRequest; res: AdminHataskSupportRegisterResponse };
 	'admin/hatask/support/show': { req: AdminHataskSupportShowRequest; res: AdminHataskSupportShowResponse };
 	'admin/hatask/support/supporters': { req: AdminHataskSupportSupportersRequest; res: AdminHataskSupportSupportersResponse };
@@ -1299,6 +1314,9 @@ export type Endpoints = {
 	'hata/hatady/activities': { req: HataHatadyActivitiesRequest; res: HataHatadyActivitiesResponse };
 	'hata/hatady/admin/books': { req: HataHatadyAdminBooksRequest; res: HataHatadyAdminBooksResponse };
 	'hata/hatady/admin/delete-book': { req: HataHatadyAdminDeleteBookRequest; res: EmptyResponse };
+	'hata/hatady/admin/moderation/list': { req: HataHatadyAdminModerationListRequest; res: HataHatadyAdminModerationListResponse };
+	'hata/hatady/admin/moderation/review': { req: HataHatadyAdminModerationReviewRequest; res: HataHatadyAdminModerationReviewResponse };
+	'hata/hatady/admin/moderation/show': { req: HataHatadyAdminModerationShowRequest; res: HataHatadyAdminModerationShowResponse };
 	'hata/hatady/bookmarks/create': { req: HataHatadyBookmarksCreateRequest; res: HataHatadyBookmarksCreateResponse };
 	'hata/hatady/bookmarks/delete': { req: HataHatadyBookmarksDeleteRequest; res: EmptyResponse };
 	'hata/hatady/bookmarks/update': { req: HataHatadyBookmarksUpdateRequest; res: HataHatadyBookmarksUpdateResponse };

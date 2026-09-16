@@ -57,10 +57,12 @@ import { UtageService } from './UtageService.js';
 import { LtlEmojiVoteService } from './LtlEmojiVoteService.js';
 import { HataskRankingService } from './HataskRankingService.js';
 import { HataskSupportService } from './HataskSupportService.js';
+import { HataskRecordReviewService } from './HataskRecordReviewService.js';
 import { FeedbackService } from './FeedbackService.js';
 import { HatadyService } from './HatadyService.js';
 import { HatadyMediaService } from './HatadyMediaService.js';
 import { HatadyActivityService } from './HatadyActivityService.js';
+import { HatadyModerationService } from './HatadyModerationService.js';
 import { ChannelService } from './ChannelService.js';
 import { EarthquakeService } from './EarthquakeService.js';
 import { PushNotificationService } from './PushNotificationService.js';
@@ -230,6 +232,7 @@ const $FeedbackService: Provider = { provide: 'FeedbackService', useExisting: Fe
 const $HatadyService: Provider = { provide: 'HatadyService', useExisting: HatadyService };
 const $HatadyMediaService: Provider = { provide: 'HatadyMediaService', useExisting: HatadyMediaService };
 const $HatadyActivityService: Provider = { provide: 'HatadyActivityService', useExisting: HatadyActivityService };
+const $HatadyModerationService: Provider = { provide: 'HatadyModerationService', useExisting: HatadyModerationService };
 const $ChannelService: Provider = { provide: 'ChannelService', useExisting: ChannelService };
 const $EarthquakeService: Provider = { provide: 'EarthquakeService', useExisting: EarthquakeService };
 const $SystemAccountService: Provider = { provide: 'SystemAccountService', useExisting: SystemAccountService };
@@ -404,10 +407,12 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		LtlEmojiVoteService,
 		HataskRankingService,
 		HataskSupportService,
+		HataskRecordReviewService,
 		FeedbackService,
 		HatadyService,
 		HatadyMediaService,
 		HatadyActivityService,
+		HatadyModerationService,
 		ChannelService,
 		EarthquakeService,
 		SystemAccountService,
@@ -580,6 +585,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$HatadyService,
 		$HatadyMediaService,
 		$HatadyActivityService,
+		$HatadyModerationService,
 		$ChannelService,
 		$EarthquakeService,
 		$SystemAccountService,
@@ -750,10 +756,12 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		LtlEmojiVoteService,
 		HataskRankingService,
 		HataskSupportService,
+		HataskRecordReviewService,
 		FeedbackService,
 		HatadyService,
 		HatadyMediaService,
 		HatadyActivityService,
+		HatadyModerationService,
 		ChannelService,
 		EarthquakeService,
 		SystemAccountService,
