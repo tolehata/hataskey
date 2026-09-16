@@ -34319,6 +34319,14 @@ export interface Locale extends ILocale {
                  */
                 "animationDirection": string;
                 /**
+                 * LTLの絵文字投票を表示
+                 */
+                "showLtlEmojiVote": string;
+                /**
+                 * オフにすると、Hataskey UIとデッキUIで絵文字投票の画面や演出を表示しません
+                 */
+                "showLtlEmojiVoteDescription": string;
+                /**
                  * 上からスライド
                  */
                 "slideFromTop": string;

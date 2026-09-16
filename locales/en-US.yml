@@ -8758,6 +8758,8 @@ _hata:
       deviceOnlySuffix: ". This setting does not carry over to other devices."
       timeline: "Timeline"
       animationDirection: "Animation direction for new notes"
+      showLtlEmojiVote: "Show LTL emoji voting"
+      showLtlEmojiVoteDescription: "Turn off to hide emoji voting screens and effects in Hataskey UI and Deck UI."
       slideFromTop: "Slide from top"
       slideFromLeft: "Slide from left"
       slideFromRight: "Slide from right"

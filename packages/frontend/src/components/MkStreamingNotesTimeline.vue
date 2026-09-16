@@ -544,7 +544,7 @@ const visibleItems = computed<Misskey.entities.Note[]>(() =>
 	paginator.items.value.filter(n => !isHiddenBot(n)),
 );
 
-const emojiVoteActive = computed(() => isHatasaba && props.src === 'local' && props.emojiVoteActive);
+const emojiVoteActive = computed(() => isHatasaba && props.src === 'local' && props.emojiVoteActive && prefer.r.ltlEmojiVoteEnabled.value);
 const {
 	round: emojiVoteRound, choice: emojiVoteChoice, now: emojiVoteNow, phase: emojiVotePhase,
 	submitting: emojiVoteSubmitting, voteError: emojiVoteError, declined: emojiVoteDeclined,

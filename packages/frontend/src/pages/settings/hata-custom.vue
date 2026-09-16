@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<SearchMarker path="/settings/hata-custom" :label="copy.title" :keywords="['hata', 'custom', 'simple', 'widget', 'timeline', 'font']" icon="ti ti-flag">
+<SearchMarker path="/settings/hata-custom" :label="i18n.ts._hata._customSettings.title" :keywords="['hata', 'custom', 'simple', 'widget', 'timeline', 'font']" icon="ti ti-flag" data-settings-search-group-id="settings.group.src-pages-settings-hata-custom-vue-28qg9w">
 	<div class="_gaps_m">
 		<!-- 旗鯖fork: 再設計の設定画面に埋め込まれているときは出さない。
              ⚠️左ペインが同じ案内を持つため、二重の見出しになってしまう。 -->
@@ -72,6 +72,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<option value="right">{{ generalCopy.slideFromRight }}</option>
 					<option value="random">{{ generalCopy.random }}</option>
 				</MkRadios>
+				<SearchMarker :keywords="['ltl', 'local', 'emoji', 'vote', 'poll', 'deck', '絵文字', '投票']">
+					<MkSwitch :modelValue="prefer.r.ltlEmojiVoteEnabled.value" style="margin-top:12px;" @update:modelValue="prefer.commit('ltlEmojiVoteEnabled', $event)">
+						<template #label><SearchLabel>{{ i18n.ts._hata._customSettings._general.showLtlEmojiVote }}</SearchLabel></template>
+						<template #caption><SearchText>{{ i18n.ts._hata._customSettings._general.showLtlEmojiVoteDescription }}</SearchText></template>
+					</MkSwitch>
+				</SearchMarker>
 			</FormSection>
 			<FormSection>
 				<template #label>{{ generalCopy.postForm }}</template>

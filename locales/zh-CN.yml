@@ -8333,6 +8333,8 @@ _hata:
       deviceOnlySuffix: "，不会同步到其他设备。"
       timeline: "时间线"
       animationDirection: "新帖动画方向"
+      showLtlEmojiVote: "显示本地时间线表情投票"
+      showLtlEmojiVoteDescription: "关闭后，Hataskey UI 和 Deck UI 将不再显示表情投票界面及动画效果。"
       slideFromTop: "从上方滑入"
       slideFromLeft: "从左侧滑入"
       slideFromRight: "从右侧滑入"

@@ -8932,6 +8932,8 @@ _hata:
       deviceOnlySuffix: "保存され、ほかの端末には引き継がれません。"
       timeline: "タイムライン"
       animationDirection: "新規ノートのアニメーション方向"
+      showLtlEmojiVote: "LTLの絵文字投票を表示"
+      showLtlEmojiVoteDescription: "オフにすると、Hataskey UIとデッキUIで絵文字投票の画面や演出を表示しません"
       slideFromTop: "上からスライド"
       slideFromLeft: "左からスライド"
       slideFromRight: "右からスライド"

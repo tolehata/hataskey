@@ -729,6 +729,9 @@ export const PREF_DEF = definePreferences({
         timelineAnimationDirection: {
                 default: 'left' as 'top' | 'left' | 'right' | 'random',
 	},
+	ltlEmojiVoteEnabled: {
+		default: true,
+	},
 	expandOnNoteClickBehavior: {
 		default: 'click' as 'click' | 'doubleClick',
 	},

@@ -825,6 +825,64 @@ describe('shared LTL emoji vote state', () => {
 });
 
 describe('LTL emoji vote Vue lifecycle', () => {
+	beforeEach(() => {
+		wrapperDeps.api.mockReset();
+		wrapperDeps.account.id += '-next';
+	});
+
+	it('disables all mounted LTL subscriptions, ignores late replies, and fetches once when re-enabled', async () => {
+		const pending: { signal: AbortSignal; resolve: (response: LtlEmojiVoteResponse) => void }[] = [];
+		wrapperDeps.api.mockImplementation((_endpoint, _params, _token, signal: AbortSignal) => new Promise<LtlEmojiVoteResponse>(resolve => pending.push({ signal, resolve })));
+		const enabled = ref(false);
+		const subscriptions: ReturnType<typeof useLtlEmojiVote>[] = [];
+		const Ltl = { setup() { subscriptions.push(useLtlEmojiVote(enabled)); return () => h('div', 'local'); } };
+		const app = createApp(() => h('div', [h(Ltl), h(Ltl)]));
+		cleanups.push(() => app.unmount());
+		app.mount(window.document.createElement('div'));
+		await flush();
+		expect(subscriptions).toHaveLength(2);
+		expect(wrapperDeps.api).not.toHaveBeenCalled();
+		expect(wrapperDeps.listeners.size).toBe(0);
+
+		enabled.value = true;
+		await nextTick();
+		expect(wrapperDeps.api).toHaveBeenCalledTimes(1);
+		expect(wrapperDeps.listeners.size).toBe(1);
+		const stale = pending.shift();
+		if (!stale) throw new Error('Expected the first shared lookup');
+		enabled.value = false;
+		await nextTick();
+		expect(stale.signal.aborted).toBe(true);
+		expect(wrapperDeps.listeners.size).toBe(0);
+		stale.resolve({ serverNow: 10000, round: makeRound() });
+		await flush();
+		for (const subscription of subscriptions) {
+			expect(subscription.round.value).toBeNull();
+			await subscription.refresh('trigger-note');
+			expect(await subscription.vote(emoji.id)).toBe(false);
+		}
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(wrapperDeps.api).toHaveBeenCalledTimes(1);
+
+		enabled.value = true;
+		await nextTick();
+		expect(wrapperDeps.api).toHaveBeenCalledTimes(2);
+		const resumed = pending.shift();
+		if (!resumed) throw new Error('Expected the resumed shared lookup');
+		resumed.resolve({ serverNow: 15000, round: makeRound({ choice: { emojiId: emoji.id, votedAt: 11000 } }) });
+		await flush();
+		for (const subscription of subscriptions) {
+			expect(subscription.choice.value?.emojiId).toBe(emoji.id);
+			expect(subscription.phase.value).toBe('waiting');
+		}
+		enabled.value = false;
+		await nextTick();
+		await vi.advanceTimersByTimeAsync(60000);
+		expect(wrapperDeps.api).toHaveBeenCalledTimes(2);
+		expect(subscriptions[0].round.value).toBeNull();
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
 	it('stops on KeepAlive deactivation even when active props remain true, and resumes on activation', async () => {
 		wrapperDeps.api.mockImplementation(() => Promise.resolve({ serverNow: 10000, round: makeRound() }));
 		const visible = ref(true);
