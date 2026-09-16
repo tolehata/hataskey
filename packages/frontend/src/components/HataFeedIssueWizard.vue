@@ -54,6 +54,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template #label>{{ copy.description }}</template>
 				<template #caption>{{ descCaption }}</template>
 			</MkTextarea>
+			<fieldset :class="$style.environment">
+				<legend>使用環境 <small>任意</small></legend>
+				<MkInput v-model="device" placeholder="例: iPhone、Pixel、Windows PC">
+					<template #label>使用端末</template>
+				</MkInput>
+				<MkInput v-model="osVersion" placeholder="例: iOS・Androidのバージョン、Windows 11">
+					<template #label>OS・バージョン</template>
+				</MkInput>
+				<MkInput v-model="browser" placeholder="例: Safari、Chrome、ホーム画面から起動">
+					<template #label>ブラウザ・開き方</template>
+				</MkInput>
+			</fieldset>
+			<p v-if="descriptionTooLong" class="hy-error" role="alert">詳しい説明と使用環境を合わせて8,192文字以内にしてください。</p>
 			<div>
 				<div :class="$style.fieldLabel">{{ copy.attachments }}</div>
 				<div :class="$style.fileGrid">
@@ -77,7 +90,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<div :class="$style.navRow">
-				<MkButton rounded primary :disabled="!title.trim()" @click="step = 3">{{ copy.next }} <i class="ti ti-arrow-right"></i></MkButton>
+				<MkButton rounded primary :disabled="!title.trim() || descriptionTooLong" @click="step = 3">{{ copy.next }} <i class="ti ti-arrow-right"></i></MkButton>
 			</div>
 		</div>
 
@@ -92,10 +105,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div><b>{{ copy.categorySummary }}</b> {{ categoryLabel[category] }}</div>
 				<div><b>{{ copy.titleSummary }}</b> {{ title }}</div>
 				<div v-if="projectName"><b>{{ copy.projectSummary }}</b> {{ projectName }}</div>
+				<div v-for="field in environmentFields" :key="field.label"><b>{{ field.label }}:</b> {{ field.value }}</div>
 			</div>
+			<p v-if="descriptionTooLong" class="hy-error" role="alert">詳しい説明と使用環境を合わせて8,192文字以内にしてください。</p>
 
 			<div :class="$style.navRow">
-				<MkButton rounded primary gradate :disabled="submitting" @click="submit"><i class="ti ti-send"></i> {{ copy.send }}</MkButton>
+				<MkButton rounded primary gradate :disabled="submitting || descriptionTooLong" @click="submit"><i class="ti ti-send"></i> {{ copy.send }}</MkButton>
 			</div>
 		</div>
 	</div>
@@ -133,6 +148,19 @@ const backButtons = computed(() => step.value > 1 ? [{ title: copy.back, icon: '
 const category = ref<HataFeedCategory>('bug');
 const title = ref('');
 const description = ref('');
+const device = ref('');
+const osVersion = ref('');
+const browser = ref('');
+const environmentFields = computed(() => [
+	{ label: '使用端末', value: device.value.trim() },
+	{ label: 'OS・バージョン', value: osVersion.value.trim() },
+	{ label: 'ブラウザ・開き方', value: browser.value.trim() },
+].filter(field => field.value));
+// Keep environment details in the existing issue body so detail views and exports retain them.
+const submittedDescription = computed(() => environmentFields.value.length
+	? [description.value.trimEnd(), `【使用環境】\n${environmentFields.value.map(field => `${field.label}: ${field.value}`).join('\n')}`].filter(Boolean).join('\n\n')
+	: description.value);
+const descriptionTooLong = computed(() => Array.from(submittedDescription.value).length > 8192);
 const priority = ref<HataFeedPriority>('normal');
 const priorityItems = [
 	{ value: 'low', label: copy.priorityLow },
@@ -150,6 +178,9 @@ type IssueDraft = {
 	category: HataFeedCategory;
 	title: string;
 	description: string;
+	device?: string;
+	osVersion?: string;
+	browser?: string;
 	priority: HataFeedPriority;
 	files: any[];
 	codeEnabled: boolean;
@@ -158,18 +189,21 @@ type IssueDraft = {
 const { finishSubmission, beforeClose, prompt, hasDraft, resumeDraft } = useHataFeedDraft<IssueDraft>({
 	id: `hatafeed:issue:${props.projectId ?? 'general'}`,
 	busy: () => submitting.value,
-	capture: () => ({ step: step.value, category: category.value, title: title.value, description: description.value, priority: priority.value, files: files.value, codeEnabled: codeEnabled.value, code: code.value }),
+	capture: () => ({ step: step.value, category: category.value, title: title.value, description: description.value, device: device.value, osVersion: osVersion.value, browser: browser.value, priority: priority.value, files: files.value, codeEnabled: codeEnabled.value, code: code.value }),
 	restore: draft => {
 		step.value = Math.min(3, Math.max(1, Number(draft.step) || 1));
 		if (creatableCategoryKeys.includes(draft.category as typeof creatableCategoryKeys[number])) category.value = draft.category;
 		title.value = typeof draft.title === 'string' ? draft.title : '';
 		description.value = typeof draft.description === 'string' ? draft.description : '';
+		device.value = typeof draft.device === 'string' ? draft.device : '';
+		osVersion.value = typeof draft.osVersion === 'string' ? draft.osVersion : '';
+		browser.value = typeof draft.browser === 'string' ? draft.browser : '';
 		if (draft.priority === 'low' || draft.priority === 'normal' || draft.priority === 'high') priority.value = draft.priority;
 		files.value = Array.isArray(draft.files) ? draft.files : [];
 		codeEnabled.value = draft.codeEnabled === true;
 		code.value = typeof draft.code === 'string' ? draft.code : '';
 	},
-	isMeaningful: draft => draft.title.trim().length > 0 || draft.description.trim().length > 0 || draft.files.length > 0 || draft.code.trim().length > 0,
+	isMeaningful: draft => draft.title.trim().length > 0 || draft.description.trim().length > 0 || draft.files.length > 0 || draft.code.trim().length > 0 || !!(draft.device?.trim() || draft.osVersion?.trim() || draft.browser?.trim()),
 });
 
 // 旗鯖fork: スタッフ専用カテゴリ(security等)は一般ユーザーに見せない。
@@ -204,12 +238,12 @@ async function addFiles() {
 }
 
 async function submit() {
-	if (submitting.value || !title.value.trim()) return;
+	if (submitting.value || !title.value.trim() || descriptionTooLong.value) return;
 	submitting.value = true;
 	try {
 		const issue = await misskeyApi('hata/feedback/issues/create', {
 			title: title.value.trim(),
-			description: description.value,
+			description: submittedDescription.value,
 			category: category.value,
 			priority: priority.value,
 			projectId: props.projectId,
@@ -230,6 +264,9 @@ async function submit() {
 .categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @container (max-width: 420px) { .categories { grid-template-columns: minmax(0, 1fr); } }
 .gaps { display: flex; flex-direction: column; gap: 18px; text-align: center; }
+.environment { display: grid; gap: 14px; min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--MI_THEME-divider); border-radius: 16px; }
+.environment legend { padding-inline: 6px; font-weight: 700; }
+.environment legend small { margin-inline-start: 4px; font-weight: 400; color: var(--MI_THEME-fgMuted); }
 .lead { opacity: .8; font-size: .92em; }
 .tag { background: var(--MI_THEME-accent); color: var(--hy-on-accent); border-radius: 999px; padding: 2px 10px; font-size: .82em; }
 .req { color: var(--MI_THEME-error); font-size: .72em; margin-left: 4px; }

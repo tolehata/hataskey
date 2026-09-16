@@ -62,12 +62,13 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				<button v-for="status in ['open', 'inProgress', 'resolved']" :key="status" type="button" :class="$style.stat" @click="applyStatus(status)"><b>{{ counts[status] }}</b><span>{{ statusLabel[status] }}</span></button>
 			</section>
 			<section v-if="activeTab === 'issues' || activeTab === 'roadmap'" class="hf-panel" :class="$style.listPanel" :aria-busy="issuePageLoading">
-				<header :class="$style.listHead">
+				<header :class="$style.listHead" :data-roadmap-actions="activeTab === 'roadmap' && isStaff">
 					<h2>{{ activeTab === 'roadmap' ? 'ロードマップ' : 'イシュー' }}<small :title="'読み込み済みの件数'">{{ issues.length }}{{ issuesHasNext ? '+' : '' }}</small></h2>
+					<button v-if="activeTab === 'roadmap' && isStaff" type="button" class="hy-secondary hf-roadmap-add" @click="addRoadmap"><i class="ti ti-plus" aria-hidden="true"></i>改善予定を追加</button>
 					<form :class="$style.search" role="search" @submit.prevent="reloadIssues"><i class="ti ti-search" aria-hidden="true"></i><input v-model="searchQuery" type="search" aria-label="イシュー・会話を検索" placeholder="イシュー・会話を検索"><button type="submit" class="hf-icon" aria-label="検索"><i class="ti ti-arrow-right" aria-hidden="true"></i></button></form>
 				</header>
 				<div :class="$style.filters"><div :class="$style.segment"><button type="button" :aria-pressed="!includeClosed" @click="setClosed(false)">受付中</button><button type="button" :aria-pressed="includeClosed" @click="setClosed(true)">終了分も含む</button></div><div :class="$style.dropdowns"><button type="button" @click="openCategoryMenu">{{ filterCategory ? categoryLabel[filterCategory] : copy.category }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openStatusMenu">{{ filterStatus ? statusLabel[filterStatus] : copy.status }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openAuthorMenu">{{ authorFilter ? (authorFilter.name ?? authorFilter.username) : copy.author }}<i class="ti ti-chevron-down"></i></button></div></div>
-				<div v-if="!visibleIssues.length" class="hf-empty"><p>{{ activeTab === 'roadmap' ? copy.noPublishedPlans : 'イシューがありません' }}</p><button v-if="activeTab === 'roadmap' && isStaff" type="button" class="hy-secondary" @click="addRoadmap">改善予定を追加</button></div>
+				<div v-if="!visibleIssues.length" class="hf-empty"><p>{{ activeTab === 'roadmap' ? copy.noPublishedPlans : 'イシューがありません' }}</p></div>
 				<div v-else ref="issueListEl" :class="$style.listCard">
 					<button
 						v-for="issue in visibleIssues"
@@ -685,6 +686,9 @@ async function openOwnHistory() {
 <style module src="../components/hatafeed-page.module.css"></style>
 
 <style scoped>
+header[data-roadmap-actions='true'] { flex-wrap: wrap; }
+header[data-roadmap-actions='true'] > form { margin-left: auto; }
+.hf-roadmap-add { flex-shrink: 0; white-space: nowrap; }
 .hfEstIcon[data-est="pending"] { color: var(--hy-accent); }
 .hfEstIcon[data-est="held"] { color: #a36a24; }
 .hfEstIcon[data-est="approved"] { color: var(--hy-accent); }
