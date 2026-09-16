@@ -122,6 +122,7 @@ export function createSettingsPreferenceModels(): SettingsPreferenceModels {
 		keepScreenOn: unknownRef(prefer.model('keepScreenOn')),
 		limitWidthOfReaction: unknownRef(prefer.model('limitWidthOfReaction')),
 		loadRawImages: unknownRef(prefer.model('loadRawImages')),
+		ltlEmojiVoteEnabled: unknownRef(prefer.model('ltlEmojiVoteEnabled')),
 		makeEveryTextElementsSelectable: unknownRef(prefer.model('makeEveryTextElementsSelectable')),
 		mediaListWithOneImageAppearance: unknownRef(prefer.model('mediaListWithOneImageAppearance')),
 		menuStyle: unknownRef(prefer.model('menuStyle')),

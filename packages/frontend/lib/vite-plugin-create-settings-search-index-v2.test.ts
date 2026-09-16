@@ -266,8 +266,27 @@ async function buildRealCatalogFromVirtualModule() {
 }
 
 describe('settings control search index V2', () => {
+	test('LTL emoji vote setting uses the same visible timeline destination from navigation and search', async () => {
+		const { productionCatalog, generatedPreferenceSearchId } = await buildRealCatalogFromVirtualModule();
+		const { controlsForPreferenceDestination } = await import('../src/pages/settings-redesign/settings-preferences-catalog.js');
+		const { settingsDestinationSections } = await import('../src/pages/settings-redesign/settings-destinations.js');
+		const destination = settingsDestinationSections.find(section => section.id === 'timeline-posting')?.items.find(item => item.id === 'timeline-group');
+		expect(destination?.route).toBe('/settings/preferences');
+		expect(controlsForPreferenceDestination('timeline-group').filter(control => control.key === 'ltlEmojiVoteEnabled')).toHaveLength(1);
+		for (const query of ['LTLの絵文字投票を表示', '絵文字投票', 'ltlEmojiVoteEnabled']) {
+			const result = searchSettingsV2(productionCatalog, query).results.find(item => item.preferenceKeys.includes('ltlEmojiVoteEnabled'));
+			expect(result, query).toMatchObject({
+				stableId: generatedPreferenceSearchId('ltlEmojiVoteEnabled'),
+				route: destination?.route,
+				destinationId: destination?.id,
+			});
+			expect(result?.activation, query).toBeUndefined();
+		}
+		expect(productionCatalog.descriptors.filter(item => item.searchable && item.preferenceKeys.includes('ltlEmojiVoteEnabled'))).toHaveLength(1);
+	});
+
 	test('LTL絵文字投票の設定を両検索経路へ載せ、一般カテゴリの既存stableIdを保つ', async () => {
-		const sourceFile = 'src/pages/settings/hata-custom.vue';
+		const sourceFile = 'src/pages/settings/preferences.vue';
 		const source = await fs.readFile(sourceFile, 'utf8');
 		const absoluteFile = path.join(process.cwd(), sourceFile);
 		const assigned = new MarkerIdAssigner().processFile(absoluteFile, source).code;
@@ -278,12 +297,15 @@ describe('settings control search index V2', () => {
 		const entries = collectSettingsControlDescriptorsV2(sourceFile, source, currentRoutes).filter(entry => entry.preferenceKeys.includes('ltlEmojiVoteEnabled'));
 		expect(entries).toHaveLength(1);
 		expect(entries[0]).toMatchObject({
-			route: '/settings/hata-custom', component: 'MkSwitch', persistence: 'profile', searchable: true,
+			route: '/settings/preferences', component: 'MkSwitch', persistence: 'profile', searchable: true,
 			labelI18nKeys: ['i18n.ts._hata._customSettings._general.showLtlEmojiVote'],
 			captionI18nKeys: ['i18n.ts._hata._customSettings._general.showLtlEmojiVoteDescription'],
-			activation: { kind: 'hata-custom-category', category: 'general' },
 		});
-		const groups = collectSettingsSearchDescriptorsV2(sourceFile, source, currentRoutes).filter(entry => entry.isGroup && entry.labelI18nKeys?.includes('i18n.ts._hata._customSettings.title'));
+		expect(entries[0].activation).toBeUndefined();
+		const hataCustomFile = 'src/pages/settings/hata-custom.vue';
+		const hataCustomSource = await fs.readFile(hataCustomFile, 'utf8');
+		expect(hataCustomSource).not.toContain('ltlEmojiVoteEnabled');
+		const groups = collectSettingsSearchDescriptorsV2(hataCustomFile, hataCustomSource, currentRoutes).filter(entry => entry.isGroup && entry.labelI18nKeys?.includes('i18n.ts._hata._customSettings.title'));
 		expect(groups).toHaveLength(1);
 		expect(groups[0]).toMatchObject({
 			stableId: 'settings.group.src-pages-settings-hata-custom-vue-28qg9w',
@@ -592,7 +614,7 @@ describe('settings control search index V2', () => {
 			'src/components/MkUISetup.vue': { 'user-facing-setting': 4, 'navigation-action': 2, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/pages/HataskSettings.vue': { 'user-facing-setting': 11, 'navigation-action': 8, 'save-cancel': 1, 'disabled-display-only': 1, 'runtime-collection': 1, destructive: 0 },
 			'src/pages/MkMascotSettings.vue': { 'user-facing-setting': 77, 'navigation-action': 16, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 12, destructive: 0 },
-			'src/pages/settings/hata-custom.vue': { 'user-facing-setting': 30, 'navigation-action': 13, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 1, destructive: 0 },
+			'src/pages/settings/hata-custom.vue': { 'user-facing-setting': 29, 'navigation-action': 13, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 1, destructive: 0 },
 		});
 		expect(inventory.items.filter(item => item.sourceFile === 'src/components/HatasabaUi2SettingsBody.vue')).toHaveLength(27);
 		expect(inventory.items.every(item => item.reason.length > 0)).toBe(true);
@@ -1273,7 +1295,7 @@ describe('settings control search index V2', () => {
 		}));
 		const productionLabelExpectations = [
 			{ sourceFile: 'src/pages/settings/email.vue', sourceLine: 16, labelI18nKey: 'i18n.ts.emailAddress' },
-			{ sourceFile: 'src/pages/settings/hata-custom.vue', sourceLine: 254, labelI18nKey: 'i18n.ts._hata._customSettings._ui.foldableSection' },
+			{ sourceFile: 'src/pages/settings/hata-custom.vue', sourceLine: 248, labelI18nKey: 'i18n.ts._hata._customSettings._ui.foldableSection' },
 			{ sourceFile: 'src/pages/settings/emoji-palette.vue', sourceLine: 25, labelI18nKey: 'i18n.ts._emojiPalette.palettes' },
 			{ sourceFile: 'src/pages/settings/drive.vue', sourceLine: 105, labelI18nKey: 'i18n.ts.watermark' },
 			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 239, labelI18nKey: 'i18n.ts._hata._mascotSettings.minimum' },
@@ -1391,17 +1413,17 @@ describe('settings control search index V2', () => {
 		// are intentionally resolved only after the redesigned runtime merge.
 		const productionZeroRelated = productionCatalog.descriptors.filter(descriptor => descriptor.source === 'control' && descriptor.searchable && !descriptor.destructive && descriptor.related.length === 0);
 		const legacyPreferenceControls = controls.filter(control => control.sourceFile === 'src/pages/settings/preferences.vue' && control.route === '/settings/preferences');
-		expect(legacyPreferenceControls).toHaveLength(122);
+		expect(legacyPreferenceControls).toHaveLength(123);
 		expect(stableIdAliases.size).toBe(legacyPreferenceControls.length);
 		const canonicalPreferenceIds = productionCatalog.descriptors
 			.filter(descriptor => descriptor.sourceFile === 'src/pages/settings-redesign/settings-preferences-catalog.ts' && descriptor.route === '/settings/preferences')
 			.map(descriptor => descriptor.stableId);
-		expect(canonicalPreferenceIds).toHaveLength(118);
-		expect(new Set(canonicalPreferenceIds).size).toBe(118);
+		expect(canonicalPreferenceIds).toHaveLength(119);
+		expect(new Set(canonicalPreferenceIds).size).toBe(119);
 		const aliasValues = new Set(stableIdAliases.values());
-		expect(aliasValues.size).toBe(117);
+		expect(aliasValues.size).toBe(118);
 		// These two canonical descriptors have no legacy searchable stable ID,
-		// while the redesigned catalog still materializes all 118 canonical descriptors.
+		// while the redesigned catalog still materializes all 119 canonical descriptors.
 		const missingCanonicalIds = canonicalPreferenceIds.filter(id => !aliasValues.has(id)).sort();
 		expect(missingCanonicalIds).toEqual([
 			generatedPreferenceSearchId('smoothTransitionAnimations'),

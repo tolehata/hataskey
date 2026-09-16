@@ -19,10 +19,10 @@ vi.mock('@/utility/copy-to-clipboard.js', () => ({ copyToClipboard: vi.fn() }));
 vi.mock('@/utility/haptic.js', () => ({ haptic: vi.fn() }));
 vi.mock('@/components/settings-redesign/SettingsControlRelated.vue', () => ({ default: { render: () => null } }));
 
-const sourceFile = 'src/pages/settings/hata-custom.vue';
+const sourceFile = 'src/pages/settings/preferences.vue';
 const source = readFileSync(resolve(process.cwd(), sourceFile), 'utf8');
 const locale = loadYaml(readFileSync(resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')) as Record<string, unknown>;
-const switchTemplate = source.match(/<MkSwitch\b[^>]*:modelValue="prefer\.r\.ltlEmojiVoteEnabled\.value"[\s\S]*?<\/MkSwitch>/)?.[0];
+const switchTemplate = source.match(/<MkSwitch\b[^>]*v-model="ltlEmojiVoteEnabled"[\s\S]*?<\/MkSwitch>/)?.[0];
 if (!switchTemplate) throw new Error('Missing production LTL emoji vote switch');
 const compiled = compileTemplate({ source: switchTemplate, filename: 'ltl-emoji-vote-setting.vue', id: 'ltl-emoji-vote-setting', compilerOptions: { mode: 'function', prefixIdentifiers: true, cacheHandlers: false } });
 if (compiled.errors.length) throw compiled.errors[0];
@@ -54,7 +54,7 @@ function mountSwitch(prefer: PreferencesManager) {
 	const text = Vue.defineComponent({ setup: (_props, { slots }) => () => slots.default?.() });
 	const root = Vue.defineComponent({
 		components: { MkSwitch, SearchLabel: text, SearchText: text },
-		setup: () => ({ prefer, i18n: { ts: locale } }),
+		setup: () => ({ prefer, ltlEmojiVoteEnabled: prefer.model('ltlEmojiVoteEnabled'), i18n: { ts: locale } }),
 		render,
 	});
 	const element = window.document.createElement('div');

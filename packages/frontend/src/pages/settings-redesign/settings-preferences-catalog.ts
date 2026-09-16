@@ -38,7 +38,7 @@ export const preferenceContainerKeys = [
 	'enablePullToRefresh', 'enableQuickAddMfmFunction', 'enableSeasonalScreenEffect', 'filesGridLayoutInUserPage',
 	'fontSize', 'forceCollapseAllRenotes', 'forceRenoteVisibilitySelection', 'forceShowAds', 'hemisphere',
 	'hideAvatarsInNote', 'highlightSensitiveMedia', 'imageNewTab', 'infoButtonForNoteActionsEnabled', 'instanceTicker',
-	'keepCw', 'keepScreenOn', 'limitWidthOfReaction', 'loadRawImages', 'makeEveryTextElementsSelectable',
+	'keepCw', 'keepScreenOn', 'limitWidthOfReaction', 'loadRawImages', 'ltlEmojiVoteEnabled', 'makeEveryTextElementsSelectable',
 	'mediaListWithOneImageAppearance', 'menuStyle', 'newNoteReceivedNotificationBehavior', 'notificationPosition',
 	'notificationStackAxis', 'nsfw', 'nsfwOpenBehavior', 'numberOfPageCache', 'pollingInterval', 'reactionsDisplaySize',
 	'rememberNoteVisibility', 'removeModalBgColorForBlur', 'renoteQuoteButtonSeparation', 'renoteVisibilitySelection',
@@ -105,6 +105,7 @@ const placements: Readonly<Record<PreferenceContainerKey, Placement>> = {
 	infoButtonForNoteActionsEnabled: { destinationId: 'cherrypick-display' }, instanceTicker: { destinationId: 'display-preferences' },
 	keepCw: { destinationId: 'timeline-post-form' }, keepScreenOn: { destinationId: 'misskey-accessibility' },
 	limitWidthOfReaction: { destinationId: 'timeline-note-display' }, loadRawImages: { destinationId: 'timeline-note-display' },
+	ltlEmojiVoteEnabled: { destinationId: 'timeline-group' },
 	makeEveryTextElementsSelectable: { destinationId: 'misskey-accessibility' }, mediaListWithOneImageAppearance: { destinationId: 'display-preferences' },
 	menuStyle: { destinationId: 'misskey-accessibility' }, newNoteReceivedNotificationBehavior: { destinationId: 'cherrypick-display' },
 	notificationPosition: { destinationId: 'notifications-preferences' }, notificationStackAxis: { destinationId: 'notifications-preferences' },
@@ -206,6 +207,7 @@ const labelValues: Readonly<Record<PreferenceContainerKey, string>> = {
 	keepScreenOn: i18n.ts.keepScreenOn,
 	limitWidthOfReaction: i18n.ts.limitWidthOfReaction,
 	loadRawImages: i18n.ts.loadRawImages,
+	ltlEmojiVoteEnabled: i18n.ts._hata._customSettings._general.showLtlEmojiVote,
 	makeEveryTextElementsSelectable: i18n.ts._settings.makeEveryTextElementsSelectable,
 	mediaListWithOneImageAppearance: i18n.ts.mediaListWithOneImageAppearance,
 	menuStyle: i18n.ts.menuStyle,
@@ -263,6 +265,7 @@ const labelValues: Readonly<Record<PreferenceContainerKey, string>> = {
 };
 
 const captionValues: Readonly<Partial<Record<PreferenceContainerKey, readonly string[]>>> = {
+	ltlEmojiVoteEnabled: [i18n.ts._hata._customSettings._general.showLtlEmojiVoteDescription],
 	hemisphere: [i18n.ts._hemisphere.caption],
 	notificationPosition: [i18n.ts._hata._notificationToast.placement, i18n.ts._hata._notificationToast.otherUi],
 	notificationStackAxis: [i18n.ts._hata._notificationToast.sequence, i18n.ts._hata._notificationToast.otherUi],

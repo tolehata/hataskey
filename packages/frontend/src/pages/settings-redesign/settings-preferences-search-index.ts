@@ -296,7 +296,7 @@ function materializePreferenceControl(
 /**
  * The returned list intentionally removes every generated descriptor from the
  * legacy preferences SFC, including SearchMarker-derived groups.  Their
- * content is now represented exactly once by the 100 containers and 18
+ * content is now represented exactly once by the 101 containers and 18
  * auxiliary rows above; retaining them would offer stale hash anchors in the
  * redesigned surface.
  */

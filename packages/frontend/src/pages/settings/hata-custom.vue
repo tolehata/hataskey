@@ -72,12 +72,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<option value="right">{{ generalCopy.slideFromRight }}</option>
 					<option value="random">{{ generalCopy.random }}</option>
 				</MkRadios>
-				<SearchMarker :keywords="['ltl', 'local', 'emoji', 'vote', 'poll', 'deck', '絵文字', '投票']">
-					<MkSwitch :modelValue="prefer.r.ltlEmojiVoteEnabled.value" style="margin-top:12px;" @update:modelValue="prefer.commit('ltlEmojiVoteEnabled', $event)">
-						<template #label><SearchLabel>{{ i18n.ts._hata._customSettings._general.showLtlEmojiVote }}</SearchLabel></template>
-						<template #caption><SearchText>{{ i18n.ts._hata._customSettings._general.showLtlEmojiVoteDescription }}</SearchText></template>
-					</MkSwitch>
-				</SearchMarker>
 			</FormSection>
 			<FormSection>
 				<template #label>{{ generalCopy.postForm }}</template>

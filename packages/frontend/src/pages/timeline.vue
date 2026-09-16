@@ -23,7 +23,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				{{ i18n.tsx.thereIsSchedulePost({ n: schedulePostList }) }}
 			</button>
 		</MkInfo>
-		<MkPostForm v-if="prefer.r.showFixedPostForm.value" :class="$style.postForm" class="_panel" fixed style="margin-bottom: var(--MI-margin);"/>
+		<MkPostForm v-if="prefer.r.showFixedPostForm.value" :class="$style.postForm" class="_panel" fixed :autofocus="false" style="margin-bottom: var(--MI-margin);"/>
 		
 		<!-- 外部タイムライン -->
 		<MkExternalTimeline

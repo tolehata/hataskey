@@ -75,15 +75,15 @@ function legacyMarkers(): SearchIndexItem[] {
 }
 
 describe('redesigned preferences search index', () => {
-	test('100 legacy containers and 18 auxiliary controls are each materialized exactly once', () => {
-		expect(preferenceControls).toHaveLength(100);
+	test('101 legacy containers and 18 auxiliary controls are each materialized exactly once', () => {
+		expect(preferenceControls).toHaveLength(101);
 		expect(preferenceAuxiliaryControls).toHaveLength(18);
-		expect(settingsInventoryKeys).toHaveLength(118);
+		expect(settingsInventoryKeys).toHaveLength(119);
 		const merged = mergeRedesignedPreferenceSearchItems(generatedLegacyControls());
 		const preferenceDescriptors = merged.filter(item => item.route === '/settings/preferences');
-		expect(preferenceDescriptors).toHaveLength(118);
-		expect(new Set(preferenceDescriptors.map(item => item.preferenceKeys[0])).size).toBe(118);
-		expect(new Set(preferenceDescriptors.map(item => item.stableId)).size).toBe(118);
+		expect(preferenceDescriptors).toHaveLength(119);
+		expect(new Set(preferenceDescriptors.map(item => item.preferenceKeys[0])).size).toBe(119);
+		expect(new Set(preferenceDescriptors.map(item => item.stableId)).size).toBe(119);
 		for (const key of settingsInventoryKeys) {
 			const descriptor = preferenceDescriptors.find(item => item.preferenceKeys[0] === key);
 			expect(descriptor?.stableId, key).toBe(generatedPreferenceSearchId(key));
@@ -91,7 +91,7 @@ describe('redesigned preferences search index', () => {
 		}
 	});
 
-	test('runtime-generated legacy ids all rewrite to the 118 canonical preference controls', () => {
+	test('runtime-generated legacy ids all rewrite to the 119 canonical preference controls', () => {
 		const generated = generatedLegacyControls();
 		const aliases = redesignedPreferenceStableIdAliases(generated);
 		expect(aliases.size).toBe(generated.length);
@@ -203,7 +203,7 @@ describe('redesigned preferences search index', () => {
 
 	test('the legacy page generator cannot make a dynamic new-surface setting disappear', () => {
 		const merged = mergeRedesignedPreferenceSearchItems([]);
-		expect(merged).toHaveLength(118);
+		expect(merged).toHaveLength(119);
 		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
 		for (const key of settingsInventoryKeys) {
 			const stableId = generatedPreferenceSearchId(key);
@@ -280,7 +280,7 @@ describe('redesigned preferences search index', () => {
 		source.relatedIds = source.related.map(relation => relation.stableId);
 		source.relatedTotal = beforeTotal + 1;
 		suppressLegacyPreferenceSearchMarkers(catalog);
-		expect(markers).toHaveLength(118);
+		expect(markers).toHaveLength(119);
 		for (const descriptor of markers) {
 			expect(descriptor.searchable).toBe(false);
 			expect(descriptor.related).toEqual([]);

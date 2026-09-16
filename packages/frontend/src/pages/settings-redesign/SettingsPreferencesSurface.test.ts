@@ -42,14 +42,14 @@ describe('redesigned preferences inventory', () => {
 		expect(byKey.get('notificationStackAxis')?.options).toEqual(['vertical', 'horizontal']);
 	});
 
-	it('keeps the exact old 100-container inventory, with animation de-duplicated', () => {
-		expect(oldContainers).toHaveLength(100);
-		expect(preferenceContainerKeys).toHaveLength(100);
+	it('keeps the exact 101-container inventory, with animation de-duplicated', () => {
+		expect(oldContainers).toHaveLength(101);
+		expect(preferenceContainerKeys).toHaveLength(101);
 		expect(new Set(preferenceContainerKeys)).toEqual(new Set(oldContainers));
 	});
 
 	it('keeps every explicit legacy model and the special animation inversion', () => {
-		expect(oldModels).toHaveLength(102);
+		expect(oldModels).toHaveLength(103);
 		expect(new Set(oldModels)).toEqual(new Set([...preferenceContainerKeys, 'externalNavigationWarning', 'overridedDeviceKind']));
 		expect(modelsSource).toContain('prefer.model(\'animation\', value => !value, value => !value)');
 		expect(modelsSource).toContain('prefer.model(\'chat.sendOnEnter\')');
@@ -58,9 +58,9 @@ describe('redesigned preferences inventory', () => {
 		expect(modelsSource).toContain('if (fontSizeBefore.value == null)');
 	});
 
-	it('has one manifest destination for all 118 settings and auxiliary controls', () => {
-		expect(preferenceControls).toHaveLength(100);
-		expect(settingsInventoryKeys).toHaveLength(118);
+	it('has one manifest destination for all 119 settings and auxiliary controls', () => {
+		expect(preferenceControls).toHaveLength(101);
+		expect(settingsInventoryKeys).toHaveLength(119);
 		assertPreferenceInventory(preferenceControls, preferenceAuxiliaryControls);
 		for (const item of [...preferenceControls, ...preferenceAuxiliaryControls]) expect(preferenceDestinationIds).toContain(item.destinationId);
 	});
