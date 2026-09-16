@@ -73,6 +73,30 @@ function required<T extends Element = HTMLElement>(container: ParentNode, select
 
 function click(container: ParentNode, selector: string) { required<HTMLButtonElement>(container, selector).click(); }
 
+test('staff review entry is role-gated and has a full-width desktop workspace', async () => {
+	const { container, liveProps, handlers } = await mountLayout();
+	expect(container.querySelector('[aria-label="記録確認"]')).toBeNull();
+	liveProps.model.canModerate = true; await nextTick();
+	click(container, '.hak-rail-tab[aria-label="記録確認"]');
+	expect(handlers.navigate).toHaveBeenCalledWith('review');
+	liveProps.activeTab = 'review'; await nextTick();
+	expect(required(container, '.htk-akatsuki-layout').getAttribute('data-hide-aside')).toBe('true');
+	liveProps.model.canModerate = false; await nextTick();
+	expect(container.querySelector('[aria-label="記録確認"]')).toBeNull();
+});
+
+test('compact staff navigation includes review without a create button or saved-tab mutation', async () => {
+	size = { width: 320, height: 700 };
+	const saved = ['home', 'todo', 'hataskapps', 'apps'] as const;
+	const { container, liveProps } = await mountLayout({ model: { canModerate: true, mobileTabs: [...saved] } });
+	expect(container.querySelector('.hak-review-entry')).toBeTruthy();
+	liveProps.activeTab = 'review'; await nextTick();
+	expect(container.querySelector('.hak-fab')).toBeNull();
+	expect(container.querySelector('.hak-mobile-tab[aria-label="記録確認"]')?.getAttribute('aria-current')).toBe('page');
+	expect(container.querySelectorAll('.hak-mobile-tab')).toHaveLength(5);
+	expect(liveProps.model.mobileTabs).toEqual(saved);
+});
+
 function sideModel(): HataskAkatsukiLayoutProps['model'] {
 	return {
 		week: ['月', '火', '水', '木', '金', '土', '日'].map((label, index) => ({ id: `day-${index}`, label, description: index === 6 ? 'まだ記録していません' : '穏やかな一日', emoji: index === 6 ? undefined : '🙂', pending: index === 6, today: index === 6 })),

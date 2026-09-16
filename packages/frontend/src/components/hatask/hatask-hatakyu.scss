@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 /* Shared palettes from the approved Hatask theme mock. Saved theme IDs stay stable. */
-.htk-root[data-theme='hatakyu'] :is(.hak-rail-tab, .hak-mobile-tab, .hak-focus-option, .hak-focus-head h2, .hak-suggestion, .hak-side-row) > :is(.ti-home, .ti-calendar, .ti-calendar-event, .ti-checkbox, .ti-mood-smile, .ti-soup, .ti-bowl, .ti-flower, .ti-heart-handshake, .ti-trophy, .ti-layout-grid, .ti-apps, .ti-app-window, .ti-star, .ti-sparkles, .ti-message-circle, .ti-message-report, .ti-book) {
+.htk-root[data-theme='hatakyu'] :is(.hak-rail-tab, .hak-mobile-tab, .hak-focus-option, .hak-focus-head h2, .hak-suggestion, .hak-side-row) > :is(.ti-home, .ti-calendar, .ti-calendar-event, .ti-checkbox, .ti-mood-smile, .ti-soup, .ti-bowl, .ti-flower, .ti-heart-handshake, .ti-trophy, .ti-layout-grid, .ti-apps, .ti-app-window, .ti-star, .ti-sparkles, .ti-message-circle, .ti-message-report, .ti-book, .ti-shield-search) {
   position: relative;
   color: transparent;
 }
-.htk-root[data-theme='hatakyu'] :is(.hak-rail-tab, .hak-mobile-tab, .hak-focus-option, .hak-focus-head h2, .hak-suggestion, .hak-side-row) > :is(.ti-home, .ti-calendar, .ti-calendar-event, .ti-checkbox, .ti-mood-smile, .ti-soup, .ti-bowl, .ti-flower, .ti-heart-handshake, .ti-trophy, .ti-layout-grid, .ti-apps, .ti-app-window, .ti-star, .ti-sparkles, .ti-message-circle, .ti-message-report, .ti-book)::after {
+.htk-root[data-theme='hatakyu'] :is(.hak-rail-tab, .hak-mobile-tab, .hak-focus-option, .hak-focus-head h2, .hak-suggestion, .hak-side-row) > :is(.ti-home, .ti-calendar, .ti-calendar-event, .ti-checkbox, .ti-mood-smile, .ti-soup, .ti-bowl, .ti-flower, .ti-heart-handshake, .ti-trophy, .ti-layout-grid, .ti-apps, .ti-app-window, .ti-star, .ti-sparkles, .ti-message-circle, .ti-message-report, .ti-book, .ti-shield-search)::after {
   content: '';
   position: absolute;
   inset: -5px;
@@ -16,7 +16,7 @@
 }
 .htk-root[data-theme='hatakyu'] .ti-home { --hatakyu-sticker: var(--hatakyu-welcome); }
 .htk-root[data-theme='hatakyu'] :is(.ti-calendar, .ti-calendar-event) { --hatakyu-sticker: var(--hatakyu-calendar); }
-.htk-root[data-theme='hatakyu'] .ti-checkbox { --hatakyu-sticker: var(--hatakyu-todo); }
+.htk-root[data-theme='hatakyu'] :is(.ti-checkbox, .ti-shield-search) { --hatakyu-sticker: var(--hatakyu-todo); }
 .htk-root[data-theme='hatakyu'] .ti-mood-smile { --hatakyu-sticker: var(--hatakyu-mood); }
 .htk-root[data-theme='hatakyu'] :is(.ti-soup, .ti-bowl) { --hatakyu-sticker: var(--hatakyu-meal); }
 .htk-root[data-theme='hatakyu'] .ti-flower { --hatakyu-sticker: var(--hatakyu-garden); }

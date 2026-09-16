@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-export type HataskAkatsukiTab = 'home' | 'cal' | 'todo' | 'mood' | 'meal' | 'garden' | 'support' | 'ranking' | 'hataskapps' | 'apps';
+export type HataskAkatsukiTab = 'home' | 'cal' | 'todo' | 'mood' | 'meal' | 'garden' | 'support' | 'ranking' | 'hataskapps' | 'apps' | 'review';
 
 export type HataskAkatsukiHomeSectionId = 'tools' | 'intro' | 'calendar' | 'todo' | 'feedback' | 'meal';
 export type HataskAkatsukiFavoriteId = 'calendar' | 'todo' | 'meal' | 'flower';
@@ -47,6 +47,7 @@ export interface HataskAkatsukiEvent {
 }
 
 export interface HataskAkatsukiModel {
+	canModerate?: boolean;
 	home?: { sections: HataskAkatsukiHomeSection[]; recommended: HataskAkatsukiHomeSectionId; hasUsage: boolean; favorites?: HataskAkatsukiFavoriteId[] };
 	/** True until actual account data has loaded; unknown counts must not become zero. */
 	loading?: boolean;

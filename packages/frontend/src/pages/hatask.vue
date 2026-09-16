@@ -78,6 +78,7 @@
   :countsKnown="dataLoaded && plannerMigrationReady && loadedKeys.has('events') && loadedKeys.has('todos') && journalValidKeys.includes('meals')"
   @open="openAkatsukiApp"
 />
+<HataskRecordReview v-if="activeTab === 'review' && canReviewRecords" ref="recordReview" :theme="plannerTheme" :mode="themeMode"/>
 <HataskSupport v-if="activeTab === 'support'" :theme="plannerTheme" :mode="themeMode" :animations="settings.animations !== false"/>
 <HataskRanking v-if="activeTab === 'ranking'" :theme="plannerTheme" :mode="themeMode" :showAchievementNotice="dataLoaded && loadedKeys.has('settings') && settings.showRankingAchievementNotice !== false"/>
 
@@ -685,6 +686,7 @@ import HataskFlowerDetail from '@/components/hatask/HataskFlowerDetail.vue';
 import HataskFlowerCollection from '@/components/hatask/HataskFlowerCollection.vue';
 import HataskRanking from '@/components/hatask/HataskRanking.vue';
 import HataskSupport from '@/components/hatask/HataskSupport.vue';
+import HataskRecordReview from '@/components/hatask/HataskRecordReview.vue';
 import type { HataskFlowerView, HataskFlowerSelection } from '@/components/hatask/hatask-flower-view.js';
 import HataskCalendarPlanner from '@/components/hatask/HataskCalendarPlanner.vue';
 import { normalizeHataskTodoMobileTabs } from '@/utility/hatask-todo-tabs.js';
@@ -734,7 +736,9 @@ const emotionCopy = (i18n.ts._hata as unknown as { _emotionAnalysis: { title: st
 const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return getDefaultPhrase(); } };
 definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
 const SCOPE=['client','hatask'];
-const tabs=computed(() => [{id:'home',icon:'ti ti-home',label:copy.tabHome},{id:'cal',icon:'ti ti-calendar',label:copy.tabCalendar},{id:'todo',icon:'ti ti-checkbox',label:'ToDo'},{id:'mood',icon:'ti ti-mood-smile',label:copy.tabMood},{id:'meal',icon:'ti ti-bowl',label:copy.tabMeal},{id:'garden',icon:'ti ti-flower',label:copy.tabGarden}, { id: 'support', icon: 'ti ti-heart-handshake', label: '支援情報' }, { id: 'ranking', icon: 'ti ti-trophy', label: i18n.ts._hata._hatask._ranking.title }]);
+const canReviewRecords = computed(() => !!$i && ($i.isAdmin || $i.isModerator));
+const recordReview = ref<InstanceType<typeof HataskRecordReview>>();
+const tabs=computed(() => [{id:'home',icon:'ti ti-home',label:copy.tabHome},{id:'cal',icon:'ti ti-calendar',label:copy.tabCalendar},{id:'todo',icon:'ti ti-checkbox',label:'ToDo'},{id:'mood',icon:'ti ti-mood-smile',label:copy.tabMood},{id:'meal',icon:'ti ti-bowl',label:copy.tabMeal},{id:'garden',icon:'ti ti-flower',label:copy.tabGarden}, { id: 'support', icon: 'ti ti-heart-handshake', label: '支援情報' }, { id: 'ranking', icon: 'ti ti-trophy', label: i18n.ts._hata._hatask._ranking.title }, ...(canReviewRecords.value ? [{ id: 'review', icon: 'ti ti-shield-search', label: '記録確認' }] : [])]);
 // 旗鯖fork(v2 §16②): タブ切替の方向(配列上の左右関係に追従)。※watchはactiveTab宣言後に登録(下記)。
 const tabDir=ref<'fwd'|'back'>('fwd');
 const showMobileNav=ref(true);
@@ -952,6 +956,7 @@ async function syncHataskFlowerCount(): Promise<void> {
 }
 
 const activeTab=ref('home');const isSaving=ref(false);const showSearch=ref(false);
+watch(canReviewRecords, allowed => { if (!allowed && activeTab.value === 'review') activeTab.value = 'home'; });
 const routeRouter = useRouter();
 // 旗鯖fork(v2 §16②): タブ切替方向を判定(activeTab宣言後に登録してTDZを回避)。
 watch(activeTab, (nv, ov) => {
@@ -3727,7 +3732,7 @@ const akatsukiSnapshot = computed(() => buildHataskAkatsukiModel({
   usage: akatsukiUsage.value,
   settings: settings.value,
 }));
-const akatsukiModel = computed(() => akatsukiSnapshot.value.model);
+const akatsukiModel = computed(() => ({ ...akatsukiSnapshot.value.model, canModerate: canReviewRecords.value }));
 const akatsukiAppCounts = computed(() => akatsukiSnapshot.value.counts);
 const akatsukiFavoritesSaving = ref(false);
 const akatsukiFavoritesError = ref('');
@@ -3748,10 +3753,12 @@ async function saveAkatsukiFavorites(favorites: HataskAkatsukiFavoriteId[]): Pro
 }
 
 function navigateAkatsuki(tab: HataskAkatsukiTab): void {
+  if (tab === 'review' && !canReviewRecords.value) return;
   activeTab.value = tab;
 }
 
 function searchAkatsuki(query = ''): void {
+  if (activeTab.value === 'review' && canReviewRecords.value) { recordReview.value?.search(query); return; }
   searchQuery.value = query;
   showSearch.value = true;
 }
