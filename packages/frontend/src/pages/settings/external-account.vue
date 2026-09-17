@@ -215,6 +215,7 @@ const LES_REQUIN = 'mi.les-requin.net';
 const KIGOTEI = 'ddoskey.com';
 const BEARBEAR = 'xiapopisland.top';
 const JUICE_SERVER = 'mk-juice.dev';
+const YUUSKY = 'yugure.hata.blog';
 
 const hostOptions = computed(() => {
 	const options: { value: string; label: string }[] = [];
@@ -241,6 +242,10 @@ const hostOptions = computed(() => {
 
 	if (currentHost !== JUICE_SERVER) {
 		options.push({ value: JUICE_SERVER, label: `Juice Server (${JUICE_SERVER})` });
+	}
+
+	if (currentHost !== YUUSKY) {
+		options.push({ value: YUUSKY, label: `ゆうすきー (${YUUSKY})` });
 	}
 
 	return options;
