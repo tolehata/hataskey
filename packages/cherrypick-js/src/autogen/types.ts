@@ -7479,6 +7479,7 @@ export type components = {
             defaultLightTheme: string | null;
             clientOptions: Record<string, never>;
             disableRegistration: boolean;
+            registrationClosed: boolean;
             emailRequiredForSignup: boolean;
             enableHcaptcha: boolean;
             hcaptchaSiteKey: string | null;
@@ -13276,6 +13277,7 @@ export interface operations {
                         clientOptions: Record<string, never>;
                         description: string | null;
                         disableRegistration: boolean;
+                        registrationClosed: boolean;
                         impressumUrl: string | null;
                         maintainerEmail: string | null;
                         maintainerName: string | null;
@@ -16866,6 +16868,7 @@ export interface operations {
             content: {
                 'application/json': {
                     disableRegistration?: boolean | null;
+                    registrationClosed?: boolean | null;
                     pinnedUsers?: string[] | null;
                     hiddenTags?: string[] | null;
                     blockedHosts?: string[] | null;

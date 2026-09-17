@@ -26,7 +26,7 @@ function deferred() {
 }
 
 function mountIndicator(disableRegistration?: boolean) {
-	const instance = reactive({ disableRegistration });
+	const instance = reactive({ disableRegistration, registrationClosed: false });
 	const requests: ReturnType<typeof deferred>[] = [];
 	const misskeyApi = vi.fn(() => {
 		const request = deferred();
@@ -46,6 +46,16 @@ afterEach(() => {
 });
 
 describe('管理トップの登録申請インジケーター', () => {
+	test('完全停止後に届いた旧申請結果を表示せず、再開時は取得し直す', async () => {
+		const { instance, indicator, requests, misskeyApi } = mountIndicator(true);
+		instance.registrationClosed = true;
+		requests[0].resolve([{ id: 'pending' }]);
+		await Promise.resolve();
+		expect(indicator.value).toBe(false);
+		instance.registrationClosed = false;
+		expect(misskeyApi).toHaveBeenCalledTimes(2);
+	});
+
 	test.each([false, undefined])('一般開放または状態未取得(%s)では申請一覧を取得しない', initial => {
 		const { indicator, misskeyApi } = mountIndicator(initial);
 		expect(indicator.value).toBe(false);
@@ -108,8 +118,8 @@ describe('管理トップの登録申請インジケーター', () => {
 	});
 
 	test('一般開放中も管理画面への入口は残し、告知とバッジだけを制御する', () => {
-		expect(source).toContain('v-if="instance.disableRegistration === true && thereIsPendingRegistration"');
-		expect(source).toContain('indicated: instance.disableRegistration === true && thereIsPendingRegistration.value');
+		expect(source).toContain('v-if="!instance.registrationClosed && instance.disableRegistration === true && thereIsPendingRegistration"');
+		expect(source).toContain('indicated: !instance.registrationClosed && instance.disableRegistration === true && thereIsPendingRegistration.value');
 		expect(source).toMatch(/\}, \{\s*icon: 'ti ti-user-check',\s*text: i18n\.ts\._hata\._adminCommon\.registrationManagement,\s*to: '\/admin\/registration-applications'/);
 	});
 });

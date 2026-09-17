@@ -84,7 +84,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div class="hero-actions">
 					<div class="hero-cta-group">
 						<span class="hero-cta-item"><button class="login-cta hWelcome-state-1" type="button" style="border:0;display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 22px;border-radius:999px;background:transparent;border:1px solid var(--dividerStrong);color:var(--fg);font-weight:700;font-size:14px;cursor:pointer;transition:all .2s" @click="signin"><i class="ti ti-login-2" aria-hidden="true"></i><span data-server-login="">{{ serverLoginLabel }}</span></button></span>
-						<span class="hero-cta-item"><button class="signup-cta signup-cta-top hWelcome-state-2" type="button" style="border:0;display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 22px;border-radius:999px;background:var(--accent);color:var(--onAccent);font-weight:700;font-size:14px;cursor:pointer;transition:transform .2s,box-shadow .2s" @click="signup"><i class="ti ti-user-plus" aria-hidden="true"></i><span data-en="Register on this server">サーバーに登録する</span></button></span>
+						<span class="hero-cta-item"><button class="signup-cta signup-cta-top hWelcome-state-2" type="button" style="border:0;display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 22px;border-radius:999px;background:var(--accent);color:var(--onAccent);font-weight:700;font-size:14px;cursor:pointer;transition:transform .2s,box-shadow .2s" :disabled="instance.registrationClosed" @click="signup"><i class="ti ti-user-plus" aria-hidden="true"></i><span>{{ serverSignupLabel }}</span></button></span>
 					</div>
 					<WelcomeServerActivity :language="language" @resize="controller.requestMeasure()"></WelcomeServerActivity>
 					<div class="scroll-invitation"><span data-en="Try scrolling down">下へスクロールしてみる</span><span class="scroll-invitation-arrow" aria-hidden="true"><i class="ti ti-arrow-down"></i></span></div>
@@ -633,7 +633,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<span data-plane="" style="position:absolute;left:0;top:0;margin:-15px 0 0 -15px;font-size:30px;color:#8fd0e4;transform:translate(-40px,124px) rotate(0deg);will-change:transform"><i class="ti ti-plane" style="display:block"></i></span>
 			</div>
 			<div class="join-actions" style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;width:100%;margin-top:10px;animation:hWelcome-fadeUp .9s cubic-bezier(.2,.8,.2,1) both;animation-timeline:view();animation-range:entry 0% entry 45%">
-				<button class="signup-cta hWelcome-state-74" type="button" style="border:1px solid rgba(234,243,244,.36);display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 28px;border-radius:999px;background:transparent;color:#eaf3f4;font-weight:700;font-size:16px;cursor:pointer;transition:transform .22s,background .22s,border-color .22s" @click="signup"><i class="ti ti-user-plus" style="font-size:20px"></i><span data-en="Register on this server">サーバーに登録する</span></button>
+				<button class="signup-cta hWelcome-state-74" type="button" style="border:1px solid rgba(234,243,244,.36);display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 28px;border-radius:999px;background:transparent;color:#eaf3f4;font-weight:700;font-size:16px;cursor:pointer;transition:transform .22s,background .22s,border-color .22s" :disabled="instance.registrationClosed" @click="signup"><i class="ti ti-user-plus" style="font-size:20px"></i><span>{{ serverSignupLabel }}</span></button>
 				<button class="login-cta hWelcome-state-75" type="button" style="border:0;display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 30px;border-radius:999px;background:#8fd0e4;color:#173035;font-weight:700;font-size:16px;cursor:pointer;transition:transform .22s,box-shadow .22s" @click="signin"><i class="ti ti-login-2" style="font-size:20px"></i><span data-server-login="">{{ serverLoginLabel }}</span></button>
 			</div>
 			<div class="join-acknowledgement">
@@ -694,6 +694,9 @@ function safeWebUrl(value: string | null | undefined) {
 const serverName = computed(() => instance.name || instanceName);
 const serverNameHasJapanese = computed(() => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(serverName.value));
 const serverIcon = computed(() => safeWebUrl(instance.iconUrl) || '/favicon.ico');
+const serverSignupLabel = computed(() => instance.registrationClosed
+	? (language.value === 'ja' ? 'このサーバーは現在未開放です' : 'This server is currently closed to registration')
+	: (language.value === 'ja' ? 'サーバーに登録する' : 'Register on this server'));
 const serverLoginLabel = computed(() => language.value === 'ja' ? serverName.value + 'にログイン' : 'Log in to ' + serverName.value);
 const serverBackground = computed(() => { const url = safeWebUrl(instance.backgroundImageUrl); return url ? 'url(' + JSON.stringify(url) + ')' : 'none'; });
 const legalLinks = computed(() => [
@@ -706,7 +709,9 @@ const colorMode = computed(() => store.r.darkMode.value ? 'dark' : 'light');
 const serverNow = ref(new Date());
 let serverClockTimer: number | undefined;
 let serverClockOffsetMs = 0;
+
 function updateServerNow() { serverNow.value = new Date(Date.now() + serverClockOffsetMs); }
+
 const serverClockAbortController = new AbortController();
 const controller = markRaw(new HataskeyWelcomeController({
 	colorMode: store.r.darkMode.value ? 'dark' : 'light',
@@ -737,7 +742,7 @@ function signin() {
 }
 
 function signup() {
-	if (dialogOpen) return;
+	if (instance.registrationClosed || dialogOpen) return;
 	dialogOpen = true;
 	controller.root?.setAttribute('data-auth-dialog-open', 'true');
 	const { dispose } = os.popup(XSignupBranchDialog, { autoSet: true }, { closed: () => { dialogOpen = false; controller.root?.removeAttribute('data-auth-dialog-open'); dispose(); } });

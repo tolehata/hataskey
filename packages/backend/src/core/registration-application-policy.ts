@@ -30,7 +30,7 @@ export const registrationApplicationApprovalErrors = {
 	},
 } as const;
 
-/** Closed registration is the existing opt-in for the application workflow. */
-export function assertRegistrationApplicationsEnabled(meta: Pick<MiMeta, 'disableRegistration'>): void {
-	if (meta.disableRegistration !== true) throw new ApiError(registrationApplicationsDisabledError);
+/** Applications remain available only in application mode while registration is open. */
+export function assertRegistrationApplicationsEnabled(meta: Pick<MiMeta, 'disableRegistration'> & Partial<Pick<MiMeta, 'registrationClosed'>>): void {
+	if (meta.registrationClosed || meta.disableRegistration !== true) throw new ApiError(registrationApplicationsDisabledError);
 }

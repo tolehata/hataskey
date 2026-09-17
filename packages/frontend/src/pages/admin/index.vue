@@ -15,7 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div class="_gaps_s">
 					<MkInfo v-if="thereIsUnresolvedAbuseReport" warn>{{ i18n.ts.thereIsUnresolvedAbuseReportWarning }} <MkA to="/admin/abuses" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
 					<!-- 旗鯖fork(タスク7): 未処理の登録申請がある時の警告 -->
-					<MkInfo v-if="instance.disableRegistration === true && thereIsPendingRegistration" warn>{{ i18n.ts._hata._adminCommon.pendingRegistration }} <MkA to="/admin/registration-applications" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
+					<MkInfo v-if="!instance.registrationClosed && instance.disableRegistration === true && thereIsPendingRegistration" warn>{{ i18n.ts._hata._adminCommon.pendingRegistration }} <MkA to="/admin/registration-applications" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
 					<MkInfo v-if="noMaintainerInformation" warn>{{ i18n.ts.noMaintainerInformationWarning }} <MkA to="/admin/settings" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
 					<MkInfo v-if="noInquiryUrl" warn>{{ i18n.ts.noInquiryUrlWarning }} <MkA to="/admin/settings" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
 					<MkInfo v-if="noBotProtection" warn>{{ i18n.ts.noBotProtectionWarning }} <MkA to="/admin/security" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
@@ -70,7 +70,7 @@ const view = ref(null);
 const el = ref<HTMLDivElement | null>(null);
 const pageProps = ref({});
 const noMaintainerInformation = computed(() => isEmpty(instance.maintainerName) || isEmpty(instance.maintainerEmail));
-const noBotProtection = computed(() => !instance.disableRegistration && !instance.enableHcaptcha && !instance.enableRecaptcha && !instance.enableTurnstile && !instance.enableMcaptcha);
+const noBotProtection = computed(() => !instance.registrationClosed && !instance.disableRegistration && !instance.enableHcaptcha && !instance.enableRecaptcha && !instance.enableTurnstile && !instance.enableMcaptcha);
 const noEmailServer = computed(() => !instance.enableEmail);
 const noInquiryUrl = computed(() => isEmpty(instance.inquiryUrl));
 const thereIsUnresolvedAbuseReport = ref(false);
@@ -85,7 +85,7 @@ misskeyApi('admin/abuse-user-reports', {
 
 // 旗鯖fork(タスク7): 未処理(pending)の登録申請があればコンパネにインジケーターを出す
 const thereIsPendingRegistration = ref(false);
-watch(() => instance.disableRegistration === true, (registrationClosed, _previous, onCleanup) => {
+watch(() => !instance.registrationClosed && instance.disableRegistration === true, (registrationClosed, _previous, onCleanup) => {
 	let active = true;
 	onCleanup(() => { active = false; });
 	thereIsPendingRegistration.value = false;
@@ -94,7 +94,7 @@ watch(() => instance.disableRegistration === true, (registrationClosed, _previou
 		status: 'pending',
 		limit: 1,
 	}).then(apps => {
-		if (active && instance.disableRegistration === true) thereIsPendingRegistration.value = apps.length > 0;
+		if (active && !instance.registrationClosed && instance.disableRegistration === true) thereIsPendingRegistration.value = apps.length > 0;
 	}).catch(() => {});
 }, { immediate: true, flush: 'sync' });
 
@@ -266,7 +266,7 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		text: i18n.ts._hata._adminCommon.registrationManagement,
 		to: '/admin/registration-applications',
 		active: currentPage.value?.route.name === 'registration-applications',
-		indicated: instance.disableRegistration === true && thereIsPendingRegistration.value,
+		indicated: !instance.registrationClosed && instance.disableRegistration === true && thereIsPendingRegistration.value,
 	}, {
 		icon: 'ti ti-shield-check',
 		text: i18n.ts._hata._adminCommon.consentManagement,

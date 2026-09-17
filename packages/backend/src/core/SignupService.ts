@@ -62,6 +62,10 @@ export class SignupService {
 
 	@bindThis
 	public async signup(opts: SignupOptions | { registrationApplicationId: string }): Promise<{ account: MiUser; secret: string; applicationEmail: string | null }> {
+		const assertRegistrationOpen = () => {
+			if (this.meta.registrationClosed) throw new Error('REGISTRATION_CLOSED');
+		};
+		assertRegistrationOpen();
 		const applicationId = 'registrationApplicationId' in opts ? opts.registrationApplicationId : null;
 		if (applicationId !== null) assertRegistrationApplicationsEnabled(this.meta);
 		// Normal signup retains its preparation-before-transaction behavior.
@@ -104,6 +108,7 @@ export class SignupService {
 			if (exist) throw new Error(' the username is already used');
 			if (applicationId !== null) assertRegistrationApplicationsEnabled(this.meta);
 
+			assertRegistrationOpen();
 			account = await transactionalEntityManager.save(new MiUser({
 				id: this.idService.gen(),
 				username: username,
@@ -139,6 +144,7 @@ export class SignupService {
 				// Any mode switch while awaiting a write rolls back account and decision.
 				assertRegistrationApplicationsEnabled(this.meta);
 			}
+			assertRegistrationOpen();
 		});
 
 		this.usersChart.update(account, true);

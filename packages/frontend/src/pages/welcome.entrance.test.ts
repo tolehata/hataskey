@@ -13,6 +13,7 @@ import type { Component } from 'vue';
 import type { entities } from 'cherrypick-js';
 
 type MockMeta = {
+	registrationClosed?: boolean;
 	name: string | null;
 	iconUrl: string | null;
 	backgroundImageUrl: string | null;
@@ -82,6 +83,7 @@ vi.mock('./welcome.entrance.hataskey.js', () => ({
 		updateHataskClock = mocks.clockUpdate;
 		setFederationMode = mocks.federationModeUpdate;
 		setLanguage = vi.fn();
+		selectLang = vi.fn();
 		applyColorMode = vi.fn();
 	},
 }));
@@ -114,6 +116,39 @@ vi.mock('@/filters/user.js', () => ({
 	acct: (user: entities.UserLite) => user.host == null ? user.username : `${user.username}@${user.host}`,
 	userPage: (user: entities.UserLite) => `/@${user.username}`,
 }));
+
+test('完全停止中は上下の登録ボタンを無効化し、日英表示と再開を反映する', async () => {
+	vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+	instance.registrationClosed = true;
+	const container = window.document.createElement('div');
+	const app = createApp(WelcomeEntrance);
+	app.config.warnHandler = () => {};
+	app.mount(container);
+	try {
+		const buttons = () => Array.from(container.querySelectorAll<HTMLButtonElement>('.signup-cta'));
+		expect(buttons()).toHaveLength(2);
+		for (const button of buttons()) {
+			expect(button.disabled).toBe(true);
+			expect(button.textContent).toContain('このサーバーは現在未開放です');
+		}
+		const english = container.querySelector<HTMLButtonElement>('[data-lang="en"]');
+		const japanese = container.querySelector<HTMLButtonElement>('[data-lang="ja"]');
+		if (!english || !japanese) throw new Error('Missing language controls');
+		english.click();
+		await nextTick();
+		for (const button of buttons()) expect(button.textContent).toContain('This server is currently closed to registration');
+		japanese.click();
+		instance.registrationClosed = false;
+		await nextTick();
+		for (const button of buttons()) {
+			expect(button.disabled).toBe(false);
+			expect(button.textContent).toContain('サーバーに登録する');
+		}
+	} finally {
+		app.unmount();
+		instance.registrationClosed = false;
+	}
+});
 
 function userFixture(overrides: Partial<entities.UserLite> = {}): entities.UserLite {
 	return {

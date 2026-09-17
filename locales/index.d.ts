@@ -30232,6 +30232,18 @@ export interface Locale extends ILocale {
         };
         "_registrationApplications": {
             /**
+             * 新規登録を完全に停止する
+             */
+            "closeRegistration": string;
+            /**
+             * オンにすると、参加申請・招待コード・メール認証による新規登録を停止します。受付済みの申請は保管され、オフにすると下の登録方式で再開します
+             */
+            "closeRegistrationDescription": string;
+            /**
+             * このサーバーは現在未開放です
+             */
+            "closedMessage": string;
+            /**
              * 申請による登録を受け付ける
              */
             "acceptApplications": string;

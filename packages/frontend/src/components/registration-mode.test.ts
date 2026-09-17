@@ -17,6 +17,7 @@ import type { Component } from 'vue';
 
 type MockMeta = {
 	disableRegistration: boolean;
+	registrationClosed: boolean;
 	serverRules: string[];
 	tosUrl: string | null;
 	privacyPolicyUrl: string | null;
@@ -35,7 +36,7 @@ vi.mock('@/os.js', () => ({ confirm: mocks.confirm, alert: mocks.alert, apiWithD
 vi.mock('@/instance.js', async () => {
 	const { reactive } = await import('vue');
 	return { instance: reactive<MockMeta>({
-		disableRegistration: true, serverRules: [], tosUrl: null, privacyPolicyUrl: null,
+		registrationClosed: false, disableRegistration: true, serverRules: [], tosUrl: null, privacyPolicyUrl: null,
 		enableHcaptcha: false, enableMcaptcha: false, enableRecaptcha: false, enableTurnstile: false, enableTestcaptcha: false,
 	}), fetchInstance: mocks.fetchInstance };
 });
@@ -118,6 +119,8 @@ type AdminSetup = {
 };
 type ModerationSetup = {
 	acceptApplications: boolean;
+	registrationClosed: boolean;
+	onChange_registrationClosed: (value: boolean) => Promise<void>;
 	savingRegistrationMode: boolean;
 	onChange_acceptApplications: (value: boolean) => Promise<void>;
 };
@@ -172,7 +175,7 @@ function validApplication(state: ApplicationSetup) {
 beforeEach(() => {
 	vi.clearAllMocks();
 	Object.assign(instance, {
-		disableRegistration: true, serverRules: [], tosUrl: null, privacyPolicyUrl: null,
+		registrationClosed: false, disableRegistration: true, serverRules: [], tosUrl: null, privacyPolicyUrl: null,
 		enableHcaptcha: false, enableMcaptcha: false, enableRecaptcha: false, enableTurnstile: false, enableTestcaptcha: false,
 	});
 	mocks.api.mockReset().mockImplementation(async (endpoint: string) => {
@@ -185,13 +188,51 @@ beforeEach(() => {
 		return [];
 	});
 	mocks.confirm.mockReset().mockResolvedValue({ canceled: false });
-	mocks.update.mockReset().mockImplementation(async (_endpoint: string, data: { disableRegistration: boolean }) => { instance.disableRegistration = data.disableRegistration; });
+	mocks.update.mockReset().mockImplementation(async (_endpoint: string, data: Partial<MockMeta>) => { Object.assign(instance, data); });
 	mocks.fetchInstance.mockReset().mockImplementation(async () => instance);
 });
 
 afterEach(() => { for (const unmount of cleanups) unmount(); });
 
 describe('登録ダイアログのモード分岐', () => {
+	test('完全停止は開いていた申請フォームを閉じ、招待経路も拒否する', () => {
+		const item = mountSetup<BranchSetup>(SignupBranch);
+		item.state.goApplication();
+		expect(item.state.step).toBe('application');
+		instance.registrationClosed = true;
+		expect(item.state.step).not.toBe('application');
+		item.state.goApplication();
+		expect(item.state.step).not.toBe('application');
+		instance.registrationClosed = false;
+		expect(item.state.step).toBe('branch');
+	});
+
+	test('完全停止ではフォーム送信と管理API呼出しを止める', async () => {
+		instance.registrationClosed = true;
+		const application = mountSetup<ApplicationSetup>(RegistrationApplication);
+		validApplication(application.state);
+		expect(application.state.shouldDisableSubmitting).toBe(true);
+		await application.state.onSubmit();
+		const admin = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		expect(admin.state.applicationsEnabled).toBe(false);
+		expect(mocks.api).not.toHaveBeenCalled();
+	});
+
+	test('完全停止設定を保存し、元の申請方式を保持する', async () => {
+		const item = mountSetup<ModerationSetup>(Moderation);
+		await flush();
+		await item.state.onChange_registrationClosed(true);
+		expect(mocks.update).toHaveBeenCalledWith('admin/update-meta', { registrationClosed: true });
+		expect(item.state.registrationClosed).toBe(true);
+		expect(item.state.acceptApplications).toBe(true);
+		await item.state.onChange_acceptApplications(false);
+		expect(mocks.update).toHaveBeenCalledTimes(1);
+		await item.state.onChange_registrationClosed(false);
+		expect(item.state.registrationClosed).toBe(false);
+		expect(item.state.acceptApplications).toBe(true);
+	});
+
 	test('一般開放は分岐を省き、規則を確認して通常登録へ進む', () => {
 		instance.disableRegistration = false;
 		const item = mountSetup<BranchSetup>(SignupBranch);
@@ -712,6 +753,6 @@ describe('登録設定のテンプレート契約', () => {
 		const fixedPolicyPattern = /misskey\.hatachanoima\.net|copy\.rule(?:Age|Gdpr|Moderation)/u;
 		expect(fixedPolicyPattern.test('href="https://misskey.hatachanoima.net/policy"')).toBe(true);
 		expect(fixedPolicyPattern.test(application)).toBe(false);
-		expect(moderation).toContain(':modelValue="acceptApplications" :disabled="savingRegistrationMode"');
+		expect(moderation).toContain(':modelValue="acceptApplications" :disabled="registrationClosed || savingRegistrationMode"');
 	});
 });

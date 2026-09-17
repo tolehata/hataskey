@@ -21,7 +21,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:enterFromClass="$style.transition_x_enterFrom"
 			:leaveToClass="$style.transition_x_leaveTo"
 		>
-			<template v-if="!isAcceptedServerRule">
+			<div v-if="instance.registrationClosed" class="_spacer">{{ i18n.ts._hata._registrationApplications.closedMessage }}</div>
+			<template v-else-if="!isAcceptedServerRule">
 				<XServerRules @done="isAcceptedServerRule = true" @cancel="onClose"/>
 			</template>
 			<template v-else>
@@ -39,6 +40,7 @@ import XSignup from '@/components/MkSignupDialog.form.vue';
 import XServerRules from '@/components/MkSignupDialog.rules.vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import { i18n } from '@/i18n.js';
+import { instance } from '@/instance.js';
 
 const props = withDefaults(defineProps<{
 	autoSet?: boolean;

@@ -7307,6 +7307,9 @@ _hata:
     stopped: "[已停止]"
     backToBeta: "返回测试功能"
   _registrationApplications:
+    closeRegistration: "完全关闭新用户注册"
+    closeRegistrationDescription: "开启后将停止申请、邀请码及邮件验证注册。已收到的申请会保留，关闭此项后按下方方式恢复注册。"
+    closedMessage: "本服务器目前未开放注册"
     acceptApplications: "接受注册申请"
     acceptApplicationsDescription: "开启后，注册需要审核或邀请码。关闭后将开放注册，任何人都可以直接注册，无需提交申请。"
     openRegistrationConfirm: "要开放注册吗？任何人都可以直接注册，无需提交申请。已有申请将被保留，在重新开启申请制之前无法查看或操作。"

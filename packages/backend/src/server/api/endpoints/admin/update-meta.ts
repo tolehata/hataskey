@@ -24,6 +24,7 @@ export const paramDef = {
 	type: 'object',
 	properties: {
 		disableRegistration: { type: 'boolean', nullable: true },
+		registrationClosed: { type: 'boolean', nullable: true },
 		pinnedUsers: {
 			type: 'array', nullable: true, items: {
 				type: 'string',
@@ -268,6 +269,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const set = {} as Partial<MiMeta>;
+
+			if (typeof ps.registrationClosed === 'boolean') {
+				set.registrationClosed = ps.registrationClosed;
+			}
 
 			if (typeof ps.disableRegistration === 'boolean') {
 				set.disableRegistration = ps.disableRegistration;

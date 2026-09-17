@@ -209,7 +209,7 @@ import { i18n } from '@/i18n.js';
 
 const copy = i18n.ts._hata._registrationApplications._application;
 const modeUnavailable = ref(false);
-const applicationsEnabled = computed(() => instance.disableRegistration === true && !modeUnavailable.value);
+const applicationsEnabled = computed(() => !instance.registrationClosed && instance.disableRegistration === true && !modeUnavailable.value);
 const serverRules = computed(() => instance.serverRules ?? []);
 
 function policyUrl(value: string | null | undefined): string | undefined {
@@ -263,7 +263,7 @@ const testcaptchaResponse = ref<string | null>(null);
 const usernameState = ref<null | 'wait' | 'ok' | 'unavailable' | 'error' | 'invalid-format'>(null);
 const usernameAbortController = ref<null | AbortController>(null);
 
-watch(() => instance.disableRegistration, () => { modeUnavailable.value = false; });
+watch(() => [instance.disableRegistration, instance.registrationClosed], () => { modeUnavailable.value = false; });
 watch(applicationsEnabled, () => {
 	modeVersion++;
 	usernameAbortController.value?.abort();

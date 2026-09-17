@@ -7906,6 +7906,9 @@ _hata:
     stopped: "[停止しました]"
     backToBeta: "ベータ機能へ"
   _registrationApplications:
+    closeRegistration: "新規登録を完全に停止する"
+    closeRegistrationDescription: "オンにすると、参加申請・招待コード・メール認証による新規登録を停止します。受付済みの申請は保管され、オフにすると下の登録方式で再開します"
+    closedMessage: "このサーバーは現在未開放です"
     acceptApplications: "申請による登録を受け付ける"
     acceptApplicationsDescription: "オンにすると申請制になります。招待コードでも登録できます。オフにすると申請なしで誰でも登録できる一般開放になります"
     openRegistrationConfirm: "登録を一般開放しますか？申請なしで誰でも登録できるようになります。受付済みの申請は保管され、申請制へ戻すまで一覧の表示・操作はできません"

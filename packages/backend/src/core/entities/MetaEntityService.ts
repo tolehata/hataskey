@@ -86,6 +86,7 @@ export class MetaEntityService {
 			privacyPolicyUrl: instance.privacyPolicyUrl,
 			inquiryUrl: instance.inquiryUrl,
 			disableRegistration: instance.disableRegistration,
+			registrationClosed: instance.registrationClosed,
 			disableRegistrationWhenInactive: instance.disableRegistrationWhenInactive,
 			disablePublicNoteWhenInactive: instance.disablePublicNoteWhenInactive,
 			moderatorInactivityLimitDays: instance.moderatorInactivityLimitDays,
@@ -167,7 +168,7 @@ export class MetaEntityService {
 			features: {
 				localTimeline: instance.policies.ltlAvailable,
 				globalTimeline: instance.policies.gtlAvailable,
-				registration: !instance.disableRegistration,
+				registration: !instance.registrationClosed && !instance.disableRegistration,
 				emailRequiredForSignup: instance.emailRequiredForSignup,
 				hcaptcha: instance.enableHcaptcha,
 				recaptcha: instance.enableRecaptcha,

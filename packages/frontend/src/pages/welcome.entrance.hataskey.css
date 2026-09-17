@@ -645,3 +645,5 @@ html:has([data-hataskey-entrance])::view-transition-new(hataskey-welcome){animat
 [data-hataskey-entrance][data-auth-dialog-open="true"] .site-header{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--panel)}
 html[data-hata-signup-modal-open="true"] [data-hataskey-entrance] *{animation-play-state:paused!important}
 html:has([data-hataskey-entrance])::view-transition-old(root),html:has([data-hataskey-entrance])::view-transition-new(root){animation:none}
+
+[data-hataskey-entrance] .signup-cta:disabled{cursor:not-allowed!important;opacity:.65;transform:none!important;box-shadow:none!important}

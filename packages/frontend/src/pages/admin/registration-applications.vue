@@ -144,7 +144,7 @@ const copy = i18n.ts._hata._registrationApplications._admin;
 const copyx = i18n.tsx._hata._registrationApplications._admin;
 const modeCopy = i18n.ts._hata._registrationApplications;
 const modeUnavailable = ref(false);
-const applicationsEnabled = computed(() => instance.disableRegistration === true && !modeUnavailable.value);
+const applicationsEnabled = computed(() => !instance.registrationClosed && instance.disableRegistration === true && !modeUnavailable.value);
 
 const statusItems = [
 	{ value: 'pending', label: copy.pending },
@@ -178,7 +178,7 @@ async function handleError(err: any) {
 		modeUnavailable.value = true;
 		try {
 			const meta = await fetchInstance(true);
-			if (!disposed && meta.disableRegistration === true) modeUnavailable.value = false;
+			if (!disposed && !meta.registrationClosed && meta.disableRegistration === true) modeUnavailable.value = false;
 		} catch { /* Keep operations blocked until the registration mode is known. */ }
 		return;
 	}
@@ -260,7 +260,7 @@ async function loadMore() {
 	}
 }
 
-watch(() => instance.disableRegistration, () => { modeUnavailable.value = false; });
+watch(() => [instance.disableRegistration, instance.registrationClosed], () => { modeUnavailable.value = false; });
 watch([status, applicationsEnabled], () => load(), { immediate: true, flush: 'sync' });
 onBeforeUnmount(() => { disposed = true; revision++; readRequest?.abort(); clearContacts(); });
 

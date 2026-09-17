@@ -100,7 +100,7 @@ export class NodeinfoServerService {
 					inbound: [] as string[],
 					outbound: ['atom1.0', 'rss2.0'],
 				},
-				openRegistrations: !meta.disableRegistration,
+				openRegistrations: !meta.registrationClosed && !meta.disableRegistration,
 				usage: {
 					users: { total, activeHalfyear, activeMonth },
 					localPosts,

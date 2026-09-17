@@ -7732,6 +7732,9 @@ _hata:
     stopped: "[Stopped]"
     backToBeta: "Back to beta features"
   _registrationApplications:
+    closeRegistration: "Close all registration"
+    closeRegistrationDescription: "Stop new registrations, including applications, invitations and email confirmations. Existing applications are kept. Turn this off to resume the registration mode below."
+    closedMessage: "This server is currently closed to registration"
     acceptApplications: "Accept registration applications"
     acceptApplicationsDescription: "When enabled, registration requires approval or an invitation code. When disabled, anyone can register without submitting an application."
     openRegistrationConfirm: "Open registration to everyone? Anyone will be able to register without an application. Existing applications will be retained, but viewing and managing them will be paused until application-based registration is enabled again."

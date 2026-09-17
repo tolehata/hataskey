@@ -24,7 +24,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:leaveToClass="$style.transition_x_leaveTo"
 		>
 			<!-- ステップ1: 分岐選択 -->
-			<div v-if="step === 'branch'" key="branch" :class="$style.container">
+			<div v-if="instance.registrationClosed" key="closed" :class="$style.container">{{ i18n.ts._hata._registrationApplications.closedMessage }}</div>
+			<div v-else-if="step === 'branch'" key="branch" :class="$style.container">
 				<div :class="$style.branchMessage">
 					<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="waving" :size="72" style="margin: 0 auto;"/><i v-else class="ti ti-user-plus" :class="$style.branchIcon"></i>
 					<p>{{ copy.haveInviteCode }}</p>
@@ -102,14 +103,14 @@ const emit = defineEmits<{
 }>();
 
 const dialog = useTemplateRef('dialog');
-const applicationMode = computed(() => instance.disableRegistration === true);
+const applicationMode = computed(() => !instance.registrationClosed && instance.disableRegistration === true);
 const step = ref<'branch' | 'invite' | 'application' | 'applicationComplete'>(applicationMode.value ? 'branch' : 'invite');
 const isAcceptedServerRule = ref(false);
 const copy = i18n.ts._hata._common;
 
 // A settings refresh can change the registration mode while this dialog is open.
 // Re-enter the matching rules flow rather than keeping a stale application form.
-watch(applicationMode, enabled => {
+watch([applicationMode, () => instance.registrationClosed], ([enabled]) => {
 	if (step.value === 'applicationComplete') return;
 	isAcceptedServerRule.value = false;
 	step.value = enabled ? 'branch' : 'invite';
@@ -124,6 +125,7 @@ onUnmounted(() => {
 });
 
 function goInviteCode() {
+	if (instance.registrationClosed) return;
 	step.value = 'invite';
 }
 

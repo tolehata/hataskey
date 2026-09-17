@@ -38,7 +38,7 @@ const queryDb = new QueryOnlyDataSource({ type: 'postgres', entities: [applicati
 beforeAll(() => queryDb.prepareMetadata());
 
 function fixture(enabled: unknown = true) {
-	const serverMeta = { disableRegistration: enabled, preservedUsernames: [], rootUserId: 'admin', name: 'test', prohibitedWordsForNameOfUser: [] };
+	const serverMeta = { registrationClosed: false, disableRegistration: enabled, preservedUsernames: [], rootUserId: 'admin', name: 'test', prohibitedWordsForNameOfUser: [] };
 	const application = { id: 'app1', username: 'applicant', hashedPassword: 'hash', reason: '参加したいです', email: 'applicant@example.test', status: 'pending', createdAt: new Date('2026-08-01T00:00:00Z'), personalDataDeletedAt: null, rejectedAt: null };
 	const query = { update: vi.fn(), set: vi.fn(), whereInIds: vi.fn(), execute: vi.fn().mockResolvedValue({ affected: 1 }) };
 	query.update.mockReturnValue(query);
@@ -99,6 +99,34 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
 describe('registration application mode', () => {
+	test('complete closure rejects applications and approval while preserving pending data', async () => {
+		const f = fixture();
+		f.serverMeta.registrationClosed = true;
+		await expect(f.apply.exec({ ...applicant }, null, null, null)).rejects.toMatchObject(disabled);
+		await expect(f.approve.exec({ applicationId: 'app1' }, null, null, null)).rejects.toMatchObject(disabled);
+		expect(f.repository.insert).not.toHaveBeenCalled();
+		expect(f.signup.signup).not.toHaveBeenCalled();
+		expect(f.application.status).toBe('pending');
+	});
+
+	test.each([true, false])('complete closure blocks normal signup in either previous mode (%s)', async enabled => {
+		const f = signupFixture(enabled);
+		f.serverMeta.registrationClosed = true;
+		await expect(f.service.signup({ username: 'applicant', passwordHash: 'hash' })).rejects.toThrow('REGISTRATION_CLOSED');
+		expect(f.db.transaction).not.toHaveBeenCalled();
+		f.serverMeta.registrationClosed = false;
+		await expect(f.service.signup({ username: 'applicant', passwordHash: 'hash' })).resolves.toMatchObject({ account: { id: 'user1' } });
+	});
+
+	test('closing during account writes rolls back and suppresses creation events', async () => {
+		const f = signupFixture(true);
+		f.transaction.save.mockImplementation(async (entity: unknown) => { f.persisted.push(entity); f.serverMeta.registrationClosed = true; return entity; });
+		await expect(f.service.signup({ username: 'applicant', passwordHash: 'hash' })).rejects.toThrow('REGISTRATION_CLOSED');
+		expect(f.rollbacks).toBe(1);
+		expect(f.persisted).toHaveLength(0);
+		expect(f.usersChart.update).not.toHaveBeenCalled();
+	});
+
 	test.each(['pending', 'rejected'])('case-insensitive reservation blocks a %s application using a literal ID', async status => {
 		const f = fixture();
 		f.repository.exists.mockResolvedValueOnce(true);

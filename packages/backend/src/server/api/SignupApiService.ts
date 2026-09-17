@@ -73,6 +73,7 @@ export class SignupApiService {
 		}>,
 		reply: FastifyReply,
 	) {
+		if (this.meta.registrationClosed) throw new FastifyReplyError(403, 'REGISTRATION_CLOSED');
 		const body = request.body;
 
 		// Verify *Captcha
@@ -191,6 +192,8 @@ export class SignupApiService {
 			//const salt = await bcrypt.genSalt(8);
 			const hash = await argon2.hash(password);
 
+			// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Metadata can change while password hashing awaits.
+			if (this.meta.registrationClosed) throw new FastifyReplyError(403, 'REGISTRATION_CLOSED');
 			const pendingUser = await this.userPendingsRepository.insertOne({
 				id: this.idService.gen(),
 				code,
@@ -245,6 +248,7 @@ export class SignupApiService {
 
 	@bindThis
 	public async signupPending(request: FastifyRequest<{ Body: { code: string; } }>, reply: FastifyReply) {
+		if (this.meta.registrationClosed) throw new FastifyReplyError(403, 'REGISTRATION_CLOSED');
 		const body = request.body;
 
 		const code = body['code'];

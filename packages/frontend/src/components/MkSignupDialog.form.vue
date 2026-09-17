@@ -143,7 +143,7 @@ const usernameAbortController = ref<null | AbortController>(null);
 const emailAbortController = ref<null | AbortController>(null);
 
 const shouldDisableSubmitting = computed((): boolean => {
-	return submitting.value ||
+	return instance.registrationClosed || submitting.value ||
 		instance.enableHcaptcha && !hCaptchaResponse.value ||
 		instance.enableMcaptcha && !mCaptchaResponse.value ||
 		instance.enableRecaptcha && !reCaptchaResponse.value ||
@@ -280,6 +280,7 @@ function goBack() {
 }
 
 async function onSubmit(): Promise<void> {
+	if (instance.registrationClosed) return;
 	if (submitting.value) return;
 	submitting.value = true;
 
