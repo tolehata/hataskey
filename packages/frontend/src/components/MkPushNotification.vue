@@ -9,7 +9,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<i class="ti ti-notification" style="display: block; margin: auto; font-size: 3em; color: var(--MI_THEME-accent);"></i>
 		<div :class="$style.title">{{ i18n.ts.pushNotification }}</div>
 		<small style="opacity: 0.7;">{{ i18n.tsx._initialAccountSetting.pushNotificationDescription({ name: instance.name ?? host }) }}</small>
-		<MkPushNotificationAllowButton primary showOnlyToRegister style="margin: 8px auto 14px;"/>
+		<div class="_buttonsCenter" style="margin: 8px 0 14px;">
+			<MkPushNotificationAllowButton primary showOnlyToRegister/>
+		</div>
 		<MkButton :class="$style.ok" primary rounded full @click="close ">{{ i18n.ts.ok }}</MkButton>
 	</div>
 </MkModal>
