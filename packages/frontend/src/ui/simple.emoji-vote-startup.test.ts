@@ -96,6 +96,7 @@ function fixture(options: { savedTab?: string; width?: number; deck?: boolean; l
 	})()`, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
 	const state = scope.run(() => runInNewContext(code, {
 		ref, computed, watch,
+		isHataskeyTimelineAllowed: () => true,
 		ResizeObserver: Observer,
 		['window']: { innerWidth: options.width ?? 1400 },
 		deckIgnoreWidth,

@@ -59,7 +59,7 @@
 
 	<!-- row -->
 	<div v-if="layout === 'row'" :class="[$style.deck, $style.layoutRow]" data-deck-row @wheel="onDeckRowWheel">
-		<div v-for="slot in slots" :key="slot.id" :class="[$style.slot, { [$style.slotDragging]: slotDragId === slot.id, [$style.slotDragOver]: slotDragOverId === slot.id }]" :style="slotStyle(slot)" :data-deck-slot="slot.id">
+		<div v-for="slot in visibleSlots" :key="slot.id" :class="[$style.slot, { [$style.slotDragging]: slotDragId === slot.id, [$style.slotDragOver]: slotDragOverId === slot.id }]" :style="slotStyle(slot)" :data-deck-slot="slot.id">
 			<div :class="$style.slotStack">
 				<template v-for="frame in slot.frames" :key="frame.id">
 					<div :class="['frameRoot', $style.frameRoot, { [$style.frameColored]: !!frame.borderColor, [$style.frameDragOver]: dragOverFrame === frame.id }]" :style="frameStyle(frame, slot)" :data-deck-frame="frame.id" :data-deck-frame-slot="slot.id">
@@ -110,7 +110,7 @@
 
 	<!-- grid2 / grid3 共通(クラスのみ差し替え) -->
 	<div v-else-if="layout === 'grid2' || layout === 'grid3'" :class="[$style.deck, layout === 'grid2' ? $style.layoutGrid2 : $style.layoutGrid3]">
-		<div v-for="slot in slots" :key="slot.id" :class="[$style.slot, $style.slotGrid, { [$style.slotFull]: slot.fullWidth, [$style.slotFullV]: slot.fullHeight, [$style.slotDragging]: slotDragId === slot.id, [$style.slotDragOver]: slotDragOverId === slot.id }]" :data-deck-slot="slot.id">
+		<div v-for="slot in visibleSlots" :key="slot.id" :class="[$style.slot, $style.slotGrid, { [$style.slotFull]: slot.fullWidth, [$style.slotFullV]: slot.fullHeight, [$style.slotDragging]: slotDragId === slot.id, [$style.slotDragOver]: slotDragOverId === slot.id }]" :data-deck-slot="slot.id">
 			<div :class="$style.slotStack">
 				<template v-for="frame in slot.frames" :key="frame.id">
 					<div :class="['frameRoot', $style.frameRoot, { [$style.frameColored]: !!frame.borderColor, [$style.frameDragOver]: dragOverFrame === frame.id }]" :style="frameStyle(frame, slot)" :data-deck-frame="frame.id" :data-deck-frame-slot="slot.id">
@@ -142,7 +142,7 @@
 
 	<!-- stack -->
 	<div v-else :class="[$style.deck, $style.layoutStack]">
-		<div v-for="slot in slots" :key="slot.id" :class="[$style.slot, { [$style.slotDragging]: slotDragId === slot.id, [$style.slotDragOver]: slotDragOverId === slot.id }]" :style="slotStyle(slot)" :data-deck-slot="slot.id">
+		<div v-for="slot in visibleSlots" :key="slot.id" :class="[$style.slot, { [$style.slotDragging]: slotDragId === slot.id, [$style.slotDragOver]: slotDragOverId === slot.id }]" :style="slotStyle(slot)" :data-deck-slot="slot.id">
 			<div :class="$style.slotStack">
 				<template v-for="frame in slot.frames" :key="frame.id">
 					<div :class="['frameRoot', $style.frameRoot, { [$style.frameColored]: !!frame.borderColor, [$style.frameDragOver]: dragOverFrame === frame.id }]" :style="frameStyle(frame, slot)" :data-deck-frame="frame.id" :data-deck-frame-slot="slot.id">
@@ -187,6 +187,7 @@ import * as os from '@/os.js';
 import { mainRouter } from '@/router.js';
 import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
 import { prefer } from '@/preferences.js';
+import { isHataskeyTimelineAllowed } from '@/utility/hataskey-timeline-availability.js';
 import { playHataIconMotion } from '@/utility/hata-icon-motion.js';
 import { globalEvents } from '@/events.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
@@ -620,6 +621,14 @@ const activeProfile = computed<DeckProfile>(() => {
 });
 const activeProfileName = computed<string>(() => activeProfile.value ? displayProfileName(activeProfile.value) : copy.defaultProfile);
 const slots = computed<DeckSlot[]>(() => activeProfile.value?.slots ?? []);
+// Filter only the rendered view. Editing still uses slots so hidden saved tabs survive.
+const visibleSlots = computed<DeckSlot[]>(() => slots.value.map(slot => ({
+	...slot,
+	frames: slot.frames.map(frame => ({
+		...frame,
+		tabs: frame.tabs.filter(tab => isHataskeyTimelineAllowed(tab.type)),
+	})).filter(frame => frame.tabs.length > 0),
+})).filter(slot => slot.frames.length > 0));
 const layout = computed<DeckLayout>(() => activeProfile.value?.layout ?? 'row');
 
 const externalHost = computed(() => prefer.s['external.host']);
@@ -980,15 +989,18 @@ function newSlotFromTab(tab: DeckTab): DeckSlot { return { id: genId('slot'), wi
 
 // スロットを新規追加(末尾)
 function addSlotWithTab(partial: Partial<DeckTab> & { type: ColumnType }) {
+	if (!isHataskeyTimelineAllowed(partial.type)) return;
 	commitSlots([...slots.value, newSlotFromTab(newTab(partial))]);
 }
 // 既存frameにタブとして束ねる
 function addTabToFrame(slotId: string, frameId: string, partial: Partial<DeckTab> & { type: ColumnType }) {
+	if (!isHataskeyTimelineAllowed(partial.type)) return;
 	const tab = newTab(partial);
 	mapSlots(ss => ss.map(s => s.id !== slotId ? s : { ...s, frames: s.frames.map(f => f.id !== frameId ? f : { ...f, tabs: [...f.tabs, tab], activeTab: tab.id }) }));
 }
 // 既存slotにframeとして縦積み追加
 function addFrameToSlot(slotId: string, partial: Partial<DeckTab> & { type: ColumnType }) {
+	if (!isHataskeyTimelineAllowed(partial.type)) return;
 	const frame = newFrameFromTab(newTab(partial));
 	mapSlots(ss => ss.map(s => s.id !== slotId ? s : { ...s, frames: [...s.frames, frame] }));
 }
@@ -1329,9 +1341,9 @@ async function pickClipId(anchor: HTMLElement, then: (id: string, name: string) 
 function columnTypeMenu(anchor: HTMLElement, onPick: (partial: Partial<DeckTab> & { type: ColumnType }) => void) {
 	return [
 		{ text: COLUMN_META.home.title, icon: 'ti ti-home', action: () => onPick({ type: 'home' }) },
-		{ text: COLUMN_META.local.title, icon: 'ti ti-planet', action: () => onPick({ type: 'local' }) },
-		{ text: COLUMN_META.social.title, icon: 'ti ti-universe', action: () => onPick({ type: 'social' }) },
-		{ text: COLUMN_META.global.title, icon: 'ti ti-world', action: () => onPick({ type: 'global' }) },
+		...(isHataskeyTimelineAllowed('local') ? [{ text: COLUMN_META.local.title, icon: 'ti ti-planet', action: () => onPick({ type: 'local' as const }) }] : []),
+		...(isHataskeyTimelineAllowed('social') ? [{ text: COLUMN_META.social.title, icon: 'ti ti-universe', action: () => onPick({ type: 'social' as const }) }] : []),
+		...(isHataskeyTimelineAllowed('global') ? [{ text: COLUMN_META.global.title, icon: 'ti ti-world', action: () => onPick({ type: 'global' as const }) }] : []),
 		{ text: COLUMN_META.trending.title, icon: 'ti ti-chart-line', action: () => onPick({ type: 'trending' }) },
 		{ type: 'divider' as const },
 		{ text: COLUMN_META.mentions.title, icon: 'ti ti-at', action: () => onPick({ type: 'mentions' }) },
@@ -1384,7 +1396,7 @@ async function addColumn(ev: MouseEvent) {
 		{ value: 'widgets', label: COLUMN_META.widgets.title },
 		{ value: 'postForm', label: COLUMN_META.postForm.title },
 	];
-	const { canceled, result } = await os.select({ title: copy.addColumn, items });
+	const { canceled, result } = await os.select({ title: copy.addColumn, items: items.filter(item => isHataskeyTimelineAllowed(item.value)) });
 	if (canceled || result == null) return;
 	const type = result as ColumnType;
 	// ID選択が要る種別は二段で選ぶ

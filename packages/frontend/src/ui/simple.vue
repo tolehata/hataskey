@@ -497,6 +497,7 @@ import { DI } from '@/di.js';
 import * as os from '@/os.js';
 import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
+import { isHataskeyTimelineAllowed } from '@/utility/hataskey-timeline-availability.js';
 import { antennasCache, userListsCache } from '@/cache.js';
 import { deckIgnoreWidth, glassUiLocal, tabSwipeEnabled, rightWidgetsCollapsed, setRightWidgetsCollapsed } from '@/utility/hatasaba-device-prefs.js';
 import { hatadyTzOffset } from '@/utility/hatady-prefs.js';
@@ -971,11 +972,16 @@ type TabType = 'following' | 'mixed' | 'local' | 'social' | 'ohtl' | 'oltl' | 't
 function getInitialTab(): TabType {
 	const saved = miLocalStorage.getItem('hatasabaUiLastTab') as TabType | null;
 	const restorable: TabType[] = ['following', 'mixed', 'local', 'social', 'trending'];
-	if (saved != null && restorable.includes(saved)) return saved;
+	if (saved != null && restorable.includes(saved) && isHataskeyTimelineAllowed(saved)) return saved;
 	return 'following';
 }
 
 const tab = ref<TabType>(getInitialTab());
+
+// Role changes also retire the active stream; saved tab preferences are retained.
+watch(() => isHataskeyTimelineAllowed(tab.value), allowed => {
+	if (!allowed) tab.value = 'following';
+}, { flush: 'sync' });
 
 const ltlEmojiVoteEffects = ref<HTMLElement | null>(null);
 const normalLtlVoteActive = computed(() => tab.value === 'local' && !isPageView.value && !deckActive.value);
@@ -1001,7 +1007,7 @@ watch([normalLtlVoteActive, contentEl], ([active, content], _old, onCleanup) => 
 // 旗鯖fork: トレンドタブ (TTL) は専用トグル simpleUi.showTrendingTab で制御し、
 // 有効時は topNav 設定とは独立して最左に差し込む (既存ユーザーの topNav 設定を変更しないため)
 const visibleTopTabs = computed(() => {
-	const saved = (prefer.r['simpleUi.topNav'].value as any[]).filter((t: any) => t.visible);
+	const saved = (prefer.r['simpleUi.topNav'].value as any[]).filter((t: any) => t.visible && isHataskeyTimelineAllowed(t.id));
 	if (prefer.r['simpleUi.showTrendingTab'].value) {
 		// 旗鯖fork: トレンドタブは通常タブの右端に置く。
 		// tabOrder で後段に ohtl/oltl(外部TL)が push されるため、
@@ -1552,6 +1558,7 @@ const sidebarGroups = computed(() => {
 	return groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 });
 const switchTab = (t:TabType) => {
+	if (!isHataskeyTimelineAllowed(t)) return;
 	if (isCollectionTimelinePage.value) mainRouter.push('/');
 	timelinePickerKind.value = null;
 	if (tab.value === t) { if (contentEl.value) contentEl.value.scrollTo({ top: 0, behavior: 'smooth' }); } else { tab.value = t; }
