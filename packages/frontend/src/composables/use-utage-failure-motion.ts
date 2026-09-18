@@ -114,7 +114,7 @@ function play(root: HTMLElement, article: HTMLElement, failedText: string, motio
 	const doc = article.ownerDocument;
 	const width = article.offsetWidth, height = article.offsetHeight;
 	const top = article.offsetTop, left = article.offsetLeft;
-	const rendered = { height, top, left, ready: false };
+	const rendered = { height, top, left };
 	const originalOpacity = article.style.getPropertyValue('opacity');
 	const originalPriority = article.style.getPropertyPriority('opacity');
 	const opacity = Number.parseFloat(getComputedStyle(article).opacity) || 1;
@@ -135,17 +135,34 @@ function play(root: HTMLElement, article: HTMLElement, failedText: string, motio
 		observer?.disconnect();
 		motionQuery.removeEventListener('change', onMotionChange);
 		doc.removeEventListener('visibilitychange', onVisibilityChange);
-		doc.removeEventListener('scroll', cancel, true);
+		doc.removeEventListener('wheel', onScrollInput, true);
+		doc.removeEventListener('touchmove', onScrollInput, true);
 		window.removeEventListener('pagehide', cancel);
-		window.removeEventListener('resize', cancel);
+		window.removeEventListener('resize', syncGeometry);
 		root.removeEventListener('pointerdown', cancel, true);
-		root.removeEventListener('focusin', cancel, true);
+		root.removeEventListener('keydown', cancel, true);
 		if (originalOpacity) article.style.setProperty('opacity', originalOpacity, originalPriority);
 		else article.style.removeProperty('opacity');
 		overlay.remove();
 	};
 	const onMotionChange = () => { if (motionQuery.matches) cancel(); };
 	const onVisibilityChange = () => { if (doc.hidden) cancel(); };
+	const onScrollInput = (event: Event) => {
+		const target = event.target;
+		if (target instanceof Node && (root.contains(target) || target.contains(root))) cancel();
+	};
+	const syncGeometry = () => {
+		if (finished) return;
+		// Later reaction/filter results can grow the live note after nextTick.
+		// Keep the frozen halves at their original size and move only their frame.
+		// A width change would reflow the text, so restore the real note in that case.
+		if (!article.isConnected || article.offsetWidth !== width || article.offsetHeight <= 0) { cancel(); return; }
+		const height = article.offsetHeight, top = article.offsetTop, left = article.offsetLeft;
+		if (height !== rendered.height) overlay.style.height = `${height}px`;
+		if (top !== rendered.top) overlay.style.top = `${top}px`;
+		if (left !== rendered.left) overlay.style.left = `${left}px`;
+		Object.assign(rendered, { height, top, left });
+	};
 
 	try {
 		const stickyBounds: DOMRect[] = [];
@@ -157,6 +174,8 @@ function play(root: HTMLElement, article: HTMLElement, failedText: string, motio
 		const halves = [first, duplicateSnapshot(first)].map((copy, index) => {
 			const half = doc.createElement('span');
 			half.dataset.utageFailureHalf = String(index);
+			half.style.width = `${width}px`;
+			half.style.height = `${height}px`;
 			half.append(copy);
 			overlay.append(half);
 			return half;
@@ -210,28 +229,17 @@ function play(root: HTMLElement, article: HTMLElement, failedText: string, motio
 		}
 		motionQuery.addEventListener('change', onMotionChange);
 		doc.addEventListener('visibilitychange', onVisibilityChange);
-		doc.addEventListener('scroll', cancel, true);
+		// Picker focus restoration and browser scroll anchoring are not user input.
+		// The overlay is a child of the note and follows those automatic movements.
+		doc.addEventListener('wheel', onScrollInput, { capture: true, passive: true });
+		doc.addEventListener('touchmove', onScrollInput, { capture: true, passive: true });
 		window.addEventListener('pagehide', cancel);
-		window.addEventListener('resize', cancel);
+		window.addEventListener('resize', syncGeometry);
 		root.addEventListener('pointerdown', cancel, true);
-		root.addEventListener('focusin', cancel, true);
-		// The failing reaction can add a row in the same Vue update. Accept that
-		// layout once, then cancel on subsequent resizes instead of distorting it.
-		nextTick(() => {
-			if (finished) return;
-			if (!article.isConnected || article.offsetWidth !== width) { cancel(); return; }
-			rendered.height = article.offsetHeight;
-			rendered.top = article.offsetTop;
-			rendered.left = article.offsetLeft;
-			rendered.ready = true;
-			overlay.style.height = `${rendered.height}px`;
-			overlay.style.top = `${rendered.top}px`;
-			overlay.style.left = `${rendered.left}px`;
-		});
+		root.addEventListener('keydown', cancel, true);
+		nextTick(syncGeometry);
 		if (typeof ResizeObserver !== 'undefined') {
-			observer = new ResizeObserver(() => {
-				if (rendered.ready && (article.offsetWidth !== width || article.offsetHeight !== rendered.height || article.offsetTop !== rendered.top || article.offsetLeft !== rendered.left)) cancel();
-			});
+			observer = new ResizeObserver(syncGeometry);
 			observer.observe(article);
 			observer.observe(root);
 		}

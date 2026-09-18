@@ -185,7 +185,7 @@ describe('宴失敗の分割演出', () => {
 		expect(Number(label.style.opacity)).toBeLessThan(0.1);
 	});
 
-	test('失敗と同時のリアクション行追加を受け入れ、その後のサイズ変更では中止する', async () => {
+	test('非同期のリアクション行追加や位置変更が続いても外枠を追従させ最後まで再生する', async () => {
 		let notify: (() => void) | undefined;
 		const disconnect = vi.fn();
 		vi.stubGlobal('ResizeObserver', class implements ResizeObserver {
@@ -200,10 +200,12 @@ describe('宴失敗の分割演出', () => {
 		const view = mountNote();
 		view.article.style.opacity = '0.65';
 		let settledHeight = 210;
+		let settledTop = 0;
 		Object.defineProperty(view.article, 'offsetHeight', {
 			configurable: true,
 			get: () => view.article.querySelector('[data-final-badge]') ? settledHeight : 180,
 		});
+		Object.defineProperty(view.article, 'offsetTop', { configurable: true, get: () => settledTop });
 		expect(view.article.offsetHeight).toBe(180);
 		await view.fail();
 		await nextTick();
@@ -214,11 +216,84 @@ describe('宴失敗の分割演出', () => {
 		required(notify)();
 		expect(view.overlay()).toBe(overlay);
 		expect(disconnect).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(120);
 		settledHeight = 240;
+		settledTop = 12;
 		required(notify)();
+		expect(view.overlay()).toBe(overlay);
+		expect(overlay.style.height).toBe('240px');
+		expect(overlay.style.top).toBe('12px');
+		await vi.advanceTimersByTimeAsync(400);
+		settledHeight = 260;
+		required(notify)();
+		expect(view.overlay()).toBe(overlay);
+		expect(overlay.style.height).toBe('260px');
+		for (const half of overlay.querySelectorAll<HTMLElement>('[data-utage-failure-half]')) {
+			expect(half.style.width).toBe('640px');
+			expect(half.style.height).toBe('180px');
+		}
+		await vi.advanceTimersByTimeAsync(UTAGE_FAILURE_DURATION - 520 + 16);
 		expect(view.overlay()).toBeNull();
 		expect(view.article.style.opacity).toBe('0.65');
 		expect(disconnect).toHaveBeenCalledTimes(1);
+	});
+
+	test('絵文字ピッカー終了時のフォーカス復帰と自動スクロールでは中止しない', async () => {
+		const view = mountNote();
+		view.root.tabIndex = -1;
+		await view.fail();
+		const overlay = required(view.overlay());
+		await vi.advanceTimersByTimeAsync(100);
+		required(view.article.querySelector('button')).focus();
+		view.container.dispatchEvent(new Event('scroll'));
+		await vi.advanceTimersByTimeAsync(100);
+		view.root.focus();
+		window.document.dispatchEvent(new Event('scroll'));
+		expect(view.overlay()).toBe(overlay);
+		await vi.advanceTimersByTimeAsync(UTAGE_FAILURE_DURATION - 200 - 100);
+		expect(view.overlay()).toBe(overlay);
+		await vi.advanceTimersByTimeAsync(116);
+		expect(view.overlay()).toBeNull();
+	});
+
+	test('別のカラムのスクロール操作では中止しない', async () => {
+		const view = mountNote();
+		await view.fail();
+		const otherColumn = window.document.createElement('div');
+		window.document.body.append(otherColumn);
+		otherColumn.dispatchEvent(new Event('wheel', { bubbles: true }));
+		otherColumn.dispatchEvent(new Event('touchmove', { bubbles: true }));
+		otherColumn.dispatchEvent(new Event('scroll'));
+		expect(view.overlay()).not.toBeNull();
+	});
+
+	test.each(['ResizeObserver', 'window.resize'])('%sで本文の横幅が変わった場合は中止して本物を戻す', async (notification) => {
+		let notify: (() => void) | undefined;
+		vi.stubGlobal('ResizeObserver', class implements ResizeObserver {
+			constructor(onResize: ResizeObserverCallback) { notify = () => onResize([], this); }
+			observe = vi.fn();
+			unobserve = vi.fn();
+			disconnect = vi.fn();
+		});
+		const view = mountNote();
+		await view.fail();
+		await nextTick();
+		setGeometry(view.article, rect(60, 120, 480));
+		if (notification === 'ResizeObserver') required(notify)();
+		else window.dispatchEvent(new Event('resize'));
+		expect(view.overlay()).toBeNull();
+		expect(view.article.style.opacity).toBe('');
+	});
+
+	test('モバイルのピッカー閉鎖に伴う画面の高さだけの変化では中止しない', async () => {
+		const view = mountNote();
+		await view.fail();
+		const overlay = required(view.overlay());
+		vi.stubGlobal('innerHeight', 640);
+		window.dispatchEvent(new Event('resize'));
+		expect(view.overlay()).toBe(overlay);
+		await vi.advanceTimersByTimeAsync(UTAGE_FAILURE_DURATION + 16);
+		expect(view.overlay()).toBeNull();
 	});
 
 	test('stickyアバターの描画位置を両方の複製に引き継ぎ、本物の配置を変えない', async () => {
@@ -308,7 +383,7 @@ describe('宴失敗演出の軽減と中止', () => {
 		expect(view.article.style.opacity).toBe('');
 	});
 
-	test.each(['アプリ設定', 'OS設定', 'visibilitychange', 'pagehide', 'resize', 'scroll', 'pointerdown', 'focusin', 'unmount'] as const)('%sで直ちに中止し元のopacityへ復元する', async (reason) => {
+	test.each(['アプリ設定', 'OS設定', 'visibilitychange', 'pagehide', 'wheel', 'touchmove', 'pointerdown', 'keydown', 'unmount'] as const)('%sで直ちに中止し元のopacityへ復元する', async (reason) => {
 		const view = mountNote();
 		view.article.style.opacity = '0.4';
 		await view.fail();
@@ -321,11 +396,11 @@ describe('宴失敗演出の軽減と中止', () => {
 				documentHidden = true;
 				window.document.dispatchEvent(new Event('visibilitychange'));
 				break;
-			case 'pagehide':
-			case 'resize': window.dispatchEvent(new Event(reason)); break;
-			case 'scroll': view.container.dispatchEvent(new Event('scroll')); break;
+			case 'pagehide': window.dispatchEvent(new Event(reason)); break;
+			case 'wheel':
+			case 'touchmove': view.container.dispatchEvent(new Event(reason, { bubbles: true })); break;
 			case 'pointerdown':
-			case 'focusin': required(view.article.querySelector('button')).dispatchEvent(new Event(reason, { bubbles: true })); break;
+			case 'keydown': required(view.article.querySelector('button')).dispatchEvent(new Event(reason, { bubbles: true })); break;
 			case 'unmount': view.unmount(); break;
 		}
 		await nextTick();
