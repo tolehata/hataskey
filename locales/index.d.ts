@@ -12949,6 +12949,18 @@ export interface Locale extends ILocale {
     };
     "_moderationLogTypes": {
         /**
+         * 参加申請に投票
+         */
+        "voteRegistrationApplication": string;
+        /**
+         * 参加申請を許可
+         */
+        "approveRegistrationApplication": string;
+        /**
+         * 参加申請の拒否を確定
+         */
+        "rejectRegistrationApplication": string;
+        /**
          * ロールを作成
          */
         "createRole": string;
@@ -15861,7 +15873,245 @@ export interface Locale extends ILocale {
                 };
             };
         };
+        "_favoriteFolders": {
+            /**
+             * {count}件のノートを未分類へ移しました。
+             */
+            "notesMovedToUnfiled": ParameterizedString<"count">;
+            /**
+             * フォルダ
+             */
+            "folders": string;
+            /**
+             * すべて
+             */
+            "all": string;
+            /**
+             * 未分類
+             */
+            "unfiled": string;
+            /**
+             * 新規フォルダ
+             */
+            "newFolder": string;
+            /**
+             * 子フォルダを作成
+             */
+            "newSubfolder": string;
+            /**
+             * フォルダの操作
+             */
+            "manageFolder": string;
+            /**
+             * フォルダ一覧
+             */
+            "folderList": string;
+            /**
+             * タブを並び替え
+             */
+            "reorderTabs": string;
+            /**
+             * 並び替えを完了
+             */
+            "finishReorder": string;
+            /**
+             * 左へ
+             */
+            "moveLeft": string;
+            /**
+             * 右へ
+             */
+            "moveRight": string;
+            /**
+             * 上へ
+             */
+            "moveUp": string;
+            /**
+             * 下へ
+             */
+            "moveDown": string;
+            /**
+             * フォルダを移動
+             */
+            "moveFolder": string;
+            /**
+             * 名前・色を変更
+             */
+            "editFolder": string;
+            /**
+             * フォルダを削除
+             */
+            "deleteFolder": string;
+            /**
+             * 最上位へ取り出す
+             */
+            "extractToRoot": string;
+            /**
+             * 上下で並び替え、中央でフォルダの中へ移動
+             */
+            "dragHint": string;
+            /**
+             * このフォルダはまだ空です
+             */
+            "emptyFolder": string;
+            /**
+             * フォルダを読み込めませんでした
+             */
+            "folderLoadFailed": string;
+            /**
+             * 並び順を保存できませんでした
+             */
+            "orderSaveFailed": string;
+            /**
+             * ここには移動できません
+             */
+            "dropInvalid": string;
+            /**
+             * お気に入りの分類
+             */
+            "tabs": string;
+            /**
+             * フォルダを読み込み中
+             */
+            "loadingFolders": string;
+            /**
+             * 再試行
+             */
+            "retry": string;
+            /**
+             * お気に入りを解除
+             */
+            "removeFavorite": string;
+            /**
+             * 保存先を変更
+             */
+            "changeDestination": string;
+            /**
+             * 保存できませんでした。選択や入力を確認して、もう一度お試しください。
+             */
+            "saveFailed": string;
+            /**
+             * 子フォルダの作成は許可されていません
+             */
+            "nestedUnavailable": string;
+            /**
+             * フォルダは最大2階層までです。
+             */
+            "maxDepth": string;
+            /**
+             * 同じ場所に同名のフォルダがあります。
+             */
+            "duplicateName": string;
+            /**
+             * フォルダが見つかりません
+             */
+            "folderUnavailable": string;
+            /**
+             * 保存先を選ぶ
+             */
+            "chooseDestination": string;
+            /**
+             * フォルダを移動
+             */
+            "moveNote": string;
+            /**
+             * フォルダ名
+             */
+            "folderName": string;
+            /**
+             * フォルダの色
+             */
+            "folderColor": string;
+            /**
+             * 最上位
+             */
+            "topLevel": string;
+            /**
+             * 子フォルダを作成
+             */
+            "createChild": string;
+            /**
+             * フォルダを読み込めませんでした。もう一度お試しください。
+             */
+            "loadingFailed": string;
+            /**
+             * 選択したフォルダは削除されました。保存先を選び直してください。
+             */
+            "selectedFolderMissing": string;
+            /**
+             * アカウントが切り替わりました。この画面を閉じて、もう一度操作してください。
+             */
+            "accountChanged": string;
+            /**
+             * 作成できるフォルダ数の上限に達しています。
+             */
+            "limitReached": string;
+            /**
+             * 子フォルダの作成は現在のロールでは利用できません。
+             */
+            "childrenNotAllowed": string;
+            /**
+             * フォルダ名は1〜100文字で入力してください。
+             */
+            "invalidName": string;
+            /**
+             * このフォルダの中へは移動できません。
+             */
+            "invalidMove": string;
+            /**
+             * 「{name}」と子フォルダ{children}個を削除し、{notes}件のノートを未分類へ移します。お気に入りは解除されません。
+             */
+            "deleteFolderDescription": ParameterizedString<"name" | "children" | "notes">;
+            /**
+             * このノートのお気に入りを解除しますか？元のノートは削除されません。
+             */
+            "unfavoriteDescription": string;
+            /**
+             * このノートはすでにお気に入りです。フォルダ移動から整理できます。
+             */
+            "alreadyFavorited": string;
+            /**
+             * ローズ
+             */
+            "colorRose": string;
+            /**
+             * アンバー
+             */
+            "colorAmber": string;
+            /**
+             * グリーン
+             */
+            "colorGreen": string;
+            /**
+             * ブルー
+             */
+            "colorBlue": string;
+            /**
+             * バイオレット
+             */
+            "colorViolet": string;
+            /**
+             * スレート
+             */
+            "colorSlate": string;
+        };
         "_adminRoles": {
+            /**
+             * お気に入りフォルダの最大数
+             */
+            "favoriteFolderLimitName": string;
+            /**
+             * 親・子フォルダを合わせた上限です。0〜5個で指定します（既定: 2個）。上限を減らしても、作成済みのフォルダやお気に入りは削除されません。
+             */
+            "favoriteFolderLimitCaption": string;
+            /**
+             * お気に入りの子フォルダを作成できる
+             */
+            "favoriteSubfoldersName": string;
+            /**
+             * 既定はオフです。有効にすると最大2階層まで整理できます。オフに戻しても、既存の子フォルダは残ります。
+             */
+            "favoriteSubfoldersCaption": string;
             /**
              * 過去7日間に申請できる絵文字数の上限（既定: 10）。
              */
@@ -30275,6 +30525,202 @@ export interface Locale extends ILocale {
              * 新しい参加申請が届きました。コンパネの申請管理で確認してください。
              */
             "notificationBody": string;
+            /**
+             * 新しい参加申請が届きました。参加申請に賛成するかどうか、投票をお願いします。
+             */
+            "notificationVoteBody": string;
+            "_review": {
+                /**
+                 * 現在の審査担当者のみ閲覧できます。
+                 */
+                "accessDenied": string;
+                /**
+                 * 申請を読み込めませんでした。再読み込みしてお試しください。
+                 */
+                "loadFailed": string;
+                /**
+                 * 参加を許可するには、モデレーター全員の賛成と鯖缶の最終承認が必要です。
+                 */
+                "introduction": string;
+                /**
+                 * 担当者の確認状況
+                 */
+                "reviewTitle": string;
+                /**
+                 * モデレーター全員が賛成しました。鯖缶の最終承認待ちです。
+                 */
+                "allAgreed": string;
+                /**
+                 * 未投票のモデレーターがいます。全員の投票を待っています。
+                 */
+                "waitingVotes": string;
+                /**
+                 * 反対票があるため、参加は許可できません。申請は審査中のままです。拒否は鯖缶が確定します。
+                 */
+                "opposed": string;
+                /**
+                 * 最終承認時点のモデレーター全員が対象です。新任者は投票が必要で、退任者の票は集計から外れます。
+                 */
+                "electorateHint": string;
+                /**
+                 * 参加に賛成
+                 */
+                "agree": string;
+                /**
+                 * 参加に反対
+                 */
+                "oppose": string;
+                /**
+                 * 賛成
+                 */
+                "agreed": string;
+                /**
+                 * 反対
+                 */
+                "opposedChoice": string;
+                /**
+                 * 未投票
+                 */
+                "waiting": string;
+                /**
+                 * 集計対象外
+                 */
+                "retired": string;
+                /**
+                 * あなたの投票
+                 */
+                "yourVote": string;
+                /**
+                 * 最終判断の前であれば投票を変更できます。投票結果と判断メモは、鯖缶と他のモデレーターに共有されます。
+                 */
+                "changeable": string;
+                /**
+                 * 鯖缶による最終判断
+                 */
+                "finalDecision": string;
+                /**
+                 * 参加申請を許可
+                 */
+                "permit": string;
+                /**
+                 * 拒否を確定
+                 */
+                "finalizeReject": string;
+                /**
+                 * 「参加申請を許可」を確定すると、鯖缶の同意と参加許可が記録されます。
+                 */
+                "finalConsent": string;
+                /**
+                 * 最終判断した担当者
+                 */
+                "decidedBy": string;
+                /**
+                 * この申請のモデレーションログ
+                 */
+                "logLink": string;
+                /**
+                 * 申請内容・担当者・投票状況が変更されました。最新の内容を確認してから、もう一度操作してください。
+                 */
+                "reviewChanged": string;
+                /**
+                 * 参加申請を許可しますか？
+                 */
+                "approveTitle": string;
+                /**
+                 * モデレーター全員の賛成を確認し、鯖缶として同意を記録します。確定するとアカウントが作成され、申請者へ承認メールが送られます。
+                 * SNSなどの連絡先は申請データから削除されます。
+                 */
+                "approveText": string;
+                /**
+                 * 申請の拒否を確定しますか？
+                 */
+                "rejectTitle": string;
+                /**
+                 * 審査を終了し、申請ユーザーID・パスワード情報・SNSなどの連絡先を削除します。確定後は投票を変更できません。
+                 * メールアドレスは連続申請を防ぐため、申請日から90日経過後の定期削除まで保管されます。拒否のメールは送信されません。
+                 */
+                "rejectText": string;
+                /**
+                 * 参加を許可してアカウントを作成しましたが、承認メールを送信できませんでした。
+                 */
+                "emailFailed": string;
+                /**
+                 * 賛成票を記録しました。
+                 */
+                "voteSaved": string;
+                /**
+                 * 反対理由と反対票を記録しました。申請は審査中のままです。
+                 */
+                "opposeSaved": string;
+                /**
+                 * 参加に賛成しますか？
+                 */
+                "agreeTitle": string;
+                /**
+                 * 参加に反対しますか？
+                 */
+                "opposeTitle": string;
+                /**
+                 * あなたの賛成票を記録します。参加には全員の賛成と鯖缶の最終承認が必要です。
+                 */
+                "agreeDescription": string;
+                /**
+                 * 反対理由を必ず記入してください。理由は鯖缶と他のモデレーターに共有されます。申請は審査中のまま残り、最終的な拒否は鯖缶が確定します。
+                 */
+                "opposeDescription": string;
+                /**
+                 * 反対理由（必須・運営内のみ）
+                 */
+                "reasonLabel": string;
+                /**
+                 * 判断メモ（任意）
+                 */
+                "noteLabel": string;
+                /**
+                 * 参加に反対する理由を具体的に記入してください
+                 */
+                "reasonPlaceholder": string;
+                /**
+                 * 他の担当者に共有したいこと
+                 */
+                "notePlaceholder": string;
+                /**
+                 * 賛成を記録
+                 */
+                "saveAgree": string;
+                /**
+                 * 理由を添えて反対を記録
+                 */
+                "saveOppose": string;
+                /**
+                 * 反対理由を入力してください。空白だけでは記録できません。
+                 */
+                "reasonRequired": string;
+                /**
+                 * 反対理由・判断メモは300文字以内で入力してください。
+                 */
+                "reasonTooLong": string;
+                /**
+                 * {count} / 300文字
+                 */
+                "countLabel": ParameterizedString<"count">;
+                /**
+                 * {required}人中{agree}人が賛成
+                 */
+                "tally": ParameterizedString<"required" | "agree">;
+                /**
+                 * 反対 {oppose}人・未投票 {waiting}人
+                 */
+                "tallyDetails": ParameterizedString<"oppose" | "waiting">;
+                /**
+                 * モデレーターには操作の概要と対象のみ表示しています。
+                 */
+                "moderationLogRedacted": string;
+                /**
+                 * 対象ID
+                 */
+                "moderationLogTarget": string;
+            };
             "_application": {
                 /**
                  * サーバー管理者と関係がある（フォロワー・知り合いなど）

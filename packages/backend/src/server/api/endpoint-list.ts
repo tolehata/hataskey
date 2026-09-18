@@ -352,6 +352,11 @@ export * as 'notes/drafts/count' from './endpoints/notes/drafts/count.js';
 export * as 'notes/events/search' from './endpoints/notes/events/search.js';
 export * as 'notes/favorites/create' from './endpoints/notes/favorites/create.js';
 export * as 'notes/favorites/delete' from './endpoints/notes/favorites/delete.js';
+export * as 'notes/favorites/move' from './endpoints/notes/favorites/move.js';
+export * as 'notes/favorites/folders/list' from './endpoints/notes/favorites/folders/list.js';
+export * as 'notes/favorites/folders/create' from './endpoints/notes/favorites/folders/create.js';
+export * as 'notes/favorites/folders/update' from './endpoints/notes/favorites/folders/update.js';
+export * as 'notes/favorites/folders/delete' from './endpoints/notes/favorites/folders/delete.js';
 export * as 'notes/featured' from './endpoints/notes/featured.js';
 // 旗鯖fork: トレンドタイムライン (TTL)
 export * as 'notes/trending' from './endpoints/notes/trending.js';
@@ -626,7 +631,9 @@ export * as 'admin/hata/consent-list' from './endpoints/admin/hata/consent-list.
 export * as 'registration/apply' from './endpoints/registration/apply.js';
 export * as 'admin/registration-applications' from './endpoints/admin/registration-applications.js';
 export * as 'admin/approve-registration' from './endpoints/admin/approve-registration.js';
+export * as 'admin/vote-registration' from './endpoints/admin/vote-registration.js';
 export * as 'admin/reject-registration' from './endpoints/admin/reject-registration.js';
+export * as 'admin/cleanup-legacy-rejected-registrations' from './endpoints/admin/cleanup-legacy-rejected-registrations.js';
 export * as 'hatask/events/create' from './endpoints/hatask/events/create.js';
 export * as 'admin/hatask/records/list' from './endpoints/admin/hatask/records/list.js';
 export * as 'admin/hatask/records/show' from './endpoints/admin/hatask/records/show.js';

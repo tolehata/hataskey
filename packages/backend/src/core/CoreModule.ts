@@ -50,8 +50,10 @@ import { NoteUpdateService } from './NoteUpdateService.js';
 import { NoteDeleteService } from './NoteDeleteService.js';
 import { NotePiningService } from './NotePiningService.js';
 import { NoteDraftService } from './NoteDraftService.js';
+import { NoteFavoriteFolderService } from './NoteFavoriteFolderService.js';
 import { NotificationService } from './NotificationService.js';
 import { RegistrationApplicationNotificationService } from './RegistrationApplicationNotificationService.js';
+import { RegistrationApplicationReviewService } from './RegistrationApplicationReviewService.js';
 import { PollService } from './PollService.js';
 import { UtageService } from './UtageService.js';
 import { LtlEmojiVoteService } from './LtlEmojiVoteService.js';
@@ -62,6 +64,7 @@ import { FeedbackService } from './FeedbackService.js';
 import { HatadyService } from './HatadyService.js';
 import { HatadyMediaService } from './HatadyMediaService.js';
 import { HatadyActivityService } from './HatadyActivityService.js';
+import { HatadyAttachmentService } from './HatadyAttachmentService.js';
 import { HatadyModerationService } from './HatadyModerationService.js';
 import { ChannelService } from './ChannelService.js';
 import { EarthquakeService } from './EarthquakeService.js';
@@ -224,6 +227,7 @@ const $NoteDeleteService: Provider = { provide: 'NoteDeleteService', useExisting
 const $NotePiningService: Provider = { provide: 'NotePiningService', useExisting: NotePiningService };
 const $NoteDraftService: Provider = { provide: 'NoteDraftService', useExisting: NoteDraftService };
 const $NotificationService: Provider = { provide: 'NotificationService', useExisting: NotificationService };
+const $RegistrationApplicationReviewService: Provider = { provide: 'RegistrationApplicationReviewService', useExisting: RegistrationApplicationReviewService };
 const $RegistrationApplicationNotificationService: Provider = { provide: 'RegistrationApplicationNotificationService', useExisting: RegistrationApplicationNotificationService };
 const $PollService: Provider = { provide: 'PollService', useExisting: PollService };
 const $UtageService: Provider = { provide: 'UtageService', useExisting: UtageService };
@@ -232,6 +236,7 @@ const $FeedbackService: Provider = { provide: 'FeedbackService', useExisting: Fe
 const $HatadyService: Provider = { provide: 'HatadyService', useExisting: HatadyService };
 const $HatadyMediaService: Provider = { provide: 'HatadyMediaService', useExisting: HatadyMediaService };
 const $HatadyActivityService: Provider = { provide: 'HatadyActivityService', useExisting: HatadyActivityService };
+const $HatadyAttachmentService: Provider = { provide: 'HatadyAttachmentService', useExisting: HatadyAttachmentService };
 const $HatadyModerationService: Provider = { provide: 'HatadyModerationService', useExisting: HatadyModerationService };
 const $ChannelService: Provider = { provide: 'ChannelService', useExisting: ChannelService };
 const $EarthquakeService: Provider = { provide: 'EarthquakeService', useExisting: EarthquakeService };
@@ -400,8 +405,10 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		NoteDeleteService,
 		NotePiningService,
 		NoteDraftService,
+		NoteFavoriteFolderService,
 		NotificationService,
 		RegistrationApplicationNotificationService,
+		RegistrationApplicationReviewService,
 		PollService,
 		UtageService,
 		LtlEmojiVoteService,
@@ -413,6 +420,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		HatadyMediaService,
 		HatadyActivityService,
 		HatadyModerationService,
+		HatadyAttachmentService,
 		ChannelService,
 		EarthquakeService,
 		SystemAccountService,
@@ -578,6 +586,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$NoteDraftService,
 		$NotificationService,
 		$RegistrationApplicationNotificationService,
+		$RegistrationApplicationReviewService,
 		$PollService,
 		$UtageService,
 		$LtlEmojiVoteService,
@@ -586,6 +595,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$HatadyMediaService,
 		$HatadyActivityService,
 		$HatadyModerationService,
+		$HatadyAttachmentService,
 		$ChannelService,
 		$EarthquakeService,
 		$SystemAccountService,
@@ -749,8 +759,10 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		NoteDeleteService,
 		NotePiningService,
 		NoteDraftService,
+		NoteFavoriteFolderService,
 		NotificationService,
 		RegistrationApplicationNotificationService,
+		RegistrationApplicationReviewService,
 		PollService,
 		UtageService,
 		LtlEmojiVoteService,
@@ -762,6 +774,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		HatadyMediaService,
 		HatadyActivityService,
 		HatadyModerationService,
+		HatadyAttachmentService,
 		ChannelService,
 		EarthquakeService,
 		SystemAccountService,
@@ -926,6 +939,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$NoteDraftService,
 		$NotificationService,
 		$RegistrationApplicationNotificationService,
+		$RegistrationApplicationReviewService,
 		$PollService,
 		$UtageService,
 		$LtlEmojiVoteService,

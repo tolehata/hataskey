@@ -19,6 +19,7 @@ export type NoteDraft = components['schemas']['NoteDraft'];
 export type NoteReaction = components['schemas']['NoteReaction'];
 export type NoteReactionWithNote = components['schemas']['NoteReactionWithNote'];
 export type NoteFavorite = components['schemas']['NoteFavorite'];
+export type NoteFavoriteFolder = components['schemas']['NoteFavoriteFolder'];
 export type Notification = components['schemas']['Notification'];
 export type DriveFile = components['schemas']['DriveFile'];
 export type DriveFolder = components['schemas']['DriveFolder'];

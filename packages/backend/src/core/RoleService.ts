@@ -90,6 +90,8 @@ export type RolePolicies = {
 	wordMuteLimit: number;
 	webhookLimit: number;
 	clipLimit: number;
+	favoriteFolderLimit: number;
+	canCreateFavoriteSubfolders: boolean;
 	noteEachClipsLimit: number;
 	userListLimit: number;
 	userEachUserListsLimit: number;
@@ -151,6 +153,8 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	wordMuteLimit: 200,
 	webhookLimit: 3,
 	clipLimit: 10,
+	favoriteFolderLimit: 2,
+	canCreateFavoriteSubfolders: false,
 	noteEachClipsLimit: 200,
 	userListLimit: 10,
 	userEachUserListsLimit: 50,
@@ -194,6 +198,12 @@ export function normalizeHatadyGameTitleLimit(values: readonly unknown[]): numbe
 	const finiteValues = values.map(Number).filter(Number.isFinite);
 	const value = finiteValues.length > 0 ? Math.max(...finiteValues) : DEFAULT_POLICIES.hatadyGameTitleLimit;
 	return Math.max(0, Math.min(1000, Math.floor(value)));
+}
+
+export function normalizeFavoriteFolderLimit(values: readonly unknown[]): number {
+	const finiteValues = values.filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+	const value = finiteValues.length > 0 ? Math.max(...finiteValues) : DEFAULT_POLICIES.favoriteFolderLimit;
+	return Math.max(0, Math.min(5, Math.floor(value)));
 }
 
 @Injectable()
@@ -313,20 +323,20 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	private evalCond(user: MiUser, roles: MiRole[], value: RoleCondFormulaValue): boolean {
+	public evalCond(user: MiUser, roles: MiRole[], value: RoleCondFormulaValue, now = Date.now()): boolean {
 		try {
 			switch (value.type) {
 				// ～かつ～
 				case 'and': {
-					return value.values.every(v => this.evalCond(user, roles, v));
+					return value.values.every(v => this.evalCond(user, roles, v, now));
 				}
 				// ～または～
 				case 'or': {
-					return value.values.some(v => this.evalCond(user, roles, v));
+					return value.values.some(v => this.evalCond(user, roles, v, now));
 				}
 				// ～ではない
 				case 'not': {
-					return !this.evalCond(user, roles, value.value);
+					return !this.evalCond(user, roles, value.value, now);
 				}
 				// マニュアルロールがアサインされている
 				case 'roleAssignedTo': {
@@ -362,11 +372,11 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 				}
 				// ユーザが作成されてから指定期間経過した
 				case 'createdLessThan': {
-					return this.idService.parse(user.id).date.getTime() > (Date.now() - (value.sec * 1000));
+					return this.idService.parse(user.id).date.getTime() > (now - (value.sec * 1000));
 				}
 				// ユーザが作成されてから指定期間経っていない
 				case 'createdMoreThan': {
-					return this.idService.parse(user.id).date.getTime() < (Date.now() - (value.sec * 1000));
+					return this.idService.parse(user.id).date.getTime() < (now - (value.sec * 1000));
 				}
 				// フォロワー数が指定値以下
 				case 'followersLessThanOrEq': {
@@ -452,6 +462,8 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 	public async getUserPolicies(userId: MiUser['id'] | null): Promise<RolePolicies> {
 		const basePolicies = { ...DEFAULT_POLICIES, ...this.meta.policies };
 
+		basePolicies.favoriteFolderLimit = normalizeFavoriteFolderLimit([basePolicies.favoriteFolderLimit]);
+		basePolicies.canCreateFavoriteSubfolders = basePolicies.canCreateFavoriteSubfolders === true;
 		if (userId == null) return basePolicies;
 
 		const roles = await this.getUserRoles(userId);
@@ -522,6 +534,8 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			wordMuteLimit: calc('wordMuteLimit', vs => Math.max(...vs)),
 			webhookLimit: calc('webhookLimit', vs => Math.max(...vs)),
 			clipLimit: calc('clipLimit', vs => Math.max(...vs)),
+			favoriteFolderLimit: calc('favoriteFolderLimit', normalizeFavoriteFolderLimit),
+			canCreateFavoriteSubfolders: calc('canCreateFavoriteSubfolders', vs => vs.some(v => v === true)),
 			noteEachClipsLimit: calc('noteEachClipsLimit', vs => Math.max(...vs)),
 			userListLimit: calc('userListLimit', vs => Math.max(...vs)),
 			userEachUserListsLimit: calc('userEachUserListsLimit', vs => Math.max(...vs)),

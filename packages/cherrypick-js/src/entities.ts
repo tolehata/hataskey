@@ -8,7 +8,7 @@ import {
 	Role,
 	RolePolicies,
 	User,
-	UserDetailedNotMe,
+	UserLite,
 } from './autogen/models.js';
 import type { AuthenticationResponseJSON, PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server';
 
@@ -50,8 +50,18 @@ export type ModerationLog = {
 	id: ID;
 	createdAt: DateString;
 	userId: User['id'];
-	user: UserDetailedNotMe;
+	user: UserLite;
+	isRedacted?: boolean;
 } & ({
+	type: 'voteRegistrationApplication';
+	info: ModerationLogPayloads['voteRegistrationApplication'];
+} | {
+	type: 'approveRegistrationApplication';
+	info: ModerationLogPayloads['approveRegistrationApplication'];
+} | {
+	type: 'rejectRegistrationApplication';
+	info: ModerationLogPayloads['rejectRegistrationApplication'];
+} | {
 	type: 'updateServerSettings';
 	info: ModerationLogPayloads['updateServerSettings'];
 } | {

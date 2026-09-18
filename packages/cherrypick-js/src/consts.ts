@@ -147,6 +147,9 @@ export const permissions = [
 ] as const;
 
 export const moderationLogTypes = [
+	'voteRegistrationApplication',
+	'approveRegistrationApplication',
+	'rejectRegistrationApplication',
 	'updateServerSettings',
 	'suspend',
 	'unsuspend',
@@ -243,6 +246,8 @@ export const rolePolicies = [
 	'antennaLimit',
 	'wordMuteLimit',
 	'webhookLimit',
+	'favoriteFolderLimit',
+	'canCreateFavoriteSubfolders',
 	'clipLimit',
 	'noteEachClipsLimit',
 	'userListLimit',
@@ -307,6 +312,9 @@ type ReceivedAbuseReport = {
 };
 
 export type ModerationLogPayloads = {
+	voteRegistrationApplication: { applicationId: string; choice: 'agree' | 'oppose' };
+	approveRegistrationApplication: { applicationId: string };
+	rejectRegistrationApplication: { applicationId: string };
 	updateServerSettings: {
 		before: MetaDetailed | null;
 		after: MetaDetailed | null;

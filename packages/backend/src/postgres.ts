@@ -48,6 +48,7 @@ import { MiMuting } from '@/models/Muting.js';
 import { MiRenoteMuting } from '@/models/RenoteMuting.js';
 import { MiNote } from '@/models/Note.js';
 import { MiNoteFavorite } from '@/models/NoteFavorite.js';
+import { MiNoteFavoriteFolder } from '@/models/NoteFavoriteFolder.js';
 import { MiNoteReaction } from '@/models/NoteReaction.js';
 import { MiNoteThreadMuting } from '@/models/NoteThreadMuting.js';
 import { MiNoteDraft } from '@/models/NoteDraft.js';
@@ -291,6 +292,7 @@ export const entities = [
 	MiBlocking,
 	MiNote,
 	MiNoteFavorite,
+	MiNoteFavoriteFolder,
 	MiNoteReaction,
 	MiNoteThreadMuting,
 	MiNoteDraft,

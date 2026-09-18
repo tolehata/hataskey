@@ -36,6 +36,7 @@ import type {
 	AdminAnnouncementsListResponse,
 	AdminAnnouncementsUpdateRequest,
 	AdminApproveRegistrationRequest,
+	AdminApproveRegistrationResponse,
 	AdminAvatarDecorationsCopyRequest,
 	AdminAvatarDecorationsCopyResponse,
 	AdminAvatarDecorationsCreateRequest,
@@ -50,6 +51,8 @@ import type {
 	AdminCaptchaSaveRequest,
 	AdminChannelsListRequest,
 	AdminChannelsListResponse,
+	AdminCleanupLegacyRejectedRegistrationsRequest,
+	AdminCleanupLegacyRejectedRegistrationsResponse,
 	AdminDeleteAccountRequest,
 	AdminDeleteAllFilesOfAUserRequest,
 	AdminDriveFilesRequest,
@@ -129,6 +132,7 @@ import type {
 	AdminRegistrationApplicationsRequest,
 	AdminRegistrationApplicationsResponse,
 	AdminRejectRegistrationRequest,
+	AdminRejectRegistrationResponse,
 	AdminRelaysAddRequest,
 	AdminRelaysAddResponse,
 	AdminRelaysListResponse,
@@ -176,6 +180,8 @@ import type {
 	AdminUpdateProxyAccountRequest,
 	AdminUpdateProxyAccountResponse,
 	AdminUpdateUserNoteRequest,
+	AdminVoteRegistrationRequest,
+	AdminVoteRegistrationResponse,
 	AnnouncementsRequest,
 	AnnouncementsResponse,
 	AnnouncementsShowRequest,
@@ -790,6 +796,14 @@ import type {
 	NotesEventsSearchResponse,
 	NotesFavoritesCreateRequest,
 	NotesFavoritesDeleteRequest,
+	NotesFavoritesFoldersCreateRequest,
+	NotesFavoritesFoldersCreateResponse,
+	NotesFavoritesFoldersDeleteRequest,
+	NotesFavoritesFoldersDeleteResponse,
+	NotesFavoritesFoldersListResponse,
+	NotesFavoritesFoldersUpdateRequest,
+	NotesFavoritesFoldersUpdateResponse,
+	NotesFavoritesMoveRequest,
 	NotesFeaturedRequest,
 	NotesFeaturedResponse,
 	NotesGlobalTimelineRequest,
@@ -1002,7 +1016,7 @@ export type Endpoints = {
 	'admin/announcements/delete': { req: AdminAnnouncementsDeleteRequest; res: EmptyResponse };
 	'admin/announcements/list': { req: AdminAnnouncementsListRequest; res: AdminAnnouncementsListResponse };
 	'admin/announcements/update': { req: AdminAnnouncementsUpdateRequest; res: EmptyResponse };
-	'admin/approve-registration': { req: AdminApproveRegistrationRequest; res: EmptyResponse };
+	'admin/approve-registration': { req: AdminApproveRegistrationRequest; res: AdminApproveRegistrationResponse };
 	'admin/avatar-decorations/copy': { req: AdminAvatarDecorationsCopyRequest; res: AdminAvatarDecorationsCopyResponse };
 	'admin/avatar-decorations/create': { req: AdminAvatarDecorationsCreateRequest; res: AdminAvatarDecorationsCreateResponse };
 	'admin/avatar-decorations/delete': { req: AdminAvatarDecorationsDeleteRequest; res: EmptyResponse };
@@ -1012,6 +1026,7 @@ export type Endpoints = {
 	'admin/captcha/current': { req: EmptyRequest; res: AdminCaptchaCurrentResponse };
 	'admin/captcha/save': { req: AdminCaptchaSaveRequest; res: EmptyResponse };
 	'admin/channels/list': { req: AdminChannelsListRequest; res: AdminChannelsListResponse };
+	'admin/cleanup-legacy-rejected-registrations': { req: AdminCleanupLegacyRejectedRegistrationsRequest; res: AdminCleanupLegacyRejectedRegistrationsResponse };
 	'admin/delete-account': { req: AdminDeleteAccountRequest; res: EmptyResponse };
 	'admin/delete-all-files-of-a-user': { req: AdminDeleteAllFilesOfAUserRequest; res: EmptyResponse };
 	'admin/drive/clean-remote-files': { req: EmptyRequest; res: EmptyResponse };
@@ -1069,7 +1084,7 @@ export type Endpoints = {
 	'admin/queue/show-job-logs': { req: AdminQueueShowJobLogsRequest; res: AdminQueueShowJobLogsResponse };
 	'admin/queue/stats': { req: EmptyRequest; res: AdminQueueStatsResponse };
 	'admin/registration-applications': { req: AdminRegistrationApplicationsRequest; res: AdminRegistrationApplicationsResponse };
-	'admin/reject-registration': { req: AdminRejectRegistrationRequest; res: EmptyResponse };
+	'admin/reject-registration': { req: AdminRejectRegistrationRequest; res: AdminRejectRegistrationResponse };
 	'admin/relays/add': { req: AdminRelaysAddRequest; res: AdminRelaysAddResponse };
 	'admin/relays/list': { req: EmptyRequest; res: AdminRelaysListResponse };
 	'admin/relays/remove': { req: AdminRelaysRemoveRequest; res: EmptyResponse };
@@ -1104,6 +1119,7 @@ export type Endpoints = {
 	'admin/update-meta': { req: AdminUpdateMetaRequest; res: EmptyResponse };
 	'admin/update-proxy-account': { req: AdminUpdateProxyAccountRequest; res: AdminUpdateProxyAccountResponse };
 	'admin/update-user-note': { req: AdminUpdateUserNoteRequest; res: EmptyResponse };
+	'admin/vote-registration': { req: AdminVoteRegistrationRequest; res: AdminVoteRegistrationResponse };
 	'announcements': { req: AnnouncementsRequest; res: AnnouncementsResponse };
 	'announcements/show': { req: AnnouncementsShowRequest; res: AnnouncementsShowResponse };
 	'antennas/create': { req: AntennasCreateRequest; res: AntennasCreateResponse };
@@ -1490,6 +1506,11 @@ export type Endpoints = {
 	'notes/events/search': { req: NotesEventsSearchRequest; res: NotesEventsSearchResponse };
 	'notes/favorites/create': { req: NotesFavoritesCreateRequest; res: EmptyResponse };
 	'notes/favorites/delete': { req: NotesFavoritesDeleteRequest; res: EmptyResponse };
+	'notes/favorites/folders/create': { req: NotesFavoritesFoldersCreateRequest; res: NotesFavoritesFoldersCreateResponse };
+	'notes/favorites/folders/delete': { req: NotesFavoritesFoldersDeleteRequest; res: NotesFavoritesFoldersDeleteResponse };
+	'notes/favorites/folders/list': { req: EmptyRequest; res: NotesFavoritesFoldersListResponse };
+	'notes/favorites/folders/update': { req: NotesFavoritesFoldersUpdateRequest; res: NotesFavoritesFoldersUpdateResponse };
+	'notes/favorites/move': { req: NotesFavoritesMoveRequest; res: EmptyResponse };
 	'notes/featured': { req: NotesFeaturedRequest; res: NotesFeaturedResponse };
 	'notes/global-timeline': { req: NotesGlobalTimelineRequest; res: NotesGlobalTimelineResponse };
 	'notes/history': { req: NotesHistoryRequest; res: NotesHistoryResponse };

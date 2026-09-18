@@ -96,6 +96,9 @@ export const userExportableEntities = ['antenna', 'blocking', 'clip', 'customEmo
 export const userImportableEntities = ['antenna', 'blocking', 'customEmoji', 'following', 'muting', 'userList'] as const;
 
 export const moderationLogTypes = [
+	'voteRegistrationApplication',
+	'approveRegistrationApplication',
+	'rejectRegistrationApplication',
 	'updateServerSettings',
 	'suspend',
 	'unsuspend',
@@ -154,6 +157,9 @@ export const moderationLogTypes = [
 ] as const;
 
 export type ModerationLogPayloads = {
+	voteRegistrationApplication: { applicationId: string; choice: 'agree' | 'oppose' };
+	approveRegistrationApplication: { applicationId: string };
+	rejectRegistrationApplication: { applicationId: string };
 	updateServerSettings: {
 		before: any | null;
 		after: any | null;

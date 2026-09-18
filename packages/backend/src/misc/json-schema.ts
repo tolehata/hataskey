@@ -28,6 +28,7 @@ import { packedInviteCodeSchema } from '@/models/json-schema/invite-code.js';
 import { packedPageBlockSchema, packedPageSchema } from '@/models/json-schema/page.js';
 import { packedUserGroupSchema } from '@/models/json-schema/user-group.js';
 import { packedNoteFavoriteSchema } from '@/models/json-schema/note-favorite.js';
+import { packedNoteFavoriteFolderSchema } from '@/models/json-schema/note-favorite-folder.js';
 import { packedChannelSchema } from '@/models/json-schema/channel.js';
 import { packedAntennaSchema } from '@/models/json-schema/antenna.js';
 import { packedClipSchema } from '@/models/json-schema/clip.js';
@@ -98,6 +99,7 @@ export const refs = {
 	NoteReaction: packedNoteReactionSchema,
 	NoteReactionWithNote: packedNoteReactionWithNoteSchema,
 	NoteFavorite: packedNoteFavoriteSchema,
+	NoteFavoriteFolder: packedNoteFavoriteFolderSchema,
 	Notification: packedNotificationSchema,
 	DriveFile: packedDriveFileSchema,
 	DriveFolder: packedDriveFolderSchema,
