@@ -68,8 +68,8 @@ function responseFixture() {
 		settings: settingsFixture(),
 		benefits: SUPPORT_POLICIES.map(policy => ({
 			key: policy.key,
-			baseline: policy.key === 'driveCapacityMb' ? snapshot(879) : policy.key === 'mascotMaxPhrases' ? snapshot(10, { available: false, condition: 'mascotUnavailable' }) : snapshot(false),
-			offered: (policy.key === 'driveCapacityMb' ? snapshot(5120) : snapshot(true)) as SupportSnapshot | null,
+			baseline: policy.key === 'driveCapacityMb' ? snapshot(879) : policy.key === 'favoriteFolderLimit' ? snapshot(2) : policy.key === 'mascotMaxPhrases' ? snapshot(10, { available: false, condition: 'mascotUnavailable' }) : snapshot(false),
+			offered: (policy.key === 'driveCapacityMb' ? snapshot(5120) : policy.key === 'favoriteFolderLimit' ? snapshot(5) : snapshot(true)) as SupportSnapshot | null,
 		})),
 		roles: [{ id: 'role-standard', name: '標準特典' }, { id: 'role-extra', name: '追加特典' }],
 		rolePreview: null as { id: string; name: string; benefits: { key: string; snapshot: SupportSnapshot }[] } | null,
@@ -141,7 +141,7 @@ beforeEach(() => {
 	api.mockImplementation(async (endpoint: string, params: Record<string, unknown> = {}) => {
 		if (endpoint === 'admin/hatask/support/show') {
 			const result = structuredClone(initialResponse);
-			if (params.previewRoleId) result.rolePreview = { id: String(params.previewRoleId), name: '追加特典', benefits: SUPPORT_POLICIES.map(policy => ({ key: policy.key, snapshot: policy.key === 'driveCapacityMb' ? snapshot(params.previewRoleId === 'role-standard' ? 5120 : 10240) : snapshot(true) })) };
+			if (params.previewRoleId) result.rolePreview = { id: String(params.previewRoleId), name: '追加特典', benefits: SUPPORT_POLICIES.map(policy => ({ key: policy.key, snapshot: policy.key === 'driveCapacityMb' ? snapshot(params.previewRoleId === 'role-standard' ? 5120 : 10240) : policy.key === 'favoriteFolderLimit' ? snapshot(5) : snapshot(true) })) };
 			return result;
 		}
 		if (endpoint === 'admin/hatask/support/supporters') return { users: serverUsers, total: serverUsers.length, hasMore: false };
@@ -159,11 +159,11 @@ afterEach(() => {
 });
 
 describe('コンパネのHatask支援管理', () => {
-	test('初期OFF・未設定でも14項目を非公開の編集行として用意し、実際の標準値を読み取り専用で表示する', async () => {
+	test('初期OFF・未設定でも16項目を非公開の編集行として用意し、実際の標準値を読み取り専用で表示する', async () => {
 		initialResponse.settings.benefits = [];
 		const { container } = await mount();
 		expect(find<HTMLInputElement>(container, '[data-support-field="enabled"] input').checked).toBe(false);
-		expect(container.querySelectorAll('[data-support-benefit]')).toHaveLength(14);
+		expect(container.querySelectorAll('[data-support-benefit]')).toHaveLength(16);
 		for (const element of container.querySelectorAll<HTMLInputElement>('[data-benefit-field="visible"] input')) expect(element.checked).toBe(false);
 		for (const element of container.querySelectorAll<HTMLSelectElement>('[data-benefit-field="roleId"] select')) expect(element.value).toBe('');
 		expect(find<HTMLElement>(container, '[data-baseline-preview="driveCapacityMb"]').textContent).toBe('879 MB');
@@ -171,6 +171,45 @@ describe('コンパネのHatask支援管理', () => {
 		expect(container.querySelector('[data-baseline-preview] input')).toBeNull();
 		expect(find<HTMLButtonElement>(container, '[data-save-support]').disabled).toBe(true);
 		expect(callsTo('admin/hatask/support/update')).toHaveLength(0);
+	});
+
+	test('旧設定にお気に入り特典を非公開で補完し、参照ロールのプレビューと保存でも既存設定・利用権限を保つ', async () => {
+		const favoriteKeys = ['favoriteFolderLimit', 'canCreateFavoriteSubfolders'];
+		initialResponse.settings.benefits = initialResponse.settings.benefits.filter(benefit => !favoriteKeys.includes(benefit.key)).reverse();
+		Object.assign(initialResponse.settings.benefits[0], { title: '運営が設定した特典名', description: '既存の説明文', visible: false, showBaseline: false });
+		const existingBenefits = structuredClone(initialResponse.settings.benefits);
+		const { container } = await mount();
+		for (const key of favoriteKeys) {
+			const row = find<HTMLElement>(container, `[data-support-benefit="${key}"]`);
+			expect(find<HTMLInputElement>(row, '[data-benefit-field="visible"] input').checked).toBe(false);
+			expect(find<HTMLSelectElement>(row, '[data-benefit-field="roleId"] select').value).toBe('');
+		}
+		expect(find<HTMLElement>(container, '[data-baseline-preview="favoriteFolderLimit"]').textContent).toBe('2 個');
+		expect(find<HTMLElement>(container, '[data-baseline-preview="canCreateFavoriteSubfolders"]').textContent).toBe('作成できません');
+		expect(find<HTMLButtonElement>(container, '[data-save-support]').disabled).toBe(true);
+		expect(callsTo('admin/hatask/support/update')).toHaveLength(0);
+
+		await chooseRole(container, 'favoriteFolderLimit', 'role-extra');
+		await chooseRole(container, 'canCreateFavoriteSubfolders', 'role-extra');
+		expect(find<HTMLElement>(container, '[data-offered-preview="favoriteFolderLimit"]').textContent).toBe('5 個');
+		expect(find<HTMLElement>(container, '[data-offered-preview="canCreateFavoriteSubfolders"]').textContent).toBe('作成できます');
+		expect(callsTo('admin/hatask/support/show').filter(call => call[1].previewRoleId === 'role-extra')).toHaveLength(1);
+		expect(callsTo('admin/hatask/support/update')).toHaveLength(0);
+		for (const key of favoriteKeys) {
+			const visible = find<HTMLInputElement>(container, `[data-support-benefit="${key}"] [data-benefit-field="visible"] input`);
+			visible.checked = true;
+			visible.dispatchEvent(new Event('change', { bubbles: true }));
+		}
+		await settle();
+		find<HTMLButtonElement>(container, '[data-save-support]').click();
+		await settle();
+		const saved = callsTo('admin/hatask/support/update')[0][1].settings as ReturnType<typeof settingsFixture>;
+		expect(saved.benefits.filter(benefit => !favoriteKeys.includes(benefit.key))).toEqual(existingBenefits);
+		expect(saved.benefits.slice(-2)).toEqual(SUPPORT_POLICIES.filter(policy => favoriteKeys.includes(policy.key)).map(policy => ({
+			key: policy.key, title: policy.name, description: policy.description, roleId: 'role-extra', visible: true, showBaseline: true,
+		})));
+		expect({ ...saved, benefits: existingBenefits }).toEqual(initialResponse.settings);
+		expect(new Set(api.mock.calls.map(call => call[0]))).toEqual(new Set(['admin/hatask/support/show', 'admin/hatask/support/supporters', 'admin/hatask/support/update']));
 	});
 
 	test('OFFへの変更は保存時だけ送信し、特典の設定・支援者の登録を消さない', async () => {
@@ -398,7 +437,7 @@ describe('コンパネのHatask支援管理', () => {
 		expect(container.querySelector('[data-preview-title] img')).toBeNull();
 		expect(find<HTMLElement>(container, '[data-preview-message]').textContent).toBe('みなさんのご支援が、\nこの場所を支えています');
 		expect(find<HTMLElement>(container, '[data-preview-enabled]').textContent).toBe('有効');
-		expect(find<HTMLElement>(container, '[data-preview-benefits]').textContent).toBe('14件');
+		expect(find<HTMLElement>(container, '[data-preview-benefits]').textContent).toBe('16件');
 		expect(find<HTMLElement>(container, '[data-preview-supporters]').textContent).toBe('2人');
 		expect(find<HTMLAnchorElement>(container, '[data-open-saved-support]').getAttribute('href')).toBe('/hatask?tab=support');
 		expect(callsTo('admin/hatask/support/update')).toHaveLength(0);
@@ -445,6 +484,6 @@ describe('コンパネのHatask支援管理', () => {
 		expect(guardedNav(nav)).toBe(true);
 		expect(guardedNav(nav.replace('}, ...(iAmAdmin ? [{\n\t\ticon: \'ti ti-heart-handshake\'', '}, ...(true ? [{\n\t\ticon: \'ti ti-heart-handshake\''))).toBe(false);
 		expect(guardedRoute(route)).toBe(true);
-		expect(guardedRoute(route.replace("component: iAmAdmin ? page(() => import('@/pages/admin/support.vue'))", "component: true ? page(() => import('@/pages/admin/support.vue'))"))).toBe(false);
+		expect(guardedRoute(route.replace('component: iAmAdmin ? page(() => import(\'@/pages/admin/support.vue\'))', 'component: true ? page(() => import(\'@/pages/admin/support.vue\'))'))).toBe(false);
 	});
 });

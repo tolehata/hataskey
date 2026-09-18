@@ -22,6 +22,11 @@ export const packedNoteFavoriteSchema = {
 			optional: false, nullable: false,
 			ref: 'Note',
 		},
+		folderId: {
+			type: 'string',
+			optional: false, nullable: true,
+			format: 'id',
+		},
 		noteId: {
 			type: 'string',
 			optional: false, nullable: false,

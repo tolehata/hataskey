@@ -30,8 +30,8 @@ function response(isSupporter = false) {
 		settings: { platform: '支援サイト', url: 'https://support.example.test/', manageUrl: 'https://support.example.test/manage', intro: 'サーバーの運営を、支援というかたちで応援できます。\n支援先と特典をご確認のうえ、無理のない範囲でご検討ください', bannerTitle: 'ご支援ありがとうございます！', bannerMessage: 'みなさんのご支援が、\nサーバーの運営を支えています。\nいつもこの場所を大切にしてくださり、\nありがとうございます', bannerVisible: true },
 		benefits: SUPPORT_POLICIES.map(policy => {
 			const parentUnavailable = ['mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters'].includes(policy.key);
-			const baseline = snapshot(policy.type === 'boolean' ? policy.key === 'canUseHatacordingUi' : 100, parentUnavailable ? { available: false, condition: 'mascotUnavailable' } : {});
-			const offered = snapshot(policy.type === 'boolean' ? policy.key !== 'canBypassHatacordingUiRateLimit' : policy.key === 'driveCapacityMb' ? 5120 : 1000);
+			const baseline = snapshot(policy.type === 'boolean' ? policy.key === 'canUseHatacordingUi' : policy.key === 'favoriteFolderLimit' ? 2 : 100, parentUnavailable ? { available: false, condition: 'mascotUnavailable' } : {});
+			const offered = snapshot(policy.type === 'boolean' ? policy.key !== 'canBypassHatacordingUiRateLimit' : policy.key === 'driveCapacityMb' ? 5120 : policy.key === 'favoriteFolderLimit' ? 5 : 1000);
 			return { key: policy.key, title: policy.name as string, description: policy.description as string, showBaseline: true, baseline: baseline as SupportSnapshot | null, offered: offered as SupportSnapshot | null, current: isSupporter ? offered : baseline, reflected: isSupporter };
 		}),
 	};
@@ -104,7 +104,7 @@ describe('Hatask support view', () => {
 		await flush();
 		expect(container.querySelector('[data-hatask-support]')?.getAttribute('data-theme')).toBe(props.theme);
 		expect(container.querySelector('[data-hatask-support]')?.getAttribute('data-mode')).toBe(props.mode);
-		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(14);
+		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(16);
 		expect(container.querySelectorAll('[data-avatar]')).toHaveLength(2);
 		expect(container.querySelector('[data-user-name]')?.textContent).toBe('実ユーザー one');
 		expect(container.querySelector('[data-section="supporters"] a')?.getAttribute('href')).toBe('/@one');
@@ -121,6 +121,7 @@ describe('Hatask support view', () => {
 		await flush();
 		for (const [key, parts] of [
 			['canMakePrivateChannel', ['プライベート', 'チャンネル']], ['avatarDecorationLimit', ['アバター', 'デコレーション']],
+			['favoriteFolderLimit', ['お気に入り', 'フォルダ']], ['canCreateFavoriteSubfolders', ['お気に入りの', '子フォルダ']],
 			['mascotMaxPhrases', ['マスコットの', '最大文言数']], ['mascotMaxCharacters', ['マスコットの', '最大キャラクター数']],
 		] as const) expect([...card(container, key).querySelectorAll('h4 > span > span')].map(item => item.textContent)).toEqual(parts);
 		expect(container.querySelector('[data-section="thanks-banner"] p')?.textContent).toBe(response().settings.bannerMessage);
@@ -134,6 +135,14 @@ describe('Hatask support view', () => {
 		expect(drive.querySelector('[data-baseline-value]')?.textContent).toBe('100 MB');
 		expect(drive.querySelector('[data-offered-value]')?.textContent).toBe('5 GB');
 		expect(drive.textContent).toContain('支援なしでも利用できます');
+		const favoriteFolders = card(container, 'favoriteFolderLimit');
+		expect(favoriteFolders.getAttribute('data-value-source')).toBe('baseline');
+		expect(favoriteFolders.querySelector('[data-baseline-value]')?.textContent).toBe('2 個');
+		expect(favoriteFolders.querySelector('[data-offered-value]')?.textContent).toBe('5 個');
+		const favoriteSubfolders = card(container, 'canCreateFavoriteSubfolders');
+		expect(favoriteSubfolders.getAttribute('data-value-source')).toBe('offered');
+		expect(favoriteSubfolders.querySelector('[data-baseline-value]')?.textContent).toBe('作成できません');
+		expect(favoriteSubfolders.querySelector('[style*="--value-em"]')?.textContent).toBe('作成できます');
 		for (const key of ['mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters', 'canBypassHatacordingUiRateLimit']) expect(card(container, key).getAttribute('data-value-source')).toBe('offered');
 		expect(card(container, 'mascotMaxPhrases').textContent).toContain('マスコット機能は利用できません');
 	});
@@ -342,7 +351,7 @@ describe('Hatask support view', () => {
 		expect(container.querySelector('[data-section="unconfigured-support"]')).toBeNull();
 		button(container, '再試行').click();
 		await flush();
-		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(14);
+		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(16);
 	});
 	test('unmount cancels stale data adoption and disconnects layout observation', async () => {
 		let resolveRequest!: (value: ReturnType<typeof response>) => void;

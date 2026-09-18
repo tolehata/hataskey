@@ -22,6 +22,11 @@ export const paramDef = {
 	properties: {
 		policies: {
 			type: 'object',
+			properties: {
+				favoriteFolderLimit: { type: 'integer', minimum: 0, maximum: 5 },
+				canCreateFavoriteSubfolders: { type: 'boolean' },
+			},
+			additionalProperties: true,
 		},
 	},
 	required: [

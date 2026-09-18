@@ -29,6 +29,7 @@ import { getPluginHandlers } from '@/plugin.js';
 import { globalEvents } from '@/events.js';
 import { addDividersBetweenMenuSections } from '@/utility/add-dividers-between-menu-sections.js';
 import { popup } from '@/os.js';
+import { openFavoriteFolderPicker, removeFavoriteNote } from '@/utility/favorite-folders.js';
 
 export async function getNoteClipMenu(props: {
 	note: Misskey.entities.Note;
@@ -283,10 +284,8 @@ export function getNoteMenu(props: {
 	}
 
 	function toggleFavorite(favorite: boolean): void {
-		claimAchievement('noteFavorited1');
-		os.apiWithDialog(favorite ? 'notes/favorites/create' : 'notes/favorites/delete', {
-			noteId: appearNote.id,
-		});
+		if (favorite) void openFavoriteFolderPicker(appearNote.id, { mode: 'create' });
+		else void removeFavoriteNote(appearNote.id);
 	}
 
 	function toggleThreadMute(mute: boolean): void {
@@ -445,9 +444,19 @@ export function getNoteMenu(props: {
 		menuItems.push({ type: 'divider' });
 
 		menuItems.push(statePromise.then(state => state.isFavorited ? {
-			icon: 'ti ti-star-off',
-			text: i18n.ts.unfavorite,
-			action: () => toggleFavorite(false),
+			type: 'parent' as const,
+			icon: 'ti ti-star',
+			text: i18n.ts.favorite,
+			children: [{
+				icon: 'ti ti-folder',
+				text: i18n.ts._hata._favoriteFolders.moveNote,
+				action: () => { void openFavoriteFolderPicker(appearNote.id, { mode: 'move', folderId: state.favoriteFolderId ?? null }); },
+			}, {
+				icon: 'ti ti-star-off',
+				text: i18n.ts.unfavorite,
+				danger: true,
+				action: () => toggleFavorite(false),
+			}],
 		} : {
 			icon: 'ti ti-star',
 			text: i18n.ts.favorite,

@@ -953,6 +953,47 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
+			<MkFolder v-if="role.policies.favoriteFolderLimit && matchQuery([roleCopy.favoriteFolderLimitName, 'favoriteFolderLimit'])">
+				<template #label>{{ roleCopy.favoriteFolderLimitName }}</template>
+				<template #suffix>
+					<span v-if="role.policies.favoriteFolderLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.favoriteFolderLimit.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.favoriteFolderLimit)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.favoriteFolderLimit.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkInput v-model="role.policies.favoriteFolderLimit.value" :disabled="role.policies.favoriteFolderLimit.useDefault" type="number" :min="0" :max="5" :step="1" :readonly="readonly">
+						<template #caption>{{ roleCopy.favoriteFolderLimitCaption }}</template>
+					</MkInput>
+					<MkRange v-model="role.policies.favoriteFolderLimit.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<MkFolder v-if="role.policies.canCreateFavoriteSubfolders && matchQuery([roleCopy.favoriteSubfoldersName, 'canCreateFavoriteSubfolders'])">
+				<template #label>{{ roleCopy.favoriteSubfoldersName }}</template>
+				<template #suffix>
+					<span v-if="role.policies.canCreateFavoriteSubfolders.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.canCreateFavoriteSubfolders.value ? i18n.ts.yes : i18n.ts.no }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.canCreateFavoriteSubfolders)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.canCreateFavoriteSubfolders.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkSwitch v-model="role.policies.canCreateFavoriteSubfolders.value" :disabled="role.policies.canCreateFavoriteSubfolders.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts.enable }}</template>
+						<template #caption>{{ roleCopy.favoriteSubfoldersCaption }}</template>
+					</MkSwitch>
+					<MkRange v-model="role.policies.canCreateFavoriteSubfolders.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
 			<MkFolder v-if="matchQuery([i18n.ts._role._options.clipMax, 'clipLimit'])">
 				<template #label>{{ i18n.ts._role._options.clipMax }}</template>
 				<template #suffix>
@@ -1298,6 +1339,8 @@ for (const ROLE_POLICY of Misskey.rolePolicies) {
 // 旗鯖fork: SDK(cherrypick-js)の rolePolicies 一覧へ未反映でも、fork独自ポリシーを確実に補完する。
 //   (SDK未再ビルドでも設定項目が出るようにするための保険。value は instance.policies 優先・無ければ既定値)
 const HATA_FORK_POLICY_DEFAULTS: Record<string, boolean | number> = {
+	favoriteFolderLimit: 2,
+	canCreateFavoriteSubfolders: false,
 	canAccessHataFeed: false,
 	canUseHatalyze: false,
 	canUseHatacordingUi: true,

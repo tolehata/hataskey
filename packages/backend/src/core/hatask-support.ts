@@ -8,6 +8,7 @@ import type { MiRole } from '@/models/Role.js';
 
 export const HATASK_SUPPORT_POLICY_KEYS = [
 	'driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'avatarDecorationLimit',
+	'favoriteFolderLimit', 'canCreateFavoriteSubfolders',
 	'hatadyBookLimit', 'canUseHatadySync', 'canUseMascot', 'mascotMaxExpressions', 'mascotMaxPhrases',
 	'mascotMaxCharacters', 'canUseHatacordingUi', 'hatacordingUiRateLimit', 'canBypassHatacordingUiRateLimit', 'rateLimitFactor',
 ] as const satisfies readonly (keyof RolePolicies)[];
@@ -88,12 +89,14 @@ export function supportReflected(key: HataskSupportPolicyKey, current: HataskSup
 }
 
 /** Single-role preview follows useDefault, then the same quota normalizer as RoleService. */
-export function supportRolePolicies(base: RolePolicies, role: Pick<MiRole, 'policies'>, normalizeHourly: (values: readonly unknown[]) => number): RolePolicies {
+export function supportRolePolicies(base: RolePolicies, role: Pick<MiRole, 'policies'>, normalizeHourly: (values: readonly unknown[]) => number, normalizeFavoriteFolders: (values: readonly unknown[]) => number): RolePolicies {
 	const result = { ...base };
 	for (const key of HATASK_SUPPORT_POLICY_KEYS) {
 		const setting = role.policies[key];
 		if (setting && !setting.useDefault) Object.assign(result, { [key]: setting.value });
 	}
 	result.hatacordingUiRateLimit = normalizeHourly([result.hatacordingUiRateLimit]);
+	result.favoriteFolderLimit = normalizeFavoriteFolders([result.favoriteFolderLimit]);
+	result.canCreateFavoriteSubfolders = result.canCreateFavoriteSubfolders === true;
 	return result;
 }

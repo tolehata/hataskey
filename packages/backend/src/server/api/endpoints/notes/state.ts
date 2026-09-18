@@ -22,6 +22,11 @@ export const meta = {
 				type: 'boolean',
 				optional: false, nullable: false,
 			},
+			favoriteFolderId: {
+				type: 'string',
+				optional: true, nullable: true,
+				format: 'id',
+			},
 			isMutedThread: {
 				type: 'boolean',
 				optional: false, nullable: false,
@@ -54,16 +59,16 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		@Inject(DI.noteFavoritesRepository)
 		private noteFavoritesRepository: NoteFavoritesRepository,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, me, token) => {
 			const note = await this.notesRepository.findOneByOrFail({ id: ps.noteId });
 
 			const [favorite, threadMuting, renoted] = await Promise.all([
-				this.noteFavoritesRepository.count({
+				this.noteFavoritesRepository.findOne({
 					where: {
 						userId: me.id,
 						noteId: note.id,
 					},
-					take: 1,
+					select: { id: true, folderId: true },
 				}),
 				this.noteThreadMutingsRepository.count({
 					where: {
@@ -82,7 +87,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			]);
 
 			return {
-				isFavorited: favorite !== 0,
+				isFavorited: favorite !== null,
+				...(favorite && (token === null || token.permission.includes('read:favorites')) ? { favoriteFolderId: favorite.folderId ?? null } : {}),
 				isMutedThread: threadMuting !== 0,
 				isRenoted: renoted !== 0,
 			};

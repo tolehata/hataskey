@@ -7,7 +7,7 @@ import { describe, expect, test } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 import { IsNull } from 'typeorm';
 import { HataskSupportService } from '@/core/HataskSupportService.js';
-import { DEFAULT_POLICIES, normalizeHatacordingUiRateLimit } from '@/core/RoleService.js';
+import { DEFAULT_POLICIES, normalizeFavoriteFolderLimit, normalizeHatacordingUiRateLimit } from '@/core/RoleService.js';
 import { defaultHataskSupportSettings, HATASK_SUPPORT_POLICY_KEYS, safeSupportUrl, supportReflected, supportRolePolicies, supportSnapshot } from '@/core/hatask-support.js';
 import SupportShow, { meta as publicMeta } from '@/server/api/endpoints/hatask/support/show.js';
 import Supporters, { meta as supportersMeta } from '@/server/api/endpoints/hatask/support/supporters.js';
@@ -78,7 +78,7 @@ describe('Hatask支援管理の権限境界と保持', () => {
 		expect(await ctx.service.show(me)).toEqual({ configured: false, settings: null, isSupporter: false, benefits: [], supporterCount: 0 });
 		expect(await ctx.service.supporters(me, 0, 30)).toEqual({ users: [], total: 0, hasMore: false });
 		expect(ctx.users.createQueryBuilder).not.toHaveBeenCalled();
-		expect((await ctx.service.adminShow()).settings.benefits).toHaveLength(14);
+		expect((await ctx.service.adminShow()).settings.benefits).toHaveLength(16);
 		await ctx.service.update(settings);
 		expect((await ctx.service.show(me)).configured).toBe(true);
 		await ctx.service.update({ ...settings, url: '' });
@@ -93,7 +93,7 @@ describe('Hatask支援管理の権限境界と保持', () => {
 		const ctx = setup(settings);
 		ctx.roles.findBy.mockResolvedValue([{ id: 'secretrole', name: 'SECRET NAME', policies: { canMakePrivateChannel: { value: true, useDefault: false, priority: 2 }, canManageCustomEmojis: { value: true } } } as unknown as MiRole]);
 		const result = await ctx.service.show(me);
-		expect(result.benefits).toHaveLength(13);
+		expect(result.benefits).toHaveLength(15);
 		expect(result.benefits.find(b => b.key === 'driveCapacityMb')).toBeUndefined();
 		expect(result.benefits[0]).toMatchObject({ baseline: null, offered: { value: true } });
 		const serialized = JSON.stringify(result);
@@ -180,9 +180,46 @@ describe('Hatask支援管理の権限境界と保持', () => {
 });
 
 describe('支援特典の値と実効権限', () => {
-	test('14項目が実ポリシーに存在する', () => {
-		expect(HATASK_SUPPORT_POLICY_KEYS).toHaveLength(14);
+	test('16項目が実ポリシーに存在する', () => {
+		expect(HATASK_SUPPORT_POLICY_KEYS).toHaveLength(16);
 		for (const key of HATASK_SUPPORT_POLICY_KEYS) expect(DEFAULT_POLICIES).toHaveProperty(key);
+	});
+
+	test('お気に入り特典を既存設定と保存し、ロールの上限と子フォルダ権限を比較する', async () => {
+		const settings = configured();
+		const ctx = setup({ ...settings, benefits: settings.benefits.filter(benefit => !['favoriteFolderLimit', 'canCreateFavoriteSubfolders'].includes(benefit.key)) });
+		const role = { id: 'secretrole', name: '支援', policies: { favoriteFolderLimit: { value: 99, useDefault: false }, canCreateFavoriteSubfolders: { value: true, useDefault: false } } } as unknown as MiRole;
+		ctx.roles.find.mockResolvedValue([role]); ctx.roles.findBy.mockResolvedValue([role]);
+		const adminBeforeSave = await ctx.service.adminShow('secretrole');
+		expect(adminBeforeSave.benefits.find(benefit => benefit.key === 'favoriteFolderLimit')?.baseline.value).toBe(2);
+		expect(adminBeforeSave.benefits.find(benefit => benefit.key === 'canCreateFavoriteSubfolders')?.baseline.value).toBe(false);
+		expect(adminBeforeSave.rolePreview?.benefits.find(benefit => benefit.key === 'favoriteFolderLimit')?.snapshot.value).toBe(5);
+		expect(adminBeforeSave.rolePreview?.benefits.find(benefit => benefit.key === 'canCreateFavoriteSubfolders')?.snapshot.value).toBe(true);
+		// Use the actual endpoint validator so unsupported benefit keys cannot silently pass a mock.
+		await expect(new AdminUpdate(ctx.service).exec({ settings: { ...settings, benefits: [{ ...settings.benefits[0], key: 'canManageCustomEmojis' }] } }, me, null, null)).rejects.toMatchObject({ code: 'INVALID_PARAM' });
+		await new AdminUpdate(ctx.service).exec({ settings }, me, null, null);
+		expect(ctx.meta.update).toHaveBeenCalledWith({ hataskSupport: settings });
+		const response = await ctx.service.show(me);
+		expect(response.benefits.find(benefit => benefit.key === 'favoriteFolderLimit')).toMatchObject({ baseline: { value: 2 }, offered: { value: 5 }, current: { value: 2 }, reflected: false });
+		expect(response.benefits.find(benefit => benefit.key === 'canCreateFavoriteSubfolders')).toMatchObject({ baseline: { value: false }, offered: { value: true }, current: { value: false }, reflected: false });
+		ctx.policyService.getUserPolicies.mockImplementation(async id => ({ ...DEFAULT_POLICIES, favoriteFolderLimit: id ? 5 : 2, canCreateFavoriteSubfolders: !!id }));
+		const supported = await ctx.service.show(me);
+		for (const key of ['favoriteFolderLimit', 'canCreateFavoriteSubfolders']) expect(supported.benefits.find(benefit => benefit.key === key)?.reflected).toBe(true);
+		expect(JSON.stringify(supported)).not.toContain('secretrole');
+		expect(ctx.roles.update).not.toHaveBeenCalled();
+		expect(ctx.users.update).not.toHaveBeenCalled();
+		expect(ctx.policyService.assign).not.toHaveBeenCalled();
+	});
+
+	test('お気に入りの参照値にもロールと同じ整数上限・既定値の継承を適用する', () => {
+		for (const [raw, expected] of [[99, 5], [-1, 0], [2.9, 2], [NaN, 2], ['5', 2]] as const) {
+			const role = { policies: { favoriteFolderLimit: { value: raw, useDefault: false }, canCreateFavoriteSubfolders: { value: 'true', useDefault: false } } } as unknown as MiRole;
+			const value = supportRolePolicies(DEFAULT_POLICIES, role, normalizeHatacordingUiRateLimit, normalizeFavoriteFolderLimit);
+			expect(value.favoriteFolderLimit).toBe(expected);
+			expect(value.canCreateFavoriteSubfolders).toBe(false);
+		}
+		const role = { policies: { favoriteFolderLimit: { value: 5, useDefault: true }, canCreateFavoriteSubfolders: { value: true, useDefault: true } } } as unknown as MiRole;
+		expect(supportRolePolicies(DEFAULT_POLICIES, role, normalizeHatacordingUiRateLimit, normalizeFavoriteFolderLimit)).toMatchObject({ favoriteFolderLimit: 2, canCreateFavoriteSubfolders: false });
 	});
 
 	test('マスコット上限は親機能無効なら利用可能に見せない、0は無制限にしない', () => {
@@ -217,7 +254,7 @@ describe('支援特典の値と実効権限', () => {
 
 	test('参照ロール計算でuseDefaultと既存quota正規化を使う', () => {
 		const role = { policies: { hatacordingUiRateLimit: { value: 0, useDefault: false }, driveCapacityMb: { value: 9999, useDefault: true } } } as unknown as MiRole;
-		const policies = supportRolePolicies({ ...DEFAULT_POLICIES, driveCapacityMb: 300 }, role, normalizeHatacordingUiRateLimit);
+		const policies = supportRolePolicies({ ...DEFAULT_POLICIES, driveCapacityMb: 300 }, role, normalizeHatacordingUiRateLimit, normalizeFavoriteFolderLimit);
 		expect(policies.hatacordingUiRateLimit).toBe(1);
 		expect(policies.driveCapacityMb).toBe(300);
 	});

@@ -395,6 +395,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkInput>
 					</MkFolder>
 
+					<MkFolder v-if="matchQuery([roleCopy.favoriteFolderLimitName, 'favoriteFolderLimit'])">
+						<template #label>{{ roleCopy.favoriteFolderLimitName }}</template>
+						<template #suffix>{{ policies.favoriteFolderLimit }}</template>
+						<MkInput v-model="policies.favoriteFolderLimit" type="number" :min="0" :max="5" :step="1">
+							<template #caption>{{ roleCopy.favoriteFolderLimitCaption }}</template>
+						</MkInput>
+					</MkFolder>
+
+					<MkFolder v-if="matchQuery([roleCopy.favoriteSubfoldersName, 'canCreateFavoriteSubfolders'])">
+						<template #label>{{ roleCopy.favoriteSubfoldersName }}</template>
+						<template #suffix>{{ policies.canCreateFavoriteSubfolders ? i18n.ts.yes : i18n.ts.no }}</template>
+						<MkSwitch v-model="policies.canCreateFavoriteSubfolders">
+							<template #label>{{ i18n.ts.enable }}</template>
+							<template #caption>{{ roleCopy.favoriteSubfoldersCaption }}</template>
+						</MkSwitch>
+					</MkFolder>
+
 					<MkFolder v-if="matchQuery([i18n.ts._role._options.clipMax, 'clipLimit'])">
 						<template #label>{{ i18n.ts._role._options.clipMax }}</template>
 						<template #suffix>{{ policies.clipLimit }}</template>
@@ -558,6 +575,8 @@ const roles = await misskeyApi('admin/roles/list');
 
 const policies = reactive({
 	...deepClone(instance.policies),
+	favoriteFolderLimit: instance.policies.favoriteFolderLimit ?? 2,
+	canCreateFavoriteSubfolders: instance.policies.canCreateFavoriteSubfolders ?? false,
 	// cherrypick-js の生成物を更新する前の開発コンテナでも、既定値を保って管理画面を表示する。
 	canBypassHatacordingUiRateLimit: (instance.policies as { canBypassHatacordingUiRateLimit?: boolean }).canBypassHatacordingUiRateLimit ?? false,
 });
@@ -582,7 +601,6 @@ async function updateBaseRole() {
 	policies.hatacordingUiSubpaneMaxTabs = Math.max(1, Math.min(5, Number(policies.hatacordingUiSubpaneMaxTabs) || 3));
 	policies.hatacordingUiRateLimit = Math.max(1, Math.min(1000, Math.floor(Number(policies.hatacordingUiRateLimit) || 500)));
 	await os.apiWithDialog('admin/roles/update-default-policies', {
-		//@ts-expect-error cherrypick-js側の型定義が不十分
 		policies,
 	});
 	fetchInstance(true);

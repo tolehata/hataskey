@@ -342,6 +342,14 @@ export const packedRolePoliciesSchema = {
 			type: 'integer',
 			optional: false, nullable: false,
 		},
+		favoriteFolderLimit: {
+			type: 'integer',
+			optional: false, nullable: false,
+		},
+		canCreateFavoriteSubfolders: {
+			type: 'boolean',
+			optional: false, nullable: false,
+		},
 		noteEachClipsLimit: {
 			type: 'integer',
 			optional: false, nullable: false,

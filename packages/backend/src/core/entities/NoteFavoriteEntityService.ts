@@ -35,6 +35,7 @@ export class NoteFavoriteEntityService {
 			id: favorite.id,
 			createdAt: this.idService.parse(favorite.id).date.toISOString(),
 			noteId: favorite.noteId,
+			folderId: favorite.folderId ?? null,
 			note: await this.noteEntityService.pack(favorite.note ?? favorite.noteId, me),
 		};
 	}

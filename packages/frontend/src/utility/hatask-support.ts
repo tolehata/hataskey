@@ -10,6 +10,8 @@ export const SUPPORT_POLICIES = [
 	{ key: 'driveCapacityMb', name: 'ドライブ容量', icon: 'cloud', type: 'capacity', description: '画像や動画、ファイルを保存できる容量が増えます' },
 	{ key: 'canMakePrivateChannel', name: 'プライベートチャンネル', icon: 'lock', type: 'boolean', enabledLabel: '作成できます', disabledLabel: '作成できません', description: '参加者を限定したチャンネルを作成できます' },
 	{ key: 'hataSideStudioProfileLimit', name: 'HataSideStudio', icon: 'layout-sidebar-left-expand', type: 'count', unit: '件', description: '保存できるサイドメニューのレイアウトが増えます' },
+	{ key: 'favoriteFolderLimit', name: 'お気に入りフォルダ', icon: 'folders', type: 'count', unit: '個', description: 'お気に入りを整理できるフォルダ数が増えます。\n親フォルダと子フォルダを合わせた上限です' },
+	{ key: 'canCreateFavoriteSubfolders', name: 'お気に入りの子フォルダ', icon: 'folder-plus', type: 'boolean', enabledLabel: '作成できます', disabledLabel: '作成できません', description: 'お気に入りフォルダの中に子フォルダを作成できます。\n親・子の最大2階層まで整理できます' },
 	{ key: 'avatarDecorationLimit', name: 'アバターデコレーション', icon: 'sparkles', type: 'count', unit: '個', description: 'アバターに同時に付けられる飾りが増えます' },
 	{ key: 'hatadyBookLimit', name: 'Hatadyの本棚', icon: 'books', type: 'count', unit: '冊', description: '本棚に登録できる本の上限が増えます' },
 	{ key: 'canUseHatadySync', name: 'Hatadyの端末間データ同期', icon: 'devices', type: 'boolean', enabledLabel: '同期できます', disabledLabel: '同期できません', description: 'Hatadyの表示設定などを、\n同じアカウントの端末間で共有できます' },
@@ -63,6 +65,8 @@ export function supportSnapshotCondition(snapshot: SupportSnapshot | null | unde
 export function supportBenefitHeading(key: string, title: string): readonly string[] {
 	const breaks: Partial<Record<SupportPolicyKey, readonly string[]>> = {
 		canMakePrivateChannel: ['プライベート', 'チャンネル'],
+		favoriteFolderLimit: ['お気に入り', 'フォルダ'],
+		canCreateFavoriteSubfolders: ['お気に入りの', '子フォルダ'],
 		avatarDecorationLimit: ['アバター', 'デコレーション'],
 		mascotMaxPhrases: ['マスコットの', '最大文言数'],
 		mascotMaxCharacters: ['マスコットの', '最大キャラクター数'],

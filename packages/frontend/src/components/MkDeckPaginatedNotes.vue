@@ -6,7 +6,8 @@ SPDX-License-Identifier: AGPL-3.0-only
   使えないため、Paginator + MkNote で描画する。favorites は要素が {note}[] なので unwrap する。
 -->
 <template>
-<div :class="$style.root">
+<MkFavoriteFolders v-if="endpoint === 'i/favorites'" ref="favoritesRef" deck/>
+<div v-else :class="$style.root">
 	<div :class="[$style.notes, '_gaps']" :data-deck-ui="'on'">
 		<MkPagination v-if="paginator" :key="paginatorKey" :paginator="paginator">
 			<template #empty>
@@ -26,7 +27,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, markRaw, shallowRef, watch } from 'vue';
+import { computed, markRaw, shallowRef, watch, useTemplateRef } from 'vue';
+import MkFavoriteFolders from '@/components/MkFavoriteFolders.vue';
 import MkPagination from '@/components/MkPagination.vue';
 import MkNote from '@/components/MkNote.vue';
 import { Paginator } from '@/utility/paginator.js';
@@ -36,6 +38,8 @@ const props = defineProps<{
 	endpoint: 'clips/notes' | 'i/favorites';
 	clipId?: string;
 }>();
+
+const favoritesRef = useTemplateRef('favoritesRef');
 
 type DeckPaginator = Paginator<'clips/notes'> | Paginator<'i/favorites'>;
 const paginator = shallowRef<DeckPaginator | null>(null);
@@ -49,9 +53,7 @@ function build() {
 			computedParams: computed(() => ({ clipId: props.clipId! })),
 		}));
 	} else {
-		paginator.value = markRaw(new Paginator('i/favorites', {
-			limit: 20,
-		}));
+		paginator.value = null;
 	}
 	paginatorKey.value++;
 }
@@ -66,10 +68,17 @@ function unwrap(item: any) {
 // 旗鯖fork: hatasaba-deck.vue の三点メニュー / カラムヘッダのリロードボタンから呼ばれる。
 //   paginator を作り直して初期ページを再取得する (build() が paginatorKey を increment し
 //   MkPagination の :key に反映されるので、内部状態も含めて全リセットされる)。
-function reload() {
-	build();
+async function reload(): Promise<void> {
+	if (props.endpoint === 'i/favorites') {
+		await favoritesRef.value?.reload();
+	} else {
+		build();
+	}
 }
-defineExpose({ reload });
+
+function manageFolder(anchor?: EventTarget | null) { favoritesRef.value?.manageFolder(anchor); }
+
+defineExpose({ reload, manageFolder });
 </script>
 
 <style lang="scss" module>

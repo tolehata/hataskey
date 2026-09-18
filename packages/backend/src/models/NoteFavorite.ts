@@ -7,6 +7,7 @@ import { PrimaryColumn, Entity, Index, JoinColumn, Column, ManyToOne } from 'typ
 import { id } from './util/id.js';
 import { MiNote } from './Note.js';
 import { MiUser } from './User.js';
+import { MiNoteFavoriteFolder } from './NoteFavoriteFolder.js';
 
 @Entity('note_favorite')
 @Index(['userId', 'noteId'], { unique: true })
@@ -33,4 +34,13 @@ export class MiNoteFavorite {
 	})
 	@JoinColumn()
 	public note: MiNote | null;
+
+	@Index()
+	@Column({ ...id(), nullable: true })
+	public folderId: MiNoteFavoriteFolder['id'] | null;
+
+	// Folder deletion must never remove a favorite or change its saved ID/date.
+	@ManyToOne(type => MiNoteFavoriteFolder, { onDelete: 'SET NULL' })
+	@JoinColumn()
+	public folder: MiNoteFavoriteFolder | null;
 }

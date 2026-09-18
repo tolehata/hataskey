@@ -10,12 +10,14 @@ const snapshot = (value: SupportSnapshot['value'], extra: Partial<SupportSnapsho
 
 describe('Hatask support display projections', () => {
 	test('metadata covers every approved benefit without storing production limits', () => {
-		expect(SUPPORT_POLICIES.map(item => item.key)).toEqual(['driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'avatarDecorationLimit', 'hatadyBookLimit', 'canUseHatadySync', 'canUseMascot', 'mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters', 'canUseHatacordingUi', 'hatacordingUiRateLimit', 'canBypassHatacordingUiRateLimit', 'rateLimitFactor']);
+		expect(SUPPORT_POLICIES.map(item => item.key)).toEqual(['driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'favoriteFolderLimit', 'canCreateFavoriteSubfolders', 'avatarDecorationLimit', 'hatadyBookLimit', 'canUseHatadySync', 'canUseMascot', 'mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters', 'canUseHatacordingUi', 'hatacordingUiRateLimit', 'canBypassHatacordingUiRateLimit', 'rateLimitFactor']);
 		expect(SUPPORT_POLICIES.every(item => !('value' in item) && !('roleId' in item))).toBe(true);
 	});
 	test.each([
 		['driveCapacityMb', snapshot(100), '100 MB'], ['driveCapacityMb', snapshot(5120), '5 GB'],
 		['canMakePrivateChannel', snapshot(true), '作成できます'], ['canMakePrivateChannel', snapshot(false), '作成できません'],
+		['favoriteFolderLimit', snapshot(2), '2 個'], ['favoriteFolderLimit', snapshot(5), '5 個'],
+		['canCreateFavoriteSubfolders', snapshot(true), '作成できます'], ['canCreateFavoriteSubfolders', snapshot(false), '作成できません'],
 		['canUseHatadySync', snapshot(true), '同期できます'], ['canUseHatadySync', snapshot(false), '同期できません'],
 		['hatadyBookLimit', snapshot(1000), '1,000 冊'], ['mascotMaxExpressions', snapshot(20), '20 表情 / キャラクター'],
 		['mascotMaxPhrases', snapshot(50), '50 件 / キャラクター'], ['mascotMaxCharacters', snapshot(0), '0 体'],
@@ -43,6 +45,8 @@ describe('Hatask support display projections', () => {
 	});
 	test.each([
 		['canMakePrivateChannel', 'プライベートチャンネル', ['プライベート', 'チャンネル']],
+		['favoriteFolderLimit', 'お気に入りフォルダ', ['お気に入り', 'フォルダ']],
+		['canCreateFavoriteSubfolders', 'お気に入りの子フォルダ', ['お気に入りの', '子フォルダ']],
 		['avatarDecorationLimit', 'アバターデコレーション', ['アバター', 'デコレーション']],
 		['mascotMaxPhrases', 'マスコットの最大文言数', ['マスコットの', '最大文言数']],
 		['mascotMaxCharacters', 'マスコットの最大キャラクター数', ['マスコットの', '最大キャラクター数']],
