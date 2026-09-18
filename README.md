@@ -5,12 +5,12 @@
 ## 概要
 
 - **ベースバージョン**: Misskey 2026.9.0（CherryPick ベース）
-- **最新リリース**: [hata-12.6.3](https://github.com/tolehata/hataskey/releases/tag/hata-12.6.3)
+- **最新バージョン**: [hata-12.7.2](./HATA-CHANGELOG.md#hata-1272)
 - **チェンジログ**: [HATA-CHANGELOG.md](./HATA-CHANGELOG.md)
 
 ## Hataskeyが使用されているインスタンス
 
-- [旗池2丁目](https://misskey.hatachanoima.net/)
+- [はたすきー](https://misskey.hatachanoima.net/)
 
 ## ベースプロジェクト
 
