@@ -65,7 +65,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="$style.collapsedRenoteTargetAvatar" :user="appearNote.user" link preview/>
 		<Mfm :text="getNoteSummary(appearNote)" :plain="true" :nowrap="true" :author="appearNote.user" :nyaize="'respect'" :class="[$style.collapsedRenoteTargetText, { [$style.showReplyTargetNoteInSemiTransparent]: prefer.s.showReplyTargetNoteInSemiTransparent }]" @click="renoteCollapsed ? renoteCollapsed = false : replyCollapsed ? replyCollapsed = false : ''"/>
 	</div>
-	<article v-else :class="$style.article" :data-utage-square="(!utageOutsideFrame && utageState !== 'none' && !utageFrameSuppressed) ? utageState : null" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
+	<article v-else ref="utageArticle" :class="$style.article" :data-utage-square="(!utageOutsideFrame && utageState !== 'none' && !utageFrameSuppressed) ? utageState : null" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
 		<!-- 旗鯖fork: C7 宴チュートリアル (自分の宴ノート初回のみ) -->
 		<MkTip v-if="showUtageTip" k="note.utage" style="margin-bottom: 8px;">
 			{{ utageCopy.tipBefore }}<b style="color: var(--MI_THEME-success);">{{ utageCopy.tipSuccess }}</b>{{ utageCopy.tipMiddle }}<b style="color: var(--MI_THEME-error);">{{ utageCopy.tipFailure }}</b>{{ utageCopy.tipAfter }}
@@ -391,6 +391,7 @@ import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
 import { getAbuseNoteMenu, getCopyNoteLinkMenu, getNoteClipMenu, getNoteMenu, getRenoteMenu, getRenoteOnly, getQuoteMenu } from '@/utility/get-note-menu.js';
 import { noteEvents, useNoteCapture } from '@/composables/use-note-capture.js';
+import { useUtageFailureMotion } from '@/composables/use-utage-failure-motion.js';
 import { deepClone } from '@/utility/clone.js';
 import { useTooltip } from '@/composables/use-tooltip.js';
 import { claimAchievement } from '@/utility/achievements.js';
@@ -545,6 +546,14 @@ const utageState = computed<'none' | 'flashing' | 'failed' | 'success'>(() => {
 		case 'running': return 'flashing';
 		default: return 'none';
 	}
+});
+
+useUtageFailureMotion({
+	root: rootEl,
+	article: useTemplateRef('utageArticle'),
+	state: utageState,
+	animationEnabled: prefer.r.animation,
+	failedText: utageCopy.failed,
 });
 
 onMounted(() => {
