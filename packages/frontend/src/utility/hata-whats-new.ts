@@ -1,171 +1,224 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 // The version remains aligned with package.json; boot records it only on close.
 import type { HataskPlannerTheme } from '@/components/hatask/hatask-planner-types.js';
-export type HataWhatsNewCard = { id: string; label: string; icon: string; title: string; preview?: 'vote-setting' | 'environment' | 'viewport' | 'intro-back' | 'deck'; text?: string[]; points?: string[] };
+export type HataWhatsNewCard = { id: string; label: string; icon: string; title: string; preview?: 'favorites' | 'favorite-deck' | 'record-images' | 'record-search' | 'mood-reminder' | 'timeline' | 'registration' | 'utage'; text?: string[]; points?: string[] };
 export type HataWhatsNewGroup = { label: string; title: string; cards: HataWhatsNewCard[] };
 export type HataWhatsNewStory = { id: string; label: string; title: string; cards: HataWhatsNewCard[] };
 export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = {
-	version: '2026.9.0-hata.12.7.1',
+	version: '2026.9.0-hata.12.7.2',
 	groups: [
 		{
-			'label': '絵文字投票',
-			'title': '投票の表示を、自分のペースで。',
+			'label': 'お気に入り',
+			'title': '残したノートを、好きなフォルダへ。',
 			'cards': [
 				{
-					'id': 'vote-display',
-					'label': '表示の設定',
-					'icon': 'ti ti-adjustments',
-					'title': '絵文字投票の表示を選べます。',
-					'preview': 'vote-setting',
+					'id': 'favorite-folders',
+					'label': 'フォルダで整理',
+					'icon': 'ti ti-folders',
+					'title': '保存先を選んで、色で見分ける。',
 					'points': [
-						'環境設定の「タイムライン」から、LTLの絵文字投票をオン・オフに。',
-						'オフにすると、Hataskey UIとデッキUIで投票の画面や演出を表示しません。',
+						'保存するたびに「未分類」かフォルダを選択。1つのノートを、1つの保存先に整理できます。',
+						'色分けとドラッグ操作で並び替え。子フォルダへの移動や取り出しにも対応しました。',
 					],
+					'preview': 'favorites',
 				},
 				{
-					'id': 'vote-state',
-					'label': '表示と終了',
-					'icon': 'ti ti-mood-smile',
-					'title': '参加から、結果を閉じるまで。',
+					'id': 'favorite-preservation',
+					'label': 'ノートを残す',
+					'icon': 'ti ti-folder-check',
+					'title': 'フォルダを消しても、残ります。',
 					'points': [
-						'Hataskey UIの上部ナビバーで、進行中の投票を確認できるようにしました。',
-						'投票候補と終了時の状態管理を見直し、辞退・結果を閉じたあとの表示を修正しました。',
+						'フォルダを削除すると、中のノートは「未分類」へ。子フォルダの中身も、お気に入りとして残ります。',
+						'これまでのお気に入りも、そのまま利用できます。並び順の保存と、見出しの重複表示も修正しました。',
 					],
 				},
 			],
 		},
 		{
-			'label': 'HataFeed',
-			'title': '状況を伝えて、改善につなげる。',
+			'label': 'お気に入り・支援特典',
+			'title': 'いつもの画面で、整理を続ける。',
 			'cards': [
 				{
-					'id': 'report-environment',
-					'label': '不具合の報告',
-					'icon': 'ti ti-device-mobile',
-					'title': '使っていた環境も、一緒に。',
-					'preview': 'environment',
-					'points': [
-						'イシュー作成に、使用端末・OSとバージョン・ブラウザや開き方の入力欄を追加。',
-						'入力は任意。確認画面と下書きにも引き継がれ、報告の説明にまとめて送られます。',
-					],
-				},
-				{
-					'id': 'roadmap-create',
-					'label': 'スタッフ向け',
-					'icon': 'ti ti-route',
-					'title': '改善予定を、その場で追加。',
-					'points': [
-						'ロードマップの「改善予定を追加」を見つけやすくしました。',
-						'予定があるときも、上部の操作から追加できます。',
-					],
-				},
-			],
-		},
-		{
-			'label': '画面の表示と操作',
-			'title': '画面の端まで、操作しやすく。',
-			'cards': [
-				{
-					'id': 'mobile-viewport',
-					'label': 'iPhone・iPad',
-					'icon': 'ti ti-device-ipad',
-					'title': '上部バーと画面の端に、ゆとりを。',
-					'preview': 'viewport',
-					'points': [
-						'上端の表示領域を調整し、ナビバーやページの位置を見直しました。',
-						'メニュー・小窓・画像ビューアも、画面の表示領域に合わせて配置します。',
-					],
-				},
-				{
-					'id': 'dialog-close',
-					'label': 'ダイアログ',
-					'icon': 'ti ti-app-window',
-					'title': '閉じたあとも、そのまま操作。',
-					'points': [
-						'ダイアログを閉じたあと、背面の画面を操作できなくなる問題を修正。',
-						'ページ移動や小窓を閉じるときの後片付けも見直しました。',
-						'タイムライン上部とシンプルUIの投稿欄では、表示時の自動フォーカスを止めました。',
-					],
-				},
-			],
-		},
-		{
-			'label': '戻る・編集の操作',
-			'title': '必要な操作を、すぐそばに。',
-			'cards': [
-				{
-					'id': 'intro-back',
-					'label': 'HataIntro',
-					'icon': 'ti ti-arrow-left',
-					'title': '左上の矢印で、戻れます。',
-					'preview': 'intro-back',
-					'points': [
-						'ガイド内では前のページへ。目次では元の画面へ戻るか、小窓を閉じられます。',
-						'ガイド内の検索条件や選んだ項目も復元。戻る画面がないときはホームへ移動します。',
-					],
-				},
-				{
-					'id': 'deck-widgets',
+					'id': 'favorite-deck',
 					'label': 'デッキUI',
 					'icon': 'ti ti-layout-columns',
-					'title': 'ウィジェットを、すっきり配置。',
-					'preview': 'deck',
+					'title': 'カラムの中でも、フォルダ管理。',
 					'points': [
-						'重複していた編集ボタンと、その余白を取り除きました。',
-						'編集はカラムのメニューから。通常デッキとHataskey UI内のデッキに適用しています。',
+						'Hataskey UIのデッキに、お気に入り専用のカプセルタブを用意しました。',
+						'フォルダの操作はカラム上部へ。並び替えボタンから、タブの順番も変更できます。',
+					],
+					'preview': 'favorite-deck',
+				},
+				{
+					'id': 'favorite-support',
+					'label': 'ロール・支援管理',
+					'icon': 'ti ti-heart-handshake',
+					'title': 'フォルダの上限を、特典にも。',
+					'points': [
+						'親・子の合計で通常2個、最大5個。子フォルダは既定でオフ、ロールで許可すると2階層まで使えます。',
+						'支援管理にフォルダ数と子フォルダ作成を追加。参照ロールを選び、特典として案内できます。',
 					],
 				},
 			],
 		},
 		{
-			'label': 'Hatask・Hatady',
-			'title': '日々の操作を、ひとつずつ改善。',
+			'label': 'Hatadyの記録',
+			'title': '写真も作品も、記録のそばに。',
 			'cards': [
 				{
-					'id': 'hatask-input',
-					'label': 'Hatask',
-					'icon': 'ti ti-calendar',
-					'title': '公開範囲も、入力欄も見やすく。',
+					'id': 'hatady-images',
+					'label': '画像の添付',
+					'icon': 'ti ti-photo',
+					'title': '記録に、写真を添えられます。',
 					'points': [
-						'公開範囲メニューの位置と、メンバー選択画面の重なりを修正。',
-						'クイック入力のフォーカス枠を内側に収め、端で切れないようにしました。',
+						'勉強・読書・映画・ゲーム・運動・作業の記録に、最大16枚の画像を添付できるようになりました。',
+						'端末やドライブから選択し、編集時の追加・取り外しにも対応。記録の詳細から画像を見られます。',
 					],
+					'preview': 'record-images',
 				},
 				{
-					'id': 'hatady-motion',
-					'label': 'Hatady',
-					'icon': 'ti ti-book',
-					'title': '一覧とページ切り替えを見直し。',
+					'id': 'hatady-collection',
+					'label': 'コレクション',
+					'icon': 'ti ti-books',
+					'title': '種類を越えて、作品を一覧に。',
 					'points': [
-						'一覧の表示とページ切り替えの描画処理を見直しました。',
-						'ページをめくる演出を保ちながら、画面外の項目などの処理を抑えています。',
-						'通知は画面を開いて表示できたあとに既読になります。',
+						'「すべて」で、本・映画・ゲーム・作業の作品をまとめて表示できるようにしました。',
+						'一覧を見ながら種類を選んで作品を登録。絞り込みや、作品ごとの表示も引き続き使えます。',
 					],
 				},
 			],
 		},
 		{
-			'label': 'スタッフ向けの記録確認',
-			'title': '記録を確認し、対応状況を共有。',
+			'label': 'Hatadyの表示と操作',
+			'title': '記録のあとも、つながる表示。',
 			'cards': [
 				{
-					'id': 'hatady-moderation',
-					'label': 'Hatady・スタッフ向け',
-					'icon': 'ti ti-shield',
-					'title': '記録やコメントを、管理画面から。',
+					'id': 'hatady-delete',
+					'label': '記録・作品の削除',
+					'icon': 'ti ti-trash',
+					'title': '削除した内容を、すぐ一覧へ反映。',
 					'points': [
-						'管理者・モデレーターが記録や作品を検索し、確認状態とスタッフ用メモを共有できます。',
-						'非公開記録、本人用のしおり・内容メモもスタッフの確認対象です。',
+						'記録や作品の削除を確認画面から行い、ホーム・プロフィール・検索結果にも反映します。',
+						'読み込みが重なっても、削除済みの内容が戻って表示されないようにしました。',
 					],
 				},
 				{
-					'id': 'hatask-record-review',
-					'label': 'Hatask・スタッフ向け',
-					'icon': 'ti ti-shield-search',
-					'title': '予定や日々の記録を、まとめて確認。',
+					'id': 'hatady-followup',
+					'label': '検索・連続記録',
+					'icon': 'ti ti-search',
+					'title': '見ていた場所から、確認を続ける。',
 					'points': [
-						'管理者・モデレーター向けに「記録確認」を追加。非公開・指定メンバー向けの記録も確認できます。',
-						'元の記録を変えずに確認状態を共有し、内容が変わった記録は未確認に戻します。',
+						'編集・削除後も検索結果を保ちながら更新。連続記録では、開いていた期間をそのまま確認できます。',
+						'読み込みに失敗したときも、表示中の内容を残して状況を案内するようにしました。',
+					],
+					'preview': 'record-search',
+				},
+			],
+		},
+		{
+			'label': '日々の記録',
+			'title': '通知も更新も、使うタイミングに。',
+			'cards': [
+				{
+					'id': 'mood-reminder',
+					'label': 'Hatask・気持ち記録',
+					'icon': 'ti ti-bell',
+					'title': '画面を閉じていても、お知らせ。',
+					'points': [
+						'設定時刻に届かなかった問題を修正。画面を閉じていても、当日の記録がなければ通知します。',
+						'時刻とタイムゾーンに対応。端末へのプッシュ通知は、通知の許可・購読設定に従います。',
+					],
+					'preview': 'mood-reminder',
+				},
+				{
+					'id': 'hatady-refresh',
+					'label': 'Hatady・スマホ',
+					'icon': 'ti ti-refresh',
+					'title': '引っぱって、最新の記録へ。',
+					'points': [
+						'スマホで記録一覧を引き下げて更新できるようにしました。',
+						'上部の操作と表示位置を見直し、記録の切り替えや絞り込みも使いやすく整えました。',
+					],
+				},
+			],
+		},
+		{
+			'label': 'タイムラインと連携',
+			'title': '使える場所へ、迷わず移動。',
+			'cards': [
+				{
+					'id': 'timeline-permissions',
+					'label': 'タイムライン',
+					'icon': 'ti ti-layout-list',
+					'title': '利用できるタブを、正しく表示。',
+					'points': [
+						'ロールで許可されたタイムラインだけを、タブや追加メニューに表示するようにしました。',
+						'Hataskey UIとデッキUIに対応。権限が変わっても、保存したカラム設定は保持します。',
+					],
+					'preview': 'timeline',
+				},
+				{
+					'id': 'external-connection',
+					'label': '外部連携・通知',
+					'icon': 'ti ti-world',
+					'title': '連携先と、通知の操作を整えました。',
+					'points': [
+						'外部タイムライン連携の候補に「ゆうすきー」を追加しました。',
+						'通知の許可ボタンを中央に配置し、端末への通知を設定しやすくしました。',
+					],
+				},
+			],
+		},
+		{
+			'label': '登録受付・スタッフ向け',
+			'title': '受付から審査まで、状況をそろえる。',
+			'cards': [
+				{
+					'id': 'registration-closed',
+					'label': '管理者向け',
+					'icon': 'ti ti-door',
+					'title': '新規登録を、一時停止できます。',
+					'points': [
+						'登録の完全停止を追加。申請・招待・自由登録の受付と切り替えられます。',
+						'停止中の案内を表示し、再開時には停止前の受付方法へ戻せます。',
+					],
+					'preview': 'registration',
+				},
+				{
+					'id': 'registration-review',
+					'label': 'スタッフ向け',
+					'icon': 'ti ti-users',
+					'title': '全員の確認を、承認につなげる。',
+					'points': [
+						'スタッフ全員の賛成後、鯖缶が最終承認。反対票は保留とし、拒否も鯖缶が確定します。',
+						'確認状況と対応履歴を共有。モデレーターには、申請者のメールアドレスを表示しません。',
+					],
+				},
+			],
+		},
+		{
+			'label': '宴',
+			'title': '見えている宣言を、参加の条件に。',
+			'cards': [
+				{
+					'id': 'utage-visibility',
+					'label': '参加の判定',
+					'icon': 'ti ti-confetti',
+					'title': 'LTLで読める「宴」を対象に。',
+					'points': [
+						'ローカルの公開ノートで、開く操作をせずに見える宣言を参加対象にしました。',
+						'非表示の本文やリンク先、文字を隠す装飾などに含まれる語は対象になりません。',
+					],
+					'preview': 'utage',
+				},
+				{
+					'id': 'utage-edits',
+					'label': '編集後の判定',
+					'icon': 'ti ti-edit',
+					'title': '途中で隠した宣言も、見逃さずに。',
+					'points': [
+						'挑戦中に編集で宣言を隠した場合は、挑戦終了として扱います。元に戻しても再開しません。',
+						'成功を確定する前にも表示を確認。他の人の阻止回数には加算しません。',
 					],
 				},
 			],

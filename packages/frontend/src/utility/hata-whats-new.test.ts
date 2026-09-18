@@ -5,22 +5,22 @@ import { describe, expect, test } from 'vitest';
 import { getHataWhatsNewDisplayVersion, getHataWhatsNewStories, HATA_WHATS_NEW, HATA_WHATS_NEW_THEMES } from './hata-whats-new.js';
 
 const root = path.resolve(process.cwd(), '../..');
-const ids = ['vote-display', 'vote-state', 'report-environment', 'roadmap-create', 'mobile-viewport', 'dialog-close', 'intro-back', 'deck-widgets', 'hatask-input', 'hatady-motion', 'hatady-moderation', 'hatask-record-review'];
+const ids = ['favorite-folders', 'favorite-preservation', 'favorite-deck', 'favorite-support', 'hatady-images', 'hatady-collection', 'hatady-delete', 'hatady-followup', 'mood-reminder', 'hatady-refresh', 'timeline-permissions', 'external-connection', 'registration-closed', 'registration-review', 'utage-visibility', 'utage-edits'];
 describe('approved release stories', () => {
 	test('the displayed-version gate stays aligned with the package and release metadata', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 		expect(HATA_WHATS_NEW.version).toBe(pkg.version);
-		expect(HATA_WHATS_NEW.version).toBe('2026.9.0-hata.12.7.1');
+		expect(HATA_WHATS_NEW.version).toBe('2026.9.0-hata.12.7.2');
 		const version = getHataWhatsNewDisplayVersion(pkg.version);
-		expect(version).toBe('hata-12.7.1');
+		expect(version).toBe('hata-12.7.2');
 		const changelog = fs.readFileSync(path.join(root, 'HATA-CHANGELOG.md'), 'utf8');
 		expect(/^## (hata-[\d.]+)$/mu.exec(changelog)?.[1]).toBe(version);
 		expect(getHataWhatsNewDisplayVersion('development')).toBe('development');
 	});
-	test.each([600, 470, 469, 320])('all twelve follow-up updates remain reachable exactly once at body height %s', height => {
+	test.each([600, 470, 469, 320])('all sixteen follow-up updates remain reachable exactly once at body height %s', height => {
 		const stories = getHataWhatsNewStories(height);
-		expect(stories).toHaveLength(height < 470 ? 12 : 6);
-		expect(stories[0].id).toBe('vote-display');
+		expect(stories).toHaveLength(height < 470 ? 16 : 8);
+		expect(stories[0].id).toBe('favorite-folders');
 		expect(stories.flatMap(story => story.cards.map(card => card.id))).toEqual(ids);
 		for (const story of stories) {
 			expect(story.title).toBeTruthy();
@@ -30,20 +30,25 @@ describe('approved release stories', () => {
 	test('short-window pages use stable topic ids, including the second topic when pages merge', () => {
 		const compact = getHataWhatsNewStories(380), full = getHataWhatsNewStories(600);
 		for (const topic of compact) expect(full.find(story => story.cards.some(card => card.id === topic.id))).toBeDefined();
-		expect(full.map(story => story.id)).toEqual(['vote-display', 'report-environment', 'mobile-viewport', 'intro-back', 'hatask-input', 'hatady-moderation']);
+		expect(full.map(story => story.id)).toEqual(['favorite-folders', 'favorite-deck', 'hatady-images', 'hatady-delete', 'mood-reminder', 'timeline-permissions', 'registration-closed', 'utage-visibility']);
 	});
 	test('the six approved themes keep their persisted ids and the new moss theme', () => {
 		expect(HATA_WHATS_NEW_THEMES.map(theme => theme.id)).toEqual(['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu']);
 		expect(HATA_WHATS_NEW_THEMES[1].name).toBe('苔');
 	});
-	test('follow-up copy retains optional input, staff scope, and existing editing and exit paths', () => {
+	test('copy explains folder retention, role limits, staff review and notification conditions', () => {
 		const cards = HATA_WHATS_NEW.groups.flatMap(group => group.cards);
-		expect(cards.find(card => card.id === 'vote-display')?.points?.[1]).toContain('Hataskey UIとデッキUI');
-		expect(cards.find(card => card.id === 'report-environment')?.points?.[1]).toContain('入力は任意。');
-		expect(cards.find(card => card.id === 'roadmap-create')?.label).toBe('スタッフ向け');
-		expect(cards.find(card => card.id === 'intro-back')?.points?.[1]).toContain('戻る画面がないときはホームへ移動');
-		expect(cards.find(card => card.id === 'deck-widgets')?.points?.[1]).toContain('編集はカラムのメニューから。');
-		expect(cards.flatMap(card => card.preview ? [card.preview] : [])).toEqual(['vote-setting', 'environment', 'viewport', 'intro-back', 'deck']);
+		const points = (id: string) => cards.find(card => card.id === id)?.points?.join('');
+		expect(points('favorite-preservation')).toContain('「未分類」へ');
+		expect(points('favorite-support')).toContain('通常2個');
+		expect(points('favorite-support')).toContain('最大5個');
+		expect(points('favorite-support')).toContain('2階層');
+		expect(points('registration-review')).toContain('鯖缶が最終承認');
+		expect(points('registration-review')).toContain('メールアドレスを表示しません');
+		expect(points('mood-reminder')).toContain('当日の記録がなければ');
+		expect(points('mood-reminder')).toContain('通知の許可・購読設定に従います');
+		expect(cards.flatMap(card => card.preview ? [card.preview] : [])).toEqual(['favorites', 'favorite-deck', 'record-images', 'record-search', 'mood-reminder', 'timeline', 'registration', 'utage']);
+		for (const card of cards) expect(card.points).toHaveLength(2);
 	});
 	test('release copy contains no implementation paths or internal storage and API terminology', () => {
 		const implementationTerms = /Registry|API|localStorage|packages\/|マイグレーション|\/home\//u;

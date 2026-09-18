@@ -395,7 +395,7 @@
 }
 
 /* Compact illustrations of the subsequent fixes; the existing release layout owns spacing and motion. */
-.updatePreview { display: grid; place-items: center; min-width: 0; min-height: 0; padding: 22px; background: var(--preview-soft); color: var(--MI_THEME-fg); }
+.updatePreview { display: grid; place-items: center; min-width: 0; min-height: 0; padding: 16px; background: var(--preview-soft); color: var(--MI_THEME-fg); }
 .miniSettings, .miniDeck, .miniPhone { width: 100%; max-width: 340px; min-width: 0; padding: 18px; border: 1px solid var(--MI_THEME-divider); border-radius: 18px; background: var(--MI_THEME-panel); box-shadow: 0 10px 24px color-mix(in srgb, var(--MI_THEME-fg) 6%, transparent); }
 .miniEyebrow { display: flex; align-items: center; gap: 7px; color: var(--MI_THEME-fgMuted); font-size: 11px; }
 .miniEyebrow > small { margin-left: auto; font-size: 10px; }
@@ -436,3 +436,60 @@
 @container release-body (max-height: 560px) {
   .updatePreview { display: none; }
 }
+
+/* Release examples share the live notice's tokens and remain non-interactive. */
+.miniFolderTabs { display: flex; align-items: center; justify-content: center; gap: 3px; width: fit-content; max-width: 100%; margin: 13px auto; padding: 4px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; background: var(--MI_THEME-panel); font-size: 10px; }
+.miniFolderTabs > span { display: flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 999px; white-space: nowrap; }
+.miniFolderTabs > [data-selected] { background: var(--MI_THEME-accent); color: var(--release-on-accent); }
+.miniFolderTabs small { display: grid; place-items: center; min-width: 15px; height: 15px; border-radius: 50%; background: color-mix(in srgb, currentColor 14%, transparent); }
+.miniFolderRow { display: flex; align-items: center; gap: 8px; padding: 7px 4px; font-size: 11px; }
+.miniFolderRow > strong { flex: 1; font-weight: 500; }
+.miniFolderRow > small, .miniFolderRow > :first-child { color: var(--MI_THEME-fgMuted); }
+.miniFolderRow[data-child] { padding-left: 20px; font-size: 10px; }
+.miniFavorites [data-color='rose'] { color: var(--MI_THEME-accent); }
+.miniFavorites [data-color='green'] { color: var(--MI_THEME-success); }
+.miniFavoriteDeck { max-width: 280px; padding: 0 10px 10px; overflow: hidden; background: var(--preview-soft); }
+.miniDeckHeader { display: flex; align-items: center; gap: 13px; margin-inline: -10px; padding: 10px 12px; border-bottom: 1px solid var(--MI_THEME-divider); font-size: 11px; }
+.miniDeckHeader > strong { flex: 1; }
+.miniFavoriteDeck .miniNote { margin: 0; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); }
+.miniNote b small { margin-left: 5px; font-size: 8px; font-weight: 400; color: var(--MI_THEME-fgMuted); }
+.miniNoteText { margin: 7px 0; font-size: 11px; line-height: 1.7; }
+.miniSavedFolder { display: flex; gap: 6px; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--MI_THEME-divider); color: var(--MI_THEME-accent); font-size: 9px; }
+.miniRecordTitle { display: block; margin-top: 11px; font-size: 13px; }
+.miniPhotos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.miniPhotos > span { display: grid; place-content: center; justify-items: center; gap: 4px; min-height: 67px; border-radius: 9px; background: color-mix(in srgb, var(--MI_THEME-accent) 10%, var(--MI_THEME-panelHeaderBg)); color: var(--MI_THEME-accent); }
+.miniPhotos > span:last-child { background: color-mix(in srgb, var(--MI_THEME-success) 9%, var(--MI_THEME-panelHeaderBg)); color: var(--MI_THEME-fg); }
+.miniPhotos i { font-size: 27px; }
+.miniPhotos small { font-size: 8px; }
+.miniRecordFooter { display: flex; align-items: center; gap: 14px; margin-top: 12px; color: var(--MI_THEME-fgMuted); font-size: 9px; }
+.miniRecordFooter > :last-child { margin-left: auto; }
+.miniSearch strong { flex: 1; color: var(--MI_THEME-fg); }
+.miniSearchResult { display: flex; align-items: center; gap: 10px; margin-top: 13px; font-size: 11px; }
+.miniBook { display: grid; place-items: center; width: 34px; height: 44px; border-radius: 3px 7px 7px 3px; background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); font-size: 20px; }
+.miniSearchResult > div { flex: 1; }
+.miniSearchResult small { display: block; margin-top: 3px; color: var(--MI_THEME-fgMuted); font-size: 9px; }
+.miniStreak { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 14px; padding-top: 11px; border-top: 1px solid var(--MI_THEME-divider); font-size: 10px; }
+.miniStreak > strong { color: var(--MI_THEME-accent); }
+.miniStreak > div { display: flex; gap: 5px; grid-column: 1 / -1; }
+.miniStreak i[data-filled] { flex: 1; height: 14px; border-radius: 4px; background: var(--preview-soft); }
+.miniStreak i[data-filled='true'] { background: var(--MI_THEME-accent); }
+.miniReminderTime { display: flex; align-items: center; gap: 9px; margin: 15px 0; }
+.miniReminderTime > strong { font-size: 28px; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.miniReminderTime > span { font-size: 10px; color: var(--MI_THEME-fgMuted); }
+.miniReminderTime > :last-child { margin-left: auto; }
+.miniReminderNotice { display: flex; align-items: center; gap: 9px; padding: 12px; border: 1px solid var(--MI_THEME-divider); border-radius: 14px; background: var(--preview-soft); font-size: 10px; }
+.miniReminderNotice small { display: block; margin-top: 5px; color: var(--MI_THEME-fgMuted); font-size: 9px; }
+.miniRegistrationState { display: flex; align-items: center; gap: 9px; margin: 16px 0; font-size: 11px; }
+.miniRegistrationState small { display: block; margin-top: 4px; color: var(--MI_THEME-fgMuted); font-size: 8px; }
+.miniReviewRow { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--MI_THEME-divider); font-size: 9px; }
+.miniReviewRow > span { flex: 1; }
+.miniReviewRow > strong { color: var(--MI_THEME-accent); }
+.miniReviewRow > small { color: var(--MI_THEME-fgMuted); font-size: 9px; }
+.miniUtageWord { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 22px 0; color: var(--MI_THEME-accent); }
+.miniUtageWord > i { font-size: 28px; }
+.miniUtageWord > strong { font-size: 38px; line-height: 1.2; }
+.miniUtageWord > span { align-self: end; padding: 3px 8px; border-radius: 999px; background: var(--MI_THEME-accentedBg); font-size: 9px; }
+.miniProgress { height: 5px; border-radius: 999px; background: var(--preview-soft); overflow: hidden; }
+.miniProgress > span { display: block; width: 62%; height: 100%; border-radius: inherit; background: var(--MI_THEME-accent); }
+
+.updatePreview > div { box-sizing: border-box; max-width: 100%; }

@@ -65,8 +65,8 @@ let autoOpen: boolean;
 let modalOpened: () => void;
 let closed: ReturnType<typeof vi.fn>;
 
-const approvedIds = ['vote-display', 'vote-state', 'report-environment', 'roadmap-create', 'mobile-viewport', 'dialog-close', 'intro-back', 'deck-widgets', 'hatask-input', 'hatady-motion', 'hatady-moderation', 'hatask-record-review'];
-const approvedPreviews = ['vote-setting', 'environment', 'viewport', 'intro-back', 'deck'];
+const approvedIds = ['favorite-folders', 'favorite-preservation', 'favorite-deck', 'favorite-support', 'hatady-images', 'hatady-collection', 'hatady-delete', 'hatady-followup', 'mood-reminder', 'hatady-refresh', 'timeline-permissions', 'external-connection', 'registration-closed', 'registration-review', 'utage-visibility', 'utage-edits'];
+const approvedPreviews = ['favorites', 'favorite-deck', 'record-images', 'record-search', 'mood-reminder', 'timeline', 'registration', 'utage'];
 
 async function flush() { for (let i = 0; i < 10; i++) await nextTick(); }
 
@@ -226,16 +226,16 @@ describe('production update introduction', () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
-		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.7.1)');
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.7.2)');
 		expect(host.querySelector('header')?.textContent).not.toContain('HATASKEY RELEASE');
-		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('vote-display');
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('favorite-folders');
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		store.r.darkMode.value = true; await flush();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-mode')).toBe('dark');
 		hatadyNotify('実際の画面への通知');
 		const notice = hatadyNotice.value;
 		const seen: string[] = [], previews: string[] = [];
-		const total = height < 470 ? 12 : 6;
+		const total = height < 470 ? 16 : 8;
 		for (let pageNumber = 1; pageNumber <= total; pageNumber++) {
 			expect(requiredElement('[data-story]').getAttribute('data-story')).toBe('updates');
 			expect(host.querySelector('footer')?.textContent).toContain(`${pageNumber} / ${total}`);
@@ -283,13 +283,13 @@ describe('production update introduction', () => {
 			expect(host.querySelector(`[data-change-id="${id}"]`)).not.toBeNull();
 			expect(host.querySelectorAll('[data-change-id]')).toHaveLength(height < 470 ? 1 : 2);
 			if (height < 470) expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe(id);
-			expect(host.querySelector('footer')?.textContent).toContain(height < 470 ? '/ 12' : '/ 6');
+			expect(host.querySelector('footer')?.textContent).toContain(height < 470 ? '/ 16' : '/ 8');
 		}
 	});
 	test('finishing the notice emits closed once and leaves persistence to the caller', async () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
-		for (let pageNumber = 1; pageNumber < 6; pageNumber++) await next();
+		for (let pageNumber = 1; pageNumber < 8; pageNumber++) await next();
 		expect(closed).not.toHaveBeenCalled();
 		const finish = requiredElement<HTMLButtonElement>('footer > button:last-child');
 		expect(finish.textContent).toContain('わかった');
