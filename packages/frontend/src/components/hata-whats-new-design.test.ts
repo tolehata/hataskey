@@ -65,7 +65,7 @@ let autoOpen: boolean;
 let modalOpened: () => void;
 let closed: ReturnType<typeof vi.fn>;
 
-const approvedIds = ['favorite-folders', 'favorite-preservation', 'favorite-deck', 'favorite-support', 'hatady-images', 'hatady-collection', 'hatady-delete', 'hatady-followup', 'mood-reminder', 'hatady-refresh', 'timeline-permissions', 'external-connection', 'registration-closed', 'registration-review', 'utage-visibility', 'utage-edits'];
+const approvedIds = ['favorite-folders', 'favorite-preservation', 'favorite-deck', 'favorite-saved', 'hatady-images', 'hatady-collection', 'hatady-delete', 'hatady-followup', 'mood-reminder', 'hatady-refresh', 'timeline-permissions', 'external-connection', 'navbar-emoji', 'navbar-time', 'registration-closed', 'registration-review', 'utage-visibility', 'utage-edits'];
 const approvedPreviews = ['favorites', 'favorite-deck', 'record-images', 'record-search', 'mood-reminder', 'timeline', 'registration', 'utage'];
 
 async function flush() { for (let i = 0; i < 10; i++) await nextTick(); }
@@ -235,12 +235,13 @@ describe('production update introduction', () => {
 		hatadyNotify('実際の画面への通知');
 		const notice = hatadyNotice.value;
 		const seen: string[] = [], previews: string[] = [];
-		const total = height < 470 ? 16 : 8;
+		const total = height < 470 ? 18 : 9;
+		const expectedPages = height < 470 ? approvedIds.map(id => [id]) : HATA_WHATS_NEW.groups.map(group => group.cards.map(card => card.id));
 		for (let pageNumber = 1; pageNumber <= total; pageNumber++) {
 			expect(requiredElement('[data-story]').getAttribute('data-story')).toBe('updates');
 			expect(host.querySelector('footer')?.textContent).toContain(`${pageNumber} / ${total}`);
 			const cards = [...host.querySelectorAll<HTMLElement>('[data-change-id]')];
-			expect(cards).toHaveLength(height < 470 ? 1 : 2);
+			expect(cards).toHaveLength(expectedPages[pageNumber - 1].length);
 			for (const card of cards) {
 				const id = card.getAttribute('data-change-id') ?? '';
 				seen.push(id);
@@ -266,14 +267,15 @@ describe('production update introduction', () => {
 		expect(closed).not.toHaveBeenCalled();
 		for (let pageNumber = total - 1; pageNumber >= 1; pageNumber--) {
 			requiredElement<HTMLButtonElement>('[aria-label="戻る"]').click(); await flush();
-			const offset = (pageNumber - 1) * (height < 470 ? 1 : 2);
-			expect([...host.querySelectorAll('[data-change-id]')].map(card => card.getAttribute('data-change-id'))).toEqual(approvedIds.slice(offset, offset + (height < 470 ? 1 : 2)));
+			expect([...host.querySelectorAll('[data-change-id]')].map(card => card.getAttribute('data-change-id'))).toEqual(expectedPages[pageNumber - 1]);
 			expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
 		}
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		expect(misskeyApi).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled(); expect(prefer.commit).not.toHaveBeenCalled();
 	});
-	test.each(approvedIds.filter((_, index) => index % 2 === 1))('resizing between paired and short pages preserves second topic %s', async id => {
+	test.each(HATA_WHATS_NEW.groups.map(group => group.cards[group.cards.length - 1].id))('resizing between grouped and short pages preserves last topic %s', async id => {
+		const group = HATA_WHATS_NEW.groups.find(item => item.cards.some(card => card.id === id));
+		if (!group) throw new Error(`Missing update group for ${id}`);
 		bodyHeight = 380; width = 390;
 		await mount();
 		for (let index = 0; index < approvedIds.indexOf(id); index++) await next();
@@ -281,15 +283,15 @@ describe('production update introduction', () => {
 		for (const height of [600, 469, 470, 380]) {
 			bodyHeight = height; resizeCallbacks.forEach(callback => callback()); await flush();
 			expect(host.querySelector(`[data-change-id="${id}"]`)).not.toBeNull();
-			expect(host.querySelectorAll('[data-change-id]')).toHaveLength(height < 470 ? 1 : 2);
+			expect(host.querySelectorAll('[data-change-id]')).toHaveLength(height < 470 ? 1 : group.cards.length);
 			if (height < 470) expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe(id);
-			expect(host.querySelector('footer')?.textContent).toContain(height < 470 ? '/ 16' : '/ 8');
+			expect(host.querySelector('footer')?.textContent).toContain(height < 470 ? '/ 18' : '/ 9');
 		}
 	});
 	test('finishing the notice emits closed once and leaves persistence to the caller', async () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
-		for (let pageNumber = 1; pageNumber < 8; pageNumber++) await next();
+		for (let pageNumber = 1; pageNumber < 9; pageNumber++) await next();
 		expect(closed).not.toHaveBeenCalled();
 		const finish = requiredElement<HTMLButtonElement>('footer > button:last-child');
 		expect(finish.textContent).toContain('わかった');

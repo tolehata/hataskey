@@ -35,7 +35,7 @@ export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = 
 			],
 		},
 		{
-			'label': 'お気に入り・支援特典',
+			'label': 'お気に入り・デッキUI',
 			'title': 'いつもの画面で、整理を続ける。',
 			'cards': [
 				{
@@ -50,13 +50,13 @@ export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = 
 					'preview': 'favorite-deck',
 				},
 				{
-					'id': 'favorite-support',
-					'label': 'ロール・支援管理',
-					'icon': 'ti ti-heart-handshake',
-					'title': 'フォルダの上限を、特典にも。',
+					'id': 'favorite-saved',
+					'label': '保存のお知らせ',
+					'icon': 'ti ti-folder-check',
+					'title': '選んだフォルダへ、すっと保存。',
 					'points': [
-						'親・子の合計で通常2個、最大5個。子フォルダは既定でオフ、ロールで許可すると2階層まで使えます。',
-						'支援管理にフォルダ数と子フォルダ作成を追加。参照ロールを選び、特典として案内できます。',
+						'通常のHataskey UIでは、保存後にノートがフォルダへ入る演出を表示します。',
+						'「お気に入りの○○にノートを追加しました。」と、保存先も上部ナビバーでお知らせします。',
 					],
 				},
 			],
@@ -170,6 +170,32 @@ export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = 
 			],
 		},
 		{
+			'label': '上部ナビバーのお知らせ',
+			'title': '新しい絵文字も、時刻も、さりげなく。',
+			'cards': [
+				{
+					'id': 'navbar-emoji',
+					'label': '絵文字追加通知',
+					'icon': 'ti ti-mood-smile',
+					'title': '新しい絵文字を、その場で。',
+					'points': [
+						'サーバーに追加された絵文字を、通常のHataskey UIの上部ナビバーでお知らせします。',
+						'通知一覧やプッシュには送らず、見ている画面の中で案内します。',
+					],
+				},
+				{
+					'id': 'navbar-time',
+					'label': '時報・表示設定',
+					'icon': 'ti ti-clock',
+					'title': '毎時の区切りを、ひと目で。',
+					'points': [
+						'端末の時刻に合わせて、毎時00分に時刻を表示。画面に戻ったとき、過ぎた時刻はまとめて表示しません。',
+						'「環境設定」で、絵文字追加通知と時報をそれぞれオン・オフにできます。',
+					],
+				},
+			],
+		},
+		{
 			'label': '登録受付・スタッフ向け',
 			'title': '受付から審査まで、状況をそろえる。',
 			'cards': [
@@ -213,12 +239,12 @@ export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = 
 				},
 				{
 					'id': 'utage-edits',
-					'label': '編集後の判定',
+					'label': '編集・失敗の表示',
 					'icon': 'ti ti-edit',
-					'title': '途中で隠した宣言も、見逃さずに。',
+					'title': '失敗したときも、状態をわかりやすく。',
 					'points': [
 						'挑戦中に編集で宣言を隠した場合は、挑戦終了として扱います。元に戻しても再開しません。',
-						'成功を確定する前にも表示を確認。他の人の阻止回数には加算しません。',
+						'失敗するとノートが割れて、元の表示へ戻る演出を追加。動きを減らす設定にも従います。',
 					],
 				},
 			],
