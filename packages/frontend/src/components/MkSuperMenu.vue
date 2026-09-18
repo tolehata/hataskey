@@ -27,27 +27,33 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<a v-if="item.type === 'a'" :href="item.href" :target="item.target" class="_button item" :class="{ danger: item.danger, active: item.active }">
 						<span>
 							<!-- Hataskey fork: hatakyuAsset があればハタキュ画像を、無ければ従来の Tabler アイコンを出す -->
-							<span v-if="item.hatakyuAsset && useHatakyuBranding()" class="icon"><MkHatakyuIllustration :asset="item.hatakyuAsset" :size="28"/></span>
-							<span v-else-if="item.icon" class="icon"><i :class="item.icon" class="ti-fw"></i></span>
+							<span v-if="item.icon || item.indicated || (item.hatakyuAsset && useHatakyuBranding())" class="icon">
+								<MkHatakyuIllustration v-if="item.hatakyuAsset && useHatakyuBranding()" :asset="item.hatakyuAsset" :size="28"/>
+								<i v-else-if="item.icon" :class="item.icon" class="ti-fw"></i>
+								<span v-if="item.indicated" class="itemIndicator _blink" aria-hidden="true"><i class="_indicatorCircle"></i></span>
+							</span>
 							<span class="text">{{ item.text }}</span>
 						</span>
-						<span v-if="item.indicated" class="itemIndicator _blink"><i class="_indicatorCircle"></i></span>
 					</a>
 					<button v-else-if="item.type === 'button'" class="_button item" :class="{ danger: item.danger, active: item.active }" :disabled="item.active" @click="ev => item.action(ev)">
 						<span>
-							<span v-if="item.hatakyuAsset && useHatakyuBranding()" class="icon"><MkHatakyuIllustration :asset="item.hatakyuAsset" :size="28"/></span>
-							<span v-else-if="item.icon" class="icon"><i :class="item.icon" class="ti-fw"></i></span>
+							<span v-if="item.icon || item.indicated || (item.hatakyuAsset && useHatakyuBranding())" class="icon">
+								<MkHatakyuIllustration v-if="item.hatakyuAsset && useHatakyuBranding()" :asset="item.hatakyuAsset" :size="28"/>
+								<i v-else-if="item.icon" :class="item.icon" class="ti-fw"></i>
+								<span v-if="item.indicated" class="itemIndicator _blink" aria-hidden="true"><i class="_indicatorCircle"></i></span>
+							</span>
 							<span class="text">{{ item.text }}</span>
 						</span>
-						<span v-if="item.indicated" class="itemIndicator _blink"><i class="_indicatorCircle"></i></span>
 					</button>
 					<MkA v-else :to="item.to" class="_button item" :class="{ danger: item.danger, active: item.active }">
 						<span>
-							<span v-if="item.hatakyuAsset && useHatakyuBranding()" class="icon"><MkHatakyuIllustration :asset="item.hatakyuAsset" :size="28"/></span>
-							<span v-else-if="item.icon" class="icon"><i :class="item.icon" class="ti-fw"></i></span>
+							<span v-if="item.icon || item.indicated || (item.hatakyuAsset && useHatakyuBranding())" class="icon">
+								<MkHatakyuIllustration v-if="item.hatakyuAsset && useHatakyuBranding()" :asset="item.hatakyuAsset" :size="28"/>
+								<i v-else-if="item.icon" :class="item.icon" class="ti-fw"></i>
+								<span v-if="item.indicated" class="itemIndicator _blink" aria-hidden="true"><i class="_indicatorCircle"></i></span>
+							</span>
 							<span class="text">{{ item.text }}</span>
 						</span>
-						<span v-if="item.indicated" class="itemIndicator _blink"><i class="_indicatorCircle"></i></span>
 					</MkA>
 				</template>
 			</div>
@@ -61,7 +67,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:class="{ selected: searchSelectedIndex !== null && searchSelectedIndex === index }"
 			>
 				<!-- Hataskey fork: 検索結果は SearchIndexItem 由来で hatakyuAsset を持たないため、従来どおり icon のみで描画する -->
-				<span v-if="item.icon" class="icon"><i :class="item.icon" class="ti-fw"></i></span>
+				<span v-if="item.icon || ('indicated' in item && item.indicated)" class="icon">
+					<i v-if="item.icon" :class="item.icon" class="ti-fw"></i>
+					<span v-if="'indicated' in item && item.indicated" class="itemIndicator _blink" aria-hidden="true"><i class="_indicatorCircle"></i></span>
+				</span>
 				<span class="text">
 					<template v-if="item.isRoot">
 						{{ item.label }}
@@ -72,7 +81,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<span style="word-break: break-word;">{{ item.label }}</span>
 					</template>
 				</span>
-				<span v-if="'indicated' in item && item.indicated" class="itemIndicator _blink"><i class="_indicatorCircle"></i></span>
 			</MkA>
 		</div>
 	</template>
@@ -297,6 +305,26 @@ function searchOnKeyDown(ev: KeyboardEvent) {
 }
 
 .rrevdjwu {
+	.icon {
+		position: relative;
+	}
+
+	.icon > .itemIndicator {
+		position: absolute;
+		inset-block-start: 0;
+		inset-inline-end: 0;
+		color: var(--MI_THEME-navIndicator);
+		font-size: 8px;
+		line-height: 1;
+		pointer-events: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.itemIndicator {
+			animation: none;
+		}
+	}
+
 	> .group {
 		& + .group {
 			margin-top: 16px;
@@ -364,15 +392,6 @@ function searchOnKeyDown(ev: KeyboardEvent) {
 						flex-shrink: 1;
 					}
 				}
-
-        > .itemIndicator {
-          position: relative;
-					top: -10px;
-          left: -72.5px;
-          color: var(--MI_THEME-navIndicator);
-          font-size: 8px;
-          animation: blink 1s infinite;
-        }
 			}
 		}
 	}
@@ -445,13 +464,6 @@ function searchOnKeyDown(ev: KeyboardEvent) {
 							font-size: 0.8em;
 						}
 					}
-
-          > .itemIndicator {
-						display: flex;
-						top: -80px;
-            left: -22.5px;
-            font-size: 0.8em;
-          }
 				}
 			}
 		}

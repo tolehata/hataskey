@@ -42,6 +42,10 @@ const isRefreshing = ref(false);
 const pullDistance = ref(0);
 
 let startScreenY: number | null = null;
+let startScreenX = 0;
+let mounted = false;
+let releaseVersion = 0;
+let stopMove: (() => void) | undefined;
 
 const rootEl = useTemplateRef('rootEl');
 let scrollEl: HTMLElement | null = null;
@@ -56,14 +60,26 @@ const emit = defineEmits<{
 	(ev: 'refresh'): void;
 }>();
 
-function getScreenY(event: TouchEvent | MouseEvent | PointerEvent): number {
-	if (('touches' in event) && event.touches[0] && event.touches[0].screenY != null) {
-		return event.touches[0].screenY;
-	} else if ('screenY' in event) {
-		return event.screenY;
-	} else {
-		return 0; // TSを黙らせるため
-	}
+function getScreenPosition(event: TouchEvent | MouseEvent): { screenX: number; screenY: number } {
+	return 'touches' in event ? event.touches[0] : event;
+}
+
+function removeGestureListeners() {
+	window.removeEventListener('mousemove', moving);
+	window.removeEventListener('mouseup', onPullRelease);
+	window.removeEventListener('touchmove', moving);
+	window.removeEventListener('touchend', onPullRelease);
+	window.removeEventListener('touchcancel', cancelPull);
+}
+
+function cancelPull() {
+	removeGestureListeners();
+	startScreenY = null;
+	isPulledEnough.value = false;
+	const version = ++releaseVersion;
+	closeContent().then(() => {
+		if (mounted && version === releaseVersion) isPulling.value = false;
+	});
 }
 
 // When at the top of the page, disable vertical overscroll so passive touch listeners can take over.
@@ -81,9 +97,9 @@ function unlockDownScroll() {
 
 function moveStartByMouse(event: MouseEvent) {
 	if (event.button !== 1) return;
-	if (isRefreshing.value) return;
+	if (isRefreshing.value || isPulling.value || scrollEl == null) return;
 
-	const scrollPos = scrollEl!.scrollTop;
+	const scrollPos = scrollEl.scrollTop;
 	if (scrollPos !== 0) {
 		unlockDownScroll();
 		return;
@@ -94,20 +110,24 @@ function moveStartByMouse(event: MouseEvent) {
 	event.preventDefault(); // 中クリックによるスクロール、テキスト選択などを防ぐ
 
 	isPulling.value = true;
-	startScreenY = getScreenY(event);
+	const point = getScreenPosition(event);
+	startScreenX = point.screenX;
+	startScreenY = point.screenY;
 	pullDistance.value = 0;
 
 	window.addEventListener('mousemove', moving, { passive: true });
-	window.addEventListener('mouseup', () => {
-		window.removeEventListener('mousemove', moving);
-		onPullRelease();
-	}, { passive: true, once: true });
+	window.addEventListener('mouseup', onPullRelease, { passive: true });
 }
 
 function moveStartByTouch(event: TouchEvent) {
 	if (isRefreshing.value) return;
+	if (event.touches.length !== 1) {
+		if (isPulling.value) cancelPull();
+		return;
+	}
+	if (isPulling.value || scrollEl == null) return;
 
-	const scrollPos = scrollEl!.scrollTop;
+	const scrollPos = scrollEl.scrollTop;
 	if (scrollPos !== 0) {
 		unlockDownScroll();
 		return;
@@ -116,17 +136,18 @@ function moveStartByTouch(event: TouchEvent) {
 	lockDownScroll();
 
 	isPulling.value = true;
-	startScreenY = getScreenY(event);
+	const point = getScreenPosition(event);
+	startScreenX = point.screenX;
+	startScreenY = point.screenY;
 	pullDistance.value = 0;
 
 	window.addEventListener('touchmove', moving, { passive: true });
-	window.addEventListener('touchend', () => {
-		window.removeEventListener('touchmove', moving);
-		onPullRelease();
-	}, { passive: true, once: true });
+	window.addEventListener('touchend', onPullRelease, { passive: true });
+	window.addEventListener('touchcancel', cancelPull, { passive: true });
 }
 
 function moveBySystem(to: number): Promise<void> {
+	stopMove?.();
 	return new Promise(r => {
 		const startHeight = pullDistance.value;
 		const overHeight = pullDistance.value - to;
@@ -135,11 +156,12 @@ function moveBySystem(to: number): Promise<void> {
 			return;
 		}
 		const startTime = Date.now();
-		let intervalId = window.setInterval(() => {
+		const intervalId = window.setInterval(() => {
 			const time = Date.now() - startTime;
 			if (time > RELEASE_TRANSITION_DURATION) {
 				pullDistance.value = to;
 				window.clearInterval(intervalId);
+				stopMove = undefined;
 				r();
 				return;
 			}
@@ -147,6 +169,11 @@ function moveBySystem(to: number): Promise<void> {
 			if (pullDistance.value < nextHeight) return;
 			pullDistance.value = nextHeight;
 		}, 1);
+		stopMove = () => {
+			window.clearInterval(intervalId);
+			stopMove = undefined;
+			r();
+		};
 	});
 }
 
@@ -163,23 +190,29 @@ async function closeContent() {
 }
 
 function onPullRelease() {
+	removeGestureListeners();
 	startScreenY = null;
+	const version = ++releaseVersion;
 	if (isPulledEnough.value) {
 		isPulledEnough.value = false;
 		isRefreshing.value = true;
 		fixOverContent().then(() => {
+			if (!mounted || version !== releaseVersion) return;
 			emit('refresh');
 			props.refresher().then(() => {
-				refreshFinished();
+				if (mounted && version === releaseVersion) refreshFinished();
 			});
 		});
 	} else {
-		closeContent().then(() => isPulling.value = false);
+		closeContent().then(() => {
+			if (mounted && version === releaseVersion) isPulling.value = false;
+		});
 	}
 }
 
 function toggleScrollLockOnTouchEnd() {
-	const scrollPos = scrollEl!.scrollTop;
+	if (scrollEl == null) return;
+	const scrollPos = scrollEl.scrollTop;
 	if (scrollPos === 0) {
 		lockDownScroll();
 	} else {
@@ -188,19 +221,19 @@ function toggleScrollLockOnTouchEnd() {
 }
 
 function moving(event: MouseEvent | TouchEvent) {
-	if ((scrollEl?.scrollTop ?? 0) > SCROLL_STOP + pullDistance.value || isHorizontalSwipeSwiping.value) {
-		pullDistance.value = 0;
-		isPulledEnough.value = false;
-		onPullRelease();
+	if (startScreenY === null) return;
+	if ('touches' in event && event.touches.length !== 1) {
+		cancelPull();
 		return;
 	}
-
-	if (startScreenY === null) {
-		startScreenY = getScreenY(event);
+	const point = getScreenPosition(event);
+	const moveHeight = point.screenY - startScreenY;
+	const horizontalDistance = Math.abs(point.screenX - startScreenX);
+	if ((scrollEl?.scrollTop ?? 0) > SCROLL_STOP + pullDistance.value || isHorizontalSwipeSwiping.value ||
+		(horizontalDistance > SCROLL_STOP && horizontalDistance > Math.abs(moveHeight))) {
+		cancelPull();
+		return;
 	}
-	const moveScreenY = getScreenY(event);
-
-	const moveHeight = moveScreenY - startScreenY!;
 	pullDistance.value = Math.min(Math.max(moveHeight, 0), MAX_PULL_DISTANCE);
 
 	isPulledEnough.value = pullDistance.value >= FIRE_THRESHOLD;
@@ -214,7 +247,9 @@ function moving(event: MouseEvent | TouchEvent) {
  * タイムアウトがないのでこれを最終的に実行しないと出たままになる
  */
 function refreshFinished() {
+	const version = releaseVersion;
 	closeContent().then(() => {
+		if (!mounted || version !== releaseVersion) return;
 		isPulling.value = false;
 		isRefreshing.value = false;
 	});
@@ -222,6 +257,7 @@ function refreshFinished() {
 
 onMounted(() => {
 	if (rootEl.value == null) return;
+	mounted = true;
 	scrollEl = getScrollContainer(rootEl.value);
 	lockDownScroll();
 	rootEl.value.addEventListener('mousedown', moveStartByMouse, { passive: false }); // preventDefaultするため
@@ -230,6 +266,10 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+	mounted = false;
+	releaseVersion++;
+	removeGestureListeners();
+	stopMove?.();
 	unlockDownScroll();
 	if (rootEl.value) rootEl.value.removeEventListener('mousedown', moveStartByMouse);
 	if (rootEl.value) rootEl.value.removeEventListener('touchstart', moveStartByTouch);

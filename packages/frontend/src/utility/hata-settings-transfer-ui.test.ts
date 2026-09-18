@@ -59,10 +59,17 @@ describe('旗鯖独自設定の入出力UI', () => {
 		expect(modal).toContain("const projectId = selection.result === '__official__' ? null : (project?.id ?? null)");
 		expect(modal).toContain('{{ copy.privacyDescription }}');
 		expect(transferCopy.privacyDescription).toContain('Hatadyの学習記録とHataFeedのイシューは、下の専用ボタンから個別に保存できます');
-		expect(hatadyExport).toContain('.body[data-hatady-theme="paper"]');
-		expect(hatadyExport).toContain('.body[data-hatady-theme="espresso"]');
-		expect(hatadyExport).toContain('.body[data-hatady-theme="hataskey"]');
-		expect(hatadyExport).toContain('background: var(--hy-bg, var(--MI_THEME-bg))');
+		const hatadyDialog = source('src/components/HyDialog.vue');
+		const hatadyTheme = source('src/components/hatady-ui.css');
+		expect(hatadyExport).toContain('import HyDialog from \'@/components/HyDialog.vue\'');
+		expect(hatadyExport).toContain('<HyDialog ');
+		expect(hatadyDialog).toContain('\'hatady-scope\'');
+		expect(hatadyDialog).toContain(':data-hatady-theme="props.theme ?? theme"');
+		expect(hatadyDialog).toContain('import \'@/components/hatady-ui.css\'');
+		for (const theme of ['paper', 'espresso', 'hataskey']) {
+			expect(hatadyTheme).toContain(`.hatady-scope[data-hatady-theme='${theme}']`);
+		}
+		expect(hatadyDialog).toContain('background: var(--hy-surface)');
 	});
 
 	test('操作後も上下を維持するリサイズ可能な専用ウィンドウを使う', () => {

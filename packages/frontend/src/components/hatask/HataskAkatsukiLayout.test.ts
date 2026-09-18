@@ -85,15 +85,40 @@ test('staff review entry is role-gated and has a full-width desktop workspace', 
 	expect(container.querySelector('[aria-label="記録確認"]')).toBeNull();
 });
 
-test('compact staff navigation includes review without a create button or saved-tab mutation', async () => {
-	size = { width: 320, height: 700 };
+test.each([320, 390])('compact staff navigation keeps review directly before the persistent create button at %ipx', async (width) => {
+	size = { width, height: 700 };
 	const saved = ['home', 'todo', 'hataskapps', 'apps'] as const;
-	const { container, liveProps } = await mountLayout({ model: { canModerate: true, mobileTabs: [...saved] } });
-	expect(container.querySelector('.hak-review-entry')).toBeTruthy();
+	const { container, liveProps, handlers } = await mountLayout({ model: { canModerate: true, mobileTabs: [...saved] } });
+	const bottom = required(container, 'nav[aria-label="Hatask 下部ナビゲーション"]');
+	const fab = required(bottom, '.hak-fab');
+	const savedTabs = liveProps.model.mobileTabs;
+	for (const tab of ['home', 'cal', 'todo', 'mood', 'meal', 'garden', 'support', 'ranking', 'hataskapps', 'apps'] as const) {
+		liveProps.activeTab = tab; await nextTick();
+		expect([...bottom.querySelectorAll('.hak-mobile-tab')].map(button => button.getAttribute('aria-label'))).toEqual(['ホーム', 'ToDo', 'Hatask App', 'Hataskey App', '記録確認']);
+		expect(required(bottom, '[aria-label="記録確認"]').hasAttribute('aria-current')).toBe(false);
+		expect(container.querySelector('.hak-review-entry')).toBeNull();
+		expect(required(bottom, '[aria-label="記録確認"]').nextElementSibling).toBe(fab);
+	}
+	click(bottom, '[aria-label="記録確認"]');
+	expect(handlers.navigate).toHaveBeenCalledExactlyOnceWith('review');
 	liveProps.activeTab = 'review'; await nextTick();
-	expect(container.querySelector('.hak-fab')).toBeNull();
-	expect(container.querySelector('.hak-mobile-tab[aria-label="記録確認"]')?.getAttribute('aria-current')).toBe('page');
-	expect(container.querySelectorAll('.hak-mobile-tab')).toHaveLength(5);
+	expect(required(bottom, '[aria-label="記録確認"]').nextElementSibling).toBe(fab);
+	expect(required(bottom, '.hak-mobile-tab[aria-current="page"]').getAttribute('aria-label')).toBe('記録確認');
+	expect(bottom.querySelectorAll('.hak-mobile-tab')).toHaveLength(5);
+	click(bottom, '.hak-fab'); await nextTick();
+	expect(fab.getAttribute('aria-expanded')).toBe('true');
+	click(container, '.hak-sheet-action'); await nextTick();
+	expect(handlers.action).toHaveBeenCalledExactlyOnceWith({ type: 'create-event' });
+	expect(fab.getAttribute('aria-expanded')).toBe('false');
+	expect(window.document.activeElement).toBe(fab);
+	click(bottom, '[aria-label="ホーム"]');
+	expect(handlers.navigate).toHaveBeenLastCalledWith('home');
+	liveProps.activeTab = 'home';
+	liveProps.model.canModerate = false; await nextTick();
+	expect(bottom.querySelector('[aria-label="記録確認"]')).toBeNull();
+	expect(bottom.querySelectorAll('.hak-mobile-tab')).toHaveLength(4);
+	expect(bottom.querySelector('.hak-fab')).toBe(fab);
+	expect(liveProps.model.mobileTabs).toBe(savedTabs);
 	expect(liveProps.model.mobileTabs).toEqual(saved);
 });
 

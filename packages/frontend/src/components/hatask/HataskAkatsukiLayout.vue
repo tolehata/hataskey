@@ -63,7 +63,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</section>
 			</div>
 		</div>
-		<button v-if="enabled && model.canModerate && activeTab !== 'review'" class="hak-review-entry" type="button" @click="navigate('review')"><i class="ti ti-shield-search" aria-hidden="true"></i>記録確認</button>
 		<div ref="bodyEl" class="hak-body">
 			<div ref="centerEl" class="hak-center" :role="enabled ? 'main' : undefined">
 				<section v-if="enabled" v-show="activeTab === 'home'" class="hak-home" aria-label="ホーム">
@@ -208,7 +207,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<button class="hak-exit" type="button" aria-label="Hatask を閉じる" @click="dispatch({ type: 'exit' })"><i class="ti ti-logout-2" aria-hidden="true"></i></button>
 		<div class="hak-bottom-case">
 			<button v-for="tab in mobileTabs" :key="tab.id" class="hak-mobile-tab" type="button" :aria-label="tab.label" :aria-current="isMobileTabActive(tab.id) ? 'page' : undefined" :tabindex="navHidden ? -1 : undefined" :aria-hidden="navHidden" @click="navigate(tab.id)"><i :class="tab.icon" aria-hidden="true"></i></button>
-			<button v-if="activeTab !== 'review'" ref="fabEl" class="hak-fab" type="button" :aria-label="fabOpen ? '記録メニューを閉じる' : '記録する'" :aria-expanded="fabOpen" @click="toggleFab"><i class="ti ti-plus" aria-hidden="true"></i></button>
+			<button ref="fabEl" class="hak-fab" type="button" :aria-label="fabOpen ? '記録メニューを閉じる' : '記録する'" :aria-expanded="fabOpen" @click="toggleFab"><i class="ti ti-plus" aria-hidden="true"></i></button>
 		</div>
 	</nav>
 </section>
@@ -393,7 +392,7 @@ const desktopTabs = computed(() => props.model.canModerate ? [...tabs, reviewTab
 const mobileTabs = computed(() => {
 	const ids = normalizeHataskAkatsukiMobileTabs(props.model.mobileTabs);
 	const selected = ids.map(id => tabs.find(tab => tab.id === id)!);
-	return props.model.canModerate && props.activeTab === 'review' ? [...selected, reviewTab] : selected;
+	return props.model.canModerate ? [...selected, reviewTab] : selected;
 });
 const missingMobileAppTabs = computed(() => isMobile.value
 	? tabs.filter(tab => (tab.id === 'hataskapps' || tab.id === 'apps') && !mobileTabs.value.some(selected => selected.id === tab.id))
@@ -913,7 +912,7 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 .htk-akatsuki-layout button.hak-side-case:hover { background: color-mix(in srgb, var(--fill-2) 45%, var(--masthead)); }
 .hak-side-case .hak-side-row-main, .hak-side-case .hak-todo-copy { overflow-wrap: anywhere; }
 .htk-akatsuki-layout .hak-side-case > :is(.hak-todo-row, .hak-side-row):last-child { padding-bottom: 0; border-bottom: 0; }
-.hak-mobile-head, .hak-mobile-date, .hak-bottom, .hak-fab-sheet, .hak-fab-scrim, .hak-review-entry { display: none; }
+.hak-mobile-head, .hak-mobile-date, .hak-bottom, .hak-fab-sheet, .hak-fab-scrim { display: none; }
 @container hatask-akatsuki-body (max-width: 780px) {
 	.hak-center { padding: 24px 22px; }
 	.hak-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -941,7 +940,6 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 	[data-searching='true'] .hak-mobile-search { flex: 1 1 0; width: auto; opacity: 1; pointer-events: auto; }
 	[data-searching='true'] .hak-mobile-gear { width: 0; max-width: 0; opacity: 0; pointer-events: none; }
 	.hak-body { display: flex; flex-direction: column; min-height: 0; }
-	.hak-review-entry { display: inline-flex; align-items: center; gap: 7px; margin: 8px 14px 0; padding: 10px 14px; min-height: 44px; border: 1px solid var(--rule); border-radius: var(--control-radius); color: var(--accent-ink); background: var(--paper); }
 	.hak-center { flex: none; width: 100%; padding: 4px 20px 0; }
 	[data-tab='apps'] .hak-center, [data-tab='hataskapps'] .hak-center { padding-inline: 14px; }
 	.hak-home { grid-template-areas: 'summary' 'focus' 'stats' 'extra'; }
