@@ -15,7 +15,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
-import type { UtageSessionsRepository } from '@/models/_.js';
+import type { NotesRepository, UtageSessionsRepository } from '@/models/_.js';
 import type { MiNote } from '@/models/Note.js';
 import type { MiUser } from '@/models/User.js';
 import { IdService } from '@/core/IdService.js';
@@ -23,9 +23,10 @@ import { QueueService } from '@/core/QueueService.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
 import { AchievementService } from '@/core/AchievementService.js';
 import { MemoryKVCache } from '@/misc/cache.js';
+import { isUtageEligible } from '@/misc/utage.js';
 import { bindThis } from '@/decorators.js';
 
-// フロント(MkNote.vue)と同一の判定基準
+// 反応時の安価な足切り専用。参加可否はMFMを解析して判定する。
 const UTAGE_REGEX = /宴|うたげ|ぅたげ|utage/i;
 const UTAGE_FLASH_MS = 15 * 60 * 1000; // 15分
 
@@ -47,6 +48,9 @@ export class UtageService {
 		private queueService: QueueService,
 		private globalEventService: GlobalEventService,
 		private achievementService: AchievementService,
+
+		@Inject(DI.notesRepository)
+		private notesRepository: NotesRepository,
 	) {
 	}
 
@@ -66,8 +70,7 @@ export class UtageService {
 		//   (notes/local-timeline.ts / stream/channels/local-timeline.ts)。
 		//   home を含めていた頃は、LTLに出ないので誰にも邪魔されず15分を通過して
 		//   成功が積み増しされ、HTLやプロフィールから反応が付けば阻止まで数えていた。
-		if (note.visibility !== 'public') return;
-		if (!this.isUtageText(note)) return;
+		if (!isUtageEligible(note)) return;
 
 		// 旗鯖fork: note.createdAt カラムは廃止された(IDに生成時刻が埋め込まれている)ため、
 		// ノートIDから生成時刻を復元する。従来の note.createdAt 参照は undefined となり
@@ -97,9 +100,41 @@ export class UtageService {
 			return;
 		}
 
+		// 作成後処理は非同期なので、挿入を待つ間の編集を見落とさない。
+		// 既に編集されていた場合は、可視に戻された可能性もあるため開始を取り消す。
+		const currentNote = await this.notesRepository.findOneBy({ id: note.id });
+		if (currentNote == null) return;
+		if (currentNote.updatedAt != null || !isUtageEligible(currentNote)) {
+			await this.failConcealedSession(note);
+			return;
+		}
+
 		// 成功確定ジョブを残り時間で予約(連合先には何も配送しない)
 		const delay = Math.max(0, expiresAt.getTime() - Date.now());
 		await this.queueService.createUtageResolveJob(note.id, delay);
+	}
+
+	// 挑戦中に宣言を隠したら失敗を確定し、あとで本文を戻しても復活させない。
+	// 阻止者は付けず、他人の阻止回数・実績にも加算しない。
+	@bindThis
+	public async onNoteUpdated(previous: MiNote, updated: MiNote): Promise<void> {
+		if (previous.userHost != null) return;
+		if (!this.isUtageText(previous) && !this.isUtageText(updated)) return;
+		if (isUtageEligible(previous) && isUtageEligible(updated)) return;
+		await this.failConcealedSession(previous);
+	}
+
+	@bindThis
+	private async failConcealedSession(note: Pick<MiNote, 'id' | 'userId'>): Promise<void> {
+		const resolvedAt = new Date();
+		const result = await this.utageSessionsRepository.update(
+			// DB保存後に期限を跨いでも、まだ未確定なら隠蔽を取り消し扱いにする。
+			{ noteId: note.id, status: 'running' },
+			{ status: 'failed', resolvedAt },
+		);
+		if (result.affected && result.affected > 0) {
+			this.publishStatus(note.id, note.userId, 'failed');
+		}
 	}
 
 	// 反応(リアクション/リプライ/リノート)着弾時。expiresAt 前 かつ running なら failed に確定。
@@ -151,14 +186,19 @@ export class UtageService {
 		const session = await this.utageSessionsRepository.findOneBy({ noteId });
 		if (session == null) return;
 		if (session.status !== 'running') return;
+		if (Date.now() < session.expiresAt.getTime()) return;
+
+		// 適用前に開始した不可視の宴や、編集中のノートも成功させない。
+		const note = await this.notesRepository.findOneBy({ id: noteId });
+		const status = note != null && isUtageEligible(note) ? 'succeeded' : 'failed';
 
 		const result = await this.utageSessionsRepository.update(
 			{ noteId, status: 'running' },
-			{ status: 'succeeded', resolvedAt: new Date() },
+			{ status, resolvedAt: new Date() },
 		);
 		if (result.affected && result.affected > 0) {
-			this.publishStatus(session.noteId, session.userId, 'succeeded');
-			await this.achievementService.reconcileUtageAchievements(session.userId, 'success').catch(err => {
+			this.publishStatus(session.noteId, session.userId, status);
+			if (status === 'succeeded') await this.achievementService.reconcileUtageAchievements(session.userId, 'success').catch(err => {
 				console.error('[utage] success achievement reconciliation failed:', err);
 			});
 		}

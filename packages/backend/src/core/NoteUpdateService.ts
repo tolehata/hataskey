@@ -25,6 +25,7 @@ import { ApDeliverManagerService } from '@/core/activitypub/ApDeliverManagerServ
 import { bindThis } from '@/decorators.js';
 import { DB_MAX_NOTE_TEXT_LENGTH } from '@/const.js';
 import { SearchService } from '@/core/SearchService.js';
+import { UtageService } from '@/core/UtageService.js';
 import { normalizeForSearch } from '@/misc/normalize-for-search.js';
 import { MiDriveFile } from '@/models/_.js';
 import { MiPoll, IPoll } from '@/models/Poll.js';
@@ -70,6 +71,7 @@ export class NoteUpdateService implements OnApplicationShutdown {
 		private searchService: SearchService,
 		private activeUsersChart: ActiveUsersChart,
 		private noteHistoryService: NoteHistorySerivce,
+		private utageService: UtageService,
 	) { }
 
 	@bindThis
@@ -248,6 +250,12 @@ export class NoteUpdateService implements OnApplicationShutdown {
 				await this.notesRepository.update({ id: note.id }, values);
 			}
 
+			// 再取得した最新ノートではなく、今回保存した本文を判定する。
+			// 連続編集で不可視の本文をすぐ戻しても、途中の隠蔽を見落とさない。
+			await this.utageService.onNoteUpdated(note, { ...note, text: values.text, cw: values.cw }).catch(err => {
+				// 宴の付随処理が失敗しても、保存済みの編集の履歴・連合配送は続ける。
+				console.error('[utage] onNoteUpdated failed:', err);
+			});
 			await this.noteHistoryService.recordHistory(values, note, originalPoll, originalEvent, { updatedAt: data.updatedAt });
 
 			return await this.notesRepository.findOneBy({ id: note.id });

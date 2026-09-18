@@ -23,6 +23,7 @@ function service(overrides: Record<string, unknown> = {}) {
 			reconcileUtageAchievements: vi.fn().mockResolvedValue(undefined),
 			create: vi.fn().mockResolvedValue(undefined),
 		},
+		notesRepository: { findOneBy: vi.fn().mockImplementation(async () => note()) },
 		...overrides,
 	};
 	const sut = new UtageService(
@@ -31,12 +32,13 @@ function service(overrides: Record<string, unknown> = {}) {
 		defaults.queueService as never,
 		defaults.globalEventService as never,
 		defaults.achievementService as never,
+		defaults.notesRepository as never,
 	);
 	return { sut, ...defaults };
 }
 
 function note(overrides: Record<string, unknown> = {}) {
-	return { id: 'note-a', text: '今日は宴だ', cw: null, visibility: 'public', ...overrides } as never;
+	return { id: 'note-a', userId: 'user-a', userHost: null, channelId: null, text: '今日は宴だ', cw: null, visibility: 'public', ...overrides } as never;
 }
 
 const localUser = { id: 'user-a', host: null };
@@ -82,6 +84,20 @@ describe('宴のセッションはLTLに載る投稿だけで作られる', () =
 		const plain = service();
 		await plain.sut.onNoteCreated(note({ text: 'ふつうの投稿' }), localUser);
 		expect(plain.utageSessionsRepository.insert).not.toHaveBeenCalled();
+	});
+
+	test.each([
+		{ text: ':kyattukya:$[fg.color=0000 宴]' },
+		{ text: '$[scale.x=0 宴]' },
+		{ text: '[リンク](https://example.com/utage)' },
+		{ text: '宴', cw: '内容を隠す' },
+		{ text: '宴', cw: '' },
+		{ text: '宴', channelId: 'channel-a' },
+	])('見えない宴ではセッションも確定ジョブも作らない: %j', async (data) => {
+		const { sut, utageSessionsRepository, queueService } = service();
+		await sut.onNoteCreated(note(data), localUser);
+		expect(utageSessionsRepository.insert).not.toHaveBeenCalled();
+		expect(queueService.createUtageResolveJob).not.toHaveBeenCalled();
 	});
 
 	/*
@@ -183,12 +199,147 @@ describe('宴の確定時にサーバー側で実績を解除する', () => {
 	});
 
 	test('宴の成功確定時は投稿者の成功回数実績を照合する', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
 		const { sut, utageSessionsRepository, achievementService } = service();
-		utageSessionsRepository.findOneBy.mockResolvedValue(runningSession(new Date(now.getTime() - 60_000)));
+		utageSessionsRepository.findOneBy.mockResolvedValue({
+			...runningSession(new Date(now.getTime() - 900_000)),
+			expiresAt: now,
+		});
 		utageSessionsRepository.update.mockResolvedValue({ affected: 1 });
 
 		await sut.resolveExpired('note-a');
 
 		expect(achievementService.reconcileUtageAchievements).toHaveBeenCalledWith('user-a', 'success');
+	});
+
+	test.each([
+		{ text: ':kyattukya:$[fg.color=0000 宴]' },
+		{ text: '宴', cw: '' },
+		{ text: '普通の投稿' },
+		{ visibility: 'home' },
+		{ channelId: 'channel-a' },
+	])('古い不可視セッションも成功・実績に加算しない: %j', async (data) => {
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+		const { sut, utageSessionsRepository, notesRepository, globalEventService, achievementService } = service();
+		utageSessionsRepository.findOneBy.mockResolvedValue({
+			...runningSession(new Date(now.getTime() - 900_000)),
+			expiresAt: now,
+		});
+		utageSessionsRepository.update.mockResolvedValue({ affected: 1 });
+		notesRepository.findOneBy.mockResolvedValue(note(data));
+
+		await sut.resolveExpired('note-a');
+
+		expect(utageSessionsRepository.update).toHaveBeenCalledWith(
+			{ noteId: 'note-a', status: 'running' },
+			{ status: 'failed', resolvedAt: now },
+		);
+		expect(globalEventService.publishNoteStream).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'note-a' }), 'utageStatusUpdated', { status: 'failed' },
+		);
+		expect(achievementService.reconcileUtageAchievements).not.toHaveBeenCalled();
+	});
+
+	test('15分前のジョブでは成功を確定しない', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+		const { sut, utageSessionsRepository } = service();
+		utageSessionsRepository.findOneBy.mockResolvedValue(runningSession(new Date(now.getTime() - 1000)));
+		await sut.resolveExpired('note-a');
+		expect(utageSessionsRepository.update).not.toHaveBeenCalled();
+	});
+});
+
+describe('開始後の編集による宴の隠蔽', () => {
+	test('リモート投稿の編集では宴の照会・更新をしない', async () => {
+		const { sut, utageSessionsRepository, notesRepository, globalEventService } = service();
+		await sut.onNoteUpdated(
+			note({ userHost: 'remote.example' }),
+			note({ userHost: 'remote.example', text: '$[fg.color=0000 宴]' }),
+		);
+		expect(utageSessionsRepository.findOneBy).not.toHaveBeenCalled();
+		expect(utageSessionsRepository.update).not.toHaveBeenCalled();
+		expect(notesRepository.findOneBy).not.toHaveBeenCalled();
+		expect(globalEventService.publishNoteStream).not.toHaveBeenCalled();
+	});
+
+	test.each([
+		{ text: '$[fg.color=0000 宴]' },
+		{ text: '宴', cw: '' },
+		{ text: '普通の投稿' },
+	])('宣言を隠す編集は阻止実績を付けず失敗にする: %j', async (data) => {
+		const { sut, utageSessionsRepository, globalEventService, achievementService } = service();
+		utageSessionsRepository.update.mockResolvedValue({ affected: 1 });
+		await sut.onNoteUpdated(note(), note(data));
+		expect(utageSessionsRepository.update).toHaveBeenCalledWith(
+			{ noteId: 'note-a', status: 'running' },
+			expect.objectContaining({ status: 'failed' }),
+		);
+		expect(globalEventService.publishNoteStream).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'note-a' }), 'utageStatusUpdated', { status: 'failed' },
+		);
+		expect(achievementService.reconcileUtageAchievements).not.toHaveBeenCalled();
+	});
+
+	test('隠した宣言を戻してもrunningへの復活や新しいジョブ作成はしない', async () => {
+		const { sut, utageSessionsRepository, queueService } = service();
+		utageSessionsRepository.update.mockResolvedValue({ affected: 0 });
+		await sut.onNoteUpdated(note({ text: '$[fg.color=0000 宴]' }), note());
+		expect(utageSessionsRepository.update).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'running' }), expect.objectContaining({ status: 'failed' }),
+		);
+		expect(utageSessionsRepository.insert).not.toHaveBeenCalled();
+		expect(queueService.createUtageResolveJob).not.toHaveBeenCalled();
+	});
+
+	test('見える宣言を保つ編集は継続できる', async () => {
+		const { sut, utageSessionsRepository } = service();
+		await sut.onNoteUpdated(note(), note({ text: '**宴**を楽しむ' }));
+		expect(utageSessionsRepository.update).not.toHaveBeenCalled();
+	});
+
+	test('確定済みの宴は編集で結果を再配信しない', async () => {
+		const { sut, utageSessionsRepository, globalEventService } = service();
+		utageSessionsRepository.update.mockResolvedValue({ affected: 0 });
+		await sut.onNoteUpdated(note(), note({ text: '$[fg.color=0000 宴]' }));
+		expect(globalEventService.publishNoteStream).not.toHaveBeenCalled();
+	});
+
+	test('セッション作成中に隠して戻した投稿も開始しない', async () => {
+		const { sut, notesRepository, utageSessionsRepository, queueService } = service();
+		notesRepository.findOneBy.mockResolvedValue(note({ updatedAt: new Date() }));
+		utageSessionsRepository.update.mockResolvedValue({ affected: 1 });
+		await sut.onNoteCreated(note(), localUser);
+		expect(utageSessionsRepository.update).toHaveBeenCalledWith(
+			{ noteId: 'note-a', status: 'running' }, expect.objectContaining({ status: 'failed' }),
+		);
+		expect(queueService.createUtageResolveJob).not.toHaveBeenCalled();
+	});
+
+	test('隠蔽の処理が期限を跨いでも、本文を戻して成功にはできない', async () => {
+		vi.useFakeTimers();
+		const now = new Date('2026-09-03T12:00:00.000Z');
+		vi.setSystemTime(now);
+		const { sut, utageSessionsRepository, achievementService } = service();
+		const session = {
+			noteId: 'note-a', userId: 'user-a', status: 'running',
+			expiresAt: new Date(now.getTime() - 1),
+		};
+		utageSessionsRepository.findOneBy.mockImplementation(async () => session);
+		utageSessionsRepository.update.mockImplementation(async (criteria, changes) => {
+			if (criteria.status !== session.status) return { affected: 0 };
+			Object.assign(session, changes);
+			return { affected: 1 };
+		});
+
+		const concealed = note({ text: '$[fg.color=0000 宴]' });
+		await sut.onNoteUpdated(note(), concealed);
+		await sut.onNoteUpdated(concealed, note());
+		await sut.resolveExpired('note-a');
+
+		expect(session.status).toBe('failed');
+		expect(achievementService.reconcileUtageAchievements).not.toHaveBeenCalled();
 	});
 });

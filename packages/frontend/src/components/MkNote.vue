@@ -512,17 +512,9 @@ const menuButton = useTemplateRef('menuButton');
 // なお演出(明滅・バッジ)はLTL表示中のみ。これはLTL限定のゲームであるため。
 // =========================================================================
 const UTAGE_EXPIRE_MS = 6 * 60 * 60 * 1000; // 6時間 (これを過ぎたら演出を出さない)
-const UTAGE_REGEX = /宴|うたげ|ぅたげ|utage/i;
-
-// 本文(+CWやショートコード)に宴ワードを部分一致で含むか
-const utageTextMatched = computed(() => {
-	const t = `${appearNote.text ?? ''} ${appearNote.cw ?? ''}`;
-	return UTAGE_REGEX.test(t);
-});
-
-// このノートが宴演出の対象か (宴ワード + ローカルノート + LTL表示中)
+// 参加可否もサーバーの判定に合わせ、不可視の語だけの投稿へ案内を出さない。
 const isUtageTarget = computed(() => {
-	if (!utageTextMatched.value) return false;
+	if ($appearNote.utageStatus == null) return false;
 	if (appearNote.user.host != null) return false; // ローカルノートのみ
 	if (inLocalTimeline == null || !inLocalTimeline.value) return false; // LTL表示中のみ
 	return true;
