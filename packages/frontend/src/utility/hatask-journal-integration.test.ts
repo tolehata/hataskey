@@ -52,7 +52,6 @@ describe('Hatask journal integration', () => {
 		expect(journal).not.toContain('translateY(');
 	});
 	test('保存済みのきもち通知から気持ちタブへ直接移動する', () => {
-		expect(page).toContain('\'/hatask?notice=mood\'');
 		expect(routes).toMatch(/path: '\/hatask',[\s\S]{0,120}query: \{[\s\S]{0,80}tab: 'tab',[\s\S]{0,40}notice: 'notice'/u);
 		const routeWatcherStart = page.indexOf('const routeRouter = useRouter();');
 		const routeWatcher = page.slice(routeWatcherStart, page.indexOf('const prefersDark=', routeWatcherStart));

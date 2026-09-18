@@ -706,6 +706,7 @@ import { readAkatsukiUsage, recordAkatsukiUsage } from '@/utility/hatask-akatsuk
 import HataskQuickCapture from '@/components/hatask/HataskQuickCapture.vue';
 import HataskJournal from '@/components/hatask/HataskJournal.vue';
 import { HATASK_MEAL_TEMPLATE_KEY, isJournalEntry, persistJournalChange } from '@/utility/hatask-journal.js';
+import { createHataskMoodReminderPatch } from '@/utility/hatask-mood-reminder.js';
 import type { HataskJournalChange, HataskJournalEntry, HataskMealTemplate } from '@/utility/hatask-journal.js';
 import type { HataskCaptureChip, HataskCaptureTool } from '@/components/hatask/HataskQuickCapture.vue';
 import HataskTemplateLibrary from '@/components/hatask/HataskTemplateLibrary.vue';
@@ -1317,11 +1318,8 @@ routeRouter.push('/');
 }
 
 // ========== NOTIFICATION SYSTEM (Misskey API) ==========
-// 旗鯖fork: 予定通知と気持ちリマインドでタイマーの入れ物を分ける。
-// ⚠️1つの配列を共有すると、予定を1件追加しただけで気持ちリマインドのタイマーまで消える
-//   (scheduleEventNotifications が「全消ししてから張り直す」ため)。
+// 予定通知は従来のタイマーを維持する。気持ちリマインダーはサーバーが毎日送信する。
 const eventTimerIds:number[]=[];
-const moodTimerIds:number[]=[];
 // 旗鯖fork: 第4引数 link でクリック先パスを指定可能(デフォルト '/hatask' = 全hatask通知をhataskページに飛ばす)。
 // 呼び出し側で別のパスに飛ばしたい場合のみ link を明示すればよい。
 async function sendNotification(header:string,body:string,icon?:string,link:string='/hatask'){
@@ -1356,25 +1354,6 @@ function scheduleEventNotifications(){
 	}
 	const refreshTimer=window.setTimeout(scheduleEventNotifications,12*60*60*1000);
 	eventTimerIds.push(refreshTimer);
-}
-function scheduleMoodReminders(){
-// ⚠️まず消す。ここを省くと呼ばれるたびにタイマーが積み上がり、同じ時刻に何通も届く。
-// ⚠️早期returnより前で消すこと。後ろに置くと、リマインドをOFFにしても既存の分が鳴る。
-moodTimerIds.forEach(id=>clearTimeout(id));moodTimerIds.length=0;
-if(!settings.value.moodRemind||!settings.value.moodRemindTimes?.length)return;
-const now=new Date();const today=localDateKey(now);
-const timeMap:Record<string,string>={'朝 8:00':'08:00','昼 12:00':'12:00','夜 20:00':'20:00','寝る前 23:00':'23:00'};
-settings.value.moodRemindTimes.forEach((t:string)=>{
-const hm=timeMap[t];if(!hm)return;
-const fireAt=new Date(today+'T'+hm).getTime();
-const delay=fireAt-Date.now();
-if(delay>0&&delay<24*60*60*1000){
-const tid=window.setTimeout(()=>{
-const todaysMoods=moods.value.filter((m:any)=>m.date===today);
-if(todaysMoods.length===0){sendNotification(copy.moodReminderTitle, copy.moodReminderBody, undefined,'/hatask?notice=mood')}
-},delay);
-moodTimerIds.push(tid)
-}})
 }
 const currentTime=ref('');const currentDate=ref('');const eyePhrase=ref(getDefaultPhrase());const editingEvent=ref<any>(null);let eyeTimer:ReturnType<typeof setInterval>|null=null;
 // 旗鯖fork(v2): テーマ別の時計まわり日付パーツ(季=1月9日/金曜日, 刷=2026.01.09/FRIDAY)。
@@ -1796,9 +1775,9 @@ async function saveJournalReminder(patch: { moodRemind?: boolean; moodRemindTime
 	if (journalReminderSaving.value || !loadedKeys.has('settings')) return;
 	journalReminderSaving.value = true;
 	try {
-		await registrySet('settings', { ...settings.value, ...patch });
-		settings.value = { ...settings.value, ...patch };
-		scheduleMoodReminders();
+		const reminderPatch = createHataskMoodReminderPatch(settings.value, patch);
+		await registrySet('settings', { ...settings.value, ...reminderPatch });
+		settings.value = { ...settings.value, ...reminderPatch };
 	} catch {
 		os.alert({ type: 'error', text: i18n.ts._hata._hatask._journal.saveFailure });
 	} finally {
@@ -4033,7 +4012,6 @@ showHataskIntroduction();
 // 旗鯖fork(ハタキュ): 設定を読み終えた時点でテーマが確定するので、ここから風を回し始める。
 // Schedule notifications
 scheduleEventNotifications();
-scheduleMoodReminders();
 // Fetch login ranking
 fetchLoginRanking();
 // Eye phrase
@@ -4123,7 +4101,6 @@ if (eyeTimer) clearInterval(eyeTimer);
 if (mediaQuery) mediaQuery.removeEventListener('change', onMediaChange);
 stopHtkThemeWatch();
 eventTimerIds.forEach(id => clearTimeout(id));
-moodTimerIds.forEach(id => clearTimeout(id));
 });
 </script>
 

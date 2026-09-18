@@ -16,6 +16,7 @@ import { InboxProcessorService } from './processors/InboxProcessorService.js';
 import { UserWebhookDeliverProcessorService } from './processors/UserWebhookDeliverProcessorService.js';
 import { SystemWebhookDeliverProcessorService } from './processors/SystemWebhookDeliverProcessorService.js';
 import { CheckHataskFlowersProcessorService } from './processors/CheckHataskFlowersProcessorService.js';
+import { CheckHataskMoodRemindersProcessorService } from './processors/CheckHataskMoodRemindersProcessorService.js';
 import { CheckExpiredMutingsProcessorService } from './processors/CheckExpiredMutingsProcessorService.js';
 import { BakeBufferedReactionsProcessorService } from './processors/BakeBufferedReactionsProcessorService.js';
 import { CleanChartsProcessorService } from './processors/CleanChartsProcessorService.js';
@@ -59,6 +60,7 @@ import { RebuildTrendingProcessorService } from './processors/RebuildTrendingPro
 	providers: [
 		QueueLoggerService,
 		CheckHataskFlowersProcessorService,
+		CheckHataskMoodRemindersProcessorService,
 		TickChartsProcessorService,
 		ResyncChartsProcessorService,
 		CleanChartsProcessorService,

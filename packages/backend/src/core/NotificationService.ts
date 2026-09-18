@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { createHash } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 import * as Redis from 'ioredis';
 import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
@@ -23,6 +24,18 @@ import { UserListService } from '@/core/UserListService.js';
 import { FilterUnionByProperty, groupedNotificationTypes, obsoleteNotificationTypes } from '@/types.js';
 import { trackPromise } from '@/misc/promise-tracker.js';
 // import { escapeHtml } from '@/misc/escape-html.js';
+
+// Keep the stream write and its deduplication marker atomic. Delivery after the
+// stream write (packing, live events and push) is not an exactly-once guarantee.
+const createNotificationOnceScript = `
+if redis.call('EXISTS', KEYS[2]) == 1 then
+	return false
+end
+local id = redis.call('XADD', KEYS[1], 'MAXLEN', '~', ARGV[1], ARGV[2], 'data', ARGV[3])
+redis.call('SET', KEYS[2], id, 'EX', ARGV[4])
+return id
+`;
+const notificationDedupRetentionSeconds = 7 * 24 * 60 * 60;
 
 export function filterNotificationsFromBotIds(
 	notifications: MiNotification[],
@@ -97,15 +110,19 @@ export class NotificationService implements OnApplicationShutdown {
 		);
 	}
 
-	/** Callers that must contain delivery failures can await the standard notification path. */
+	/**
+	 * Callers that must contain delivery failures can await the standard notification path.
+	 * An optional key suppresses duplicate stream entries for this recipient for seven days.
+	 */
 	@bindThis
 	public async createNotificationAsync<T extends MiNotification['type']>(
 		notifieeId: MiUser['id'],
 		type: T,
 		data: Omit<FilterUnionByProperty<MiNotification, 'type', T>, 'type' | 'id' | 'createdAt' | 'notifierId'>,
 		notifierId?: MiUser['id'] | null,
+		idempotencyKey?: string,
 	): Promise<MiNotification | null> {
-		return this.#createNotificationInternal(notifieeId, type, data, notifierId);
+		return this.#createNotificationInternal(notifieeId, type, data, notifierId, idempotencyKey);
 	}
 
 	async #createNotificationInternal<T extends MiNotification['type']>(
@@ -113,6 +130,7 @@ export class NotificationService implements OnApplicationShutdown {
 		type: T,
 		data: Omit<FilterUnionByProperty<MiNotification, 'type', T>, 'type' | 'id' | 'createdAt' | 'notifierId'>,
 		notifierId?: MiUser['id'] | null,
+		idempotencyKey?: string,
 	): Promise<MiNotification | null> {
 		const profile = await this.cacheService.userProfileCache.fetch(notifieeId);
 
@@ -174,6 +192,8 @@ export class NotificationService implements OnApplicationShutdown {
 		}
 
 		const createdAt = new Date();
+		const dedupKey = idempotencyKey === undefined ? null
+			: `notificationDedup:${notifieeId}:${createHash('sha256').update(idempotencyKey).digest('hex')}`;
 		let notification: FilterUnionByProperty<MiNotification, 'type', T>;
 		let redisId: string;
 
@@ -189,14 +209,28 @@ export class NotificationService implements OnApplicationShutdown {
 			} as unknown as FilterUnionByProperty<MiNotification, 'type', T>;
 
 			try {
-				redisId = (await this.redisClient.xadd(
-					`notificationTimeline:${notifieeId}`,
-					'MAXLEN', '~', this.config.perUserNotificationsMaxCount.toString(),
-					this.toXListId(notification.id),
-					'data', JSON.stringify(notification)))!;
+				if (dedupKey === null) {
+					redisId = (await this.redisClient.xadd(
+						`notificationTimeline:${notifieeId}`,
+						'MAXLEN', '~', this.config.perUserNotificationsMaxCount.toString(),
+						this.toXListId(notification.id),
+						'data', JSON.stringify(notification)))!;
+				} else {
+					const result = await this.redisClient.eval(
+						createNotificationOnceScript, 2,
+						`notificationTimeline:${notifieeId}`, dedupKey,
+						this.config.perUserNotificationsMaxCount.toString(),
+						this.toXListId(notification.id), JSON.stringify(notification),
+						notificationDedupRetentionSeconds.toString(),
+					) as string | null;
+					if (result === null) return null;
+					redisId = result;
+				}
 			} catch (e) {
 				// The ID specified in XADD is equal or smaller than the target stream top item で失敗することがあるのでリトライ
-				if (e instanceof ReplyError) continue;
+				// Keep legacy retries unchanged, but do not spin on permanent Lua/permission errors.
+				if (e instanceof ReplyError && (dedupKey === null
+					|| (e instanceof Error && e.message.includes('The ID specified in XADD is equal or smaller than the target stream top item')))) continue;
 				throw e;
 			}
 

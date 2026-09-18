@@ -14,6 +14,7 @@ import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
+import { isHataskMoodReminderTimeZone } from '@/utility/hatask-mood-reminder.js';
 
 export const HATA_SETTINGS_TRANSFER_FORMAT = 'hataskey-custom-settings';
 export const HATA_SETTINGS_TRANSFER_VERSION = 3;
@@ -146,7 +147,7 @@ export const HATA_SETTINGS_CATEGORIES: readonly CategoryDefinition[] = [
 				darkMode: isBoolean, autoTheme: isBoolean, weekStart: value => value === 'mon' || value === 'sun',
 				showClock: isBoolean, showEvents: isBoolean, showFlower: isBoolean, showMoodSummary: isBoolean,
 				showMealSection: isBoolean, showFeedbackNotif: isBoolean, showEarthquake: isBoolean,
-				moodRemind: isBoolean, moodRemindTimes: isStringArray, openOnStart: isBoolean,
+				moodRemind: isBoolean, moodRemindTimes: isStringArray, moodRemindTimeZone: isHataskMoodReminderTimeZone, openOnStart: isBoolean,
 				showMealSummary: isBoolean, theme: isString, animations: isBoolean,
 			},
 		}],

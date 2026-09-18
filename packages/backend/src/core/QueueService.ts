@@ -79,6 +79,9 @@ const REPEATABLE_SYSTEM_JOB_DEF = [{
 	name: 'checkHataskFlowers',
 	pattern: '* * * * *',
 }, {
+	name: 'checkHataskMoodReminders',
+	pattern: '* * * * *',
+}, {
 	name: 'checkExpiredMutings',
 	pattern: '*/5 * * * *',
 }, {

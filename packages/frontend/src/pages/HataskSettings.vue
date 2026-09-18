@@ -213,6 +213,7 @@ import { createHataskPlannerIntegrity, HATASK_PLANNER_SCOPE, migrateHataskPlanne
 import type { HataskPlannerCollectionKey, HataskPlannerEvent, HataskPlannerRawData, HataskPlannerTemplate } from '@/utility/hatask-planner-storage.js';
 import { normalizeHataskPlannerTemplates } from '@/utility/hatask-planner-templates.js';
 import { isHataskAkatsukiRequiredTab, moveHataskAkatsukiMobileTab, normalizeHataskAkatsukiMobileTabs, replaceHataskAkatsukiMobileTab } from '@/utility/hatask-akatsuki-navigation.js';
+import { createHataskMoodReminderPatch } from '@/utility/hatask-mood-reminder.js';
 import { store } from '@/store.js';
 import HataskThemePreview from '@/components/hatask/HataskThemePreview.vue';
 import type { HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';
@@ -529,7 +530,7 @@ async function importPlannerData(event:Event):Promise<void>{
 
 async function saveSettings(patch: Record<string, unknown>): Promise<void> {
 	if (!settingsLoaded.value || settingsSaving.value) return;
-	const nextSettings = { ...settings.value, ...patch };
+	const nextSettings = { ...settings.value, ...createHataskMoodReminderPatch(settings.value, patch) };
 	settingsSaving.value = true;
 	settingsError.value = '';
 	try {
