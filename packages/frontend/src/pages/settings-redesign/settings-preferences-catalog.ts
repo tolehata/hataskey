@@ -27,7 +27,7 @@ export const preferenceDestinationIds = [
 export type PreferenceDestinationId = typeof preferenceDestinationIds[number];
 export type PreferenceControlKind = 'switch' | 'select' | 'range' | 'radios' | 'reaction';
 
-/** Exact unique keys from old MkPreferenceContainer nodes (animation appeared twice). */
+/** Legacy MkPreferenceContainer keys plus controls owned by the new settings. */
 export const preferenceContainerKeys = [
 	'advancedMfm', 'allMediaNoteCollapse', 'alwaysConfirmFollow', 'alwaysShowCw', 'animatedMfm', 'animation',
 	'autoLoadMoreConversation', 'autoLoadMoreReplies', 'chat.sendOnEnter', 'chat.showSenderName',
@@ -39,7 +39,7 @@ export const preferenceContainerKeys = [
 	'fontSize', 'forceCollapseAllRenotes', 'forceRenoteVisibilitySelection', 'forceShowAds', 'hemisphere',
 	'hideAvatarsInNote', 'highlightSensitiveMedia', 'imageNewTab', 'infoButtonForNoteActionsEnabled', 'instanceTicker',
 	'keepCw', 'keepScreenOn', 'limitWidthOfReaction', 'loadRawImages', 'ltlEmojiVoteEnabled', 'makeEveryTextElementsSelectable',
-	'mediaListWithOneImageAppearance', 'menuStyle', 'newNoteReceivedNotificationBehavior', 'notificationPosition',
+	'mediaListWithOneImageAppearance', 'menuStyle', 'newNoteReceivedNotificationBehavior', 'emojiAdditionNotice', 'hourlyTimeNotice', 'notificationPosition',
 	'notificationStackAxis', 'nsfw', 'nsfwOpenBehavior', 'numberOfPageCache', 'pollingInterval', 'reactionsDisplaySize',
 	'rememberNoteVisibility', 'removeModalBgColorForBlur', 'renoteQuoteButtonSeparation', 'renoteVisibilitySelection',
 	'requireRefreshBehavior', 'selectReaction', 'serverDisconnectedBehavior', 'setFederationAvatarShape',
@@ -109,6 +109,7 @@ const placements: Readonly<Record<PreferenceContainerKey, Placement>> = {
 	makeEveryTextElementsSelectable: { destinationId: 'misskey-accessibility' }, mediaListWithOneImageAppearance: { destinationId: 'display-preferences' },
 	menuStyle: { destinationId: 'misskey-accessibility' }, newNoteReceivedNotificationBehavior: { destinationId: 'cherrypick-display' },
 	notificationPosition: { destinationId: 'notifications-preferences' }, notificationStackAxis: { destinationId: 'notifications-preferences' },
+	emojiAdditionNotice: { destinationId: 'notifications-preferences' }, hourlyTimeNotice: { destinationId: 'notifications-preferences' },
 	nsfw: { destinationId: 'display-preferences' }, nsfwOpenBehavior: { destinationId: 'cherrypick-display' },
 	numberOfPageCache: { destinationId: 'misskey-other' }, pollingInterval: { destinationId: 'display-general' },
 	reactionsDisplaySize: { destinationId: 'timeline-note-display' }, rememberNoteVisibility: { destinationId: 'timeline-post-form' },
@@ -213,6 +214,8 @@ const labelValues: Readonly<Record<PreferenceContainerKey, string>> = {
 	menuStyle: i18n.ts.menuStyle,
 	newNoteReceivedNotificationBehavior: i18n.ts.newNoteReceivedNotification,
 	notificationPosition: i18n.ts._hata._notificationToast.position,
+	emojiAdditionNotice: i18n.ts._hata._navbarNotice.emojiSetting,
+	hourlyTimeNotice: i18n.ts._hata._navbarNotice.timeSetting,
 	notificationStackAxis: i18n.ts._hata._notificationToast.stack,
 	nsfw: i18n.ts.displayOfSensitiveMedia,
 	nsfwOpenBehavior: i18n.ts.nsfwOpenBehavior,
@@ -265,6 +268,8 @@ const labelValues: Readonly<Record<PreferenceContainerKey, string>> = {
 };
 
 const captionValues: Readonly<Partial<Record<PreferenceContainerKey, readonly string[]>>> = {
+	emojiAdditionNotice: [i18n.ts._hata._navbarNotice.emojiSettingDescription, i18n.ts._hata._navbarNotice.deliveryDescription],
+	hourlyTimeNotice: [i18n.ts._hata._navbarNotice.timeSettingDescription, i18n.ts._hata._navbarNotice.deliveryDescription],
 	ltlEmojiVoteEnabled: [i18n.ts._hata._customSettings._general.showLtlEmojiVoteDescription],
 	hemisphere: [i18n.ts._hemisphere.caption],
 	notificationPosition: [i18n.ts._hata._notificationToast.placement, i18n.ts._hata._notificationToast.otherUi],

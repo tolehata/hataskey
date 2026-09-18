@@ -334,6 +334,12 @@ export const PREF_DEF = definePreferences({
 		accountDependent: true,
 		default: false,
 	},
+	emojiAdditionNotice: {
+		default: true,
+	},
+	hourlyTimeNotice: {
+		default: true,
+	},
 	enableCondensedLine: {
 		default: false,
 	},

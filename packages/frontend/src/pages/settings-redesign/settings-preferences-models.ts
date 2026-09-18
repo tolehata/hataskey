@@ -128,6 +128,8 @@ export function createSettingsPreferenceModels(): SettingsPreferenceModels {
 		menuStyle: unknownRef(prefer.model('menuStyle')),
 		newNoteReceivedNotificationBehavior: unknownRef(prefer.model('newNoteReceivedNotificationBehavior')),
 		notificationPosition: unknownRef(prefer.model('notificationPosition')),
+		emojiAdditionNotice: unknownRef(prefer.model('emojiAdditionNotice')),
+		hourlyTimeNotice: unknownRef(prefer.model('hourlyTimeNotice')),
 		notificationStackAxis: unknownRef(prefer.model('notificationStackAxis')),
 		nsfw: unknownRef(prefer.model('nsfw')),
 		nsfwOpenBehavior: unknownRef(prefer.model('nsfwOpenBehavior')),
@@ -442,4 +444,3 @@ export function isFederationAvatarShapeAvailable(): boolean {
 export function canUseUrlPreview(): boolean {
 	return instance.enableUrlPreview;
 }
-

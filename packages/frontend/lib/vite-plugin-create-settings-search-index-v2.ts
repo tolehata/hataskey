@@ -939,11 +939,66 @@ const SETTINGS_STORAGE_KEY_AUDIT_REGISTRY_FILES_V2 = [
 	'src/local-storage.ts',
 ] as const;
 
-/** Files whose content is evidence for a reviewed non-catalog storage key.
+const REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2 = [
+	'src/pages/settings-redesign/settings-preferences-catalog.ts',
+	'src/pages/settings-redesign/settings-preferences-models.ts',
+	'src/pages/settings-redesign/settings-preferences-search-index.ts',
+	'src/pages/settings-redesign/SettingsPreferencesSurface.vue',
+] as const;
+
+/** These controls are owned by the redesigned surface, so they have no legacy
+ * SFC descriptor. Bridge only reviewed keys to their real runtime catalog IDs;
+ * missing inventory/model/render wiring must still fail the storage audit. */
+function redesignedPreferenceAuditDescriptorsV2(
+	input: SettingsStorageKeyAuditInputV2,
+): SettingsStorageKeyAuditInputV2['descriptors'] {
+	const registered = new Set(preferenceDefinitionKeysForAuditV2(input.preferenceDefinition));
+	const keys = ['emojiAdditionNotice', 'hourlyTimeNotice'].filter(key => registered.has(key));
+	if (keys.length === 0) return [];
+	const evidenceFiles = new Set<string>(REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2);
+	const sources = new Map([...input.settingsSources, ...input.runtimeSources]
+		.filter(source => evidenceFiles.has(source.file))
+		.map(source => [source.file, stripCommentsForSettingsAuditV2(source.code)]));
+	const catalog = sources.get(REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2[0]) ?? '';
+	const models = sources.get(REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2[1]) ?? '';
+	const search = sources.get(REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2[2]) ?? '';
+	const surface = sources.get(REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2[3]) ?? '';
+	const inventory = /export\s+const\s+preferenceContainerKeys\s*=\s*\[([\s\S]*?)\]\s*as\s+const/u.exec(catalog)?.[1] ?? '';
+	const mountedControl = /v-for="control in visibleMountedControls"/u.test(surface)
+		&& /:data-settings-search-id="searchIdFor\(control\.key\)"/u.test(surface)
+		&& /@update:modelValue="write\(control\.key, \$event\)"/u.test(surface)
+		&& /return\s+models\.controls\[key\]\.value/u.test(surface)
+		&& /models\.controls\[key\]\.value\s*=\s*value/u.test(surface);
+	const runtimeCatalog = /\bpreferenceControls\b[^=;\n]*=\s*preferenceContainerKeys\.map/u.test(catalog)
+		&& /canonicalSearchId:\s*generatedPreferenceSearchId\(key\)/u.test(catalog)
+		&& /preferenceControls\.map\(control\s*=>/u.test(search)
+		&& /const\s+stableId\s*=\s*generatedPreferenceSearchId\(entry\.key\)/u.test(search)
+		&& /preferenceKeys:\s*\[entry\.key\]/u.test(search);
+	return keys.map(key => {
+		const keyPattern = storageKeyMatcherSourceV2(key);
+		const quotedKey = `['"]${keyPattern}['"]`;
+		const hasInventory = new RegExp(quotedKey, 'u').test(inventory);
+		const hasDestination = new RegExp(`\\b${keyPattern}\\s*:\\s*\\{\\s*destinationId:\\s*['"]notifications-preferences['"]`, 'u').test(catalog);
+		const hasLabel = new RegExp(`\\b${keyPattern}\\s*:\\s*i18n\\.ts\\.`, 'u').test(catalog);
+		const hasModel = new RegExp(`\\b${keyPattern}\\s*:\\s*unknownRef\\(prefer\\.model\\(${quotedKey}\\)\\)`, 'u').test(models);
+		if (!hasInventory || !hasDestination || !hasLabel || !hasModel || !mountedControl || !runtimeCatalog) {
+			throw new Error(`settings key audit: redesigned preference control has invalid evidence: ${key}`);
+		}
+		return {
+			stableId: `settings.control.preference.${key.toLowerCase()}`,
+			searchable: true,
+			preferenceKeys: [key],
+			storageRefs: [{ kind: 'pref', key }],
+		};
+	});
+}
+
+/** Files whose content is evidence for a reviewed storage-key classification.
  * Vite must regenerate the virtual catalog when one changes: otherwise a
  * formerly justified exclusion could remain silently accepted during HMR. */
 export const SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2 = Object.freeze([...new Set([
 	...SETTINGS_STORAGE_KEY_AUDIT_REGISTRY_FILES_V2,
+	...REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2,
 	...Array.from(EXPLICIT_STORAGE_KEY_AUDIT_DISPOSITIONS_V2.values()).flatMap(item => item.evidence),
 ])].sort());
 
@@ -956,6 +1011,7 @@ export const SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2 = Object.freeze([...ne
 export function collectSettingsStorageKeyAuditV2(input: SettingsStorageKeyAuditInputV2): SettingsStorageKeyAuditV2 {
 	const items: SettingsStorageKeyAuditItemV2[] = [];
 	const unresolved: string[] = [];
+	const catalogDescriptors = [...input.descriptors, ...redesignedPreferenceAuditDescriptorsV2(input)];
 	const evidenceFiles = new Set([
 		...input.settingsSources.map(source => source.file),
 		...input.runtimeSources.map(source => source.file),
@@ -975,7 +1031,7 @@ export function collectSettingsStorageKeyAuditV2(input: SettingsStorageKeyAuditI
 		{ file: 'src/local-storage.ts', code: input.localStorageDefinition },
 	].map(source => [source.file, source]));
 	const add = (kind: SettingsStorageKeyAuditKindV2, key: string, store?: 'base' | 'deck', scope?: Extract<SettingsStorageRefV2, { kind: 'pizzax' }>['scope']): void => {
-		const descriptors = matchingAuditDescriptorsV2(input.descriptors, kind, key, store);
+		const descriptors = matchingAuditDescriptorsV2(catalogDescriptors, kind, key, store);
 		const descriptorStableIds = descriptors.map(descriptor => descriptor.stableId).sort();
 		const explicit = EXPLICIT_STORAGE_KEY_AUDIT_DISPOSITIONS_V2.get(storageAuditIdentityV2(kind, key, store));
 		if (explicit != null && descriptors.length > 0) {

@@ -30,6 +30,7 @@ import legacySource from '@/pages/settings/preferences.vue?raw';
 const unique = (values: string[]) => [...new Set(values)];
 const oldContainers = unique([...legacySource.matchAll(/<MkPreferenceContainer\s+k="([^"]+)"/gu)].map(match => match[1]));
 const oldModels = unique([...legacySource.matchAll(/prefer\.model\(\s*['"]([^'"]+)['"]/gu)].map(match => match[1]));
+const newKeys = ['emojiAdditionNotice', 'hourlyTimeNotice'];
 
 describe('redesigned preferences inventory', () => {
 	it('explains automatic Hataskey placement while retaining other UIs saved options', () => {
@@ -42,15 +43,21 @@ describe('redesigned preferences inventory', () => {
 		expect(byKey.get('notificationStackAxis')?.options).toEqual(['vertical', 'horizontal']);
 	});
 
-	it('keeps the exact 101-container inventory, with animation de-duplicated', () => {
+	it('retains every legacy container alongside the two new-settings-only navbar switches', () => {
 		expect(oldContainers).toHaveLength(101);
-		expect(preferenceContainerKeys).toHaveLength(101);
-		expect(new Set(preferenceContainerKeys)).toEqual(new Set(oldContainers));
+		expect(preferenceContainerKeys).toHaveLength(103);
+		expect(new Set(preferenceContainerKeys.filter(key => !newKeys.includes(key)))).toEqual(new Set(oldContainers));
+		for (const key of newKeys) {
+			expect(oldContainers).not.toContain(key);
+			expect(oldModels).not.toContain(key);
+			expect(preferenceControls.find(control => control.key === key)).toMatchObject({ kind: 'switch', destinationId: 'notifications-preferences' });
+			expect(modelsSource).toContain(`prefer.model('${key}')`);
+		}
 	});
 
 	it('keeps every explicit legacy model and the special animation inversion', () => {
 		expect(oldModels).toHaveLength(103);
-		expect(new Set(oldModels)).toEqual(new Set([...preferenceContainerKeys, 'externalNavigationWarning', 'overridedDeviceKind']));
+		expect(new Set(oldModels)).toEqual(new Set([...preferenceContainerKeys.filter(key => !newKeys.includes(key)), 'externalNavigationWarning', 'overridedDeviceKind']));
 		expect(modelsSource).toContain('prefer.model(\'animation\', value => !value, value => !value)');
 		expect(modelsSource).toContain('prefer.model(\'chat.sendOnEnter\')');
 		expect(modelsSource).toContain('prefer.model(\'chat.showSenderName\')');
@@ -58,9 +65,9 @@ describe('redesigned preferences inventory', () => {
 		expect(modelsSource).toContain('if (fontSizeBefore.value == null)');
 	});
 
-	it('has one manifest destination for all 119 settings and auxiliary controls', () => {
-		expect(preferenceControls).toHaveLength(101);
-		expect(settingsInventoryKeys).toHaveLength(119);
+	it('has one manifest destination for all settings and auxiliary controls', () => {
+		expect(preferenceControls).toHaveLength(103);
+		expect(settingsInventoryKeys).toHaveLength(121);
 		assertPreferenceInventory(preferenceControls, preferenceAuxiliaryControls);
 		for (const item of [...preferenceControls, ...preferenceAuxiliaryControls]) expect(preferenceDestinationIds).toContain(item.destinationId);
 	});

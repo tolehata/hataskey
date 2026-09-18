@@ -742,12 +742,12 @@ describe('settings control search index V2', () => {
 		expect(storageTargets('reactionAcceptance').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		expect(storageTargets('realtimeMode').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		const audit = collectSettingsStorageKeyAuditV2(input);
-		expect(audit.counts).toEqual({ preference: 273, pizzax: 105, local: 95 });
+		expect(audit.counts).toEqual({ preference: 275, pizzax: 105, local: 95 });
 		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'notificationExcludeBots')).toMatchObject({
 			disposition: 'runtime', descriptorStableIds: [], reason: expect.stringContaining('[src/pages/notifications.vue]'),
 		});
 		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'enableCondensedLine')).toMatchObject({ disposition: 'deprecated', descriptorStableIds: [] });
-		expect(audit.items).toHaveLength(473);
+		expect(audit.items).toHaveLength(475);
 		expect(audit.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(audit.items.every(item => item.descriptorStableIds.length > 0
 			? item.disposition === 'catalog-control' || item.disposition === 'catalog-group'
@@ -755,7 +755,7 @@ describe('settings control search index V2', () => {
 		const dispositionCounts = Object.fromEntries([...new Set(audit.items.map(item => `${item.kind}:${item.disposition}`))]
 			.map(identity => [identity, audit.items.filter(item => `${item.kind}:${item.disposition}` === identity).length]));
 		expect(dispositionCounts).toEqual({
-			'preference:catalog-control': 211, 'preference:catalog-group': 5, 'preference:runtime': 22,
+			'preference:catalog-control': 213, 'preference:catalog-group': 5, 'preference:runtime': 22,
 			'preference:migration': 6, 'preference:deprecated': 17, 'preference:internal': 12,
 			'pizzax:catalog-control': 8, 'pizzax:catalog-group': 1, 'pizzax:runtime': 9,
 			'pizzax:migration': 3, 'pizzax:cache': 2, 'pizzax:deprecated': 78, 'pizzax:internal': 4,
@@ -815,16 +815,52 @@ describe('settings control search index V2', () => {
 	test('実Vite入力でもstorage key XOR監査を実行し、runtime evidence変更を再生成対象にする', async () => {
 		const inventory = await collectRealSettingsInventory();
 		const audit = await collectSettingsStorageKeyAuditFromRepositoryV2(process.cwd(), inventory.files, inventory.descriptors);
-		expect(audit.counts).toEqual({ preference: 273, pizzax: 105, local: 95 });
+		expect(audit.counts).toEqual({ preference: 275, pizzax: 105, local: 95 });
+		for (const key of ['emojiAdditionNotice', 'hourlyTimeNotice']) {
+			expect(audit.items.find(item => item.kind === 'preference' && item.key === key)).toMatchObject({
+				disposition: 'catalog-control',
+				descriptorStableIds: [`settings.control.preference.${key.toLowerCase()}`],
+			});
+		}
 		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'enableCondensedLine')).toMatchObject({ disposition: 'deprecated', descriptorStableIds: [] });
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/ui/universal.vue');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/preferences/def.ts');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/utility/retired-portal-migration.ts');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/utility/external-notifications-sidebar-migration.ts');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/utility/hatask-akatsuki-usage.ts');
+		for (const file of ['settings-preferences-catalog.ts', 'settings-preferences-models.ts', 'settings-preferences-search-index.ts', 'SettingsPreferencesSurface.vue']) {
+			expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain(`src/pages/settings-redesign/${file}`);
+		}
 		expect(audit.items.find(item => item.kind === 'local' && item.key === 'hataskAkatsukiUsage:${string}')).toMatchObject({
 			disposition: 'cache', descriptorStableIds: [], reason: expect.stringContaining('[src/utility/hatask-akatsuki-usage.ts]'),
 		});
+	});
+
+	test('新設定の実catalog・保存model・検索・描画が欠けた場合は公開controlとして監査を通さない', async () => {
+		const input = await collectStorageAuditInput();
+		for (const key of ['emojiAdditionNotice', 'hourlyTimeNotice']) {
+			for (const file of ['settings-preferences-catalog.ts', 'settings-preferences-models.ts']) {
+				const sourceFile = `src/pages/settings-redesign/${file}`;
+				expect(input.runtimeSources.some(source => source.file === sourceFile && source.code.includes(key))).toBe(true);
+				expect(() => collectSettingsStorageKeyAuditV2({
+					...input,
+					runtimeSources: input.runtimeSources.map(source => source.file !== sourceFile
+						? source : { ...source, code: source.code.replaceAll(key, 'missingNavbarNotice') }),
+				})).toThrow(`redesigned preference control has invalid evidence: ${key}`);
+			}
+		}
+		for (const [file, binding] of [
+			['settings-preferences-search-index.ts', 'preferenceControls.map'],
+			['SettingsPreferencesSurface.vue', 'searchIdFor(control.key)'],
+		] as const) {
+			const sourceFile = `src/pages/settings-redesign/${file}`;
+			expect(input.runtimeSources.some(source => source.file === sourceFile && source.code.includes(binding))).toBe(true);
+			expect(() => collectSettingsStorageKeyAuditV2({
+				...input,
+				runtimeSources: input.runtimeSources.map(source => source.file !== sourceFile
+					? source : { ...source, code: source.code.replaceAll(binding, 'missingNavbarNoticeBinding') }),
+			})).toThrow('redesigned preference control has invalid evidence: emojiAdditionNotice');
+		}
 	});
 
 	test('ポータル移行のアカウント・プロファイル別キーだけを実装証拠付きで分類し、別キーや証拠欠落は拒否する', async () => {
@@ -1418,14 +1454,16 @@ describe('settings control search index V2', () => {
 		const canonicalPreferenceIds = productionCatalog.descriptors
 			.filter(descriptor => descriptor.sourceFile === 'src/pages/settings-redesign/settings-preferences-catalog.ts' && descriptor.route === '/settings/preferences')
 			.map(descriptor => descriptor.stableId);
-		expect(canonicalPreferenceIds).toHaveLength(119);
-		expect(new Set(canonicalPreferenceIds).size).toBe(119);
+		expect(canonicalPreferenceIds).toHaveLength(121);
+		expect(new Set(canonicalPreferenceIds).size).toBe(121);
 		const aliasValues = new Set(stableIdAliases.values());
 		expect(aliasValues.size).toBe(118);
-		// These two canonical descriptors have no legacy searchable stable ID,
-		// while the redesigned catalog still materializes all 119 canonical descriptors.
+		// These four canonical descriptors have no legacy searchable stable ID,
+		// while the redesigned catalog still materializes all 121 canonical descriptors.
 		const missingCanonicalIds = canonicalPreferenceIds.filter(id => !aliasValues.has(id)).sort();
 		expect(missingCanonicalIds).toEqual([
+			generatedPreferenceSearchId('emojiAdditionNotice'),
+			generatedPreferenceSearchId('hourlyTimeNotice'),
 			generatedPreferenceSearchId('smoothTransitionAnimations'),
 			generatedPreferenceSearchId('testNotification'),
 		].sort());
@@ -1598,6 +1636,14 @@ describe('settings control search index V2', () => {
 			server: { moduleGraph: { getModuleById: (id: string) => modules.get(id) } },
 		} as never) as unknown as Array<{ id: string }>;
 		expect(registryUpdate.map(module => module.id)).toEqual(['source', virtualModule.id, consumerModule.id]);
+		for (const file of ['settings-preferences-catalog.ts', 'settings-preferences-models.ts', 'settings-preferences-search-index.ts']) {
+			const redesignedUpdate = hotUpdate!.call({}, {
+				file: path.join(process.cwd(), 'src/pages/settings-redesign', file),
+				modules: [sourceModule],
+				server: { moduleGraph: { getModuleById: (id: string) => modules.get(id) } },
+			} as never) as unknown as Array<{ id: string }>;
+			expect(redesignedUpdate.map(module => module.id)).toEqual(['source', virtualModule.id, consumerModule.id]);
+		}
 		const transitiveComponentUpdate = hotUpdate!.call({}, {
 			file: path.join(process.cwd(), 'src/components/MkPreferenceContainer.vue'),
 			modules: [sourceModule],

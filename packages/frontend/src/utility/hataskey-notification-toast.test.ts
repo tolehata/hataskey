@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { computed, ref } from 'vue';
 import { describe, expect, it } from 'vitest';
-import type { entities } from 'cherrypick-js';
 import { createHataskeyNotificationToasts, notificationOutlinePaths } from './hataskey-notification-toast.js';
 import { splitNotificationText } from './notification-text.js';
+import type { entities } from 'cherrypick-js';
 
 const notification = (id: string): entities.Notification => ({ id, type: 'test', createdAt: '2026-09-07T00:00:00Z' });
 
@@ -82,6 +82,45 @@ describe('HataFeed navbar notices', () => {
 		expect(queue.items.value[0].elapsed).toBe(1000);
 		paused.value = false; queue.tick(13000, new Set());
 		expect(queue.items.value).toHaveLength(0);
+	});
+});
+
+describe('favorite save statuses', () => {
+	it.each([true, false])('shares the latest navbar slot and the existing five-second lifetime (mobile=%s)', (mobile) => {
+		const queue = createHataskeyNotificationToasts(computed(() => mobile), computed(() => !mobile));
+		queue.enqueue(notification('earlier'), 'local', 0);
+		queue.enqueueStatus('「あとで読む」に保存しました', 1000, undefined, true);
+		expect(queue.items.value).toHaveLength(1);
+		expect(queue.items.value[0]).toMatchObject({ source: 'status', favoriteSaved: true, message: '「あとで読む」に保存しました', elapsed: 0, updatedAt: 1000 });
+		queue.tick(5999, new Set());
+		expect(queue.items.value).toHaveLength(1);
+		queue.tick(6000, new Set());
+		expect(queue.items.value).toEqual([]);
+
+		queue.enqueueStatus('未分類に保存しました', 7000, undefined, true);
+		queue.enqueue(notification('later'), 'external', 8000, 'example.test');
+		expect(queue.items.value).toHaveLength(1);
+		expect(queue.items.value[0]).toMatchObject({ source: 'external', notification: { id: 'later' } });
+	});
+	it('keeps welcome, saved, and ordinary notifications independent in the desktop stack', () => {
+		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
+		const welcomeUser: entities.UserLite = {
+			id: 'self', username: 'self', name: '旗茶', host: null, avatarUrl: '/avatar.webp', avatarBlurhash: null,
+			avatarDecorations: [], isLocked: false, emojis: {}, onlineStatus: 'online',
+		};
+		queue.enqueueStatus('おかえりなさい、旗茶さん', 0, welcomeUser);
+		queue.enqueueStatus('「暮らし」に保存しました', 1000, undefined, true);
+		queue.enqueue(notification('reply'), 'local', 2000);
+		expect(queue.items.value).toHaveLength(3);
+		expect(queue.items.value[0]).toMatchObject({ source: 'local', notification: { id: 'reply' } });
+		expect(queue.items.value[1]).toMatchObject({ source: 'status', favoriteSaved: true, welcomeUser: undefined });
+		expect(queue.items.value[2]).toMatchObject({ source: 'status', welcomeUser, favoriteSaved: undefined });
+		queue.tick(5000, new Set());
+		expect(queue.items.value.map(item => item.source)).toEqual(['local', 'status']);
+		expect(queue.items.value[1].elapsed).toBe(4000);
+		queue.tick(6000, new Set());
+		expect(queue.items.value).toHaveLength(1);
+		expect(queue.items.value[0]).toMatchObject({ source: 'local', elapsed: 4000 });
 	});
 });
 

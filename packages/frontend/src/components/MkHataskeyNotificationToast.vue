@@ -1,8 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<article ref="root" :class="$style.card" :data-integrated="integrated" :data-toast-id="item.id" :data-blur="prefer.r.useBlurEffect.value" @pointerenter="onPointerEnter" @pointerleave="hovered = false" @pointercancel="hovered = false" @focusin="onFocusIn" @focusout="onFocusOut">
-	<div v-if="item.source === 'status'" :class="$style.status">
-		<template v-if="item.welcomeUser">
+<article ref="root" :class="$style.card" :data-integrated="integrated" :data-toast-id="item.id" :data-navbar-notice="item.source === 'status' && !!item.navbarNotice" :data-blur="prefer.r.useBlurEffect.value" @pointerenter="onPointerEnter" @pointerleave="hovered = false" @pointercancel="hovered = false" @focusin="onFocusIn" @focusout="onFocusOut">
+	<MkHataskeyNavbarNotice v-if="item.source === 'status' && item.navbarNotice" :notice="item.navbarNotice"/>
+	<div v-else-if="item.source === 'status'" :class="$style.status">
+		<template v-if="item.favoriteSaved">
+			<MkFavoriteSavedAnimation :motion="motion"/>
+			<span :class="$style.favoriteMessage">{{ item.message }}</span>
+		</template>
+		<template v-else-if="item.welcomeUser">
 			<MkAvatar :class="$style.welcomeAvatar" :user="item.welcomeUser" forceOpacity isToastAvatar/>
 			<Mfm :class="$style.welcomeMessage" :text="item.message" :plain="true"/>
 		</template>
@@ -21,6 +26,8 @@ import type { HataskeyToast } from '@/utility/hataskey-notification-toast.js';
 import MkNotification from '@/components/MkNotification.vue';
 import MkExternalNotificationToast from '@/components/MkExternalNotificationToast.vue';
 import MkNotificationToastRing from '@/components/MkNotificationToastRing.vue';
+import MkFavoriteSavedAnimation from '@/components/MkFavoriteSavedAnimation.vue';
+import MkHataskeyNavbarNotice from '@/components/MkHataskeyNavbarNotice.vue';
 import { prefer } from '@/preferences.js';
 import { i18n } from '@/i18n.js';
 
@@ -65,6 +72,7 @@ onUnmounted(() => {
 .status { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0; min-height: 44px; }
 .welcomeAvatar { flex: none; width: 36px; height: 36px; }
 .welcomeMessage { min-width: 0; }
+.favoriteMessage { min-width: 0; }
 .card {
 	position: relative;
 	box-sizing: border-box;
@@ -85,6 +93,7 @@ onUnmounted(() => {
 		backdrop-filter: blur(24px) saturate(1.4);
 	}
 	&[data-integrated='true'] { background: transparent; box-shadow: none; border-radius: 0; }
+	&[data-navbar-notice='true'] { container: hataskey-notice / inline-size; padding-inline: 48px; }
 }
 .close {
 	position: absolute;
@@ -99,5 +108,9 @@ onUnmounted(() => {
 	color: var(--hata-toast-muted, var(--MI_THEME-fgMuted));
 	&:hover { background: var(--MI_THEME-buttonHoverBg); }
 	&:focus-visible { outline: 2px solid var(--MI_THEME-accent); outline-offset: -3px; }
+}
+@container hataskey-navbar (max-width: 360px) {
+	.card[data-navbar-notice='true'] { padding-inline: 28px; }
+	.card[data-navbar-notice='true'] .close { justify-items: end; }
 }
 </style>

@@ -196,12 +196,13 @@ function fallbackMetadata(key: string): Pick<SettingsControlCatalogItemV2,
 	'persistence' | 'saveMode' | 'availability' | 'owner' | 'applicableUi' | 'metadataEvidence'
 > {
 	const deviceLocal = key === 'lang' || key === 'useBoldFont' || key === 'useSystemFont';
+	const navbarNotice = key === 'emojiAdditionNotice' || key === 'hourlyTimeNotice';
 	return {
 		persistence: deviceLocal ? 'device' : 'profile',
 		saveMode: 'immediate',
 		availability: 'all',
-		owner: key.startsWith('searchEngine') || key === 'additionalUnicodeEmojiIndexes' || key === 'externalNavigationWarning' || key === 'trustedDomains' ? 'cherrypick' : 'core',
-		applicableUi: 'all',
+		owner: navbarNotice ? 'hatasaba' : key.startsWith('searchEngine') || key === 'additionalUnicodeEmojiIndexes' || key === 'externalNavigationWarning' || key === 'trustedDomains' ? 'cherrypick' : 'core',
+		applicableUi: navbarNotice ? 'simple' : 'all',
 		metadataEvidence: {
 			persistence: deviceLocal ? `redesigned preference inventory: device value ${key}` : `redesigned preference inventory: preference value ${key}`,
 			saveMode: 'redesigned preference surface writes through the existing control model',
@@ -296,7 +297,7 @@ function materializePreferenceControl(
 /**
  * The returned list intentionally removes every generated descriptor from the
  * legacy preferences SFC, including SearchMarker-derived groups.  Their
- * content is now represented exactly once by the 101 containers and 18
+ * content is now represented exactly once by the preference controls and
  * auxiliary rows above; retaining them would offer stale hash anchors in the
  * redesigned surface.
  */

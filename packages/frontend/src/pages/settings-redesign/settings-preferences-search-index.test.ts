@@ -75,15 +75,26 @@ function legacyMarkers(): SearchIndexItem[] {
 }
 
 describe('redesigned preferences search index', () => {
-	test('101 legacy containers and 18 auxiliary controls are each materialized exactly once', () => {
-		expect(preferenceControls).toHaveLength(101);
+	test('finds both navbar switches even though they have no legacy settings controls', () => {
+		const merged = mergeRedesignedPreferenceSearchItems([]);
+		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
+		for (const [key, label] of [['emojiAdditionNotice', '絵文字追加通知'], ['hourlyTimeNotice', '時報']]) {
+			const stableId = generatedPreferenceSearchId(key);
+			expect(merged.find(item => item.stableId === stableId)).toMatchObject({
+				destinationId: 'notifications-preferences', persistence: 'profile', saveMode: 'immediate', applicableUi: 'simple', owner: 'hatasaba',
+			});
+			expect(searchSettingsV2(catalog, label).results.some(result => result.stableId === stableId)).toBe(true);
+		}
+	});
+	test('legacy and new preference controls are each materialized exactly once', () => {
+		expect(preferenceControls).toHaveLength(103);
 		expect(preferenceAuxiliaryControls).toHaveLength(18);
-		expect(settingsInventoryKeys).toHaveLength(119);
+		expect(settingsInventoryKeys).toHaveLength(121);
 		const merged = mergeRedesignedPreferenceSearchItems(generatedLegacyControls());
 		const preferenceDescriptors = merged.filter(item => item.route === '/settings/preferences');
-		expect(preferenceDescriptors).toHaveLength(119);
-		expect(new Set(preferenceDescriptors.map(item => item.preferenceKeys[0])).size).toBe(119);
-		expect(new Set(preferenceDescriptors.map(item => item.stableId)).size).toBe(119);
+		expect(preferenceDescriptors).toHaveLength(121);
+		expect(new Set(preferenceDescriptors.map(item => item.preferenceKeys[0])).size).toBe(121);
+		expect(new Set(preferenceDescriptors.map(item => item.stableId)).size).toBe(121);
 		for (const key of settingsInventoryKeys) {
 			const descriptor = preferenceDescriptors.find(item => item.preferenceKeys[0] === key);
 			expect(descriptor?.stableId, key).toBe(generatedPreferenceSearchId(key));
@@ -91,7 +102,7 @@ describe('redesigned preferences search index', () => {
 		}
 	});
 
-	test('runtime-generated legacy ids all rewrite to the 119 canonical preference controls', () => {
+	test('runtime-generated legacy ids all rewrite to the canonical preference controls', () => {
 		const generated = generatedLegacyControls();
 		const aliases = redesignedPreferenceStableIdAliases(generated);
 		expect(aliases.size).toBe(generated.length);
@@ -203,7 +214,7 @@ describe('redesigned preferences search index', () => {
 
 	test('the legacy page generator cannot make a dynamic new-surface setting disappear', () => {
 		const merged = mergeRedesignedPreferenceSearchItems([]);
-		expect(merged).toHaveLength(119);
+		expect(merged).toHaveLength(121);
 		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
 		for (const key of settingsInventoryKeys) {
 			const stableId = generatedPreferenceSearchId(key);
@@ -280,7 +291,7 @@ describe('redesigned preferences search index', () => {
 		source.relatedIds = source.related.map(relation => relation.stableId);
 		source.relatedTotal = beforeTotal + 1;
 		suppressLegacyPreferenceSearchMarkers(catalog);
-		expect(markers).toHaveLength(119);
+		expect(markers).toHaveLength(121);
 		for (const descriptor of markers) {
 			expect(descriptor.searchable).toBe(false);
 			expect(descriptor.related).toEqual([]);

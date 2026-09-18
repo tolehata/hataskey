@@ -4104,6 +4104,17 @@ _deliveryTargetControl:
 
 # 旗鯖独自機能の翻訳。地震津波機能は翻訳対象外。
 _hata:
+  _navbarNotice:
+    emojiSetting: "絵文字追加通知"
+    emojiSettingDescription: "サーバーに追加された絵文字をHataskey UIの通常表示の上部ナビバーでお知らせします"
+    timeSetting: "時報"
+    timeSettingDescription: "端末の時刻に合わせ、毎時00分にHataskey UIの通常表示の上部ナビバーでお知らせします"
+    deliveryDescription: "通知一覧には残らず、push通知も送りません"
+    emojiPrefix: "絵文字"
+    emojiRest: "が当サーバーでお使いいただけるようになりました"
+    emojiCompactPrefix: "サーバーで"
+    emojiCompactRest: "の絵文字を使用可能に"
+    timeSignal: "{time}をお知らせします"
   _notificationToast:
     position: "通知ポップアップの位置"
     stack: "通知ポップアップの並び方"
@@ -4269,6 +4280,7 @@ _hata:
           giant: "自機が巨大化"
           mirror: "左右反転"
   _favoriteFolders:
+    noteAddedToFolder: "お気に入りの{name}にノートを追加しました。"
     notesMovedToUnfiled: "{count}件のノートを未分類へ移しました。"
     folders: "フォルダ"
     all: "すべて"

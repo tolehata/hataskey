@@ -15261,6 +15261,48 @@ export interface Locale extends ILocale {
         "hasDeliveryTargets": string;
     };
     "_hata": {
+        "_navbarNotice": {
+            /**
+             * 絵文字追加通知
+             */
+            "emojiSetting": string;
+            /**
+             * サーバーに追加された絵文字をHataskey UIの通常表示の上部ナビバーでお知らせします
+             */
+            "emojiSettingDescription": string;
+            /**
+             * 時報
+             */
+            "timeSetting": string;
+            /**
+             * 端末の時刻に合わせ、毎時00分にHataskey UIの通常表示の上部ナビバーでお知らせします
+             */
+            "timeSettingDescription": string;
+            /**
+             * 通知一覧には残らず、push通知も送りません
+             */
+            "deliveryDescription": string;
+            /**
+             * 絵文字
+             */
+            "emojiPrefix": string;
+            /**
+             * が当サーバーでお使いいただけるようになりました
+             */
+            "emojiRest": string;
+            /**
+             * サーバーで
+             */
+            "emojiCompactPrefix": string;
+            /**
+             * の絵文字を使用可能に
+             */
+            "emojiCompactRest": string;
+            /**
+             * {time}をお知らせします
+             */
+            "timeSignal": ParameterizedString<"time">;
+        };
         "_notificationToast": {
             /**
              * 通知ポップアップの位置
@@ -15874,6 +15916,10 @@ export interface Locale extends ILocale {
             };
         };
         "_favoriteFolders": {
+            /**
+             * お気に入りの{name}にノートを追加しました。
+             */
+            "noteAddedToFolder": ParameterizedString<"name">;
             /**
              * {count}件のノートを未分類へ移しました。
              */

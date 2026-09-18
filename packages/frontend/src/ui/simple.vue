@@ -197,12 +197,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- Top pill navbar (timeline tabs) - scroll reactive -->
 			<div
 				v-show="nativeNavbarVisible || mobileToastVisible" data-hata-collapse-group
-				:data-toast-motion="prefer.r.animation.value" :data-hidden="!showTopBar && !mobileToastVisible && !navbarNewNotes && !emojiVoteInNavbar"
+				:data-toast-motion="prefer.r.animation.value" :data-hidden="!showTopBar && !mobileToastVisible && !navbarNewNotes && !emojiVoteInNavbar && !notificationToasts.navbarNotice.value"
 				:data-emoji-vote="emojiVoteInNavbar"
 				:data-notification-only="mobileNotificationOnly"
 				:class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight]"
 			>
-				<div ref="topNavStackEl" :class="$style.topNavStack" :style="emojiVoteNavbarStackStyle">
+				<div ref="topNavStackEl" :class="$style.topNavStack" :data-navbar-notice="notificationToasts.navbarNotice.value?.kind" :style="emojiVoteNavbarStackStyle">
 					<div ref="notificationOutlineEl" :class="$style.topPillFrame" :data-emoji-celebrating="emojiVoteInNavbar && emojiVoteNavbarState.celebrating" :data-emoji-leaving="emojiVoteInNavbar && emojiVoteNavbarState.leaving">
 						<MkLtlEmojiVoteOutline v-if="emojiVoteInNavbar" :target="notificationOutlineEl"/>
 						<div :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value" :data-new-notes="!!navbarNewNotes" :data-emoji-vote="emojiVoteInNavbar">
@@ -475,6 +475,8 @@ import { ref, computed, provide, onMounted, onUnmounted, nextTick, defineAsyncCo
 import { instanceName } from '@@/js/config.js';
 import XCommon from './_common_/common.vue';
 import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
+import { useHataskeyNavbarNotices } from '@/composables/use-hataskey-navbar-notices.js';
+import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
 import { createHataskeyTimelineNewNotes, hataskeyTimelineNewNotesKey } from '@/utility/hataskey-timeline-new-notes.js';
 import type { PageMetadata } from '@/page.js';
 import type { TimelineCollectionKind } from '@/utility/hatasaba-navigation.js';
@@ -1700,6 +1702,8 @@ const notificationToasts = createHataskeyNotificationToasts(
 );
 const notificationTargetEl = notificationToasts.target;
 const notificationOutlineEl = notificationToasts.outline;
+useHataskeyNavbarNotices(notificationToasts, computed(() => !!$i && nativeNavbarVisible.value
+	&& !!notificationTargetEl.value && !notificationToasts.surface.value && !notificationToastsSuppressed.value));
 const emojiVoteNavbarStackStyle = computed(() => {
 	if (!emojiVoteInNavbar.value) return {};
 	const hasNotice = navbarNewNotes.value != null || (notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value);
@@ -3306,6 +3310,7 @@ onUnmounted(() => {
 
 // ===== トップバー（ピル型、スクロール連動） =====
 .topBar {
+    container:hataskey-navbar / inline-size;
     position:fixed; top:calc(var(--simple-announcements-height, 0px) + var(--MI-fixed-top-inset, 0px)); left:0; right:0; z-index:200;
     display:flex; justify-content:center; align-items:flex-start; gap:6px;
     padding:calc(10px + env(safe-area-inset-top,0px)) 16px 8px;
@@ -3328,6 +3333,9 @@ onUnmounted(() => {
     position:relative; display:flex; flex-direction:column; align-items:center; gap:7px;
 	width:max-content; min-width:0; max-width:min(680px,100%); flex:0 1 auto; pointer-events:none;
 }
+.topNavStack[data-navbar-notice='emojiAdded'] { width:min(640px,100%); }
+.topNavStack[data-navbar-notice='emojiAdded'] .topPillFrame,
+.topNavStack[data-navbar-notice='emojiAdded'] .topPill { width:100%; }
 // アカウントアイコン（カプセル内の左端、タブのスクロール領域外）
 .avatarBtn {
     width:40px; height:40px; border-radius:9999px; border:none; cursor:pointer;

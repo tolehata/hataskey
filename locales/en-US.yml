@@ -3968,6 +3968,17 @@ _deliveryTargetControl:
 
 # Hataskey-specific features. Hanaawase and earthquake/tsunami features are intentionally excluded.
 _hata:
+  _navbarNotice:
+    emojiSetting: "New emoji notices"
+    emojiSettingDescription: "Show newly added server emoji in the top navigation of the standard Hataskey UI"
+    timeSetting: "Hourly time signal"
+    timeSettingDescription: "Show the time on the hour in the top navigation of the standard Hataskey UI, using your device's local time"
+    deliveryDescription: "These notices are not saved in the notification list and do not send push notifications"
+    emojiPrefix: "Emoji"
+    emojiRest: "is now available on this server"
+    emojiCompactPrefix: "Server emoji"
+    emojiCompactRest: "is now available"
+    timeSignal: "It is {time}"
   _notificationToast:
     position: "Notification popup position"
     stack: "Notification popup order"
@@ -4133,6 +4144,7 @@ _hata:
           giant: "Larger ship"
           mirror: "Reversed controls"
   _favoriteFolders:
+    noteAddedToFolder: "Added the note to {name} in Favorites."
     notesMovedToUnfiled: "Moved {count} notes to Unfiled."
     folders: "Folders"
     all: "All"

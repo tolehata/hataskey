@@ -8,6 +8,7 @@ import type { entities } from 'cherrypick-js';
 import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
 import { prefer } from '@/preferences.js';
+import { $i } from '@/i.js';
 import { mainRouter } from '@/router.js';
 import { popups } from '@/os.js';
 import MkHataskeyNotificationToasts from '@/components/MkHataskeyNotificationToasts.vue';
@@ -29,7 +30,8 @@ vi.mock('@/i18n.js', async () => {
 	const { readFileSync } = await import('node:fs');
 	const { resolve } = await import('node:path');
 	const { load } = await import('js-yaml');
-	return { i18n: { ts: load(readFileSync(resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')) } };
+	const { I18n } = await import('@@/js/i18n.js');
+	return { i18n: new I18n(load(readFileSync(resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')) as any) };
 });
 
 let app: App | undefined;
@@ -114,13 +116,118 @@ function mount(mobile = false, navbar = true, withNewNotes = false, preloaded = 
 		withNewNotes ? h(Vue.Teleport, { to: bar }, h(NewNotesRow)) : null,
 	] }));
 	app.config.globalProperties.$style = { newNotesViewport: 'new-notes-viewport', newNotesContent: 'new-notes-content', newNotesButton: 'new-notes-button' };
-	app.component('Mfm', { props: ['text'], template: '<span>{{ text }}</span>' });
-	app.component('MkAvatar', { props: ['user'], template: '<span/>' });
+	app.component('Mfm', { props: ['text'], template: '<span data-test-mfm>{{ text }}</span>' });
+	app.component('MkAvatar', { props: ['user'], template: '<span data-test-avatar/>' });
+	app.component('MkCustomEmoji', { props: ['name', 'url'], template: '<img :src="url" :alt="`:${name}:`" data-test-emoji/>' });
 	app.mount(root);
 	return { context, bar, target, visible, newNotes, updateNewNotes, showNewNotes };
 }
 
 describe('Hataskey notification host', () => {
+	it.each([true, false])('renders an independent leading check and emoji image in the same navbar, then replaces it with the clock (mobile=%s)', async (mobile) => {
+		const { context, target } = mount(mobile);
+		context.enqueueNavbarNotice({ kind: 'emojiAdded', emoji: { id: 'added', name: 'hatakyu', url: '/emoji/hatakyu.webp' } }, 0);
+		await nextTick();
+		const card = target.querySelector('article');
+		expect(card?.getAttribute('data-integrated')).toBe('true');
+		expect(card?.getAttribute('data-navbar-notice')).toBe('true');
+		const message = card?.querySelector('[data-navbar-notice-kind="emojiAdded"]');
+		expect(message?.firstElementChild?.querySelector('.ti-check')).not.toBeNull();
+		expect(message?.querySelector('img')?.getAttribute('src')).toBe('/emoji/hatakyu.webp');
+		expect(message?.querySelector('img')?.getAttribute('alt')).toBe(':hatakyu:');
+		expect(message?.querySelector('img')?.parentElement?.querySelector('.ti-check')).toBeNull();
+		expect(message?.textContent).toContain('が当サーバーでお使いいただけるようになりました');
+		expect(message?.textContent).toContain('サーバーで');
+		expect(message?.textContent).toContain('の絵文字を使用可能に');
+		context.enqueueNavbarNotice({ kind: 'hourlyTime', time: '00:00' }, 1000);
+		await nextTick();
+		expect(target.querySelectorAll('article')).toHaveLength(1);
+		expect(target.querySelector('[data-navbar-notice-kind="hourlyTime"]')?.textContent).toBe('00:00をお知らせします');
+		expect(target.querySelector('.ti-clock')).not.toBeNull();
+		expect(target.querySelector('.ti-check, img')).toBeNull();
+		frameCallback?.(5999);
+		await nextTick();
+		expect(context.items.value).toHaveLength(1);
+		frameCallback?.(6000);
+		await nextTick();
+		expect(context.items.value).toEqual([]);
+		expect(target.querySelector('article')).toBeNull();
+	});
+	it('keeps navbar notices integrated when scrolling hides tabs and allows manual dismissal', async () => {
+		const { context, target, visible } = mount(false, false);
+		context.enqueueNavbarNotice({ kind: 'hourlyTime', time: '12:00' });
+		await nextTick();
+		expect(visible.value).toBe(false);
+		expect(target.querySelector('article')?.getAttribute('data-integrated')).toBe('true');
+		(target.querySelector('button[aria-label="閉じる"]') as HTMLButtonElement).click();
+		await nextTick();
+		expect(context.items.value).toEqual([]);
+		expect(context.integrated.value).toBe(false);
+	});
+	it.each([true, false])('renders a favorite save once in the navbar as plain text and expires it (mobile=%s)', async (mobile) => {
+		const { context, target } = mount(mobile);
+		const folder = '<img src=x onerror=alert(1)><b>保存先</b> $[tada :star:] あとで読み返したい大切なノート'.repeat(2);
+		const message = `「${folder}」に保存しました`;
+		context.enqueueStatus(message, 0, undefined, true);
+		await nextTick();
+		const card = target.querySelector('article');
+		expect(window.document.querySelectorAll('article')).toHaveLength(1);
+		expect(card?.getAttribute('data-integrated')).toBe('true');
+		expect(card?.textContent).toBe(message);
+		expect(card?.querySelector('img, b, script, [data-test-mfm], [data-test-avatar]')).toBeNull();
+		const animation = card?.querySelector('[data-favorite-saved-animation]');
+		expect(animation?.getAttribute('aria-hidden')).toBe('true');
+		expect(animation?.getAttribute('data-motion')).toBe('false');
+		expect(animation?.querySelector('.ti-check')).not.toBeNull();
+		frameCallback?.(4999);
+		await nextTick();
+		expect(target.querySelector('article')).toBe(card);
+		frameCallback?.(5000);
+		await nextTick();
+		expect(context.items.value).toHaveLength(0);
+		expect(target.querySelector('article')).toBeNull();
+	});
+	it.each([false, true])('respects reduced motion and the animation setting for favorite feedback (reduced=%s)', async (reduced) => {
+		prefer.r.animation.value = true;
+		vi.spyOn(window, 'matchMedia').mockReturnValue({
+			matches: reduced, media: '(prefers-reduced-motion: reduce)', onchange: null,
+			addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn(() => true),
+		});
+		const { context, target } = mount();
+		context.enqueueStatus('未分類に保存しました', 0, undefined, true);
+		await nextTick();
+		const animation = target.querySelector('[data-favorite-saved-animation]');
+		expect(animation?.getAttribute('data-motion')).toBe(String(!reduced));
+		prefer.r.animation.value = false;
+		await nextTick();
+		expect(animation?.getAttribute('data-motion')).toBe('false');
+		expect(target.querySelector('article')?.textContent).toBe('未分類に保存しました');
+	});
+	it('replaces welcome and ordinary notifications through the same navbar slot without leaking favorite decoration', async () => {
+		const { context, target } = mount();
+		if (!$i) throw new Error('Missing test account');
+		context.enqueueStatus('おかえりなさい、旗茶さん :wave:', 0, $i);
+		await nextTick();
+		expect(target.querySelector('[data-test-avatar]')).not.toBeNull();
+		expect(target.querySelector('[data-test-mfm]')).not.toBeNull();
+		expect(target.querySelector('[data-favorite-saved-animation]')).toBeNull();
+		context.enqueueStatus('「あとで読む」に保存しました', 1000, undefined, true);
+		await nextTick();
+		expect(target.querySelectorAll('article')).toHaveLength(1);
+		expect(target.querySelector('[data-favorite-saved-animation]')).not.toBeNull();
+		expect(target.querySelector('[data-test-avatar], [data-test-mfm]')).toBeNull();
+		context.enqueue(note('new-reply'), 'local', 2000);
+		await nextTick();
+		expect(target.querySelectorAll('article')).toHaveLength(1);
+		expect(target.querySelector('article')?.textContent).toBe('new-reply');
+		expect(target.querySelector('[data-favorite-saved-animation]')).toBeNull();
+		context.enqueueStatus('おかえりなさい、旗茶さん :wave:', 3000, $i);
+		await nextTick();
+		expect(target.querySelectorAll('article')).toHaveLength(1);
+		expect(target.querySelector('[data-test-avatar]')).not.toBeNull();
+		expect(target.querySelector('[data-test-mfm]')).not.toBeNull();
+		expect(target.querySelector('[data-favorite-saved-animation]')).toBeNull();
+	});
 	it.each([true, false])('routes the boot welcome popup into the existing navbar and expires it once (mobile=%s)', async (mobile) => {
 		const { context, bar } = mount(mobile);
 		const root = window.document.createElement('div');
