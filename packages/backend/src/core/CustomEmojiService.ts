@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { stat } from 'node:fs/promises';
 import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
 import * as Redis from 'ioredis';
 import { In, IsNull, Not } from 'typeorm';
@@ -13,6 +14,7 @@ import { ModerationLogService } from '@/core/ModerationLogService.js';
 import { UtilityService } from '@/core/UtilityService.js';
 import { bindThis } from '@/decorators.js';
 import { DI } from '@/di-symbols.js';
+import type { Config } from '@/config.js';
 import { MemoryKVCache, RedisSingleCache } from '@/misc/cache.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import type { DriveFilesRepository, EmojisRepository, MiMeta, MiRole, MiUser, NotesRepository, UsersRepository } from '@/models/_.js';
@@ -20,6 +22,7 @@ import type { MiDriveFile } from '@/models/DriveFile.js';
 import type { MiEmoji } from '@/models/Emoji.js';
 import type { Serialized } from '@/types.js';
 import { DriveService } from '@/core/DriveService.js';
+import { InternalStorageService } from '@/core/InternalStorageService.js';
 import Logger from '@/logger.js';
 import { LoggerService } from './LoggerService.js';
 
@@ -94,6 +97,9 @@ export class CustomEmojiService implements OnApplicationShutdown {
 		private globalEventService: GlobalEventService,
 		private driveService: DriveService,
 		private loggerService: LoggerService,
+		private internalStorageService: InternalStorageService,
+		@Inject(DI.config)
+		private config: Config,
 	) {
 		this.emojisCache = new MemoryKVCache<MiEmoji | null>(1000 * 60 * 60 * 12); // 12h
 
@@ -711,23 +717,33 @@ export class CustomEmojiService implements OnApplicationShutdown {
 	}
 
 	/**
-	 * 旗鯖fork: ドライブファイルがノート添付・アバター・バナーとして使われているかを判定する。
+	 * 旗鯖fork: ドライブファイルがノート添付・アバター・バナー・絵文字として使われているかを判定する。
 	 * reuploadFileAndCleanup が原本ファイルを自動削除する前の安全確認に使う
 	 * (絵文字申請ウィザードは既存のドライブファイルを選べるため、ノート添付中やアバター使用中の
 	 * 画像を絵文字申請に使われた場合に誤って削除してしまうのを防ぐ)。
 	 */
 	@bindThis
-	private async isDriveFileInUse(fileId: MiDriveFile['id']): Promise<boolean> {
+	private async isDriveFileInUse(file: MiDriveFile): Promise<boolean> {
 		const usedInNote = await this.notesRepository.createQueryBuilder('note')
 			.select('note.id')
-			.andWhere(':file <@ note.fileIds', { file: [fileId] })
+			.andWhere(':file <@ note.fileIds', { file: [file.id] })
 			.getExists();
 		if (usedInNote) return true;
 
-		return await this.usersRepository.exists({
+		const usedInProfile = await this.usersRepository.exists({
 			where: [
-				{ avatarId: fileId },
-				{ bannerId: fileId },
+				{ avatarId: file.id },
+				{ bannerId: file.id },
+			],
+		});
+		if (usedInProfile) return true;
+
+		// addDirectで登録済みの絵文字はDrive原本を直接参照している。
+		const sourceUrls = file.webpublicUrl ? [file.url, file.webpublicUrl] : [file.url];
+		return await this.emojisRepository.exists({
+			where: [
+				{ originalUrl: In(sourceUrls) },
+				{ publicUrl: In(sourceUrls) },
 			],
 		});
 	}
@@ -742,14 +758,36 @@ export class CustomEmojiService implements OnApplicationShutdown {
 		const MAX_RETRY_COUNT = 3;
 		const errors: string[] = [];
 		const originalSourceUrl = data.originalUrl;
+		const storedSource = await this.driveFilesRepository.findOneBy({ url: originalSourceUrl });
 
 		while (retryCount < MAX_RETRY_COUNT) {
 			try {
-				copyDriveFile = await this.driveService.uploadFromUrl({
-					url: originalSourceUrl,
-					user: null,
-					force: true,
-				});
+				if (storedSource?.storedInternal && !storedSource.isLink) {
+					// DBで確認できた内部保存の原本だけを読む。自サーバーの公開URLを
+					// HTTPで取り直さず、元ファイルとは独立した絵文字用コピーを作る。
+					const key = storedSource.accessKey;
+					if (!key || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(key)) {
+						throw new Error('Invalid internal drive file key');
+					}
+					const sourcePath = this.internalStorageService.resolvePath(key);
+					// URL取得時と同じ上限を実ファイルで確認する。DBのsizeは信用しない。
+					if ((await stat(sourcePath)).size > this.config.maxFileSize) {
+						throw new Error('Max file size exceeded.');
+					}
+					copyDriveFile = await this.driveService.addFile({
+						user: null,
+						path: sourcePath,
+						name: storedSource.name,
+						force: true,
+						url: originalSourceUrl,
+					});
+				} else {
+					copyDriveFile = await this.driveService.uploadFromUrl({
+						url: originalSourceUrl,
+						user: null,
+						force: true,
+					});
+				}
 				break;
 			} catch (e) {
 				retryCount++;
@@ -784,9 +822,9 @@ export class CustomEmojiService implements OnApplicationShutdown {
 					const referenceCount = await this.driveFilesRepository.count({
 						where: { url: originalSourceUrl, id: Not(originalDriveFile.id) },
 					});
-					// 旗鯖fork: 他のドライブファイル行から参照されていなくても、ノート添付・アバター・バナーとして
+					// 旗鯖fork: 他のドライブファイル行から参照されていなくても、ノート添付・アバター・バナー・絵文字として
 					// 使われている場合は削除しない(絵文字申請ウィザードは既存ファイルの選択を許容しているため)。
-					const inUse = referenceCount === 0 ? await this.isDriveFileInUse(originalDriveFile.id) : false;
+					const inUse = referenceCount === 0 ? await this.isDriveFileInUse(originalDriveFile) : false;
 					if (referenceCount === 0 && !inUse) {
 						await this.driveService.deleteFile(originalDriveFile);
 						this.logger.info('Deleted original emoji file as it\'s no longer referenced', {
