@@ -4,7 +4,7 @@ export type HatadyFormOption = { value: string; label: string; icon?: string };
 export type HatadyFormField = {
 	key: string;
 	label: string;
-	type?: 'text' | 'number' | 'date' | 'datetime-local' | 'time' | 'url' | 'textarea' | 'select' | 'choice' | 'checkbox' | 'tags' | 'list' | 'duration' | 'visibility' | 'color' | 'weaponStats' | 'bookmarks' | 'memos';
+	type?: 'text' | 'number' | 'date' | 'datetime-local' | 'time' | 'url' | 'textarea' | 'select' | 'choice' | 'checkbox' | 'tags' | 'list' | 'duration' | 'visibility' | 'color' | 'weaponStats' | 'bookmarks' | 'memos' | 'images';
 	required?: boolean;
 	disabled?: boolean;
 	min?: number;
@@ -30,6 +30,14 @@ export function meaningfulField(value: unknown): boolean {
 	return value != null && value !== '' && value !== false && (!Array.isArray(value) || value.length > 0);
 }
 
+/** An unrelated edit must retain even Drive IDs whose files have since been deleted. */
+export function recordAttachmentPatch(files: readonly { id: string }[], source?: { files?: readonly { id: string }[] } | null): { fileIds?: string[] } {
+	const fileIds = files.map(file => file.id);
+	const previous = source?.files ?? [];
+	if (source && previous.length === fileIds.length && previous.every((file, index) => file.id === fileIds[index])) return {};
+	return { fileIds };
+}
+
 export function initialFormGroups(pages: readonly HatadyFormPage[], values: HatadyFormValues): string[] {
 	return [...new Set(pages.filter(page => page.group && page.fields.some(field => meaningfulField(values[field.key]))).map(page => page.group!))];
 }
@@ -52,6 +60,10 @@ export function formValidation(field: HatadyFormField, values: HatadyFormValues)
 	const value = values[field.key];
 	if (field.required && (value == null || String(value).trim() === '')) return `${field.label}を入力してください`;
 	if (value == null || value === '') return null;
+	if (field.type === 'images') {
+		if (!Array.isArray(value) || value.some(file => typeof file?.id !== 'string' || typeof file.type !== 'string' || !file.type.startsWith('image/'))) return '添付する画像を確認してください';
+		if (value.length > (field.maxItems ?? 16)) return `画像は${field.maxItems ?? 16}枚まで添付できます`;
+	}
 	if (field.type === 'duration' || field.type === 'number') {
 		const number = Number(value);
 		if (!Number.isFinite(number) || (field.step !== 'any' && Number(field.step ?? 1) >= 1 && !Number.isInteger(number))) return `${field.label}を正しく入力してください`;

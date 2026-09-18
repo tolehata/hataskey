@@ -6,6 +6,7 @@ import { bindThis } from '@/decorators.js';
 import type { MiUser } from '@/models/User.js';
 import type { Packed } from '@/misc/json-schema.js';
 import { HATADY_MODERATION_TARGETS, HATADY_MODERATION_STATES, type HatadyModerationTarget, type HatadyModerationState } from '@/models/HatadyModerationReview.js';
+import { HatadyAttachmentService } from '@/core/HatadyAttachmentService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import type { DataSource, EntityManager } from 'typeorm';
@@ -28,12 +29,13 @@ export type ModerationEntry = {
 	key: string; targetType: HatadyModerationTarget; targetId: string;
 	category: Exclude<typeof MODERATION_CATEGORIES[number], 'all'>;
 	activity: Exclude<typeof MODERATION_ACTIVITIES[number], 'all'>;
+	fileIds: string[]; files: Packed<'DriveFile'>[];
 	actor: Packed<'UserLite'>; title: string; body: string; createdAt: string;
 	visibility: 'public' | 'followers' | 'private'; emoji: string | null; parentKey: string | null; contentVersion: string;
 	review: { state: HatadyModerationState; note: string; revision: number; reviewer: Packed<'UserLite'> | null; reviewedAt: string | null; stale: boolean };
 };
 export type ModerationDetail = { item: ModerationEntry; fields: { label: string; value: string }[]; ancestors: ModerationEntry[]; related: ModerationEntry[]; relatedHasMore: boolean };
-type Row = Omit<ModerationEntry, 'actor' | 'review' | 'createdAt'> & {
+type Row = Omit<ModerationEntry, 'actor' | 'review' | 'createdAt' | 'fileIds' | 'files'> & {
 	userId: string; createdAt: Date | string; data: Record<string, unknown>; state: HatadyModerationState;
 	note: string; revision: number; reviewerId: string | null; reviewedAt: Date | string | null; stale: boolean;
 };
@@ -90,7 +92,7 @@ export const HATADY_MODERATION_UNION = [
 ].join(' UNION ALL ');
 const cte = `WITH content AS (${HATADY_MODERATION_UNION}), versioned AS (
 	SELECT c.*, c."targetType" || ':' || c."targetId" AS key,
-	encode(sha256(convert_to((c.data - 'reactionsCount' - 'commentsCount')::text,'UTF8')),'hex') AS "contentVersion"
+	encode(sha256(convert_to(((CASE WHEN c.category='record' AND COALESCE(c.data->'fileIds','[]'::jsonb)='[]'::jsonb THEN c.data-'fileIds' ELSE c.data END) - 'reactionsCount' - 'commentsCount')::text,'UTF8')),'hex') AS "contentVersion"
 	FROM content c
 ), reviewed AS (
 	SELECT c.*, COALESCE(r.note,'') AS note, COALESCE(r.revision,0) AS revision,
@@ -122,7 +124,7 @@ export function moderationFields(data: Record<string, unknown>): { label: string
 	}
 
 	for (const [key, value] of Object.entries(data)) {
-		if (['title', 'body', 'note', 'text', 'reaction', 'visibility'].includes(key)) continue;
+		if (['title', 'body', 'note', 'text', 'reaction', 'visibility', 'fileIds'].includes(key)) continue;
 		visit({ [key]: value }, '');
 	}
 	return result;
@@ -130,7 +132,7 @@ export function moderationFields(data: Record<string, unknown>): { label: string
 
 @Injectable()
 export class HatadyModerationService {
-	constructor(@Inject(DI.db) private db: DataSource, private roleService: RoleService, private userEntityService: UserEntityService) {}
+	constructor(@Inject(DI.db) private db: DataSource, private roleService: RoleService, private userEntityService: UserEntityService, private hatadyAttachmentService: HatadyAttachmentService) {}
 
 	private async authorize(viewer: MiUser, token: unknown) {
 		if (token != null || !viewer?.id || !(await this.roleService.isModerator(viewer))) throw new Error(MODERATION_ERRORS.denied);
@@ -147,9 +149,13 @@ export class HatadyModerationService {
 		const ids = [...new Set(rows.flatMap(row => [row.userId, ...(row.reviewerId ? [row.reviewerId] : [])]))];
 		const users = await this.userEntityService.packMany(ids, viewer, { schema: 'UserLite' });
 		const lookup = new Map(users.map(user => [user.id, user]));
+		const attachments = rows.filter(row => row.category === 'record').map(row => ({ id: row.key, userId: row.userId, fileIds: Array.isArray(row.data.fileIds) ? row.data.fileIds as string[] : [] }));
+		const files = await this.hatadyAttachmentService.packRecords(attachments);
+		const idsByKey = new Map(attachments.map(record => [record.id, record.fileIds]));
 		return rows.filter(row => lookup.has(row.userId)).map(row => ({
 			key: row.key, targetType: row.targetType, targetId: row.targetId, category: row.category, activity: row.activity,
 			actor: lookup.get(row.userId)!, title: row.title, body: row.body, createdAt: iso(row.createdAt), visibility: row.visibility,
+			fileIds: idsByKey.get(row.key) ?? [], files: files.get(row.key) ?? [],
 			emoji: row.emoji, parentKey: row.parentKey, contentVersion: row.contentVersion,
 			review: { state: row.state, note: row.note, revision: row.revision, reviewer: row.reviewerId ? lookup.get(row.reviewerId) ?? null : null, reviewedAt: row.reviewedAt ? iso(row.reviewedAt) : null, stale: row.stale },
 		}));

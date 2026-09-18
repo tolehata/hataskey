@@ -34,7 +34,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 			>
 				<i class="ti ti-pencil"></i>
 			</button>
-			<button v-if="activity.isMine" class="hy-icon-button" :aria-label="i18n.ts.delete" @click="deleteRecord">
+			<button v-if="activity.isMine" class="hy-icon-button" aria-label="記録を削除" title="記録を削除" :disabled="sending" @click="deleteRecord">
 				<i class="ti ti-trash"></i>
 			</button>
 			<button v-else class="hy-icon-button" :aria-label="i18n.ts.reportAbuse" @click="reportRecord">
@@ -166,10 +166,12 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 />
 </template>
 <script setup lang="ts">
+import type { HatadyActivity } from '@/utility/hatady-media.js';
 import { computed, defineAsyncComponent, ref, onMounted, nextTick } from 'vue';
 import HyDialog from '@/components/HyDialog.vue';
 import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
 import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
+import { confirmHatadyRecordDeletion } from '@/utility/hatady-record-delete.js';
 import HatadyReactions from '@/components/HatadyReactions.vue';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { emojiPicker } from '@/utility/emoji-picker.js';
@@ -179,7 +181,7 @@ import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 const props = defineProps<{ logId?: string; initialLog?: any; sessionId?: string; workId?: string }>();
-const emit = defineEmits<{ (e: 'changed'): void; (e: 'closed'): void }>();
+const emit = defineEmits<{ (e: 'changed'): void; (e: 'deleted', activity: HatadyActivity): void; (e: 'closed'): void }>();
 const api = misskeyApi as unknown as (endpoint: string, payload: Record<string, unknown>) => Promise<any>;
 const copy = i18n.ts._hata._hatady._conversation,
 	copyx = i18n.tsx._hata._hatady._conversation;
@@ -409,22 +411,13 @@ async function editRecord() {
 }
 
 async function deleteRecord() {
-	if (sending.value) return;
-	const { canceled } = await os.confirm({
-		type: 'warning',
-		text: 'この記録と、その返信・リアクションを削除します。作品は残ります。',
-	});
-	if (canceled) return;
+	if (sending.value || !activity.value?.isMine) return;
 	sending.value = true;
 	try {
-		await api(
-			props.sessionId ? 'hata/hatady/media/sessions/delete' : 'hata/hatady/logs/delete',
-			props.sessionId ? { sessionId: props.sessionId } : { logId: props.logId },
-		);
+		if (!await confirmHatadyRecordDeletion(activity.value)) return;
+		emit('deleted', activity.value);
 		emit('changed');
 		dialog.value?.close();
-	} catch {
-		hatadyNotify('記録を削除できませんでした');
 	} finally {
 		sending.value = false;
 	}

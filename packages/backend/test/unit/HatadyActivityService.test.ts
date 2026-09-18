@@ -34,7 +34,7 @@ function mediaWork(overrides: Partial<MiHatadyMediaWork> = {}): MiHatadyMediaWor
 function mediaSession(id: string, occurredAt: string, overrides: Partial<MiHatadyMediaSession> = {}): MiHatadyMediaSession {
 	return {
 		id, createdAt: new Date(occurredAt), updatedAt: new Date(occurredAt), userId: 'owner', user: null, workId: 'work', work: null,
-		durationSeconds: 7200, startedAt: null, tags: [], workSnapshot: { title: '作品', kind: 'movie' },
+		fileIds: [], durationSeconds: 7200, startedAt: null, tags: [], workSnapshot: { title: '作品', kind: 'movie' },
 		kind: 'movie_viewing', occurredAt: new Date(occurredAt), durationMinutes: 120, note: '結末', noteSpoiler: true, visibility: 'public', details: { ending: 'secret' },
 		...overrides,
 	};
@@ -88,7 +88,7 @@ describe('Hatady activity visibility and spoiler boundary', () => {
 			{
 				getSessionEngagement: vi.fn().mockResolvedValue(new Map()), canViewSession: vi.fn().mockResolvedValue(true), canViewWork: vi.fn().mockResolvedValue(true),
 				packWork: vi.fn().mockReturnValue({ ...work, createdAt: work.createdAt.toISOString(), updatedAt: work.updatedAt.toISOString() }),
-				packSession: vi.fn((session: MiHatadyMediaSession) => ({ ...session, createdAt: session.createdAt.toISOString(), updatedAt: session.updatedAt.toISOString(), occurredAt: session.occurredAt.toISOString() })),
+				packSessions: vi.fn(async (sessions: MiHatadyMediaSession[]) => sessions.map(session => ({ ...session, createdAt: session.createdAt.toISOString(), updatedAt: session.updatedAt.toISOString(), occurredAt: session.occurredAt.toISOString() }))),
 			} as never,
 			{ packLogs: vi.fn().mockResolvedValue([]) } as never,
 			{ packMany: vi.fn().mockResolvedValue([{ id: 'owner' }]) } as never,
@@ -119,7 +119,7 @@ describe('Hatady activity visibility and spoiler boundary', () => {
 			{ createQueryBuilder: vi.fn().mockReturnValue(qb) } as never,
 			{ findBy: vi.fn().mockResolvedValue([work]) } as never,
 			{ canAppearInTimeline: vi.fn().mockResolvedValue(true), getTimelineExcludedUserIds: vi.fn().mockResolvedValue(new Set()) } as never,
-			{ getSessionEngagement: vi.fn().mockResolvedValue(new Map()), canViewSession: vi.fn().mockResolvedValue(true), canViewWork: vi.fn().mockResolvedValue(true), packWork: vi.fn().mockReturnValue(work), packSession: vi.fn().mockReturnValue(session) } as never,
+			{ getSessionEngagement: vi.fn().mockResolvedValue(new Map()), canViewSession: vi.fn().mockResolvedValue(true), canViewWork: vi.fn().mockResolvedValue(true), packWork: vi.fn().mockReturnValue(work), packSessions: vi.fn().mockResolvedValue([session]) } as never,
 			{ packLogs: vi.fn().mockResolvedValue([]) } as never,
 			{ packMany: vi.fn().mockResolvedValue([{ id: 'owner' }]) } as never,
 		);
@@ -160,7 +160,7 @@ describe('Hatady learning reaction authorization', () => {
 		};
 		reactions.manager = { transaction: vi.fn(async (callback: (tx: typeof manager) => unknown) => callback(manager)) };
 		(comments as any).manager = reactions.manager;
-		return { service: new HatadyService(defaults.books as never, defaults.logs as never, defaults.comments as never, defaults.reactions as never, defaults.notifications as never, defaults.followings as never, defaults.profiles as never, defaults.bookmarks as never, defaults.memos as never, defaults.subjects as never, defaults.goals as never, defaults.mediaSessions as never, defaults.id as never, defaults.role as never, defaults.cache as never, defaults.blocking as never, defaults.push as never), defaults };
+		return { service: new HatadyService(defaults.books as never, defaults.logs as never, defaults.comments as never, defaults.reactions as never, defaults.notifications as never, defaults.followings as never, defaults.profiles as never, defaults.bookmarks as never, defaults.memos as never, defaults.subjects as never, defaults.goals as never, defaults.mediaSessions as never, defaults.id as never, defaults.role as never, defaults.cache as never, defaults.blocking as never, defaults.push as never, { validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) } as never), defaults };
 	}
 
 	test('rejects a known private log ID before reading or writing a reaction row', async () => {
@@ -259,6 +259,7 @@ describe('Hatady learning notification visibility re-evaluation', () => {
 			{ findBy: vi.fn().mockResolvedValue([]) } as never,
 			{ findBy: vi.fn().mockResolvedValue([]) } as never,
 			{ packMany: vi.fn().mockResolvedValue([{ id: 'actor' }]) } as never,
+			{ validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) } as never,
 		);
 		const [packed] = await packer.packNotifications([{
 			id: 'notification', createdAt: new Date(), notifieeId: 'viewer', notifierId: 'actor', type: 'reaction', isRead: false,

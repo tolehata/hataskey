@@ -2,7 +2,8 @@
 <template>
 <div :class="$style.fields">
 	<div v-for="field in fields" v-show="!field.when || field.when(values)" :key="field.key" :class="$style.field" :data-field="field.key">
-		<HyVisibility v-if="field.type === 'visibility'" v-model="values[field.key]" :label="field.label"/>
+		<HatadyImageAttachments v-if="field.type === 'images'" v-model="values[field.key]" :label="field.label"/>
+		<HyVisibility v-else-if="field.type === 'visibility'" v-model="values[field.key]" :label="field.label"/>
 		<HyDurationInput v-else-if="field.type === 'duration'" v-model="values[field.key]" :label="field.label" :presets="field.presets"/>
 		<template v-else-if="field.type === 'weaponStats'">
 			<h4>{{ field.label }}</h4><HyWeaponStatsTable v-model:rows="values.weaponStats" v-model:fields="values.statFields" :weaponSuggestions="field.suggestions ?? []" :copy="weaponCopy"/>
@@ -48,6 +49,7 @@ import { useId } from 'vue';
 import type { HatadyFormField, HatadyFormValues } from '@/utility/hatady-form.js';
 import { HATADY_RECORD_TAGS } from '@/utility/hatady-ui.js';
 import { HY_COVER_SETS } from '@/utility/hatady.js';
+import HatadyImageAttachments from '@/components/HatadyImageAttachments.vue';
 import HyVisibility from '@/components/HyVisibility.vue';
 import HyDurationInput from '@/components/HyDurationInput.vue';
 import HyTagInput from '@/components/HyTagInput.vue';

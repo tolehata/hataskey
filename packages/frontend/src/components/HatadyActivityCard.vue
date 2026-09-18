@@ -42,10 +42,12 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 				ネタバレを含む記録
 			</summary>
 			<p v-if="study.body" :class="$style.note">{{ study.body }}</p>
+			<MkMediaList v-if="study.files?.length" :mediaList="study.files" :user="activity.user"/>
 			<ActivityLogDetail v-if="detailed" :record="study"/>
 		</details>
 		<template v-else>
 			<p v-if="study.body" :class="$style.note">{{ study.body }}</p>
+			<MkMediaList v-if="study.files?.length" :mediaList="study.files" :user="activity.user"/>
 			<ActivityLogDetail v-if="detailed" :record="study"/>
 		</template>
 		<div :class="$style.meta">
@@ -120,9 +122,13 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 				class="hy-icon-button"
 				aria-label="記録を編集"
 				title="記録を編集"
+				:disabled="deleting"
 				@click="emit('edit', activity)"
 			>
 				<i class="ti ti-pencil"></i>
+			</button>
+			<button v-if="activity.isMine" type="button" class="hy-icon-button" aria-label="記録を削除" title="記録を削除" :disabled="deleting" :aria-busy="deleting" @click="deleteRecord">
+				<i class="ti ti-trash" aria-hidden="true"></i>
 			</button>
 			<button
 				v-else
@@ -139,14 +145,16 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 </template>
 
 <script lang="ts" setup>
-import { computed, defineComponent, h, useCssModule } from 'vue';
+import { computed, defineComponent, h, ref, useCssModule } from 'vue';
 import type { HatadyActivity, HatadyMediaSession, HatadyMediaVisibility } from '@/utility/hatady-media.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
+import MkMediaList from '@/components/MkMediaList.vue';
 import HatadyReactions from '@/components/HatadyReactions.vue';
 import { hyTagLabel } from '@/utility/hatady.js';
 import { hatadyDuration as secondsLabel } from '@/utility/hatady-ui.js';
 import { HATADY_STAT_FIELDS, hatadyMediaCopy, mediaSessionDisplayFacts } from '@/utility/hatady-media.js';
+import { confirmHatadyRecordDeletion } from '@/utility/hatady-record-delete.js';
 
 const props = withDefaults(
 	defineProps<{ activity: HatadyActivity; showAuthor?: boolean; showActions?: boolean; detailed?: boolean }>(),
@@ -158,11 +166,22 @@ const emit = defineEmits<{
 	(ev: 'openMedia', workId: string): void;
 	(ev: 'openProfile', userId: string): void;
 	(ev: 'edit', activity: HatadyActivity): void;
+	(ev: 'deleted'): void;
 	(ev: 'openSession', sessionId: string, workId: string): void;
 	(ev: 'menu', activity: HatadyActivity, event: MouseEvent): void;
 }>();
 
 const styles = useCssModule();
+const deleting = ref(false);
+
+async function deleteRecord(): Promise<void> {
+	if (deleting.value) return;
+	deleting.value = true;
+	try {
+		if (await confirmHatadyRecordDeletion(props.activity)) emit('deleted');
+	} finally { deleting.value = false; }
+}
+
 const homeCopy = i18n.ts._hata._hatady._home;
 const homeLabels = homeCopy as unknown as Record<string, string>;
 const mediaCopy = hatadyMediaCopy();
@@ -389,6 +408,7 @@ const ActivityMediaDetail = defineComponent({
 					)
 					: null,
 				p.session.note ? h('p', { class: styles.note }, p.session.note) : null,
+				p.session.files?.length ? h(MkMediaList, { mediaList: p.session.files }) : null,
 			]);
 	},
 });

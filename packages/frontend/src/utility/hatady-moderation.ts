@@ -11,6 +11,8 @@ export type ModerationTarget = 'book' | 'log' | 'comment' | 'reaction' | 'mediaW
 export type ModerationActivity = 'study' | 'movie' | 'game' | 'exercise' | 'work';
 export type ModerationVisibility = 'public' | 'followers' | 'private';
 export interface ModerationEntry {
+	fileIds?: string[];
+	files?: Misskey.entities.DriveFile[];
 	key: string;
 	targetType: ModerationTarget;
 	targetId: string;

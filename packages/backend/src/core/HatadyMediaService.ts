@@ -37,6 +37,7 @@ import { MiHatadyMediaReaction } from '@/models/HatadyMediaReaction.js';
 import { MiHatadyNotification } from '@/models/HatadyNotification.js';
 import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
+import { HatadyAttachmentService } from '@/core/HatadyAttachmentService.js';
 import { HatadyService } from '@/core/HatadyService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
@@ -79,6 +80,7 @@ export type HatadyMediaWorkInput = {
 };
 
 export type HatadyMediaSessionInput = {
+	fileIds?: string[];
 	durationSeconds?: number | null;
 	startedAt?: string | null;
 	tags?: string[];
@@ -366,6 +368,7 @@ export class HatadyMediaService {
 		private userEntityService: UserEntityService,
 		private hatadyService: HatadyService,
 		private hatadyEntityService: HatadyEntityService,
+		private hatadyAttachmentService: HatadyAttachmentService,
 	) {}
 
 	@bindThis
@@ -664,7 +667,7 @@ export class HatadyMediaService {
 			this.commentsRepository.countBy({ sessionId }),
 			this.packWorks(visibleWork ? [visibleWork] : [], viewerId, staffAccess),
 		]);
-		return { session: { ...this.packSession(session), workId: visibleWork ? session.workId : null, reactions: reactionRows.map(row => ({ reaction: row.reaction, count: Number(row.count) })), myReaction: mine?.reaction ?? null, commentsCount }, work: packedWorks[0] ?? null, isMine: session.userId === viewerId };
+		return { session: { ...await this.packSession(session), workId: visibleWork ? session.workId : null, reactions: reactionRows.map(row => ({ reaction: row.reaction, count: Number(row.count) })), myReaction: mine?.reaction ?? null, commentsCount }, work: packedWorks[0] ?? null, isMine: session.userId === viewerId };
 	}
 
 	private normalizeSession(work: Pick<MiHatadyMediaWork, 'kind'>, kind: HatadyMediaSessionKind, input: HatadyMediaSessionInput, previous?: MiHatadyMediaSession): QueryDeepPartialEntity<MiHatadyMediaSession> {
@@ -697,6 +700,7 @@ export class HatadyMediaService {
 			const work = await manager.getRepository(MiHatadyMediaWork).findOne({ where: { id: workId, userId }, lock: { mode: 'pessimistic_write' } });
 			if (work == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
 			const values = this.normalizeSession(work, kind, input);
+			values.fileIds = await this.hatadyAttachmentService.validate(userId, input.fileIds ?? [], [], manager);
 			if (input.tags?.includes('recommend')) await manager.getRepository(MiHatadyMediaWork).update({ id: workId, userId }, { isRecommended: true });
 			await manager.getRepository(MiHatadyMediaSession).insert({ id, createdAt: now, updatedAt: now, userId, workId, ...values, workSnapshot: this.snapshotWork(work) as QueryDeepPartialEntity<MiHatadyMediaSession>['workSnapshot'] });
 			return manager.getRepository(MiHatadyMediaSession).findOneByOrFail({ id, userId });
@@ -770,6 +774,7 @@ export class HatadyMediaService {
 				noteSpoiler: input.noteSpoiler ?? session.noteSpoiler,
 				visibility: input.visibility ?? session.visibility,
 			}, session);
+			if (input.fileIds !== undefined) values.fileIds = await this.hatadyAttachmentService.validate(userId, input.fileIds, session.fileIds ?? [], manager);
 			await repo.update({ id: sessionId, userId }, { ...values, updatedAt: new Date() });
 			if (work && input.tags?.includes('recommend')) await manager.getRepository(MiHatadyMediaWork).update({ id: work.id, userId }, { isRecommended: true });
 		});
@@ -784,8 +789,14 @@ export class HatadyMediaService {
 	}
 
 	@bindThis
-	public packSession(session: MiHatadyMediaSession) {
-		return {
+	public async packSession(session: MiHatadyMediaSession) {
+		return (await this.packSessions([session]))[0];
+	}
+
+	@bindThis
+	public async packSessions(sessions: MiHatadyMediaSession[]) {
+		const files = await this.hatadyAttachmentService.packRecords(sessions);
+		return sessions.map(session => ({
 			id: session.id,
 			createdAt: session.createdAt.toISOString(),
 			updatedAt: session.updatedAt.toISOString(),
@@ -798,11 +809,13 @@ export class HatadyMediaService {
 			startedAt: session.startedAt ?? null,
 			tags: session.tags ?? [],
 			workSnapshot: session.workSnapshot ?? {},
+			fileIds: session.fileIds ?? [],
+			files: files.get(session.id) ?? [],
 			note: session.note,
 			noteSpoiler: session.noteSpoiler,
 			visibility: session.visibility,
 			details: session.details,
-		};
+		}));
 	}
 
 	@bindThis

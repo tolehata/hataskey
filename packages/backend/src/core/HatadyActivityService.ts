@@ -286,6 +286,8 @@ export class HatadyActivityService {
 			: [];
 		const mediaUsersMap = new Map(mediaUsers.map(user => [user.id, user]));
 		const engagement = await this.hatadyMediaService.getSessionEngagement(mediaCandidates.map(candidate => candidate.id), viewer.id);
+		const packedSessions = await this.hatadyMediaService.packSessions(mediaCandidates.map(candidate => candidate.session));
+		const sessionsMap = new Map(packedSessions.map(session => [session.id, session]));
 
 		return Promise.all(candidates.map(async candidate => {
 			if (candidate.source === 1) {
@@ -303,7 +305,7 @@ export class HatadyActivityService {
 			}
 			const visibleWork = candidate.work && await this.hatadyMediaService.canViewWork(candidate.work, viewer.id, staffAccess) ? candidate.work : null;
 			const packedWork = visibleWork ? this.hatadyMediaService.packWork(visibleWork, staffAccess || visibleWork.userId === viewer.id) : null;
-			const packedSession = this.hatadyMediaService.packSession(candidate.session);
+			const packedSession = sessionsMap.get(candidate.id)!;
 			const isMine = candidate.session.userId === viewer.id;
 			return {
 				id: candidate.id,

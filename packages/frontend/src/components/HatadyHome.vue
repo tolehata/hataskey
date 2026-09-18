@@ -1049,12 +1049,14 @@ onUnmounted(() => {
 }
 .rows {
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 8px;
 }
 .row {
 	display: flex;
 	align-items: center;
 	width: 100%;
+	min-width: 0;
 	min-height: 55px;
 	gap: 10px;
 	padding: 7px 0;

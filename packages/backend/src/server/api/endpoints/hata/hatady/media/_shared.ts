@@ -1,8 +1,9 @@
 import { ApiError } from '@/server/api/error.js';
 import { HatadyMediaService } from '@/core/HatadyMediaService.js';
-import { RECORD_INPUT_PROPERTIES } from '../_record.js';
+import { RECORD_INPUT_PROPERTIES, HATADY_ATTACHMENT_API_ERROR } from '../_record.js';
 
 export const MEDIA_ERRORS = {
+	invalidAttachments: HATADY_ATTACHMENT_API_ERROR,
 	noSuchMedia: {
 		message: 'No such Hatady media resource or access denied.',
 		code: 'NO_SUCH_HATADY_MEDIA',
@@ -21,6 +22,7 @@ export const MEDIA_ERRORS = {
 } as const;
 
 export function mapMediaError(error: unknown): never {
+	if (error instanceof Error && error.message === HATADY_ATTACHMENT_API_ERROR.code) throw new ApiError(MEDIA_ERRORS.invalidAttachments);
 	if (error instanceof Error && error.message === HatadyMediaService.ERR_NOT_FOUND) throw new ApiError(MEDIA_ERRORS.noSuchMedia);
 	if (error instanceof Error && error.message === HatadyMediaService.ERR_GAME_TITLE_LIMIT) throw new ApiError(MEDIA_ERRORS.gameTitleLimitExceeded);
 	if (error instanceof Error && (

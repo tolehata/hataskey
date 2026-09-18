@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
+import HatadyModeration from './HatadyModeration.vue';
 import type { ModerationDetail, ModerationEntry } from '@/utility/hatady-moderation.js';
 
 const fixtures = vi.hoisted(() => ({ api: vi.fn(), width: 800 }));
@@ -10,6 +11,10 @@ vi.mock('@/i.js', () => ({ $i: { id: 'staff', isModerator: true, isAdmin: false 
 vi.mock('@/components/MkReactionIcon.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
 	return { default: defineComponent({ props: { reaction: String }, setup: props => () => render('span', { 'data-emoji': props.reaction }, props.reaction) }) };
+});
+vi.mock('@/components/MkMediaList.vue', async () => {
+	const { defineComponent, h: render } = await import('vue');
+	return { default: defineComponent({ props: { mediaList: Array }, setup: props => () => render('div', { 'data-images': JSON.stringify(props.mediaList) }) }) };
 });
 vi.mock('@/components/HyDialog.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
@@ -22,7 +27,6 @@ vi.mock('@/components/HyDialog.vue', async () => {
 		},
 	}) };
 });
-import HatadyModeration from './HatadyModeration.vue';
 
 const cleanups: Array<() => void> = [];
 const makeEntry = (id: string): ModerationEntry => ({
@@ -71,6 +75,15 @@ afterEach(() => {
 });
 
 describe('Hatady moderation view', () => {
+	test('shows attached record images in the staff detail', async () => {
+		const host = await mountView();
+		const files = [{ id: 'photo', type: 'image/png', url: '/files/photo', isSensitive: true }];
+		fixtures.api.mockResolvedValueOnce(makeDetail({ ...makeEntry('a'), fileIds: ['photo'], files: files as ModerationEntry['files'] }));
+		host.querySelector<HTMLButtonElement>('[data-key="log:a"]')!.click();
+		await settle();
+		expect(window.document.querySelector('[data-images]')?.getAttribute('data-images')).toBe(JSON.stringify(files));
+	});
+
 	test('the actual capsule keeps only the selected label and forwards each category to the combined query', async () => {
 		const host = await mountView();
 		expect(host.querySelector('input[type="search"]')?.getAttribute('placeholder')).toBe('検索内容を入力...');

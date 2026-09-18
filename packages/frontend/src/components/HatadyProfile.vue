@@ -201,6 +201,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								@openMedia="openMedia($event)"
 								@openSession="openMediaSession"
 								@edit="editActivity"
+								@deleted="onActivityDeleted(activity)"
 								@openProfile="openProfile($event)"
 								@menu="activityMenu"
 							/>
@@ -243,6 +244,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		@openBook="openBook($event)"
 		@openSession="openMediaSession"
 		@edit="editActivity"
+		@deleted="onActivityDeleted(activity)"
 		@openProfile="openProfile($event)"
 		@menu="activityMenu"
 	/>
@@ -251,6 +253,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, useId, watch, defineAsyncComponent } from 'vue';
+import type { HatadyActivity } from '@/utility/hatady-media.js';
 import HyDialog from '@/components/HyDialog.vue';
 import HatadyProfileDesign from '@/components/HatadyProfileDesign.vue';
 import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
@@ -384,7 +387,10 @@ const shownMediaWorks = computed(() => {
 	return expandedShelf.value ? works : works.slice(0, 6);
 });
 
-async function reloadMedia(userId: string) {
+let profileRequest = 0;
+let disposed = false;
+
+async function reloadMedia(userId: string, request: number) {
 	const PAGE_LIMIT = 100;
 	const MAX_PAGES = 50;
 	mediaLoading.value = true;
@@ -409,9 +415,11 @@ async function reloadMedia(userId: string) {
 						...(untilId ? { untilId } : {}),
 					} as never,
 				);
+				if (request !== profileRequest) return;
 				if (!Array.isArray(response)) throw new TypeError('Invalid Hatady media work list response');
 				page = response;
 			} catch {
+				if (request !== profileRequest) return;
 				mediaWorksTruncated.value = true;
 				break;
 			}
@@ -450,9 +458,11 @@ async function reloadMedia(userId: string) {
 						untilId,
 					} as never,
 				);
+				if (request !== profileRequest) return;
 				if (!Array.isArray(probe)) throw new TypeError('Invalid Hatady media work list response');
 				completed = probe.length === 0;
 			} catch {
+				if (request !== profileRequest) return;
 				mediaWorksTruncated.value = true;
 			}
 		}
@@ -460,25 +470,30 @@ async function reloadMedia(userId: string) {
 		mediaWorks.value = collected;
 		if (!completed) mediaWorksTruncated.value = true;
 	} finally {
-		mediaLoading.value = false;
+		if (request === profileRequest) mediaLoading.value = false;
 	}
 }
 
 async function reload() {
+	if (disposed) return;
+	const request = ++profileRequest;
 	loading.value = true;
+	mediaLoading.value = false;
 	try {
 		const payload: Record<string, unknown> = { tzOffset: hatadyTzOffset() };
 		if (props.userId) payload.userId = props.userId;
-		profile.value = await misskeyApi('hata/hatady/users/show', payload).catch(() => null);
+		const nextProfile = await misskeyApi('hata/hatady/users/show', payload).catch(() => null);
+		if (request !== profileRequest) return;
+		profile.value = nextProfile;
 		following.value = profile.value?.isFollowing ?? false;
 		bannerColor.value = profile.value?.bannerColor ?? null;
-		if (profile.value?.user?.id) await reloadMedia(profile.value.user.id);
+		if (profile.value?.user?.id) await reloadMedia(profile.value.user.id, request);
 		else {
 			mediaWorks.value = [];
 			mediaWorksTruncated.value = false;
 		}
 	} finally {
-		loading.value = false;
+		if (request === profileRequest) loading.value = false;
 	}
 }
 
@@ -629,6 +644,7 @@ async function openMediaSession(sessionId: string, workId: string) {
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ sessionId, workId },
 		{
+			deleted: removeActivity,
 			changed: () => {
 				void reload();
 				emit('changed');
@@ -636,6 +652,19 @@ async function openMediaSession(sessionId: string, workId: string) {
 			closed: () => dispose(),
 		},
 	);
+}
+
+function removeActivity(activity: HatadyActivity): void {
+	profileRequest++;
+	if (profile.value?.activities) profile.value.activities = profile.value.activities.filter((row: HatadyActivity) => row.id !== activity.id);
+	if (activity.study && profile.value?.logs) profile.value.logs = profile.value.logs.filter((log: { id: string }) => log.id !== activity.study!.id);
+	if (selectedDay.value) selectedDay.value.logs = selectedDay.value.logs.filter((row: HatadyActivity) => row.id !== activity.id);
+}
+
+async function onActivityDeleted(activity: HatadyActivity): Promise<void> {
+	removeActivity(activity);
+	emit('changed');
+	await reload();
 }
 
 async function editActivity(activity: any) {
@@ -693,6 +722,7 @@ async function openLog(logId: string) {
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ logId },
 		{
+			deleted: removeActivity,
 			changed: () => {
 				void reload();
 				emit('changed');
@@ -707,6 +737,10 @@ async function openBook(bookId: string) {
 		(await import('@/components/HatadyBookDetail.vue')).default,
 		{ bookId },
 		{
+			deleted: () => {
+				profileRequest++;
+				if (profile.value?.books) profile.value.books = profile.value.books.filter((book: { id: string }) => book.id !== bookId);
+			},
 			changed: () => {
 				void reload();
 				emit('changed');
@@ -721,6 +755,10 @@ async function openMedia(workId: string) {
 		(await import('@/components/HatadyMediaWorkDetail.vue')).default,
 		{ workId },
 		{
+			deleted: () => {
+				profileRequest++;
+				mediaWorks.value = mediaWorks.value.filter(work => work.id !== workId);
+			},
 			changed: () => {
 				void reload();
 				emit('changed');
@@ -755,6 +793,7 @@ watch(
 	() => props.previewData,
 	(value) => {
 		if (value) {
+			profileRequest++;
 			profile.value = value;
 			mediaWorks.value = value.mediaWorks || [];
 		}
@@ -763,6 +802,10 @@ watch(
 );
 onMounted(() => {
 	if (!props.previewData) void reload();
+});
+onUnmounted(() => {
+	disposed = true;
+	profileRequest++;
 });
 </script>
 

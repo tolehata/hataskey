@@ -59,6 +59,7 @@ function service(overrides: Record<string, unknown> = {}): HatadyMediaService {
 		defaults.userEntityService as never,
 		defaults.hatadyService as never,
 		defaults.hatadyEntityService as never,
+		{ validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) } as never,
 	);
 }
 
@@ -475,6 +476,7 @@ describe('Hatady collection owner packing', () => {
 			{ createQueryBuilder: vi.fn().mockReturnValue(logReactions) } as never, {} as never,
 			{ findBy: vi.fn().mockResolvedValue([]) } as never, {} as never, {} as never, {} as never,
 			userEntityService as never,
+			{ validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) } as never,
 		);
 		const reactionSummary = { select: vi.fn().mockReturnThis(), addSelect: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), groupBy: vi.fn().mockReturnThis(), orderBy: vi.fn().mockReturnThis(), getRawMany: vi.fn().mockResolvedValue([]) };
 		const hatadyService = {
@@ -519,7 +521,7 @@ describe('Hatady collection owner packing', () => {
 	test('book owners are included in list and detail without making private notes public', async () => {
 		const userEntityService = { packMany: vi.fn().mockResolvedValue([{ id: 'owner', name: 'Owner' }]) };
 		const bookmarksRepository = { createQueryBuilder: vi.fn() };
-		const sut = new HatadyEntityService({} as never, {} as never, {} as never, {} as never, {} as never, bookmarksRepository as never, {} as never, {} as never, userEntityService as never);
+		const sut = new HatadyEntityService({} as never, {} as never, {} as never, {} as never, {} as never, bookmarksRepository as never, {} as never, {} as never, userEntityService as never, { validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) } as never);
 		const book = { id: 'book-a', userId: 'owner', title: 'Book', createdAt: new Date(), updatedAt: new Date(), visibility: 'public', details: { genre: 'genre', memo: 'private' } };
 		const packed = await sut.packBooks([book as never, { ...book, id: 'book-b' } as never], 'viewer');
 		expect(userEntityService.packMany).toHaveBeenCalledExactlyOnceWith(['owner'], { id: 'viewer' }, { schema: 'UserLite' });
@@ -544,6 +546,7 @@ describe('Hatady media notification packing', () => {
 			{ findBy: vi.fn().mockResolvedValue([mediaWork]) } as never,
 			{ findBy: vi.fn().mockResolvedValue([{ id: 'media-comment', workId: mediaWork.id, text: 'spoiler text', spoiler: true }]) } as never,
 			{ packMany: vi.fn().mockResolvedValue([{ id: 'actor' }]) } as never,
+			{ validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) } as never,
 		);
 	}
 

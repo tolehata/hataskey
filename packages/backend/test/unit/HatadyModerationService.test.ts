@@ -12,6 +12,7 @@ import { MiHatadyMediaComment } from '@/models/HatadyMediaComment.js';
 import { MiHatadyMediaReaction } from '@/models/HatadyMediaReaction.js';
 import { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
+import { HatadyAttachmentService } from '@/core/HatadyAttachmentService.js';
 import type { MiUser } from '@/models/User.js';
 
 const viewer = { id: 'staff' } as MiUser;
@@ -25,7 +26,7 @@ function fixture(allowed = true) {
 	const db = { query: vi.fn(), transaction: vi.fn() };
 	const role = { isModerator: vi.fn().mockResolvedValue(allowed) };
 	const users = { packMany: vi.fn(async (ids: string[]) => ids.map(id => ({ id, username: id, name: id }))) };
-	return { db, role, users, service: new HatadyModerationService(db as never, role as never, users as never) };
+	return { db, role, users, service: new HatadyModerationService(db as never, role as never, users as never, { validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) } as never) };
 }
 
 const request = { targetType: 'log' as const, targetId: 'first', state: 'reviewed' as const, note: '確認しました', expectedRevision: 0, expectedContentVersion: version };
@@ -85,6 +86,19 @@ describe('moderation cursor and bounded filters', () => {
 });
 
 describe('staff-only reads and isolated writes', () => {
+	test('packs staff record images using the public Drive shape without adding attachments to comments', async () => {
+		const f = fixture();
+		const image = { id: 'image', userId: 'owner', type: 'image/png', isSensitive: true, comment: '説明' };
+		const drive = { packMany: vi.fn().mockResolvedValue([image]) };
+		const attachments = new HatadyAttachmentService({ findBy: vi.fn().mockResolvedValue([image]) } as never, drive as never);
+		const service = new HatadyModerationService(f.db as never, f.role as never, f.users as never, attachments);
+		f.db.query.mockResolvedValue([{ items: [row({ data: { fileIds: ['missing', 'image'] } }), row({ key: 'comment:reply', targetType: 'comment', targetId: 'reply', category: 'comment', data: { text: '返信' } })], total: 2, counts: { unreviewed: 2, flagged: 0, reviewed: 0 } }]);
+		const result = await service.list(viewer, {});
+		expect(result.items[0]).toMatchObject({ fileIds: ['missing', 'image'], files: [image] });
+		expect(result.items[1]).toMatchObject({ fileIds: [], files: [] });
+		expect(drive.packMany).toHaveBeenCalledWith([image], { self: false, detail: false });
+		expect(moderationFields({ fileIds: ['image'], title: 'record' })).toEqual([]);
+	});
 	test.each(['list', 'show', 'review'] as const)('rejects nonstaff before any %s database access', async method => {
 		const f = fixture(false);
 		const operation = method === 'list' ? f.service.list(viewer, {}) : method === 'show' ? f.service.show(viewer, 'log', 'first') : f.service.review(viewer, request);
@@ -110,7 +124,8 @@ describe('staff-only reads and isolated writes', () => {
 		expect(f.users.packMany).toHaveBeenCalledWith(['owner'], viewer, { schema: 'UserLite' });
 		const [sql, params] = f.db.query.mock.calls[0];
 		expect(sql).not.toContain('OR TRUE');
-		expect(sql).toContain('c.data - \'reactionsCount\' - \'commentsCount\'');
+		expect(sql).toContain("COALESCE(c.data->'fileIds','[]'::jsonb)='[]'::jsonb THEN c.data-'fileIds'");
+		expect(sql).toContain("- 'reactionsCount' - 'commentsCount'");
 		expect(sql).toContain('ELSE \'unreviewed\' END AS state');
 		expect(params).toEqual([new Date(0), new Date(1000), '%50\\%\\_\\\\\' OR TRUE%', 2]);
 		await f.service.list(viewer, { limit: 1, query: '50%_\\\' OR TRUE', since: 0, until: 1000, sort: 'asc', cursor: first.nextCursor! });

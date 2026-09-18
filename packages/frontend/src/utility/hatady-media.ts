@@ -65,6 +65,8 @@ export interface HatadyMediaWork {
 }
 
 export interface HatadyMediaSession {
+	fileIds?: string[];
+	files?: Misskey.entities.DriveFile[];
 	id: string;
 	workId: string | null;
 	createdAt: string;

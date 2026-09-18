@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { RECORD_ATTACHMENT_PROPERTIES } from './_record.js';
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { ApiError } from '@/server/api/error.js';
@@ -49,6 +50,7 @@ const studySchema = {
 		title: { type: 'string', optional: false, nullable: false },
 		subject: { type: 'string', optional: false, nullable: false },
 		tag: { type: 'string', optional: false, nullable: true },
+		...RECORD_ATTACHMENT_PROPERTIES,
 		body: { type: 'string', optional: false, nullable: true },
 		bookId: { type: 'string', format: 'misskey:id', optional: false, nullable: true },
 		book: bookSchema,
@@ -69,7 +71,7 @@ const studySchema = {
 		myReaction: { type: 'string', optional: false, nullable: true },
 		isMine: { type: 'boolean', optional: false, nullable: false },
 	},
-	required: ['id', 'createdAt', 'studiedAt', 'userId', 'user', 'title', 'subject', 'tag', 'body', 'bookId', 'book', 'pageFrom', 'pageTo', 'durationMinutes', 'isPublic', 'visibility', 'reactionsCount', 'commentsCount', 'reactions', 'myReaction', 'isMine'],
+	required: ['fileIds', 'files', 'id', 'createdAt', 'studiedAt', 'userId', 'user', 'title', 'subject', 'tag', 'body', 'bookId', 'book', 'pageFrom', 'pageTo', 'durationMinutes', 'isPublic', 'visibility', 'reactionsCount', 'commentsCount', 'reactions', 'myReaction', 'isMine'],
 } as const;
 
 const mediaSchema = {

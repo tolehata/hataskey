@@ -1,5 +1,7 @@
 /* Hatady 映画・ゲーム API の OpenAPI 正本。SDK 自動生成で空 object にしない。 */
 
+import { RECORD_ATTACHMENT_PROPERTIES } from '../_record.js';
+
 const reactionSummarySchema = {
 	type: 'object',
 	optional: false,
@@ -83,13 +85,14 @@ export const mediaSessionSchema = {
 		durationSeconds: { type: 'number', optional: false, nullable: true },
 		startedAt: { type: 'string', optional: false, nullable: true },
 		tags: { type: 'array', optional: false, items: { type: 'string' } },
+		...RECORD_ATTACHMENT_PROPERTIES,
 		workSnapshot: { type: 'object', optional: false, additionalProperties: true },
 		note: { type: 'string', optional: false, nullable: true },
 		noteSpoiler: { type: 'boolean', optional: false, nullable: false },
 		visibility: { type: 'string', enum: ['private', 'followers', 'public'], optional: false, nullable: false },
 		details: { type: 'object', optional: false, nullable: false, additionalProperties: true },
 	},
-	required: ['durationSeconds', 'startedAt', 'tags', 'workSnapshot', 'id', 'createdAt', 'updatedAt', 'userId', 'workId', 'kind', 'occurredAt', 'durationMinutes', 'note', 'noteSpoiler', 'visibility', 'details'],
+	required: ['fileIds', 'files', 'durationSeconds', 'startedAt', 'tags', 'workSnapshot', 'id', 'createdAt', 'updatedAt', 'userId', 'workId', 'kind', 'occurredAt', 'durationMinutes', 'note', 'noteSpoiler', 'visibility', 'details'],
 } as const;
 
 export const mediaCommentSchema = {

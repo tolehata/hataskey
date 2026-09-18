@@ -57,7 +57,12 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					</div>
 				</template>
 			</HatadyHome>
-			<section v-else-if="activeTab === 'records'" :class="$style.page">
+			<component
+				:is="prefer.r.enablePullToRefresh.value ? MkPullToRefresh : 'section'"
+				v-else-if="activeTab === 'records'"
+				:class="$style.page"
+				:refresher="refreshRecords"
+			>
 				<div :class="$style.pageTitle">
 					<h1>日々の記録</h1>
 					<button
@@ -77,12 +82,6 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 							@update:modelValue="setRecordScope"
 						/>
 						<div :class="$style.toolbar">
-							<HyCapsule
-								:modelValue="recordKind"
-								:options="recordKinds"
-								label="活動の種類"
-								@update:modelValue="setRecordKind"
-							/>
 							<button
 								type="button"
 								class="hy-icon-button"
@@ -93,6 +92,12 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 							>
 								<i class="ti ti-calendar" aria-hidden="true"></i>
 							</button>
+							<HyCategorySelect
+								:modelValue="recordKind"
+								:options="recordKinds"
+								label="活動の種類"
+								@update:modelValue="setRecordKind"
+							/>
 						</div>
 					</div>
 					<form v-if="periodOpen" :class="$style.periodTools" aria-label="記録の日付" @submit.prevent="applyPeriod">
@@ -149,6 +154,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 						@openSession="openSession"
 						@openProfile="openProfile"
 						@edit="editActivity"
+						@deleted="onActivityDeleted(activity)"
 						@menu="openActivityMenu"
 					/>
 					<p v-if="!activities.length && !recordsError" class="hy-empty">
@@ -158,7 +164,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 						{{ mediaCopy.loadMore }}
 					</button>
 				</div>
-			</section>
+			</component>
 			<section v-else-if="activeTab === 'collection'" :class="$style.page">
 				<div :class="$style.pageTitle"><h1>コレクション</h1></div>
 				<div :class="$style.collectionTabs" data-hy-page-controls>
@@ -184,7 +190,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 						<i class="ti ti-filter" aria-hidden="true"></i>
 						<span v-if="!collectionLoading">{{ filteredWorks.length }}件</span>
 					</button>
-					<button v-if="collectionScope === 'mine'" class="hy-primary" @click="addCollectionWork">
+					<button v-if="collectionScope === 'mine'" class="hy-primary" @click="addCollectionWork($event)">
 						<i class="ti ti-plus" aria-hidden="true"></i>
 						{{ collectionKind === 'work' ? '作業を登録' : '作品を登録' }}
 					</button>
@@ -215,7 +221,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 								<option value="updatedAt">{{ mediaCopy.sortUpdated }}</option>
 								<option value="title">{{ mediaCopy.sortTitle }}</option>
 								<option v-if="collectionKind === 'book'" value="finishedAt">{{ copy.sortFinished }}</option>
-								<option v-else value="releaseDate">{{ mediaCopy.sortRelease }}</option>
+								<option v-else-if="collectionKind !== 'all'" value="releaseDate">{{ mediaCopy.sortRelease }}</option>
 								<option v-if="collectionKind === 'movie'" value="recommendationRating">
 									{{ mediaCopy.sortRecommendation }}
 								</option>
@@ -411,7 +417,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 								<h2>{{ work.title }}</h2>
 								<p>{{ work.creator }}</p>
 								<div :class="$style.workState">
-									<span>{{ statusLabel(work.status) }}</span>
+									<span>{{ statusLabel(work.status, work.kind) }}</span>
 									<span v-if="work.kind === 'book' && work.raw.totalPages">
 										{{ work.raw.currentPage }}/{{ work.raw.totalPages }}p
 									</span>
@@ -435,13 +441,15 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				</div>
 				<p v-if="!filteredWorks.length && !collectionLoading && !collectionError" class="hy-empty">
 					{{
-						collectionKind === 'book'
-							? copy.emptyShelf
-							: collectionKind === 'movie'
-								? mediaCopy.emptyMovie
-								: collectionKind === 'game'
-									? mediaCopy.emptyGame
-									: 'まだ作業がありません'
+						collectionKind === 'all'
+							? 'まだ作品・作業がありません'
+							: collectionKind === 'book'
+								? copy.emptyShelf
+								: collectionKind === 'movie'
+									? mediaCopy.emptyMovie
+									: collectionKind === 'game'
+										? mediaCopy.emptyGame
+										: 'まだ作業がありません'
 					}}
 				</p>
 			</section>
@@ -473,18 +481,21 @@ import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
+import { prefer } from '@/preferences.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { captureHatadyPageTurn } from '@/utility/hatady-motion.js';
 import { createHatadyListEntrance } from '@/utility/hatady-list-motion.js';
 import HyNav from '@/components/HyNav.vue';
 import HyCapsule from '@/components/HyCapsule.vue';
+import HyCategorySelect from '@/components/hatady/HyCategorySelect.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
 import HyMediaCover from '@/components/HyMediaCover.vue';
 import HatadyHome from '@/components/HatadyHome.vue';
 import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
 import HatadyProfile from '@/components/HatadyProfile.vue';
 import HatadyModeration from '@/components/HatadyModeration.vue';
+import MkPullToRefresh from '@/components/MkPullToRefresh.vue';
 import { hyBookmarkColor } from '@/utility/hatady.js';
 import { loadHySubjects } from '@/utility/hatady-subjects.js';
 import {
@@ -495,14 +506,15 @@ import {
 import { showHatadyTutorial } from '@/utility/hatady-tutorial-launcher.js';
 import {
 	hatadyMediaCopy,
-	mediaAdvancedFilterPayload,
 	mediaSessionTypes,
 	mediaStatusCopyKey,
 	mediaStatusOptions,
 	requireHatadyActivityPage,
 	normalizeHatadyLogKinds,
 } from '@/utility/hatady-media.js';
-import { activityData, activityKind, collectWorkPages, homeWork, localDateKey } from '@/utility/hatady-home.js';
+import { activityData, activityKind, localDateKey } from '@/utility/hatady-home.js';
+import { loadHatadyCollection } from '@/utility/hatady-collection.js';
+import { confirmHatadyRecordDeletion } from '@/utility/hatady-record-delete.js';
 import { HATADY_ACTIVITY_CHOICES, HATADY_RECORD_TAGS, hatadyDialogSurfaces, hatadyDuration, hatadyNotify } from '@/utility/hatady-ui.js';
 import '@/components/hatady-ui.css';
 
@@ -693,6 +705,12 @@ function epoch(value: string, end = false): number | undefined {
 	return value ? new Date(`${value}T${end ? '23:59:59.999' : '00:00:00.000'}`).getTime() : undefined;
 }
 
+async function refreshRecords(): Promise<void> {
+	if (activeTab.value !== 'records' || recordsLoading.value) return;
+	cancelPageMotion();
+	await loadRecords();
+}
+
 async function loadRecords(append = false): Promise<void> {
 	if (append && recordsLoading.value) return;
 	const query = JSON.stringify([recordScope.value, recordKind.value, since.value, until.value]);
@@ -803,6 +821,7 @@ function showCommunity(): void {
 }
 
 const collectionKinds = [
+	{ value: 'all', label: 'すべて', icon: 'ti ti-layout-grid' },
 	{ value: 'book', label: '本', icon: 'ti ti-books' },
 	{ value: 'movie', label: '映画', icon: 'ti ti-movie' },
 	{ value: 'game', label: 'ゲーム', icon: 'ti ti-device-gamepad-2' },
@@ -812,7 +831,7 @@ const collectionKind = ref(
 	({ books: 'book', movies: 'movie', games: 'game' } as Record<string, string>)[saved('hatadyCollectionKind') || ''] ||
 		(collectionKinds.some((kind) => kind.value === saved('hatadyCollectionKind'))
 			? saved('hatadyCollectionKind')!
-			: 'book'),
+			: 'all'),
 );
 const collectionScope = ref('mine'),
 	collectionWorks = ref<HatadyHomeWork[]>([]),
@@ -825,23 +844,23 @@ const collectionFiltersOpen = ref(false),
 	favoritesOnly = ref(false),
 	recommendedOnly = ref(false),
 	sortAsc = ref(false);
-const collectionStatuses = computed(() =>
-	collectionKind.value === 'book'
-		? ['want', 'reading', 'finished', 'tsundoku'].map((status) => ({
-			value: status,
-			label: String((copy as any)[`status_${status}`]),
-		}))
-		: mediaStatusOptions(collectionKind.value as HatadyMediaKind).map((status) => ({
-			value: status,
-			label: statusLabel(status),
-		})),
-);
 
-function statusLabel(status: string): string {
-	if (collectionKind.value === 'book') return String((copy as any)[`status_${status}`] || status);
-	if (collectionKind.value === 'work') return ({ in_progress: '進行中', completed: '完了', on_hold: '保留' } as Record<string, string>)[status] || status;
+function statusesFor(kind: string): string[] {
+	return kind === 'book' ? ['want', 'reading', 'finished', 'tsundoku'] : mediaStatusOptions(kind as HatadyMediaKind);
+}
+
+const collectionStatuses = computed(() => collectionKind.value === 'all'
+	? collectionKinds.filter(kind => kind.value !== 'all').flatMap(kind => statusesFor(kind.value).map(status => ({
+		value: `${kind.value}:${status}`,
+		label: `${kind.label} · ${statusLabel(status, kind.value)}`,
+	})))
+	: statusesFor(collectionKind.value).map(status => ({ value: status, label: statusLabel(status) })));
+
+function statusLabel(status: string, kind = collectionKind.value): string {
+	if (kind === 'book') return String((copy as any)[`status_${status}`] || status);
+	if (kind === 'work') return ({ in_progress: '進行中', completed: '完了', on_hold: '保留' } as Record<string, string>)[status] || status;
 	return String(
-		mediaCopy.status?.[mediaStatusCopyKey(collectionKind.value as HatadyMediaKind, status as any)] ?? status,
+		mediaCopy.status?.[mediaStatusCopyKey(kind as HatadyMediaKind, status as any)] ?? status,
 	);
 }
 
@@ -864,7 +883,7 @@ const filteredWorks = computed(() => {
 	return collectionWorks.value
 		.filter(
 			(work) =>
-				(!collectionStatus.value || work.status === collectionStatus.value) &&
+				(!collectionStatus.value || (collectionKind.value === 'all' ? `${work.kind}:${work.status}` : work.status) === collectionStatus.value) &&
 				(!favoritesOnly.value || work.raw.isFavorite) &&
 				(!recommendedOnly.value || work.recommended) &&
 				(!query ||
@@ -935,7 +954,7 @@ function setCollectionScope(value: string): void {
 }
 
 function showCollection(kind: string): void {
-	collectionKind.value = collectionKinds.some((item) => item.value === kind) ? kind : 'book';
+	collectionKind.value = collectionKinds.some((item) => item.value === kind) ? kind : 'all';
 	collectionScope.value = 'mine';
 	collectionStatus.value = '';
 	if (activeTab.value === 'collection') loadCollection();
@@ -945,7 +964,7 @@ function showCollection(kind: string): void {
 async function loadCollection(): Promise<void> {
 	const request = ++collectionRequest,
 		kind = collectionKind.value,
-		query = JSON.stringify([kind, collectionScope.value, kind === 'book' ? null : mediaFiltersApplied.value]);
+		query = JSON.stringify([kind, collectionScope.value, kind === 'book' || kind === 'all' ? null : mediaFiltersApplied.value]);
 	if (query !== collectionRequestQuery) {
 		collectionRequestQuery = query;
 		collectionWorks.value = [];
@@ -953,31 +972,8 @@ async function loadCollection(): Promise<void> {
 	collectionLoading.value = true;
 	collectionError.value = '';
 	try {
-		const filter = mediaFiltersApplied.value;
-		const params = {
-			scope: collectionScope.value,
-			limit: 100,
-			...(kind !== 'book'
-				? {
-					kind,
-					...mediaAdvancedFilterPayload(kind as HatadyMediaKind, {
-						...filter,
-						since: filter.since ? new Date(`${filter.since}T00:00:00`).toISOString() : undefined,
-						until: filter.until ? new Date(`${filter.until}T23:59:59.999`).toISOString() : undefined,
-					}),
-				}
-				: {}),
-		};
-		const list = await collectWorkPages<Record<string, any> & { id: string }>(
-			async (untilId) =>
-				(await misskeyApi(
-					(kind === 'book' ? 'hata/hatady/books' : 'hata/hatady/media/works/list') as never,
-					{ ...params, ...(untilId ? { untilId } : {}) } as never,
-				)) as any,
-		);
-		if (request === collectionRequest) collectionWorks.value = list.map((work) =>
-			homeWork(work, work.userId === $i?.id, kind as HatadyHomeWork['kind']),
-		);
+		const list = await loadHatadyCollection(kind as 'all' | HatadyHomeWork['kind'], collectionScope.value, $i?.id, mediaFiltersApplied.value);
+		if (request === collectionRequest) collectionWorks.value = list;
 	} catch {
 		if (request === collectionRequest) collectionError.value = String(mediaCopy.loadFailed);
 	} finally {
@@ -1021,8 +1017,16 @@ async function openActivityComposer(_kind?: unknown): Promise<void> {
 	);
 }
 
-async function addCollectionWork(): Promise<void> {
-	if (collectionKind.value === 'book') {
+async function addCollectionWork(event?: MouseEvent, kind = collectionKind.value): Promise<void> {
+	if (kind === 'all') {
+		os.popupMenu(collectionKinds.filter(option => option.value !== 'all').map(option => ({
+			text: `${option.label}を登録`,
+			icon: option.icon,
+			action: () => addCollectionWork(undefined, option.value),
+		})), event?.currentTarget as HTMLElement | undefined);
+		return;
+	}
+	if (kind === 'book') {
 		const { dispose } = os.popup(
 			(await import('@/components/HatadyBookForm.vue')).default,
 			{},
@@ -1031,7 +1035,7 @@ async function addCollectionWork(): Promise<void> {
 	} else {
 		const { dispose } = os.popup(
 			(await import('@/components/HatadyMediaWorkForm.vue')).default,
-			{ kind: collectionKind.value as HatadyMediaKind },
+			{ kind: kind as HatadyMediaKind },
 			{ done: refresh, closed: () => dispose() },
 		);
 	}
@@ -1074,16 +1078,28 @@ function openActivityMenu(activity: HatadyActivity, event: MouseEvent): void {
 	if (items.length) os.popupMenu(items, (event.currentTarget || event.target) as HTMLElement);
 }
 
+function removeActivity(activity: HatadyActivity): void {
+	activities.value = activities.value.filter(row => row.id !== activity.id);
+}
+
+function onActivityDeleted(activity: HatadyActivity): void {
+	removeActivity(activity);
+	void refresh();
+}
+
+function removeCollectionWork(id: string): void {
+	collectionWorks.value = collectionWorks.value.filter(work => work.id !== id);
+}
+
+const deletingActivities = new Set<string>();
+
 async function deleteActivity(activity: HatadyActivity): Promise<void> {
-	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteConfirm });
-	if (canceled) return;
+	if (!activity.isMine || deletingActivities.has(activity.id)) return;
+	deletingActivities.add(activity.id);
 	try {
-		if (activity.study) await misskeyApi('hata/hatady/logs/delete', { logId: activity.study.id });
-		else if (activity.media) await misskeyApi('hata/hatady/media/sessions/delete' as never, { sessionId: activity.media.session.id } as never);
-		hatadyNotify('記録を削除しました');
-		refresh();
-	} catch {
-		await os.alert({ type: 'error', text: i18n.ts.somethingHappened });
+		if (await confirmHatadyRecordDeletion(activity)) onActivityDeleted(activity);
+	} finally {
+		deletingActivities.delete(activity.id);
 	}
 }
 
@@ -1105,7 +1121,7 @@ async function openConversation(value: any): Promise<void> {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ logId: typeof value === 'string' ? value : value.id },
-		{ changed: refresh, closed: () => dispose() },
+		{ deleted: removeActivity, changed: refresh, closed: () => dispose() },
 	);
 }
 
@@ -1113,7 +1129,7 @@ async function openSession(sessionId: string, workId?: string): Promise<void> {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ sessionId, workId },
-		{ changed: refresh, closed: () => dispose() },
+		{ deleted: removeActivity, changed: refresh, closed: () => dispose() },
 	);
 }
 
@@ -1121,7 +1137,7 @@ async function openBookDetail(bookId: string): Promise<void> {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyBookDetail.vue')).default,
 		{ bookId },
-		{ changed: refresh, openLog: openConversation, closed: () => dispose() },
+		{ deleted: () => removeCollectionWork(bookId), changed: refresh, openLog: openConversation, closed: () => dispose() },
 	);
 }
 
@@ -1129,7 +1145,7 @@ async function openMediaDetailById(workId: string, kind?: HatadyMediaKind): Prom
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyMediaWorkDetail.vue')).default,
 		{ workId, kind },
-		{ changed: refresh, deleted: refresh, closed: () => dispose() },
+		{ deleted: () => removeCollectionWork(workId), changed: refresh, closed: () => dispose() },
 	);
 }
 
@@ -1431,7 +1447,7 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 	min-width: 0;
 	max-width: 100%;
 }
-.toolbar > :first-child {
+.toolbar > :last-child {
 	min-width: 0;
 }
 .toolbar > button {
@@ -1887,7 +1903,7 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 	.dateJump {
 		flex: 1 1 100%;
 	}
-	.toolbar > :first-child {
+	.toolbar > :last-child {
 		flex-shrink: 1;
 	}
 }

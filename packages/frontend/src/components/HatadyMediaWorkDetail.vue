@@ -8,6 +8,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 	ref="dialog"
 	scrollHint
 	:inert="closePrompt"
+	:busy="deleting"
 	:title="work?.kind === 'work' ? '作業の詳細' : '作品の詳細'"
 	@close="requestClose"
 	@closed="emit('closed')"
@@ -53,9 +54,14 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 					</div>
 					<div :class="$style.titleRow">
 						<h2 :class="$style.title">{{ work.title }}</h2>
-						<button v-if="isMine" class="hy-icon-button" :aria-label="copy.edit" :title="copy.edit" @click="openEdit">
-							<i class="ti ti-pencil"></i>
-						</button>
+						<div v-if="isMine" :class="$style.titleActions">
+							<button type="button" class="hy-icon-button" :disabled="deleting" :aria-label="copy.edit" :title="copy.edit" @click="openEdit">
+								<i class="ti ti-pencil" aria-hidden="true"></i>
+							</button>
+							<button type="button" class="hy-icon-button" :disabled="deleting || commentBusy" :aria-label="work.kind === 'work' ? '作業を削除' : '作品を削除'" :title="work.kind === 'work' ? '作業を削除' : '作品を削除'" @click="deleteWork">
+								<i class="ti ti-trash" aria-hidden="true"></i>
+							</button>
+						</div>
 					</div>
 					<div v-if="work.originalTitle" :class="$style.originalTitle">{{ work.originalTitle }}</div>
 					<div v-if="work.creator" :class="$style.creator">{{ work.creator }}</div>
@@ -124,10 +130,6 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 					<i class="ti ti-calendar-event"></i>
 					{{ label('scheduleViewing') }}
 				</button>
-				<button v-if="isMine" :class="[$style.actionBtn, $style.danger]" @click="deleteWork">
-					<i class="ti ti-trash"></i>
-					{{ copy.delete }}
-				</button>
 			</div>
 
 			<section v-if="workDetails.description" :class="$style.section">
@@ -157,6 +159,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 					:activity="logActivity(log)"
 					@openLog="openLog"
 					@edit="editWorkLog"
+					@deleted="recordDeleted(log.id)"
 					@openMedia="() => {}"
 					@openProfile="openProfile"
 					@menu="(a) => openLog(a.id)"
@@ -339,6 +342,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 								@openMedia="() => {}"
 								@openProfile="openProfile"
 								@edit="() => openSessionForm(session)"
+								@deleted="recordDeleted(session.id)"
 								@menu="() => openSessionConversation(session.id)"
 							/>
 							<details :class="$style.spoilerDetails">
@@ -366,7 +370,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 						:class="[$style.reaction, myReaction === emoji && $style.reactionOn]"
 						@click="toggleReaction(emoji)"
 					>
-						<MkReactionIcon :reaction="emoji"/>
+						<MkReactionIcon style="pointer-events: none;" :reaction="emoji"/>
 						<b>{{ count }}</b>
 					</button>
 					<button
@@ -465,7 +469,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 									:class="[$style.reaction, comment.myReaction === reaction.reaction && $style.reactionOn]"
 									@click="toggleCommentReaction(comment, reaction.reaction)"
 								>
-									<MkReactionIcon :reaction="reaction.reaction"/>
+									<MkReactionIcon style="pointer-events: none;" :reaction="reaction.reaction"/>
 									<b>{{ reaction.count }}</b>
 								</button>
 							</div>
@@ -535,6 +539,7 @@ import type {
 } from '@/utility/hatady-media.js';
 import HyDialog from '@/components/HyDialog.vue';
 import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
+import MkMediaList from '@/components/MkMediaList.vue';
 import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { emojiPicker } from '@/utility/emoji-picker.js';
@@ -593,6 +598,7 @@ const projectTime = computed(() =>
 );
 const kind = computed<HatadyMediaKind>(() => work.value?.kind ?? props.kind ?? 'movie');
 const isMine = ref(false);
+const deleting = ref(false);
 const sessions = ref<HatadyMediaSession[]>([]);
 const sessionsLoading = ref(true);
 const sessionsLoadFailed = ref(false);
@@ -625,7 +631,7 @@ const replyDraft = useHataFormDraft({
 });
 
 function requestClose() {
-	if (commentBusy.value) return;
+	if (commentBusy.value || deleting.value) return;
 	if (replyDraft.hasChanges() || replyDraft.restored.value) closePrompt.value = true;
 	else dialog.value?.close();
 }
@@ -695,6 +701,7 @@ async function openSessionConversation(sessionId: string) {
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ sessionId, workId: props.workId },
 		{
+			deleted: () => removeLocalRecord(sessionId),
 			changed: () => {
 				void loadSessions();
 				emit('changed');
@@ -709,6 +716,7 @@ async function openLog(logId: string) {
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ logId },
 		{
+			deleted: () => removeLocalRecord(logId),
 			changed: () => {
 				void reloadWork();
 				emit('changed');
@@ -1144,12 +1152,34 @@ async function scheduleMediaViewing(target: HatadyMediaWork) {
 }
 
 async function deleteWork() {
-	const { canceled } = await os.confirm({ type: 'warning', text: label('deleteWorkConfirm') });
-	if (canceled) return;
-	await mediaApi('hata/hatady/media/works/delete', { workId: props.workId });
-	emit('deleted');
+	if (!work.value || !isMine.value || deleting.value || commentBusy.value) return;
+	deleting.value = true;
+	try {
+		const name = work.value.kind === 'work' ? '作業' : '作品';
+		const { canceled } = await os.confirm({ type: 'warning', text: `この${name}を削除しますか？ ${name}への返信とリアクションも削除されます。記録と、記録への返信・リアクションは残ります。` });
+		if (canceled) return;
+		await mediaApi('hata/hatady/media/works/delete', { workId: props.workId });
+		hatadyNotify(`${name}を削除しました`);
+		emit('deleted');
+		emit('changed');
+		dialog.value?.close();
+	} catch {
+		hatadyNotify('削除できませんでした。もう一度お試しください');
+	} finally {
+		deleting.value = false;
+	}
+}
+
+function removeLocalRecord(recordId: string) {
+	workLogs.value = workLogs.value.filter(log => log.id !== recordId);
+	sessions.value = sessions.value.filter(session => session.id !== recordId);
+}
+
+async function recordDeleted(recordId: string) {
+	removeLocalRecord(recordId);
+	if (work.value?.kind === 'work') await reloadWork();
+	else await Promise.all([reloadWork(), loadSessions()]);
 	emit('changed');
-	dialog.value?.close();
 }
 
 async function openSessionForm(session?: HatadyMediaSession) {
@@ -1301,6 +1331,7 @@ const SessionPrivateContent = defineComponent({
 					),
 				]),
 				p.session.note ? h('div', { class: styles.sessionNote }, p.session.note) : null,
+				p.session.files?.length ? h(MkMediaList, { mediaList: p.session.files }) : null,
 			]);
 	},
 });
@@ -1966,10 +1997,19 @@ onMounted(() => {
 }
 .titleRow {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 8px;
 }
+.titleActions {
+	display: flex;
+	flex: none;
+	gap: 8px;
+}
 .titleRow h2 {
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 100%;
 	font: 700 25px var(--hy-heading);
 	margin: 0;
 	overflow-wrap: anywhere;

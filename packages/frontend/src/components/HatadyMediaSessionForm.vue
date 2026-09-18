@@ -10,7 +10,7 @@ import HatadyFormWizard from '@/components/HatadyFormWizard.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { collectMediaSessionSuggestions, normalizeMediaSessions } from '@/utility/hatady-media.js';
 import { HATADY_RECORD_TAGS, hatadySeconds } from '@/utility/hatady-ui.js';
-import { formField as f, formTimestamp, localDateTime, restoreLegacyTime } from '@/utility/hatady-form.js';
+import { formField as f, formTimestamp, localDateTime, recordAttachmentPatch, restoreLegacyTime } from '@/utility/hatady-form.js';
 import { initialSessionDetails, sessionDetailPages, sessionDetailsPayload, SESSION_TYPE_OPTIONS } from '@/utility/hatady-session-form.js';
 const props = withDefaults(defineProps<{ work: HatadyMediaWork | null; editSession?: HatadyMediaSession; embedded?: boolean }>(), { embedded: false });
 const emit = defineEmits<{ (event: 'done', value: HatadyMediaSession): void; (event: 'closed'): void; (event: 'back'): void }>();
@@ -22,13 +22,14 @@ const values = ref<HatadyFormValues>({
 	...initialSessionDetails(source), sessionKind: source?.kind ?? (workKind === 'movie' ? 'movie_viewing' : 'game_play'),
 	date: localDateTime(source?.occurredAt).slice(0, 10), startedAt: source && Object.hasOwn(source, 'startedAt') ? source.startedAt ?? '' : source?.occurredAt ? localDateTime(source.occurredAt).slice(11) : '',
 	durationSeconds: source ? hatadySeconds(source) : workKind === 'movie' && props.work?.runtimeMinutes != null ? props.work.runtimeMinutes * 60 : null,
+	files: [...(source?.files ?? [])],
 	note: source?.note ?? '', noteSpoiler: source?.noteSpoiler ?? false, tags: [...(source?.tags ?? [])], visibility: source?.visibility ?? 'private',
 	viewingMode: source?.details?.viewingMode ?? props.work?.viewingMode ?? '', __results: {},
 });
 const suggestions = ref<HatadyMediaSuggestions>({});
 const pages = computed<HatadyFormPage[]>(() => [
 	...(workKind === 'game' ? [{ id: 'type', title: 'どんなふうに遊んだ？', description: workTitle, fields: [f('sessionKind', '記録の種類', { type: 'choice', required: true, disabled: isEdit, options: SESSION_TYPE_OPTIONS })] }] : []),
-	{ id: 'note', title: 'ひとこと、残そう', description: workTitle, fields: [f('note', '内容・感想', { type: 'textarea', placeholder: '感じたことを、ひとこと。' }), f('noteSpoiler', 'ネタバレを含む', { type: 'checkbox' })] },
+	{ id: 'note', title: 'ひとこと、残そう', description: workTitle, fields: [f('note', '内容・感想', { type: 'textarea', placeholder: '感じたことを、ひとこと。' }), f('files', '画像', { type: 'images', maxItems: 16 }), f('noteSpoiler', 'ネタバレを含む', { type: 'checkbox' })] },
 	{ id: 'time', title: 'どのくらい取り組んだ？', fields: [f('durationSeconds', workKind === 'movie' ? '鑑賞時間' : 'プレイ時間', { type: 'duration', min: 0, step: 1, presets: workKind === 'movie' ? [30, 60, 90, 120] : [15, 30, 60, 120] }), f('startedAt', '開始時刻', { type: 'time', step: '0.001' })] },
 	{ id: 'tags', title: 'どんな記録になった？', fields: [f('tags', 'この記録につけるタグ', { type: 'tags', options: HATADY_RECORD_TAGS.filter(tag => ['strength', 'weak', 'interest', 'effort', 'recommend'].includes(tag.value)) })] },
 	{ id: 'details', title: '詳しく残すことを選ぼう', choices: true, fields: [] },
@@ -48,6 +49,7 @@ async function save(data: HatadyFormValues) {
 	return await (misskeyApi as any)(isEdit ? 'hata/hatady/media/sessions/update' : 'hata/hatady/media/sessions/create', {
 		...(isEdit ? { sessionId: source.id } : { workId: props.work?.id, kind }),
 		occurredAt: formTimestamp(data.date, source?.occurredAt), durationSeconds: data.durationSeconds, startedAt: data.startedAt || null,
+		...recordAttachmentPatch(data.files, source),
 		note: data.note.trim() || null, noteSpoiler: data.noteSpoiler, tags: [...new Set(data.tags)], visibility: data.visibility,
 		details: sessionDetailsPayload(workKind, kind, data, source?.details ?? {}),
 	});

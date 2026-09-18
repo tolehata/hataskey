@@ -14,6 +14,9 @@ export type HatadyMediaSessionKind = typeof HATADY_MEDIA_SESSION_KINDS[number];
 @Index(['userId', 'id'])
 @Index(['workId', 'id'])
 export class MiHatadyMediaSession {
+	@Column({ ...id(), array: true, default: '{}' })
+	public fileIds: string[];
+
 	@PrimaryColumn(id())
 	public id: string;
 

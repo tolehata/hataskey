@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
+import { RECORD_ATTACHMENT_PROPERTIES } from '../../_record.js';
 import { ApiError } from '@/server/api/error.js';
 import { HATADY_MODERATION_TARGETS, HATADY_MODERATION_STATES } from '@/models/HatadyModerationReview.js';
 import { MODERATION_ERRORS } from '@/core/HatadyModerationService.js';
@@ -9,6 +10,7 @@ const flag = { type: 'boolean', optional: false, nullable: false } as const;
 export const moderationEntrySchema = {
 	type: 'object', optional: false, nullable: false,
 	properties: {
+		...RECORD_ATTACHMENT_PROPERTIES,
 		key: text,
 		targetType: { ...text, enum: HATADY_MODERATION_TARGETS }, targetId: { ...text, format: 'misskey:id' },
 		category: { ...text, enum: ['collection', 'record', 'comment', 'reaction'] },
@@ -27,7 +29,7 @@ export const moderationEntrySchema = {
 			required: ['state', 'note', 'revision', 'reviewer', 'reviewedAt', 'stale'],
 		},
 	},
-	required: ['key', 'targetType', 'targetId', 'category', 'activity', 'actor', 'title', 'body', 'createdAt', 'visibility', 'emoji', 'parentKey', 'contentVersion', 'review'],
+	required: ['fileIds', 'files', 'key', 'targetType', 'targetId', 'category', 'activity', 'actor', 'title', 'body', 'createdAt', 'visibility', 'emoji', 'parentKey', 'contentVersion', 'review'],
 } as const;
 export const moderationEntriesSchema = { type: 'array', optional: false, nullable: false, items: moderationEntrySchema } as const;
 export const moderationCountsSchema = {

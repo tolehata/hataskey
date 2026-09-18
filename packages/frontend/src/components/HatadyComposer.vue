@@ -9,7 +9,7 @@ import type { HatadyMediaWork } from '@/utility/hatady-media.js';
 import HatadyFormWizard from '@/components/HatadyFormWizard.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { HATADY_ACTIVITY_CHOICES, HATADY_RECORD_TAGS, hatadySeconds } from '@/utility/hatady-ui.js';
-import { formField as f, formTimestamp, localDateTime, optionalPages, restoreLegacyTime } from '@/utility/hatady-form.js';
+import { formField as f, formTimestamp, localDateTime, optionalPages, recordAttachmentPatch, restoreLegacyTime } from '@/utility/hatady-form.js';
 import { hySubjects, loadHySubjects, saveHySubject } from '@/utility/hatady-subjects.js';
 import * as os from '@/os.js';
 const props = withDefaults(defineProps<{ editLog?: any; kind?: 'study' | 'exercise' | 'work'; work?: HatadyMediaWork | null; embedded?: boolean }>(), { embedded: false, work: null });
@@ -22,6 +22,7 @@ const values = ref<HatadyFormValues>({
 	title: source?.title ?? props.work?.title ?? '', subject: source?.subject ?? props.work?.details?.genre ?? '', bookId: source?.bookId ?? source?.book?.id ?? '', selectedBook: source?.book ?? null,
 	mediaWorkId: source?.mediaWorkId ?? props.work?.id ?? '', pageFrom: source?.pageFrom ?? '', pageTo: source?.pageTo ?? '',
 	durationSeconds: source ? hatadySeconds(source) : null, date: localDateTime(source?.studiedAt).slice(0, 10), startedAt: source && Object.hasOwn(source, 'startedAt') ? source.startedAt ?? '' : source?.studiedAt ? localDateTime(source.studiedAt).slice(11) : '',
+	files: [...(source?.files ?? [])],
 	body: source?.body ?? '', tags: Array.isArray(source?.tags) ? [...source.tags] : source?.tag ? [source.tag] : [], visibility: source?.visibility ?? (source?.isPublic === false ? 'private' : 'public'),
 	calories: source?.details?.calories ?? '', place: source?.details?.place ?? '', nextStep: source?.details?.nextStep ?? '', note: source?.details?.note ?? '', pages: source?.details?.pages ?? '', spoiler: source?.details?.spoiler ?? false,
 });
@@ -33,7 +34,7 @@ const pages = computed<HatadyFormPage[]>(() => [
 		...(kind !== 'exercise' ? [f('subject', '分野', { required: kind === 'study', maxlength: 64, suggestions: subjects.value, action: kind === 'study' ? { label: '分野を管理', run: manageSubjects } : undefined })] : []),
 	] },
 	...(kind === 'study' ? [{ id: 'book', title: '本と一緒に残す？', fields: [f('bookId', '本', { type: 'select', options: [{ value: '', label: '本を選ばずに記録' }, ...books.value.map(book => ({ value: book.id, label: book.title }))], action: { label: '本を登録', run: addBook } }), f('pageFrom', '読み始めたページ', { type: 'number', min: 0, max: 100000, when: data => !!data.bookId }), f('pageTo', '読み終えたページ', { type: 'number', min: 0, max: 100000, when: data => !!data.bookId })] }] : []),
-	{ id: 'body', title: 'ひとこと、残そう', fields: [f('body', '内容・感想', { type: 'textarea', placeholder: '感じたことを、ひとこと。' }), f('spoiler', 'ネタバレを含む', { type: 'checkbox' })] },
+	{ id: 'body', title: 'ひとこと、残そう', fields: [f('body', '内容・感想', { type: 'textarea', placeholder: '感じたことを、ひとこと。' }), f('files', '画像', { type: 'images', maxItems: 16 }), f('spoiler', 'ネタバレを含む', { type: 'checkbox' })] },
 	{ id: 'time', title: 'どのくらい取り組んだ？', fields: [f('durationSeconds', kind === 'exercise' ? '運動時間' : kind === 'work' ? '作業時間' : '取り組んだ時間', { type: 'duration', min: 0, step: 1, presets: kind === 'exercise' ? [5, 15, 30, 60] : [15, 30, 60, 120] }), f('startedAt', '開始時刻', { type: 'time', step: '0.001' }), ...(kind === 'exercise' ? [f('calories', '消費カロリー（kcal）', { type: 'number', min: 0, max: 1000000, step: 1 })] : [])] },
 	...(kind === 'work' ? [{ id: 'progress', title: '進み具合と次の一歩', fields: [f('tags', '作業の状態', { type: 'tags', options: HATADY_RECORD_TAGS.filter(tag => ['progress', 'smooth', 'blocked', 'review', 'doneDay', 'doneAll'].includes(tag.value)) }), f('nextStep', '次にやること', { maxlength: 240 })] }] : []),
 	{ id: 'tags', title: 'どんな記録になった？', fields: [f('tags', 'この記録につけるタグ', { type: 'tags', options: HATADY_RECORD_TAGS.filter(tag => ['strength', 'weak', 'interest', 'effort', 'recommend', ...(kind === 'study' ? ['movie', 'game'] : [])].includes(tag.value)) })] },
@@ -74,6 +75,7 @@ async function addWork() { const { dispose } = os.popup((await import('@/compone
 async function save(data: HatadyFormValues) {
 	const tags = [...new Set<string>(data.tags)], legacyTag = tags.find(tag => ['strength', 'weak', 'interest', 'movie', 'game'].includes(tag)) ?? null;
 	const payload = {
+		...recordAttachmentPatch(data.files, source),
 		...(isEdit ? { logId: source.id } : {}), kind, title: data.title.trim(), subject: (kind === 'exercise' ? source?.subject || '運動' : data.subject).trim() || '作業',
 		tags, tag: legacyTag, body: data.body.trim() || null, visibility: data.visibility, durationSeconds: data.durationSeconds, startedAt: data.startedAt || null,
 		studiedAt: formTimestamp(data.date, source?.studiedAt), bookId: kind === 'study' && data.bookId ? data.bookId : null, mediaWorkId: kind === 'work' && data.mediaWorkId ? data.mediaWorkId : null,

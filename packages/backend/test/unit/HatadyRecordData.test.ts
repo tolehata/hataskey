@@ -165,7 +165,7 @@ describe('Hatady additive record compatibility', () => {
 			page = pendingPage; saved = pendingRecord; return value;
 		};
 		const service = Object.create(HatadyService.prototype) as HatadyService;
-		Object.assign(service, { hatadyLogsRepository: { manager: { transaction } }, idService: { gen: () => 'record' } });
+		Object.assign(service, { hatadyAttachmentService: { validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) }, hatadyLogsRepository: { manager: { transaction } }, idService: { gen: () => 'record' } });
 		Object.defineProperty(service, 'notifyMilestoneIfReached', { value: vi.fn().mockResolvedValue(undefined) });
 		const input = { title: 'record', subject: 'subject', bookId: 'book', pageTo: 10, durationSeconds: 61, durationMinutes: 0 };
 		await service.createLog({ id: 'owner' } as never, input);

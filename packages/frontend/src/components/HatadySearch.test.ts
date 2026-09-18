@@ -5,9 +5,12 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 
-const fixtures = vi.hoisted(() => ({ api: vi.fn() }));
+const fixtures = vi.hoisted(() => ({ api: vi.fn(), popup: vi.fn() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixtures.api }));
-vi.mock('@/os.js', () => ({}));
+vi.mock('@/os.js', () => ({ popup: fixtures.popup }));
+vi.mock('@/components/HatadyBookDetail.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/HatadyMediaWorkDetail.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/HatadyConversation.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 vi.mock('@/utility/hatady-prefs.js', async () => ({ hatadyTheme: (await import('vue')).ref('light') }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatady: { _search: {
@@ -73,6 +76,7 @@ async function mountSearch() {
 beforeEach(() => {
 	vi.useFakeTimers();
 	fixtures.api.mockReset();
+	fixtures.popup.mockReset().mockReturnValue({ dispose: vi.fn() });
 	vi.stubGlobal('ResizeObserver', class {
 		observe() {}
 		disconnect() {}
@@ -196,5 +200,60 @@ describe('Hatady search scope selection', () => {
 		}
 		await vi.advanceTimersByTimeAsync(500);
 		expect(fixtures.api).toHaveBeenCalledTimes(choices.length);
+	});
+});
+
+describe('Hatady search deletion propagation', () => {
+	test('removes deleted books and their notes, works, and sessions independently when refresh fails', async () => {
+		fixtures.api.mockResolvedValueOnce({
+			...response('残す学習記録'),
+			books: [{ id: 'book', title: '削除する本' }, { id: 'other-book', title: '残す本' }],
+			bookMemos: [{ id: 'memo', bookId: 'book', text: '削除する内容メモ' }],
+			bookmarks: [{ id: 'mark', bookId: 'book', name: '削除するしおり' }],
+			mediaWorks: [{ id: 'work', title: '削除する作品', kind: 'movie' }],
+			mediaSessions: [
+				{ id: 'session', workId: 'work', workSnapshot: { title: '残す作品の記録' } },
+				{ id: 'other-session', workId: 'other-work', workSnapshot: { title: '別の記録' } },
+			],
+		}).mockRejectedValue(new Error('Refresh failed'));
+		const view = await mountSearch();
+		await view.enter('検索');
+		await vi.advanceTimersByTimeAsync(300);
+		const openResult = async (title: string) => {
+			const row = Array.from(view.target.querySelectorAll('button')).find(button => button.textContent.includes(title));
+			if (!row) throw new Error(`Missing search result: ${title}`);
+			row.click();
+			await vi.dynamicImportSettled();
+			await settle();
+			return fixtures.popup.mock.calls.at(-1)![2];
+		};
+		expect(view.target.textContent).toContain('削除する内容メモ');
+		expect(view.target.textContent).toContain('削除するしおり');
+		const book = await openResult('削除する本');
+		book.deleted();
+		book.changed();
+		await settle();
+		for (const title of ['削除する本', '削除する内容メモ', '削除するしおり']) {
+			expect(view.target.textContent).not.toContain(title);
+		}
+		expect(view.target.textContent).toContain('検索できませんでした');
+		expect(view.target.textContent).toContain('残す本');
+		expect(view.target.textContent).toContain('残す学習記録');
+		const work = await openResult('削除する作品');
+		work.deleted();
+		work.changed();
+		await settle();
+		expect(view.target.textContent).not.toContain('削除する作品');
+		expect(view.target.textContent).toContain('残す作品の記録');
+		const session = await openResult('残す作品の記録');
+		session.deleted({ media: { session: { id: 'session' } } });
+		session.changed();
+		await settle();
+		expect(view.target.textContent).not.toContain('残す作品の記録');
+		expect(view.target.textContent).toContain('別の記録');
+		expect(view.target.textContent).toContain('残す本');
+		expect(view.target.textContent).toContain('残す学習記録');
+		expect(fixtures.api).toHaveBeenCalledTimes(4);
+		expect(fixtures.api).toHaveBeenLastCalledWith('hata/hatady/search', { query: '検索', types: null, limit: 20 });
 	});
 });

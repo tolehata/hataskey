@@ -13,6 +13,7 @@
 				</div>
 				<template v-if="page.summary">
 					<div :class="$style.summary"><i :class="icon" aria-hidden="true"></i><div><small>{{ label }}</small><strong>{{ values.title || summaryTitle || label }}</strong></div></div>
+					<MkMediaList v-if="values.files?.length" :mediaList="values.files"/>
 					<dl v-if="summaryFacts.length" :class="$style.facts"><template v-for="fact in summaryFacts" :key="fact.key"><dt>{{ fact.label }}</dt><dd>{{ fact.value }}</dd></template></dl>
 				</template>
 				<HatadyFormFields v-model="values" :fields="page.fields"/>
@@ -32,6 +33,7 @@ import { computed, nextTick, onMounted, ref, useId, useTemplateRef } from 'vue';
 import type { HatadyFormPage, HatadyFormValues } from '@/utility/hatady-form.js';
 import HyDialog from '@/components/HyDialog.vue';
 import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
+import MkMediaList from '@/components/MkMediaList.vue';
 import HatadyFormFields from '@/components/HatadyFormFields.vue';
 import { commitFormLists, formValidation, initialFormGroups, meaningfulField } from '@/utility/hatady-form.js';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
@@ -78,6 +80,7 @@ const summaryFacts = computed(() => {
 		const value = values.value[field.key];
 		if (used.has(field.key) || field.key === 'title' || !meaningfulField(value) || field.when && !field.when(values.value)) return [];
 		used.add(field.key);
+		if (field.type === 'images') return [{ key: field.key, label: field.label, value: `${value.length}枚` }];
 		if (field.type === 'weaponStats' || field.type === 'bookmarks' || field.type === 'memos') return [{ key: field.key, label: field.label, value: `${Array.isArray(value) ? value.length : 0}件` }];
 		const display = field.type === 'duration' ? hatadyDuration(Number(value)) : Array.isArray(value) ? value.map(item => field.options?.find(option => option.value === item)?.label ?? HATADY_RECORD_TAGS.find(tag => tag.value === item)?.label ?? String(item)).join('・') : field.options?.find(option => option.value === String(value))?.label ?? (field.type === 'visibility' ? ({ public: '公開', followers: 'フォロワーのみ', private: '自分のみ' } as Record<string, string>)[value] ?? String(value) : typeof value === 'boolean' ? 'あり' : String(value));
 		return [{ key: field.key, label: field.label, value: display }];
@@ -121,7 +124,11 @@ async function next(): Promise<void> {
 		if (!hasSaved.value) { savedResult = await props.save(values.value); hasSaved.value = true; }
 		if (!draft.clearDraft()) { error.value = '保存は完了しましたが、端末の下書きを削除できませんでした。もう一度保存ボタンを押すと削除を再試行します'; return; }
 		hatadyNotify('保存しました'); emit('done', savedResult); dialog.value?.close();
-	} catch (reason) { error.value = reason instanceof Error && reason.message.startsWith('一部') ? reason.message : '保存できませんでした。入力内容は残っています'; } finally { saving.value = false; }
+	} catch (reason) {
+		error.value = (reason as { code?: string } | null)?.code === 'INVALID_HATADY_ATTACHMENTS'
+			? '添付した画像を確認してください。削除済みの画像は添付を外してから保存できます。入力内容は残っています'
+			: reason instanceof Error && reason.message.startsWith('一部') ? reason.message : '保存できませんでした。入力内容は残っています';
+	} finally { saving.value = false; }
 }
 
 async function back(): Promise<void> {

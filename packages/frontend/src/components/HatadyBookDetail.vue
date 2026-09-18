@@ -29,16 +29,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.meta">
 					<div :class="$style.titleRow">
 						<h2 :class="$style.bookTitle">{{ book.title }}</h2>
-						<button
-							v-if="isMine"
-							type="button"
-							class="hy-icon-button"
-							:aria-label="t('edit')"
-							:title="t('edit')"
-							@click="openEdit"
-						>
-							<i class="ti ti-pencil"></i>
-						</button>
+						<div v-if="isMine" :class="$style.titleActions">
+							<button type="button" class="hy-icon-button" :disabled="saving" :aria-label="t('edit')" :title="t('edit')" @click="openEdit">
+								<i class="ti ti-pencil" aria-hidden="true"></i>
+							</button>
+							<button type="button" class="hy-icon-button" :disabled="saving" aria-label="本を削除" title="本を削除" @click="removeBook">
+								<i class="ti ti-trash" aria-hidden="true"></i>
+							</button>
+						</div>
 					</div>
 					<div :class="$style.bookAuthor">
 						<span
@@ -291,10 +289,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<i :class="book.isRecommended ? 'ti ti-thumb-up-filled' : 'ti ti-thumb-up'"></i>
 					{{ t('recommend') }}
 				</button>
-				<button :class="[$style.actionBtn, $style.danger]" @click="removeBook">
-					<i class="ti ti-trash"></i>
-					{{ t('delete') }}
-				</button>
 			</div>
 
 			<!-- 紐づく学習ログ -->
@@ -313,6 +307,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					@openBook="() => {}"
 					@openProfile="openProfile"
 					@edit="editRelated"
+					@deleted="recordDeleted(log.id)"
 					@menu="(activity) => emit('openLog', activity.id)"
 				/>
 			</div>
@@ -353,7 +348,7 @@ import { hySubjectPalette, HY_BOOKMARK_COLORS, hyBookmarkColor } from '@/utility
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
 const props = defineProps<{ bookId: string }>();
-const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'openLog', logId: string): void; (ev: 'closed'): void }>();
+const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'deleted'): void; (ev: 'openLog', logId: string): void; (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
 const copy = i18n.ts._hata._hatady._bookDetail;
@@ -705,13 +700,31 @@ async function openEdit() {
 }
 
 async function removeBook() {
-	if (!book.value) return;
-	const { canceled } = await os.confirm({ type: 'warning', text: t('deleteConfirm') });
-	if (canceled) return;
-	await misskeyApi('hata/hatady/books/delete', { bookId: book.value.id });
-	hatadyNotify('変更を保存しました');
+	if (!book.value || !isMine.value || saving.value) return;
+	saving.value = true;
+	try {
+		const { canceled } = await os.confirm({ type: 'warning', text: 'この本を削除しますか？ しおりと内容メモも削除されます。読書の記録は残ります。' });
+		if (canceled) return;
+		await misskeyApi('hata/hatady/books/delete', { bookId: book.value.id });
+		hatadyNotify('本を削除しました');
+		emit('deleted');
+		emit('changed');
+		dialog.value?.close();
+	} catch {
+		hatadyNotify('本を削除できませんでした。もう一度お試しください');
+	} finally {
+		saving.value = false;
+	}
+}
+
+function removeLocalRecord(logId: string) {
+	logs.value = logs.value.filter(log => log.id !== logId);
+}
+
+async function recordDeleted(logId: string) {
+	removeLocalRecord(logId);
+	await reload();
 	emit('changed');
-	dialog.value?.close();
 }
 
 // モデレーター/管理者による他ユーザーの本の削除。
@@ -756,6 +769,7 @@ async function openLog(logId: string) {
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ logId },
 		{
+			deleted: () => removeLocalRecord(logId),
 			changed: () => {
 				void reload();
 				emit('changed');
@@ -1540,8 +1554,17 @@ onMounted(reload);
 }
 .titleRow {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 8px;
+}
+.titleActions {
+	display: flex;
+	flex: none;
+	gap: 8px;
+}
+.titleActions button {
+	flex: none;
 }
 .bookTitle {
 	font-family: var(--hy-heading);
@@ -1551,6 +1574,7 @@ onMounted(reload);
 .titleRow h2 {
 	flex: 0 1 auto;
 	min-width: 0;
+	max-width: 100%;
 	overflow-wrap: anywhere;
 }
 .description {

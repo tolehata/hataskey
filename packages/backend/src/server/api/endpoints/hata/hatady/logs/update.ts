@@ -8,7 +8,7 @@ import { HATADY_RATE_LIMITS } from '@/misc/hatady-rate-limit.js';
 import { ApiError } from '@/server/api/error.js';
 import { HatadyService } from '@/core/HatadyService.js';
 import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
-import { LOG_INPUT_PROPERTIES } from '../_record.js';
+import { LOG_INPUT_PROPERTIES, HATADY_ATTACHMENT_API_ERROR } from '../_record.js';
 import { HATADY_MEDIA_DATE_TIME_PATTERN } from '../media/_shared.js';
 
 export const meta = {
@@ -18,6 +18,7 @@ export const meta = {
 	limit: HATADY_RATE_LIMITS.write,
 	res: { type: 'object', optional: false, nullable: false },
 	errors: {
+		invalidAttachments: HATADY_ATTACHMENT_API_ERROR,
 		noSuchLog: {
 			message: 'No such log or access denied.',
 			code: 'NO_SUCH_LOG',
@@ -55,6 +56,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		super(meta, paramDef, async (ps, me) => {
 			try {
 				const log = await this.hatadyService.updateLog(me, ps.logId, {
+					fileIds: ps.fileIds,
 					kind: ps.kind,
 					tags: ps.tags,
 					durationSeconds: ps.durationSeconds,
@@ -74,7 +76,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					visibility: ps.visibility,
 				});
 				return await this.hatadyEntityService.packLog(log, me);
-			} catch {
+			} catch (error) {
+				if (error instanceof Error && error.message === HATADY_ATTACHMENT_API_ERROR.code) throw new ApiError(meta.errors.invalidAttachments);
 				throw new ApiError(meta.errors.noSuchLog);
 			}
 		});

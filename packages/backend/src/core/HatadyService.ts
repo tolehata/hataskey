@@ -27,6 +27,7 @@ import { CacheService } from '@/core/CacheService.js';
 import { UserBlockingService } from '@/core/UserBlockingService.js';
 import { PushNotificationService, type HatadyPushNotificationBody } from '@/core/PushNotificationService.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
+import { HatadyAttachmentService } from '@/core/HatadyAttachmentService.js';
 import { bindThis } from '@/decorators.js';
 
 type HatadySummaryRecord = { id: string; kind: string; occurredAt: Date; startedAt: string | null; seconds: number | null; subject: string; tags: string[]; calories: number | null };
@@ -64,6 +65,7 @@ export class HatadyService {
 		private cacheService: CacheService,
 		private userBlockingService: UserBlockingService,
 		private pushNotificationService: PushNotificationService,
+		private hatadyAttachmentService: HatadyAttachmentService,
 	) {
 	}
 
@@ -626,6 +628,7 @@ export class HatadyService {
 
 	@bindThis
 	public async updateLog(user: MiUser, logId: MiHatadyLog['id'], patch: {
+		fileIds?: string[];
 		kind?: HatadyLogKind;
 		tags?: string[];
 		durationSeconds?: number | null;
@@ -647,6 +650,7 @@ export class HatadyService {
 		const log = await this.hatadyLogsRepository.findOneBy({ id: logId });
 		if (log == null || log.userId !== user.id) throw new Error('no such log or access denied');
 		const set: Record<string, unknown> = {};
+		if (patch.fileIds !== undefined) set.fileIds = await this.hatadyAttachmentService.validate(user.id, patch.fileIds, log.fileIds ?? []);
 		if (patch.title != null) set.title = patch.title;
 		if (patch.subject != null) set.subject = patch.subject;
 		if (patch.tag !== undefined) set.tag = patch.tag;
@@ -812,6 +816,7 @@ export class HatadyService {
 
 	@bindThis
 	public async createLog(user: MiUser, params: {
+		fileIds?: string[];
 		kind?: HatadyLogKind;
 		tags?: string[];
 		durationSeconds?: number | null;
@@ -849,6 +854,7 @@ export class HatadyService {
 		const isPublic = visibility === 'public';
 
 		const log = await this.hatadyLogsRepository.manager.transaction(async manager => {
+			const fileIds = await this.hatadyAttachmentService.validate(user.id, params.fileIds ?? [], [], manager);
 			const books = manager.getRepository(MiHatadyBook), logs = manager.getRepository(MiHatadyLog);
 			// 本の進捗と記録を同時に保存し、途中の失敗では両方を戻す。
 			let bookId: string | null = null;
@@ -869,6 +875,7 @@ export class HatadyService {
 				createdAt: now,
 				studiedAt,
 				userId: user.id,
+				fileIds,
 				title: params.title,
 				subject: params.subject,
 				tag: params.tag ?? params.tags?.find(tag => ['strength', 'weak', 'interest', 'movie', 'game'].includes(tag)) ?? null,
@@ -1357,7 +1364,9 @@ export class HatadyService {
 
 		const mediaWorks = want('mediaWorks') || want('books') ? await this.hatadyLogsRepository.manager.getRepository(MiHatadyMediaWork).createQueryBuilder('work').where('work.userId = :uid', { uid: userId }).andWhere('(work.title ILIKE :q OR work.creator ILIKE :q OR work.synopsis ILIKE :q OR work.review ILIKE :q OR work.details::text ILIKE :q)', { q }).orderBy('work.id', 'DESC').take(cap).getMany() : [];
 		const mediaSessions = want('mediaSessions') || want('logs') ? await this.hatadyMediaSessionsRepository.createQueryBuilder('session').where('session.userId = :uid', { uid: userId }).andWhere('(session.note ILIKE :q OR session.details::text ILIKE :q OR session.workSnapshot::text ILIKE :q)', { q }).orderBy('session.id', 'DESC').take(cap).getMany() : [];
-		return { logs, books, bookMemos, bookmarks, mediaWorks, mediaSessions };
+		const files = await this.hatadyAttachmentService.packRecords([...logs, ...mediaSessions]);
+		const attach = <T extends { id: string; fileIds?: string[] }>(record: T) => ({ ...record, fileIds: record.fileIds ?? [], files: files.get(record.id) ?? [] });
+		return { logs: logs.map(attach), books, bookMemos, bookmarks, mediaWorks, mediaSessions: mediaSessions.map(attach) };
 	}
 
 	// 旗鯖fork(P6): 統計深掘り(月別/曜日/時間帯/分野推移/自己ベスト/月別読了)。

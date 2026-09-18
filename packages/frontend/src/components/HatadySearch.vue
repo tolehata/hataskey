@@ -38,9 +38,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- 結果 -->
 		<div v-if="query.trim().length >= 2" :class="$style.results">
+			<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
 			<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
-			<p v-else-if="error" class="hy-error" role="alert">{{ error }}</p>
-			<div v-else-if="totalCount === 0" :class="$style.empty">
+			<div v-else-if="!error && totalCount === 0" :class="$style.empty">
 				<i class="ti ti-mood-empty" :class="$style.hintIcon"></i>
 				<div>{{ copy.noResults }}</div>
 			</div>
@@ -195,6 +195,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, nextTick, onUnmounted } from 'vue';
+import type { HatadyActivity } from '@/utility/hatady-media.js';
 import HyDialog from '@/components/HyDialog.vue';
 import HyCapsule from '@/components/HyCapsule.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
@@ -263,6 +264,7 @@ const scopeOptions = computed(() => [
 ]);
 let debounceId: number | undefined;
 let seq = 0;
+let disposed = false;
 
 function clearSearch() {
 	query.value = '';
@@ -274,6 +276,7 @@ function clearSearch() {
 }
 
 onUnmounted(() => {
+	disposed = true;
 	seq++;
 	if (debounceId) window.clearTimeout(debounceId);
 });
@@ -291,7 +294,9 @@ function onInput() {
 	debounceId = window.setTimeout(() => runSearch(false), 300);
 }
 
-async function runSearch(_immediate: boolean) {
+async function runSearch(_immediate: boolean, preserveResults = false) {
+	if (disposed) return;
+	const keepResults = preserveResults && !loading.value && results.value !== null;
 	if (debounceId) {
 		window.clearTimeout(debounceId);
 		debounceId = undefined;
@@ -304,7 +309,8 @@ async function runSearch(_immediate: boolean) {
 		return;
 	}
 	const mySeq = ++seq;
-	loading.value = true;
+	if (!keepResults) results.value = null;
+	loading.value = !keepResults;
 	error.value = '';
 	try {
 		const res = (await (misskeyApi as any)('hata/hatady/search', {
@@ -320,12 +326,32 @@ async function runSearch(_immediate: boolean) {
 	}
 }
 
+function removeResult(type: 'book' | 'work' | 'session', id: string) {
+	// A response started before deletion must not put the removed row back.
+	seq++;
+	const current = results.value;
+	if (!current) return;
+	if (type === 'book') {
+		current.books = current.books.filter((book) => book.id !== id);
+		current.bookMemos = current.bookMemos.filter((memo) => memo.bookId !== id);
+		current.bookmarks = current.bookmarks.filter((bookmark) => bookmark.bookId !== id);
+	} else if (type === 'work') {
+		current.mediaWorks = current.mediaWorks.filter((work) => work.id !== id);
+	} else {
+		current.mediaSessions = current.mediaSessions.filter((session) => session.id !== id);
+	}
+}
+
+function refreshResults() {
+	void runSearch(true, true);
+}
+
 async function openBook(bookId: string | null) {
 	if (!bookId) return;
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyBookDetail.vue')).default,
 		{ bookId },
-		{ closed: () => dispose() },
+		{ closed: () => dispose(), deleted: () => removeResult('book', bookId), changed: refreshResults },
 	);
 }
 
@@ -386,7 +412,7 @@ async function openMedia(workId: string) {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyMediaWorkDetail.vue')).default,
 		{ workId },
-		{ closed: () => dispose() },
+		{ closed: () => dispose(), deleted: () => removeResult('work', workId), changed: refreshResults },
 	);
 }
 
@@ -394,7 +420,13 @@ async function openSession(session: any) {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ sessionId: session.id, workId: session.workId },
-		{ closed: () => dispose() },
+		{
+			closed: () => dispose(),
+			deleted: (activity: HatadyActivity) => {
+				if (activity.media?.session) removeResult('session', activity.media.session.id);
+			},
+			changed: refreshResults,
+		},
 	);
 }
 

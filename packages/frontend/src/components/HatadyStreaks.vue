@@ -118,7 +118,7 @@
 	ref="periodDialog"
 	:title="range(selected) + 'の記録'"
 	@close="periodDialog?.close()"
-	@closed="selected = null"
+	@closed="closePeriod"
 >
 	<p v-if="periodLoading" class="hy-empty">読み込み中</p>
 	<p v-if="periodError" class="hy-error" role="alert">{{ periodError }}</p>
@@ -132,11 +132,13 @@
 		@openMedia="openMedia"
 		@openProfile="openProfile"
 		@edit="edit"
+		@deleted="recordDeleted(a)"
 	/>
 </HyDialog>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import type { HatadyActivity } from '@/utility/hatady-media.js';
 import HyDialog from '@/components/HyDialog.vue';
 import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -151,7 +153,10 @@ const dialog = ref<any>(),
 	error = ref(''),
 	periodLoading = ref(false),
 	periodError = ref(''),
-	periodRows = ref<any[]>([]);
+	periodRows = ref<HatadyActivity[]>([]);
+let periodSeq = 0;
+let streakSeq = 0;
+let disposed = false;
 type Period = { start: string; end: string; days: number };
 const data = ref<{ current: number; best: number; periods: Period[] }>({ current: 0, best: 0, periods: [] }),
 	selected = ref<Period | null>(null);
@@ -201,10 +206,17 @@ function range(p: Period) {
 	return p.start === p.end ? short(p.start) : `${short(p.start)} — ${short(p.end)}`;
 }
 
-async function openPeriod(p: Period) {
+function closePeriod() {
+	periodSeq++;
+	selected.value = null;
+}
+
+async function openPeriod(p: Period, preserveRows = false) {
+	if (disposed) return;
 	selected.value = p;
+	const request = ++periodSeq;
 	periodLoading.value = true;
-	periodRows.value = [];
+	if (!preserveRows) periodRows.value = [];
 	periodError.value = '';
 	try {
 		const result = await collectActivityPages(async (cursor) =>
@@ -218,12 +230,31 @@ async function openPeriod(p: Period) {
 				}),
 			),
 		);
-		if (selected.value === p) periodRows.value = result;
+		if (request === periodSeq) periodRows.value = result;
 	} catch {
-		periodError.value = '記録を読み込めませんでした';
+		if (request === periodSeq) periodError.value = '記録を読み込めませんでした';
 	} finally {
-		periodLoading.value = false;
+		if (request === periodSeq) periodLoading.value = false;
 	}
+}
+
+function removeRecord(activity: HatadyActivity) {
+	periodSeq++;
+	periodRows.value = periodRows.value.filter((row) => activity.study
+		? row.study?.id !== activity.study.id
+		: row.media?.session.id !== activity.media?.session.id);
+}
+
+function refresh() {
+	if (disposed) return;
+	void loadStreaks();
+	// Keep the opened date range, even if deleting a day splits its streak.
+	if (selected.value) void openPeriod(selected.value, true);
+}
+
+function recordDeleted(activity: HatadyActivity) {
+	removeRecord(activity);
+	refresh();
 }
 
 async function popup(name: string, props: any) {
@@ -238,7 +269,11 @@ async function popup(name: string, props: any) {
 	const component = await components[name as keyof typeof components]();
 	const { dispose } = os.popup(component.default as any, props, {
 		closed: () => dispose(),
-		done: () => selected.value && openPeriod(selected.value),
+		done: refresh,
+		changed: refresh,
+		deleted: (activity?: HatadyActivity) => {
+			if (name === 'conversation' && activity) removeRecord(activity);
+		},
 	});
 }
 
@@ -267,14 +302,24 @@ function edit(a: any) {
 	else if (a.media?.work) void popup('session', { work: a.media.work, editSession: a.media.session });
 }
 
-onMounted(async () => {
+async function loadStreaks() {
+	const request = ++streakSeq;
+	error.value = '';
 	try {
-		data.value = await misskeyApi('hata/hatady/streaks', { tzOffset: hatadyTzOffset() });
+		const result = await misskeyApi<typeof data.value>('hata/hatady/streaks', { tzOffset: hatadyTzOffset() });
+		if (request === streakSeq) data.value = result;
 	} catch {
-		error.value = '連続記録を読み込めませんでした';
+		if (request === streakSeq) error.value = '連続記録を読み込めませんでした';
 	} finally {
-		loading.value = false;
+		if (request === streakSeq) loading.value = false;
 	}
+}
+
+onMounted(loadStreaks);
+onUnmounted(() => {
+	disposed = true;
+	periodSeq++;
+	streakSeq++;
 });
 </script>
 <style module lang="scss">

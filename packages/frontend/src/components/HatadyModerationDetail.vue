@@ -20,6 +20,7 @@
 		<div><strong>{{ detail.item.emoji }}</strong><small>付けた人：{{ detail.item.actor.name || detail.item.actor.username }}</small></div>
 	</div>
 	<div :class="$style.content">{{ detail.item.body || '本文なし' }}</div>
+	<MkMediaList v-if="detail.item.files?.length" :mediaList="detail.item.files" :user="detail.item.actor"/>
 	<dl v-if="detail.fields.length" :class="$style.fields">
 		<template v-for="(field, index) in detail.fields" :key="index"><dt>{{ field.label }}</dt><dd>{{ field.value }}</dd></template>
 	</dl>
@@ -72,6 +73,7 @@ import { computed, useTemplateRef } from 'vue';
 import type { ModerationDetail, ModerationEntry, ModerationStatus } from '@/utility/hatady-moderation.js';
 import { moderationActivities, moderationCategory, moderationDate, moderationStatus, moderationStatuses, moderationVisibilities } from '@/utility/hatady-moderation.js';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
+import MkMediaList from '@/components/MkMediaList.vue';
 
 const props = defineProps<{ detail: ModerationDetail; note: string; busy?: boolean; error?: string }>();
 const emit = defineEmits<{

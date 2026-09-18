@@ -9,5 +9,5 @@ export const meta = { tags: ['hata'], requireCredential: true, kind: 'write:acco
 export const paramDef = { type: 'object', properties: { sessionId: { type: 'string', format: 'misskey:id' }, ...SESSION_INPUT_PROPERTIES }, required: ['sessionId'] } as const;
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
-	constructor(private service: HatadyMediaService) { super(meta, paramDef, async (ps, me) => { try { const { sessionId, ...input } = ps; return this.service.packSession(await this.service.updateSession(me.id, sessionId, input)); } catch (e) { return mapMediaError(e); } }); }
+	constructor(private service: HatadyMediaService) { super(meta, paramDef, async (ps, me) => { try { const { sessionId, ...input } = ps; return await this.service.packSession(await this.service.updateSession(me.id, sessionId, input)); } catch (e) { return mapMediaError(e); } }); }
 }

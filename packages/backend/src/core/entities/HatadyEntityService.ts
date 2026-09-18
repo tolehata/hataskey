@@ -18,6 +18,7 @@ import type { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import type { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { bindThis } from '@/decorators.js';
+import { HatadyAttachmentService } from '@/core/HatadyAttachmentService.js';
 import { HatadyService } from '@/core/HatadyService.js';
 import { MiHatadyMediaSession } from '@/models/HatadyMediaSession.js';
 
@@ -42,6 +43,7 @@ export class HatadyEntityService {
 		private hatadyMediaCommentsRepository: HatadyMediaCommentsRepository,
 
 		private userEntityService: UserEntityService,
+		private hatadyAttachmentService: HatadyAttachmentService,
 		@Inject(HatadyService) private hatadyService?: HatadyService,
 	) {
 	}
@@ -179,6 +181,7 @@ export class HatadyEntityService {
 		const follows = new Set(followed.map(row => row.followeeId));
 		// 3. リアクションを一括集計。
 		const reactionsMap = await this.aggregateReactions('log', logs.map(l => l.id), me?.id);
+		const files = await this.hatadyAttachmentService.packRecords(logs);
 
 		return logs.map(log => {
 			const linkedBook = log.bookId ? booksMap.get(log.bookId) : null;
@@ -194,6 +197,8 @@ export class HatadyEntityService {
 				subject: log.subject,
 				tag: log.tag,
 				body: log.body,
+				fileIds: log.fileIds ?? [],
+				files: files.get(log.id) ?? [],
 				bookId: book ? log.bookId : null,
 				book: book ? this.packBook(book, staffAccess || book.userId === me?.id) : null,
 				pageFrom: log.pageFrom,

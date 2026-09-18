@@ -17,7 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		:aria-label="myReactionLocal === emoji ? copy.remove : copy.add"
 		@click="toggle(emoji)"
 	>
-		<MkReactionIcon :class="$style.icon" :reaction="String(emoji)"/>
+		<MkReactionIcon style="pointer-events: none;" :class="$style.icon" :reaction="String(emoji)"/>
 		<span :class="$style.count">{{ count }}</span>
 	</button>
 	<button

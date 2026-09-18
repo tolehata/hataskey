@@ -16,6 +16,9 @@ export type HatadyLogKind = typeof HATADY_LOG_KINDS[number];
 
 @Entity('hatady_log')
 export class MiHatadyLog {
+	@Column({ ...id(), array: true, default: '{}' })
+	public fileIds: string[];
+
 	@PrimaryColumn(id())
 	public id: string;
 
