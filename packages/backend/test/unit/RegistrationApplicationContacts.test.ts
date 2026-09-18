@@ -15,9 +15,10 @@ import { MiUserProfile } from '@/models/UserProfile.js';
 import { MiUserKeypair } from '@/models/UserKeypair.js';
 import { MiUsedUsername } from '@/models/UsedUsername.js';
 import ApplyEndpoint from '@/server/api/endpoints/registration/apply.js';
-import ListEndpoint from '@/server/api/endpoints/admin/registration-applications.js';
+import ListEndpoint, { meta as listMeta } from '@/server/api/endpoints/admin/registration-applications.js';
 import ApproveEndpoint, { meta as approveMeta } from '@/server/api/endpoints/admin/approve-registration.js';
 import RejectEndpoint, { meta as rejectMeta } from '@/server/api/endpoints/admin/reject-registration.js';
+import type { FindOperator } from 'typeorm';
 
 vi.mock('bcryptjs', () => ({ default: { genSalt: vi.fn(), hash: vi.fn() } }));
 vi.mock('node:crypto', async importOriginal => ({
@@ -26,6 +27,7 @@ vi.mock('node:crypto', async importOriginal => ({
 }));
 
 const contacts = 'OTHER_SNS_CONTACT_PRIVATE_FIXTURE';
+const reviewRevision = 'a'.repeat(64);
 const applicant = { username: 'Applicant', password: 'password123', reason: '参加したいです', email: 'applicant@example.test' };
 const admin = { id: 'admin' } as never;
 type StoredApplication = Pick<MiRegistrationApplication, 'id' | 'username' | 'hashedPassword' | 'email' | 'additionalContacts' | 'reason' | 'status' | 'createdAt' | 'approvedAt' | 'rejectedAt' | 'personalDataDeletedAt' | 'userId'>;
@@ -113,7 +115,7 @@ function fixture() {
 	};
 	const repository = {
 		exists: vi.fn().mockResolvedValue(false), insert: vi.fn().mockResolvedValue({}),
-		find: vi.fn(async () => state.application ? [{ ...state.application }] : []),
+		find: vi.fn(async (_options: Record<string, unknown>) => state.application ? [{ ...state.application }] : []),
 	};
 	const users = { exists: vi.fn().mockResolvedValue(false) };
 	const usedNames = { exists: vi.fn().mockResolvedValue(false) };
@@ -124,12 +126,22 @@ function fixture() {
 	const mail = { sendEmail: vi.fn(async () => { events.push('mail'); }) };
 	const notification = { notifyNewApplication: vi.fn().mockResolvedValue(undefined) };
 	const id = { gen: vi.fn().mockReturnValue('user1') };
-	const signup = new SignupService(db as never, serverMeta as never, users as never, usedNames as never, utility as never, userService as never, userEntity as never, id as never, {} as never, {} as never, chart as never);
+	const reviewer = { userId: 'admin', name: null, username: 'admin', isRoot: true, isAdministrator: true, eligibilityKey: 'fixture-root' };
+	const review = {
+		assertStaff: vi.fn().mockResolvedValue(reviewer),
+		getCurrentStaff: vi.fn().mockResolvedValue([reviewer]),
+		packReview: vi.fn().mockReturnValue({ revision: reviewRevision, voters: [] }),
+		assertRoot: vi.fn().mockResolvedValue(undefined),
+		lockReview: vi.fn(async (_manager: unknown, application: unknown) => ({ application })),
+		assertUnanimous: vi.fn(),
+		recordDecision: vi.fn(async () => { checkpoint('review'); }),
+	};
+	const signup = new SignupService(db as never, serverMeta as never, users as never, usedNames as never, utility as never, userService as never, userEntity as never, id as never, {} as never, {} as never, chart as never, review as never);
 	const apply = new ApplyEndpoint(serverMeta as never, repository as never, users as never, usedNames as never, id as never, {} as never, notification as never);
-	const list = new ListEndpoint(serverMeta as never, repository as never);
+	const list = new ListEndpoint(serverMeta as never, repository as never, review as never);
 	const approve = new ApproveEndpoint({ url: 'https://example.test' } as never, serverMeta as never, signup, mail as never);
-	const reject = new RejectEndpoint(serverMeta as never, db as never);
-	return { state, serverMeta, hooks, events, locks, updates, saves, db, repository, users, usedNames, transactionUsers, transactionUsedNames, getRepository, userService, chart, mail, notification, signup, apply, list, approve, reject };
+	const reject = new RejectEndpoint(serverMeta as never, db as never, review as never);
+	return { review, state, serverMeta, hooks, events, locks, updates, saves, db, repository, users, usedNames, transactionUsers, transactionUsedNames, getRepository, userService, chart, mail, notification, signup, apply, list, approve, reject };
 }
 
 beforeEach(() => {
@@ -247,7 +259,7 @@ describe('review-only additional contacts', () => {
 	test('nullable non-default column and terminal-state check are present in entity and the corresponding migration', () => {
 		const column = getMetadataArgsStorage().columns.find(item => item.target === MiRegistrationApplication && item.propertyName === 'additionalContacts');
 		expect(column?.options).toMatchObject({ nullable: true, length: 1024, select: false });
-		const expression = `"status" = 'pending' OR "additionalContacts" IS NULL`;
+		const expression = '"status" = \'pending\' OR "additionalContacts" IS NULL';
 		expect(getMetadataArgsStorage().checks.find(item => item.target === MiRegistrationApplication)?.expression).toBe(expression);
 		const migrationDir = resolve(process.cwd(), 'migration');
 		const currentNumber = 1788500000000;
@@ -260,12 +272,121 @@ describe('review-only additional contacts', () => {
 	});
 });
 
+function moderatorFixture(userId = 'moderator') {
+	const f = fixture();
+	const viewer = { userId, name: '担当者', username: 'moderator', isRoot: false, isAdministrator: false, eligibilityKey: 'current-moderator-grant' };
+	f.review.assertStaff.mockResolvedValue(viewer);
+	f.review.getCurrentStaff.mockResolvedValue([viewer]);
+	return { ...f, viewer, me: { id: userId } as never };
+}
+
+describe('registration list moderator security', () => {
+	test('the list accepts moderators but keeps credential and first-party-token requirements', () => {
+		expect(listMeta).toMatchObject({ requireCredential: true, requireModerator: true, secure: true, kind: 'read:admin:registration-applications' });
+		expect(listMeta).not.toHaveProperty('requireAdmin');
+	});
+
+	test.each(['pending', 'approved', 'rejected'])('a moderator never receives the email field in %s results', async status => {
+		const f = moderatorFixture();
+		f.state.application!.status = status;
+		const result = await f.list.exec({ status }, f.me, null, null);
+		expect(f.state.application!.email).toBe(applicant.email); // Positive private backing row.
+		expect(result[0]).not.toHaveProperty('email');
+		expect(result[0]).not.toHaveProperty('hashedPassword');
+		expect(result[0]).not.toHaveProperty('reviewVotes');
+		expect(JSON.stringify(result)).not.toContain(applicant.email);
+	});
+
+	test('root retains the original contact data as a visibility positive control', async () => {
+		const f = fixture();
+		f.state.application!.reason = `連絡先 ${applicant.email}`;
+		f.state.application!.additionalContacts = `@applicant@social.example.test / ${applicant.email}`;
+		const result = await f.list.exec({ status: 'pending' }, admin, null, null);
+		expect(result[0]).toMatchObject({ email: applicant.email, reason: `連絡先 ${applicant.email}`, additionalContacts: `@applicant@social.example.test / ${applicant.email}` });
+	});
+
+	test('moderator responses redact free-text emails and preserve an unrelated SNS ID', async () => {
+		const f = moderatorFixture();
+		f.state.application!.reason = `参加希望。連絡先 ${applicant.email}`;
+		f.state.application!.additionalContacts = `@applicant@social.example.test / ${applicant.email} / other%40example.test`;
+		const result = await f.list.exec({ status: 'pending' }, f.me, null, null);
+		expect(result[0].additionalContacts).toContain('@applicant@social.example.test');
+		expect(JSON.stringify(result)).not.toMatch(/applicant@example\.test|other(?:@|%40)example\.test/u);
+		expect(result[0].reason).toContain('参加希望。連絡先');
+		expect(f.state.application!.reason).toContain(applicant.email);
+		expect(f.state.application!.additionalContacts).toContain('other%40example.test');
+		expect(f.repository.find).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ email: true }) }));
+	});
+
+	test('voter names, vote reasons and the final actor name cannot smuggle an email', async () => {
+		const f = moderatorFixture();
+		f.review.packReview.mockReturnValue({
+			revision: reviewRevision,
+			voters: [{ userId: 'other', name: applicant.email, username: 'other', isCurrent: true, choice: 'oppose', reason: `確認先: ${applicant.email}`, votedAt: '2026-09-18T00:00:00Z' }],
+			decidedBy: { userId: 'admin', name: applicant.email, username: 'admin' },
+		});
+		const result = await f.list.exec({ status: 'pending' }, f.me, null, null);
+		expect(JSON.stringify(result)).not.toContain(applicant.email);
+		expect(result[0].review.voters[0]).toMatchObject({ userId: 'other', choice: 'oppose', votedAt: '2026-09-18T00:00:00Z' });
+		expect(result[0].review.voters[0].name).toContain('［メールアドレス非公開］');
+		expect(result[0].review.decidedBy?.name).toContain('［メールアドレス非公開］');
+	});
+
+	test('ordinary callers rejected by staff validation cannot even query saved applications', async () => {
+		const f = moderatorFixture();
+		f.review.assertStaff.mockRejectedValue({ code: 'REGISTRATION_REVIEW_FORBIDDEN' });
+		await expect(f.list.exec({}, f.me, null, null)).rejects.toMatchObject({ code: 'REGISTRATION_REVIEW_FORBIDDEN' });
+		expect(f.repository.find).not.toHaveBeenCalled();
+		expect(f.review.packReview).not.toHaveBeenCalled();
+	});
+
+	test.each(['removed', 'reappointed', 'rootChanged'])('a %s viewer is rejected after the database read', async change => {
+		const f = moderatorFixture();
+		const next = { ...f.viewer };
+		if (change === 'reappointed') next.eligibilityKey = 'replacement-grant';
+		if (change === 'rootChanged') next.isRoot = true;
+		f.review.getCurrentStaff.mockResolvedValue(change === 'removed' ? [] : [next]);
+		await expect(f.list.exec({}, f.me, null, null)).rejects.toMatchObject({ code: 'REGISTRATION_REVIEW_FORBIDDEN' });
+		expect(f.repository.find).toHaveBeenCalledOnce();
+		expect(f.review.packReview).not.toHaveBeenCalled();
+	});
+
+	test('root losing authority while the list loads cannot receive the fetched email', async () => {
+		const f = fixture();
+		f.review.getCurrentStaff.mockResolvedValue([{ userId: 'admin', name: null, username: 'admin', isRoot: false, isAdministrator: true, eligibilityKey: 'fixture-root' }]);
+		await expect(f.list.exec({}, admin, null, null)).rejects.toMatchObject({ code: 'REGISTRATION_REVIEW_FORBIDDEN' });
+		expect(f.repository.find).toHaveBeenCalledOnce();
+		expect(f.review.packReview).not.toHaveBeenCalled();
+	});
+
+	test('needsReview binds the authenticated reviewer and grant separately from SQL text', async () => {
+		const f = moderatorFixture('reviewer\' OR true --');
+		f.viewer.eligibilityKey = 'grant\' OR true --';
+		await f.list.exec({ needsReview: true, limit: 1, offset: 2 }, f.me, null, null);
+		const query = f.repository.find.mock.calls[0][0] as { where: { reviewVotes: FindOperator<unknown> }; take: number; skip: number };
+		const filter = query.where.reviewVotes;
+		expect(query).toMatchObject({ take: 1, skip: 2 });
+		expect(filter.type).toBe('raw');
+		expect(filter.getSql?.('application.reviewVotes')).toBe('(application.reviewVotes -> :reviewerId ->> \'eligibilityKey\') IS DISTINCT FROM :eligibilityKey');
+		expect(filter.getSql?.('application.reviewVotes')).not.toContain(f.viewer.userId);
+		expect(filter.objectLiteralParameters).toEqual({ reviewerId: f.viewer.userId, eligibilityKey: f.viewer.eligibilityKey });
+	});
+
+	test.each(['root', 'allVotes'])('the %s list does not apply the moderator-only needsReview filter', async mode => {
+		const f = mode === 'root' ? fixture() : moderatorFixture();
+		const me = mode === 'root' ? admin : { id: 'moderator' } as never;
+		await f.list.exec({ needsReview: mode === 'root' }, me, null, null);
+		const query = f.repository.find.mock.calls[0][0] as { where: Record<string, unknown> };
+		expect(query.where).not.toHaveProperty('reviewVotes');
+	});
+});
+
 describe('atomic decisions and contact erasure', () => {
 	test('approval uses only transaction repositories while holding the application row lock', async () => {
 		const f = fixture();
 		f.users.exists.mockRejectedValue(new Error('global connection must not be acquired'));
 		f.usedNames.exists.mockRejectedValue(new Error('global connection must not be acquired'));
-		await expect(f.approve.exec({ applicationId: 'app1' }, admin, null, null)).resolves.toEqual({ success: true });
+		await expect(f.approve.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).resolves.toEqual({ success: true, emailSent: true });
 		expect(f.getRepository).toHaveBeenCalledWith(MiUser);
 		expect(f.getRepository).toHaveBeenCalledWith(MiUsedUsername);
 		expect(f.transactionUsers.exists).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ usernameLower: 'applicant' }) }));
@@ -280,7 +401,7 @@ describe('atomic decisions and contact erasure', () => {
 	] as const)('duplicate checks still reject through %s', async (repository, message) => {
 		const f = fixture();
 		f[repository].exists.mockResolvedValue(true);
-		await expect(f.approve.exec({ applicationId: 'app1' }, admin, null, null)).rejects.toThrow(message);
+		await expect(f.approve.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).rejects.toThrow(message);
 		expect(f.saves).not.toHaveBeenCalled();
 		expect(f.updates).not.toHaveBeenCalled();
 		expect(f.state.application).toMatchObject({ status: 'pending', additionalContacts: contacts });
@@ -288,9 +409,9 @@ describe('atomic decisions and contact erasure', () => {
 
 	test('approval commits account/profile/decision together before chart, webhook or email', async () => {
 		const f = fixture();
-		await expect(f.approve.exec({ applicationId: 'app1' }, admin, null, null)).resolves.toEqual({ success: true });
+		await expect(f.approve.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).resolves.toEqual({ success: true, emailSent: true });
 		expect(f.db.transaction).toHaveBeenCalledOnce();
-		expect(f.locks).toHaveBeenCalledWith(MiRegistrationApplication, expect.objectContaining({ where: { id: 'app1' }, lock: { mode: 'pessimistic_write' }, select: { id: true, status: true, username: true, hashedPassword: true, email: true } }));
+		expect(f.locks).toHaveBeenCalledWith(MiRegistrationApplication, expect.objectContaining({ where: { id: 'app1' }, lock: { mode: 'pessimistic_write' }, select: { id: true, status: true, username: true, hashedPassword: true, email: true, reviewVotes: true, reviewVersion: true } }));
 		expect(f.state.application).toMatchObject({ status: 'approved', additionalContacts: null, email: applicant.email, userId: 'user1', approvedAt: expect.any(Date) });
 		expect(f.state.records).toHaveLength(4);
 		expect(f.state.records.find(record => record instanceof MiUserProfile)).toMatchObject({ email: applicant.email, emailVerified: true, password: 'hash', lang: 'ja-JP' });
@@ -302,28 +423,28 @@ describe('atomic decisions and contact erasure', () => {
 
 	test('rejection locks and clears contacts/credentials but preserves required email and reason', async () => {
 		const f = fixture();
-		await expect(f.reject.exec({ applicationId: 'app1' }, admin, null, null)).resolves.toEqual({ success: true });
-		expect(f.locks).toHaveBeenCalledWith(MiRegistrationApplication, { where: { id: 'app1' }, lock: { mode: 'pessimistic_write' }, select: { id: true, status: true } });
+		await expect(f.reject.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).resolves.toEqual({ success: true });
+		expect(f.locks).toHaveBeenCalledWith(MiRegistrationApplication, { where: { id: 'app1' }, lock: { mode: 'pessimistic_write' }, select: { id: true, status: true, reviewVotes: true, reviewVersion: true } });
 		expect(f.state.application).toMatchObject({ status: 'rejected', additionalContacts: null, username: null, hashedPassword: null, email: applicant.email, reason: applicant.reason, rejectedAt: expect.any(Date), personalDataDeletedAt: expect.any(Date) });
 		expect(f.state.records).toHaveLength(0);
 		expect(f.mail.sendEmail).not.toHaveBeenCalled();
 		expect(f.saves).not.toHaveBeenCalled();
 	});
 
-	test.each(['account', 'keypair', 'profile', 'usedName', 'decision', 'commit'])('approval failure at %s preserves pending contacts and rolls back every account record', async failAt => {
+	test.each(['account', 'keypair', 'profile', 'usedName', 'decision', 'review', 'commit'])('approval failure at %s preserves pending contacts and rolls back every account record', async failAt => {
 		const f = fixture();
 		f.hooks.failAt = failAt;
-		await expect(f.approve.exec({ applicationId: 'app1' }, admin, null, null)).rejects.toThrow(`fixture failure: ${failAt}`);
+		await expect(f.approve.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).rejects.toThrow(`fixture failure: ${failAt}`);
 		expect(f.state.application).toMatchObject({ status: 'pending', additionalContacts: contacts, approvedAt: null, userId: null });
 		expect(f.state.records).toHaveLength(0);
 		expect(f.state.rollbacks).toBe(1);
 		expect(f.events).toEqual([]);
 	});
 
-	test.each(['decision', 'commit'])('rejection failure at %s does not partially clear a pending application', async failAt => {
+	test.each(['decision', 'review', 'commit'])('rejection failure at %s does not partially clear a pending application', async failAt => {
 		const f = fixture();
 		f.hooks.failAt = failAt;
-		await expect(f.reject.exec({ applicationId: 'app1' }, admin, null, null)).rejects.toThrow(`fixture failure: ${failAt}`);
+		await expect(f.reject.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).rejects.toThrow(`fixture failure: ${failAt}`);
 		expect(f.state.application).toMatchObject({ status: 'pending', additionalContacts: contacts, username: 'applicant', hashedPassword: 'hash', email: applicant.email });
 		expect(f.state.rollbacks).toBe(1);
 	});
@@ -331,7 +452,7 @@ describe('atomic decisions and contact erasure', () => {
 	test.each(['approve', 'reject'] as const)('mode OFF after the %s write rolls its decision back', async key => {
 		const f = fixture();
 		f.hooks.modeOffAt = 'decision';
-		await expect(f[key].exec({ applicationId: 'app1' }, admin, null, null)).rejects.toMatchObject({ code: 'REGISTRATION_APPLICATIONS_DISABLED' });
+		await expect(f[key].exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).rejects.toMatchObject({ code: 'REGISTRATION_APPLICATIONS_DISABLED' });
 		expect(f.state.application).toMatchObject({ status: 'pending', additionalContacts: contacts });
 		expect(f.state.records).toHaveLength(0);
 		expect(f.events).toEqual([]);
@@ -340,7 +461,7 @@ describe('atomic decisions and contact erasure', () => {
 	test.each(['approve', 'reject'] as const)('mode OFF during %s lock acquisition prevents writes', async key => {
 		const f = fixture();
 		f.hooks.modeOffAt = 'lock';
-		await expect(f[key].exec({ applicationId: 'app1' }, admin, null, null)).rejects.toMatchObject({ code: 'REGISTRATION_APPLICATIONS_DISABLED' });
+		await expect(f[key].exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).rejects.toMatchObject({ code: 'REGISTRATION_APPLICATIONS_DISABLED' });
 		expect(f.saves).not.toHaveBeenCalled();
 		expect(f.updates).not.toHaveBeenCalled();
 	});
@@ -350,8 +471,8 @@ describe('atomic decisions and contact erasure', () => {
 	] as const)('concurrent %s then %s has one decision and no revived contact', async (first, second) => {
 		const f = fixture();
 		const results = await Promise.allSettled([
-			f[first].exec({ applicationId: 'app1' }, admin, null, null),
-			f[second].exec({ applicationId: 'app1' }, admin, null, null),
+			f[first].exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null),
+			f[second].exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null),
 		]);
 		expect(results[0].status).toBe('fulfilled');
 		expect(results[1]).toMatchObject({ status: 'rejected', reason: { code: 'ALREADY_PROCESSED' } });
@@ -364,7 +485,7 @@ describe('atomic decisions and contact erasure', () => {
 	test('email delivery failure does not undo the already committed account/contact erasure', async () => {
 		const f = fixture();
 		f.mail.sendEmail.mockRejectedValue(new Error('mail unavailable'));
-		await expect(f.approve.exec({ applicationId: 'app1' }, admin, null, null)).rejects.toThrow('mail unavailable');
+		await expect(f.approve.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).resolves.toEqual({ success: true, emailSent: false });
 		expect(f.state.application).toMatchObject({ status: 'approved', additionalContacts: null });
 		expect(f.state.records).toHaveLength(4);
 		expect(f.state.commits).toBe(1);
@@ -373,7 +494,7 @@ describe('atomic decisions and contact erasure', () => {
 	test.each(['approve', 'reject'] as const)('missing application in %s performs no decision or account writes', async key => {
 		const f = fixture();
 		f.state.application = null;
-		await expect(f[key].exec({ applicationId: 'missing' }, admin, null, null)).rejects.toMatchObject({ code: 'NO_SUCH_APPLICATION' });
+		await expect(f[key].exec({ applicationId: 'missing', revision: reviewRevision }, admin, null, null)).rejects.toMatchObject({ code: 'NO_SUCH_APPLICATION' });
 		expect(f.saves).not.toHaveBeenCalled();
 		expect(f.updates).not.toHaveBeenCalled();
 	});
@@ -381,7 +502,7 @@ describe('atomic decisions and contact erasure', () => {
 	test.each(['username', 'hashedPassword', 'email'] as const)('approval rejects incomplete %s before account creation', async field => {
 		const f = fixture();
 		f.state.application![field] = null;
-		await expect(f.approve.exec({ applicationId: 'app1' }, admin, null, null)).rejects.toMatchObject({ code: 'MISSING_APPLICANT_DATA' });
+		await expect(f.approve.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).rejects.toMatchObject({ code: 'MISSING_APPLICANT_DATA' });
 		expect(f.saves).not.toHaveBeenCalled();
 		expect(f.updates).not.toHaveBeenCalled();
 	});

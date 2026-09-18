@@ -44,46 +44,49 @@ SPDX-License-Identifier: AGPL-3.0-only
 					'deleteChatRoom',
 				].includes(log.type)
 			}"
-		>{{ i18n.ts._moderationLogTypes[log.type] }}</b>
-		<span v-if="log.type === 'updateUserNote'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
-		<span v-else-if="log.type === 'suspend'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
-		<span v-else-if="log.type === 'unsuspend'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
-		<span v-else-if="log.type === 'resetPassword'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
-		<span v-else-if="log.type === 'assignRole'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }} <i class="ti ti-arrow-right"></i> {{ log.info.roleName }}</span>
-		<span v-else-if="log.type === 'unassignRole'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }} <i class="ti ti-equal-not"></i> {{ log.info.roleName }}</span>
-		<span v-else-if="log.type === 'createRole'">: {{ log.info.role.name }}</span>
-		<span v-else-if="log.type === 'updateRole'">: {{ log.info.before.name }}</span>
-		<span v-else-if="log.type === 'deleteRole'">: {{ log.info.role.name }}</span>
-		<span v-else-if="log.type === 'addCustomEmoji'">: {{ log.info.emoji.name }}</span>
-		<span v-else-if="log.type === 'updateCustomEmoji'">: {{ log.info.before.name }}</span>
-		<span v-else-if="log.type === 'deleteCustomEmoji'">: {{ log.info.emoji.name }}</span>
-		<span v-else-if="log.type === 'markSensitiveDriveFile'">: @{{ log.info.fileUserUsername }}{{ log.info.fileUserHost ? '@' + log.info.fileUserHost : '' }}</span>
-		<span v-else-if="log.type === 'unmarkSensitiveDriveFile'">: @{{ log.info.fileUserUsername }}{{ log.info.fileUserHost ? '@' + log.info.fileUserHost : '' }}</span>
-		<span v-else-if="log.type === 'suspendRemoteInstance'">: {{ log.info.host }}</span>
-		<span v-else-if="log.type === 'unsuspendRemoteInstance'">: {{ log.info.host }}</span>
-		<span v-else-if="log.type === 'createGlobalAnnouncement'">: {{ log.info.announcement.title }}</span>
-		<span v-else-if="log.type === 'updateGlobalAnnouncement'">: {{ log.info.before.title }}</span>
-		<span v-else-if="log.type === 'deleteGlobalAnnouncement'">: {{ log.info.announcement.title }}</span>
-		<span v-else-if="log.type === 'createUserAnnouncement'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
-		<span v-else-if="log.type === 'updateUserAnnouncement'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
-		<span v-else-if="log.type === 'deleteUserAnnouncement'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
-		<span v-else-if="log.type === 'deleteNote'">: @{{ log.info.noteUserUsername }}{{ log.info.noteUserHost ? '@' + log.info.noteUserHost : '' }}</span>
-		<span v-else-if="log.type === 'deleteDriveFile'">: @{{ log.info.fileUserUsername }}{{ log.info.fileUserHost ? '@' + log.info.fileUserHost : '' }}</span>
-		<span v-else-if="log.type === 'unsetMfa'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
-		<span v-else-if="log.type === 'createAvatarDecoration'">: {{ log.info.avatarDecoration.name }}</span>
-		<span v-else-if="log.type === 'updateAvatarDecoration'">: {{ log.info.before.name }}</span>
-		<span v-else-if="log.type === 'deleteAvatarDecoration'">: {{ log.info.avatarDecoration.name }}</span>
-		<span v-else-if="log.type === 'createSystemWebhook'">: {{ log.info.webhook.name }}</span>
-		<span v-else-if="log.type === 'updateSystemWebhook'">: {{ log.info.before.name }}</span>
-		<span v-else-if="log.type === 'deleteSystemWebhook'">: {{ log.info.webhook.name }}</span>
-		<span v-else-if="log.type === 'createAbuseReportNotificationRecipient'">: {{ log.info.recipient.name }}</span>
-		<span v-else-if="log.type === 'updateAbuseReportNotificationRecipient'">: {{ log.info.before.name }}</span>
-		<span v-else-if="log.type === 'deleteAbuseReportNotificationRecipient'">: {{ log.info.recipient.name }}</span>
-		<span v-else-if="log.type === 'deleteAccount'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
-		<span v-else-if="log.type === 'deletePage'">: @{{ log.info.pageUserUsername }}</span>
-		<span v-else-if="log.type === 'deleteFlash'">: @{{ log.info.flashUserUsername }}</span>
-		<span v-else-if="log.type === 'deleteGalleryPost'">: @{{ log.info.postUserUsername }}</span>
-		<span v-else-if="log.type === 'deleteChatRoom'">: @{{ log.info.room.name }}</span>
+		>{{ i18n.ts._moderationLogTypes[log.type] ?? log.type }}</b>
+		<span v-if="registrationChoice">: {{ registrationChoice }}</span>
+		<template v-if="!log.isRedacted">
+			<span v-if="log.type === 'updateUserNote'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
+			<span v-else-if="log.type === 'suspend'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
+			<span v-else-if="log.type === 'unsuspend'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
+			<span v-else-if="log.type === 'resetPassword'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
+			<span v-else-if="log.type === 'assignRole'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }} <i class="ti ti-arrow-right"></i> {{ log.info.roleName }}</span>
+			<span v-else-if="log.type === 'unassignRole'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }} <i class="ti ti-equal-not"></i> {{ log.info.roleName }}</span>
+			<span v-else-if="log.type === 'createRole'">: {{ log.info.role.name }}</span>
+			<span v-else-if="log.type === 'updateRole'">: {{ log.info.before.name }}</span>
+			<span v-else-if="log.type === 'deleteRole'">: {{ log.info.role.name }}</span>
+			<span v-else-if="log.type === 'addCustomEmoji'">: {{ log.info.emoji.name }}</span>
+			<span v-else-if="log.type === 'updateCustomEmoji'">: {{ log.info.before.name }}</span>
+			<span v-else-if="log.type === 'deleteCustomEmoji'">: {{ log.info.emoji.name }}</span>
+			<span v-else-if="log.type === 'markSensitiveDriveFile'">: @{{ log.info.fileUserUsername }}{{ log.info.fileUserHost ? '@' + log.info.fileUserHost : '' }}</span>
+			<span v-else-if="log.type === 'unmarkSensitiveDriveFile'">: @{{ log.info.fileUserUsername }}{{ log.info.fileUserHost ? '@' + log.info.fileUserHost : '' }}</span>
+			<span v-else-if="log.type === 'suspendRemoteInstance'">: {{ log.info.host }}</span>
+			<span v-else-if="log.type === 'unsuspendRemoteInstance'">: {{ log.info.host }}</span>
+			<span v-else-if="log.type === 'createGlobalAnnouncement'">: {{ log.info.announcement.title }}</span>
+			<span v-else-if="log.type === 'updateGlobalAnnouncement'">: {{ log.info.before.title }}</span>
+			<span v-else-if="log.type === 'deleteGlobalAnnouncement'">: {{ log.info.announcement.title }}</span>
+			<span v-else-if="log.type === 'createUserAnnouncement'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
+			<span v-else-if="log.type === 'updateUserAnnouncement'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
+			<span v-else-if="log.type === 'deleteUserAnnouncement'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
+			<span v-else-if="log.type === 'deleteNote'">: @{{ log.info.noteUserUsername }}{{ log.info.noteUserHost ? '@' + log.info.noteUserHost : '' }}</span>
+			<span v-else-if="log.type === 'deleteDriveFile'">: @{{ log.info.fileUserUsername }}{{ log.info.fileUserHost ? '@' + log.info.fileUserHost : '' }}</span>
+			<span v-else-if="log.type === 'unsetMfa'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
+			<span v-else-if="log.type === 'createAvatarDecoration'">: {{ log.info.avatarDecoration.name }}</span>
+			<span v-else-if="log.type === 'updateAvatarDecoration'">: {{ log.info.before.name }}</span>
+			<span v-else-if="log.type === 'deleteAvatarDecoration'">: {{ log.info.avatarDecoration.name }}</span>
+			<span v-else-if="log.type === 'createSystemWebhook'">: {{ log.info.webhook.name }}</span>
+			<span v-else-if="log.type === 'updateSystemWebhook'">: {{ log.info.before.name }}</span>
+			<span v-else-if="log.type === 'deleteSystemWebhook'">: {{ log.info.webhook.name }}</span>
+			<span v-else-if="log.type === 'createAbuseReportNotificationRecipient'">: {{ log.info.recipient.name }}</span>
+			<span v-else-if="log.type === 'updateAbuseReportNotificationRecipient'">: {{ log.info.before.name }}</span>
+			<span v-else-if="log.type === 'deleteAbuseReportNotificationRecipient'">: {{ log.info.recipient.name }}</span>
+			<span v-else-if="log.type === 'deleteAccount'">: @{{ log.info.userUsername }}{{ log.info.userHost ? '@' + log.info.userHost : '' }}</span>
+			<span v-else-if="log.type === 'deletePage'">: @{{ log.info.pageUserUsername }}</span>
+			<span v-else-if="log.type === 'deleteFlash'">: @{{ log.info.flashUserUsername }}</span>
+			<span v-else-if="log.type === 'deleteGalleryPost'">: @{{ log.info.postUserUsername }}</span>
+			<span v-else-if="log.type === 'deleteChatRoom'">: @{{ log.info.room.name }}</span>
+		</template>
 	</template>
 	<template #icon>
 		<i v-if="log.type === 'updateServerSettings'" class="ti ti-settings"></i>
@@ -140,7 +143,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div style="flex: 1;">{{ i18n.ts.dateAndTime }}: <MkTime :time="log.createdAt" mode="detail"/></div>
 		</div>
 
-		<template v-if="log.type === 'updateServerSettings'">
+		<template v-if="log.isRedacted">
+			<p :class="$style.redactedNotice">{{ i18n.ts._hata._registrationApplications._review.moderationLogRedacted }}</p>
+			<div v-for="target in redactedTargets" :key="target.key">
+				{{ target.label }}: <MkA v-if="target.isUser" :to="`/admin/user/${target.id}`" class="_link">{{ target.id }}</MkA><span v-else>{{ target.id }}</span>
+			</div>
+		</template>
+		<template v-else-if="log.type === 'updateServerSettings'">
 			<div :class="$style.diff">
 				<CodeDiff :context="5" :hideHeader="true" :oldString="JSON5.stringify(log.info.before, null, '\t')" :newString="JSON5.stringify(log.info.after, null, '\t')" language="javascript" maxHeight="300px"/>
 			</div>
@@ -222,7 +231,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</template>
 
-		<details>
+		<details v-if="!log.isRedacted">
 			<summary>raw</summary>
 			<pre>{{ JSON5.stringify(log, null, '\t') }}</pre>
 		</details>
@@ -234,15 +243,56 @@ SPDX-License-Identifier: AGPL-3.0-only
 import * as Misskey from 'cherrypick-js';
 import { CodeDiff } from 'v-code-diff';
 import JSON5 from 'json5';
+import { computed } from 'vue';
 import { i18n } from '@/i18n.js';
 import MkFolder from '@/components/MkFolder.vue';
 
 const props = defineProps<{
 	log: Misskey.entities.ModerationLog;
 }>();
+
+const registrationChoice = computed(() => {
+	if (props.log.type !== 'voteRegistrationApplication') return null;
+	return props.log.info.choice === 'agree' ? i18n.ts._hata._registrationApplications._review.agreed
+		: props.log.info.choice === 'oppose' ? i18n.ts._hata._registrationApplications._review.opposedChoice : null;
+});
+
+const redactedTargets = computed(() => {
+	if (!props.log.isRedacted) return [];
+	const labels: Record<string, string> = {
+		userId: i18n.ts.user,
+		fileUserId: i18n.ts.user,
+		noteUserId: i18n.ts.user,
+		pageUserId: i18n.ts.user,
+		flashUserId: i18n.ts.user,
+		postUserId: i18n.ts.user,
+		roleId: i18n.ts.role,
+		emojiId: i18n.ts.emoji,
+		fileId: i18n.ts.file,
+		noteId: i18n.ts.note,
+		announcementId: i18n.ts.announcements,
+		id: i18n.ts.instance,
+		reportId: i18n.ts.abuseReports,
+		adId: i18n.ts.ads,
+		avatarDecorationId: i18n.ts.avatarDecorations,
+		pageId: i18n.ts.pages,
+		postId: i18n.ts.gallery,
+		roomId: i18n.ts.chat,
+	};
+	return Object.entries(props.log.info).filter((entry): entry is [string, string] => entry[0] !== 'choice' && typeof entry[1] === 'string').map(([key, id]) => ({
+		key,
+		id,
+		label: labels[key] ?? i18n.ts._hata._registrationApplications._review.moderationLogTarget,
+		isUser: key === 'userId' || key.endsWith('UserId'),
+	}));
+});
 </script>
 
 <style lang="scss" module>
+.redactedNotice {
+	color: var(--MI_THEME-fgMuted);
+}
+
 .diff {
 	background: #fff;
 	color: #000;

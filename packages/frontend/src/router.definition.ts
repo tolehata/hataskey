@@ -498,6 +498,7 @@ export const ROUTE_DEF = [{
 		component: page(() => import('@/pages/admin/abuses.vue')),
 	}, {
 		path: '/modlog',
+		query: { applicationId: 'applicationId' },
 		name: 'modlog',
 		component: page(() => import('@/pages/admin/modlog.vue')),
 	}, {

@@ -35,6 +35,15 @@ const accessDenied = {
 	id: '56f35758-7dd5-468b-8439-5d6fb8ec9b8e',
 };
 
+const registrationApplicationApiPaths = new Set([
+	'registration/apply',
+	'admin/registration-applications',
+	'admin/vote-registration',
+	'admin/approve-registration',
+	'admin/reject-registration',
+	'admin/cleanup-legacy-rejected-registrations',
+]);
+
 export const HATACORDING_UI_RATE_LIMIT = {
 	duration: 60 * 60_000,
 	max: 500,
@@ -128,11 +137,16 @@ export class ApiCallService implements OnApplicationShutdown {
 		} else {
 			const errId = randomUUID();
 			const ephemeral = isLtlEmojiVoteApiPath(ep.name);
-			const diagnostic = ephemeral ? new Error('Ephemeral emoji vote operation failed') : err;
-			if (ephemeral) {
-				// 例外にSQL引数などが付いていても投票の内容を診断ログ/telemetryへ持ち込まない。
+			const registration = registrationApplicationApiPaths.has(ep.name);
+			const privateOperation = ephemeral || registration;
+			const diagnostic = registration ? new Error('Registration application operation failed')
+				: ephemeral ? new Error('Ephemeral emoji vote operation failed') : err;
+			if (privateOperation) {
+				// SQL引数・申請情報・投票理由をログ、telemetry、API応答へ持ち込まない。
 				diagnostic.name = ['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'QueryFailedError'].includes(err.name) ? err.name : 'Error';
-				diagnostic.stack = `${diagnostic.name}: ${diagnostic.message}\n${err.stack?.split('\n').filter(line => /^\s+at /.test(line)).join('\n') ?? ''}`;
+				// DB例外のstackにも申請データが混ざり得るため、申請では元のstackも渡さない。
+				diagnostic.stack = registration ? `${diagnostic.name}: ${diagnostic.message}`
+					: `${diagnostic.name}: ${diagnostic.message}\n${err.stack?.split('\n').filter(line => /^\s+at /.test(line)).join('\n') ?? ''}`;
 			}
 			this.logger.write({
 				level: 'error',
@@ -141,7 +155,7 @@ export class ApiCallService implements OnApplicationShutdown {
 				attributes: {
 					'api.endpoint': ep.name,
 					'error.id': errId,
-					...(!ephemeral ? { 'api.params': data } : {}),
+					...(!privateOperation ? { 'api.params': data } : {}),
 				},
 				error: diagnostic,
 			});
@@ -151,7 +165,7 @@ export class ApiCallService implements OnApplicationShutdown {
 			// 未加工の認証情報が外部送信されてしまう(上流2026.7.0で無くなった要素)。
 			this.telemetryService.captureMessage(`Internal error occurred in ${ep.name}: ${diagnostic.message}`, {
 				level: 'error',
-				...(!ephemeral ? { userId } : {}),
+				...(!privateOperation ? { userId } : {}),
 				extra: {
 					ep: ep.name,
 					e: {

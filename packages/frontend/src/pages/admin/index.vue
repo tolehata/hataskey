@@ -15,7 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div class="_gaps_s">
 					<MkInfo v-if="thereIsUnresolvedAbuseReport" warn>{{ i18n.ts.thereIsUnresolvedAbuseReportWarning }} <MkA to="/admin/abuses" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
 					<!-- 旗鯖fork(タスク7): 未処理の登録申請がある時の警告 -->
-					<MkInfo v-if="!instance.registrationClosed && instance.disableRegistration === true && thereIsPendingRegistration" warn>{{ i18n.ts._hata._adminCommon.pendingRegistration }} <MkA to="/admin/registration-applications" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
+					<MkInfo v-if="!instance.registrationClosed && instance.disableRegistration === true && thereIsPendingRegistration" warn>{{ iAmAdmin ? i18n.ts._hata._adminCommon.pendingRegistration : i18n.ts._hata._registrationApplications.notificationVoteBody }} <MkA to="/admin/registration-applications" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
 					<MkInfo v-if="noMaintainerInformation" warn>{{ i18n.ts.noMaintainerInformationWarning }} <MkA to="/admin/settings" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
 					<MkInfo v-if="noInquiryUrl" warn>{{ i18n.ts.noInquiryUrlWarning }} <MkA to="/admin/settings" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
 					<MkInfo v-if="noBotProtection" warn>{{ i18n.ts.noBotProtectionWarning }} <MkA to="/admin/security" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
@@ -85,14 +85,15 @@ misskeyApi('admin/abuse-user-reports', {
 
 // 旗鯖fork(タスク7): 未処理(pending)の登録申請があればコンパネにインジケーターを出す
 const thereIsPendingRegistration = ref(false);
-watch(() => !instance.registrationClosed && instance.disableRegistration === true, (registrationClosed, _previous, onCleanup) => {
+watch(() => !instance.registrationClosed && instance.disableRegistration === true, (applicationsEnabled, _previous, onCleanup) => {
 	let active = true;
 	onCleanup(() => { active = false; });
 	thereIsPendingRegistration.value = false;
-	if (!registrationClosed) return;
+	if (!applicationsEnabled) return;
 	misskeyApi('admin/registration-applications', {
 		status: 'pending',
 		limit: 1,
+		needsReview: true,
 	}).then(apps => {
 		if (active && !instance.registrationClosed && instance.disableRegistration === true) thereIsPendingRegistration.value = apps.length > 0;
 	}).catch(() => {});

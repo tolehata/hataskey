@@ -46,6 +46,14 @@ afterEach(() => {
 });
 
 describe('管理トップの登録申請インジケーター', () => {
+	test('モデレーターには投票依頼、管理者には既存の申請案内を表示する', () => {
+		const expression = source.match(/<MkInfo v-if="!instance.registrationClosed[^>]*>\{\{ ([^}]+) \}\}/)?.[1];
+		if (!expression) throw new Error('申請通知の案内文が見つかりません');
+		const i18n = { ts: { _hata: { _adminCommon: { pendingRegistration: '未処理の参加申請があります' }, _registrationApplications: { notificationVoteBody: '参加申請に賛成するかどうか、投票をお願いします。' } } } };
+		expect(runInNewContext(expression, { i18n, iAmAdmin: false })).toBe('参加申請に賛成するかどうか、投票をお願いします。');
+		expect(runInNewContext(expression, { i18n, iAmAdmin: true })).toBe('未処理の参加申請があります');
+	});
+
 	test('完全停止後に届いた旧申請結果を表示せず、再開時は取得し直す', async () => {
 		const { instance, indicator, requests, misskeyApi } = mountIndicator(true);
 		instance.registrationClosed = true;
@@ -65,7 +73,7 @@ describe('管理トップの登録申請インジケーター', () => {
 	test('一般開放を停止している時だけ未処理の存在を取得して表示する', async () => {
 		const { indicator, misskeyApi, requests } = mountIndicator(true);
 		expect(misskeyApi).toHaveBeenCalledTimes(1);
-		expect(misskeyApi).toHaveBeenCalledWith('admin/registration-applications', { status: 'pending', limit: 1 });
+		expect(misskeyApi).toHaveBeenCalledWith('admin/registration-applications', { status: 'pending', limit: 1, needsReview: true });
 		requests[0].resolve([{ id: 'pending-1' }]);
 		await Promise.resolve();
 		expect(indicator.value).toBe(true);

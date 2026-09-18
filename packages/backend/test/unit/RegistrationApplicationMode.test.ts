@@ -24,6 +24,7 @@ vi.mock('node:crypto', async importOriginal => ({
 }));
 
 const disabled = { code: 'REGISTRATION_APPLICATIONS_DISABLED' };
+const reviewRevision = 'a'.repeat(64);
 const applicant = { username: 'Applicant', password: 'password123', reason: '参加したいです', email: 'applicant@example.test' };
 
 // Generate real PostgreSQL predicates without connecting to a database.
@@ -59,12 +60,22 @@ function fixture(enabled: unknown = true) {
 	const id = { gen: vi.fn().mockReturnValue('newapp') };
 	const decisionTransaction = { findOne: vi.fn().mockResolvedValue(application), update: vi.fn().mockResolvedValue({ affected: 1 }) };
 	const decisionDb = { transaction: vi.fn(async callback => callback(decisionTransaction)) };
+	const reviewer = { userId: 'admin', name: null, username: 'admin', isRoot: true, isAdministrator: true, eligibilityKey: 'fixture-root' };
+	const review = {
+		assertStaff: vi.fn().mockResolvedValue(reviewer),
+		getCurrentStaff: vi.fn().mockResolvedValue([reviewer]),
+		packReview: vi.fn().mockReturnValue({ revision: reviewRevision, voters: [] }),
+		assertRoot: vi.fn().mockResolvedValue(undefined),
+		lockReview: vi.fn().mockResolvedValue({ application }),
+		assertUnanimous: vi.fn(),
+		recordDecision: vi.fn().mockResolvedValue(undefined),
+	};
 	const apply = new ApplyEndpoint(serverMeta as never, repository as never, users as never, usedNames as never, id as never, captcha as never, notification as never);
-	const list = new ListEndpoint(serverMeta as never, repository as never);
+	const list = new ListEndpoint(serverMeta as never, repository as never, review as never);
 	const approve = new ApproveEndpoint({ url: 'https://example.test' } as never, serverMeta as never, signup as never, mail as never);
-	const reject = new RejectEndpoint(serverMeta as never, decisionDb as never);
+	const reject = new RejectEndpoint(serverMeta as never, decisionDb as never, review as never);
 	const cleanup = new CleanupEndpoint(serverMeta as never, repository as never);
-	return { serverMeta, application, repository, users, usedNames, profiles, signup, mail, notification, captcha, query, apply, list, approve, reject, cleanup, decisionTransaction, decisionDb };
+	return { review, serverMeta, application, repository, users, usedNames, profiles, signup, mail, notification, captcha, query, apply, list, approve, reject, cleanup, decisionTransaction, decisionDb };
 }
 
 function signupFixture(enabled: boolean) {
@@ -88,7 +99,7 @@ function signupFixture(enabled: boolean) {
 	const userService = { notifySystemWebhook: vi.fn() };
 	const utility = { isKeyWordIncluded: vi.fn().mockReturnValue(false), toPunyNullable: vi.fn().mockReturnValue(null) };
 	const userEntity = { validateLocalUsername: vi.fn().mockReturnValue(true), validatePassword: vi.fn().mockReturnValue(true) };
-	const service = new SignupService(db as never, f.serverMeta as never, f.users as never, f.usedNames as never, utility as never, userService as never, userEntity as never, { gen: () => 'user1' } as never, {} as never, {} as never, usersChart as never);
+	const service = new SignupService(db as never, f.serverMeta as never, f.users as never, f.usedNames as never, utility as never, userService as never, userEntity as never, { gen: () => 'user1' } as never, {} as never, {} as never, usersChart as never, f.review as never);
 	return { ...f, service, transaction, db, persisted, usersChart, userService, get commits() { return commits; }, get rollbacks() { return rollbacks; } };
 }
 
@@ -103,7 +114,7 @@ describe('registration application mode', () => {
 		const f = fixture();
 		f.serverMeta.registrationClosed = true;
 		await expect(f.apply.exec({ ...applicant }, null, null, null)).rejects.toMatchObject(disabled);
-		await expect(f.approve.exec({ applicationId: 'app1' }, null, null, null)).rejects.toMatchObject(disabled);
+		await expect(f.approve.exec({ applicationId: 'app1', revision: reviewRevision }, null, null, null)).rejects.toMatchObject(disabled);
 		expect(f.repository.insert).not.toHaveBeenCalled();
 		expect(f.signup.signup).not.toHaveBeenCalled();
 		expect(f.application.status).toBe('pending');
@@ -228,7 +239,7 @@ describe('registration application mode', () => {
 
 	test.each(['list', 'approve', 'reject', 'cleanup'] as const)('OFF blocks admin %s before fetching or mutating saved applications', async key => {
 		const f = fixture(false);
-		await expect(f[key].exec({ applicationId: 'app1', execute: true }, { id: 'admin' } as never, null, null)).rejects.toMatchObject(disabled);
+		await expect(f[key].exec({ applicationId: 'app1', revision: reviewRevision, execute: true }, { id: 'admin' } as never, null, null)).rejects.toMatchObject(disabled);
 		expect(f.repository.find).not.toHaveBeenCalled();
 		expect(f.repository.findOneBy).not.toHaveBeenCalled();
 		expect(f.repository.update).not.toHaveBeenCalled();
@@ -246,10 +257,28 @@ describe('registration application mode', () => {
 		await expect(f.list.exec({}, { id: 'admin' } as never, null, null)).rejects.toMatchObject(disabled);
 	});
 
+	test('OFF during the final staff refresh discards an already fetched application list', async () => {
+		const f = fixture();
+		const staff = await f.review.getCurrentStaff();
+		f.review.getCurrentStaff.mockImplementation(async () => { f.serverMeta.disableRegistration = false; return staff; });
+		await expect(f.list.exec({}, { id: 'admin' } as never, null, null)).rejects.toMatchObject(disabled);
+	});
+
+	test('approval email escapes server metadata in HTML while retaining a readable plaintext copy', async () => {
+		const f = fixture();
+		f.serverMeta.name = '<img src=x> & server';
+		await expect(f.approve.exec({ applicationId: 'app1', revision: reviewRevision }, { id: 'admin' } as never, null, null)).resolves.toEqual({ success: true, emailSent: true });
+		const html = f.mail.sendEmail.mock.calls[0][2];
+		const plain = f.mail.sendEmail.mock.calls[0][3];
+		expect(html).toContain('&lt;img src=x&gt; &amp; server');
+		expect(html).not.toContain('<img src=x>');
+		expect(plain).toContain('<img src=x> & server');
+	});
+
 	test('ON approval delegates the atomic decision to signup and sends mail only afterwards', async () => {
 		const f = fixture();
-		await expect(f.approve.exec({ applicationId: 'app1' }, { id: 'admin' } as never, null, null)).resolves.toEqual({ success: true });
-		expect(f.signup.signup).toHaveBeenCalledWith({ registrationApplicationId: 'app1' });
+		await expect(f.approve.exec({ applicationId: 'app1', revision: reviewRevision }, { id: 'admin' } as never, null, null)).resolves.toEqual({ success: true, emailSent: true });
+		expect(f.signup.signup).toHaveBeenCalledWith({ registrationApplicationId: 'app1', reviewerId: 'admin', revision: reviewRevision });
 		expect(f.profiles.update).not.toHaveBeenCalled();
 		expect(f.repository.update).not.toHaveBeenCalled();
 		expect(f.mail.sendEmail).toHaveBeenCalledOnce();
@@ -258,7 +287,7 @@ describe('registration application mode', () => {
 	test('OFF during rejection lookup preserves pending application and avoids side effects', async () => {
 		const f = fixture();
 		f.decisionTransaction.findOne.mockImplementation(async () => { f.serverMeta.disableRegistration = false; return f.application; });
-		await expect(f.reject.exec({ applicationId: 'app1' }, { id: 'admin' } as never, null, null)).rejects.toMatchObject(disabled);
+		await expect(f.reject.exec({ applicationId: 'app1', revision: reviewRevision }, { id: 'admin' } as never, null, null)).rejects.toMatchObject(disabled);
 		expect(f.application.status).toBe('pending');
 		expect(f.repository.update).not.toHaveBeenCalled();
 		expect(f.decisionTransaction.update).not.toHaveBeenCalled();
@@ -268,7 +297,7 @@ describe('registration application mode', () => {
 
 	test('ON rejection keeps existing privacy behavior and retained email', async () => {
 		const f = fixture();
-		await expect(f.reject.exec({ applicationId: 'app1' }, { id: 'admin' } as never, null, null)).resolves.toEqual({ success: true });
+		await expect(f.reject.exec({ applicationId: 'app1', revision: reviewRevision }, { id: 'admin' } as never, null, null)).resolves.toEqual({ success: true });
 		const changes = f.decisionTransaction.update.mock.calls[0][2];
 		expect(changes).toMatchObject({ status: 'rejected', username: null, hashedPassword: null, additionalContacts: null });
 		expect(changes).not.toHaveProperty('email');
@@ -337,7 +366,7 @@ describe('SignupService application-only guard', () => {
 		await f.apply.exec({ ...applicant, username: 'HaTa_Test' }, null, null, null);
 		const saved = f.repository.insert.mock.calls[0][0];
 		Object.assign(f.application, saved);
-		const { account } = await f.service.signup({ registrationApplicationId: f.application.id });
+		const { account } = await f.service.signup({ registrationApplicationId: f.application.id, reviewerId: 'admin', revision: reviewRevision });
 		expect(account).toMatchObject({ username: 'HaTa_Test', usernameLower: 'hata_test' });
 		expect(f.persisted.find(entity => entity instanceof MiUsedUsername)).toMatchObject({ username: 'hata_test' });
 		expect(f.transaction.findOneBy).toHaveBeenCalledWith(MiUser, expect.objectContaining({ usernameLower: 'hata_test' }));
@@ -345,7 +374,7 @@ describe('SignupService application-only guard', () => {
 
 	test('direct application signup is blocked in OFF mode before account work', async () => {
 		const f = signupFixture(false);
-		await expect(f.service.signup({ registrationApplicationId: 'app1' })).rejects.toMatchObject(disabled);
+		await expect(f.service.signup({ registrationApplicationId: 'app1', reviewerId: 'admin', revision: reviewRevision })).rejects.toMatchObject(disabled);
 		expect(f.users.exists).not.toHaveBeenCalled();
 		expect(f.db.transaction).not.toHaveBeenCalled();
 	});
@@ -361,9 +390,19 @@ describe('SignupService application-only guard', () => {
 		expect(f.usedNames.exists.mock.invocationCallOrder[0]).toBeLessThan(f.db.transaction.mock.invocationCallOrder[0]);
 	});
 
+	test.each(['assertRoot', 'assertUnanimous'] as const)('application signup honors the review service %s guard before saving an account', async guard => {
+		const f = signupFixture(true);
+		f.review[guard].mockImplementation(() => { throw new Error('review denied'); });
+		await expect(f.service.signup({ registrationApplicationId: 'app1', reviewerId: 'admin', revision: reviewRevision })).rejects.toThrow('review denied');
+		expect(f.transaction.save).not.toHaveBeenCalled();
+		expect(f.transaction.update).not.toHaveBeenCalled();
+		expect(f.usersChart.update).not.toHaveBeenCalled();
+		expect(f.userService.notifySystemWebhook).not.toHaveBeenCalled();
+	});
+
 	test('ON application signup commits account and notifies only after success', async () => {
 		const f = signupFixture(true);
-		await expect(f.service.signup({ registrationApplicationId: 'app1' })).resolves.toMatchObject({ account: { id: 'user1' } });
+		await expect(f.service.signup({ registrationApplicationId: 'app1', reviewerId: 'admin', revision: reviewRevision })).resolves.toMatchObject({ account: { id: 'user1' } });
 		expect(f.commits).toBe(1);
 		expect(f.usersChart.update).toHaveBeenCalledOnce();
 		expect(f.userService.notifySystemWebhook).toHaveBeenCalledOnce();
@@ -372,7 +411,7 @@ describe('SignupService application-only guard', () => {
 	test('OFF while transaction duplicate lookup awaits prevents the first save', async () => {
 		const f = signupFixture(true);
 		f.transaction.findOneBy.mockImplementation(async () => { f.serverMeta.disableRegistration = false; return null; });
-		await expect(f.service.signup({ registrationApplicationId: 'app1' })).rejects.toMatchObject(disabled);
+		await expect(f.service.signup({ registrationApplicationId: 'app1', reviewerId: 'admin', revision: reviewRevision })).rejects.toMatchObject(disabled);
 		expect(f.transaction.save).not.toHaveBeenCalled();
 		expect(f.rollbacks).toBe(1);
 		expect(f.usersChart.update).not.toHaveBeenCalled();
@@ -381,7 +420,7 @@ describe('SignupService application-only guard', () => {
 	test('OFF during account writes rolls the transaction back and never emits creation events', async () => {
 		const f = signupFixture(true);
 		f.transaction.save.mockImplementation(async (entity: unknown) => { f.persisted.push(entity); f.serverMeta.disableRegistration = false; return entity; });
-		await expect(f.service.signup({ registrationApplicationId: 'app1' })).rejects.toMatchObject(disabled);
+		await expect(f.service.signup({ registrationApplicationId: 'app1', reviewerId: 'admin', revision: reviewRevision })).rejects.toMatchObject(disabled);
 		expect(f.rollbacks).toBe(1);
 		expect(f.commits).toBe(0);
 		expect(f.persisted).toHaveLength(0);

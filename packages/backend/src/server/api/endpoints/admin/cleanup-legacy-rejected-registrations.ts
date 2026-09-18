@@ -25,6 +25,7 @@ export const meta = {
 	requireAdmin: true,
 	secure: true,
 	kind: 'write:admin:cleanup-rejected-registrations',
+	limit: { duration: 60 * 1000, max: 30 },
 	errors: { registrationApplicationsDisabled: registrationApplicationsDisabledError },
 
 	res: {
@@ -66,6 +67,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 
 			// rejected ステータスかつ、username または hashedPassword がまだ残ってる (旧仕様で処理された) レコード
 			const targets = await this.registrationApplicationsRepository.find({
+				select: { id: true },
 				where: [
 					{ status: 'rejected', username: Not(IsNull()) },
 					{ status: 'rejected', hashedPassword: Not(IsNull()) },

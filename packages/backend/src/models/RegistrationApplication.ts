@@ -9,8 +9,23 @@ import { Entity, PrimaryColumn, Column, Index, JoinColumn, ManyToOne, Check } fr
 import { id } from './util/id.js';
 import { MiUser } from './User.js';
 
+export type RegistrationReviewActor = { userId: string; name: string | null; username: string | null };
+export type RegistrationReviewVote = RegistrationReviewActor & {
+	choice: 'agree' | 'oppose';
+	reason: string;
+	votedAt: string;
+	eligibilityKey: string;
+};
+export type RegistrationReviewDecision = {
+	actor: RegistrationReviewActor;
+	at: string;
+	voterIds: string[];
+	voters: Array<RegistrationReviewActor & { choice: 'agree' | 'oppose' | null; votedAt: string | null }>;
+};
+
 @Entity('registration_application')
-@Check('CHK_registration_application_pending_contacts', `"status" = 'pending' OR "additionalContacts" IS NULL`)
+@Check('CHK_registration_review_votes_object', 'jsonb_typeof("reviewVotes") = \'object\'')
+@Check('CHK_registration_application_pending_contacts', '"status" = \'pending\' OR "additionalContacts" IS NULL')
 export class MiRegistrationApplication {
 	@PrimaryColumn(id())
 	public id: string;
@@ -59,6 +74,15 @@ export class MiRegistrationApplication {
 		select: false,
 	})
 	public additionalContacts: string | null;
+
+	@Column('jsonb', { default: {}, select: false })
+	public reviewVotes: Record<string, RegistrationReviewVote>;
+
+	@Column('integer', { default: 0 })
+	public reviewVersion: number;
+
+	@Column('jsonb', { nullable: true, select: false })
+	public reviewDecision: RegistrationReviewDecision | null;
 
 	@Index()
 	@Column('varchar', {

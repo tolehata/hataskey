@@ -26,6 +26,8 @@ import { SystemAccountService } from '@/core/SystemAccountService.js';
 import { MetaService } from '@/core/MetaService.js';
 import { assertRegistrationApplicationsEnabled, registrationApplicationApprovalErrors } from '@/core/registration-application-policy.js';
 import { ApiError } from '@/server/api/error.js';
+import { RegistrationApplicationReviewService } from './RegistrationApplicationReviewService.js';
+import type { RegistrationReviewContext } from './RegistrationApplicationReviewService.js';
 
 type SignupOptions = {
 	username: MiUser['username'];
@@ -57,11 +59,12 @@ export class SignupService {
 		private systemAccountService: SystemAccountService,
 		private metaService: MetaService,
 		private usersChart: UsersChart,
+		private registrationReviewService: RegistrationApplicationReviewService,
 	) {
 	}
 
 	@bindThis
-	public async signup(opts: SignupOptions | { registrationApplicationId: string }): Promise<{ account: MiUser; secret: string; applicationEmail: string | null }> {
+	public async signup(opts: SignupOptions | { registrationApplicationId: string; reviewerId: string; revision: string }): Promise<{ account: MiUser; secret: string; applicationEmail: string | null }> {
 		const assertRegistrationOpen = () => {
 			if (this.meta.registrationClosed) throw new Error('REGISTRATION_CLOSED');
 		};
@@ -77,11 +80,14 @@ export class SignupService {
 		if (applicationId !== null) assertRegistrationApplicationsEnabled(this.meta);
 		await this.db.transaction(async transactionalEntityManager => {
 			let details = prepared;
+			let reviewContext: RegistrationReviewContext | null = null;
 			if (applicationId !== null) {
+				if (!('reviewerId' in opts)) throw new Error('Missing registration reviewer');
+				await this.registrationReviewService.assertRoot(opts.reviewerId);
 				const application = await transactionalEntityManager.findOne(MiRegistrationApplication, {
 					where: { id: applicationId },
 					lock: { mode: 'pessimistic_write' },
-					select: { id: true, status: true, username: true, hashedPassword: true, email: true },
+					select: { id: true, status: true, username: true, hashedPassword: true, email: true, reviewVotes: true, reviewVersion: true },
 				});
 				assertRegistrationApplicationsEnabled(this.meta);
 				if (!application) throw new ApiError(registrationApplicationApprovalErrors.noSuchApplication);
@@ -96,6 +102,8 @@ export class SignupService {
 					transactionalEntityManager.getRepository(MiUsedUsername),
 				);
 				applicationEmail = application.email;
+				reviewContext = await this.registrationReviewService.lockReview(transactionalEntityManager, application, opts.reviewerId, opts.revision, true);
+				this.registrationReviewService.assertUnanimous(reviewContext);
 			}
 			if (details == null) throw new Error('Missing signup data');
 			const { username, hash, host, keyPair } = details;
@@ -141,6 +149,8 @@ export class SignupService {
 				await transactionalEntityManager.update(MiRegistrationApplication, applicationId, {
 					status: 'approved', approvedAt: new Date(), userId: account.id, additionalContacts: null,
 				});
+				if (!reviewContext) throw new Error('Missing registration review');
+				await this.registrationReviewService.recordDecision(transactionalEntityManager, reviewContext, true, account.id);
 				// Any mode switch while awaiting a write rolls back account and decision.
 				assertRegistrationApplicationsEnabled(this.meta);
 			}

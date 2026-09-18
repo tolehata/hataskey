@@ -6,12 +6,14 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { load } from 'js-yaml';
-import { createApp, h, nextTick, Suspense } from 'vue';
+import { createApp, defineComponent, h, nextTick, Suspense } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { instance as productionInstance } from '@/instance.js';
 import SignupBranch from './MkSignupBranchDialog.vue';
 import RegistrationApplication from './MkRegistrationApplication.vue';
 import RegistrationApplications from '@/pages/admin/registration-applications.vue';
+import RegistrationVoteDialog from '@/pages/admin/registration-applications.vote-dialog.vue';
+import { $i } from '@/i.js';
 import Moderation from '@/pages/admin/moderation.vue';
 import type { Component } from 'vue';
 
@@ -31,6 +33,10 @@ type MockMeta = {
 const instance = productionInstance as unknown as MockMeta;
 const mocks = vi.hoisted(() => ({ api: vi.fn(), confirm: vi.fn(), alert: vi.fn(), update: vi.fn(), fetchInstance: vi.fn() }));
 
+vi.mock('@/i.js', async () => {
+	const { reactive } = await import('vue');
+	return { $i: reactive({ id: 'root', isAdmin: true, isModerator: true }) };
+});
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api }));
 vi.mock('@/os.js', () => ({ confirm: mocks.confirm, alert: mocks.alert, apiWithDialog: mocks.update }));
 vi.mock('@/instance.js', async () => {
@@ -45,18 +51,21 @@ vi.mock('@/i18n.js', () => {
 	const phrases = new Proxy({}, { get: (_, key) => () => String(key) });
 	return { i18n: {
 		ts: {
-			_hata: { _common: words, _registrationApplications: { _application: words, _admin: words,
+			_hata: { _common: words, _registrationApplications: { _application: words, _admin: words, _review: words,
 				acceptApplications: '申請による登録を受け付ける', openRegistrationConfirm: '登録を一般開放しますか？',
 				openRegistrationActive: '現在は登録を一般開放中です', managementPaused: '受付済みの申請は保管されます', registrationModeChanged: '登録方法が変更されました',
 			} },
 			_serverSettings: { _userGeneratedContentsVisibilityForVisitor: words },
 		},
-		tsx: { _hata: { _registrationApplications: { _admin: phrases } } },
+		tsx: { _hata: { _registrationApplications: { _admin: phrases, _review: phrases } } },
 	} };
 });
 vi.mock('@/page.js', () => ({ definePage: vi.fn() }));
 vi.mock('@/utility/hatakyu-assets.js', () => ({ useHatakyuBranding: () => false }));
-vi.mock('@/components/MkButton.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/MkButton.vue', async () => {
+	const Vue = await import('vue');
+	return { default: Vue.defineComponent({ props: { disabled: Boolean }, emits: ['click'], render() { return Vue.h('button', { disabled: this.disabled, onClick: () => this.$emit('click') }, this.$slots.default?.()); } }) };
+});
 vi.mock('@/components/MkInput.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/MkInfo.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/MkCaptcha.vue', () => ({ default: { render: () => null } }));
@@ -101,6 +110,13 @@ type ApplicationSetup = {
 	onChangeUsername: () => void;
 };
 type AdminSetup = {
+	authorized: boolean;
+	loadFailed: boolean;
+	voteDialog: { choice: string } | null;
+	voteError: string | null;
+	openVote: (item: ReturnType<typeof adminRow>, choice: 'agree' | 'oppose') => void;
+	closeVote: () => void;
+	submitVote: (reason: string) => Promise<void>;
 	applicationsEnabled: boolean;
 	status: string;
 	items: { id: string }[];
@@ -136,6 +152,8 @@ function mountSetup<T>(component: Component, props: Record<string, unknown> = {}
 	window.document.body.append(container);
 	const app = createApp({ render: () => h(Suspense, null, { default: () => h(subject, props) }) });
 	app.component('MkLoading', { render: () => null });
+	app.component('PageWithHeader', defineComponent({ render() { return h('section', this.$slots.default?.()); } }));
+	app.component('MkA', defineComponent({ render() { return h('a', this.$slots.default?.()); } }));
 	app.mount(container);
 	const unmount = () => {
 		if (!cleanups.delete(unmount)) return;
@@ -174,6 +192,7 @@ function validApplication(state: ApplicationSetup) {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	Object.assign($i!, { id: 'root', isAdmin: true, isModerator: true });
 	Object.assign(instance, {
 		registrationClosed: false, disableRegistration: true, serverRules: [], tosUrl: null, privacyPolicyUrl: null,
 		enableHcaptcha: false, enableMcaptcha: false, enableRecaptcha: false, enableTurnstile: false, enableTestcaptcha: false,
@@ -184,6 +203,7 @@ beforeEach(() => {
 			blockedHosts: [], silencedHosts: [], mediaSilencedHosts: [], trustedLinkUrlPatterns: [], bubbleInstances: [],
 		};
 		if (endpoint === 'admin/cleanup-legacy-rejected-registrations') return { cleanedCount: 1, alreadyCleanedCount: 2, emailRetainedCount: 3, executedAt: '2026-08-31T00:00:00Z' };
+		if (endpoint === 'admin/approve-registration') return { success: true, emailSent: true };
 		if (endpoint === 'username/available') return { available: true };
 		return [];
 	});
@@ -516,9 +536,21 @@ describe('申請フォームのサーバー設定とモード競合', () => {
 	});
 });
 
+function adminRow() {
+	return {
+		id: 'pending-1', username: 'member', status: 'pending', createdAt: '2026-09-18T00:00:00Z',
+		email: 'private@example.test', reason: '参加したい', additionalContacts: '@private@example.test',
+		review: {
+			revision: 'review-revision-1', voters: [{ userId: 'moderator', name: '担当者', username: 'moderator', isCurrent: true, choice: 'agree', reason: '確認しました', votedAt: '2026-09-18T00:00:00Z' }],
+			requiredCount: 1, agreeCount: 1, opposeCount: 0, waitingCount: 0, myChoice: null as 'agree' | 'oppose' | null,
+			canVote: false, canFinalize: true, isRoot: true, decidedBy: null, decidedAt: null,
+		},
+	};
+}
+
 describe('管理申請一覧の受付停止', () => {
 	test.each(['approve', 'reject'] as const)('%s後は表示から任意の連絡先も破棄する', async action => {
-		const row = { id: 'pending-contacts', username: 'member', status: 'pending', additionalContacts: '@private@example.test' };
+		const row = adminRow();
 		mocks.api.mockResolvedValueOnce([row]);
 		const item = mountSetup<AdminSetup>(RegistrationApplications);
 		await flush();
@@ -528,7 +560,7 @@ describe('管理申請一覧の受付停止', () => {
 	});
 
 	test.each(['approve', 'reject'] as const)('%sの応答が失敗しても確定済みの申請を再取得して古い連絡先を消す', async action => {
-		const row = { id: 'pending-contacts', username: 'member', additionalContacts: '@private@example.test' };
+		const row = adminRow();
 		mocks.api.mockResolvedValueOnce([row]);
 		const item = mountSetup<AdminSetup>(RegistrationApplications);
 		await flush();
@@ -540,7 +572,7 @@ describe('管理申請一覧の受付停止', () => {
 	});
 
 	test.each(['mode', 'unmount'])('管理画面を%sで離れると表示済み連絡先も破棄する', async action => {
-		const row = { id: 'pending-contacts', username: 'member', additionalContacts: '@private@example.test' };
+		const row = adminRow();
 		mocks.api.mockResolvedValueOnce([row]);
 		const item = mountSetup<AdminSetup>(RegistrationApplications);
 		await flush();
@@ -552,7 +584,7 @@ describe('管理申請一覧の受付停止', () => {
 	test('一般開放時は全操作・一覧とサマリ取得を停止する', async () => {
 		instance.disableRegistration = false;
 		const item = mountSetup<AdminSetup>(RegistrationApplications);
-		const row = { id: 'pending-1', username: 'member' };
+		const row = adminRow();
 		await item.state.load();
 		await item.state.loadMore();
 		await item.state.loadSummary();
@@ -569,13 +601,13 @@ describe('管理申請一覧の受付停止', () => {
 		const item = mountSetup<AdminSetup>(RegistrationApplications);
 		await flush();
 		expect(mocks.api).toHaveBeenCalledWith('admin/registration-applications', { status: 'pending', limit: 20, offset: 0 }, undefined, expect.any(AbortSignal));
-		const row = { id: 'pending-1', username: 'member' };
+		const row = adminRow();
 		await item.state.approve(row);
 		await item.state.reject(row);
 		await item.state.runLegacyCleanupDryRun();
 		await item.state.runLegacyCleanup();
-		expect(mocks.api).toHaveBeenCalledWith('admin/approve-registration', { applicationId: row.id });
-		expect(mocks.api).toHaveBeenCalledWith('admin/reject-registration', { applicationId: row.id });
+		expect(mocks.api).toHaveBeenCalledWith('admin/approve-registration', { applicationId: row.id, revision: row.review.revision });
+		expect(mocks.api).toHaveBeenCalledWith('admin/reject-registration', { applicationId: row.id, revision: row.review.revision });
 		expect(mocks.api).toHaveBeenCalledWith('admin/cleanup-legacy-rejected-registrations', { execute: false });
 		expect(mocks.api).toHaveBeenCalledWith('admin/cleanup-legacy-rejected-registrations', { execute: true });
 	});
@@ -604,7 +636,7 @@ describe('管理申請一覧の受付停止', () => {
 		mocks.api.mockClear();
 		const confirmation = deferred<{ canceled: boolean }>();
 		mocks.confirm.mockReturnValueOnce(confirmation.promise);
-		const acting = item.state[action]({ id: 'pending-1', username: 'member' });
+		const acting = item.state[action](adminRow());
 		instance.disableRegistration = false;
 		confirmation.resolve({ canceled: false });
 		await acting;
@@ -633,6 +665,241 @@ describe('管理申請一覧の受付停止', () => {
 		pending.resolve([{ id: 'late' }]);
 		await flush();
 		expect(state.items).toEqual([]);
+	});
+});
+
+describe('参加申請の投票と権限変更', () => {
+	test.each([true, false])('実テンプレートはroot=%sに応じてメールと最終操作を分ける', async root => {
+		Object.assign($i!, { id: root ? 'root' : 'moderator', isAdmin: root, isModerator: true });
+		const row = adminRow();
+		row.additionalContacts = '@member@social.example.test';
+		row.reason = '<img src=x onerror="alert(1)">';
+		Object.assign(row.review, { isRoot: root, canVote: !root, canFinalize: false });
+		mocks.api.mockResolvedValueOnce([row]);
+		const item = mountSetup<AdminSetup>(RegistrationApplications, {}, true);
+		await flush();
+		const text = item.container.textContent ?? '';
+		expect(text).toContain('@member@social.example.test');
+		expect(text).toContain('<img src=x onerror="alert(1)">');
+		expect(item.container.querySelector('img')).toBeNull();
+		expect(text.includes('private@example.test')).toBe(root);
+		expect(text).toContain('担当者');
+		expect(text).toContain('確認しました');
+		const buttons = Array.from(item.container.querySelectorAll('button'));
+		const permit = buttons.find(button => button.textContent?.includes('permit'));
+		const oppose = buttons.find(button => button.textContent?.includes('oppose'));
+		if (root) {
+			expect(permit?.disabled).toBe(true);
+			expect(oppose).toBeUndefined();
+		} else {
+			expect(permit).toBeUndefined();
+			expect(oppose?.disabled).toBe(false);
+		}
+	});
+
+	test('モデレーターは取得でき、本人の反対理由とリビジョンだけを送る', async () => {
+		Object.assign($i!, { id: 'moderator', isAdmin: false, isModerator: true });
+		const row = adminRow();
+		Object.assign(row.review, { isRoot: false, canVote: true, canFinalize: false });
+		mocks.api.mockResolvedValueOnce([row]);
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		item.state.openVote(row, 'oppose');
+		expect(item.state.voteDialog?.choice).toBe('oppose');
+		await item.state.submitVote('ルールへの同意を確認できません');
+		expect(mocks.api).toHaveBeenCalledWith('admin/vote-registration', { applicationId: row.id, choice: 'oppose', reason: 'ルールへの同意を確認できません', revision: 'review-revision-1' });
+		expect(item.state.voteDialog).toBeNull();
+		expect(row.additionalContacts).toBeNull();
+	});
+
+	test('未投票・反対票があれば鯖缶でも許可を送らず、通常管理者は最終判断できない', async () => {
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		const row = adminRow();
+		row.review.canFinalize = false;
+		await item.state.approve(row);
+		row.review.canFinalize = true;
+		row.review.isRoot = false;
+		await item.state.approve(row);
+		await item.state.reject(row);
+		expect(mocks.confirm).not.toHaveBeenCalled();
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+	});
+
+	test('モデレーターへ降格すると以前のメール・連絡先・審査理由を消し再取得する', async () => {
+		const row = adminRow();
+		mocks.api.mockResolvedValueOnce([row]);
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		Object.assign($i!, { isAdmin: false, isModerator: true });
+		expect(row.email).toBeNull();
+		expect(row.additionalContacts).toBeNull();
+		expect(row.reason).toBe('');
+		expect(row.review.voters[0].reason).toBeNull();
+		await flush();
+		expect(item.state.items).toEqual([]);
+	});
+
+	test('権限を失うと投票ダイアログを閉じ、遅れた送信を止める', async () => {
+		const row = adminRow();
+		row.review.canVote = true;
+		mocks.api.mockResolvedValueOnce([row]);
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		item.state.openVote(row, 'oppose');
+		Object.assign($i!, { isAdmin: false, isModerator: false });
+		expect(item.state.authorized).toBe(false);
+		expect(item.state.voteDialog).toBeNull();
+		expect(item.state.items).toEqual([]);
+		mocks.api.mockClear();
+		await item.state.submitVote('送信してはいけない');
+		await item.state.runLegacyCleanup();
+		expect(mocks.api).not.toHaveBeenCalled();
+	});
+
+	test('全員賛成の表示後に審査が変わったら最新状態へ更新し再許可しない', async () => {
+		const row = adminRow();
+		mocks.api.mockResolvedValueOnce([row]);
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		const updated = adminRow();
+		updated.review.canFinalize = false;
+		mocks.api.mockRejectedValueOnce({ code: 'REGISTRATION_REVIEW_CHANGED' }).mockResolvedValueOnce([updated]);
+		await item.state.approve(row);
+		expect(mocks.api).toHaveBeenCalledWith('admin/approve-registration', { applicationId: row.id, revision: 'review-revision-1' });
+		expect(mocks.alert).toHaveBeenCalledWith({ type: 'warning', text: 'reviewChanged' });
+		expect(item.state.items).toEqual([updated]);
+		mocks.api.mockClear();
+		await item.state.approve(updated);
+		expect(mocks.api).not.toHaveBeenCalled();
+	});
+
+	test('サーバーが権限喪失を返したらデータを破棄し再取得しない', async () => {
+		const row = adminRow();
+		mocks.api.mockResolvedValueOnce([row]);
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		mocks.api.mockRejectedValueOnce({ code: 'REGISTRATION_REVIEW_FORBIDDEN' });
+		await item.state.reject(row);
+		expect(item.state.authorized).toBe(false);
+		expect(item.state.items).toEqual([]);
+		expect(row.email).toBeNull();
+		expect(mocks.api).toHaveBeenCalledTimes(2);
+	});
+
+	test('反対理由のAPIエラーはダイアログに表示し、理由の再入力を許可する', async () => {
+		const row = adminRow();
+		row.review.canVote = true;
+		mocks.api.mockResolvedValueOnce([row]);
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		item.state.openVote(row, 'oppose');
+		mocks.api.mockRejectedValueOnce({ code: 'REGISTRATION_REVIEW_REASON_REQUIRED' });
+		await item.state.submitVote('');
+		expect(item.state.voteDialog?.choice).toBe('oppose');
+		expect(item.state.voteError).toBe('reasonRequired');
+		await item.state.submitVote('確認できないため');
+		expect(item.state.voteDialog).toBeNull();
+	});
+
+	test('管理者が却下済みを選ぶと一覧を保持して読み取り専用サマリを表示する', async () => {
+		const item = mountSetup<AdminSetup>(RegistrationApplications, {}, true);
+		await flush();
+		mocks.api.mockClear();
+		const row = { ...adminRow(), status: 'rejected' };
+		const pendingSummary = deferred<{ cleanedCount: number; alreadyCleanedCount: number; emailRetainedCount: number; executedAt: string }>();
+		mocks.api.mockResolvedValueOnce([row]).mockReturnValueOnce(pendingSummary.promise);
+
+		item.state.status = 'rejected';
+		await flush();
+		expect(mocks.api).toHaveBeenNthCalledWith(1, 'admin/registration-applications', { status: 'rejected', limit: 20, offset: 0 }, undefined, expect.any(AbortSignal));
+		expect(mocks.api).toHaveBeenNthCalledWith(2, 'admin/cleanup-legacy-rejected-registrations', { execute: false }, undefined, expect.any(AbortSignal));
+		expect(item.state.items).toEqual([row]);
+
+		pendingSummary.resolve({ cleanedCount: 1, alreadyCleanedCount: 2, emailRetainedCount: 3, executedAt: '2026-09-18T00:00:00Z' });
+		await flush();
+		expect(mocks.api).toHaveBeenCalledTimes(2);
+		expect(item.state.items).toEqual([row]);
+		expect(item.state.summary).toEqual({ cleanedCount: 2, emailRetainedCount: 3, legacyCount: 1 });
+		expect(item.state.loading).toBe(false);
+		expect(item.state.loadFailed).toBe(false);
+		expect(item.container.textContent).toContain('@member');
+		expect(item.container.textContent).toContain('rejectedPrivacySummary');
+		expect(item.container.textContent).toContain('personalDataDeleted');
+		expect(item.container.textContent).toContain('emailRetained');
+		expect(item.container.textContent).toContain('legacyNotCleaned');
+		expect(mocks.alert).not.toHaveBeenCalled();
+		expect(mocks.confirm).not.toHaveBeenCalled();
+	});
+
+	test('モデレーターにはcleanupサマリも破壊的操作も許可しない', async () => {
+		Object.assign($i!, { isAdmin: false, isModerator: true });
+		const item = mountSetup<AdminSetup>(RegistrationApplications, {}, true);
+		await flush();
+		const row = { ...adminRow(), status: 'rejected' };
+		row.review.isRoot = false;
+		mocks.api.mockResolvedValueOnce([row]);
+		item.state.status = 'rejected';
+		await flush();
+		await item.state.loadSummary();
+		await item.state.runLegacyCleanup();
+		await item.state.runLegacyCleanupDryRun();
+		expect(mocks.api).toHaveBeenCalledTimes(2);
+		expect(mocks.api).toHaveBeenLastCalledWith('admin/registration-applications', { status: 'rejected', limit: 20, offset: 0 }, undefined, expect.any(AbortSignal));
+		expect(mocks.api.mock.calls.every(([endpoint]) => endpoint === 'admin/registration-applications')).toBe(true);
+		expect(item.state.items).toEqual([row]);
+		expect(item.state.summary).toBeNull();
+		expect(item.container.textContent).toContain('@member');
+		expect(item.container.textContent).not.toContain('rejectedPrivacySummary');
+		expect(mocks.alert).not.toHaveBeenCalled();
+		expect(mocks.confirm).not.toHaveBeenCalled();
+	});
+
+	test('追加読込が失敗したら以前の申請も隠し、失敗状態を表示する', async () => {
+		const rows = Array.from({ length: 20 }, (_, index) => ({ ...adminRow(), id: String(index) }));
+		mocks.api.mockResolvedValueOnce(rows);
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		mocks.api.mockRejectedValueOnce(new Error('offline'));
+		await item.state.loadMore();
+		expect(item.state.items).toEqual([]);
+		expect(item.state.loadFailed).toBe(true);
+		expect(rows.every(row => row.email === null)).toBe(true);
+	});
+});
+
+describe('反対理由を必須にするダイアログ', () => {
+	type VoteSetup = { reason: string; validationError: string | null; submit: () => void };
+	test.each(['', '  \n ', '\u200B\u2060', '\u0000\u0001', '\u0007', '\u034F', '\uFE0F', '\u0301\u0308', '\u2800'])('空欄・空白・不可視文字だけ（%j）を送信しない', reason => {
+		const onSubmit = vi.fn();
+		const item = mountSetup<VoteSetup>(RegistrationVoteDialog, { choice: 'oppose', username: 'member', busy: false, error: null, onSubmit });
+		item.state.reason = reason;
+		item.state.submit();
+		expect(onSubmit).not.toHaveBeenCalled();
+		expect(item.state.validationError).toBe('reasonRequired');
+	});
+
+	test('300文字の理由は送信でき、301文字は拒否する（陽性対照）', () => {
+		const onSubmit = vi.fn();
+		const item = mountSetup<VoteSetup>(RegistrationVoteDialog, { choice: 'oppose', username: 'member', busy: false, error: null, onSubmit });
+		item.state.reason = 'あ'.repeat(301);
+		item.state.submit();
+		expect(onSubmit).not.toHaveBeenCalled();
+		expect(item.state.validationError).toBe('reasonTooLong');
+		item.state.reason = 'あ'.repeat(300);
+		item.state.submit();
+		expect(onSubmit).toHaveBeenCalledWith('あ'.repeat(300));
+	});
+
+	test('賛成時のメモは任意で、閉じた後は理由を残さない', () => {
+		const onSubmit = vi.fn();
+		const item = mountSetup<VoteSetup>(RegistrationVoteDialog, { choice: 'agree', username: 'member', busy: false, error: null, onSubmit });
+		item.state.submit();
+		expect(onSubmit).toHaveBeenCalledWith('');
+		item.state.reason = '保管しない判断メモ';
+		const state = item.state;
+		item.unmount();
+		expect(state.reason).toBe('');
 	});
 });
 
@@ -744,7 +1011,7 @@ describe('登録設定のテンプレート契約', () => {
 		const admin = readFileSync(resolve(root, 'pages/admin/registration-applications.vue'), 'utf8');
 		const application = readFileSync(resolve(root, 'components/MkRegistrationApplication.vue'), 'utf8');
 		const moderation = readFileSync(resolve(root, 'pages/admin/moderation.vue'), 'utf8');
-		expect(admin).toContain('<MkInfo v-if="!applicationsEnabled">');
+		expect(admin).toContain('<MkInfo v-else-if="!applicationsEnabled">');
 		expect(admin).toContain('modeCopy.managementPaused');
 		expect(admin).toContain('<div v-else class="_gaps_m">');
 		expect(application).toContain(':href="tosUrl"');

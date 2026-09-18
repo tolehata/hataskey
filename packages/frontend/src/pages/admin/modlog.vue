@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <PageWithHeader :actions="headerActions" :tabs="headerTabs">
 	<div class="_spacer" style="--MI_SPACER-w: 900px;">
 		<div class="_gaps">
+			<div v-if="props.applicationId">{{ i18n.ts._hata._registrationApplications._review.moderationLogTarget }}: {{ props.applicationId }} · <MkA to="/admin/modlog" class="_link">{{ i18n.ts.all }}</MkA></div>
 			<MkPaginationControl :paginator="paginator" canFilter>
 				<MkSelect v-model="type" :items="typeDef" style="margin: 0; flex: 1;">
 					<template #label>{{ i18n.ts.type }}</template>
@@ -58,6 +59,10 @@ import MkButton from '@/components/MkButton.vue';
 import MkPaginationControl from '@/components/MkPaginationControl.vue';
 import { Paginator } from '@/utility/paginator.js';
 
+const props = defineProps<{
+	applicationId?: string;
+}>();
+
 const {
 	model: type,
 	def: typeDef,
@@ -77,6 +82,7 @@ const paginator = markRaw(new Paginator('admin/show-moderation-logs', {
 	computedParams: computed(() => ({
 		type: type.value,
 		userId: moderatorId.value === '' ? null : moderatorId.value,
+		applicationId: props.applicationId,
 	})),
 }));
 
