@@ -8,6 +8,9 @@ import { prefer } from '@/preferences.js';
 import { PREF_DEF } from '@/preferences/def.js';
 import { getInitialPrefValue } from '@/preferences/manager.js';
 
+// WAV を更新したら、配信キャッシュを切り替えるために版も更新する。
+const HATASKEY_SOUND_VERSION = 'komorebi-v12';
+
 let ctx: AudioContext;
 const cache = new Map<string, AudioBuffer>();
 let canPlay = true;
@@ -183,7 +186,7 @@ async function playMisskeySfxFileInternal(soundStore: SoundStore): Promise<boole
 	if (isMute() || masterVolume === 0 || soundStore.volume === 0) {
 		return true; // ミュート時は成功として扱う
 	}
-	const url = soundStore.type === '_driveFile_' ? soundStore.fileUrl : `/client-assets/sounds/${soundStore.type}.${soundStore.type.startsWith('hataskey-sound/') ? 'wav' : 'mp3'}`;
+	const url = soundStore.type === '_driveFile_' ? soundStore.fileUrl : `/client-assets/sounds/${soundStore.type}.${soundStore.type.startsWith('hataskey-sound/') ? `wav?v=${HATASKEY_SOUND_VERSION}` : 'mp3'}`;
 	const buffer = await loadAudio(url).catch(() => {
 		return undefined;
 	});

@@ -91,7 +91,7 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 		<div ref="scrollEl" :class="$style.scroll">
 			<div data-hata-collapse-part :class="$style.bannerStack" :data-rss="rssEnabled ? 'true' : undefined">
 				<Hk3RssReader v-if="rssEnabled" :interrupted="bannerOn" :paused="rssEffectPaused" :compact="compact" :motion="motionEnabled" @settings="openRssSettings"/>
-				<button v-if="bannerShown" ref="bannerEl" type="button" :class="$style.banner" :data-kind="bannerToast ? 'toast' : 'queue'" :tabindex="bannerOn ? undefined : -1" :inert="!bannerOn" :aria-hidden="!bannerOn || undefined" @click="onBannerClick">
+				<button v-if="bannerShown" ref="bannerEl" type="button" :class="$style.banner" :data-kind="bannerToast ? 'toast' : 'queue'" :tabindex="bannerOn ? undefined : -1" :inert="!bannerOn" :aria-hidden="!bannerOn || undefined" :aria-label="bannerToast ? undefined : bannerQueueLabel" @click="onBannerClick">
 					<span ref="flashEl" :class="$style.flash" aria-hidden="true"></span>
 					<span ref="flash2El" :class="$style.flash2" aria-hidden="true"></span>
 					<span v-if="bannerToast" :key="bannerToast.id" ref="bannerContentEl" :class="$style.bannerContent">
@@ -107,19 +107,8 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 						</template>
 					</span>
 					<span v-else key="queue" ref="bannerContentEl" :class="$style.bannerContent">
-						<span :class="$style.rise"><ArrowUp :size="compact ? 18 : 20" :class="$style.riseIcon"/></span>
-						<template v-if="bannerExternalText">
-							<span ref="facesEl" :class="$style.faces">
-								<img v-for="avatar in bannerExternalAvatars" :key="avatar.id" :src="avatar.url" alt="" :class="$style.face" referrerpolicy="no-referrer" decoding="async"/>
-							</span>
-							<span :class="$style.bannerText"><Mfm :text="bannerExternalText" :plain="true" :nowrap="true" :nyaize="false" :author="bannerExternalNotice?.author ?? undefined" :emojiUrls="bannerExternalNotice?.emojiUrls"/></span>
-						</template>
-						<template v-else>
-							<span ref="facesEl" :class="$style.faces">
-								<MkAvatar v-for="n in bannerFaces" :key="n.id" :user="n.user" :class="$style.face"/>
-							</span>
-							<span ref="qcountEl" :class="$style.qcount">{{ bannerCount }}</span>
-						</template>
+						<MkTimelineNewNotesContent :avatars="bannerExternalNotice ? bannerExternalAvatars : bannerFaces" :count="bannerExternalNotice ? bannerExternalNotice.count : bannerCount" :text="bannerExternalText ?? undefined" :author="bannerExternalNotice?.author" :emojiUrls="bannerExternalNotice?.emojiUrls" :icon="bannerExternalNotice?.icon" :motion="motionEnabled" :compact="compact"/>
+						<span :class="$style.queueStatus" role="status" aria-atomic="true">{{ hasQueued ? bannerQueueLabel : '' }}</span>
 					</span>
 				</button>
 			</div>
@@ -166,9 +155,10 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useId, watch } from 'vue';
-import { ArrowUp, AtSign, Ellipsis, Bell, ChartBar, Check, Clock, Paperclip, Pencil, SmilePlus, Star, Trash2, Eye, Filter, Heart, Image, Moon, Quote, Repeat2, Reply, Rss, SendHorizontal, Sun, UserPlus, Zap, ZapOff } from '@lucide/vue';
+import { AtSign, Ellipsis, Bell, ChartBar, Check, Clock, Paperclip, Pencil, SmilePlus, Star, Trash2, Eye, Filter, Heart, Image, Moon, Quote, Repeat2, Reply, Rss, SendHorizontal, Sun, UserPlus, Zap, ZapOff } from '@lucide/vue';
 import * as Misskey from 'cherrypick-js';
 import Hk3Note from './Hk3Note.vue';
+import MkTimelineNewNotesContent from '@/components/MkTimelineNewNotesContent.vue';
 import Hk3PostSuccess from './Hk3PostSuccess.vue';
 import Hk3RssReader from './Hk3RssReader.vue';
 import Hk3WelcomeText from './Hk3WelcomeText.vue';
@@ -415,8 +405,6 @@ const bannerEl = shallowRef<HTMLElement | null>(null);
 const bannerContentEl = shallowRef<HTMLElement | null>(null);
 const flashEl = shallowRef<HTMLElement | null>(null);
 const flash2El = shallowRef<HTMLElement | null>(null);
-const facesEl = shallowRef<HTMLElement | null>(null);
-const qcountEl = shallowRef<HTMLElement | null>(null);
 
 const filterState = computed(() => store.r.tl.value.filter);
 
@@ -539,7 +527,7 @@ const bannerToastEmojiUrls = computed(() => {
 	return urls;
 });
 const bannerQueue = computed(() => queue.value.length > 0 ? queue.value : lastQueue.value);
-const bannerFaces = computed(() => bannerQueue.value.slice(0, 3));
+const bannerFaces = computed(() => bannerQueue.value.slice(0, 3).map(note => ({ id: note.id, user: note.user })));
 const bannerCount = computed(() => bannerQueue.value.length);
 // 外部TLの新着は件数などの文言を外部TL側が作る。消える演出の間も直前の文言を残す。
 const lastExternalNotice = shallowRef<HataskeyTimelineNewNotes | null>(null);
@@ -553,6 +541,7 @@ watch(queue, notes => { if (notes.length > 0) lastExternalNotice.value = null; }
 const bannerExternalNotice = computed(() => externalNotice.value ?? (queue.value.length > 0 ? null : lastExternalNotice.value));
 const bannerExternalText = computed(() => bannerExternalNotice.value?.text ?? null);
 const bannerExternalAvatars = computed(() => bannerExternalNotice.value?.avatars ?? []);
+const bannerQueueLabel = computed(() => bannerExternalNotice.value?.text ?? i18n.tsx.newNoteRecivedCount({ n: bannerCount.value }));
 
 const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const systemReducedMotion = ref(motionQuery.matches);
@@ -879,6 +868,9 @@ function track(animation: Animation | undefined): Animation | undefined {
 	if (animation) {
 		bannerAnimations.push(animation);
 		void animation.finished.catch(() => {}).then(() => {
+			// Completed forwards effects still affect the element until canceled.
+			const fill = animation.effect?.getTiming().fill;
+			if (animation.playState === 'finished' && (fill === 'forwards' || fill === 'both')) return;
 			bannerAnimations = bannerAnimations.filter(item => item !== animation);
 		});
 	}
@@ -954,7 +946,7 @@ watch(bannerOn, async on => {
 	}
 	if (revision !== bannerRevision || bannerOn.value) return;
 	bannerShown.value = false;
-	bannerAnimations = [];
+	stopBannerAnimations();
 	navEl.value?.animate([
 		{ boxShadow: 'inset 0 -4px 0 var(--hk3-accent)' },
 		{ boxShadow: 'inset 0 0 0 transparent' },
@@ -986,19 +978,7 @@ watch(() => currentToast.value?.id ?? (hasQueued.value ? 'queue' : null), async 
 	bannerFlash();
 });
 
-watch(() => queue.value.length, async (count, prev) => {
-	if (count <= (prev ?? 0) || !motion()) return;
-	await nextTick();
-	if (count !== queue.value.length || !bannerOn.value || !bannerShown.value) return;
-	const first = facesEl.value?.firstElementChild as HTMLElement | null | undefined;
-	first?.animate([
-		{ transform: 'translateX(-14px) scale(0.3)', opacity: 0, marginLeft: '-26px' },
-		{ transform: 'translateX(0) scale(1)', opacity: 1, marginLeft: '0px' },
-	], { duration: 520, easing: 'cubic-bezier(0.34, 1.4, 0.64, 1)' });
-	qcountEl.value?.animate([
-		{ transform: 'translateY(8px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 },
-	], { duration: 380, easing: EASE_OUT });
-});
+
 
 // ===== 無限スクロール =====
 let observer: IntersectionObserver | null = null;
@@ -1366,6 +1346,8 @@ defineExpose({ scrollTop, reload });
 }
 
 .banner {
+	--hata-new-notes-accent: var(--hk3-accent);
+	--hata-new-notes-fg: var(--hk3-bg);
 	position: relative;
 	width: 100%;
 	display: flex;
@@ -1418,6 +1400,8 @@ defineExpose({ scrollTop, reload });
 	}
 }
 
+.queueStatus { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
 .bannerLead {
 	display: flex;
 	align-items: center;
@@ -1427,7 +1411,7 @@ defineExpose({ scrollTop, reload });
 	grid-column: 1;
 }
 
-.bannerFace, .face {
+.bannerFace {
 	width: 26px;
 	height: 26px;
 	flex: none;
@@ -1443,11 +1427,6 @@ defineExpose({ scrollTop, reload });
 	border-radius: 50% !important;
 	overflow: hidden;
 	:global(img) { border-radius: 50% !important; }
-}
-
-.face {
-	margin-right: -6px;
-	border-color: var(--hk3-accent);
 }
 
 .bannerIcon { flex: none; }
@@ -1476,34 +1455,6 @@ defineExpose({ scrollTop, reload });
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-
-.rise {
-	display: inline-flex;
-	width: 20px;
-	height: 20px;
-	overflow: hidden;
-	flex: none;
-}
-
-.riseIcon {
-	display: block;
-	animation: hk3Rise 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-
-@keyframes hk3Rise {
-	0% { transform: translateY(70%); opacity: 0; }
-	35% { opacity: 1; }
-	65% { opacity: 1; }
-	100% { transform: translateY(-70%); opacity: 0; }
-}
-
-.faces { display: flex; flex: none; }
-
-.qcount {
-	display: inline-block;
-	margin-left: 8px;
-	font-variant-numeric: tabular-nums;
 }
 
 .state {
@@ -1548,7 +1499,4 @@ defineExpose({ scrollTop, reload });
 	color: var(--hk3-neutral-600);
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.riseIcon { animation: none; }
-}
 </style>

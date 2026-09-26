@@ -205,7 +205,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div ref="topNavStackEl" :class="$style.topNavStack" :data-navbar-notice="notificationToasts.navbarNotice.value?.kind" :style="emojiVoteNavbarStackStyle">
 					<div ref="notificationOutlineEl" :class="$style.topPillFrame" :data-emoji-celebrating="emojiVoteInNavbar && emojiVoteNavbarState.celebrating" :data-emoji-leaving="emojiVoteInNavbar && emojiVoteNavbarState.leaving">
 						<MkLtlEmojiVoteOutline v-if="emojiVoteInNavbar" :target="notificationOutlineEl"/>
-						<div :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value" :data-new-notes="!!navbarNewNotes" :data-emoji-vote="emojiVoteInNavbar">
+						<div :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value" :data-new-notes="!!navbarNewNotesContent" :data-emoji-vote="emojiVoteInNavbar">
 							<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${notificationToasts.integrated.value && !notificationToasts.surface.value ? notificationToasts.height.value : 0}px` }"></div>
 							<div v-show="!mobileNotificationOnly" ref="emojiVoteNavbarNav" :class="$style.topPillNav">
 								<button v-if="!isDesktop" type="button" :class="$style.avatarBtn" :aria-label="copy.account" @click="openAccountMenu">
@@ -253,11 +253,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 								</div>
 							</div>
 							<div ref="ltlEmojiVoteNavbarTarget" :class="$style.emojiVoteNavbarViewport" :data-active="emojiVoteInNavbar"></div>
-							<div :class="$style.newNotesViewport" :data-active="!!navbarNewNotes" :aria-hidden="!navbarNewNotes">
+							<div :class="$style.newNotesViewport" :data-active="!!navbarNewNotes" :aria-hidden="!navbarNewNotes" :inert="!navbarNewNotes">
 								<div :class="$style.newNotesContent">
-									<button class="_button" :class="$style.newNotesButton" type="button" :disabled="!navbarNewNotes" @click="showNavbarNewNotes">
-										<i :class="navbarNewNotes?.icon ?? 'ti ti-arrow-up'" aria-hidden="true"></i>
-										<span role="status" aria-atomic="true">{{ navbarNewNotes?.text }}</span>
+									<button class="_button" :class="$style.newNotesButton" type="button" :disabled="!navbarNewNotes" :aria-label="navbarNewNotesLabel" @click="showNavbarNewNotes">
+										<span ref="newNotesFlashEl" :class="$style.newNotesFlash" aria-hidden="true"></span>
+										<span ref="newNotesContentEl" :class="$style.newNotesVisual"><MkTimelineNewNotesContent :avatars="navbarNewNotesContent?.avatars ?? []" :count="navbarNewNotesContent?.count" :text="navbarNewNotesContent?.text" :author="navbarNewNotesContent?.author" :emojiUrls="navbarNewNotesContent?.emojiUrls" :icon="navbarNewNotesContent?.icon" :motion="newNotesMotionEnabled" :compact="!isDesktop"/></span>
+										<span :class="$style.newNotesStatus" role="status" aria-atomic="true">{{ navbarNewNotes ? navbarNewNotesLabel : '' }}</span>
 									</button>
 								</div>
 							</div>
@@ -475,10 +476,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, defineAsyncComponent, watch } from 'vue';
 import { instanceName } from '@@/js/config.js';
 import XCommon from './_common_/common.vue';
+import MkTimelineNewNotesContent from '@/components/MkTimelineNewNotesContent.vue';
 import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
 import { useHataskeyNavbarNotices } from '@/composables/use-hataskey-navbar-notices.js';
 import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
-import { createHataskeyTimelineNewNotes, hataskeyTimelineNewNotesKey } from '@/utility/hataskey-timeline-new-notes.js';
+import { createHataskeyTimelineNewNotes, hataskeyTimelineNewNotesKey, useRetainedHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
 import type { PageMetadata } from '@/page.js';
 import type { TimelineCollectionKind } from '@/utility/hatasaba-navigation.js';
 import type { HataSideButton, HataSideGroup, HataSideWidget, HataSideWidgetKind } from '@/utility/hata-side-studio.js';
@@ -1697,6 +1699,52 @@ const timelineNewNotes = createHataskeyTimelineNewNotes(() => {
 });
 provide(hataskeyTimelineNewNotesKey, timelineNewNotes);
 const navbarNewNotes = timelineNewNotes.notice;
+const newNotesMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+const newNotesReducedMotion = ref(newNotesMotionQuery.matches);
+const newNotesMotionEnabled = computed(() => prefer.r.animation.value && !newNotesReducedMotion.value);
+const navbarNewNotesContent = useRetainedHataskeyTimelineNewNotes(navbarNewNotes, newNotesMotionEnabled);
+const navbarNewNotesLabel = computed(() => {
+	const notice = navbarNewNotesContent.value;
+	return notice?.count == null ? notice?.text : i18n.tsx.newNoteRecivedCount({ n: notice.count });
+});
+const newNotesFlashEl = ref<HTMLElement | null>(null);
+const newNotesContentEl = ref<HTMLElement | null>(null);
+const newNotesAnimations = new Set<Animation>();
+let newNotesAnimationRevision = 0;
+function stopNewNotesAnimations() {
+	newNotesAnimationRevision++;
+	for (const animation of newNotesAnimations) animation.cancel();
+	newNotesAnimations.clear();
+}
+function animateNewNotes(el: HTMLElement | null, frames: Keyframe[], options: KeyframeAnimationOptions) {
+	if (!el?.animate) return;
+	const animation = el.animate(frames, options);
+	newNotesAnimations.add(animation);
+	void animation.finished.catch(() => {}).then(() => {
+		const fill = animation.effect?.getTiming().fill;
+		if (animation.playState === 'finished' && (fill === 'forwards' || fill === 'both')) return;
+		animation.cancel();
+		newNotesAnimations.delete(animation);
+	});
+}
+watch([() => navbarNewNotes.value != null, newNotesMotionEnabled], async ([active, animate]) => {
+	stopNewNotesAnimations();
+	if (!animate) return;
+	const revision = newNotesAnimationRevision;
+	await nextTick();
+	if (revision !== newNotesAnimationRevision) return;
+	if (active) {
+		animateNewNotes(newNotesContentEl.value, [{ transform: 'translateY(14px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 460, easing: 'cubic-bezier(.22,1,.36,1)' });
+		animateNewNotes(newNotesFlashEl.value, [{ clipPath: 'inset(0 50% 0 50%)', opacity: .55 }, { clipPath: 'inset(0 0% 0 0%)', opacity: .3, offset: .55 }, { clipPath: 'inset(0 0% 0 0%)', opacity: 0 }], { duration: 720, easing: 'cubic-bezier(.22,1,.36,1)' });
+	} else {
+		animateNewNotes(newNotesContentEl.value, [{ transform: 'translateY(0) scale(1)', opacity: 1, filter: 'blur(0)' }, { transform: 'translateY(-40%) scale(.92)', opacity: 0, filter: 'blur(2px)' }], { duration: 300, easing: 'cubic-bezier(.55,0,.8,.2)', fill: 'forwards' });
+	}
+});
+watch(navbarNewNotesContent, content => { if (content == null) stopNewNotesAnimations(); });
+onUnmounted(stopNewNotesAnimations);
+function onNewNotesMotionChange(event: MediaQueryListEvent) { newNotesReducedMotion.value = event.matches; }
+newNotesMotionQuery.addEventListener('change', onNewNotesMotionChange);
+onUnmounted(() => newNotesMotionQuery.removeEventListener('change', onNewNotesMotionChange));
 
 function showNavbarNewNotes() {
 	showTopBar.value = true;
@@ -3421,17 +3469,24 @@ onUnmounted(() => {
 .newNotesViewport[data-active='true'] { grid-template-rows:1fr; opacity:1; }
 .newNotesContent { min-height:0; overflow:hidden; }
 .newNotesButton {
-    display:flex; align-items:center; justify-content:center; gap:8px;
-    width:100%; min-height:44px; box-sizing:border-box; padding:8px 14px;
-    color:var(--hata-toast-fg); font:inherit; font-size:.85em; line-height:1.5;
-    text-align:center; word-break:normal; line-break:strict; overflow-wrap:anywhere; text-wrap:pretty;
-    transition:background .15s ease;
-    > i { flex:none; color:var(--MI_THEME-accent); }
-    > span { min-width:0; }
-    &:hover:not(:disabled) { background:color-mix(in srgb,var(--MI_THEME-accent) 12%,transparent); }
-    &:active:not(:disabled) { background:color-mix(in srgb,var(--MI_THEME-accent) 20%,transparent); }
-    &:focus-visible { outline:2px solid var(--MI_THEME-accent); outline-offset:-3px; border-radius:20px; }
+    --hata-new-notes-accent:var(--MI_THEME-accent);
+    --hata-new-notes-fg:var(--MI_THEME-fgOnAccent);
+    position:relative; display:flex; align-items:center; justify-content:center;
+    width:100%; height:48px; box-sizing:border-box; padding:0 20px;
+    background:var(--hata-new-notes-accent); color:var(--hata-new-notes-fg);
+    font:inherit; font-size:15px; font-weight:800; line-height:1.5;
+    overflow:hidden; transition:background .15s ease;
+    &:hover:not(:disabled) { background:color-mix(in srgb,var(--MI_THEME-accent) 90%,var(--MI_THEME-fg)); }
+    &:active:not(:disabled) { background:color-mix(in srgb,var(--MI_THEME-accent) 80%,var(--MI_THEME-fg)); }
+    &:focus-visible { outline:2px solid var(--MI_THEME-fgOnAccent); outline-offset:-3px; border-radius:0; }
 }
+.newNotesVisual { position:relative; display:inline-flex; min-width:0; max-width:100%; }
+.newNotesFlash { position:absolute; inset:0; background:var(--MI_THEME-fgOnAccent); opacity:0; pointer-events:none; }
+.newNotesStatus { position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+@media(max-width:1099px) {
+    .newNotesButton { height:44px; padding:0 16px; font-size:14px; }
+}
+
 .topBar[data-toast-motion='false'] .notificationViewport,
 .topBar[data-toast-motion='false'] .newNotesViewport,
 .topBar[data-toast-motion='false'] .newNotesButton,

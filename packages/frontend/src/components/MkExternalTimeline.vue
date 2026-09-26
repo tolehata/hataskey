@@ -160,10 +160,11 @@ const newNotesInNavbar = useHataskeyTimelineNewNotes(() => props.newNotesNavbarK
 	return {
 		text: behavior === 'count' ? i18n.tsx.newNoteRecivedCount({ n: formatCount(queuedCount.value) }) : i18n.ts.newNoteRecived,
 		icon: 'ti ti-arrow-up',
+		count: behavior === 'count' ? queuedCount.value : undefined,
 		show: releaseQueue,
 		avatars: queuedNotes.value.slice(0, 3).flatMap((note: any) => {
 			const url = note.user?.avatarUrl;
-			return typeof url === 'string' && /^https?:\/\//i.test(url) ? [{ id: String(note.id), url }] : [];
+			return typeof url === 'string' && /^https?:\/\//i.test(url) ? [{ id: String(note.id), url, user: { ...note.user, host: note.user.host ?? props.host } }] : [];
 		}),
 		author: queuedAuthor.value,
 		emojiUrls: queuedEmojiUrls.value,

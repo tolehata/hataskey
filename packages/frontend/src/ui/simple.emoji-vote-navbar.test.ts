@@ -140,7 +140,7 @@ function fixture(options: { host?: boolean; tab?: string; deck?: boolean; page?:
 	const phase = Vue.ref('voting');
 	const declined = Vue.ref(false);
 	const round = Vue.ref({ id: 'round', noteId: 'trigger', total: 0, phase: 'voting' });
-	const notificationToasts = { items: Vue.ref<unknown[]>([]), integrated: Vue.ref(false), surface: Vue.ref(null), outline: Vue.ref<HTMLElement | null>(null) };
+	const notificationToasts = { navbarNotice: Vue.ref(null), items: Vue.ref<unknown[]>([]), integrated: Vue.ref(false), surface: Vue.ref(null), outline: Vue.ref<HTMLElement | null>(null) };
 	const navbarNewNotes = Vue.ref<{ text: string } | null>(null);
 	const paginator = { fetching: Vue.ref(false), error: Vue.ref(false) };
 	const notes = Vue.ref([{ id: 'trigger', text: '絵文字を選ぶぞ', userId: 'author', user: { id: 'author', host: null }, visibility: 'public', channelId: null, files: [], isHidden: options.hidden ?? false }] as unknown as entities.Note[]);
@@ -175,7 +175,7 @@ function fixture(options: { host?: boolean; tab?: string; deck?: boolean; page?:
 			const bindings = {
 				ref: Vue.ref, computed: Vue.computed, watch: Vue.watch, tab, deckActive, isPageView,
 				isCollectionTimelinePage: Vue.ref(false), isDesktop: Vue.ref(true),
-				notificationToasts, navbarNewNotes,
+				notificationToasts, navbarNewNotes, navbarNewNotesContent: navbarNewNotes,
 			};
 			state = execute(simple.setup, [
 				'normalLtlVoteActive', 'nativeNavbarVisible', 'ltlEmojiVoteNavbarTarget', 'emojiVoteNavbarState', 'emojiVoteInNavbar', 'mobileNotificationOnly',

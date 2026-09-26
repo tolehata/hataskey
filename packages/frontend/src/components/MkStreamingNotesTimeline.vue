@@ -754,6 +754,8 @@ const newNotesInNavbar = useHataskeyTimelineNewNotes(() => props.newNotesNavbarK
 	return {
 		text: behavior === 'count' ? i18n.tsx.newNoteRecivedCount({ n: count }) : i18n.ts.newNoteRecived,
 		icon: 'ti ti-arrow-up',
+		count,
+		avatars: paginator.queuedAheadItems.value.slice(0, 3).map(note => ({ id: note.id, user: note.user })),
 		show: releaseQueue,
 	};
 });

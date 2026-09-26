@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
 	navigate: vi.fn(), sound: vi.fn(), api: vi.fn(), channel: vi.fn(), dispose: vi.fn(), lists: vi.fn(), antennas: vi.fn(),
 	note: null as null | ((note: unknown) => void), rssMounts: 0, live: false,
 	storage: new Map<string, string>(),
+	externalNotice: null as any,
 	intersection: null as null | ((entries: { isIntersecting: boolean }[]) => void),
 }));
 vi.mock('@/cache.js', async () => {
@@ -23,7 +24,7 @@ vi.mock('@/cache.js', async () => {
 vi.mock('@/utility/sound.js', () => ({ playMisskeySfx: mocks.sound }));
 vi.mock('@/router.js', () => ({ mainRouter: { pushByPath: mocks.navigate } }));
 vi.mock('@/i.js', () => ({ $i: { id: 'me', mutedWords: [], hardMutedWords: [] } }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: {
+vi.mock('@/i18n.js', () => ({ i18n: { tsx: { newNoteRecivedCount: ({ n }: { n: number }) => `${n} new notes` }, ts: {
 	options: 'Options', showRenotes: 'Renotes', fileAttachedOnly: 'Files', withSensitive: 'Sensitive', retry: 'Retry',
 	_hata: {
 		_hataskeyUi3: { tabHome: 'Home', tabLocal: 'Local', tabSocial: 'Social', tabGlobal: 'Global', tabTrending: 'Trending', tabExternalHome: 'External home', tabExternalLocal: 'External local', realtime: 'LIVE', retry: 'Retry', loadFailed: 'Load failed', _rss: { settings: 'RSS settings' } },
@@ -63,10 +64,6 @@ vi.mock('@/utility/ltl-emoji-vote.js', async () => {
 	const { ref } = await import('vue');
 	return { useLtlEmojiVote: () => ({ round: ref(null), phase: ref('idle'), refresh: vi.fn() }) };
 });
-vi.mock('@/utility/hataskey-timeline-new-notes.js', async () => {
-	const { ref } = await import('vue');
-	return { hataskeyTimelineNewNotesKey: Symbol(), createHataskeyTimelineNewNotes: () => ({ notice: ref(null) }) };
-});
 vi.mock('./Hk3RssReader.vue', () => ({ default: {
 	props: ['interrupted', 'paused'],
 	setup() { mocks.rssMounts++; },
@@ -77,7 +74,18 @@ vi.mock('./Hk3Note.vue', () => ({ default: {
 	template: '<div :data-rendered-note="note.id" :data-badge-position="instanceBadgePosition" :data-audience-enabled="String(showAudienceIcons)" :data-note-size="size" />',
 } }));
 vi.mock('./Hk3PostSuccess.vue', () => ({ default: { render: () => null } }));
-vi.mock('@/components/MkExternalTimeline.vue', () => ({ default: { props: ['src'], template: '<div :data-external-timeline="src" />' } }));
+vi.mock('@/components/MkExternalTimeline.vue', async () => {
+	const { defineComponent, h, ref } = await import('vue');
+	const { useHataskeyTimelineNewNotes } = await import('@/utility/hataskey-timeline-new-notes.js');
+	mocks.externalNotice = ref(null);
+	return { default: defineComponent({
+		props: ['src', 'newNotesNavbarKey'],
+		setup(props) {
+			useHataskeyTimelineNewNotes(() => props.newNotesNavbarKey, mocks.externalNotice);
+			return () => h('div', { 'data-external-timeline': props.src });
+		},
+	}) };
+});
 vi.mock('@/components/MkLtlEmojiVote.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/MkNoteActionAnimation.vue', () => ({ default: { render: () => null } }));
 
@@ -90,7 +98,9 @@ async function mount(compact = false) {
 	host.dataset.hk3Theme = 'dark';
 	window.document.body.append(host);
 	const app = createApp({ render: () => h(Hk3Timeline, { compact }) });
-	for (const name of ['MkAvatar', 'MkLoading', 'Mfm']) app.component(name, { props: ['text'], template: '<span>{{ text }}</span>' });
+	app.component('MkLoading', { render: () => null });
+	app.component('MkAvatar', { props: ['user', 'link', 'preview'], template: '<span :data-avatar-user="user?.id" :data-avatar-decorations="JSON.stringify(user?.avatarDecorations)" :data-avatar-link="String(link)" :data-avatar-preview="String(preview)" />' });
+	app.component('Mfm', { props: ['text', 'author', 'emojiUrls'], template: '<span :data-mfm-author="author?.host" :data-mfm-emojis="JSON.stringify(emojiUrls)">{{ text }}</span>' });
 	app.mount(host);
 	cleanups.push(() => { app.unmount(); host.remove(); });
 	await settle();
@@ -107,6 +117,7 @@ beforeEach(() => {
 	prefer.r['external.host'].value = '';
 	prefer.r['external.enableOHTL'].value = false;
 	prefer.r['external.enableOLTL'].value = false;
+	mocks.externalNotice.value = null;
 	mocks.rssMounts = 0;
 	mocks.navigate.mockClear();
 	mocks.sound.mockClear();
@@ -352,5 +363,52 @@ describe('UI S audience icon tab gating', () => {
 		mocks.api.mockResolvedValue([{ id: 'restored-note', userId: 'other', user: { id: 'other' }, text: 'body' }]);
 		const host = await mount();
 		expect(host.querySelector('[data-rendered-note="restored-note"]')?.getAttribute('data-audience-enabled')).toBe(String(tab === 'following' || tab === 'social'));
+	});
+});
+
+
+describe('UI S new notes shared content', () => {
+	it('passes the newest three queued notes, counts and real decorations and releases that queue', async () => {
+		const host = await mount();
+		for (let n = 1; n <= 4; n++) mocks.note?.({ id: `new-${n}`, userId: `user-${n}`, user: { id: `user-${n}`, avatarDecorations: [{ id: 'deco', url: 'https://example.com/deco.png' }] }, text: 'hello' });
+		await settle();
+		const banner = host.querySelector<HTMLButtonElement>('[data-kind="queue"]')!;
+		expect(banner.getAttribute('aria-label')).toBe('4 new notes');
+		expect(banner.querySelector('[data-new-notes-part="count"]')?.textContent).toBe('4');
+		expect([...banner.querySelectorAll('[data-new-notes-face]')].map(el => el.getAttribute('data-new-notes-face'))).toEqual(['new-4', 'new-3', 'new-2']);
+		expect(banner.querySelector('[data-avatar-user="user-4"]')?.getAttribute('data-avatar-decorations')).toContain('deco.png');
+		expect(banner.querySelector('[data-avatar-user]')?.getAttribute('data-avatar-link')).toBe('false');
+		expect(banner.querySelector('[data-avatar-user]')?.getAttribute('data-avatar-preview')).toBe('false');
+		banner.click();
+		await settle();
+		expect(host.querySelector('[data-kind="queue"]')).toBeNull();
+		expect(host.querySelectorAll('[data-rendered-note]')).toHaveLength(4);
+	});
+
+	it('keeps external custom text, author, emoji dictionary and avatar metadata', async () => {
+		prefer.r['external.enabled'].value = true;
+		prefer.r['external.token'].value = 'token';
+		prefer.r['external.host'].value = 'external.example';
+		prefer.r['external.enableOHTL'].value = true;
+		const host = await mount();
+		navButton(host, 'External home').click();
+		await settle();
+		const show = vi.fn(() => { mocks.externalNotice.value = null; });
+		mocks.externalNotice.value = {
+			text: ':wave: new notes', icon: 'ti ti-arrow-up', show,
+			avatars: [{ id: 'external-note', url: 'https://external.example/avatar.png', user: { id: 'external-user', host: 'external.example', avatarDecorations: [{ id: 'external-deco', url: 'https://external.example/deco.png' }] } }],
+			author: { id: 'external-user', host: 'external.example' }, emojiUrls: { wave: 'https://external.example/wave.png' },
+		};
+		await settle();
+		const banner = host.querySelector<HTMLButtonElement>('[data-kind="queue"]')!;
+		expect(banner.getAttribute('aria-label')).toBe(':wave: new notes');
+		expect(banner.querySelector('[data-new-notes-part="count"]')).toBeNull();
+		expect(banner.querySelector('[data-mfm-author]')?.getAttribute('data-mfm-author')).toBe('external.example');
+		expect(banner.querySelector('[data-mfm-emojis]')?.getAttribute('data-mfm-emojis')).toContain('wave.png');
+		expect(banner.querySelector('[data-avatar-user="external-user"]')?.getAttribute('data-avatar-decorations')).toContain('external-deco');
+		banner.click();
+		await settle();
+		expect(show).toHaveBeenCalledOnce();
+		expect(host.querySelector('[data-kind="queue"]')).toBeNull();
 	});
 });

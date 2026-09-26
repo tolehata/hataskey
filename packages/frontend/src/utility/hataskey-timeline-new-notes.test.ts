@@ -1,14 +1,17 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { createApp, defineComponent, h, KeepAlive, nextTick, provide, ref } from 'vue';
+import type { entities } from 'cherrypick-js';
 import type { App, Ref } from 'vue';
+import type { HataskeyTimelineNewNotes } from './hataskey-timeline-new-notes.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createHataskeyTimelineNewNotes, hataskeyTimelineNewNotesKey, useHataskeyTimelineNewNotes } from './hataskey-timeline-new-notes.js';
+import { createHataskeyTimelineNewNotes, hataskeyTimelineNewNotesKey, useHataskeyTimelineNewNotes, useRetainedHataskeyTimelineNewNotes } from './hataskey-timeline-new-notes.js';
 
 let app: App | undefined;
 afterEach(() => {
 	app?.unmount();
 	app = undefined;
 	window.document.body.innerHTML = '';
+	vi.useRealTimers();
 });
 
 function mount() {
@@ -23,9 +26,9 @@ function mount() {
 		props: { source: { type: String, required: true } },
 		setup(props) {
 			const integrated = useHataskeyTimelineNewNotes(() => props.source, () => enabled.value && counts[props.source].value > 0 ? {
-				text: `${props.source}: ${counts[props.source].value} new notes`, icon: 'ti ti-arrow-up', show: () => show(props.source),
+				count: counts[props.source].value, text: `${props.source}: ${counts[props.source].value} new notes`, icon: 'ti ti-arrow-up', show: () => show(props.source),
 				...(props.source === 'external' ? {
-					avatars: [{ id: 'note-1', url: 'https://example.com/avatar.png' }],
+					avatars: [{ id: 'note-1', url: 'https://example.com/avatar.png', user: { id: 'external-user', host: 'example.com', avatarDecorations: [{ id: 'decoration', url: 'https://example.com/decoration.png' }] } as entities.UserLite }],
 					emojiUrls: { wave: 'https://example.com/wave.png' },
 				} : {}),
 			} : null);
@@ -68,7 +71,8 @@ describe('Hataskey navbar new notes', () => {
 		await nextTick();
 		await nextTick();
 		expect(current.root.querySelector('button')?.textContent).toBe('external: 7 new notes');
-		expect(current.context.notice.value?.avatars).toEqual([{ id: 'note-1', url: 'https://example.com/avatar.png' }]);
+		expect(current.context.notice.value?.count).toBe(7);
+		expect(current.context.notice.value?.avatars?.[0].user?.avatarDecorations).toEqual([{ id: 'decoration', url: 'https://example.com/decoration.png' }]);
 		expect(current.context.notice.value?.emojiUrls).toEqual({ wave: 'https://example.com/wave.png' });
 		current.counts.home.value = 20;
 		await nextTick();
@@ -135,5 +139,72 @@ describe('Hataskey navbar new notes', () => {
 		}));
 		app.mount(root);
 		expect(root.textContent).toBe('false');
+	});
+});
+
+
+describe('navbar retained new notes content', () => {
+	function retainedMount() {
+		const show = vi.fn();
+		const source = ref<HataskeyTimelineNewNotes | null>({ count: 3, text: '3 new notes', icon: 'ti ti-arrow-up', show });
+		const motion = ref(true);
+		let content: ReturnType<typeof useRetainedHataskeyTimelineNewNotes>;
+		app = createApp(defineComponent({ setup() {
+			content = useRetainedHataskeyTimelineNewNotes(source, motion);
+			return () => h('button', { inert: source.value == null, disabled: source.value == null, onClick: () => source.value?.show() }, content.value?.text);
+		} }));
+		const root = window.document.createElement('div');
+		window.document.body.append(root);
+		app.mount(root);
+		return { source, motion, root, show };
+	}
+
+	it('retains old text during collapse while disabling the action immediately', async () => {
+		vi.useFakeTimers();
+		const current = retainedMount();
+		current.source.value = null;
+		await nextTick();
+		const button = current.root.querySelector('button')!;
+		expect(button.textContent).toBe('3 new notes');
+		expect(button.disabled).toBe(true);
+		expect(button.hasAttribute('inert')).toBe(true);
+		button.click();
+		expect(current.show).not.toHaveBeenCalled();
+		vi.advanceTimersByTime(349);
+		await nextTick();
+		expect(button.textContent).toBe('3 new notes');
+		vi.advanceTimersByTime(1);
+		await nextTick();
+		expect(button.textContent).toBe('');
+	});
+
+	it('does not let an old collapse clear a newly received notice', async () => {
+		vi.useFakeTimers();
+		const current = retainedMount();
+		current.source.value = null;
+		vi.advanceTimersByTime(140);
+		current.source.value = { count: 4, text: '4 new notes', icon: 'ti ti-arrow-up', show: current.show };
+		vi.advanceTimersByTime(400);
+		await nextTick();
+		expect(current.root.querySelector('button')?.textContent).toBe('4 new notes');
+		expect(current.root.querySelector('button')?.disabled).toBe(false);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('clears immediately when motion is disabled and cleans pending timers on unmount', async () => {
+		vi.useFakeTimers();
+		const current = retainedMount();
+		current.source.value = null;
+		expect(vi.getTimerCount()).toBe(1);
+		current.motion.value = false;
+		await nextTick();
+		expect(current.root.querySelector('button')?.textContent).toBe('');
+		expect(vi.getTimerCount()).toBe(0);
+		current.motion.value = true;
+		current.source.value = { text: 'again', icon: 'ti ti-arrow-up', show: current.show };
+		current.source.value = null;
+		expect(vi.getTimerCount()).toBe(1);
+		app?.unmount(); app = undefined;
+		expect(vi.getTimerCount()).toBe(0);
 	});
 });

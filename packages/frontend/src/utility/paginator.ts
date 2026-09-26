@@ -33,6 +33,8 @@ export interface IPaginator<T = unknown, _T = T & MisskeyEntity> {
 	 */
 	items: Ref<_T[]> | ShallowRef<_T[]>;
 	queuedAheadItemsCount: Ref<number>;
+	/** Snapshot for previews; queue mutations remain owned by the paginator. */
+	readonly queuedAheadItems: Readonly<ShallowRef<readonly _T[]>>;
 	fetching: Ref<boolean>;
 	fetchingOlder: Ref<boolean>;
 	fetchingNewer: Ref<boolean>;
@@ -74,6 +76,7 @@ export class Paginator<
 	public items: SRef extends true ? ShallowRef<T[]> : Ref<T[]>;
 
 	public queuedAheadItemsCount = ref(0);
+	public readonly queuedAheadItems = shallowRef<readonly T[]>([]);
 	public fetching = ref(true);
 	public fetchingOlder = ref(false);
 	public fetchingNewer = ref(false);
@@ -186,6 +189,7 @@ export class Paginator<
 	public async init(): Promise<void> {
 		this.items.value = [];
 		this.aheadQueue = [];
+		this.queuedAheadItems.value = [];
 		this.queuedAheadItemsCount.value = 0;
 		this.fetching.value = true;
 
@@ -336,6 +340,7 @@ export class Paginator<
 			if (this.aheadQueue.length > MAX_QUEUE_ITEMS) {
 				this.aheadQueue = this.aheadQueue.slice(0, MAX_QUEUE_ITEMS);
 			}
+			this.queuedAheadItems.value = this.aheadQueue.slice();
 			this.queuedAheadItemsCount.value = this.aheadQueue.length;
 		} else {
 			if (this.order.value === 'oldest') {
@@ -387,6 +392,7 @@ export class Paginator<
 		if (this.aheadQueue.length > MAX_QUEUE_ITEMS) {
 			this.aheadQueue.pop();
 		}
+		this.queuedAheadItems.value = this.aheadQueue.slice();
 		this.queuedAheadItemsCount.value = this.aheadQueue.length;
 	}
 
@@ -394,6 +400,7 @@ export class Paginator<
 		if (this.aheadQueue.length === 0) return; // これやらないと余計なre-renderが走る
 		this.unshiftItems(this.aheadQueue);
 		this.aheadQueue = [];
+		this.queuedAheadItems.value = [];
 		this.queuedAheadItemsCount.value = 0;
 	}
 
