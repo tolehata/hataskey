@@ -39,11 +39,13 @@ allowBuilds:
   vue-demi: true
   exifreader: false
   protobufjs: false
+  pnpm: true
 ignorePatchFailures: false
 minimumReleaseAge: 10080 # delay 7days to mitigate supply-chain attack
 minimumReleaseAgeExclude:
   - happy-dom # セキュリティ修正のため一時的に。そのうち消すこと
   - undici@6.28.1 || 7.29.1 # 上流2026.9.0のセキュリティ修正
+  - nodemailer@9.1.1 # 上流2026.9.1のセキュリティ修正
 overrides:
   '@aiscript-dev/aiscript-languageserver': '-'
   'undici@^7': 7.29.1

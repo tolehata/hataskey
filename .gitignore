@@ -95,6 +95,11 @@ HATA-PITFALLS.md
 .codex/
 /.agents/
 
+# 作業ドラフト・作業資料 (計画書・実装メモ・引き継ぎ・試作。共有リポジトリにはコミットしない)
+# idea/ 直下の追跡済みファイルは上流由来の保管コードなので対象外
+/docs/
+/idea/*/
+
 # 一時出力・競合バックアップ・ヒープダンプ
 *.tmp
 *.bak
@@ -140,9 +145,3 @@ HATA-PITFALLS.md
 # 花常の開発書類・作業進捗・画像生成用リファレンス（実行時アセットではないため配布しない）
 /packages/frontend/hanaawase/
 
-# HataSNSCord アイコンパイロット（完成版には含めないローカル設計資産）
-/packages/frontend/src/components/hatacording-icons/HatacordingMascotIcon.vue
-/packages/frontend/src/components/hatacording-icons/UI-ICON-SPEC.md
-/packages/frontend/src/components/hatacording-icons/icon-manifest.json
-/packages/frontend/src/components/hatacording-icons/concepts/
-/packages/frontend/src/utility/hatacording-mascot-icon-contract.test.ts
