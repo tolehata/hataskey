@@ -116,7 +116,7 @@ function continueToForm() { if (allAgreed.value) emit('done'); }
 .body, .next > div { min-height: 0; overflow: hidden; }
 .body { padding: 0 16px; line-height: 1.8; overflow-wrap: anywhere; }
 .rules { padding-left: 24px; }
-.emailReuseWarning { white-space: pre-line; }
+.emailReuseWarning { white-space: pre-line; overflow-wrap: normal; }
 .agreement { display: flex; gap: 10px; align-items: center; padding: 16px 0; border-top: 1px solid var(--MI_THEME-divider); }
 .agreement input { accent-color: var(--MI_THEME-accent); width: 18px; height: 18px; }
 .hint { font-size: .9em; opacity: .75; }

@@ -107,12 +107,22 @@ describe('every media recording category retains its existing details', () => {
 describe('Hatady save errors name the field', () => {
 	const pages = [
 		{ id: 'basics', title: '', fields: [formField('title', '学んだこと', { required: true }), formField('body', '内容・感想', { maxlength: 4096 })] },
-		{ id: 'time', title: '', fields: [formField('durationSeconds', '運動時間', { type: 'duration', required: true })] },
+		{ id: 'time', title: '', fields: [formField('durationSeconds', '運動時間', { type: 'duration', min: 0, step: 1 })] },
 		{ id: 'sharing', title: '', fields: [formField('date', '記録日', { type: 'date', required: true })] },
 	];
-	test('a required duration of zero is treated as missing', () => {
-		expect(formValidation(pages[1].fields[0], { durationSeconds: 0 })).toBe('運動時間を入力してください');
-		expect(formValidation(pages[1].fields[0], { durationSeconds: 60 })).toBeNull();
+	test('required fields reject missing and blank values', () => {
+		for (const title of [null, '', '   ']) {
+			expect(formValidation(pages[0].fields[0], { title })).toBe('学んだことを入力してください');
+		}
+		expect(formValidation(pages[0].fields[0], { title: '新しく学んだこと' })).toBeNull();
+	});
+	test('optional duration accepts unrecorded and zero while validating supplied seconds', () => {
+		for (const durationSeconds of [null, undefined, '', 0, 60]) {
+			expect(formValidation(pages[1].fields[0], { durationSeconds })).toBeNull();
+		}
+		for (const durationSeconds of [-1, 0.5, NaN]) {
+			expect(formValidation(pages[1].fields[0], { durationSeconds })).not.toBeNull();
+		}
 	});
 	test('API validation errors are mapped to the matching field and page', () => {
 		const values = { title: '', body: 'x'.repeat(5000), date: '2026-09-23' };

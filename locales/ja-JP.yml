@@ -9837,7 +9837,7 @@ _hata:
       rejectedCredentialsDeletedAfter: "はその時点で削除されます。"
       rejectedEmailRetention: "は連続申請を防ぐため、申請日から90日経過後の定期削除まで保管されます。"
       noRejectionEmail: "結果をメールでお知らせします。"
-      emailReuseWarning: "審査中、または却下済みの申請情報が残っている間は、\n同じメールアドレスで再申請できません。"
+      emailReuseWarning: "審査中、または却下済みの申請情報が残っている間\u2060は、\n同じメールアドレスで再申請できません。"
       submit: "申請を送信する"
       usernameUnavailableAlert: "既に申請中のIDか、既に使用されているIDです。別のIDを使用してください。"
       invalidEmail: "メールアドレスの形式が正しくありません。"

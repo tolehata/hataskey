@@ -661,7 +661,6 @@ export class HatadyService {
 		if (!HATADY_LOG_KINDS.includes(kind)) throw new Error('invalid kind');
 		set.kind = kind;
 		const seconds = normalizeHatadyDuration(patch, log);
-		if (kind === 'exercise' && (seconds == null || seconds <= 0)) throw new Error('exercise duration is required');
 		set.durationSeconds = seconds;
 		if (patch.durationSeconds !== undefined) set.durationMinutes = Math.floor((seconds ?? 0) / 60);
 		else if (patch.durationMinutes !== undefined) set.durationMinutes = patch.durationMinutes;
@@ -843,7 +842,6 @@ export class HatadyService {
 		const startedAt = normalizeHatadyStartedAt(params.startedAt);
 		const tags = normalizeHatadyTags(params.tags ?? (params.tag ? [params.tag] : []));
 		const details = mergeHatadyDetails(undefined, params.details, 'log');
-		if (kind === 'exercise' && (seconds == null || seconds <= 0)) throw new Error('exercise duration is required');
 		if (params.mediaWorkId != null && !(await this.hatadyLogsRepository.manager.getRepository(MiHatadyMediaWork).existsBy({ id: params.mediaWorkId, userId: user.id, kind: 'work' }))) throw new Error('no such work or access denied');
 		const now = new Date();
 		const studiedAt = params.studiedAt ?? now;

@@ -223,7 +223,7 @@ html:has([data-hataskey-entrance])::view-transition-new(hataskey-welcome){animat
 [data-hataskey-entrance] .based-on strong{font-family:Righteous,cursive;font-size:clamp(20px,2.6vw,34px);font-weight:400;color:var(--fg)}
 [data-hataskey-entrance] .hero-copy{flex:1 1 100%;width:100%;max-width:900px;margin:0 auto;text-align:center;font-size:clamp(15px,1.6vw,18px);line-height:1.9;color:var(--fgSoft);text-wrap:pretty;animation:hWelcome-heroCopyIn .85s cubic-bezier(.16,1,.3,1) .54s both}
 @container hataskey-entrance (min-width:700px){[data-hataskey-entrance] .hero-copy-lead{display:inline-block;white-space:nowrap}}
-[data-hataskey-entrance] .hero-copy-description{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;line-clamp:4;overflow:hidden;white-space:pre-line;overflow-wrap:anywhere}
+[data-hataskey-entrance] .hero-copy-description{display:block;white-space:pre-line;overflow-wrap:anywhere}
 [data-hataskey-entrance] .hero-copy-description :where(p,ul,ol,blockquote){margin:0}
 [data-hataskey-entrance] .hero-copy-description :where(ul,ol){padding:0;list-style-position:inside}
 [data-hataskey-entrance] .hero-copy-description a{color:var(--accentText);text-decoration:underline;text-underline-offset:.18em}

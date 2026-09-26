@@ -168,6 +168,7 @@ import { useGlobalEvent } from '@/events.js';
 import { useNoteRemoval } from '@/composables/use-note-removal.js';
 import { isHataskeyTimelineAllowed } from '@/utility/hataskey-timeline-availability.js';
 import { mainRouter } from '@/router.js';
+import * as sound from '@/utility/sound.js';
 
 withDefaults(defineProps<{
 	compact?: boolean;
@@ -485,6 +486,8 @@ function isKnown(id: string): boolean {
 
 function onStreamNote(note: Misskey.entities.Note) {
 	if (isKnown(note.id)) return;
+	// 通常UIと同じサウンド設定を使い、LIVE表示・新着待ちのどちらでも受信時に一度だけ鳴らす。
+	sound.playMisskeySfx($i && note.userId === $i.id ? 'noteMy' : 'note');
 	// LIVE中でも、読み進めている位置を動かさないよう、スクロール中の新着はバナーへ回す。
 	if (live.value && (scrollEl.value?.scrollTop ?? 0) < 8) {
 		notes.value.unshift(note);

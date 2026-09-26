@@ -75,7 +75,7 @@ let modalCloseCalls: number;
 let deferModalClose: boolean;
 let closed: ReturnType<typeof vi.fn>;
 
-const approvedIds = ['ui-s-layout', 'ui-s-hatask', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'hataskey-sounds', 'sound-preferences', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'upstream-update', 'script-errors'];
+const approvedIds = ['ui-s-layout', 'ui-s-hatask', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'hataskey-sounds', 'sound-preferences', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'ui-s-fixes', 'daily-fixes', 'upstream-update', 'script-errors'];
 const approvedPreviews = ['note-actions', 'emoji-changes'];
 const previewCopy: Record<string, string> = { 'note-actions': 'クリップに追加しました', 'emoji-changes': '絵文字の変更申請' };
 
@@ -241,7 +241,7 @@ describe('production update introduction', () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
-		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.8)');
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.8.1)');
 		expect(host.querySelector('header')?.textContent).not.toContain('HATASKEY RELEASE');
 		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('ui-s-layout');
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();

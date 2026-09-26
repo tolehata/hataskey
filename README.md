@@ -5,7 +5,7 @@
 ## 概要
 
 - **ベースバージョン**: Misskey 2026.9.1（CherryPick ベース）
-- **最新バージョン**: [hata-12.8](./HATA-CHANGELOG.md#hata-128)
+- **最新バージョン**: [hata-12.8.1](./HATA-CHANGELOG.md#hata-1281)
 - **チェンジログ**: [HATA-CHANGELOG.md](./HATA-CHANGELOG.md)
 
 ## Hataskeyが使用されているインスタンス

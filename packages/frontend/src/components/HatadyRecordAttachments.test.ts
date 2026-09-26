@@ -130,6 +130,32 @@ afterEach(() => {
 	cleanups.splice(0).forEach(cleanup => cleanup());
 });
 
+describe('Hatady exercise duration', () => {
+	test.each([
+		{ mode: 'create', initialDuration: null },
+		{ mode: 'create', initialDuration: 1800 },
+		{ mode: 'edit', initialDuration: null },
+		{ mode: 'edit', initialDuration: 1800 },
+	] as const)('$mode saves without duration after starting with $initialDuration seconds', async ({ mode, initialDuration }) => {
+		const source = { id: 'exercise-log', kind: 'exercise', title: '散歩', studiedAt: timestamp, durationSeconds: initialDuration };
+		const form = await mountForm(HatadyComposer, mode === 'edit' ? { editLog: source } : { kind: 'exercise' });
+		const values = form.modelValue;
+		values.title = '散歩';
+		if (mode === 'create') values.durationSeconds = initialDuration;
+		expect(values.durationSeconds).toBe(initialDuration);
+		values.durationSeconds = null;
+		const visibleFields = form.pages.filter(page => !page.when || page.when(values)).flatMap(page => page.fields);
+		expect(visibleFields.filter(field => field.key === 'durationSeconds')).toHaveLength(1);
+		expect(visibleFields.map(field => formValidation(field, values)).filter(error => error != null)).toEqual([]);
+		await form.save(values);
+		expect(fixture.api).toHaveBeenLastCalledWith(`hata/hatady/logs/${mode === 'edit' ? 'update' : 'create'}`, expect.objectContaining({
+			kind: 'exercise', title: '散歩', durationSeconds: null,
+			...(mode === 'edit' ? { logId: source.id } : {}),
+		}));
+		expect(source.durationSeconds).toBe(initialDuration);
+	});
+});
+
 describe('Hatady record attachments', () => {
 	test('image validation accepts the empty and 16-image boundaries and rejects 17 images', () => {
 		const field = formField('files', '画像', { type: 'images', maxItems: 16 });

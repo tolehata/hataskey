@@ -5,7 +5,7 @@ export type HataWhatsNewCard = { id: string; label: string; icon: string; title:
 export type HataWhatsNewGroup = { label: string; title: string; feature?: 'ui-s' | 'recipes' | 'flowers'; cards: HataWhatsNewCard[] };
 export type HataWhatsNewStory = HataWhatsNewGroup & { id: string };
 export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = {
-	version: '2026.9.1-hata.12.8',
+	version: '2026.9.1-hata.12.8.1',
 	groups: [
 		{
 			label: 'Hataskey UI S', title: 'シンプル。使いやすい。でも、便利。', feature: 'ui-s', cards: [
@@ -136,6 +136,18 @@ export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = 
 				{ id: 'timeline-display', label: 'タイムライン', icon: 'ti ti-layout-list', title: '新着の人と画面を、見やすく。', points: [
 					'新着ノートの案内に、最大3人のアバターと投稿者の情報を表示します。',
 					'背景の表示設定が別の画面へ漏れる問題と、ノート削除時に周囲のノートが一瞬跳ねる問題を修正しました。',
+				] },
+			],
+		},
+		{
+			label: '12.8.1の修正', title: 'いつもの操作を、より使いやすく。', cards: [
+				{ id: 'ui-s-fixes', label: 'UI Sの修正', icon: 'ti ti-message-circle', title: '返信の操作と、新着のお知らせを。', points: [
+					'スレッドの返信を通常のノートと同じように表示・操作できるようにし、リアクション画像と件数、長いサーバー名の表示も整えました。',
+					'新着音が音の設定に従って鳴るよう修正しました。自分の投稿とほかの人の新着を区別し、同じノートで音が重複して鳴ることを防ぎます。',
+				] },
+				{ id: 'daily-fixes', label: '入力と案内の修正', icon: 'ti ti-pencil', title: '時間も案内も、自然に。', points: [
+					'Hatadyの運動時間は任意入力になり、未入力でも記録でき、保存済みの時間も消せます。しずく入手方法の補助ボタンも整えました。',
+					'登録再申請の注意文の不自然な改行を修正し、ログイン画面のサーバー紹介を全文表示するようにしました。',
 				] },
 			],
 		},

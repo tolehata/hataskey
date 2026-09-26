@@ -10,6 +10,8 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 	data-scroll-anchor
 	:class="$style.root"
 	:data-size="size"
+	:data-thread-reply="threadReply ? 'true' : undefined"
+	:data-note-id="note.id"
 	:data-renote="isRenote ? 'true' : undefined"
 	:data-linked="linked ?? undefined"
 	:data-thread-open="threadOpen ? 'true' : undefined"
@@ -45,7 +47,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 				</div>
 			</div>
 		</div>
-		<div :class="$style.avatarCol">
+		<div v-if="!threadReply" :class="$style.avatarCol">
 			<MkAvatar :user="appearNote.user" :class="$style.avatar" link preview/>
 			<span v-if="hasThread" :class="$style.threadLine"></span>
 		</div>
@@ -60,7 +62,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 					<MkA :to="notePage(appearNote)" :class="$style.time"><MkTime :time="appearNote.createdAt"/></MkA>
 				</span>
 			</header>
-			<MkA v-if="appearNote.reply" :to="notePage(appearNote.reply)" :class="$style.replyTo">
+			<MkA v-if="appearNote.reply && !threadReply" :to="notePage(appearNote.reply)" :class="$style.replyTo">
 				<CornerUpLeft :size="13"/><span>@{{ appearNote.reply.user.username }}</span>
 				<Mfm v-if="appearNote.reply.text" :text="appearNote.reply.text" :plain="true" :nowrap="true" :author="appearNote.reply.user" :class="$style.replyToText"/>
 			</MkA>
@@ -101,8 +103,8 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 				</button>
 			</div>
 
-			<div v-if="size === 'sm'" :class="$style.smActions">
-				<button v-for="a in actions" :key="a.id" type="button" :class="$style.smAction" :data-active="a.active ? 'true' : undefined" :title="a.label" @click="a.run($event)"><component :is="a.icon" :size="17"/><span v-if="a.count">{{ a.count }}</span></button>
+			<div v-if="size === 'sm' || threadReply" :class="$style.smActions">
+				<button v-for="a in actions" :key="a.id" type="button" :class="$style.smAction" :data-active="a.active ? 'true' : undefined" :title="a.label" :aria-label="a.label" @click="a.run($event)"><component :is="a.icon" :size="17"/><span v-if="a.count">{{ a.count }}</span></button>
 			</div>
 
 			<button v-if="hasThread" type="button" :class="$style.convButton" :data-open="threadOpen ? 'true' : undefined" :aria-expanded="threadOpen" :title="copy.conversation" @click="toggleThread">
@@ -127,24 +129,21 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 				</button>
 			</div>
 		</div>
-		<span v-if="appearNote.user.host" :class="$style.host"><Server :size="11"/>{{ appearNote.user.host }}</span>
+		<span v-if="appearNote.user.host" :class="$style.host"><Server :size="11"/><span>{{ appearNote.user.host }}</span></span>
 	</article>
 
-	<div v-if="size === 'lg' && (hover || menuOpen)" :class="$style.hoverBar" :style="{ right: `${sideReactions ? sideWidth + 32 : 12}px` }">
-		<button v-for="a in actions" :key="a.id" type="button" :class="$style.hoverAction" :data-active="a.active ? 'true' : undefined" :title="a.label" @click="a.run($event)"><component :is="a.icon" :size="18"/><span v-if="a.count">{{ a.count }}</span></button>
+	<div v-if="size === 'lg' && !threadReply && (hover || menuOpen)" :class="$style.hoverBar" :style="{ right: `${sideReactions ? sideWidth + 32 : 12}px` }">
+		<button v-for="a in actions" :key="a.id" type="button" :class="$style.hoverAction" :data-active="a.active ? 'true' : undefined" :title="a.label" :aria-label="a.label" @click="a.run($event)"><component :is="a.icon" :size="18"/><span v-if="a.count">{{ a.count }}</span></button>
 	</div>
 
-	<div v-if="hasThread" :class="$style.tree" :data-open="threadOpen ? 'true' : undefined">
+	<div v-if="hasThread" :class="$style.tree" :inert="!threadOpen" :data-open="threadOpen ? 'true' : undefined">
 		<div :class="$style.treeInner">
 			<div :class="$style.treeList">
 				<div v-if="threadLoading" :class="$style.treeLoading"><MkLoading :em="true"/></div>
 				<div v-for="(r, i) in replies" :key="r.id" :class="$style.treeRow" :style="{ '--hk3-delay': `${120 + i * 70}ms` }">
 					<div :class="$style.treeRail"><span :class="$style.treeRailV"></span><span :class="$style.treeRailH"></span></div>
 					<MkAvatar :user="r.user" :class="$style.treeAvatar" link preview/>
-					<MkA :to="notePage(r)" :class="$style.treeBubble">
-						<span :class="$style.treeHead"><b><MkUserName :user="r.user"/></b><MkTime :time="r.createdAt" :class="$style.treeTime"/></span>
-						<span :class="$style.treeText"><Mfm v-if="r.cw != null || r.text" :text="r.cw ?? r.text ?? ''" :author="r.user" :nyaize="'respect'" :emojiUrls="r.emojis"/><template v-else>{{ copy.attachmentsOnly }}</template></span>
-					</MkA>
+					<Hk3Note :note="r" :size="size" threadReply :hideSensitive="hideSensitive" :inLocal="inLocal" :class="$style.treeBubble"/>
 				</div>
 				<div :class="$style.treeRow" :style="{ '--hk3-delay': `${120 + replies.length * 70}ms` }">
 					<div :class="$style.treeRail"><span :class="[$style.treeRailV, $style.treeRailEnd]"></span><span :class="$style.treeRailH"></span></div>
@@ -190,11 +189,13 @@ const props = withDefaults(defineProps<{
 	linked?: 'reply' | 'quote' | null;
 	inLocal?: boolean;
 	hideSensitive?: boolean;
+	threadReply?: boolean;
 }>(), {
 	size: 'lg',
 	linked: null,
 	inLocal: false,
 	hideSensitive: false,
+	threadReply: false,
 });
 
 const copy = i18n.ts._hata._hataskeyUi3;
@@ -230,8 +231,8 @@ const wordMuted = computed(() => $i != null && checkWordMute(note, $i, $i.mutedW
 const sensitiveMuted = computed(() => props.hideSensitive && (appearNote.files ?? []).some(file => file.isSensitive));
 const softMuted = computed(() => wordMuted.value || sensitiveMuted.value);
 const quoted = computed(() => (!isRenote && appearNote.renote) ? appearNote.renote : null);
-const hasThread = computed(() => (appearNote.repliesCount ?? 0) > 0);
-const sideReactions = computed(() => props.size === 'lg');
+const hasThread = computed(() => !props.threadReply && (appearNote.repliesCount ?? 0) > 0);
+const sideReactions = computed(() => props.size === 'lg' && !props.threadReply);
 const chipHeight = computed(() => props.size === 'sm' ? 34 : 38);
 
 function emojiKey(reaction: string): string {
@@ -260,7 +261,7 @@ watch(() => reactions.value.map(r => `${r.reaction}\u0000${r.count}\u0000${r.min
 	}).map(r => r.reaction);
 	if (grown.length === 0) return;
 	void nextTick(() => {
-		for (const button of rootEl.value?.querySelectorAll<HTMLElement>('[data-reaction]') ?? []) {
+		for (const button of rootEl.value?.querySelector(':scope > article')?.querySelectorAll<HTMLElement>('[data-reaction]') ?? []) {
 			if (!grown.includes(button.dataset.reaction ?? '')) continue;
 			button.animate([
 				{ opacity: 0.4, transform: 'scale(0.86)' },
@@ -297,7 +298,7 @@ function sideCell(index: number) {
 }
 
 const articleStyle = computed(() => ({
-	gridTemplateColumns: sideReactions.value ? `44px minmax(0, 1fr) ${sideWidth.value}px` : `${props.size === 'sm' ? 36 : 44}px minmax(0, 1fr)`,
+	gridTemplateColumns: props.threadReply ? 'minmax(0, 1fr)' : sideReactions.value ? `44px minmax(0, 1fr) ${sideWidth.value}px` : `${props.size === 'sm' ? 36 : 44}px minmax(0, 1fr)`,
 }));
 
 // 宴(うたげ): ローカルTLで進行中の宴ノートは、残り時間を枠のゲージとして描く。
@@ -949,7 +950,8 @@ onBeforeUnmount(() => {
 
 .chipEmoji {
 	--hk3-emoji: 20px;
-	.root[data-size="sm"] & { --hk3-emoji: 16px; }
+	--hk3-emoji-width: 40px;
+	.root[data-size="sm"] & { --hk3-emoji: 16px; --hk3-emoji-width: 32px; }
 }
 
 .chipAdd {
@@ -1107,26 +1109,28 @@ onBeforeUnmount(() => {
 
 .sideEmoji {
 	--hk3-emoji: 20px;
+	--hk3-emoji-width: 40px;
 }
 
-// リアクションの絵文字は、画像・Unicode・読み込み失敗時の代替のどれでも同じ正方形の枠に収める。
+// 横長画像の表示幅を実際の枠にも確保し、件数との重なりを防ぐ。
 // 付与・変更で描き直された直後も、画像の元の大きさで枠からはみ出して一部だけ見えることがないようにする。
 .emojiBox {
 	flex: none;
-	display: inline-grid;
-	place-items: center;
-	width: var(--hk3-emoji);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--hk3-emoji-width);
 	height: var(--hk3-emoji);
-	overflow: visible;
+	overflow: hidden;
 	font-size: calc(var(--hk3-emoji) * 0.9);
 	line-height: 1;
 
 	> :global(*) {
 		display: block;
-		max-width: calc(var(--hk3-emoji) * 2);
-		max-height: var(--hk3-emoji);
-		width: auto;
-		height: var(--hk3-emoji) !important;
+		max-width: 100% !important;
+		max-height: 100% !important;
+		width: auto !important;
+		height: auto !important;
 		object-fit: contain;
 		vertical-align: middle;
 		transform: none !important;
@@ -1158,19 +1162,28 @@ onBeforeUnmount(() => {
 
 .host {
 	position: absolute;
-	right: 16px;
-	bottom: 14px;
+	right: 12px;
+	bottom: 8px;
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
+	box-sizing: border-box;
+	max-width: calc(100% - 24px);
 	padding: 2px 6px;
 	background: var(--hk3-neutral-200);
 	color: var(--hk3-neutral-800);
 	font-size: 11px;
 	font-weight: 700;
+	line-height: 16px;
 	pointer-events: none;
 
-	.root[data-size="sm"] & { position: static; grid-column: 2; justify-self: start; }
+	> :global(svg) { flex: none; }
+	> span {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 }
 
 // ノートごとの操作バーは本文に重ねず、ノートの上端の区切り線にまたがせる(下半分は上余白18pxの中に収まる)。
@@ -1271,37 +1284,33 @@ onBeforeUnmount(() => {
 
 .treeBubble {
 	margin: 6px 0;
-	padding: 8px 12px;
-	display: flex;
-	flex-direction: column;
-	gap: 3px;
 	min-width: 0;
 	background: var(--hk3-bg);
 	border: 1px solid var(--hk3-divider);
 	color: var(--hk3-text);
 
-	&:hover { border-color: var(--hk3-accent); text-decoration: none; }
+	&:hover, &:focus-within { border-color: var(--hk3-accent); }
 }
 
-.treeHead {
-	display: flex;
-	align-items: baseline;
-	gap: 8px;
-	font-size: 13px;
+.root[data-thread-reply] {
+	> .article { padding: 8px 12px; }
+	.body { gap: 3px; }
+	.name { font-size: 13px; }
+	.acct { display: none; }
+	.text { font-size: 14px; line-height: 1.6; }
+	.smActions { flex-wrap: wrap; }
+	.smAction { padding: 0 6px; }
 }
 
-.treeTime {
-	margin-left: auto;
-	font-size: 12px;
-	color: var(--hk3-neutral-700);
-	font-variant-numeric: tabular-nums;
+.root > .article:has(> .host) {
+	padding-bottom: 40px;
 }
 
-.treeText {
-	font-size: 14px;
-	line-height: 1.6;
-	text-wrap: pretty;
-	overflow-wrap: anywhere;
+@media (hover: hover) and (pointer: fine) {
+	.root[data-thread-reply] {
+		.smActions { opacity: 0; }
+		&:hover .smActions, &:focus-within .smActions { opacity: 1; }
+	}
 }
 
 .treeReply {

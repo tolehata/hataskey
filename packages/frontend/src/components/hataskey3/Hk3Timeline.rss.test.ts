@@ -5,7 +5,8 @@ import Hk3Timeline from './Hk3Timeline.vue';
 import { hk3Toasts } from './hk3-state.js';
 import { prefer } from '@/preferences.js';
 
-const mocks = vi.hoisted(() => ({ navigate: vi.fn(), note: null as null | ((note: unknown) => void), rssMounts: 0 }));
+const mocks = vi.hoisted(() => ({ navigate: vi.fn(), sound: vi.fn(), note: null as null | ((note: unknown) => void), rssMounts: 0, live: false }));
+vi.mock('@/utility/sound.js', () => ({ playMisskeySfx: mocks.sound }));
 vi.mock('@/router.js', () => ({ mainRouter: { pushByPath: mocks.navigate } }));
 vi.mock('@/i.js', () => ({ $i: { id: 'me', mutedWords: [], hardMutedWords: [] } }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: {
@@ -33,7 +34,7 @@ vi.mock('@/stream.js', () => ({ useStream: () => ({ useChannel: () => ({
 	on: (_name: string, handler: (note: unknown) => void) => { mocks.note = handler; }, dispose: vi.fn(),
 }) }) }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn(async () => []) }));
-vi.mock('@/local-storage.js', () => ({ miLocalStorage: { getItem: () => null, setItem: vi.fn() } }));
+vi.mock('@/local-storage.js', () => ({ miLocalStorage: { getItem: (key: string) => key === 'hataskeyUi3Live' && mocks.live ? 'true' : null, setItem: vi.fn() } }));
 vi.mock('@/utility/external-api.js', () => ({ getExternalEmojiUrlMapForHost: () => ({}) }));
 vi.mock('@/events.js', () => ({ useGlobalEvent: vi.fn() }));
 vi.mock('@/composables/use-note-removal.js', () => ({ useNoteRemoval: () => ({ cancelAll: vi.fn(), remove: vi.fn() }) }));
@@ -79,7 +80,32 @@ beforeEach(() => {
 	prefer.r.hataskeyUi3RssEnabled.value = true;
 	mocks.rssMounts = 0;
 	mocks.navigate.mockClear();
+	mocks.sound.mockClear();
+	mocks.live = false;
 	vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} });
+});
+
+describe('UI S streamed note sounds', () => {
+	it.each([false, true])('plays once for a new note (LIVE=%s), without replaying duplicates or released queues', async live => {
+		mocks.live = live;
+		const host = await mount();
+		expect(mocks.sound).not.toHaveBeenCalled();
+		const note = { id: 'new-note', userId: 'other', user: { id: 'other' }, text: 'hello' };
+		mocks.note?.(note);
+		await settle();
+		expect(mocks.sound).toHaveBeenCalledExactlyOnceWith('note');
+		mocks.note?.(note);
+		host.querySelector<HTMLButtonElement>('[data-kind="queue"]')?.click();
+		await settle();
+		mocks.note?.(note);
+		expect(mocks.sound).toHaveBeenCalledTimes(1);
+	});
+
+	it('uses the configured own-note sound for an own note received from the stream', async () => {
+		await mount();
+		mocks.note?.({ id: 'own-note', userId: 'me', user: { id: 'me' }, text: 'hello' });
+		expect(mocks.sound).toHaveBeenCalledExactlyOnceWith('noteMy');
+	});
 });
 afterEach(() => { cleanups.splice(0).forEach(fn => fn()); vi.unstubAllGlobals(); });
 
