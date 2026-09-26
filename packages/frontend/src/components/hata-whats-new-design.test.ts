@@ -413,7 +413,7 @@ describe('production update introduction', () => {
 		button('小さな画面でも、予定を見やすく').click(); expect(issue).toHaveBeenCalledWith(sampleIssues[0].id);
 		button('すべての予定').click(); expect(navigate).toHaveBeenCalledWith('roadmap');
 		button('一覧を見る').click(); expect(navigate).toHaveBeenCalledWith('issues');
-		button('申請履歴を見る').click(); expect(ownHistory).toHaveBeenCalled();
+		button('自身の絵文字管理へ→').click(); expect(ownHistory).toHaveBeenCalled();
 		const pending = [...host.querySelectorAll('section')].find(section => section.textContent.includes('確認待ちの絵文字'));
 		expect(pending).toBeDefined();
 		requiredElement<HTMLButtonElement>('button', pending).click(); expect(approve).toHaveBeenCalledWith(sampleRequests[0]);

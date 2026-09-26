@@ -14,7 +14,7 @@
 			<span :class="$style.emojiTile"><img v-if="request.currentEmoji?.imageUrl || request.imageUrl" :src="request.currentEmoji?.imageUrl || request.imageUrl!" :alt="request.name"></span>
 			<span><strong>:{{ request.currentEmoji?.name ?? request.name }}:</strong><small><span :class="$style.requestStatus" :data-status="request.status"><i :class="['ti', emojiStatusIcon[emojiRequestDisplayStatus(request)]]" aria-hidden="true"></i>{{ emojiStatusLabel[emojiRequestDisplayStatus(request)] }}</span><MkTime :time="request.createdAt" mode="relative"/></small><small v-if="activeEmojiChange(request)">{{ emojiChangeLabel[activeEmojiChange(request)!.kind] }}の確認待ち</small><small v-else-if="request.resolvedComment">{{ request.resolvedComment }}</small></span>
 		</button>
-		<button type="button" :class="$style.textLink" @click="emit('ownHistory')"><i class="ti ti-arrow-right" aria-hidden="true"></i>申請履歴を見る</button>
+		<button type="button" :class="$style.textLink" @click="emit('ownHistory')">自身の絵文字管理へ→</button>
 		<div v-if="emojiQuota && !isStaff" :class="$style.quota"><HfQuotaMeter :remaining="emojiQuota.remaining" :limit="emojiQuota.limit"/></div>
 	</section>
 	<section v-if="isStaff" class="hf-panel" :class="$style.card">
