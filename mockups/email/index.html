@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Hataskey email lab</title>
+  <link rel="stylesheet" href="./gallery.css">
+  <script src="./gallery.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="./index.html" aria-label="Hataskey email lab ホーム">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span class="brand-name">Hataskey</span>
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">email lab</span>
+      </a>
+      <span class="draft-badge"><span class="badge-dot" aria-hidden="true"></span>差し替え準備</span>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar" aria-label="メール一覧">
+        <div class="sidebar-heading">
+          <div>
+            <p class="eyebrow">CATALOG</p>
+            <h1>メール一覧 <span id="case-count" class="count">0</span></h1>
+          </div>
+          <span class="sidebar-icon" aria-hidden="true">✉</span>
+        </div>
+        <label class="search-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.6"></circle><path d="m16 16 5 5"></path></svg>
+          <span class="sr-only">メールを検索</span>
+          <input id="case-search" type="search" placeholder="メールを検索" autocomplete="off">
+          <kbd>/</kbd>
+        </label>
+        <nav id="case-list" class="case-list" aria-label="メールの種類"></nav>
+        <div class="sidebar-foot">ローカルプレビュー · 送信機能なし</div>
+      </aside>
+
+      <main class="main" id="main">
+        <section class="hero" aria-labelledby="preview-heading">
+          <div class="hero-copy">
+            <p class="eyebrow">EMAIL PREVIEW / <span id="case-id">—</span></p>
+            <h2 id="preview-heading">メールを選択</h2>
+            <p id="case-summary" class="hero-summary">左の一覧からメールを選択してください。</p>
+            <div class="hero-meta"><span id="case-status" class="status-tag">—</span><span id="case-group" class="group-tag">—</span></div>
+          </div>
+          <div class="hero-graphic" aria-hidden="true"><span class="envelope-back"></span><span class="envelope-paper"></span><span class="envelope-front"></span><span class="hero-spark">✦</span></div>
+        </section>
+
+        <section class="preview-card" aria-label="プレビュー設定とメール本文">
+          <div class="preview-toolbar">
+            <div class="toolbar-row">
+              <div class="field">
+                <span class="field-label" id="width-label">表示幅</span>
+                <div class="segmented" role="group" aria-labelledby="width-label">
+                  <button type="button" data-width="desktop" aria-pressed="true">Desktop <span>680</span></button>
+                  <button type="button" data-width="mobile" aria-pressed="false">Mobile <span>375</span></button>
+                  <button type="button" data-width="narrow" aria-pressed="false">Narrow <span>320</span></button>
+                </div>
+              </div>
+              <div class="field">
+                <span class="field-label" id="theme-label">テーマ</span>
+                <div class="segmented" role="group" aria-labelledby="theme-label">
+                  <button type="button" data-theme="light" aria-pressed="true">☀ Light</button>
+                  <button type="button" data-theme="dark" aria-pressed="false">☾ Dark</button>
+                </div>
+              </div>
+              <div class="field">
+                <span class="field-label" id="language-label">言語</span>
+                <div class="segmented" role="group" aria-labelledby="language-label">
+                  <button type="button" data-lang="ja" aria-pressed="true">日本語</button>
+                  <button type="button" data-lang="en" aria-pressed="false">English</button>
+                </div>
+              </div>
+            </div>
+            <div class="toolbar-row toolbar-row-bottom">
+              <div class="field">
+                <span class="field-label" id="format-label">表示形式</span>
+                <div class="segmented" role="group" aria-labelledby="format-label">
+                  <button type="button" data-format="html" aria-pressed="true">HTML</button>
+                  <button type="button" data-format="text" aria-pressed="false">Text</button>
+                </div>
+              </div>
+              <label class="image-toggle"><input id="show-images" type="checkbox" checked><span class="switch" aria-hidden="true"></span><span>画像を表示</span></label>
+              <div class="toolbar-spacer"></div>
+              <button id="download-html" class="download-button" type="button" disabled>HTML <span aria-hidden="true">↓</span></button>
+              <button id="download-text" class="download-button" type="button" disabled>Text <span aria-hidden="true">↓</span></button>
+            </div>
+          </div>
+          <div class="preview-stage" id="preview-stage">
+            <div class="preview-ruler"><span id="ruler-label">DESKTOP VIEW</span><span id="ruler-width">680px</span></div>
+            <div class="message-frame" id="message-frame">
+              <div class="message-header"><span class="message-header-label">SUBJECT</span><strong id="message-subject">—</strong></div>
+              <iframe id="html-preview" title="メール HTML プレビュー" sandbox="allow-same-origin" tabindex="0"></iframe>
+              <pre id="text-preview" class="text-preview" hidden></pre>
+              <div id="preview-empty" class="preview-empty" role="status">メールを読み込んでいます…</div>
+            </div>
+            <p class="stage-note">メール表示は隔離されたプレビューです。リンク操作と送信はできません。</p>
+          </div>
+        </section>
+
+        <details class="info-panel" id="case-information">
+          <summary><span class="info-icon" aria-hidden="true">i</span><span>このメールについて</span><span class="summary-hint">実装元と確認メモ</span><span class="chevron" aria-hidden="true">⌄</span></summary>
+          <div class="info-content"><div><span class="info-label">SOURCE</span><code id="case-source">—</code></div><div><span class="info-label">NOTES</span><p id="case-notes">—</p></div></div>
+        </details>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
