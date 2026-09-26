@@ -10,6 +10,8 @@ import { DI } from '@/di-symbols.js';
 import type { Packed } from '@/misc/json-schema.js';
 import { awaitAll } from '@/misc/prelude/await-all.js';
 import type { MiUser } from '@/models/User.js';
+import type { MiUtageSession } from '@/models/UtageSession.js';
+import { utageSnapshot, type UtageParticipation } from '@/misc/utage-revival.js';
 import type { MiNote } from '@/models/Note.js';
 import type { MiChannel } from '@/models/Channel.js';
 import type { UsersRepository, NotesRepository, FollowingsRepository, PollsRepository, PollVotesRepository, NoteReactionsRepository, ChannelsRepository, ChannelMembersRepository, InstancesRepository, MiMeta, EventsRepository, UtageSessionsRepository } from '@/models/_.js';
@@ -323,19 +325,22 @@ export class NoteEntityService implements OnModuleInit {
 	}
 
 	@bindThis
-	private async populateUtageStatus(
+	private async populateUtage(
 		note: MiNote,
-		_hint_?: { utageSessionMap?: Map<MiNote['id'], 'running' | 'succeeded' | 'failed'> },
-	): Promise<'running' | 'succeeded' | 'failed' | undefined> {
-		if (!this.isUtageCandidate(note)) return undefined;
-		// 旗鯖fork: packMany 経由のときは Map が渡されるので DB を引かない。
-		// Map に該当エントリが無ければ「セッション未登録」を意味する(undefined を返す)。
-		if (_hint_?.utageSessionMap !== undefined) {
-			return _hint_.utageSessionMap.get(note.id);
-		}
-		const session = await this.utageSessionsRepository.findOneBy({ noteId: note.id });
-		if (session == null) return undefined;
-		return session.status as 'running' | 'succeeded' | 'failed';
+		meId: MiUser['id'] | null,
+		_hint_?: { utageSessionMap?: Map<string, MiUtageSession>; utageViewer?: MiUser | null },
+	) {
+		if (!this.isUtageCandidate(note)) return {};
+		const session = _hint_?.utageSessionMap !== undefined ? _hint_.utageSessionMap.get(note.id) : await this.utageSessionsRepository.findOneBy({ noteId: note.id });
+		if (!session) return {};
+		const snapshot = utageSnapshot(session);
+		if (!meId || !session.revivalStartedAt) return snapshot;
+		const viewer = _hint_?.utageViewer !== undefined ? _hint_.utageViewer : await this.usersRepository.findOneBy({ id: meId });
+		const participation: UtageParticipation = meId === session.userId ? 'author'
+			: session.revivalSupporterIds.includes(meId) ? 'accepted'
+				: session.revivalExcludedUserIds.includes(meId) ? 'existing'
+					: viewer && viewer.host == null && !viewer.isBot && !viewer.isSuspended && !viewer.isDeleted ? 'eligible' : 'ineligible';
+		return { ...snapshot, utageMyParticipation: participation };
 	}
 
 	@bindThis
@@ -413,7 +418,7 @@ export class NoteEntityService implements OnModuleInit {
 				return false;
 			} else if (meId === note.userId) {
 				return true;
-			} else if (note.reply && (meId === note.reply.userId)) {
+			} else if (note.replyUserId && (meId === note.replyUserId)) {
 				// 自分の投稿に対するリプライ
 				return true;
 			} else if (note.mentions && note.mentions.some(id => meId === id)) {
@@ -475,7 +480,8 @@ export class NoteEntityService implements OnModuleInit {
 				packedFiles: Map<MiNote['fileIds'][number], Packed<'DriveFile'> | null>;
 				packedUsers: Map<MiUser['id'], Packed<'UserLite'>>;
 				// 旗鯖fork: packMany で集約した宴セッション状態。エントリが無ければセッション未登録。
-				utageSessionMap?: Map<MiNote['id'], 'running' | 'succeeded' | 'failed'>;
+				utageSessionMap?: Map<string, MiUtageSession>;
+				utageViewer?: MiUser | null;
 				// 旗鯖fork: packMany で集約したチャンネル本体・閲覧時メンバーシップ・モデレーター判定。
 				channelMap?: Map<MiChannel['id'], MiChannel>;
 				channelMembershipMap?: Map<MiChannel['id'], boolean>;
@@ -567,8 +573,8 @@ export class NoteEntityService implements OnModuleInit {
 			mentions: note.mentions.length > 0 ? note.mentions : undefined,
 			hasPoll: note.hasPoll || undefined,
 			// 旗鯖fork: 宴(うたげ)の判定状態。宴ノートでなければ undefined。
-			// 'running' | 'succeeded' | 'failed'。フロントはこれを初期状態として描画する。
-			utageStatus: await this.populateUtageStatus(note, opts._hint_),
+			// 公開状態と、認証済み閲覧者だけの参加状態を初期表示に渡す。
+			...await this.populateUtage(note, meId, opts._hint_),
 			uri: note.uri ?? undefined,
 			url: note.url ?? undefined,
 			hasDeliveryTargets: note.deliveryTargets != null,
@@ -723,11 +729,12 @@ export class NoteEntityService implements OnModuleInit {
 			if (n.reply && this.isUtageCandidate(n.reply)) utageCandidateIds.push(n.reply.id);
 			if (n.renote && this.isUtageCandidate(n.renote)) utageCandidateIds.push(n.renote.id);
 		}
-		const utageSessionMap = new Map<MiNote['id'], 'running' | 'succeeded' | 'failed'>();
+		const utageSessionMap = new Map<string, MiUtageSession>();
+		const utageViewer = meId && utageCandidateIds.length ? await this.usersRepository.findOneBy({ id: meId }) : null;
 		if (utageCandidateIds.length > 0) {
 			const sessions = await this.utageSessionsRepository.findBy({ noteId: In(utageCandidateIds) });
 			for (const s of sessions) {
-				utageSessionMap.set(s.noteId, s.status as 'running' | 'succeeded' | 'failed');
+				utageSessionMap.set(s.noteId, s);
 			}
 		}
 
@@ -793,6 +800,7 @@ export class NoteEntityService implements OnModuleInit {
 				packedFiles,
 				packedUsers,
 				utageSessionMap,
+				utageViewer,
 				channelMap,
 				channelMembershipMap,
 				iAmModerator,

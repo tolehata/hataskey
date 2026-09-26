@@ -141,10 +141,9 @@ export interface NoteEventTypes {
 		reaction: string;
 		userId: MiUser['id'];
 	};
-	// 旗鯖fork: 宴(うたげ)の判定確定をノート単位で配信。フロントはこれを購読して
-	// リロード不要・全端末一貫で状態(succeeded/failed)を反映する。
-	utageStatusUpdated: {
-		status: 'succeeded' | 'failed';
+	// 宴の開始・進捗・確定をrevision付きで配信。本人向け参加情報はRESTだけで返す。
+	utageStatusUpdated: ReturnType<typeof import('@/misc/utage-revival.js').utageSnapshot> & {
+		status: 'running' | 'reviving' | 'succeeded' | 'failed';
 	};
 }
 type NoteStreamEventTypes = {
@@ -390,12 +389,12 @@ export class GlobalEventService {
 	}
 
 	@bindThis
-	private publish(channel: StreamChannels, type: string | null, value?: any): void {
+	private publish(channel: StreamChannels, type: string | null, value?: any): Promise<number> {
 		const message = type == null ? value : value == null ?
 			{ type: type, body: null } :
 			{ type: type, body: value };
 
-		this.redisForPub.publish(this.config.host, JSON.stringify({
+		return this.redisForPub.publish(this.config.host, JSON.stringify({
 			channel: channel,
 			message: message,
 		}));
@@ -422,8 +421,8 @@ export class GlobalEventService {
 	}
 
 	@bindThis
-	public publishNoteStream<K extends keyof NoteEventTypes>(note: MiNote, type: K, value?: NoteEventTypes[K]): void {
-		this.publish(`noteStream:${note.id}`, type, {
+	public publishNoteStream<K extends keyof NoteEventTypes>(note: MiNote, type: K, value?: NoteEventTypes[K]): Promise<number> {
+		return this.publish(`noteStream:${note.id}`, type, {
 			id: note.id,
 			userId: note.userId,
 			visibility: note.visibility,

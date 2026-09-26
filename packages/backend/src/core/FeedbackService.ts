@@ -30,6 +30,14 @@ import { CustomEmojiService } from '@/core/CustomEmojiService.js';
 import { NotificationService } from '@/core/NotificationService.js';
 import { bindThis } from '@/decorators.js';
 import { mergeHataFeedRecipients } from '@/misc/hatafeed-notification.js';
+import { lockEmojiRequest } from '@/misc/emoji-request-lock.js';
+import type { EmojiTransaction } from '@/misc/emoji-transaction.js';
+import { MiFeedbackNotification } from '@/models/FeedbackNotification.js';
+import { ApiError } from '@/server/api/error.js';
+import { feedbackEmojiErrors } from '@/misc/feedback-emoji-errors.js';
+
+type FeedbackNotificationRefs = { actorId?: MiUser['id'] | null; feedbackId?: string | null; emojiRequestId?: string | null; emojiChangeRequestId?: string | null; commentId?: string | null };
+type EmojiOverrides = { name?: string; category?: string | null; aliases?: string[]; license?: string | null; localOnly?: boolean; isSensitive?: boolean };
 
 // 通知の簡潔メッセージ。
 const NOTIFY_MESSAGE = {
@@ -184,18 +192,18 @@ export class FeedbackService {
 
 	// 単一ユーザーへ通知を作成する。message を渡すと固定文言の代わりにその文言を使う(イシュー名入り等)。
 	@bindThis
-	public async notify(userId: MiUser['id'], type: NotifyType, refs: { actorId?: MiUser['id'] | null; feedbackId?: string | null; emojiRequestId?: string | null; commentId?: string | null } = {}, message?: string): Promise<void> {
-		await this.notifyMany([userId], type, refs, message);
+	public async notify(userId: MiUser['id'], type: NotifyType, refs: FeedbackNotificationRefs = {}, message?: string, transaction?: EmojiTransaction): Promise<void> {
+		await this.notifyMany([userId], type, refs, message, transaction);
 	}
 
 	// スタッフ全員(actor を除く)へ共有通知する。重複ID(管理者かつモデレーター等)は排除する。
 	// 旗鯖fork: feedback_notifications への INSERT を bulk 化(notifyMany 経由)して 1クエリにまとめる。
 	//   ベル通知(Redis xadd / WS publish 等)は per-user 副作用が必要なため個別呼び出しを維持。
 	@bindThis
-	public async notifyStaff(actorId: MiUser['id'] | null, type: NotifyType, refs: { feedbackId?: string | null; emojiRequestId?: string | null; commentId?: string | null } = {}, message?: string, excludedRecipientIds: MiUser['id'][] = []): Promise<void> {
+	public async notifyStaff(actorId: MiUser['id'] | null, type: NotifyType, refs: FeedbackNotificationRefs = {}, message?: string, excludedRecipientIds: MiUser['id'][] = [], transaction?: EmojiTransaction): Promise<void> {
 		const staffIds = await this.roleService.getModeratorIds({ includeAdmins: true, includeRoot: true });
 		const targets = mergeHataFeedRecipients(actorId == null ? excludedRecipientIds : [actorId, ...excludedRecipientIds], staffIds);
-		await this.notifyMany(targets, type, { ...refs, actorId }, message);
+		await this.notifyMany(targets, type, { ...refs, actorId }, message, transaction);
 	}
 
 	// 表示名を取り出すヘルパー(通知文言用)。
@@ -209,12 +217,13 @@ export class FeedbackService {
 	//   DB の INSERT は 1クエリにまとめ、ベル通知(Redis xadd / WS publish)は per-user に並列発火する。
 	//   念のためこの層でも重複を排除し、呼び出し側の役割重複を未読件数へ波及させない。
 	@bindThis
-	private async notifyMany(userIds: MiUser['id'][], type: NotifyType, refs: { actorId?: MiUser['id'] | null; feedbackId?: string | null; emojiRequestId?: string | null; commentId?: string | null } = {}, message?: string): Promise<void> {
+	private async notifyMany(userIds: MiUser['id'][], type: NotifyType, refs: FeedbackNotificationRefs = {}, message?: string, transaction?: EmojiTransaction): Promise<void> {
 		const uniqueUserIds = await this.filterVisibleIssueNotificationRecipients(userIds, refs.feedbackId);
 		if (uniqueUserIds.length === 0) return;
-		const body = message ?? NOTIFY_MESSAGE[type];
+		const body = (message ?? NOTIFY_MESSAGE[type]).slice(0, 1024);
 		const now = new Date();
-		await this.feedbackNotificationsRepository.insert(uniqueUserIds.map(uid => ({
+		const repository = transaction?.manager.getRepository(MiFeedbackNotification) ?? this.feedbackNotificationsRepository;
+		await repository.insert(uniqueUserIds.map(uid => ({
 			id: this.idService.gen(),
 			createdAt: now,
 			userId: uid,
@@ -224,17 +233,22 @@ export class FeedbackService {
 			actorId: refs.actorId ?? null,
 			feedbackId: refs.feedbackId ?? null,
 			emojiRequestId: refs.emojiRequestId ?? null,
+			emojiChangeRequestId: refs.emojiChangeRequestId ?? null,
 			commentId: refs.commentId ?? null,
 		})));
-		const linkRef = refs.feedbackId ? `/hatafeed/${refs.feedbackId}` : '/hatafeed';
-		for (const uid of uniqueUserIds) {
-			this.notificationService.createNotification(uid, 'hataFeed', {
-				customBody: body,
-				customHeader: 'HataFeed',
-				customIcon: null,
-				customLink: linkRef,
-			});
-		}
+		const linkRef = refs.feedbackId ? `/hatafeed/${refs.feedbackId}` : refs.emojiChangeRequestId ? `/hatafeed?emojiChangeRequestId=${refs.emojiChangeRequestId}` : refs.emojiRequestId ? `/hatafeed?emojiRequestId=${refs.emojiRequestId}` : '/hatafeed';
+		const publish = async () => {
+			for (const uid of uniqueUserIds) {
+				await this.notificationService.createNotification(uid, 'hataFeed', {
+					customBody: body,
+					customHeader: 'HataFeed',
+					customIcon: null,
+					customLink: linkRef,
+				});
+			}
+		};
+		if (transaction) transaction.afterCommit.push(publish);
+		else await publish();
 	}
 
 	@bindThis
@@ -668,14 +682,22 @@ export class FeedbackService {
 	// 申請を承認 → 実際のカスタム絵文字を作成。
 	// overrides を渡すと、承認者が申請内容を修正したうえで登録できる。
 	@bindThis
-	public async approveEmojiRequest(actor: MiUser, req: MiFeedbackEmojiRequest, overrides?: {
-		name?: string;
-		category?: string | null;
-		aliases?: string[];
-		license?: string | null;
-		localOnly?: boolean;
-		isSensitive?: boolean;
-	}): Promise<void> {
+	public async approveEmojiRequest(actor: MiUser, req: MiFeedbackEmojiRequest, overrides?: EmojiOverrides): Promise<void> {
+		await this.withEmojiReviewLock(actor, req.id, fresh => this.applyEmojiApproval(actor, fresh, overrides));
+	}
+
+	private async withEmojiReviewLock(actor: MiUser, requestId: string, action: (req: MiFeedbackEmojiRequest) => Promise<void>): Promise<void> {
+		if (!await this.canAccess(actor.id) || !await this.isStaff(actor.id)) throw new ApiError(feedbackEmojiErrors.accessDenied);
+		await this.feedbackEmojiRequestsRepository.manager.transaction(async manager => {
+			await lockEmojiRequest(manager, requestId);
+			const fresh = await this.feedbackEmojiRequestsRepository.findOneBy({ id: requestId });
+			if (!fresh) throw new ApiError(feedbackEmojiErrors.noSuchRequest);
+			if (!['pending', 'held'].includes(fresh.status)) throw new ApiError(feedbackEmojiErrors.invalidState);
+			await action(fresh);
+		});
+	}
+
+	private async applyEmojiApproval(actor: MiUser, req: MiFeedbackEmojiRequest, overrides?: EmojiOverrides): Promise<void> {
 		// ⚠️保留中(held)も承認できるようにする。ここを pending だけにすると保留した申請が二度と処理できなくなる。
 		if (req.status !== 'pending' && req.status !== 'held') return;
 
@@ -755,6 +777,10 @@ export class FeedbackService {
 
 	@bindThis
 	public async rejectEmojiRequest(actor: MiUser, req: MiFeedbackEmojiRequest, comment?: string | null): Promise<void> {
+		await this.withEmojiReviewLock(actor, req.id, fresh => this.applyEmojiRejection(actor, fresh, comment));
+	}
+
+	private async applyEmojiRejection(actor: MiUser, req: MiFeedbackEmojiRequest, comment?: string | null): Promise<void> {
 		// ⚠️保留中(held)もリジェクトできるようにする。
 		if (req.status !== 'pending' && req.status !== 'held') return;
 		await this.feedbackEmojiRequestsRepository.update(req.id, {
@@ -781,14 +807,11 @@ export class FeedbackService {
 	 *   status が held の間は「未解決」であり、resolved* は解決記録ではなく最終操作の記録。
 	 */
 	@bindThis
-	public async holdEmojiRequest(actor: MiUser, req: MiFeedbackEmojiRequest, overrides?: {
-		name?: string;
-		category?: string | null;
-		aliases?: string[];
-		license?: string | null;
-		localOnly?: boolean;
-		isSensitive?: boolean;
-	}, comment?: string | null): Promise<void> {
+	public async holdEmojiRequest(actor: MiUser, req: MiFeedbackEmojiRequest, overrides?: EmojiOverrides, comment?: string | null): Promise<void> {
+		await this.withEmojiReviewLock(actor, req.id, fresh => this.applyEmojiHold(actor, fresh, overrides, comment));
+	}
+
+	private async applyEmojiHold(actor: MiUser, req: MiFeedbackEmojiRequest, overrides?: EmojiOverrides, comment?: string | null): Promise<void> {
 		// ⚠️既に承認・却下したものは保留に戻さない。保留中の再保留（入力の上書き保存）は許す。
 		if (req.status !== 'pending' && req.status !== 'held') return;
 

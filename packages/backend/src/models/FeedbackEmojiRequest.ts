@@ -113,12 +113,12 @@ export class MiFeedbackEmojiRequest {
 	@JoinColumn()
 	public file: MiDriveFile | null;
 
-	// pending=未処理 / held=保留(管理者が入力値を保存したまま後回しにした状態) / approved=承認 / rejected=却下
+	// pending=未処理 / held=保留 / approved=承認 / rejected=却下 / cancelled=本人取消
 	@Index()
 	@Column('varchar', {
 		length: 16,
 		default: 'pending',
-		comment: 'pending / held / approved / rejected',
+		comment: 'pending / held / approved / rejected / cancelled',
 	})
 	public status: string;
 
@@ -148,4 +148,10 @@ export class MiFeedbackEmojiRequest {
 		comment: 'The created emoji ID on approval.',
 	})
 	public resolvedEmojiId: string | null;
+
+	@Column('timestamp with time zone', { nullable: true })
+	public cancelledAt: Date | null;
+
+	@Column('varchar', { length: 1024, nullable: true })
+	public cancellationReason: string | null;
 }

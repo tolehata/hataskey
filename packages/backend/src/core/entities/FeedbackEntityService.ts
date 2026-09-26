@@ -14,11 +14,14 @@ import type {
 	FeedbackCommentReactionsRepository,
 	FeedbackProjectsRepository,
 	FeedbackIssueModeratorsRepository,
+	FeedbackEmojiChangeRequestsRepository,
+	EmojisRepository,
 } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
 import type { MiFeedbackComment } from '@/models/FeedbackComment.js';
 import type { MiFeedbackEmojiRequest } from '@/models/FeedbackEmojiRequest.js';
+import type { MiFeedbackEmojiChangeRequest } from '@/models/FeedbackEmojiChangeRequest.js';
 import type { MiFeedbackNotification } from '@/models/FeedbackNotification.js';
 import type { MiFeedbackProject } from '@/models/FeedbackProject.js';
 import type { Packed } from '@/misc/json-schema.js';
@@ -44,6 +47,10 @@ export class FeedbackEntityService {
 
 		private userEntityService: UserEntityService,
 		private driveFileEntityService: DriveFileEntityService,
+		@Inject(DI.feedbackEmojiChangeRequestsRepository)
+		private feedbackEmojiChangesRepository: FeedbackEmojiChangeRequestsRepository,
+		@Inject(DI.emojisRepository)
+		private emojisRepository: EmojisRepository,
 	) {
 	}
 
@@ -271,27 +278,59 @@ export class FeedbackEntityService {
 
 	@bindThis
 	public async packEmojiRequest(src: MiFeedbackEmojiRequest): Promise<Record<string, unknown>> {
+		return (await this.packEmojiRequests([src]))[0];
+	}
+
+	@bindThis
+	public async packEmojiRequests(requests: MiFeedbackEmojiRequest[]): Promise<Record<string, unknown>[]> {
+		if (!requests.length) return [];
+		const [emojis, changes] = await Promise.all([
+			this.emojisRepository.findBy({ id: In(requests.flatMap(request => request.resolvedEmojiId ? [request.resolvedEmojiId] : [])) }),
+			this.feedbackEmojiChangesRepository.createQueryBuilder('change').distinctOn(['change.originalRequestId']).where('change.originalRequestId IN (:...ids)', { ids: requests.map(request => request.id) }).orderBy('change.originalRequestId').addOrderBy('change.id', 'DESC').getMany(),
+		]);
+		return Promise.all(requests.map(async src => {
+			const emoji = emojis.find(item => item.id === src.resolvedEmojiId && item.host == null);
+			const change = changes.find(item => item.originalRequestId === src.id);
+			return {
+				id: src.id,
+				createdAt: src.createdAt.toISOString(),
+				updatedAt: src.updatedAt ? src.updatedAt.toISOString() : null,
+				requestedBy: await this.userEntityService.pack(src.requestedById),
+				name: src.name,
+				category: src.category,
+				aliases: src.aliases,
+				license: src.license,
+				localOnly: src.localOnly,
+				isSensitive: src.isSensitive,
+				sourceType: src.sourceType,
+				originalUrl: src.originalUrl,
+				remoteHost: src.remoteHost,
+				fileId: src.fileId,
+				imageUrl: src.fileId ? (await this.driveFileEntityService.packManyByIds([src.fileId]))[0]?.url ?? src.originalUrl : src.originalUrl,
+				status: src.status,
+				resolvedComment: src.resolvedComment,
+				resolvedById: src.resolvedById,
+				resolvedAt: src.resolvedAt ? src.resolvedAt.toISOString() : null,
+				resolvedEmojiId: src.resolvedEmojiId,
+				cancelledAt: src.cancelledAt?.toISOString() ?? null,
+				cancellationReason: src.cancellationReason,
+				currentEmoji: emoji ? { id: emoji.id, name: emoji.name, imageUrl: emoji.publicUrl || emoji.originalUrl, license: emoji.license, category: emoji.category, aliases: emoji.aliases } : null,
+				latestChange: change ? await this.packEmojiChangeRequest(change) : null,
+			};
+		}));
+	}
+
+	@bindThis
+	public async packEmojiChangeRequest(src: MiFeedbackEmojiChangeRequest): Promise<Record<string, unknown>> {
 		return {
-			id: src.id,
-			createdAt: src.createdAt.toISOString(),
-			updatedAt: src.updatedAt ? src.updatedAt.toISOString() : null,
+			id: src.id, originalRequestId: src.originalRequestId, targetEmojiId: src.targetEmojiId,
+			createdAt: src.createdAt.toISOString(), updatedAt: src.updatedAt.toISOString(),
 			requestedBy: await this.userEntityService.pack(src.requestedById),
-			name: src.name,
-			category: src.category,
-			aliases: src.aliases,
-			license: src.license,
-			localOnly: src.localOnly,
-			isSensitive: src.isSensitive,
-			sourceType: src.sourceType,
-			originalUrl: src.originalUrl,
-			remoteHost: src.remoteHost,
-			fileId: src.fileId,
-			imageUrl: src.fileId ? (await this.driveFileEntityService.packManyByIds([src.fileId]))[0]?.url ?? src.originalUrl : src.originalUrl,
-			status: src.status,
-			resolvedComment: src.resolvedComment,
-			resolvedById: src.resolvedById,
-			resolvedAt: src.resolvedAt ? src.resolvedAt.toISOString() : null,
-			resolvedEmojiId: src.resolvedEmojiId,
+			kind: src.kind, status: src.status, name: src.targetSnapshot.name, reason: src.reason,
+			previousImageUrl: src.targetSnapshot.publicUrl || src.targetSnapshot.originalUrl,
+			imageUrl: src.replacementImageUrl, license: src.license,
+			resolvedAt: src.resolvedAt?.toISOString() ?? null, resolvedById: src.resolvedById,
+			resolvedComment: src.resolvedComment, events: src.events,
 		};
 	}
 
@@ -315,6 +354,7 @@ export class FeedbackEntityService {
 			actor: src.actorId ? (packedUsersMap.get(src.actorId) ?? null) : null,
 			feedbackId: src.feedbackId,
 			emojiRequestId: src.emojiRequestId,
+			emojiChangeRequestId: src.emojiChangeRequestId,
 			commentId: src.commentId,
 		}));
 	}

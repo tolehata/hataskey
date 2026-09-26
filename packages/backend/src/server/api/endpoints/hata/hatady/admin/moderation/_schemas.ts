@@ -14,7 +14,7 @@ export const moderationEntrySchema = {
 		key: text,
 		targetType: { ...text, enum: HATADY_MODERATION_TARGETS }, targetId: { ...text, format: 'misskey:id' },
 		category: { ...text, enum: ['collection', 'record', 'comment', 'reaction'] },
-		activity: { ...text, enum: ['study', 'movie', 'game', 'exercise', 'work'] },
+		activity: { ...text, enum: ['study', 'movie', 'game', 'exercise', 'work', 'cooking'] },
 		actor: { type: 'object', optional: false, nullable: false, ref: 'UserLite' },
 		title: text, body: text, createdAt: { ...text, format: 'date-time' },
 		visibility: { ...text, enum: ['public', 'followers', 'private'] },

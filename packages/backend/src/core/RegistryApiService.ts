@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { HataskFlowerV2Service } from './HataskFlowerV2Service.js';
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
 import type { RegistryItemsRepository } from '@/models/_.js';
@@ -42,6 +43,7 @@ import {
 @Injectable()
 export class RegistryApiService {
 	constructor(
+		private flowerService: HataskFlowerV2Service,
 		@Inject(DI.registryItemsRepository)
 		private registryItemsRepository: RegistryItemsRepository,
 
@@ -112,6 +114,7 @@ export class RegistryApiService {
 				} else {
 					await repo.update(collectionRows.map(row => row.id), { updatedAt: now, value });
 				}
+				if (collection === 'todos') await this.flowerService.onTodosCommitted(manager, userId, previous, value);
 			});
 			return;
 		}

@@ -337,6 +337,11 @@ export type Channels = {
 };
 
 export type NoteUpdatedEvent = { id: Note['id'] } & ({
+	type: 'utageStatusUpdated';
+	body: Required<Pick<Note, 'utageStatus' | 'utageRevision' | 'utageExpiresAt' | 'utageServerNow' | 'utageRevival' | 'utageSuccessMethod'>> & {
+		status: NonNullable<Note['utageStatus']>;
+	};
+} | {
 	type: 'reacted';
 	body: {
 		reaction: string;

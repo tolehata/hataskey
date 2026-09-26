@@ -49,6 +49,9 @@ export const notificationTypes = [
 	'app',
 	'hataFeed',
 	'hataskFlowerReady',
+	'hataskFlowerBloomed',
+	'hataskZukanUpdated',
+	'hataskFestivalBloomed',
 	'earthquake',
 	'test',
 ] as const;
@@ -96,6 +99,10 @@ export const userExportableEntities = ['antenna', 'blocking', 'clip', 'customEmo
 export const userImportableEntities = ['antenna', 'blocking', 'customEmoji', 'following', 'muting', 'userList'] as const;
 
 export const moderationLogTypes = [
+	'deleteHatadyRecord',
+	'deleteHataskRecord',
+	'warnHatadyUser',
+	'warnHataskUser',
 	'voteRegistrationApplication',
 	'approveRegistrationApplication',
 	'rejectRegistrationApplication',
@@ -157,6 +164,10 @@ export const moderationLogTypes = [
 ] as const;
 
 export type ModerationLogPayloads = {
+	deleteHatadyRecord: import('@/misc/record-moderation.js').RecordModerationInfo;
+	deleteHataskRecord: import('@/misc/record-moderation.js').RecordModerationInfo;
+	warnHatadyUser: import('@/misc/record-moderation.js').RecordModerationInfo;
+	warnHataskUser: import('@/misc/record-moderation.js').RecordModerationInfo;
 	voteRegistrationApplication: { applicationId: string; choice: 'agree' | 'oppose' };
 	approveRegistrationApplication: { applicationId: string };
 	rejectRegistrationApplication: { applicationId: string };

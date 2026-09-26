@@ -123,7 +123,7 @@ function fixture() {
 	const utility = { isKeyWordIncluded: vi.fn().mockReturnValue(false), toPunyNullable: vi.fn().mockReturnValue(null) };
 	const userService = { notifySystemWebhook: vi.fn(() => { events.push('webhook'); }) };
 	const chart = { update: vi.fn(() => { events.push('chart'); }) };
-	const mail = { sendEmail: vi.fn(async () => { events.push('mail'); }) };
+	const mail = { sendTemplateEmail: vi.fn(async () => { events.push('mail'); }) };
 	const notification = { notifyNewApplication: vi.fn().mockResolvedValue(undefined) };
 	const id = { gen: vi.fn().mockReturnValue('user1') };
 	const reviewer = { userId: 'admin', name: null, username: 'admin', isRoot: true, isAdministrator: true, eligibilityKey: 'fixture-root' };
@@ -140,8 +140,9 @@ function fixture() {
 	const apply = new ApplyEndpoint(serverMeta as never, repository as never, users as never, usedNames as never, id as never, {} as never, notification as never);
 	const list = new ListEndpoint(serverMeta as never, repository as never, review as never);
 	const approve = new ApproveEndpoint({ url: 'https://example.test' } as never, serverMeta as never, signup, mail as never);
-	const reject = new RejectEndpoint(serverMeta as never, db as never, review as never);
-	return { review, state, serverMeta, hooks, events, locks, updates, saves, db, repository, users, usedNames, transactionUsers, transactionUsedNames, getRepository, userService, chart, mail, notification, signup, apply, list, approve, reject };
+	const rejectionNotification = { send: vi.fn(async () => { events.push('rejection-mail'); return { emailSent: false, notificationStatus: 'failed' }; }) };
+	const reject = new RejectEndpoint(serverMeta as never, db as never, review as never, rejectionNotification as never);
+	return { review, state, serverMeta, hooks, events, locks, updates, saves, db, repository, users, usedNames, transactionUsers, transactionUsedNames, getRepository, userService, chart, mail, notification, rejectionNotification, signup, apply, list, approve, reject };
 }
 
 beforeEach(() => {
@@ -417,18 +418,37 @@ describe('atomic decisions and contact erasure', () => {
 		expect(f.state.records.find(record => record instanceof MiUserProfile)).toMatchObject({ email: applicant.email, emailVerified: true, password: 'hash', lang: 'ja-JP' });
 		expect(f.state.records.some(record => record instanceof MiUsedUsername)).toBe(true);
 		expect(f.events).toEqual(['commit', 'chart', 'webhook', 'mail']);
-		expect(JSON.stringify([f.state.records, f.mail.sendEmail.mock.calls, f.userService.notifySystemWebhook.mock.calls, f.chart.update.mock.calls])).not.toContain(contacts);
+		expect(JSON.stringify([f.state.records, f.mail.sendTemplateEmail.mock.calls, f.userService.notifySystemWebhook.mock.calls, f.chart.update.mock.calls])).not.toContain(contacts);
 		expect(f.saves.mock.calls.every(([record]) => !(record instanceof MiRegistrationApplication))).toBe(true);
 	});
 
 	test('rejection locks and clears contacts/credentials but preserves required email and reason', async () => {
 		const f = fixture();
-		await expect(f.reject.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).resolves.toEqual({ success: true });
+		await expect(f.reject.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).resolves.toEqual({ success: true, emailSent: false, notificationStatus: 'failed' });
+		expect(f.events).toEqual(['commit', 'rejection-mail']);
 		expect(f.locks).toHaveBeenCalledWith(MiRegistrationApplication, { where: { id: 'app1' }, lock: { mode: 'pessimistic_write' }, select: { id: true, status: true, reviewVotes: true, reviewVersion: true } });
 		expect(f.state.application).toMatchObject({ status: 'rejected', additionalContacts: null, username: null, hashedPassword: null, email: applicant.email, reason: applicant.reason, rejectedAt: expect.any(Date), personalDataDeletedAt: expect.any(Date) });
 		expect(f.state.records).toHaveLength(0);
-		expect(f.mail.sendEmail).not.toHaveBeenCalled();
+		expect(f.mail.sendTemplateEmail).not.toHaveBeenCalled();
 		expect(f.saves).not.toHaveBeenCalled();
+	});
+
+	test.each(['unauthorized', 'stale'])('rejection %s does not send a result notification', async failure => {
+		const f = fixture();
+		const originalUsername = f.state.application?.username;
+		const guard = failure === 'unauthorized' ? f.review.assertRoot : f.review.lockReview;
+		guard.mockRejectedValue(new Error(failure));
+		await expect(f.reject.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).rejects.toThrow(failure);
+		expect(f.rejectionNotification.send).not.toHaveBeenCalled();
+		expect(f.state.application).toMatchObject({ status: 'pending', username: originalUsername, additionalContacts: contacts });
+	});
+
+	test('a notification exception cannot undo the committed rejection or report success', async () => {
+		const f = fixture();
+		f.rejectionNotification.send.mockRejectedValue(new Error('unknown delivery'));
+		expect(await f.reject.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).toEqual({ success: true, emailSent: false, notificationStatus: 'sending' });
+		expect(f.state.application).toMatchObject({ status: 'rejected', username: null, hashedPassword: null, additionalContacts: null, email: applicant.email });
+		expect(f.state.commits).toBe(1);
 	});
 
 	test.each(['account', 'keypair', 'profile', 'usedName', 'decision', 'review', 'commit'])('approval failure at %s preserves pending contacts and rolls back every account record', async failAt => {
@@ -445,6 +465,7 @@ describe('atomic decisions and contact erasure', () => {
 		const f = fixture();
 		f.hooks.failAt = failAt;
 		await expect(f.reject.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).rejects.toThrow(`fixture failure: ${failAt}`);
+		expect(f.rejectionNotification.send).not.toHaveBeenCalled();
 		expect(f.state.application).toMatchObject({ status: 'pending', additionalContacts: contacts, username: 'applicant', hashedPassword: 'hash', email: applicant.email });
 		expect(f.state.rollbacks).toBe(1);
 	});
@@ -479,12 +500,12 @@ describe('atomic decisions and contact erasure', () => {
 		expect(f.state.commits).toBe(1);
 		expect(f.state.application).toMatchObject({ status: first === 'approve' ? 'approved' : 'rejected', additionalContacts: null });
 		expect(f.state.records).toHaveLength(first === 'approve' ? 4 : 0);
-		expect(f.mail.sendEmail).toHaveBeenCalledTimes(first === 'approve' ? 1 : 0);
+		expect(f.mail.sendTemplateEmail).toHaveBeenCalledTimes(first === 'approve' ? 1 : 0);
 	});
 
 	test('email delivery failure does not undo the already committed account/contact erasure', async () => {
 		const f = fixture();
-		f.mail.sendEmail.mockRejectedValue(new Error('mail unavailable'));
+		f.mail.sendTemplateEmail.mockRejectedValue(new Error('mail unavailable'));
 		await expect(f.approve.exec({ applicationId: 'app1', revision: reviewRevision }, admin, null, null)).resolves.toEqual({ success: true, emailSent: false });
 		expect(f.state.application).toMatchObject({ status: 'approved', additionalContacts: null });
 		expect(f.state.records).toHaveLength(4);

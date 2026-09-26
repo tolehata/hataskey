@@ -9,7 +9,7 @@ import { DI } from '@/di-symbols.js';
 import type { MiUser, RolesRepository, UsersRepository } from '@/models/_.js';
 import { ApiError } from '@/server/api/error.js';
 import { MetaService } from '@/core/MetaService.js';
-import { RoleService, normalizeFavoriteFolderLimit, normalizeHatacordingUiRateLimit } from '@/core/RoleService.js';
+import { RoleService, normalizeFavoriteFolderLimit } from '@/core/RoleService.js';
 import { QueryService } from '@/core/QueryService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { HATASK_SUPPORT_POLICY_KEYS, defaultHataskSupportSettings, safeSupportUrl, supportConfigured, supportReflected, supportRolePolicies, supportSnapshot } from './hatask-support.js';
@@ -32,12 +32,14 @@ export class HataskSupportService {
 	) {}
 
 	private async settings(): Promise<HataskSupportSettings> {
-		return (await this.metaService.fetch()).hataskSupport ?? defaultHataskSupportSettings();
+		const settings = (await this.metaService.fetch()).hataskSupport ?? defaultHataskSupportSettings();
+		// 廃止したポリシーを特典として保存した旧設定は、表示・再保存の対象から外す。
+		const known = new Set<string>(HATASK_SUPPORT_POLICY_KEYS);
+		return { ...settings, benefits: settings.benefits.filter(benefit => known.has(benefit.key)) };
 	}
 
 	private async basePolicies() {
-		const policies = await this.roleService.getUserPolicies(null);
-		return { ...policies, hatacordingUiRateLimit: normalizeHatacordingUiRateLimit([policies.hatacordingUiRateLimit]) };
+		return await this.roleService.getUserPolicies(null);
 	}
 
 	private userQuery(me: MiUser, publicView: boolean) {
@@ -64,7 +66,7 @@ export class HataskSupportService {
 		const roleMap = new Map(roles.map(role => [role.id, role]));
 		const benefits = settings.benefits.filter(b => b.visible).map(benefit => {
 			const role = benefit.roleId === null ? null : roleMap.get(benefit.roleId);
-			const offered = role ? supportSnapshot(benefit.key, supportRolePolicies(base, role, normalizeHatacordingUiRateLimit, normalizeFavoriteFolderLimit), base) : null;
+			const offered = role ? supportSnapshot(benefit.key, supportRolePolicies(base, role, normalizeFavoriteFolderLimit), base) : null;
 			const actual = supportSnapshot(benefit.key, current, base);
 			return {
 				key: benefit.key, title: benefit.title, description: benefit.description, showBaseline: benefit.showBaseline,
@@ -88,12 +90,12 @@ export class HataskSupportService {
 			benefits: HATASK_SUPPORT_POLICY_KEYS.map(key => {
 				const benefit = settings.benefits.find(item => item.key === key);
 				const role = benefit?.roleId ? roleMap.get(benefit.roleId) : null;
-				return { key, baseline: supportSnapshot(key, base), offered: role ? supportSnapshot(key, supportRolePolicies(base, role, normalizeHatacordingUiRateLimit, normalizeFavoriteFolderLimit), base) : null };
+				return { key, baseline: supportSnapshot(key, base), offered: role ? supportSnapshot(key, supportRolePolicies(base, role, normalizeFavoriteFolderLimit), base) : null };
 			}),
 			roles: roles.map(role => ({ id: role.id, name: role.name })),
 			rolePreview: previewRole ? {
 				id: previewRole.id, name: previewRole.name,
-				benefits: HATASK_SUPPORT_POLICY_KEYS.map(key => ({ key, snapshot: supportSnapshot(key, supportRolePolicies(base, previewRole, normalizeHatacordingUiRateLimit, normalizeFavoriteFolderLimit), base) })),
+				benefits: HATASK_SUPPORT_POLICY_KEYS.map(key => ({ key, snapshot: supportSnapshot(key, supportRolePolicies(base, previewRole, normalizeFavoriteFolderLimit), base) })),
 			} : null,
 		};
 	}

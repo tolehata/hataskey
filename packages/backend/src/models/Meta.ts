@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { DEFAULT_FLOWER_RULES } from '@/core/hatask-flower-v2.js';
 import { Entity, Column, PrimaryColumn, ManyToOne } from 'typeorm';
 import { id } from './util/id.js';
 import { MiUser } from './User.js';
@@ -11,6 +12,9 @@ import type { HataskSupportSettings } from '@/core/hatask-support.js';
 
 @Entity('meta')
 export class MiMeta {
+	@Column('jsonb', { default: DEFAULT_FLOWER_RULES })
+	public hataskFlowerRules: typeof DEFAULT_FLOWER_RULES;
+
 	@PrimaryColumn({
 		type: 'varchar',
 		length: 32,

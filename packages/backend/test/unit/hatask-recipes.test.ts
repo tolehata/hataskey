@@ -1,0 +1,174 @@
+/*
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+import { describe, expect, test, vi } from 'vitest';
+import { HataskRecipeService } from '@/core/HataskRecipeService.js';
+import type { HataskCookingRecordInput, HataskRecipeInput } from '@/core/HataskRecipeService.js';
+import type { MiHataskRecipe } from '@/models/HataskRecipe.js';
+
+function recipe(overrides: Partial<MiHataskRecipe> = {}): MiHataskRecipe {
+	return {
+		id: 'recipe', createdAt: new Date('2026-09-20'), updatedAt: new Date('2026-09-20'), userId: 'owner', user: null,
+		title: '鶏むねのねぎ塩だれ', summary: '', category: 'main', servings: 2, minutes: 25, scalable: true,
+		ingredients: [], steps: [], tags: [], fileId: null, file: null,
+		visibility: 'followers', visibleUserIds: [], isDraft: false,
+		...overrides,
+	};
+}
+
+function input(overrides: Partial<HataskRecipeInput> = {}): HataskRecipeInput {
+	return {
+		title: '鶏むねのねぎ塩だれ', summary: '', category: 'main', servings: 2, minutes: null, scalable: true,
+		ingredients: [], steps: [], tags: [], fileId: null, visibility: 'private', visibleUserIds: [], isDraft: false,
+		...overrides,
+	};
+}
+
+function cooking(overrides: Partial<HataskCookingRecordInput> = {}): HataskCookingRecordInput {
+	return {
+		recipeId: 'recipe', cookedAt: new Date('2026-09-22T19:42:00Z'), durationSeconds: 28 * 60, servings: 2, mealSlot: 'dinner', cost: 620,
+		memo: '塩は控えめ', fileId: null, visibility: 'private', visibleUserIds: [], recordToHatady: true,
+		...overrides,
+	};
+}
+
+const me = (id: string) => ({ id }) as never;
+
+function setup(options: { stored?: MiHataskRecipe | null; following?: boolean; blocked?: boolean; users?: number } = {}) {
+	const recipes = {
+		findOneBy: vi.fn().mockResolvedValue(options.stored === undefined ? recipe() : options.stored),
+		insertOne: vi.fn(async (row: MiHataskRecipe) => row),
+		update: vi.fn(),
+		delete: vi.fn().mockResolvedValue({ affected: 1 }),
+	};
+	const records = {
+		insertOne: vi.fn(async (row: unknown) => row),
+		findOneBy: vi.fn(),
+		delete: vi.fn(),
+		createQueryBuilder: vi.fn(() => {
+			const qb = { select: () => qb, addSelect: () => qb, where: () => qb, andWhere: () => qb, groupBy: () => qb, getRawMany: async () => [] };
+			return qb;
+		}),
+	};
+	const users = { countBy: vi.fn().mockResolvedValue(options.users ?? 0) };
+	const followings = { exists: vi.fn().mockResolvedValue(options.following ?? false) };
+	const blockings = { exists: vi.fn().mockResolvedValue(options.blocked ?? false) };
+	const driveFiles = { findOneBy: vi.fn().mockResolvedValue(null) };
+	const hatady = { createLog: vi.fn().mockResolvedValue({ id: 'log' }), deleteLog: vi.fn().mockResolvedValue(undefined) };
+	const userEntity = { packMany: vi.fn(async (ids: string[]) => ids.map(id => ({ id, username: id }))) };
+	const service = new HataskRecipeService(
+		recipes as never, records as never, users as never, followings as never, blockings as never, driveFiles as never,
+		{ gen: () => 'generated' } as never, hatady as never, {} as never, userEntity as never,
+	);
+	return { service, recipes, records, users, followings, blockings, hatady };
+}
+
+describe('Hatask recipe audiences', () => {
+	test.each([
+		['owner sees private drafts', recipe({ visibility: 'private', isDraft: true }), 'owner', {}, true],
+		['others never see drafts', recipe({ visibility: 'specified', visibleUserIds: ['member'], isDraft: true }), 'member', {}, false],
+		['private stays private', recipe({ visibility: 'private' }), 'member', { following: true }, false],
+		['followers need a follow', recipe(), 'member', { following: false }, false],
+		['followers can view', recipe(), 'member', { following: true }, true],
+		['specified member can view', recipe({ visibility: 'specified', visibleUserIds: ['member'] }), 'member', {}, true],
+		['outsider cannot view a specified recipe', recipe({ visibility: 'specified', visibleUserIds: ['member'] }), 'outsider', { following: true }, false],
+		['blocking hides even a specified recipe', recipe({ visibility: 'specified', visibleUserIds: ['member'] }), 'member', { blocked: true }, false],
+	] as const)('%s', async (_, stored, viewer, options, expected) => {
+		const { service } = setup(options);
+		expect(await service.canView(stored, viewer)).toBe(expected);
+	});
+
+	test('a specified recipe without local members is rejected before insert', async () => {
+		const { service, recipes } = setup({ users: 0 });
+		await expect(service.create(me('owner'), input({ visibility: 'specified', visibleUserIds: [] }))).rejects.toMatchObject({ code: 'INVALID_RECIPE_AUDIENCE' });
+		await expect(service.create(me('owner'), input({ visibility: 'specified', visibleUserIds: ['remote'] }))).rejects.toMatchObject({ code: 'INVALID_RECIPE_AUDIENCE' });
+		expect(recipes.insertOne).not.toHaveBeenCalled();
+	});
+
+	test('a recipe cannot be public even when the service is called directly', async () => {
+		const { service, recipes } = setup();
+		await expect(service.create(me('owner'), input({ visibility: 'public' as never }))).rejects.toMatchObject({ code: 'INVALID_RECIPE' });
+		expect(recipes.insertOne).not.toHaveBeenCalled();
+	});
+
+	test('the owner is dropped from the audience and tags are normalized', async () => {
+		const { service, recipes } = setup({ users: 1 });
+		await service.create(me('owner'), input({ visibility: 'specified', visibleUserIds: ['owner', 'member'], tags: ['#作りおき', '作りおき', '  ', '鶏むね'] }));
+		expect(recipes.insertOne).toHaveBeenCalledWith(expect.objectContaining({ visibleUserIds: ['member'], tags: ['作りおき', '鶏むね'] }));
+	});
+
+	test('only the owner can update a recipe', async () => {
+		const { service, recipes } = setup({ stored: null });
+		await expect(service.update(me('member'), 'recipe', input())).rejects.toMatchObject({ code: 'NO_SUCH_RECIPE' });
+		expect(recipes.findOneBy).toHaveBeenCalledWith({ id: 'recipe', userId: 'member' });
+		expect(recipes.update).not.toHaveBeenCalled();
+	});
+});
+
+describe('Hatask cooking records', () => {
+	test.each([
+		['public', 'public'],
+		['followers', 'followers'],
+		['private', 'private'],
+		['specified', 'private'],
+	] as const)('%s cooking visibility is saved and mirrored as %s', async (visibility, hatadyVisibility) => {
+		const { service, records, hatady } = setup({ users: 1 });
+		const record = await service.createCookingRecord(me('owner'), cooking({
+			visibility,
+			visibleUserIds: visibility === 'specified' ? ['member'] : [],
+		}));
+		expect(records.insertOne).toHaveBeenCalledWith(expect.objectContaining({
+			visibility,
+			visibleUserIds: visibility === 'specified' ? ['member'] : [],
+		}));
+		expect(hatady.createLog).toHaveBeenCalledWith(me('owner'), expect.objectContaining({ visibility: hatadyVisibility }));
+		expect(record.visibility).toBe(visibility);
+	});
+
+	test('invalid cooking visibility is rejected before either record is written', async () => {
+		const { service, records, hatady } = setup();
+		await expect(service.createCookingRecord(me('owner'), cooking({ visibility: 'invalid' as never }))).rejects.toMatchObject({ code: 'INVALID_RECIPE' });
+		expect(records.insertOne).not.toHaveBeenCalled();
+		expect(hatady.createLog).not.toHaveBeenCalled();
+	});
+
+	test('a record is mirrored to Hatady as a cooking log under the recipe category', async () => {
+		const { service, records, hatady } = setup();
+		const result = await service.createCookingRecord(me('owner'), cooking());
+		expect(hatady.createLog).toHaveBeenCalledWith(me('owner'), expect.objectContaining({
+			kind: 'cooking', title: '鶏むねのねぎ塩だれ', subject: '主菜', body: '塩は控えめ', durationSeconds: 28 * 60, visibility: 'private', fileIds: [],
+		}));
+		expect(records.insertOne).toHaveBeenCalledWith(expect.objectContaining({ recipeId: 'recipe', hatadyLogId: 'log', mealSlot: 'dinner', cost: 620 }));
+		expect(result).toMatchObject({ hatadyLogId: 'log', title: '鶏むねのねぎ塩だれ' });
+	});
+
+	test('member-specific records stay private in Hatady', async () => {
+		const { service, hatady } = setup({ users: 1 });
+		await service.createCookingRecord(me('owner'), cooking({ visibility: 'specified', visibleUserIds: ['member'] }));
+		expect(hatady.createLog).toHaveBeenCalledWith(me('owner'), expect.objectContaining({ visibility: 'private' }));
+	});
+
+	test('a recipe the cook cannot see is rejected before any Hatady write', async () => {
+		const { service, hatady, records } = setup({ stored: recipe({ visibility: 'private' }) });
+		await expect(service.createCookingRecord(me('outsider'), cooking())).rejects.toMatchObject({ code: 'NO_SUCH_RECIPE' });
+		expect(hatady.createLog).not.toHaveBeenCalled();
+		expect(records.insertOne).not.toHaveBeenCalled();
+	});
+
+	test('a failed Hatask insert removes the Hatady log it created', async () => {
+		const { service, records, hatady } = setup();
+		records.insertOne.mockRejectedValueOnce(new Error('insert failed'));
+		await expect(service.createCookingRecord(me('owner'), cooking())).rejects.toThrow('insert failed');
+		expect(hatady.deleteLog).toHaveBeenCalledWith(me('owner'), 'log');
+	});
+
+	test('deleting a record also deletes its Hatady log', async () => {
+		const { service, records, hatady } = setup();
+		records.findOneBy.mockResolvedValue({ id: 'record', userId: 'owner', hatadyLogId: 'log' });
+		await service.deleteCookingRecord(me('owner'), 'record');
+		expect(records.findOneBy).toHaveBeenCalledWith({ id: 'record', userId: 'owner' });
+		expect(records.delete).toHaveBeenCalledWith('record');
+		expect(hatady.deleteLog).toHaveBeenCalledWith(me('owner'), 'log');
+	});
+});

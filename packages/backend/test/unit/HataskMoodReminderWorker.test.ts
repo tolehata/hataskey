@@ -10,7 +10,7 @@ import CreateNotificationEndpoint, { meta } from '@/server/api/endpoints/notific
 
 const now = Date.parse('2026-09-17T08:00:30+09:00');
 const settings = { moodRemind: true, moodRemindTimes: ['朝 8:00', '昼 12:00'], moodRemindTimeZone: 'Asia/Tokyo' };
-type Owner = { settings: unknown; moods?: unknown; active: boolean };
+type Owner = { settings: unknown; moods?: unknown; active: boolean; updatedAt?: Date };
 
 afterEach(() => { vi.restoreAllMocks(); });
 
@@ -42,7 +42,7 @@ function fixture() {
 					if (key === 'settings') {
 						beforeRead?.();
 						const owner = owners.get(id);
-						return owner?.active ? { value: owner.settings } : null;
+						return owner?.active ? { value: owner.settings, updatedAt: owner.updatedAt } : null;
 					}
 					if (key === 'moods') return owners.get(id)?.moods === undefined ? null : { value: owners.get(id)?.moods };
 					return markers.get(id) ?? null;
@@ -110,6 +110,16 @@ describe('server-side Hatask mood reminders', () => {
 		await f.service.process(); expect(f.delivered.size).toBe(0);
 		vi.mocked(Date.now).mockReturnValue(Date.parse('2026-09-17T12:00:00+09:00'));
 		await f.service.process(); expect(f.delivered.size).toBe(1);
+	});
+
+	test('ジョブが遅れても時間枠内なら送り、枠の後に保存した設定では遡って送らない', async () => {
+		const f = fixture();
+		vi.mocked(Date.now).mockReturnValue(Date.parse('2026-09-17T08:40:00+09:00'));
+		f.owners.get('alice')!.updatedAt = new Date('2026-09-17T08:20:00+09:00');
+		await f.service.process(); expect(f.delivered.size).toBe(0);
+		f.owners.get('alice')!.updatedAt = new Date('2026-09-16T21:00:00+09:00');
+		await f.service.process(); expect(f.delivered.size).toBe(1);
+		expect(f.markers.get('alice')?.value).toEqual({ handledSlots: ['2026-09-17T08:00'] });
 	});
 
 	test('同時ワーカーは所有者ロック内で最新設定・送信済み枠を読む', async () => {

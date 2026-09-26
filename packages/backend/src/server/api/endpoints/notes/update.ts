@@ -74,14 +74,14 @@ export const paramDef = {
 		fileIds: {
 			type: 'array',
 			uniqueItems: true,
-			minItems: 1,
+			minItems: 0,
 			maxItems: 16,
 			items: { type: 'string', format: 'misskey:id' },
 		},
 		mediaIds: {
 			type: 'array',
 			uniqueItems: true,
-			minItems: 1,
+			minItems: 0,
 			maxItems: 16,
 			items: { type: 'string', format: 'misskey:id' },
 		},
@@ -151,7 +151,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 
 			let files: MiDriveFile[] = [];
 			const fileIds = ps.fileIds ?? ps.mediaIds ?? null;
-			if (fileIds != null) {
+			if (fileIds != null && fileIds.length > 0) {
 				files = await this.driveFilesRepository.createQueryBuilder('file')
 					.where('file.userId = :userId AND file.id IN (:...fileIds)', {
 						userId: me.id,

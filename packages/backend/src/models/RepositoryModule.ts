@@ -102,6 +102,8 @@ import { MiRegistrationApplication } from './RegistrationApplication.js';
 import { MiHataskEvent } from './HataskEvent.js';
 import { MiHataskRsvp } from './HataskRsvp.js';
 import { MiHataskFlower } from './HataskFlower.js';
+import { MiHataskRecipe } from './HataskRecipe.js';
+import { MiHataskCookingRecord } from './HataskCookingRecord.js';
 import { MiUtageSession } from './UtageSession.js';
 import { MiFeedbackIssue } from './FeedbackIssue.js';
 import { MiFeedbackAgree } from './FeedbackAgree.js';
@@ -126,6 +128,7 @@ import { MiHatadyMediaReaction } from './HatadyMediaReaction.js';
 import { MiHataskEmotionAnalysis } from './HataskEmotionAnalysis.js';
 import { MiFeedbackIssueModerator } from './FeedbackIssueModerator.js';
 import { MiFeedbackEmojiRequest } from './FeedbackEmojiRequest.js';
+import { MiFeedbackEmojiChangeRequest } from './FeedbackEmojiChangeRequest.js';
 import { MiFeedbackNotification } from './FeedbackNotification.js';
 import { MiFeedbackProject } from './FeedbackProject.js';
 import type { Provider } from '@nestjs/common';
@@ -647,6 +650,18 @@ const $registrationApplicationsRepository: Provider = {
 	inject: [DI.db],
 };
 
+const $hataskRecipesRepository: Provider = {
+	provide: DI.hataskRecipesRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHataskRecipe).extend(miRepository as MiRepository<MiHataskRecipe>),
+	inject: [DI.db],
+};
+
+const $hataskCookingRecordsRepository: Provider = {
+	provide: DI.hataskCookingRecordsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHataskCookingRecord).extend(miRepository as MiRepository<MiHataskCookingRecord>),
+	inject: [DI.db],
+};
+
 const $hataskEventsRepository: Provider = {
 	provide: DI.hataskEventsRepository,
 	useFactory: (db: DataSource) => db.getRepository(MiHataskEvent).extend(miRepository as MiRepository<MiHataskEvent>),
@@ -809,6 +824,12 @@ const $feedbackEmojiRequestsRepository: Provider = {
 	inject: [DI.db],
 };
 
+const $feedbackEmojiChangeRequestsRepository: Provider = {
+	provide: DI.feedbackEmojiChangeRequestsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiFeedbackEmojiChangeRequest).extend(miRepository as MiRepository<MiFeedbackEmojiChangeRequest>),
+	inject: [DI.db],
+};
+
 const $feedbackNotificationsRepository: Provider = {
 	provide: DI.feedbackNotificationsRepository,
 	useFactory: (db: DataSource) => db.getRepository(MiFeedbackNotification).extend(miRepository as MiRepository<MiFeedbackNotification>),
@@ -917,6 +938,8 @@ const $feedbackProjectsRepository: Provider = {
 		$hataskEventsRepository,
 		$hataskRsvpsRepository,
 		$hataskFlowersRepository,
+		$hataskRecipesRepository,
+		$hataskCookingRecordsRepository,
 		$utageSessionsRepository,
 		$feedbackIssuesRepository,
 		$feedbackAgreesRepository,
@@ -941,6 +964,7 @@ const $feedbackProjectsRepository: Provider = {
 		$feedbackCommentReactionsRepository,
 		$feedbackIssueModeratorsRepository,
 		$feedbackEmojiRequestsRepository,
+		$feedbackEmojiChangeRequestsRepository,
 		$feedbackNotificationsRepository,
 		$feedbackProjectsRepository,
 	],
@@ -1038,6 +1062,8 @@ const $feedbackProjectsRepository: Provider = {
 		$hataskEventsRepository,
 		$hataskRsvpsRepository,
 		$hataskFlowersRepository,
+		$hataskRecipesRepository,
+		$hataskCookingRecordsRepository,
 		$utageSessionsRepository,
 		$feedbackIssuesRepository,
 		$feedbackAgreesRepository,
@@ -1062,6 +1088,7 @@ const $feedbackProjectsRepository: Provider = {
 		$feedbackCommentReactionsRepository,
 		$feedbackIssueModeratorsRepository,
 		$feedbackEmojiRequestsRepository,
+		$feedbackEmojiChangeRequestsRepository,
 		$feedbackNotificationsRepository,
 		$feedbackProjectsRepository,
 	],

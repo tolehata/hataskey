@@ -61,14 +61,6 @@ export type RolePolicies = {
 	canUseHatalyze: boolean;
 	// 旗鯖fork: HataFeed(フィードバックセンター)へのアクセス可否(デフォルト不許可。許可ロールでのみ利用可)
 	canAccessHataFeed: boolean;
-	// 旗鯖fork: HataSNSCordUI の利用可否(デフォルト許可。ロールで無効化可能)
-	canUseHatacordingUi: boolean;
-	// 旗鯖fork: HataSNSCordUI サブペインのタブ最大数(デフォルト3、クランプ1-5)
-	hatacordingUiSubpaneMaxTabs: number;
-	// 旗鯖fork: HataSNSCordUI 内の全API操作に共通で適用する1時間あたりの上限(デフォルト500、クランプ1-1000)
-	hatacordingUiRateLimit: number;
-	// 旗鯖fork: HataSNSCordUI 専用の共通API枠を免除するか(デフォルト不許可。個別ロールでのみ許可)
-	canBypassHatacordingUiRateLimit: boolean;
 	// 旗鯖fork(Hatady): 端末間同期の可否(デフォルト許可。特定ロールで無効化できる)。
 	//   無効の場合、Hatady の表示設定などは端末ローカル扱いになり、設定画面で「無効」と表示される。
 	canUseHatadySync: boolean;
@@ -133,10 +125,6 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	canUseMascot: false,
 	canUseHatalyze: false,
 	canAccessHataFeed: false,
-	canUseHatacordingUi: true,
-	hatacordingUiSubpaneMaxTabs: 3,
-	hatacordingUiRateLimit: 500,
-	canBypassHatacordingUiRateLimit: false,
 	canUseHatadySync: true,
 	hatadyBookLimit: 100,
 	hatadyBookmarkLimit: 20,
@@ -181,18 +169,6 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	watermarkAvailable: true,
 	canSetFederationAvatarShape: true,
 };
-
-export function normalizeHatacordingUiSubpaneMaxTabs(values: readonly unknown[]): number {
-	const finiteValues = values.map(Number).filter(Number.isFinite);
-	const value = finiteValues.length > 0 ? Math.max(...finiteValues) : DEFAULT_POLICIES.hatacordingUiSubpaneMaxTabs;
-	return Math.max(1, Math.min(5, value));
-}
-
-export function normalizeHatacordingUiRateLimit(values: readonly unknown[]): number {
-	const finiteValues = values.map(Number).filter(Number.isFinite);
-	const value = finiteValues.length > 0 ? Math.max(...finiteValues) : DEFAULT_POLICIES.hatacordingUiRateLimit;
-	return Math.max(1, Math.min(1000, Math.floor(value)));
-}
 
 export function normalizeHatadyGameTitleLimit(values: readonly unknown[]): number {
 	const finiteValues = values.map(Number).filter(Number.isFinite);
@@ -513,10 +489,6 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			canUseMascot: calc('canUseMascot', vs => vs.some(v => v === true)),
 			canUseHatalyze: calc('canUseHatalyze', vs => vs.some(v => v === true)),
 			canAccessHataFeed: calc('canAccessHataFeed', vs => vs.some(v => v === true)),
-			canUseHatacordingUi: calc('canUseHatacordingUi', vs => vs.some(v => v === true)),
-			hatacordingUiSubpaneMaxTabs: calc('hatacordingUiSubpaneMaxTabs', normalizeHatacordingUiSubpaneMaxTabs),
-			hatacordingUiRateLimit: calc('hatacordingUiRateLimit', normalizeHatacordingUiRateLimit),
-			canBypassHatacordingUiRateLimit: calc('canBypassHatacordingUiRateLimit', vs => vs.some(v => v === true)),
 			// 既定 true。いずれかのロールで false にされたら無効(every)。
 			canUseHatadySync: calc('canUseHatadySync', vs => vs.every(v => v === true)),
 			hatadyBookLimit: calc('hatadyBookLimit', vs => Math.max(...vs)),

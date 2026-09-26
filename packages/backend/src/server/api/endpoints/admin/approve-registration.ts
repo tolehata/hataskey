@@ -4,7 +4,6 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
-import { escapeHtml } from '@/misc/escape-html.js';
 import { registrationReviewErrors } from '@/core/registration-review-policy.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
@@ -61,31 +60,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 			const email = applicationEmail;
 
 			// ★ 承認時のみメール送信
-			const serverName = this.serverMeta.name ?? 'Misskey';
-			const serverUrl = this.config.url;
-
-			const emailSent = await this.emailService.sendEmail(
+			const emailSent = await this.emailService.sendTemplateEmail(
 				email,
-				`【${serverName}】アカウント登録申請が承認されました`,
-				// HTML
-				[
-					'<h2>アカウント登録申請が承認されました</h2>',
-					`<p><b>${escapeHtml(serverName)}</b> へのアカウント登録申請が承認されました。</p>`,
-					`<p><strong>ユーザーID:</strong> @${escapeHtml(username)}</p>`,
-					'<p>サーバーにログインしてご利用を開始してください。</p>',
-					`<p><a href="${escapeHtml(serverUrl)}">${escapeHtml(serverUrl)}</a></p>`,
-					'<hr>',
-					'<p style="color:#888;font-size:0.9em;">',
-					'※このメールアドレスは今後、ログインやセキュリティに関連する操作が行われた際の通知先として使用されます。',
-					'</p>',
-				].join('\n'),
-				// plaintext
-				[
-					`${serverName} へのアカウント登録申請が承認されました。`,
-					`ユーザーID: @${username}`,
-					`ログインURL: ${serverUrl}`,
-					'※このメールアドレスは今後、セキュリティ通知の送信先として使用されます。',
-				].join('\n'),
+				{ kind: 'registration-approved', username },
 			).then(() => true, () => false);
 
 			return { success: true, emailSent };

@@ -8,6 +8,7 @@ import { Endpoint } from '@/server/api/endpoint-base.js';
 import { ApiError } from '@/server/api/error.js';
 import { DI } from '@/di-symbols.js';
 import { IdService } from '@/core/IdService.js';
+import { hataskModeratedRecordError, rethrowHataskModerationError } from '@/misc/hatask-moderated-record.js';
 import { MiHataskFlower, type HataskFlowersRepository } from '@/models/_.js';
 import { HATASK_FLOWER_RATE_LIMITS } from './_shared.js';
 
@@ -24,6 +25,7 @@ export const meta = {
 		required: ['synced'],
 	},
 	errors: {
+		moderatedRecord: hataskModeratedRecordError,
 		invalidHarvestedAt: {
 			message: 'The flower harvestedAt must be a valid RFC 3339 date-time.',
 			code: 'INVALID_HATASK_FLOWER_HARVESTED_AT',
@@ -89,7 +91,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				return { ...flower, harvestedAt };
 			});
 			// 同じ clientFlowerId を一つの同期で重ねても、ON CONFLICT が同一行を二度更新しないようにする。
-			const flowers = [...new Map(parsedFlowers.map(flower => [flower.clientFlowerId, flower])).values()];
+			const authoritative: { id: string }[] = await this.hataskFlowersRepository.manager.query('SELECT id FROM hatask_flower_harvest WHERE "userId"=$1', [me.id]);
+			const authoritativeIds = new Set(authoritative.map(flower => flower.id));
+			const flowers = [...new Map(parsedFlowers.map(flower => [flower.clientFlowerId, flower])).values()].filter(flower => !authoritativeIds.has(flower.clientFlowerId));
+			if (flowers.length === 0) return { synced: 0 };
 
 			await this.hataskFlowersRepository.createQueryBuilder()
 				.insert()
@@ -105,7 +110,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				})))
 				// id と userId/clientFlowerId は競合時に絶対更新しない。既存行の安定 ID を保持する。
 				.orUpdate(['emoji', 'name', 'hanakotoba', 'harvestedAt'], ['userId', 'clientFlowerId'])
-				.execute();
+				.execute().catch(rethrowHataskModerationError);
 
 			return { synced: flowers.length };
 		});

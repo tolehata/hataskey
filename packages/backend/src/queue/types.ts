@@ -120,7 +120,9 @@ export type EndedPollNotificationJobData = {
 // 旗鯖fork: 宴(うたげ)の成功確定ジョブ。expiresAt(投稿+15分)に発火し、
 // 連合先には何も配送せず、サーバー内で running のセッションを succeeded に確定する。
 export type UtageResolveJobData = {
-	noteId: MiNote['id'];
+	noteId?: MiNote['id'];
+	phase?: 'normal' | 'revival';
+	recover?: boolean;
 };
 
 export type PostScheduledNoteJobData = {

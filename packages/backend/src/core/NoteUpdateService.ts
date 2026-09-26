@@ -170,11 +170,15 @@ export class NoteUpdateService implements OnApplicationShutdown {
 			]);
 
 			// Start transaction for any poll or event changes
-			const needsTransaction = note.hasPoll || values.hasPoll || note.hasEvent || values.hasEvent;
+			const utageCandidate = this.utageService.isCandidate(note);
+			let utageChange: Awaited<ReturnType<UtageService['onNoteUpdatedInTransaction']>> = null;
+			const needsTransaction = note.hasPoll || values.hasPoll || note.hasEvent || values.hasEvent || utageCandidate;
 
 			if (needsTransaction) {
 				await this.db.transaction(async transactionalEntityManager => {
+					const utageSession = utageCandidate ? await this.utageService.lock(transactionalEntityManager, note.id) : null;
 					await transactionalEntityManager.update(MiNote, { id: note.id }, values);
+					utageChange = await this.utageService.onNoteUpdatedInTransaction(transactionalEntityManager, note, { ...note, text: values.text, cw: values.cw }, utageSession);
 
 					if (note.hasPoll && values.hasPoll) {
 						const old_poll = await transactionalEntityManager.findOneBy(MiPoll, { noteId: note.id });
@@ -250,12 +254,7 @@ export class NoteUpdateService implements OnApplicationShutdown {
 				await this.notesRepository.update({ id: note.id }, values);
 			}
 
-			// 再取得した最新ノートではなく、今回保存した本文を判定する。
-			// 連続編集で不可視の本文をすぐ戻しても、途中の隠蔽を見落とさない。
-			await this.utageService.onNoteUpdated(note, { ...note, text: values.text, cw: values.cw }).catch(err => {
-				// 宴の付随処理が失敗しても、保存済みの編集の履歴・連合配送は続ける。
-				console.error('[utage] onNoteUpdated failed:', err);
-			});
+			if (utageChange) await this.utageService.afterCommit([utageChange]);
 			await this.noteHistoryService.recordHistory(values, note, originalPoll, originalEvent, { updatedAt: data.updatedAt });
 
 			return await this.notesRepository.findOneBy({ id: note.id });

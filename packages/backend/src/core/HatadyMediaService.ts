@@ -3,6 +3,7 @@
  * 所有権・公開範囲・種別固有検証をこのサービスに集約し、各 API で判定が分散しないようにする。
  */
 
+import { HataskFlowerV2Service, type FlowerReward } from './HataskFlowerV2Service.js';
 import { Inject, Injectable } from '@nestjs/common';
 import { In, type DataSource, type EntityManager, type QueryDeepPartialEntity } from 'typeorm';
 import { DI } from '@/di-symbols.js';
@@ -351,6 +352,7 @@ export class HatadyMediaService {
 	public static readonly ERR_GAME_TITLE_LIMIT = 'HATADY_GAME_TITLE_LIMIT';
 
 	constructor(
+		private flowerService: HataskFlowerV2Service,
 		@Inject(DI.db)
 		private db: DataSource,
 		@Inject(DI.hatadyMediaWorksRepository)
@@ -693,7 +695,7 @@ export class HatadyMediaService {
 	}
 
 	@bindThis
-	public async createSession(userId: string, workId: string, kind: HatadyMediaSessionKind, input: HatadyMediaSessionInput): Promise<MiHatadyMediaSession> {
+	public async createSession(userId: string, workId: string, kind: HatadyMediaSessionKind, input: HatadyMediaSessionInput): Promise<MiHatadyMediaSession & { flowerReward: FlowerReward }> {
 		const now = new Date();
 		const id = this.idService.gen(now.getTime());
 		const session = await this.db.transaction(async manager => {
@@ -703,7 +705,8 @@ export class HatadyMediaService {
 			values.fileIds = await this.hatadyAttachmentService.validate(userId, input.fileIds ?? [], [], manager);
 			if (input.tags?.includes('recommend')) await manager.getRepository(MiHatadyMediaWork).update({ id: workId, userId }, { isRecommended: true });
 			await manager.getRepository(MiHatadyMediaSession).insert({ id, createdAt: now, updatedAt: now, userId, workId, ...values, workSnapshot: this.snapshotWork(work) as QueryDeepPartialEntity<MiHatadyMediaSession>['workSnapshot'] });
-			return manager.getRepository(MiHatadyMediaSession).findOneByOrFail({ id, userId });
+			const flowerReward = await this.flowerService.onHatadyCreated(manager, userId, id);
+			return Object.assign(await manager.getRepository(MiHatadyMediaSession).findOneByOrFail({ id, userId }), { flowerReward });
 		});
 		// 旗鯖fork(Hatady次期: ゲーム/映画記録): 映画・ゲームの記録も連続記録に数えるため、
 		//   学習ログ作成時と同じ節目通知の判定をここでも行う。

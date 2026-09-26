@@ -56,6 +56,9 @@ export type ModerationLog = {
 	type: 'voteRegistrationApplication';
 	info: ModerationLogPayloads['voteRegistrationApplication'];
 } | {
+	type: 'deleteHatadyRecord' | 'deleteHataskRecord' | 'warnHatadyUser' | 'warnHataskUser';
+	info: ModerationLogPayloads['deleteHatadyRecord'];
+} | {
 	type: 'approveRegistrationApplication';
 	info: ModerationLogPayloads['approveRegistrationApplication'];
 } | {

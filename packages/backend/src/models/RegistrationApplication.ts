@@ -10,6 +10,7 @@ import { id } from './util/id.js';
 import { MiUser } from './User.js';
 
 export type RegistrationReviewActor = { userId: string; name: string | null; username: string | null };
+export type RegistrationRejectionNotificationStatus = 'pending' | 'sending' | 'sent' | 'failed';
 export type RegistrationReviewVote = RegistrationReviewActor & {
 	choice: 'agree' | 'oppose';
 	reason: string;
@@ -100,6 +101,13 @@ export class MiRegistrationApplication {
 		nullable: true,
 	})
 	public rejectedAt: Date | null;
+
+	/** Null marks legacy decisions that must never be automatically notified. */
+	@Column('varchar', { length: 16, nullable: true })
+	public rejectionNotificationStatus: RegistrationRejectionNotificationStatus | null;
+
+	@Column('timestamp with time zone', { nullable: true })
+	public rejectionNotificationAttemptedAt: Date | null;
 
 	/**
 	 * 旗鯖fork: 個人情報 (username / hashedPassword) を削除した日時

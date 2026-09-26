@@ -11,7 +11,8 @@ import { MiUser } from './User.js';
 import { MiHatadyBook } from './HatadyBook.js';
 import { MiHatadyMediaWork } from './HatadyMediaWork.js';
 
-export const HATADY_LOG_KINDS = ['study', 'exercise', 'work'] as const;
+// cooking は Hatask レシピの「作った記録」からのみ作られる。
+export const HATADY_LOG_KINDS = ['study', 'exercise', 'work', 'cooking'] as const;
 export type HatadyLogKind = typeof HATADY_LOG_KINDS[number];
 
 @Entity('hatady_log')

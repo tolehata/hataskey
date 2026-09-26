@@ -17,7 +17,7 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		kind: { type: 'string', enum: ['all', 'study', 'movie', 'game', 'exercise', 'work'], default: 'all' },
+		kind: { type: 'string', enum: ['all', 'study', 'movie', 'game', 'exercise', 'work', 'cooking'], default: 'all' },
 		months: { type: 'integer', minimum: 1, maximum: 24, default: 6 },
 		// 旗鯖fork: 月別/曜日/時間帯をユーザーの壁時計で集計するためのオフセット(分。JST は -540)。
 		tzOffset: { type: 'integer', minimum: -840, maximum: 840, default: 0 },

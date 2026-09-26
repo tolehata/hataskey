@@ -759,10 +759,16 @@ export class NoteCreateService implements OnApplicationShutdown {
 
 		// 投稿を作成
 		try {
-			if (insert.hasPoll || insert.hasEvent) {
+			let utageChanges: Awaited<ReturnType<UtageService['onNoteSaved']>> = [];
+			const utageParents = [
+				...(data.reply ? [{ note: data.reply, kind: 'reply' as const }] : []),
+				...(data.renote ? [{ note: data.renote, kind: 'renote' as const }] : []),
+			];
+			if (insert.hasPoll || insert.hasEvent || this.utageService.isCandidate(insert) || utageParents.some(p => this.utageService.isCandidate(p.note))) {
 				// Start transaction
 				await this.db.transaction(async transactionalEntityManager => {
 					await transactionalEntityManager.insert(MiNote, insert);
+					utageChanges = await this.utageService.onNoteSaved(transactionalEntityManager, insert, user, utageParents);
 
 					if (insert.hasPoll) {
 						const poll = new MiPoll({
@@ -798,6 +804,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 			} else {
 				await this.notesRepository.insert(insert);
 			}
+			await this.utageService.afterCommit(utageChanges);
 
 			return {
 				...insert,
@@ -907,31 +914,6 @@ export class NoteCreateService implements OnApplicationShutdown {
 					count: 100,
 				},
 			});
-		}
-
-		// 旗鯖fork: 宴(うたげ)セッションの作成。ローカル かつ 宴ワードを含むノートで
-		// running セッションを作り、15分後の成功確定ジョブを予約する。
-		this.utageService.onNoteCreated(note, user).catch(() => { /* 宴判定の失敗は投稿処理を妨げない */ });
-
-		// 旗鯖fork: リプライ・リノート(引用含む)は対象ノートへの「反応」なので、
-		// 対象が宴セッション中なら失敗確定させる。
-		if (data.reply != null) {
-			this.utageService.onReaction({
-				id: data.reply.id,
-				text: data.reply.text,
-				cw: data.reply.cw,
-				userId: data.reply.userId,
-				userHost: data.reply.userHost,
-			}, user).catch(() => { /* noop */ });
-		}
-		if (data.renote != null) {
-			this.utageService.onReaction({
-				id: data.renote.id,
-				text: data.renote.text,
-				cw: data.renote.cw,
-				userId: data.renote.userId,
-				userHost: data.renote.userHost,
-			}, user).catch(() => { /* noop */ });
 		}
 
 		if (!silent) {

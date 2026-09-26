@@ -81,7 +81,10 @@ import { MiUserPublickey } from '@/models/UserPublickey.js';
 import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { MiHataskEvent } from '@/models/HataskEvent.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
+import { MiHataskDropWallet, MiHataskDropLedger, MiHataskFlowerTodo, MiHataskFlowerHarvest, MiHataskFlowerDiscovery, MiHataskFlowerFestival, MiHataskFlowerParticipant, MiHataskFlowerRequest, MiHataskFlowerNotice } from '@/models/HataskFlowerV2.js';
 import { MiHataskFlower } from '@/models/HataskFlower.js';
+import { MiHataskRecipe } from '@/models/HataskRecipe.js';
+import { MiHataskCookingRecord } from '@/models/HataskCookingRecord.js';
 import { MiHataskRecordReview } from '@/models/HataskRecordReview.js';
 import { MiUtageSession } from '@/models/UtageSession.js';
 import { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
@@ -90,6 +93,7 @@ import { MiFeedbackComment } from '@/models/FeedbackComment.js';
 import { MiFeedbackCommentReaction } from '@/models/FeedbackCommentReaction.js';
 import { MiFeedbackIssueModerator } from '@/models/FeedbackIssueModerator.js';
 import { MiFeedbackEmojiRequest } from '@/models/FeedbackEmojiRequest.js';
+import { MiFeedbackEmojiChangeRequest } from '@/models/FeedbackEmojiChangeRequest.js';
 import { MiFeedbackNotification } from '@/models/FeedbackNotification.js';
 import { MiFeedbackProject } from '@/models/FeedbackProject.js';
 import { MiEarthquakeNotification } from '@/models/EarthquakeNotification.js';
@@ -248,6 +252,18 @@ export const entities = [
 	MiHataskEvent,
 	MiHataskRsvp,
 	MiHataskFlower,
+	MiHataskDropWallet,
+	MiHataskDropLedger,
+	MiHataskFlowerTodo,
+	MiHataskFlowerHarvest,
+	MiHataskFlowerDiscovery,
+	MiHataskFlowerFestival,
+	MiHataskFlowerParticipant,
+	MiHataskFlowerRequest,
+	MiHataskFlowerNotice,
+
+	MiHataskRecipe,
+	MiHataskCookingRecord,
 	MiHataskRecordReview,
 	MiUtageSession,
 	MiFeedbackIssue,
@@ -256,6 +272,7 @@ export const entities = [
 	MiFeedbackCommentReaction,
 	MiFeedbackIssueModerator,
 	MiFeedbackEmojiRequest,
+	MiFeedbackEmojiChangeRequest,
 	MiFeedbackNotification,
 	MiFeedbackProject,
 	MiEarthquakeNotification,

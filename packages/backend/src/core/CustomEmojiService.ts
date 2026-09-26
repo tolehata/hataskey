@@ -19,7 +19,8 @@ import { MemoryKVCache, RedisSingleCache } from '@/misc/cache.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import type { DriveFilesRepository, EmojisRepository, MiMeta, MiRole, MiUser, NotesRepository, UsersRepository } from '@/models/_.js';
 import type { MiDriveFile } from '@/models/DriveFile.js';
-import type { MiEmoji } from '@/models/Emoji.js';
+import { MiEmoji } from '@/models/Emoji.js';
+import type { EmojiTransaction } from '@/misc/emoji-transaction.js';
 import type { Serialized } from '@/types.js';
 import { DriveService } from '@/core/DriveService.js';
 import { InternalStorageService } from '@/core/InternalStorageService.js';
@@ -242,12 +243,13 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			isSensitive?: boolean;
 			localOnly?: boolean;
 			roleIdsThatCanBeUsedThisEmojiAsReaction?: MiRole['id'][];
-		}, moderator?: MiUser): Promise<
+		}, moderator?: MiUser, transaction?: EmojiTransaction): Promise<
 		null
 		| 'NO_SUCH_EMOJI'
 		| 'SAME_NAME_EMOJI_EXISTS'
 		> {
-		const emoji = data.id
+		const repository = transaction?.manager.getRepository(MiEmoji) ?? this.emojisRepository;
+		const emoji = transaction && data.id ? await repository.findOneBy({ id: data.id }) : data.id
 			? await this.getEmojiById(data.id)
 			: await this.getEmojiByName(data.name!);
 		if (emoji === null) return 'NO_SUCH_EMOJI';
@@ -263,13 +265,13 @@ export class CustomEmojiService implements OnApplicationShutdown {
 		// ファイルの更新がある場合
 		if (( data.originalUrl || data.publicUrl || data.fileType ) && emoji.originalUrl !== data.originalUrl) {
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const result = await this.reuploadFileAndCleanup({ originalUrl: data.originalUrl!, name: data.name }, { name: data.name });
+			const result = await this.reuploadFileAndCleanup({ originalUrl: data.originalUrl!, name: data.name }, { name: data.name }, transaction);
 			data.originalUrl = result.url;
 			data.publicUrl = result.webpublicUrl ?? result.url;
 			data.fileType = result.webpublicType ?? result.type;
 		}
 
-		await this.emojisRepository.update(emoji.id, {
+		await repository.update(emoji.id, {
 			updatedAt: new Date(),
 			name: data.name,
 			category: data.category,
@@ -283,32 +285,37 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			roleIdsThatCanBeUsedThisEmojiAsReaction: data.roleIdsThatCanBeUsedThisEmojiAsReaction ?? undefined,
 		});
 
-		this.localEmojisCache.refresh();
+		const publish = async () => {
+			this.emojisCache.delete(`${emoji.name} ${emoji.host}`);
+			await this.localEmojisCache.refresh();
 
-		const packed = await this.emojiEntityService.packDetailed(emoji.id);
+			const packed = await this.emojiEntityService.packDetailed(emoji.id);
 
-		if (!doNameUpdate) {
-			this.globalEventService.publishBroadcastStream('emojiUpdated', {
-				emojis: [packed],
-			});
-		} else {
-			this.globalEventService.publishBroadcastStream('emojiDeleted', {
-				emojis: [await this.emojiEntityService.packDetailed(emoji)],
-			});
+			if (!doNameUpdate) {
+				this.globalEventService.publishBroadcastStream('emojiUpdated', {
+					emojis: [packed],
+				});
+			} else {
+				this.globalEventService.publishBroadcastStream('emojiDeleted', {
+					emojis: [await this.emojiEntityService.packDetailed(emoji)],
+				});
 
-			this.globalEventService.publishBroadcastStream('emojiAdded', {
-				emoji: packed,
-			});
-		}
+				this.globalEventService.publishBroadcastStream('emojiAdded', {
+					emoji: packed,
+				});
+			}
 
-		if (moderator) {
-			const updated = await this.emojisRepository.findOneByOrFail({ id: id });
-			this.moderationLogService.log(moderator, 'updateCustomEmoji', {
-				emojiId: emoji.id,
-				before: emoji,
-				after: updated,
-			});
-		}
+			if (moderator) {
+				const updated = await this.emojisRepository.findOneByOrFail({ id: id });
+				await this.moderationLogService.log(moderator, 'updateCustomEmoji', {
+					emojiId: emoji.id,
+					before: emoji,
+					after: updated,
+				});
+			}
+		};
+		if (transaction) transaction.afterCommit.push(publish);
+		else await publish();
 		return null;
 	}
 
@@ -410,23 +417,29 @@ export class CustomEmojiService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	public async delete(id: MiEmoji['id'], moderator?: MiUser) {
-		const emoji = await this.emojisRepository.findOneByOrFail({ id: id });
+	public async delete(id: MiEmoji['id'], moderator?: MiUser, transaction?: EmojiTransaction) {
+		const repository = transaction?.manager.getRepository(MiEmoji) ?? this.emojisRepository;
+		const emoji = await repository.findOneByOrFail({ id: id });
 
-		await this.emojisRepository.delete(emoji.id);
+		await repository.delete(emoji.id);
 
-		this.localEmojisCache.refresh();
+		const publish = async () => {
+			this.emojisCache.delete(`${emoji.name} ${emoji.host}`);
+			await this.localEmojisCache.refresh();
 
-		this.globalEventService.publishBroadcastStream('emojiDeleted', {
-			emojis: [await this.emojiEntityService.packDetailed(emoji)],
-		});
-
-		if (moderator) {
-			this.moderationLogService.log(moderator, 'deleteCustomEmoji', {
-				emojiId: emoji.id,
-				emoji: emoji,
+			this.globalEventService.publishBroadcastStream('emojiDeleted', {
+				emojis: [await this.emojiEntityService.packDetailed(emoji)],
 			});
-		}
+
+			if (moderator) {
+				await this.moderationLogService.log(moderator, 'deleteCustomEmoji', {
+					emojiId: emoji.id,
+					emoji: emoji,
+				});
+			}
+		};
+		if (transaction) transaction.afterCommit.push(publish);
+		else await publish();
 	}
 
 	@bindThis
@@ -752,7 +765,7 @@ export class CustomEmojiService implements OnApplicationShutdown {
 	private async reuploadFileAndCleanup(data: {
 		originalUrl: string;
 		name?: string;
-	}, loggerContext: { name?: string }) {
+	}, loggerContext: { name?: string }, transaction?: EmojiTransaction) {
 		let retryCount = 0;
 		let copyDriveFile;
 		const MAX_RETRY_COUNT = 3;
@@ -813,9 +826,22 @@ export class CustomEmojiService implements OnApplicationShutdown {
 		if (!copyDriveFile) {
 			throw new Error('Emoji upload succeeded but drive file is undefined. This should never happen.');
 		}
+		if (transaction) {
+			// force:true creates an independent server-owned file. Keep the applicant's
+			// source; remove only this new copy if the review transaction rolls back.
+			const copy = copyDriveFile;
+			transaction.afterRollback.push(async () => {
+				// A lost connection can make COMMIT's result uncertain. Never delete a
+				// copy that is already referenced by a successfully committed emoji.
+				if (!await this.isDriveFileInUse(copy)) await this.driveService.deleteFile(copy);
+			});
+		}
+		if (transaction && (!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(copyDriveFile.type) || copyDriveFile.size <= 0 || copyDriveFile.size > 5 * 1024 * 1024)) {
+			throw new Error('Unsupported replacement emoji image');
+		}
 
 		const newUrl = copyDriveFile.url;
-		if (originalSourceUrl !== newUrl) {
+		if (!transaction && originalSourceUrl !== newUrl) {
 			try {
 				const originalDriveFile = await this.driveFilesRepository.findOneBy({ url: originalSourceUrl });
 				if (originalDriveFile && originalDriveFile.id !== copyDriveFile.id) {

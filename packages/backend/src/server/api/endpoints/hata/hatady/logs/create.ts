@@ -66,7 +66,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					isPublic: ps.isPublic,
 					visibility: ps.visibility,
 				});
-				return await this.hatadyEntityService.packLog(log, me);
+				return { ...await this.hatadyEntityService.packLog(log, me), flowerReward: log.flowerReward };
 			} catch (error) {
 				if (error instanceof Error && error.message === HATADY_ATTACHMENT_API_ERROR.code) throw new ApiError(meta.errors.invalidAttachments);
 				throw error;

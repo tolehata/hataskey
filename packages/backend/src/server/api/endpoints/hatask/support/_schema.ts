@@ -14,7 +14,7 @@ export const supportSnapshotSchema = {
 	properties: {
 		value: { anyOf: [{ type: 'number', nullable: true }, { type: 'boolean' }], optional: false, nullable: false },
 		available: bool, unlimited: bool,
-		condition: { ...text, enum: ['mascotUnavailable', 'snsUiUnavailable'], nullable: true },
+		condition: { ...text, enum: ['mascotUnavailable'], nullable: true },
 		rateMultiplier: { type: 'number', optional: false, nullable: true },
 	}, required: ['value', 'available', 'unlimited', 'condition', 'rateMultiplier'],
 } as const;

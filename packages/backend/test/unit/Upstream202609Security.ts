@@ -26,7 +26,7 @@ describe('notes/reactions の閲覧権限', () => {
 		const repository = { createQueryBuilder: vi.fn() };
 		const visibility = { isVisibleForMe: vi.fn(async () => false) };
 		const subject = new Reactions(repository as any, {} as any, visibility as any, {} as any, {
-			getNoteWithRelations: async () => ({ id: 'note' }),
+			getNote: async () => ({ id: 'note' }),
 		} as any);
 		await expect(subject.exec({ noteId: 'note' }, viewer as any, null, null)).rejects.toMatchObject({ code: 'NO_SUCH_NOTE' });
 		expect(visibility.isVisibleForMe).toHaveBeenCalledWith({ id: 'note' }, viewer?.id ?? null);
@@ -40,7 +40,7 @@ describe('notes/reactions の閲覧権限', () => {
 			{ packMany: async (values: any[]) => values } as any,
 			{ isVisibleForMe: async () => true } as any,
 			{ makePaginationQuery: (value: any) => value } as any,
-			{ getNoteWithRelations: async () => ({ id: 'note' }) } as any);
+			{ getNote: async () => ({ id: 'note' }) } as any);
 		expect(await subject.exec({ noteId: 'note', type: ':wave@.:' }, null, null, null)).toEqual(rows);
 		expect(builder.andWhere).toHaveBeenCalledWith('reaction.reaction = :type', { type: ':wave:' });
 		expect(reactionsMeta).not.toHaveProperty('allowGet');

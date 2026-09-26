@@ -12,6 +12,7 @@ import { DI } from '@/di-symbols.js';
 import type { MiMeta } from '@/models/_.js';
 import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { RegistrationApplicationReviewService } from '@/core/RegistrationApplicationReviewService.js';
+import { RegistrationRejectionNotificationService, rejectionDeliveryResponseSchema } from '@/core/RegistrationRejectionNotificationService.js';
 import { registrationReviewErrors } from '@/core/registration-review-policy.js';
 import { ApiError } from '@/server/api/error.js';
 import { assertRegistrationApplicationsEnabled, registrationApplicationsDisabledError } from '@/core/registration-application-policy.js';
@@ -24,7 +25,7 @@ export const meta = {
 	secure: true,
 	kind: 'write:admin:reject-registration',
 	limit: { duration: 60 * 1000, max: 30 },
-	res: { type: 'object', properties: { success: { type: 'boolean' } } },
+	res: rejectionDeliveryResponseSchema,
 
 	errors: {
 		...registrationReviewErrors,
@@ -60,6 +61,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 		@Inject(DI.db)
 		private db: DataSource,
 		private registrationReviewService: RegistrationApplicationReviewService,
+		private rejectionNotificationService: RegistrationRejectionNotificationService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			assertRegistrationApplicationsEnabled(this.serverMeta);
@@ -87,6 +89,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				const now = new Date();
 				await transactionalEntityManager.update(MiRegistrationApplication, application.id, {
 					status: 'rejected',
+					rejectionNotificationStatus: 'pending',
+					rejectionNotificationAttemptedAt: null,
 					rejectedAt: now,
 					username: null,
 					hashedPassword: null,
@@ -97,7 +101,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				assertRegistrationApplicationsEnabled(this.serverMeta);
 			});
 
-			return { success: true };
+			try {
+				return { success: true, ...await this.rejectionNotificationService.send(ps.applicationId) };
+			} catch {
+				// A failed claim response can still have reached the DB; treat it as uncertain.
+				return { success: true, emailSent: false, notificationStatus: 'sending' as const };
+			}
 		});
 	}
 }

@@ -6,7 +6,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { MoreThan, IsNull } from 'typeorm';
 import RE2 from 're2';
-import sanitizeHtml from 'sanitize-html';
 import { bindThis } from '@/decorators.js';
 import type Logger from '@/logger.js';
 import { RoleService } from '@/core/RoleService.js';
@@ -110,9 +109,7 @@ export class ReportAbuseProcessorService {
 
 			const meta = await this.metaService.fetch();
 			if ((meta.emailToReceiveAbuseReport || meta.email) && !meta.doNotSendNotificationEmailsForAbuseReport) {
-				this.emailService.sendEmail(meta.emailToReceiveAbuseReport ?? meta.email!, 'New abuse report',
-					sanitizeHtml(job.data.comment),
-					sanitizeHtml(job.data.comment));
+				this.emailService.sendTemplateEmail(meta.emailToReceiveAbuseReport ?? meta.email!, { kind: 'abuse-report-forwarded', comment: job.data.comment });
 			}
 		});
 	}

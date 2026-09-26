@@ -9,11 +9,13 @@ import { RegistryApiService } from '@/core/RegistryApiService.js';
 import { IdentifiableError } from '@/misc/identifiable-error.js';
 import { ApiError } from '../../../error.js';
 import { assertHataskNativeRegistryAccess } from './_hatask-planner-access.js';
+import { hataskModeratedRecordError, rethrowHataskModerationError } from '@/misc/hatask-moderated-record.js';
 
 export const meta = {
 	requireCredential: true,
 	kind: 'write:account',
 	errors: {
+		hataskRecordModerated: hataskModeratedRecordError,
 		hataskPlannerStaleClient: {
 			message: 'Hatask planner data changed or migration is complete. Refresh the client.',
 			code: 'HATASK_PLANNER_STALE_CLIENT',
@@ -55,6 +57,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			try {
 				await this.registryApiService.set(me.id, domain, ps.scope, ps.key, ps.value);
 			} catch (error) {
+				if ((error as { driverError?: { constraint?: string } })?.driverError?.constraint === 'hatask_record_moderated') rethrowHataskModerationError(error);
 				if (!isHataskPlannerTarget) throw error;
 				if (error instanceof IdentifiableError) throw new ApiError(meta.errors.hataskPlannerStaleClient);
 				throw new ApiError(meta.errors.hataskPlannerInvalidData);

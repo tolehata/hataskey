@@ -6,10 +6,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
 import { DI } from '@/di-symbols.js';
+import { HataskFlowerV2Service } from '@/core/HataskFlowerV2Service.js';
 import { IdService } from '@/core/IdService.js';
 import { MiRegistryItem } from '@/models/RegistryItem.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { ApiError } from '@/server/api/error.js';
+import { hataskModeratedRecordError, rethrowHataskModerationError } from '@/misc/hatask-moderated-record.js';
 import {
 	HATASK_PLANNER_COLLECTIONS,
 	HATASK_PLANNER_SCOPE,
@@ -36,6 +38,7 @@ export const meta = {
 	limit: { duration: 1000 * 60, max: 10 },
 	res: { type: 'object' },
 	errors: {
+		moderated: hataskModeratedRecordError,
 		conflict: {
 			message: 'One or more Hatask planner collections changed on another client.',
 			code: 'HATASK_PLANNER_CONFLICT',
@@ -84,6 +87,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	constructor(
 		@Inject(DI.db) private db: DataSource,
 		private idService: IdService,
+		private flowerService: HataskFlowerV2Service,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const changes = ps.changes.map(change => ({
@@ -161,8 +165,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					} else {
 						await repo.update(change.collectionRows.map(row => row.id), { updatedAt: now, value: change.value });
 					}
+					const flowerRewards = change.collection === 'todos' ? await this.flowerService.onTodosCommitted(manager, me.id, change.previous, change.value) : {};
 					const hash = hashPlannerValue(change.value);
 					result[change.collection] = {
+						flowerRewards,
 						updatedAt,
 						hash,
 						revision: `${updatedAt}:${hash}`,
@@ -171,7 +177,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					};
 				}
 				return { version: 1, collections: result };
-			});
+			}).catch(rethrowHataskModerationError);
 		});
 	}
 }

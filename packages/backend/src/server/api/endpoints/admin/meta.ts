@@ -24,6 +24,7 @@ export const meta = {
 		type: 'object',
 		optional: false, nullable: false,
 		properties: {
+			hataskFlowerRules: { type: 'object', optional: false, nullable: false },
 			cacheRemoteFiles: {
 				type: 'boolean',
 				optional: false, nullable: false,
@@ -755,6 +756,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const proxy = await this.systemAccountService.fetch('proxy');
 
 			return {
+				hataskFlowerRules: instance.hataskFlowerRules,
 				maintainerName: instance.maintainerName,
 				maintainerEmail: instance.maintainerEmail,
 				version: this.config.version,

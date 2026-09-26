@@ -10,7 +10,7 @@ export const HATASK_SUPPORT_POLICY_KEYS = [
 	'driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'avatarDecorationLimit',
 	'favoriteFolderLimit', 'canCreateFavoriteSubfolders',
 	'hatadyBookLimit', 'canUseHatadySync', 'canUseMascot', 'mascotMaxExpressions', 'mascotMaxPhrases',
-	'mascotMaxCharacters', 'canUseHatacordingUi', 'hatacordingUiRateLimit', 'canBypassHatacordingUiRateLimit', 'rateLimitFactor',
+	'mascotMaxCharacters', 'rateLimitFactor',
 ] as const satisfies readonly (keyof RolePolicies)[];
 
 export type HataskSupportPolicyKey = typeof HATASK_SUPPORT_POLICY_KEYS[number];
@@ -37,7 +37,7 @@ export interface HataskSupportSnapshot {
 	value: number | boolean | null;
 	available: boolean;
 	unlimited: boolean;
-	condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+	condition: 'mascotUnavailable' | null;
 	rateMultiplier: number | null;
 }
 
@@ -67,9 +67,8 @@ export function supportSnapshot(key: HataskSupportPolicyKey, policies: RolePolic
 	const raw = policies[key];
 	const value = typeof raw === 'boolean' || (typeof raw === 'number' && Number.isFinite(raw)) ? raw : null;
 	const mascotChild = key === 'mascotMaxExpressions' || key === 'mascotMaxPhrases' || key === 'mascotMaxCharacters';
-	const snsChild = key === 'hatacordingUiRateLimit' || key === 'canBypassHatacordingUiRateLimit';
-	const condition = mascotChild && !policies.canUseMascot ? 'mascotUnavailable' : snsChild && !policies.canUseHatacordingUi ? 'snsUiUnavailable' : null;
-	const unlimited = key === 'hatacordingUiRateLimit' ? policies.canBypassHatacordingUiRateLimit === true : key === 'rateLimitFactor' && typeof value === 'number' && value <= 0;
+	const condition = mascotChild && !policies.canUseMascot ? 'mascotUnavailable' : null;
+	const unlimited = key === 'rateLimitFactor' && typeof value === 'number' && value <= 0;
 	const available = condition === null && (typeof value === 'boolean' ? value : typeof value === 'number' && (key === 'rateLimitFactor' || value > 0));
 	const ratio = key === 'rateLimitFactor' && typeof value === 'number' && value > 0 && base.rateLimitFactor > 0 ? base.rateLimitFactor / value : null;
 	const rateMultiplier = ratio !== null && Number.isFinite(ratio) ? ratio : null;
@@ -80,22 +79,17 @@ export function supportReflected(key: HataskSupportPolicyKey, current: HataskSup
 	if (!offered || current.value === null || offered.value === null || current.condition !== null || offered.condition !== null) return false;
 	if (typeof offered.value === 'boolean') return typeof current.value === 'boolean' && (current.value || !offered.value);
 	if (typeof current.value !== 'number') return false;
-	if (key === 'hatacordingUiRateLimit') {
-		if (offered.unlimited) return current.unlimited;
-		if (current.unlimited) return true;
-	}
 	if (key === 'rateLimitFactor') return offered.unlimited ? current.unlimited : current.value <= offered.value;
 	return current.value >= offered.value;
 }
 
 /** Single-role preview follows useDefault, then the same quota normalizer as RoleService. */
-export function supportRolePolicies(base: RolePolicies, role: Pick<MiRole, 'policies'>, normalizeHourly: (values: readonly unknown[]) => number, normalizeFavoriteFolders: (values: readonly unknown[]) => number): RolePolicies {
+export function supportRolePolicies(base: RolePolicies, role: Pick<MiRole, 'policies'>, normalizeFavoriteFolders: (values: readonly unknown[]) => number): RolePolicies {
 	const result = { ...base };
 	for (const key of HATASK_SUPPORT_POLICY_KEYS) {
 		const setting = role.policies[key];
 		if (setting && !setting.useDefault) Object.assign(result, { [key]: setting.value });
 	}
-	result.hatacordingUiRateLimit = normalizeHourly([result.hatacordingUiRateLimit]);
 	result.favoriteFolderLimit = normalizeFavoriteFolders([result.favoriteFolderLimit]);
 	result.canCreateFavoriteSubfolders = result.canCreateFavoriteSubfolders === true;
 	return result;

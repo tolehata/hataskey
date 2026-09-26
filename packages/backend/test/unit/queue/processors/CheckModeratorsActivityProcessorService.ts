@@ -104,7 +104,7 @@ describe('CheckModeratorsActivityProcessorService', () => {
 						provide: AnnouncementService, useFactory: () => ({ create: jest.fn() }),
 					},
 					{
-						provide: EmailService, useFactory: () => ({ sendEmail: jest.fn() }),
+						provide: EmailService, useFactory: () => ({ sendTemplateEmail: jest.fn() }),
 					},
 					{
 						provide: SystemWebhookService, useFactory: () => ({
@@ -151,7 +151,7 @@ describe('CheckModeratorsActivityProcessorService', () => {
 		systemWebhook3 = crateSystemWebhook({ on: ['inactiveModeratorsWarning', 'inactiveModeratorsDisablePublicNoteChanged'] });
 		systemWebhook4 = crateSystemWebhook({ on: ['abuseReport'] });
 
-		emailService.sendEmail.mockReturnValue(Promise.resolve());
+		emailService.sendTemplateEmail.mockReturnValue(Promise.resolve());
 		announcementService.create.mockReturnValue(Promise.resolve({} as never));
 		systemWebhookService.fetchActiveSystemWebhooks.mockResolvedValue([systemWebhook1, systemWebhook2, systemWebhook3, systemWebhook4]);
 		systemWebhookService.enqueueSystemWebhook.mockReturnValue(Promise.resolve({} as never));
@@ -163,7 +163,7 @@ describe('CheckModeratorsActivityProcessorService', () => {
 		await userProfilesRepository.createQueryBuilder().delete().execute();
 		roleService.getModerators.mockReset();
 		announcementService.create.mockReset();
-		emailService.sendEmail.mockReset();
+		emailService.sendTemplateEmail.mockReset();
 		systemWebhookService.enqueueSystemWebhook.mockReset();
 	});
 
@@ -324,9 +324,20 @@ describe('CheckModeratorsActivityProcessorService', () => {
 			mockModeratorRole([user1, user2, user3, root]);
 			await service.notifyInactiveModeratorsWarning({ time: 1, asDays: 0, asHours: 0 });
 
-			expect(emailService.sendEmail).toHaveBeenCalledTimes(2);
-			expect(emailService.sendEmail.mock.calls[0][0]).toBe('user1@example.com');
-			expect(emailService.sendEmail.mock.calls[1][0]).toBe('root@example.com');
+			expect(emailService.sendTemplateEmail).toHaveBeenCalledTimes(2);
+			expect(emailService.sendTemplateEmail.mock.calls[0][0]).toBe('user1@example.com');
+			expect(emailService.sendTemplateEmail.mock.calls[1][0]).toBe('root@example.com');
+			expect(emailService.sendTemplateEmail.mock.calls[0][1]).toEqual({ kind: 'moderator-inactive', remaining: 0, unit: 'hours' });
+		});
+
+		test.each([
+			{ asDays: 2, asHours: 48, remaining: 2, unit: 'days' },
+			{ asDays: 0, asHours: 6, remaining: 6, unit: 'hours' },
+		])('warning retains remaining $remaining $unit and recipient language', async ({ asDays, asHours, remaining, unit }) => {
+			const user = await createUser({}, { email: 'moderator@example.com', emailVerified: true, lang: 'ja-JP' });
+			mockModeratorRole([user]);
+			await service.notifyInactiveModeratorsWarning({ time: asHours * 60 * 60 * 1000, asDays, asHours });
+			expect(emailService.sendTemplateEmail).toHaveBeenCalledWith('moderator@example.com', { kind: 'moderator-inactive', remaining, unit }, 'ja-JP');
 		});
 
 		test('[systemWebhook] "inactiveModeratorsWarning"が有効なSystemWebhookに対して送信される', async () => {
@@ -363,9 +374,10 @@ describe('CheckModeratorsActivityProcessorService', () => {
 			expect(announcementService.create.mock.calls[2][0].userId).toBe(user3.id);
 			expect(announcementService.create.mock.calls[3][0].userId).toBe(root.id);
 
-			expect(emailService.sendEmail).toHaveBeenCalledTimes(2);
-			expect(emailService.sendEmail.mock.calls[0][0]).toBe('user1@example.com');
-			expect(emailService.sendEmail.mock.calls[1][0]).toBe('root@example.com');
+			expect(emailService.sendTemplateEmail).toHaveBeenCalledTimes(2);
+			expect(emailService.sendTemplateEmail.mock.calls[0][0]).toBe('user1@example.com');
+			expect(emailService.sendTemplateEmail.mock.calls[1][0]).toBe('root@example.com');
+			expect(emailService.sendTemplateEmail.mock.calls[0][1]).toEqual({ kind: 'invitation-only', inactiveDays: 7 });
 		});
 
 		test('[systemWebhook] "inactiveModeratorsInvitationOnlyChanged"が有効なSystemWebhookに対して送信される', async () => {
@@ -402,9 +414,10 @@ describe('CheckModeratorsActivityProcessorService', () => {
 			expect(announcementService.create.mock.calls[2][0].userId).toBe(user3.id);
 			expect(announcementService.create.mock.calls[3][0].userId).toBe(root.id);
 
-			expect(emailService.sendEmail).toHaveBeenCalledTimes(2);
-			expect(emailService.sendEmail.mock.calls[0][0]).toBe('user1@example.com');
-			expect(emailService.sendEmail.mock.calls[1][0]).toBe('root@example.com');
+			expect(emailService.sendTemplateEmail).toHaveBeenCalledTimes(2);
+			expect(emailService.sendTemplateEmail.mock.calls[0][0]).toBe('user1@example.com');
+			expect(emailService.sendTemplateEmail.mock.calls[1][0]).toBe('root@example.com');
+			expect(emailService.sendTemplateEmail.mock.calls[0][1]).toEqual({ kind: 'public-note-disabled', inactiveDays: 7 });
 		});
 
 		test('[systemWebhook] "inactiveModeratorsDisablePublicNoteChanged"が有効なSystemWebhookに対して送信される', async () => {

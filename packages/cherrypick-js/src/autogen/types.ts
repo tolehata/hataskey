@@ -816,6 +816,36 @@ export type paths = {
          */
         post: operations['admin___queue___stats'];
     };
+    '/admin/record-moderation/execute': {
+        /**
+         * admin/record-moderation/execute
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:user-note*
+         */
+        post: operations['admin___record-moderation___execute'];
+    };
+    '/admin/record-moderation/history': {
+        /**
+         * admin/record-moderation/history
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:admin:show-user*
+         */
+        post: operations['admin___record-moderation___history'];
+    };
+    '/admin/record-moderation/preview': {
+        /**
+         * admin/record-moderation/preview
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:admin:show-user*
+         */
+        post: operations['admin___record-moderation___preview'];
+    };
     '/admin/registration-applications': {
         /**
          * admin/registration-applications
@@ -862,6 +892,16 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *write:admin:relays*
          */
         post: operations['admin___relays___remove'];
+    };
+    '/admin/resend-registration-rejection': {
+        /**
+         * admin/resend-registration-rejection
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:reject-registration*
+         */
+        post: operations['admin___resend-registration-rejection'];
     };
     '/admin/reset-password': {
         /**
@@ -2322,7 +2362,7 @@ export type paths = {
          * federation/update-remote-user
          * @description No description provided.
          *
-         *     **Credential required**: *No*
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
          */
         post: operations['federation___update-remote-user'];
     };
@@ -2834,6 +2874,54 @@ export type paths = {
          */
         post: operations['hata___feedback___emoji-categories'];
     };
+    '/hata/feedback/emoji-change-requests': {
+        /**
+         * hata/feedback/emoji-change-requests
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hata___feedback___emoji-change-requests'];
+    };
+    '/hata/feedback/emoji-change-requests/approve': {
+        /**
+         * hata/feedback/emoji-change-requests/approve
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin*
+         */
+        post: operations['hata___feedback___emoji-change-requests___approve'];
+    };
+    '/hata/feedback/emoji-change-requests/create': {
+        /**
+         * hata/feedback/emoji-change-requests/create
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hata___feedback___emoji-change-requests___create'];
+    };
+    '/hata/feedback/emoji-change-requests/hold': {
+        /**
+         * hata/feedback/emoji-change-requests/hold
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin*
+         */
+        post: operations['hata___feedback___emoji-change-requests___hold'];
+    };
+    '/hata/feedback/emoji-change-requests/reject': {
+        /**
+         * hata/feedback/emoji-change-requests/reject
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin*
+         */
+        post: operations['hata___feedback___emoji-change-requests___reject'];
+    };
     '/hata/feedback/emoji-quota': {
         /**
          * hata/feedback/emoji-quota
@@ -2861,6 +2949,15 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *write:admin*
          */
         post: operations['hata___feedback___emoji-requests___approve'];
+    };
+    '/hata/feedback/emoji-requests/cancel': {
+        /**
+         * hata/feedback/emoji-requests/cancel
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hata___feedback___emoji-requests___cancel'];
     };
     '/hata/feedback/emoji-requests/create': {
         /**
@@ -2945,6 +3042,15 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *read:account*
          */
         post: operations['hata___feedback___issues___show'];
+    };
+    '/hata/feedback/issues/status-counts': {
+        /**
+         * hata/feedback/issues/status-counts
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hata___feedback___issues___status-counts'];
     };
     '/hata/feedback/issues/update': {
         /**
@@ -3063,7 +3169,7 @@ export type paths = {
          * @description No description provided.
          *
          *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
-         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:user-note*
          */
         post: operations['hata___hatady___admin___delete-book'];
     };
@@ -3713,6 +3819,16 @@ export type paths = {
          */
         post: operations['hata___mascot___update'];
     };
+    '/hata/ui-s-announcement/claim': {
+        /**
+         * hata/ui-s-announcement/claim
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hata___ui-s-announcement___claim'];
+    };
     '/hatask/events/close': {
         /**
          * hatask/events/close
@@ -3860,6 +3976,78 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *write:account*
          */
         post: operations['hatask___ranking___participation'];
+    };
+    '/hatask/recipes/cooked/create': {
+        /**
+         * hatask/recipes/cooked/create
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___recipes___cooked___create'];
+    };
+    '/hatask/recipes/cooked/delete': {
+        /**
+         * hatask/recipes/cooked/delete
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___recipes___cooked___delete'];
+    };
+    '/hatask/recipes/cooked/list': {
+        /**
+         * hatask/recipes/cooked/list
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hatask___recipes___cooked___list'];
+    };
+    '/hatask/recipes/create': {
+        /**
+         * hatask/recipes/create
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___recipes___create'];
+    };
+    '/hatask/recipes/delete': {
+        /**
+         * hatask/recipes/delete
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___recipes___delete'];
+    };
+    '/hatask/recipes/list': {
+        /**
+         * hatask/recipes/list
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hatask___recipes___list'];
+    };
+    '/hatask/recipes/show': {
+        /**
+         * hatask/recipes/show
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hatask___recipes___show'];
+    };
+    '/hatask/recipes/update': {
+        /**
+         * hatask/recipes/update
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___recipes___update'];
     };
     '/hatask/support/show': {
         /**
@@ -6232,6 +6420,33 @@ export type components = {
                     /** Format: misskey:id */
                     userListId: string;
                 };
+                hataskFlowerBloomed?: {
+                    /** @enum {string} */
+                    type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                } | {
+                    /** @enum {string} */
+                    type: 'list';
+                    /** Format: misskey:id */
+                    userListId: string;
+                };
+                hataskZukanUpdated?: {
+                    /** @enum {string} */
+                    type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                } | {
+                    /** @enum {string} */
+                    type: 'list';
+                    /** Format: misskey:id */
+                    userListId: string;
+                };
+                hataskFestivalBloomed?: {
+                    /** @enum {string} */
+                    type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                } | {
+                    /** @enum {string} */
+                    type: 'list';
+                    /** Format: misskey:id */
+                    userListId: string;
+                };
                 test?: {
                     /** @enum {string} */
                     type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
@@ -6447,7 +6662,24 @@ export type components = {
             clippedCount?: number;
             hasPoll?: boolean;
             /** @enum {string} */
-            utageStatus?: 'running' | 'succeeded' | 'failed';
+            utageStatus?: 'running' | 'reviving' | 'succeeded' | 'failed';
+            utageRevision?: number;
+            /** Format: date-time */
+            utageExpiresAt?: string;
+            /** Format: date-time */
+            utageServerNow?: string;
+            /** @enum {string|null} */
+            utageSuccessMethod?: 'normal' | 'revival' | null;
+            /** @enum {string} */
+            utageMyParticipation?: 'eligible' | 'accepted' | 'existing' | 'author' | 'ineligible';
+            utageRevival?: {
+                /** Format: date-time */
+                startedAt: string;
+                /** Format: date-time */
+                expiresAt: string;
+                targetCount: number;
+                reactionCount: number;
+            } | null;
             myReaction?: string | null;
             /** Format: date-time */
             deleteAt?: string | null;
@@ -6761,7 +6993,7 @@ export type components = {
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
-            type: 'hataskFlowerReady';
+            type: 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed';
             body: string;
             header: string | null;
             icon: string | null;
@@ -7425,10 +7657,6 @@ export type components = {
             canUseMascot: boolean;
             canUseHatalyze: boolean;
             canAccessHataFeed: boolean;
-            canUseHatacordingUi: boolean;
-            hatacordingUiSubpaneMaxTabs: number;
-            hatacordingUiRateLimit: number;
-            canBypassHatacordingUiRateLimit: boolean;
             canUseHatadySync: boolean;
             hatadyBookLimit: number;
             hatadyBookmarkLimit: number;
@@ -12713,7 +12941,7 @@ export interface operations {
                             enabled: boolean;
                             benefits: {
                                 /** @enum {string} */
-                                key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'canUseHatacordingUi' | 'hatacordingUiRateLimit' | 'canBypassHatacordingUiRateLimit' | 'rateLimitFactor';
+                                key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
                                 title: string;
                                 description: string;
                                 /** Format: misskey:id */
@@ -12724,13 +12952,13 @@ export interface operations {
                         };
                         benefits: {
                             /** @enum {string} */
-                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'canUseHatacordingUi' | 'hatacordingUiRateLimit' | 'canBypassHatacordingUiRateLimit' | 'rateLimitFactor';
+                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
                             baseline: {
                                 value: (number | null) | boolean;
                                 available: boolean;
                                 unlimited: boolean;
                                 /** @enum {string|null} */
-                                condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                condition: 'mascotUnavailable' | null;
                                 rateMultiplier: number | null;
                             };
                             offered: {
@@ -12738,7 +12966,7 @@ export interface operations {
                                 available: boolean;
                                 unlimited: boolean;
                                 /** @enum {string|null} */
-                                condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                condition: 'mascotUnavailable' | null;
                                 rateMultiplier: number | null;
                             } | null;
                         }[];
@@ -12751,13 +12979,13 @@ export interface operations {
                             name: string;
                             benefits: {
                                 /** @enum {string} */
-                                key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'canUseHatacordingUi' | 'hatacordingUiRateLimit' | 'canBypassHatacordingUiRateLimit' | 'rateLimitFactor';
+                                key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
                                 snapshot: {
                                     value: (number | null) | boolean;
                                     available: boolean;
                                     unlimited: boolean;
                                     /** @enum {string|null} */
-                                    condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                    condition: 'mascotUnavailable' | null;
                                     rateMultiplier: number | null;
                                 };
                             }[];
@@ -13056,7 +13284,7 @@ export interface operations {
                         enabled: boolean;
                         benefits: {
                             /** @enum {string} */
-                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'canUseHatacordingUi' | 'hatacordingUiRateLimit' | 'canBypassHatacordingUiRateLimit' | 'rateLimitFactor';
+                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
                             title: string;
                             description: string;
                             /** Format: misskey:id */
@@ -13510,6 +13738,16 @@ export interface operations {
                         disablePublicNoteWhenInactive: boolean;
                         moderatorInactivityLimitDays: number;
                         bubbleInstances: string[];
+                        hataskFlowerRules: {
+                            todoMinAgeMinutes: number;
+                            todoMinLength: number;
+                            hatadyGapSeconds: number;
+                            pourMinutes: number;
+                            todoCap: number;
+                            hatadyCap: number;
+                            loginCap: number;
+                            festivalGoal: number;
+                        };
                         customRobotsTxt: string | null;
                         showRoleBadgesOfRemoteUsers: boolean;
                     };
@@ -14562,6 +14800,293 @@ export interface operations {
             };
         };
     };
+    'admin___record-moderation___execute': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @enum {string} */
+                    product: 'hatady' | 'hatask';
+                    /** @enum {string} */
+                    targetType: 'record' | 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                    targetId: string;
+                    requestId: string;
+                    version: string;
+                    /** @enum {string} */
+                    action: 'delete' | 'warn';
+                    reason: string;
+                    warning: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        operationId: string;
+                        /** @enum {string} */
+                        action: 'delete' | 'warn';
+                        /** Format: date-time */
+                        performedAt: string;
+                        warningId: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'admin___record-moderation___history': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @enum {string} */
+                    product: 'hatady' | 'hatask';
+                    /** @enum {string} */
+                    targetType: 'record' | 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                    targetId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        operationId: string;
+                        /** @enum {string} */
+                        action: 'delete' | 'warn';
+                        /** Format: date-time */
+                        performedAt: string;
+                        warningId: string | null;
+                        /** @enum {string} */
+                        product: 'hatady' | 'hatask';
+                        /** @enum {string} */
+                        targetType: 'record' | 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                        targetId: string;
+                        title: string;
+                        targetUserId: string;
+                        targetUsername: string;
+                        targetName: string;
+                        moderatorId: string;
+                        moderatorUsername: string;
+                        moderatorName: string;
+                        reason: string;
+                        impact: {
+                            label: string;
+                            count: number;
+                        }[];
+                    }[];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'admin___record-moderation___preview': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @enum {string} */
+                    product: 'hatady' | 'hatask';
+                    /** @enum {string} */
+                    targetType: 'record' | 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                    targetId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        /** @enum {string} */
+                        product: 'hatady' | 'hatask';
+                        /** @enum {string} */
+                        targetType: 'record' | 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
+                        targetId: string;
+                        version: string;
+                        title: string;
+                        userId: string;
+                        username: string;
+                        name: string;
+                        impact: {
+                            label: string;
+                            count: number;
+                        }[];
+                        retained: string;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
     'admin___registration-applications': {
         requestBody: {
             content: {
@@ -14622,6 +15147,9 @@ export interface operations {
                         };
                         additionalContacts: string | null;
                         status: string;
+                        /** @enum {string|null} */
+                        notificationStatus: 'pending' | 'sending' | 'sent' | 'failed' | null;
+                        notificationRetryAvailable: boolean;
                         createdAt: string;
                         personalDataDeletedAt: string | null;
                         rejectedAt: string | null;
@@ -14693,6 +15221,9 @@ export interface operations {
                 content: {
                     'application/json': {
                         success: boolean;
+                        emailSent: boolean;
+                        /** @enum {string|null} */
+                        notificationStatus: 'pending' | 'sending' | 'sent' | 'failed' | null;
                     };
                 };
             };
@@ -14809,6 +15340,85 @@ export interface operations {
             };
             /** @description I'm Ai */
             418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'admin___resend-registration-rejection': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    applicationId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        success: boolean;
+                        emailSent: boolean;
+                        /** @enum {string|null} */
+                        notificationStatus: 'pending' | 'sending' | 'sent' | 'failed' | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17311,6 +17921,16 @@ export interface operations {
                     disablePublicNoteWhenInactive?: boolean | null;
                     moderatorInactivityLimitDays?: number;
                     bubbleInstances?: string[];
+                    hataskFlowerRules?: {
+                        todoMinAgeMinutes?: number;
+                        todoMinLength?: number;
+                        hatadyGapSeconds?: number;
+                        pourMinutes?: number;
+                        todoCap?: number;
+                        hatadyCap?: number;
+                        loginCap?: number;
+                        festivalGoal?: number;
+                    };
                     customRobotsTxt?: string | null;
                 };
             };
@@ -26686,6 +27306,15 @@ export interface operations {
                     'application/json': components['schemas']['Error'];
                 };
             };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
             /** @description Internal server error */
             500: {
                 headers: {
@@ -30803,6 +31432,387 @@ export interface operations {
             };
         };
     };
+    'hata___feedback___emoji-change-requests': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    id?: string;
+                    /** Format: misskey:id */
+                    originalRequestId?: string;
+                    /** @default false */
+                    mine?: boolean;
+                    /** @enum {string} */
+                    status?: 'pending' | 'held' | 'approved' | 'rejected';
+                    /** @default 30 */
+                    limit?: number;
+                    /** Format: misskey:id */
+                    untilId?: string;
+                    /** Format: misskey:id */
+                    sinceId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>[];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___feedback___emoji-change-requests___approve': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    requestId: string;
+                    expectedUpdatedAt: string;
+                    comment?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___feedback___emoji-change-requests___create': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    originalRequestId: string;
+                    /** @enum {string} */
+                    kind: 'updateImage' | 'withdraw';
+                    reason: string;
+                    /** Format: misskey:id */
+                    fileId?: string | null;
+                    license?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___feedback___emoji-change-requests___hold': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    requestId: string;
+                    expectedUpdatedAt: string;
+                    comment: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___feedback___emoji-change-requests___reject': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    requestId: string;
+                    expectedUpdatedAt: string;
+                    comment: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
     'hata___feedback___emoji-quota': {
         responses: {
             /** @description OK (with results) */
@@ -30872,7 +31882,13 @@ export interface operations {
             content: {
                 'application/json': {
                     /** @enum {string|null} */
-                    status?: 'pending' | 'held' | 'approved' | 'rejected' | null;
+                    status?: 'pending' | 'held' | 'approved' | 'rejected' | 'cancelled' | null;
+                    query?: string;
+                    /**
+                     * @default all
+                     * @enum {string}
+                     */
+                    filter?: 'all' | 'registered' | 'waiting';
                     /** @default false */
                     mine?: boolean;
                     /** Format: misskey:id */
@@ -30955,6 +31971,79 @@ export interface operations {
                     license?: string | null;
                     localOnly?: boolean;
                     isSensitive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___feedback___emoji-requests___cancel': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    requestId: string;
+                    reason?: string | null;
                 };
             };
         };
@@ -31758,6 +32847,87 @@ export interface operations {
             };
         };
     };
+    'hata___feedback___issues___status-counts': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    projectId?: string | null;
+                    category?: string | null;
+                    /** Format: misskey:id */
+                    createdById?: string | null;
+                    query?: string | null;
+                    /** @default false */
+                    includeClosed?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        total: number;
+                        open: number;
+                        planned: number;
+                        inProgress: number;
+                        resolved: number;
+                        wontfix: number;
+                        unknown: number;
+                        closed: number;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
     hata___feedback___issues___update: {
         requestBody: {
             content: {
@@ -32523,7 +33693,7 @@ export interface operations {
                      * @enum {string}
                      */
                     scope?: 'mine' | 'recent' | 'public' | 'popular' | 'following' | 'all';
-                    kinds?: ('study' | 'movie' | 'game' | 'exercise' | 'work')[];
+                    kinds?: ('study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking')[];
                     sinceDate?: number | null;
                     untilDate?: number | null;
                     cursor?: string;
@@ -32544,7 +33714,7 @@ export interface operations {
                             /** Format: misskey:id */
                             id: string;
                             /** @enum {string} */
-                            type: 'study' | 'exercise' | 'work' | 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
+                            type: 'study' | 'exercise' | 'work' | 'cooking' | 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                             /** Format: date-time */
                             occurredAt: string;
                             /** @enum {string} */
@@ -32598,7 +33768,7 @@ export interface operations {
                                 startedAt: string | null;
                                 tags: string[];
                                 /** @enum {string} */
-                                kind: 'study' | 'exercise' | 'work';
+                                kind: 'study' | 'exercise' | 'work' | 'cooking';
                                 details: {
                                     [key: string]: unknown;
                                 };
@@ -32842,6 +34012,10 @@ export interface operations {
                 'application/json': {
                     /** Format: misskey:id */
                     bookId: string;
+                    requestId: string;
+                    version: string;
+                    reason: string;
+                    warning: string | null;
                 };
             };
         };
@@ -32929,7 +34103,7 @@ export interface operations {
                      * @default all
                      * @enum {string}
                      */
-                    activity?: 'all' | 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                    activity?: 'all' | 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking';
                     /**
                      * @default all
                      * @enum {string}
@@ -32965,7 +34139,7 @@ export interface operations {
                             /** @enum {string} */
                             category: 'collection' | 'record' | 'comment' | 'reaction';
                             /** @enum {string} */
-                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking';
                             actor: components['schemas']['UserLite'];
                             title: string;
                             body: string;
@@ -33088,7 +34262,7 @@ export interface operations {
                             /** @enum {string} */
                             category: 'collection' | 'record' | 'comment' | 'reaction';
                             /** @enum {string} */
-                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking';
                             actor: components['schemas']['UserLite'];
                             title: string;
                             body: string;
@@ -33125,7 +34299,7 @@ export interface operations {
                             /** @enum {string} */
                             category: 'collection' | 'record' | 'comment' | 'reaction';
                             /** @enum {string} */
-                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking';
                             actor: components['schemas']['UserLite'];
                             title: string;
                             body: string;
@@ -33158,7 +34332,7 @@ export interface operations {
                             /** @enum {string} */
                             category: 'collection' | 'record' | 'comment' | 'reaction';
                             /** @enum {string} */
-                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking';
                             actor: components['schemas']['UserLite'];
                             title: string;
                             body: string;
@@ -33270,7 +34444,7 @@ export interface operations {
                             /** @enum {string} */
                             category: 'collection' | 'record' | 'comment' | 'reaction';
                             /** @enum {string} */
-                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking';
                             actor: components['schemas']['UserLite'];
                             title: string;
                             body: string;
@@ -33307,7 +34481,7 @@ export interface operations {
                             /** @enum {string} */
                             category: 'collection' | 'record' | 'comment' | 'reaction';
                             /** @enum {string} */
-                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking';
                             actor: components['schemas']['UserLite'];
                             title: string;
                             body: string;
@@ -33340,7 +34514,7 @@ export interface operations {
                             /** @enum {string} */
                             category: 'collection' | 'record' | 'comment' | 'reaction';
                             /** @enum {string} */
-                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                            activity: 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking';
                             actor: components['schemas']['UserLite'];
                             title: string;
                             body: string;
@@ -38062,7 +39236,7 @@ export interface operations {
                      * @default all
                      * @enum {string}
                      */
-                    kind?: 'all' | 'study' | 'movie' | 'game' | 'exercise' | 'work';
+                    kind?: 'all' | 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking';
                     /** @default 6 */
                     months?: number;
                     /** @default 0 */
@@ -39333,6 +40507,66 @@ export interface operations {
             };
             /** @description Too many requests */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___ui-s-announcement___claim': {
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        claimed: boolean;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -40678,6 +41912,978 @@ export interface operations {
             };
         };
     };
+    hatask___recipes___cooked___create: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /**
+                     * Format: misskey:id
+                     * @default null
+                     */
+                    recipeId?: string | null;
+                    title?: string;
+                    cookedAt: number;
+                    /** @default null */
+                    durationSeconds?: number | null;
+                    /** @default 2 */
+                    servings?: number;
+                    /**
+                     * @default null
+                     * @enum {string|null}
+                     */
+                    mealSlot?: 'breakfast' | 'lunch' | 'dinner' | 'snack' | null;
+                    /** @default null */
+                    cost?: number | null;
+                    /** @default  */
+                    memo?: string;
+                    /**
+                     * Format: misskey:id
+                     * @default null
+                     */
+                    fileId?: string | null;
+                    /** @default true */
+                    recordToHatady?: boolean;
+                    /**
+                     * @default private
+                     * @enum {string}
+                     */
+                    visibility?: 'public' | 'private' | 'followers' | 'specified';
+                    /** @default [] */
+                    visibleUserIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        /** Format: id */
+                        id: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        cookedAt: string;
+                        /** Format: id */
+                        recipeId: string | null;
+                        title: string;
+                        durationSeconds: number | null;
+                        servings: number;
+                        /** @enum {string|null} */
+                        mealSlot: 'breakfast' | 'lunch' | 'dinner' | 'snack' | null;
+                        cost: number | null;
+                        memo: string;
+                        photo: {
+                            /** Format: id */
+                            id: string;
+                            url: string;
+                            thumbnailUrl: string | null;
+                        } | null;
+                        /** @enum {string} */
+                        visibility: 'public' | 'private' | 'followers' | 'specified';
+                        visibleUserIds: string[];
+                        /** Format: id */
+                        hatadyLogId: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___recipes___cooked___delete: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    recordId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___recipes___cooked___list: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /**
+                     * Format: misskey:id
+                     * @default null
+                     */
+                    recipeId?: string | null;
+                    /** @default null */
+                    query?: string | null;
+                    /** @default 30 */
+                    limit?: number;
+                    /** @default 0 */
+                    offset?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        /** Format: id */
+                        id: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        cookedAt: string;
+                        /** Format: id */
+                        recipeId: string | null;
+                        title: string;
+                        durationSeconds: number | null;
+                        servings: number;
+                        /** @enum {string|null} */
+                        mealSlot: 'breakfast' | 'lunch' | 'dinner' | 'snack' | null;
+                        cost: number | null;
+                        memo: string;
+                        photo: {
+                            /** Format: id */
+                            id: string;
+                            url: string;
+                            thumbnailUrl: string | null;
+                        } | null;
+                        /** @enum {string} */
+                        visibility: 'public' | 'private' | 'followers' | 'specified';
+                        visibleUserIds: string[];
+                        /** Format: id */
+                        hatadyLogId: string | null;
+                    }[];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___recipes___create: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    title: string;
+                    /** @default  */
+                    summary?: string;
+                    /**
+                     * @default main
+                     * @enum {string}
+                     */
+                    category?: 'main' | 'side' | 'soup' | 'staple' | 'dessert';
+                    /** @default 2 */
+                    servings?: number;
+                    /** @default null */
+                    minutes?: number | null;
+                    /** @default true */
+                    scalable?: boolean;
+                    /** @default [] */
+                    ingredients?: {
+                        name: string;
+                        /** @default  */
+                        amount?: string;
+                    }[];
+                    /** @default [] */
+                    steps?: {
+                        text: string;
+                        /** @default null */
+                        timerSeconds?: number | null;
+                        /** @default  */
+                        timerLabel?: string;
+                    }[];
+                    /** @default [] */
+                    tags?: string[];
+                    /**
+                     * Format: misskey:id
+                     * @default null
+                     */
+                    fileId?: string | null;
+                    /** @default false */
+                    isDraft?: boolean;
+                    /**
+                     * @default private
+                     * @enum {string}
+                     */
+                    visibility?: 'private' | 'followers' | 'specified';
+                    /** @default [] */
+                    visibleUserIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        /** Format: id */
+                        id: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** Format: id */
+                        userId: string;
+                        user: components['schemas']['UserLite'];
+                        isMine: boolean;
+                        title: string;
+                        summary: string;
+                        /** @enum {string} */
+                        category: 'main' | 'side' | 'soup' | 'staple' | 'dessert';
+                        servings: number;
+                        minutes: number | null;
+                        scalable: boolean;
+                        ingredients: {
+                            name: string;
+                            amount: string;
+                        }[];
+                        steps: {
+                            text: string;
+                            timerSeconds: number | null;
+                            timerLabel: string;
+                        }[];
+                        tags: string[];
+                        photo: {
+                            /** Format: id */
+                            id: string;
+                            url: string;
+                            thumbnailUrl: string | null;
+                        } | null;
+                        /** @enum {string} */
+                        visibility: 'private' | 'followers' | 'specified';
+                        visibleUserIds: string[];
+                        isDraft: boolean;
+                        cookedCount: number;
+                        /** Format: date-time */
+                        lastCookedAt: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___recipes___delete: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    recipeId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___recipes___list: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /**
+                     * @default mine
+                     * @enum {string}
+                     */
+                    scope?: 'mine' | 'shared';
+                    /**
+                     * @default null
+                     * @enum {string|null}
+                     */
+                    category?: 'main' | 'side' | 'soup' | 'staple' | 'dessert' | null;
+                    /** @default null */
+                    tag?: string | null;
+                    /** @default null */
+                    query?: string | null;
+                    /**
+                     * @default cooked
+                     * @enum {string}
+                     */
+                    sort?: 'cooked' | 'recent' | 'title';
+                    /** @default 30 */
+                    limit?: number;
+                    /** @default 0 */
+                    offset?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        items: {
+                            /** Format: id */
+                            id: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: id */
+                            userId: string;
+                            user: components['schemas']['UserLite'];
+                            isMine: boolean;
+                            title: string;
+                            summary: string;
+                            /** @enum {string} */
+                            category: 'main' | 'side' | 'soup' | 'staple' | 'dessert';
+                            servings: number;
+                            minutes: number | null;
+                            scalable: boolean;
+                            ingredients: {
+                                name: string;
+                                amount: string;
+                            }[];
+                            steps: {
+                                text: string;
+                                timerSeconds: number | null;
+                                timerLabel: string;
+                            }[];
+                            tags: string[];
+                            photo: {
+                                /** Format: id */
+                                id: string;
+                                url: string;
+                                thumbnailUrl: string | null;
+                            } | null;
+                            /** @enum {string} */
+                            visibility: 'private' | 'followers' | 'specified';
+                            visibleUserIds: string[];
+                            isDraft: boolean;
+                            cookedCount: number;
+                            /** Format: date-time */
+                            lastCookedAt: string | null;
+                        }[];
+                        total: number;
+                        counts: {
+                            all: number;
+                            main: number;
+                            side: number;
+                            soup: number;
+                            staple: number;
+                            dessert: number;
+                        };
+                        tags: string[];
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___recipes___show: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    recipeId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        /** Format: id */
+                        id: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** Format: id */
+                        userId: string;
+                        user: components['schemas']['UserLite'];
+                        isMine: boolean;
+                        title: string;
+                        summary: string;
+                        /** @enum {string} */
+                        category: 'main' | 'side' | 'soup' | 'staple' | 'dessert';
+                        servings: number;
+                        minutes: number | null;
+                        scalable: boolean;
+                        ingredients: {
+                            name: string;
+                            amount: string;
+                        }[];
+                        steps: {
+                            text: string;
+                            timerSeconds: number | null;
+                            timerLabel: string;
+                        }[];
+                        tags: string[];
+                        photo: {
+                            /** Format: id */
+                            id: string;
+                            url: string;
+                            thumbnailUrl: string | null;
+                        } | null;
+                        /** @enum {string} */
+                        visibility: 'private' | 'followers' | 'specified';
+                        visibleUserIds: string[];
+                        isDraft: boolean;
+                        cookedCount: number;
+                        /** Format: date-time */
+                        lastCookedAt: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___recipes___update: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    recipeId: string;
+                    title: string;
+                    /** @default  */
+                    summary?: string;
+                    /**
+                     * @default main
+                     * @enum {string}
+                     */
+                    category?: 'main' | 'side' | 'soup' | 'staple' | 'dessert';
+                    /** @default 2 */
+                    servings?: number;
+                    /** @default null */
+                    minutes?: number | null;
+                    /** @default true */
+                    scalable?: boolean;
+                    /** @default [] */
+                    ingredients?: {
+                        name: string;
+                        /** @default  */
+                        amount?: string;
+                    }[];
+                    /** @default [] */
+                    steps?: {
+                        text: string;
+                        /** @default null */
+                        timerSeconds?: number | null;
+                        /** @default  */
+                        timerLabel?: string;
+                    }[];
+                    /** @default [] */
+                    tags?: string[];
+                    /**
+                     * Format: misskey:id
+                     * @default null
+                     */
+                    fileId?: string | null;
+                    /** @default false */
+                    isDraft?: boolean;
+                    /**
+                     * @default private
+                     * @enum {string}
+                     */
+                    visibility?: 'private' | 'followers' | 'specified';
+                    /** @default [] */
+                    visibleUserIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        /** Format: id */
+                        id: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** Format: id */
+                        userId: string;
+                        user: components['schemas']['UserLite'];
+                        isMine: boolean;
+                        title: string;
+                        summary: string;
+                        /** @enum {string} */
+                        category: 'main' | 'side' | 'soup' | 'staple' | 'dessert';
+                        servings: number;
+                        minutes: number | null;
+                        scalable: boolean;
+                        ingredients: {
+                            name: string;
+                            amount: string;
+                        }[];
+                        steps: {
+                            text: string;
+                            timerSeconds: number | null;
+                            timerLabel: string;
+                        }[];
+                        tags: string[];
+                        photo: {
+                            /** Format: id */
+                            id: string;
+                            url: string;
+                            thumbnailUrl: string | null;
+                        } | null;
+                        /** @enum {string} */
+                        visibility: 'private' | 'followers' | 'specified';
+                        visibleUserIds: string[];
+                        isDraft: boolean;
+                        cookedCount: number;
+                        /** Format: date-time */
+                        lastCookedAt: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
     hatask___support___show: {
         responses: {
             /** @description OK (with results) */
@@ -40701,7 +42907,7 @@ export interface operations {
                         supporterCount: number;
                         benefits: {
                             /** @enum {string} */
-                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'canUseHatacordingUi' | 'hatacordingUiRateLimit' | 'canBypassHatacordingUiRateLimit' | 'rateLimitFactor';
+                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
                             title: string;
                             description: string;
                             showBaseline: boolean;
@@ -40710,7 +42916,7 @@ export interface operations {
                                 available: boolean;
                                 unlimited: boolean;
                                 /** @enum {string|null} */
-                                condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                condition: 'mascotUnavailable' | null;
                                 rateMultiplier: number | null;
                             } | null;
                             offered: {
@@ -40718,7 +42924,7 @@ export interface operations {
                                 available: boolean;
                                 unlimited: boolean;
                                 /** @enum {string|null} */
-                                condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                condition: 'mascotUnavailable' | null;
                                 rateMultiplier: number | null;
                             } | null;
                             current: {
@@ -40726,7 +42932,7 @@ export interface operations {
                                 available: boolean;
                                 unlimited: boolean;
                                 /** @enum {string|null} */
-                                condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                condition: 'mascotUnavailable' | null;
                                 rateMultiplier: number | null;
                             };
                             reflected: boolean;
@@ -43158,8 +45364,8 @@ export interface operations {
                     markAsRead?: boolean;
                     /** @default false */
                     excludeBots?: boolean;
-                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
-                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
                 };
             };
         };
@@ -43245,8 +45451,8 @@ export interface operations {
                     markAsRead?: boolean;
                     /** @default false */
                     excludeBots?: boolean;
-                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
-                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
                 };
             };
         };
@@ -44671,6 +46877,33 @@ export interface operations {
                             userListId: string;
                         };
                         hataskFlowerReady?: {
+                            /** @enum {string} */
+                            type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                        } | {
+                            /** @enum {string} */
+                            type: 'list';
+                            /** Format: misskey:id */
+                            userListId: string;
+                        };
+                        hataskFlowerBloomed?: {
+                            /** @enum {string} */
+                            type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                        } | {
+                            /** @enum {string} */
+                            type: 'list';
+                            /** Format: misskey:id */
+                            userListId: string;
+                        };
+                        hataskZukanUpdated?: {
+                            /** @enum {string} */
+                            type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                        } | {
+                            /** @enum {string} */
+                            type: 'list';
+                            /** Format: misskey:id */
+                            userListId: string;
+                        };
+                        hataskFestivalBloomed?: {
                             /** @enum {string} */
                             type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
                         } | {

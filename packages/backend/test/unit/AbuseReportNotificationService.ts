@@ -121,7 +121,7 @@ describe('AbuseReportNotificationService', () => {
 						}),
 					},
 					{
-						provide: EmailService, useFactory: () => ({ sendEmail: jest.fn() }),
+						provide: EmailService, useFactory: () => ({ sendTemplateEmail: jest.fn() }),
 					},
 					{
 						provide: MetaService, useFactory: () => ({ fetch: jest.fn() }),
@@ -161,7 +161,7 @@ describe('AbuseReportNotificationService', () => {
 	});
 
 	afterEach(async () => {
-		emailService.sendEmail.mockClear();
+		emailService.sendTemplateEmail.mockClear();
 		webhookService.enqueueSystemWebhook.mockClear();
 
 		await usersRepository.createQueryBuilder().delete().execute();
@@ -175,6 +175,32 @@ describe('AbuseReportNotificationService', () => {
 	});
 
 	// --------------------------------------------------------------------------------------
+
+	describe('notifyMail', () => {
+		test('preserves recipient language and duplicate addresses before the server recipient', async () => {
+			const serverMeta = app.get(DI.meta);
+			const previousEmail = serverMeta.email;
+			const previousLangs = serverMeta.langs;
+			serverMeta.email = 'server@example.com';
+			serverMeta.langs = ['ja-JP'];
+			try {
+				await userProfilesRepository.update(alice.id, { email: 'alice@example.com', emailVerified: true, lang: 'en-US' });
+				await createRecipient({ method: 'email', userId: alice.id });
+				await createRecipient({ method: 'email', userId: alice.id });
+				emailService.sendTemplateEmail.mockResolvedValue(undefined);
+				const comment = '<script>alert(1)</script> & report';
+				await service.notifyMail([{ comment } as MiAbuseUserReport]);
+				expect(emailService.sendTemplateEmail.mock.calls).toEqual([
+					['alice@example.com', { kind: 'abuse-report', comment }, 'en-US'],
+					['alice@example.com', { kind: 'abuse-report', comment }, 'en-US'],
+					['server@example.com', { kind: 'abuse-report', comment }, undefined],
+				]);
+			} finally {
+				serverMeta.email = previousEmail;
+				serverMeta.langs = previousLangs;
+			}
+		});
+	});
 
 	describe('createRecipient', () => {
 		test('作成成功1', async () => {

@@ -6,7 +6,7 @@
 process.env.NODE_ENV = 'test';
 
 import * as assert from 'assert';
-import { jest } from '@jest/globals';
+import { afterAll, afterEach, beforeEach, describe, test } from 'vitest';
 import * as lolex from '@sinonjs/fake-timers';
 import { DataSource } from 'typeorm';
 import type { AppLockService } from '@/core/AppLockService.js';
@@ -25,7 +25,7 @@ describe('Chart', () => {
 	const config = loadConfig();
 	const appLockService = {
 		getChartInsertLock: () => () => Promise.resolve(() => {}),
-	} as unknown as jest.Mocked<AppLockService>;
+	} as unknown as AppLockService;
 
 	let db: DataSource | undefined;
 
@@ -33,7 +33,7 @@ describe('Chart', () => {
 	let testGroupedChart: TestGroupedChart;
 	let testUniqueChart: TestUniqueChart;
 	let testIntersectionChart: TestIntersectionChart;
-	let clock: lolex.InstalledClock;
+	let clock: ReturnType<typeof lolex.install>;
 
 	beforeEach(async () => {
 		if (db) db.destroy();
@@ -71,6 +71,7 @@ describe('Chart', () => {
 
 		clock = lolex.install({
 			now: new Date(Date.UTC(2000, 0, 1, 0, 0, 0)),
+			toFake: ['Date'],
 			shouldClearNativeTimers: true,
 		});
 	});
@@ -202,6 +203,22 @@ describe('Chart', () => {
 				total: [1, 0, 0],
 			},
 		});
+	});
+
+	test('integerの上下限に達してもチャートを保存できる', async () => {
+		testChart.total = 2147483647;
+		await testChart.resync();
+		await testChart.increment();
+		await testChart.save();
+		assert.deepStrictEqual((await testChart.getChart('hour', 1, null)).foo.total, [2147483647]);
+		assert.deepStrictEqual((await testChart.getChart('day', 1, null)).foo.total, [2147483647]);
+
+		testChart.total = -2147483648;
+		await testChart.resync();
+		await testChart.decrement();
+		await testChart.save();
+		assert.deepStrictEqual((await testChart.getChart('hour', 1, null)).foo.total, [-2147483648]);
+		assert.deepStrictEqual((await testChart.getChart('day', 1, null)).foo.total, [-2147483648]);
 	});
 
 	test('Can updates at different times', async () => {
@@ -456,6 +473,18 @@ describe('Chart', () => {
 	});
 
 	describe('Unique increment', () => {
+		test('引用符や配列記号を含む値を正確に保存する', async () => {
+			const key = `a'b\\c,{x}"`;
+			await testUniqueChart.uniqueIncrement(key);
+			await testUniqueChart.save();
+
+			const rows = await db!.query('SELECT "unique_temp___foo" AS stored FROM "__chart__test_unique"');
+			assert.strictEqual(rows.length, 1);
+			assert.deepStrictEqual(rows[0].stored, [key]);
+			assert.deepStrictEqual((await testUniqueChart.getChart('hour', 1, null)).foo, [1]);
+			assert.deepStrictEqual((await testUniqueChart.getChart('day', 1, null)).foo, [1]);
+		});
+
 		test('Can updates', async () => {
 			await testUniqueChart.uniqueIncrement('alice');
 			await testUniqueChart.uniqueIncrement('alice');

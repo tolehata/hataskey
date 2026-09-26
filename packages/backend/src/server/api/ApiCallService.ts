@@ -4,8 +4,6 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import * as fs from 'node:fs';
-import * as stream from 'node:stream/promises';
 import * as dns from 'node:dns';
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
@@ -15,6 +13,7 @@ import type { MiAccessToken } from '@/models/AccessToken.js';
 import type Logger from '@/logger.js';
 import type { MiMeta, UserIpsRepository } from '@/models/_.js';
 import { createTemp } from '@/misc/create-temp.js';
+import { writeMultipartFileToTemp } from '@/misc/write-multipart-file-to-temp.js';
 import { bindThis } from '@/decorators.js';
 import { RoleService } from '@/core/RoleService.js';
 import { TelemetryService } from '@/core/telemetry/TelemetryService.js';
@@ -43,20 +42,6 @@ const registrationApplicationApiPaths = new Set([
 	'admin/reject-registration',
 	'admin/cleanup-legacy-rejected-registrations',
 ]);
-
-export const HATACORDING_UI_RATE_LIMIT = {
-	duration: 60 * 60_000,
-	max: 500,
-	key: 'hatacording-ui:all-actions',
-} as const;
-
-export const HATACORDING_UI_RATE_LIMIT_HEADERS = {
-	request: 'x-hatacording-ui',
-	limit: 'X-Hatacording-RateLimit-Limit',
-	remaining: 'X-Hatacording-RateLimit-Remaining',
-	reset: 'X-Hatacording-RateLimit-Reset',
-	unlimited: 'X-Hatacording-RateLimit-Unlimited',
-} as const;
 
 @Injectable()
 export class ApiCallService implements OnApplicationShutdown {
@@ -253,10 +238,16 @@ export class ApiCallService implements OnApplicationShutdown {
 		const [path, cleanup] = await createTemp();
 
 		try {
-			await stream.pipeline(multipartData.file, fs.createWriteStream(path));
+			const multipartError = await writeMultipartFileToTemp(multipartData.file, path);
+			if (multipartError != null) {
+				this.logger.debug(`Failed to read the multipart request body: ${multipartError.message}`);
+				reply.code(400);
+				reply.send();
+				return;
+			}
 
 			// ファイルサイズが制限を超えていた場合
-			// なお truncated はストリームを読み切ってからでないと機能しないため、stream.pipeline より後にある必要がある
+			// truncated はストリームを読み切ってからでないと機能しないため、書き出しより後に確認する。
 			if (multipartData.file.truncated) {
 				reply.code(413);
 				reply.send();
@@ -379,36 +370,6 @@ export class ApiCallService implements OnApplicationShutdown {
 
 		if (ep.meta.secure && !isSecure) {
 			throw new ApiError(accessDenied);
-		}
-
-		// HataSNSCordUIからのネイティブ認証リクエストだけを、UI専用の共通枠で数える。
-		// 通常UI・外部アプリ・ActivityPub/連合処理にはこのヘッダーが無いため波及しない。
-		if (isSecure && request.headers[HATACORDING_UI_RATE_LIMIT_HEADERS.request] === '1') {
-			const policies = await this.roleService.getUserPolicies(user.id);
-			if (policies.canBypassHatacordingUiRateLimit === true) {
-				// 免除可否は認証済みユーザーの実効ポリシーだけで決める。
-				// クライアントが任意のヘッダーを追加して免除を要求する経路は設けない。
-				reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.unlimited, '1');
-			} else {
-				const roleLimit = Math.max(1, Math.min(1000, Math.floor(Number(policies.hatacordingUiRateLimit) || HATACORDING_UI_RATE_LIMIT.max)));
-				const consumption = await this.rateLimiterService.consume({
-					...HATACORDING_UI_RATE_LIMIT,
-					max: roleLimit,
-				}, user.id);
-				if (consumption != null) {
-					reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.limit, String(consumption.info.total));
-					reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.remaining, String(consumption.info.remaining));
-					reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.reset, String(consumption.info.resetMs));
-					if (consumption.exceeded) {
-						throw new ApiError({
-							message: 'Rate limit exceeded. Please try again later.',
-							code: 'RATE_LIMIT_EXCEEDED',
-							id: '6f0e1e73-a2cc-4ac8-a35f-c3ce65f25edf',
-							httpStatusCode: 429,
-						}, consumption.info);
-					}
-				}
-			}
 		}
 
 		if (ep.meta.limit) {

@@ -4,6 +4,7 @@
  * ヒートマップ・分野別フォーカス)の集計を担う。
  */
 
+import { HataskFlowerV2Service, type FlowerReward } from './HataskFlowerV2Service.js';
 import { Inject, Injectable } from '@nestjs/common';
 import { In, IsNull, MoreThanOrEqual, type QueryDeepPartialEntity } from 'typeorm';
 import { DI } from '@/di-symbols.js';
@@ -35,6 +36,7 @@ type HatadySummaryRecord = { id: string; kind: string; occurredAt: Date; started
 @Injectable()
 export class HatadyService {
 	constructor(
+		private flowerService: HataskFlowerV2Service,
 		@Inject(DI.hatadyBooksRepository)
 		private hatadyBooksRepository: HatadyBooksRepository,
 		@Inject(DI.hatadyLogsRepository)
@@ -459,7 +461,7 @@ export class HatadyService {
 
 	private summarize(records: HatadySummaryRecord[], tz: number) {
 		const daily = new Map<string, { date: string; count: number; seconds: number; timedCount: number }>();
-		const kinds = ['study', 'movie', 'game', 'exercise', 'work'];
+		const kinds = ['study', 'movie', 'game', 'exercise', 'work', 'cooking'];
 		const traits = kinds.map(kind => {
 			const genres = new Map<string, Set<string>>();
 			for (const record of records.filter(row => row.kind === kind)) {
@@ -834,7 +836,7 @@ export class HatadyService {
 		studiedAt?: Date | null;
 		isPublic?: boolean;
 		visibility?: string;
-	}): Promise<MiHatadyLog> {
+	}): Promise<MiHatadyLog & { flowerReward: FlowerReward }> {
 		const kind = params.kind ?? 'study';
 		if (!HATADY_LOG_KINDS.includes(kind)) throw new Error('invalid kind');
 		const seconds = normalizeHatadyDuration(params);
@@ -897,7 +899,8 @@ export class HatadyService {
 			});
 
 			if (bookId && params.tags?.includes('recommend')) await books.update({ id: bookId, userId: user.id }, { isRecommended: true });
-			return logs.findOneByOrFail({ id, userId: user.id });
+			const flowerReward = await this.flowerService.onHatadyCreated(manager, user.id, id);
+			return Object.assign(await logs.findOneByOrFail({ id, userId: user.id }), { flowerReward });
 		});
 		// 継続・達成(マイルストーン)通知の判定。
 		await this.notifyMilestoneIfReached(user.id);
@@ -1373,7 +1376,7 @@ export class HatadyService {
 	//   直近 months ヶ月分のログを1回取得して JS 集計する。
 	@bindThis
 	public async getStatsDetail(userId: MiUser['id'], months: number, tz = 0, kind = 'all') {
-		if (!['all', 'study', 'movie', 'game', 'exercise', 'work'].includes(kind)) throw new Error('invalid kind');
+		if (!['all', 'study', 'movie', 'game', 'exercise', 'work', 'cooking'].includes(kind)) throw new Error('invalid kind');
 		const m = Math.min(Math.max(months, 1), 24);
 		// 起点はユーザーのローカルで (m-1) ヶ月前の1日 0:00。
 		const nowLocal = this.shiftToLocal(new Date(), tz);

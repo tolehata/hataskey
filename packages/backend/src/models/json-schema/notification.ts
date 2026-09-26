@@ -450,7 +450,7 @@ export const packedNotificationSchema = {
 			type: {
 				type: 'string',
 				optional: false, nullable: false,
-				enum: ['hataskFlowerReady'],
+				enum: ['hataskFlowerReady', 'hataskFlowerBloomed', 'hataskZukanUpdated', 'hataskFestivalBloomed'],
 			},
 			body: {
 				type: 'string',

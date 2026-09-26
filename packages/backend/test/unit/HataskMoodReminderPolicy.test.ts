@@ -25,12 +25,27 @@ describe('Hatask mood reminder policy', () => {
 		});
 	});
 
-	test.each([-1, -60_000, 15 * 60_000, 60 * 60_000])('does not deliver outside the catch-up window (%i ms)', offset => {
+	test.each([-1, -60_000, 120 * 60_000, 180 * 60_000])('does not deliver outside the catch-up window (%i ms)', offset => {
 		expect(getDueHataskMoodReminder(enabled, [], [], noon + offset)).toBeNull();
 	});
 
-	test.each([0, 60_000, 15 * 60_000 - 1])('allows a delayed worker inside the catch-up window (%i ms)', offset => {
+	// The single-concurrency system queue can be held by daily maintenance jobs or a paused host.
+	test.each([0, 60_000, 15 * 60_000, 31 * 60_000, 120 * 60_000 - 1])('allows a delayed worker inside the catch-up window (%i ms)', offset => {
 		expect(getDueHataskMoodReminder(enabled, [], [], noon + offset)).toEqual(expectedNoon);
+	});
+
+	test('does not catch up a slot that had already passed when the settings were saved', () => {
+		expect(getDueHataskMoodReminder(enabled, [], [], noon + 30 * 60_000, noon + 20 * 60_000)).toBeNull();
+		expect(getDueHataskMoodReminder(enabled, [], [], noon + 30 * 60_000, noon + 60_000)).toBeNull();
+		expect(getDueHataskMoodReminder(enabled, [], [], noon + 30 * 60_000, noon + 30_000)).toEqual(expectedNoon);
+		expect(getDueHataskMoodReminder(enabled, [], [], noon + 30 * 60_000, noon - 60 * 60_000)).toEqual(expectedNoon);
+		expect(getDueHataskMoodReminder(enabled, [], [], noon + 30 * 60_000, undefined)).toEqual(expectedNoon);
+	});
+
+	test('picks the most recent due slot', () => {
+		const settings = { moodRemind: true, moodRemindTimes: ['昼 12:00', '朝 8:00'] };
+		expect(getDueHataskMoodReminder(settings, [], [], Date.parse('2026-09-17T09:30:00+09:00'))?.time).toBe('08:00');
+		expect(getDueHataskMoodReminder(settings, [], [], Date.parse('2026-09-17T12:30:00+09:00'))?.time).toBe('12:00');
 	});
 
 	test('handles each chosen slot once, and starts again the following day', () => {
@@ -112,7 +127,7 @@ describe('Hatask mood reminder policy', () => {
 		const settings = { ...enabled, moodRemindTimeZone: 'America/New_York' };
 		expect(getDueHataskMoodReminder(settings, [], [], Date.parse('2026-03-07T17:00:00Z'))?.time).toBe('12:00');
 		expect(getDueHataskMoodReminder(settings, [], [], Date.parse('2026-03-08T16:00:00Z'))?.time).toBe('12:00');
-		expect(getDueHataskMoodReminder(settings, [], [], Date.parse('2026-03-08T17:00:00Z'))).toBeNull();
+		expect(getDueHataskMoodReminder(settings, [], [], Date.parse('2026-03-08T18:00:00Z'))).toBeNull();
 	});
 
 	test('does not repeat a slot when a timezone clock moves back over 23:00', () => {

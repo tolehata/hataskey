@@ -109,6 +109,8 @@ import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { MiHataskEvent } from '@/models/HataskEvent.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
 import { MiHataskFlower } from '@/models/HataskFlower.js';
+import { MiHataskRecipe } from '@/models/HataskRecipe.js';
+import { MiHataskCookingRecord } from '@/models/HataskCookingRecord.js';
 import { MiUtageSession } from '@/models/UtageSession.js';
 import { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
 import { MiFeedbackAgree } from '@/models/FeedbackAgree.js';
@@ -116,6 +118,7 @@ import { MiFeedbackComment } from '@/models/FeedbackComment.js';
 import { MiFeedbackCommentReaction } from '@/models/FeedbackCommentReaction.js';
 import { MiFeedbackIssueModerator } from '@/models/FeedbackIssueModerator.js';
 import { MiFeedbackEmojiRequest } from '@/models/FeedbackEmojiRequest.js';
+import { MiFeedbackEmojiChangeRequest } from '@/models/FeedbackEmojiChangeRequest.js';
 import { MiFeedbackNotification } from '@/models/FeedbackNotification.js';
 import { MiFeedbackProject } from '@/models/FeedbackProject.js';
 import { MiEarthquakeNotification } from '@/models/EarthquakeNotification.js';
@@ -297,6 +300,8 @@ export {
 	MiHataskEvent,
 	MiHataskRsvp,
 	MiHataskFlower,
+	MiHataskRecipe,
+	MiHataskCookingRecord,
 	MiUtageSession,
 	MiFeedbackIssue,
 	MiFeedbackAgree,
@@ -304,6 +309,7 @@ export {
 	MiFeedbackCommentReaction,
 	MiFeedbackIssueModerator,
 	MiFeedbackEmojiRequest,
+	MiFeedbackEmojiChangeRequest,
 	MiFeedbackNotification,
 	MiFeedbackProject,
 	MiEarthquakeNotification,
@@ -421,6 +427,8 @@ export type RegistrationApplicationsRepository = Repository<MiRegistrationApplic
 export type HataskEventsRepository = Repository<MiHataskEvent> & MiRepository<MiHataskEvent>;
 export type HataskRsvpsRepository = Repository<MiHataskRsvp> & MiRepository<MiHataskRsvp>;
 export type HataskFlowersRepository = Repository<MiHataskFlower> & MiRepository<MiHataskFlower>;
+export type HataskRecipesRepository = Repository<MiHataskRecipe> & MiRepository<MiHataskRecipe>;
+export type HataskCookingRecordsRepository = Repository<MiHataskCookingRecord> & MiRepository<MiHataskCookingRecord>;
 export type UtageSessionsRepository = Repository<MiUtageSession> & MiRepository<MiUtageSession>;
 export type FeedbackIssuesRepository = Repository<MiFeedbackIssue> & MiRepository<MiFeedbackIssue>;
 export type FeedbackAgreesRepository = Repository<MiFeedbackAgree> & MiRepository<MiFeedbackAgree>;
@@ -429,6 +437,7 @@ export type FeedbackCommentsRepository = Repository<MiFeedbackComment> & MiRepos
 export type FeedbackCommentReactionsRepository = Repository<MiFeedbackCommentReaction> & MiRepository<MiFeedbackCommentReaction>;
 export type FeedbackIssueModeratorsRepository = Repository<MiFeedbackIssueModerator> & MiRepository<MiFeedbackIssueModerator>;
 export type FeedbackEmojiRequestsRepository = Repository<MiFeedbackEmojiRequest> & MiRepository<MiFeedbackEmojiRequest>;
+export type FeedbackEmojiChangeRequestsRepository = Repository<MiFeedbackEmojiChangeRequest> & MiRepository<MiFeedbackEmojiChangeRequest>;
 export type FeedbackNotificationsRepository = Repository<MiFeedbackNotification> & MiRepository<MiFeedbackNotification>;
 export type FeedbackProjectsRepository = Repository<MiFeedbackProject> & MiRepository<MiFeedbackProject>;
 export type HatadyBooksRepository = Repository<MiHatadyBook> & MiRepository<MiHatadyBook>;

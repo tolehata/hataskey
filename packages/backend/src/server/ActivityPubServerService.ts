@@ -673,6 +673,9 @@ export class ActivityPubServerService {
 		};
 
 		fastify.register(fastifyAccepts);
+
+		// raw-body and the body parser share request.raw; keep the inbox parsers in buffer mode.
+		fastify.removeAllContentTypeParsers();
 		fastify.addContentTypeParser('application/activity+json', { parseAs: 'buffer' }, almostDefaultJsonParser);
 		fastify.addContentTypeParser('application/ld+json', { parseAs: 'buffer' }, almostDefaultJsonParser);
 

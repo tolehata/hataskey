@@ -79,8 +79,9 @@ export class CheckHataskMoodRemindersProcessorService {
 				.setLock('pessimistic_write', undefined, ['settings']).getOne();
 			if (settings == null) return;
 			const now = Date.now();
+			const savedAt = settings.updatedAt?.getTime();
 			// Outside a due slot, do not load the entire private journal every minute.
-			if (getDueHataskMoodReminder(settings.value, [], [], now) == null) return;
+			if (getDueHataskMoodReminder(settings.value, [], [], now, savedAt) == null) return;
 			const read = (key: string) => repository.createQueryBuilder('item')
 				.where('item.userId = :userId', { userId })
 				.andWhere('item.domain IS NULL')
@@ -88,13 +89,15 @@ export class CheckHataskMoodRemindersProcessorService {
 				.andWhere('item.key = :key', { key })
 				.orderBy('item.updatedAt', 'DESC').addOrderBy('item.id', 'DESC')
 				.setLock('pessimistic_write').getOne();
-			const moods = await read('moods');
 			const marker = await read(MARKER_KEY);
 			const handledSlots: string[] = Array.isArray(marker?.value?.handledSlots)
 				? marker.value.handledSlots.filter((slot: unknown): slot is string => typeof slot === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/u.test(slot)).slice(-64)
 				: [];
+			// The catch-up window stays open after delivery; skip the journal once the slot is handled.
+			if (getDueHataskMoodReminder(settings.value, [], handledSlots, now, savedAt) == null) return;
+			const moods = await read('moods');
 			// A missing collection is an empty journal; malformed saved data is not.
-			const due = getDueHataskMoodReminder(settings.value, moods == null ? [] : moods.value, handledSlots, now);
+			const due = getDueHataskMoodReminder(settings.value, moods == null ? [] : moods.value, handledSlots, now, savedAt);
 			if (due == null) return;
 			const profile = await this.userProfilesRepository.findOne({ where: { userId }, select: { lang: true } });
 			const lang = profile?.lang ?? 'ja-JP';

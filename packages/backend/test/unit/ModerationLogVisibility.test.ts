@@ -109,10 +109,16 @@ describe('moderator log payload allowlist', () => {
 		expect(moderatorLogInfoSql).toContain('!~ \'[^a-zA-Z0-9]\'');
 		expect(moderatorLogInfoSql).toContain('jsonb_typeof("log"."info"->\'choice\') = \'string\'');
 		expect(moderatorLogInfoSql).toContain('"log"."info"->>\'choice\' IN (\'agree\', \'oppose\')');
-		for (const key of ['email', 'before', 'after', 'invitations', 'smtpPass', 'reason', 'note', 'additionalContacts']) {
+		for (const key of ['email', 'before', 'after', 'invitations', 'smtpPass', 'note', 'additionalContacts']) {
 			expect(moderatorLogInfoSql).not.toContain(`->'${key}'`);
 			expect(moderatorLogInfoSql).not.toContain(`->>'${key}'`);
 		}
+		// Mandatory reasons are visible only for the four record moderation operations.
+		const existingOperations = moderatorLogInfoSql.slice(moderatorLogInfoSql.indexOf("WHEN 'suspend'"));
+		expect(existingOperations).toContain("WHEN 'suspend'");
+		expect(existingOperations).not.toContain("->'reason'");
+		expect(existingOperations).not.toContain("->>'reason'");
+		expect(moderatorLogInfoSql).toContain("char_length(\"log\".\"info\"->>'reason') BETWEEN 1 AND 1000");
 	});
 
 	test('hidden-only changes do not affect projected search matches, ordering or page boundaries', () => {

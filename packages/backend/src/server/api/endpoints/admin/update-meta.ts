@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { DEFAULT_FLOWER_RULES } from '@/core/hatask-flower-v2.js';
 import { Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import type { MiMeta } from '@/models/Meta.js';
@@ -23,6 +24,7 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
+		hataskFlowerRules: { type: 'object', properties: { todoMinAgeMinutes: { type: 'integer', minimum: 1, maximum: 100000 }, todoMinLength: { type: 'integer', minimum: 1, maximum: 100000 }, hatadyGapSeconds: { type: 'integer', minimum: 1, maximum: 100000 }, pourMinutes: { type: 'integer', minimum: 1, maximum: 100000 }, todoCap: { type: 'integer', minimum: 1, maximum: 100000 }, hatadyCap: { type: 'integer', minimum: 1, maximum: 100000 }, loginCap: { type: 'integer', minimum: 1, maximum: 100000 }, festivalGoal: { type: 'integer', minimum: 1, maximum: 100000 } }, additionalProperties: false },
 		disableRegistration: { type: 'boolean', nullable: true },
 		registrationClosed: { type: 'boolean', nullable: true },
 		pinnedUsers: {
@@ -269,6 +271,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const set = {} as Partial<MiMeta>;
+			if (ps.hataskFlowerRules) set.hataskFlowerRules = { ...DEFAULT_FLOWER_RULES, ...(await this.metaService.fetch(true)).hataskFlowerRules, ...ps.hataskFlowerRules };
 
 			if (typeof ps.registrationClosed === 'boolean') {
 				set.registrationClosed = ps.registrationClosed;

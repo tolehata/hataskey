@@ -20,7 +20,7 @@ import { UserEntityService } from '@/core/entities/UserEntityService.js';
 
 export const HATADY_ACTIVITY_SCOPES = ['mine', 'recent', 'public', 'popular', 'following', 'all'] as const;
 export type HatadyActivityScope = typeof HATADY_ACTIVITY_SCOPES[number];
-export const HATADY_ACTIVITY_KINDS = ['study', 'movie', 'game', 'exercise', 'work'] as const;
+export const HATADY_ACTIVITY_KINDS = ['study', 'movie', 'game', 'exercise', 'work', 'cooking'] as const;
 export type HatadyActivityKind = typeof HATADY_ACTIVITY_KINDS[number];
 
 export type HatadyActivityOptions = {
@@ -173,7 +173,7 @@ export class HatadyActivityService {
 		const cursor = options.cursor ? decodeHatadyActivityCursor(options.cursor, fingerprint, options.scope) : null;
 
 		const candidates: HatadyActivityCandidate[] = [];
-		if (kinds.some(kind => ['study', 'exercise', 'work'].includes(kind))) candidates.push(...await this.loadStudyCandidates(viewer.id, options.scope, sinceDate, untilDate, cursor, limit + 1, kinds, options.userId));
+		if (kinds.some(kind => ['study', 'exercise', 'work', 'cooking'].includes(kind))) candidates.push(...await this.loadStudyCandidates(viewer.id, options.scope, sinceDate, untilDate, cursor, limit + 1, kinds, options.userId));
 		if (options.scope !== 'popular' && (kinds.includes('movie') || kinds.includes('game'))) {
 			candidates.push(...await this.loadMediaCandidates(viewer.id, options.scope, kinds, sinceDate, untilDate, cursor, limit + 1, options.userId));
 		}
@@ -207,7 +207,7 @@ export class HatadyActivityService {
 		} else {
 			qb.where('log.visibility = \'public\'').andWhere('log.isPublic = TRUE');
 		}
-		qb.andWhere('log.kind IN (:...logKinds)', { logKinds: kinds.filter(kind => ['study', 'exercise', 'work'].includes(kind)) });
+		qb.andWhere('log.kind IN (:...logKinds)', { logKinds: kinds.filter(kind => ['study', 'exercise', 'work', 'cooking'].includes(kind)) });
 		if (targetUserId) qb.andWhere('log.userId = :targetUserId', { targetUserId });
 		if (excludedUserIds.length > 0) qb.andWhere('log.userId NOT IN (:...activityExcludedUserIds)', { activityExcludedUserIds: excludedUserIds });
 		if (sinceDate != null) qb.andWhere('log.studiedAt >= :activitySince', { activitySince: new Date(sinceDate) });

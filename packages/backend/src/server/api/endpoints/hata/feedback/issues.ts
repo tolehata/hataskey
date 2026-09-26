@@ -9,8 +9,7 @@ import { FeedbackEntityService } from '@/core/entities/FeedbackEntityService.js'
 import { FeedbackService } from '@/core/FeedbackService.js';
 import { DI } from '@/di-symbols.js';
 import { ApiError } from '@/server/api/error.js';
-import { Brackets } from 'typeorm';
-import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
+import { applyFeedbackIssueListFilter } from '@/misc/feedback-issue-list-filter.js';
 
 export const meta = {
 	tags: ['hata'],
@@ -73,30 +72,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			const query = this.queryService.makePaginationQuery(this.feedbackIssuesRepository.createQueryBuilder('issue'), ps.sinceId, ps.untilId);
 
-			if (ps.projectId != null) {
-				query.andWhere('issue.projectId = :projectId', { projectId: ps.projectId });
-			} else {
-				query.andWhere('issue.projectId IS NULL');
-			}
-			if (ps.category != null) query.andWhere('issue.category = :category', { category: ps.category });
-			if (ps.status != null) query.andWhere('issue.status = :status', { status: ps.status });
-			if (ps.createdById != null) query.andWhere('issue.createdById = :createdById', { createdById: ps.createdById });
-			if (!ps.includeClosed) query.andWhere('issue.closed = FALSE');
-
-			// 旗鯖fork: セキュリティ対応(security)のイシューはスタッフ(管理者/モデ)のみ閲覧可。
-			if (!await this.feedbackService.isStaff(me.id)) {
-				query.andWhere('issue.category != :securityCategory', { securityCategory: 'security' });
-			}
-
-			// 検索: タイトル・説明・会話(コメント本文)のいずれかにマッチ。
-			if (ps.query) {
-				const q = '%' + sqlLikeEscape(ps.query) + '%';
-				query.andWhere(new Brackets(qb => {
-					qb.where('issue.title ILIKE :q', { q })
-						.orWhere('issue.description ILIKE :q', { q })
-						.orWhere('EXISTS (SELECT 1 FROM "feedback_comment" fc WHERE fc."feedbackId" = issue.id AND fc.text ILIKE :q)', { q });
-				}));
-			}
+			applyFeedbackIssueListFilter(query, ps, await this.feedbackService.isStaff(me.id));
 
 			query.orderBy('issue.pinned', 'DESC').addOrderBy('issue.id', 'DESC');
 

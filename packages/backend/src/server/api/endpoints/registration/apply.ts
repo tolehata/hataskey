@@ -139,7 +139,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 			// CAPTCHA検証（SignupApiService.ts と同じパターン）
 			// ========================================
 			if (process.env.NODE_ENV !== 'test') {
-				if (this.serverMeta.enableHcaptcha && this.serverMeta.hcaptchaSecretKey) {
+				if (this.serverMeta.enableHcaptcha) {
+					if (!this.serverMeta.hcaptchaSecretKey?.trim()) {
+						throw new ApiError(meta.errors.captchaFailed);
+					}
 					await this.captchaService.verifyHcaptcha(
 						this.serverMeta.hcaptchaSecretKey,
 						ps['hcaptcha-response'],
@@ -148,7 +151,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 					});
 				}
 
-				if (this.serverMeta.enableMcaptcha && this.serverMeta.mcaptchaSecretKey && this.serverMeta.mcaptchaSitekey && this.serverMeta.mcaptchaInstanceUrl) {
+				if (this.serverMeta.enableMcaptcha) {
+					if (!this.serverMeta.mcaptchaSecretKey?.trim() || !this.serverMeta.mcaptchaSitekey?.trim() || !this.serverMeta.mcaptchaInstanceUrl?.trim()) {
+						throw new ApiError(meta.errors.captchaFailed);
+					}
 					await this.captchaService.verifyMcaptcha(
 						this.serverMeta.mcaptchaSecretKey,
 						this.serverMeta.mcaptchaSitekey,
@@ -159,7 +165,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 					});
 				}
 
-				if (this.serverMeta.enableRecaptcha && this.serverMeta.recaptchaSecretKey) {
+				if (this.serverMeta.enableRecaptcha) {
+					if (!this.serverMeta.recaptchaSecretKey?.trim()) {
+						throw new ApiError(meta.errors.captchaFailed);
+					}
 					await this.captchaService.verifyRecaptcha(
 						this.serverMeta.recaptchaSecretKey,
 						ps['g-recaptcha-response'],
@@ -168,7 +177,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 					});
 				}
 
-				if (this.serverMeta.enableTurnstile && this.serverMeta.turnstileSecretKey) {
+				if (this.serverMeta.enableTurnstile) {
+					if (!this.serverMeta.turnstileSecretKey?.trim()) {
+						throw new ApiError(meta.errors.captchaFailed);
+					}
 					await this.captchaService.verifyTurnstile(
 						this.serverMeta.turnstileSecretKey,
 						ps['turnstile-response'],

@@ -37,36 +37,6 @@ export type ModeratorInactivityRemainingTime = {
 	asDays: number;
 };
 
-function generateModeratorInactivityMail(remainingTime: ModeratorInactivityRemainingTime) {
-	const subject = 'Moderator Inactivity Warning / モデレーター不在の通知';
-
-	const timeVariant = remainingTime.asDays === 0 ? `${remainingTime.asHours} hours` : `${remainingTime.asDays} days`;
-	const timeVariantJa = remainingTime.asDays === 0 ? `${remainingTime.asHours} 時間` : `${remainingTime.asDays} 日間`;
-	const message = [
-		'To Moderators,',
-		'',
-		`A moderator has been inactive for a period of time. If there are ${timeVariant} of inactivity left, it will switch to invitation only.`,
-		'If you do not wish to move to invitation only, you must log into CherryPick and update your last active date and time.',
-		'',
-		'---------------',
-		'',
-		'To モデレーター各位',
-		'',
-		`モデレーターが一定期間活動していないようです。あと${timeVariantJa}活動していない状態が続くと招待制に切り替わります。`,
-		'招待制に切り替わることを望まない場合は、CherryPickにログインして最終アクティブ日時を更新してください。',
-		'',
-	];
-
-	const html = message.join('<br>');
-	const text = message.join('\n');
-
-	return {
-		subject,
-		html,
-		text,
-	};
-}
-
 function generateInvitationOnlyChangedMail(moderatorInactivityLimitDays: number) {
 	const subject = 'Change to Invitation-Only / 招待制に変更されました';
 
@@ -269,11 +239,14 @@ export class CheckModeratorsActivityProcessorService {
 			.findBy({ userId: In(moderators.map(it => it.id)) })
 			.then(it => new Map(it.map(it => [it.userId, it])));
 
-		const mail = generateModeratorInactivityMail(remainingTime);
 		for (const moderator of moderators) {
 			const profile = moderatorProfiles.get(moderator.id);
 			if (profile && profile.email && profile.emailVerified) {
-				this.emailService.sendEmail(profile.email, mail.subject, mail.html, mail.text);
+				this.emailService.sendTemplateEmail(profile.email, {
+					kind: 'moderator-inactive',
+					remaining: remainingTime.asDays === 0 ? remainingTime.asHours : remainingTime.asDays,
+					unit: remainingTime.asDays === 0 ? 'hours' : 'days',
+				}, profile.lang);
 			}
 		}
 
@@ -306,7 +279,9 @@ export class CheckModeratorsActivityProcessorService {
 
 			const profile = moderatorProfiles.get(moderator.id);
 			if (profile && profile.email && profile.emailVerified) {
-				this.emailService.sendEmail(profile.email, mail.subject, mail.html, mail.text);
+				this.emailService.sendTemplateEmail(profile.email, {
+					kind: 'invitation-only', inactiveDays: this.moderatorInactivityLimitDays,
+				}, profile.lang);
 			}
 		}
 
@@ -339,7 +314,9 @@ export class CheckModeratorsActivityProcessorService {
 
 			const profile = moderatorProfiles.get(moderator.id);
 			if (profile && profile.email && profile.emailVerified) {
-				this.emailService.sendEmail(profile.email, mail.subject, mail.html, mail.text);
+				this.emailService.sendTemplateEmail(profile.email, {
+					kind: 'public-note-disabled', inactiveDays: this.moderatorInactivityLimitDays,
+				}, profile.lang);
 			}
 		}
 

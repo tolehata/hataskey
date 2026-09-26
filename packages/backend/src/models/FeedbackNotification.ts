@@ -11,6 +11,7 @@ import { id } from './util/id.js';
 import { MiUser } from './User.js';
 import { MiFeedbackIssue } from './FeedbackIssue.js';
 import { MiFeedbackEmojiRequest } from './FeedbackEmojiRequest.js';
+import { MiFeedbackEmojiChangeRequest } from './FeedbackEmojiChangeRequest.js';
 
 @Entity('feedback_notification')
 @Index(['userId', 'isRead'])
@@ -95,6 +96,13 @@ export class MiFeedbackNotification {
 	})
 	@JoinColumn()
 	public emojiRequest: MiFeedbackEmojiRequest | null;
+
+	@Column({ ...id(), nullable: true })
+	public emojiChangeRequestId: string | null;
+
+	@ManyToOne(() => MiFeedbackEmojiChangeRequest, { onDelete: 'SET NULL' })
+	@JoinColumn({ foreignKeyConstraintName: 'FK_feedback_notification_emoji_change' })
+	public emojiChangeRequest: MiFeedbackEmojiChangeRequest | null;
 
 	@Column({
 		...id(),

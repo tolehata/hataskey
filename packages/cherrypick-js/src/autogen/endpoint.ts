@@ -129,6 +129,12 @@ import type {
 	AdminQueueShowJobLogsRequest,
 	AdminQueueShowJobLogsResponse,
 	AdminQueueStatsResponse,
+	AdminRecordModerationExecuteRequest,
+	AdminRecordModerationExecuteResponse,
+	AdminRecordModerationHistoryRequest,
+	AdminRecordModerationHistoryResponse,
+	AdminRecordModerationPreviewRequest,
+	AdminRecordModerationPreviewResponse,
 	AdminRegistrationApplicationsRequest,
 	AdminRegistrationApplicationsResponse,
 	AdminRejectRegistrationRequest,
@@ -137,6 +143,8 @@ import type {
 	AdminRelaysAddResponse,
 	AdminRelaysListResponse,
 	AdminRelaysRemoveRequest,
+	AdminResendRegistrationRejectionRequest,
+	AdminResendRegistrationRejectionResponse,
 	AdminResetPasswordRequest,
 	AdminResetPasswordResponse,
 	AdminResolveAbuseUserReportRequest,
@@ -488,10 +496,18 @@ import type {
 	HataFeedbackCommentsReactRequest,
 	HataFeedbackCommentsReactResponse,
 	HataFeedbackEmojiCategoriesResponse,
+	HataFeedbackEmojiChangeRequestsRequest,
+	HataFeedbackEmojiChangeRequestsResponse,
+	HataFeedbackEmojiChangeRequestsApproveRequest,
+	HataFeedbackEmojiChangeRequestsCreateRequest,
+	HataFeedbackEmojiChangeRequestsCreateResponse,
+	HataFeedbackEmojiChangeRequestsHoldRequest,
+	HataFeedbackEmojiChangeRequestsRejectRequest,
 	HataFeedbackEmojiQuotaResponse,
 	HataFeedbackEmojiRequestsRequest,
 	HataFeedbackEmojiRequestsResponse,
 	HataFeedbackEmojiRequestsApproveRequest,
+	HataFeedbackEmojiRequestsCancelRequest,
 	HataFeedbackEmojiRequestsCreateRequest,
 	HataFeedbackEmojiRequestsCreateResponse,
 	HataFeedbackEmojiRequestsHoldRequest,
@@ -506,6 +522,8 @@ import type {
 	HataFeedbackIssuesExportResponse,
 	HataFeedbackIssuesShowRequest,
 	HataFeedbackIssuesShowResponse,
+	HataFeedbackIssuesStatusCountsRequest,
+	HataFeedbackIssuesStatusCountsResponse,
 	HataFeedbackIssuesUpdateRequest,
 	HataFeedbackIssuesUpdateResponse,
 	HataFeedbackModeratorsGrantRequest,
@@ -643,6 +661,7 @@ import type {
 	HataMascotGetResponse,
 	HataMascotUpdateRequest,
 	HataMascotUpdateResponse,
+	HataUiSAnnouncementClaimResponse,
 	HataskEventsCloseRequest,
 	HataskEventsCreateRequest,
 	HataskEventsCreateResponse,
@@ -671,6 +690,20 @@ import type {
 	HataskRankingListResponse,
 	HataskRankingParticipationRequest,
 	HataskRankingParticipationResponse,
+	HataskRecipesCookedCreateRequest,
+	HataskRecipesCookedCreateResponse,
+	HataskRecipesCookedDeleteRequest,
+	HataskRecipesCookedListRequest,
+	HataskRecipesCookedListResponse,
+	HataskRecipesCreateRequest,
+	HataskRecipesCreateResponse,
+	HataskRecipesDeleteRequest,
+	HataskRecipesListRequest,
+	HataskRecipesListResponse,
+	HataskRecipesShowRequest,
+	HataskRecipesShowResponse,
+	HataskRecipesUpdateRequest,
+	HataskRecipesUpdateResponse,
 	HataskSupportShowResponse,
 	HataskSupportSupportersRequest,
 	HataskSupportSupportersResponse,
@@ -1083,11 +1116,15 @@ export type Endpoints = {
 	'admin/queue/show-job': { req: AdminQueueShowJobRequest; res: AdminQueueShowJobResponse };
 	'admin/queue/show-job-logs': { req: AdminQueueShowJobLogsRequest; res: AdminQueueShowJobLogsResponse };
 	'admin/queue/stats': { req: EmptyRequest; res: AdminQueueStatsResponse };
+	'admin/record-moderation/execute': { req: AdminRecordModerationExecuteRequest; res: AdminRecordModerationExecuteResponse };
+	'admin/record-moderation/history': { req: AdminRecordModerationHistoryRequest; res: AdminRecordModerationHistoryResponse };
+	'admin/record-moderation/preview': { req: AdminRecordModerationPreviewRequest; res: AdminRecordModerationPreviewResponse };
 	'admin/registration-applications': { req: AdminRegistrationApplicationsRequest; res: AdminRegistrationApplicationsResponse };
 	'admin/reject-registration': { req: AdminRejectRegistrationRequest; res: AdminRejectRegistrationResponse };
 	'admin/relays/add': { req: AdminRelaysAddRequest; res: AdminRelaysAddResponse };
 	'admin/relays/list': { req: EmptyRequest; res: AdminRelaysListResponse };
 	'admin/relays/remove': { req: AdminRelaysRemoveRequest; res: EmptyResponse };
+	'admin/resend-registration-rejection': { req: AdminResendRegistrationRejectionRequest; res: AdminResendRegistrationRejectionResponse };
 	'admin/reset-password': { req: AdminResetPasswordRequest; res: AdminResetPasswordResponse };
 	'admin/resolve-abuse-user-report': { req: AdminResolveAbuseUserReportRequest; res: EmptyResponse };
 	'admin/roles/assign': { req: AdminRolesAssignRequest; res: EmptyResponse };
@@ -1305,9 +1342,15 @@ export type Endpoints = {
 	'hata/feedback/comments/mark': { req: HataFeedbackCommentsMarkRequest; res: HataFeedbackCommentsMarkResponse };
 	'hata/feedback/comments/react': { req: HataFeedbackCommentsReactRequest; res: HataFeedbackCommentsReactResponse };
 	'hata/feedback/emoji-categories': { req: EmptyRequest; res: HataFeedbackEmojiCategoriesResponse };
+	'hata/feedback/emoji-change-requests': { req: HataFeedbackEmojiChangeRequestsRequest; res: HataFeedbackEmojiChangeRequestsResponse };
+	'hata/feedback/emoji-change-requests/approve': { req: HataFeedbackEmojiChangeRequestsApproveRequest; res: EmptyResponse };
+	'hata/feedback/emoji-change-requests/create': { req: HataFeedbackEmojiChangeRequestsCreateRequest; res: HataFeedbackEmojiChangeRequestsCreateResponse };
+	'hata/feedback/emoji-change-requests/hold': { req: HataFeedbackEmojiChangeRequestsHoldRequest; res: EmptyResponse };
+	'hata/feedback/emoji-change-requests/reject': { req: HataFeedbackEmojiChangeRequestsRejectRequest; res: EmptyResponse };
 	'hata/feedback/emoji-quota': { req: EmptyRequest; res: HataFeedbackEmojiQuotaResponse };
 	'hata/feedback/emoji-requests': { req: HataFeedbackEmojiRequestsRequest; res: HataFeedbackEmojiRequestsResponse };
 	'hata/feedback/emoji-requests/approve': { req: HataFeedbackEmojiRequestsApproveRequest; res: EmptyResponse };
+	'hata/feedback/emoji-requests/cancel': { req: HataFeedbackEmojiRequestsCancelRequest; res: EmptyResponse };
 	'hata/feedback/emoji-requests/create': { req: HataFeedbackEmojiRequestsCreateRequest; res: HataFeedbackEmojiRequestsCreateResponse };
 	'hata/feedback/emoji-requests/hold': { req: HataFeedbackEmojiRequestsHoldRequest; res: EmptyResponse };
 	'hata/feedback/emoji-requests/reject': { req: HataFeedbackEmojiRequestsRejectRequest; res: EmptyResponse };
@@ -1317,6 +1360,7 @@ export type Endpoints = {
 	'hata/feedback/issues/delete': { req: HataFeedbackIssuesDeleteRequest; res: EmptyResponse };
 	'hata/feedback/issues/export': { req: HataFeedbackIssuesExportRequest; res: HataFeedbackIssuesExportResponse };
 	'hata/feedback/issues/show': { req: HataFeedbackIssuesShowRequest; res: HataFeedbackIssuesShowResponse };
+	'hata/feedback/issues/status-counts': { req: HataFeedbackIssuesStatusCountsRequest; res: HataFeedbackIssuesStatusCountsResponse };
 	'hata/feedback/issues/update': { req: HataFeedbackIssuesUpdateRequest; res: HataFeedbackIssuesUpdateResponse };
 	'hata/feedback/moderators/grant': { req: HataFeedbackModeratorsGrantRequest; res: EmptyResponse };
 	'hata/feedback/moderators/revoke': { req: HataFeedbackModeratorsRevokeRequest; res: EmptyResponse };
@@ -1401,6 +1445,7 @@ export type Endpoints = {
 	'hata/login-ranking': { req: EmptyRequest; res: HataLoginRankingResponse };
 	'hata/mascot/get': { req: EmptyRequest; res: HataMascotGetResponse };
 	'hata/mascot/update': { req: HataMascotUpdateRequest; res: HataMascotUpdateResponse };
+	'hata/ui-s-announcement/claim': { req: EmptyRequest; res: HataUiSAnnouncementClaimResponse };
 	'hatask/events/close': { req: HataskEventsCloseRequest; res: EmptyResponse };
 	'hatask/events/create': { req: HataskEventsCreateRequest; res: HataskEventsCreateResponse };
 	'hatask/events/delete': { req: HataskEventsDeleteRequest; res: EmptyResponse };
@@ -1417,6 +1462,14 @@ export type Endpoints = {
 	'hatask/planner/get': { req: EmptyRequest; res: HataskPlannerGetResponse };
 	'hatask/ranking/list': { req: HataskRankingListRequest; res: HataskRankingListResponse };
 	'hatask/ranking/participation': { req: HataskRankingParticipationRequest; res: HataskRankingParticipationResponse };
+	'hatask/recipes/cooked/create': { req: HataskRecipesCookedCreateRequest; res: HataskRecipesCookedCreateResponse };
+	'hatask/recipes/cooked/delete': { req: HataskRecipesCookedDeleteRequest; res: EmptyResponse };
+	'hatask/recipes/cooked/list': { req: HataskRecipesCookedListRequest; res: HataskRecipesCookedListResponse };
+	'hatask/recipes/create': { req: HataskRecipesCreateRequest; res: HataskRecipesCreateResponse };
+	'hatask/recipes/delete': { req: HataskRecipesDeleteRequest; res: EmptyResponse };
+	'hatask/recipes/list': { req: HataskRecipesListRequest; res: HataskRecipesListResponse };
+	'hatask/recipes/show': { req: HataskRecipesShowRequest; res: HataskRecipesShowResponse };
+	'hatask/recipes/update': { req: HataskRecipesUpdateRequest; res: HataskRecipesUpdateResponse };
 	'hatask/support/show': { req: EmptyRequest; res: HataskSupportShowResponse };
 	'hatask/support/supporters': { req: HataskSupportSupportersRequest; res: HataskSupportSupportersResponse };
 	'i': { req: EmptyRequest; res: IResponse };

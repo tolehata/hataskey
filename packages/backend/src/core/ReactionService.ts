@@ -180,7 +180,7 @@ export class ReactionService {
 		};
 
 		try {
-			await this.noteReactionsRepository.insert(record);
+			await this.utageService.saveReaction(note, user, record);
 		} catch (e) {
 			if (isDuplicateKeyValueError(e)) {
 				const exists = await this.noteReactionsRepository.findOneByOrFail({
@@ -191,7 +191,7 @@ export class ReactionService {
 				if (exists.reaction !== reaction) {
 					// 別のリアクションがすでにされていたら置き換える
 					await this.delete(user, note);
-					await this.noteReactionsRepository.insert(record);
+					await this.utageService.saveReaction(note, user, record);
 				} else {
 					// 同じリアクションがすでにされていたらエラー
 					throw new IdentifiableError('51c42bb4-931a-456b-bff7-e5a8a70dd298');
@@ -205,15 +205,15 @@ export class ReactionService {
 		if (this.meta.enableReactionsBuffering) {
 			await this.reactionsBufferingService.create(note.id, user.id, reaction, note.reactionAndUserPairCache);
 		} else {
-			const sql = `jsonb_set("reactions", '{${reaction}}', (COALESCE("reactions"->>'${reaction}', '0')::int + 1)::text::jsonb)`;
 			await this.notesRepository.createQueryBuilder().update()
 				.set({
-					reactions: () => sql,
+					reactions: () => `jsonb_set("reactions", ARRAY[:reaction], (COALESCE("reactions"->>:reaction, '0')::int + 1)::text::jsonb)`,
 					...(note.reactionAndUserPairCache.length < PER_NOTE_REACTION_USER_PAIR_CACHE_MAX ? {
-						reactionAndUserPairCache: () => `array_append("reactionAndUserPairCache", '${user.id}/${reaction}')`,
+						reactionAndUserPairCache: () => `array_append("reactionAndUserPairCache", :pair)`,
 					} : {}),
 				})
 				.where('id = :id', { id: note.id })
+				.setParameters({ reaction, pair: `${user.id}/${reaction}` })
 				.execute();
 		}
 
@@ -261,15 +261,6 @@ export class ReactionService {
 			} : null,
 			userId: user.id,
 		});
-
-		// 旗鯖fork: 宴(うたげ)セッション中のノートにリアクションが付いたら失敗確定させる。
-		this.utageService.onReaction({
-			id: note.id,
-			text: note.text,
-			cw: note.cw,
-			userId: note.userId,
-			userHost: note.userHost,
-		}, user).catch(() => { /* 宴判定の失敗はリアクション処理を妨げない */ });
 
 		// リアクションされたユーザーがローカルユーザーなら通知を作成
 		if (note.userHost === null) {
@@ -322,7 +313,7 @@ export class ReactionService {
 		}
 
 		// Delete reaction
-		const result = await this.noteReactionsRepository.delete(exist.id);
+		const result = await this.utageService.removeReaction(note, exist.id);
 
 		if (result.affected !== 1) {
 			throw new IdentifiableError('60527ec9-b4cb-4a88-a6bd-32d3ad26817d', 'not reacted');
@@ -332,13 +323,13 @@ export class ReactionService {
 		if (this.meta.enableReactionsBuffering) {
 			await this.reactionsBufferingService.delete(note.id, user.id, exist.reaction);
 		} else {
-			const sql = `jsonb_set("reactions", '{${exist.reaction}}', (COALESCE("reactions"->>'${exist.reaction}', '0')::int - 1)::text::jsonb)`;
 			await this.notesRepository.createQueryBuilder().update()
 				.set({
-					reactions: () => sql,
-					reactionAndUserPairCache: () => `array_remove("reactionAndUserPairCache", '${user.id}/${exist.reaction}')`,
+					reactions: () => `jsonb_set("reactions", ARRAY[:reaction], (COALESCE("reactions"->>:reaction, '0')::int - 1)::text::jsonb)`,
+					reactionAndUserPairCache: () => `array_remove("reactionAndUserPairCache", :pair)`,
 				})
 				.where('id = :id', { id: note.id })
+				.setParameters({ reaction: exist.reaction, pair: `${user.id}/${exist.reaction}` })
 				.execute();
 		}
 

@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { jest } from '@jest/globals';
+import { describe, expect, test, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
+import * as Redis from 'ioredis';
 import ms from 'ms';
 import {
 	type MiNote,
@@ -34,6 +35,8 @@ describe('CleanRemoteNotesProcessorService', () => {
 	let userNotePiningsRepository: UserNotePiningsRepository;
 	let usersRepository: UsersRepository;
 	let userProfilesRepository: UserProfilesRepository;
+	let redisClient: Redis.Redis;
+	const CURSOR_REDIS_KEY = 'cleanRemoteNotes:cursor';
 
 	// Local user
 	let alice: MiUser;
@@ -46,8 +49,8 @@ describe('CleanRemoteNotesProcessorService', () => {
 
 	// Mock job object
 	const createMockJob = () => ({
-		log: jest.fn(),
-		updateProgress: jest.fn(),
+		log: vi.fn(),
+		updateProgress: vi.fn(),
 	});
 
 	async function createUser(data: Partial<MiUser> = {}) {
@@ -98,9 +101,9 @@ describe('CleanRemoteNotesProcessorService', () => {
 						useFactory: () => ({
 							logger: {
 								createSubLogger: () => ({
-									info: jest.fn(),
-									warn: jest.fn(),
-									succ: jest.fn(),
+									info: vi.fn(),
+									warn: vi.fn(),
+									succ: vi.fn(),
 								}),
 							},
 						}),
@@ -118,6 +121,7 @@ describe('CleanRemoteNotesProcessorService', () => {
 		userNotePiningsRepository = app.get(DI.userNotePiningsRepository);
 		usersRepository = app.get(DI.usersRepository);
 		userProfilesRepository = app.get(DI.userProfilesRepository);
+		redisClient = app.get(DI.redis);
 
 		alice = await createUser({ username: 'alice', host: null });
 		bob = await createUser({ username: 'bob', host: 'remote1.example.com' });
@@ -126,9 +130,10 @@ describe('CleanRemoteNotesProcessorService', () => {
 		app.enableShutdownHooks();
 	});
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		// Reset mocks
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		await redisClient.del(CURSOR_REDIS_KEY);
 
 		// Set default meta values
 		meta.enableRemoteNotesCleaning = true;
@@ -161,6 +166,7 @@ describe('CleanRemoteNotesProcessorService', () => {
 				deletedCount: 0,
 				oldest: null,
 				newest: null,
+				cursor: null,
 				skipped: true,
 				transientErrors: 0,
 			});
@@ -176,6 +182,7 @@ describe('CleanRemoteNotesProcessorService', () => {
 				deletedCount: 0,
 				oldest: null,
 				newest: null,
+				cursor: null,
 				skipped: false,
 				transientErrors: 0,
 			});
@@ -206,6 +213,7 @@ describe('CleanRemoteNotesProcessorService', () => {
 				deletedCount: 2,
 				oldest: idService.parse(remoteNotes[3].id).date.getTime(),
 				newest: idService.parse(remoteNotes[2].id).date.getTime(),
+				cursor: null,
 				skipped: false,
 				transientErrors: 0,
 			});
@@ -856,6 +864,63 @@ describe('CleanRemoteNotesProcessorService', () => {
 	//               WHERE note_reaction."noteId" = note."id"
 	//               AND "user"."host" IS NULL)
 	// i.e. only reactions from local users (host IS NULL) prevent deletion.
+	describe('advanced - cursor persistence', () => {
+		const oldTimeBase = () => Date.now() - ms(`${meta.remoteNotesCleaningExpiryDaysForEachNotes} days`) - 10000;
+
+		test('resumes after the saved cursor and clears it on completing the scan', async () => {
+			const beforeCursor = await createNote({}, bob, oldTimeBase());
+			const afterCursor = await createNote({}, bob, oldTimeBase() + 5000);
+			await redisClient.set(CURSOR_REDIS_KEY, beforeCursor.id);
+
+			const result = await service.process(createMockJob() as any);
+
+			expect(result.deletedCount).toBe(1);
+			expect(result.cursor).toBeNull();
+			expect(await redisClient.get(CURSOR_REDIS_KEY)).toBeNull();
+			expect(await notesRepository.findOneBy({ id: beforeCursor.id })).not.toBeNull();
+			expect(await notesRepository.findOneBy({ id: afterCursor.id })).toBeNull();
+		});
+
+		test('restarts at the beginning when a saved cursor is newer than the expiry limit', async () => {
+			const note = await createNote({}, bob, oldTimeBase());
+			await redisClient.set(CURSOR_REDIS_KEY, idService.gen(Date.now()));
+
+			const result = await service.process(createMockJob() as any);
+
+			expect(result.deletedCount).toBe(1);
+			expect(await notesRepository.findOneBy({ id: note.id })).toBeNull();
+			expect(await redisClient.get(CURSOR_REDIS_KEY)).toBeNull();
+		});
+
+		test('preserves a saved cursor while cleaning is disabled', async () => {
+			const cursor = idService.gen(oldTimeBase());
+			await redisClient.set(CURSOR_REDIS_KEY, cursor);
+			meta.enableRemoteNotesCleaning = false;
+
+			const result = await service.process(createMockJob() as any);
+
+			expect(result).toMatchObject({ skipped: true, cursor });
+			expect(await redisClient.get(CURSOR_REDIS_KEY)).toBe(cursor);
+		});
+
+		test('saves the cursor after a batch when cleaning stops before the end', async () => {
+			const amount = 250;
+			const oldTime = oldTimeBase();
+			for (let i = 0; i < amount; i++) {
+				await createNote({}, bob, oldTime - i);
+			}
+
+			const job = createMockJob();
+			job.updateProgress = vi.fn(() => { meta.enableRemoteNotesCleaning = false; });
+			const result = await service.process(job as any);
+
+			expect(result.deletedCount).toBeGreaterThan(0);
+			expect(result.deletedCount).toBeLessThan(amount);
+			expect(result.cursor).not.toBeNull();
+			expect(await redisClient.get(CURSOR_REDIS_KEY)).toBe(result.cursor);
+		}, 30 * 1000);
+	});
+
 	describe('advanced - note_reaction', () => {
 		// ローカルユーザーがリアクションしたノートは削除されない
 		test('should not delete note that is reacted by a local user', async () => {
@@ -1129,6 +1194,7 @@ describe('CleanRemoteNotesProcessorService', () => {
 				deletedCount: 0,
 				oldest: null,
 				newest: null,
+				cursor: null,
 				skipped: false,
 				transientErrors: 0,
 			});

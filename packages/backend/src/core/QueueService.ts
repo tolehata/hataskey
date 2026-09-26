@@ -279,13 +279,16 @@ export class QueueService implements OnModuleInit {
 		});
 	}
 
-	// 旗鯖fork: 宴(うたげ)の成功確定ジョブを delay(=残り15分)後に発火するよう登録。
+	// 通常期限と復活期限を別のjobIdで登録し、古い通常ジョブとの混同を防ぐ。
 	// 連合先には何も配送しない、サーバー内完結のジョブ。
 	@bindThis
-	public createUtageResolveJob(noteId: string, delay: number) {
+	public createUtageResolveJob(noteId: string, delay: number, phase: 'normal' | 'revival' = 'normal') {
 		return this.utageResolveQueue.add('resolve', {
-			noteId,
+			noteId, phase,
 		}, {
+			jobId: `utage-${noteId}-${phase}`,
+			attempts: 5,
+			backoff: { type: 'exponential', delay: 1000 },
 			delay,
 			removeOnComplete: {
 				age: 3600 * 24, // keep up to 1 day

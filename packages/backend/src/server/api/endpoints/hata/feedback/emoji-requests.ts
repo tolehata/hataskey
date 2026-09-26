@@ -10,6 +10,7 @@ import { FeedbackEntityService } from '@/core/entities/FeedbackEntityService.js'
 import { FeedbackService } from '@/core/FeedbackService.js';
 import { DI } from '@/di-symbols.js';
 import { ApiError } from '@/server/api/error.js';
+import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 
 export const meta = {
 	tags: ['hata'],
@@ -24,7 +25,9 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		status: { type: 'string', enum: ['pending', 'held', 'approved', 'rejected', null], nullable: true },
+		status: { type: 'string', enum: ['pending', 'held', 'approved', 'rejected', 'cancelled', null], nullable: true },
+		query: { type: 'string', maxLength: 128 },
+		filter: { type: 'string', enum: ['all', 'registered', 'waiting'], default: 'all' },
 		mine: { type: 'boolean', default: false },
 		// 旗鯖fork(#38): 特定IDで1件取得(通知クリック時の状態確認用)
 		id: { type: 'string', format: 'misskey:id', nullable: true },
@@ -58,10 +61,14 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				query.andWhere('req.requestedById = :me', { me: me.id });
 			}
 			if (ps.status != null) query.andWhere('req.status = :status', { status: ps.status });
+			if (ps.filter === 'registered') query.andWhere('req.status = \'approved\' AND EXISTS (SELECT 1 FROM emoji e WHERE e.id = req."resolvedEmojiId" AND e.host IS NULL)');
+			if (ps.filter === 'waiting') query.andWhere('(req.status IN (\'pending\', \'held\') OR EXISTS (SELECT 1 FROM feedback_emoji_change_request c WHERE c."originalRequestId" = req.id AND c.status IN (\'pending\', \'held\')))');
+			const search = ps.query?.trim().replace(/^:|:$/g, '').trim();
+			if (search) query.andWhere('(req.name ILIKE :search OR array_to_string(req.aliases, \' \') ILIKE :search OR EXISTS (SELECT 1 FROM emoji e WHERE e.id = req."resolvedEmojiId" AND (e.name ILIKE :search OR array_to_string(e.aliases, \' \') ILIKE :search)))', { search: `%${sqlLikeEscape(search)}%` });
 
 			query.orderBy('req.id', 'DESC');
 			const reqs = await query.limit(ps.limit).getMany();
-			return await Promise.all(reqs.map(r => this.feedbackEntityService.packEmojiRequest(r)));
+			return await this.feedbackEntityService.packEmojiRequests(reqs);
 		});
 	}
 }

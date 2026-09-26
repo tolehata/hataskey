@@ -6,7 +6,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 //import bcrypt from 'bcryptjs';
 import * as argon2 from 'argon2';
-import { IsNull } from 'typeorm';
+import { IsNull, LessThanOrEqual } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { RegistrationTicketsRepository, UsedUsernamesRepository, UserPendingsRepository, UserProfilesRepository, UsersRepository, MiRegistrationTicket, MiMeta } from '@/models/_.js';
 import type { Config } from '@/config.js';
@@ -20,6 +20,7 @@ import { FastifyReplyError } from '@/misc/fastify-reply-error.js';
 import { bindThis } from '@/decorators.js';
 import { L_CHARS, secureRndstr } from '@/misc/secure-rndstr.js';
 import { SigninService } from './SigninService.js';
+import type { FindOptionsWhere } from 'typeorm';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
 @Injectable()
@@ -79,25 +80,37 @@ export class SignupApiService {
 		// Verify *Captcha
 		// ただしテスト時はこの機構は障害となるため無効にする
 		if (process.env.NODE_ENV !== 'test') {
-			if (this.meta.enableHcaptcha && this.meta.hcaptchaSecretKey) {
+			if (this.meta.enableHcaptcha) {
+				if (!this.meta.hcaptchaSecretKey?.trim()) {
+					throw new FastifyReplyError(400, 'hcaptcha-failed: missing configuration');
+				}
 				await this.captchaService.verifyHcaptcha(this.meta.hcaptchaSecretKey, body['hcaptcha-response']).catch(err => {
 					throw new FastifyReplyError(400, err);
 				});
 			}
 
-			if (this.meta.enableMcaptcha && this.meta.mcaptchaSecretKey && this.meta.mcaptchaSitekey && this.meta.mcaptchaInstanceUrl) {
+			if (this.meta.enableMcaptcha) {
+				if (!this.meta.mcaptchaSecretKey?.trim() || !this.meta.mcaptchaSitekey?.trim() || !this.meta.mcaptchaInstanceUrl?.trim()) {
+					throw new FastifyReplyError(400, 'mcaptcha-failed: missing configuration');
+				}
 				await this.captchaService.verifyMcaptcha(this.meta.mcaptchaSecretKey, this.meta.mcaptchaSitekey, this.meta.mcaptchaInstanceUrl, body['m-captcha-response']).catch(err => {
 					throw new FastifyReplyError(400, err);
 				});
 			}
 
-			if (this.meta.enableRecaptcha && this.meta.recaptchaSecretKey) {
+			if (this.meta.enableRecaptcha) {
+				if (!this.meta.recaptchaSecretKey?.trim()) {
+					throw new FastifyReplyError(400, 'recaptcha-failed: missing configuration');
+				}
 				await this.captchaService.verifyRecaptcha(this.meta.recaptchaSecretKey, body['g-recaptcha-response']).catch(err => {
 					throw new FastifyReplyError(400, err);
 				});
 			}
 
-			if (this.meta.enableTurnstile && this.meta.turnstileSecretKey) {
+			if (this.meta.enableTurnstile) {
+				if (!this.meta.turnstileSecretKey?.trim()) {
+					throw new FastifyReplyError(400, 'turnstile-failed: missing configuration');
+				}
 				await this.captchaService.verifyTurnstile(this.meta.turnstileSecretKey, body['turnstile-response']).catch(err => {
 					throw new FastifyReplyError(400, err);
 				});
@@ -138,6 +151,7 @@ export class SignupApiService {
 				return;
 			}
 
+			// 事前確認だけでは同時リクエストを防げないため、消費直前にも原子的に確保する。
 			ticket = await this.registrationTicketsRepository.findOneBy({
 				code: invitationCode,
 			});
@@ -194,56 +208,101 @@ export class SignupApiService {
 
 			// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Metadata can change while password hashing awaits.
 			if (this.meta.registrationClosed) throw new FastifyReplyError(403, 'REGISTRATION_CLOSED');
-			const pendingUser = await this.userPendingsRepository.insertOne({
-				id: this.idService.gen(),
-				code,
-				email: emailAddress!,
-				username: username,
-				password: hash,
-			});
+			if (ticket && !await this.claimRegistrationTicket(ticket)) {
+				reply.code(400);
+				return;
+			}
 
-			const link = `${this.config.url}/signup-complete/${code}`;
-
-			this.emailService.sendEmail(emailAddress!, 'Signup',
-				`To complete signup, please click this link:<br><a href="${link}">${link}</a>`,
-				`To complete signup, please click this link: ${link}`);
-
-			if (ticket) {
-				await this.registrationTicketsRepository.update(ticket.id, {
-					usedAt: new Date(),
-					pendingUserId: pendingUser.id,
+			try {
+				const pendingUser = await this.userPendingsRepository.insertOne({
+					id: this.idService.gen(),
+					code,
+					email: emailAddress!,
+					username: username,
+					password: hash,
 				});
+
+				const link = `${this.config.url}/signup-complete/${code}`;
+
+				this.emailService.sendTemplateEmail(emailAddress!, { kind: 'signup', url: link });
+
+				if (ticket) {
+					await this.registrationTicketsRepository.update(ticket.id, {
+						pendingUserId: pendingUser.id,
+					});
+				}
+			} catch (err) {
+				if (ticket) await this.releaseRegistrationTicket(ticket);
+				throw err;
 			}
 
 			reply.code(204);
 			return;
 		} else {
+			if (ticket && !await this.claimRegistrationTicket(ticket)) {
+				reply.code(400);
+				return;
+			}
+
 			try {
 				const { account, secret } = await this.signupService.signup({
 					username, password, host,
 				});
+
+				if (ticket) {
+					await this.registrationTicketsRepository.update(ticket.id, {
+						usedBy: account,
+						usedById: account.id,
+					});
+				}
 
 				const res = await this.userEntityService.pack(account, account, {
 					schema: 'MeDetailed',
 					includeSecrets: true,
 				});
 
-				if (ticket) {
-					await this.registrationTicketsRepository.update(ticket.id, {
-						usedAt: new Date(),
-						usedBy: account,
-						usedById: account.id,
-					});
-				}
-
 				return {
 					...res,
 					token: secret,
 				};
 			} catch (err) {
+				// アカウントに紐付け済みの場合は release 側の条件により戻らない。
+				if (ticket) await this.releaseRegistrationTicket(ticket);
 				throw new FastifyReplyError(400, typeof err === 'string' ? err : (err as Error).toString());
 			}
 		}
+	}
+
+	@bindThis
+	private async claimRegistrationTicket(ticket: MiRegistrationTicket): Promise<boolean> {
+		const where: FindOptionsWhere<MiRegistrationTicket>[] = [
+			{ id: ticket.id, usedById: IsNull(), usedAt: IsNull() },
+		];
+
+		// メール未認証のまま30分経過したコードは再使用できる。
+		if (this.meta.emailRequiredForSignup) {
+			where.push({
+				id: ticket.id,
+				usedById: IsNull(),
+				usedAt: LessThanOrEqual(new Date(Date.now() - (1000 * 60 * 30))),
+			});
+		}
+
+		const result = await this.registrationTicketsRepository.update(where, {
+			usedAt: new Date(),
+		});
+		return (result.affected ?? 0) > 0;
+	}
+
+	@bindThis
+	private async releaseRegistrationTicket(ticket: MiRegistrationTicket): Promise<void> {
+		await this.registrationTicketsRepository.update({
+			id: ticket.id,
+			usedById: IsNull(),
+		}, {
+			usedAt: null,
+			pendingUserId: null,
+		});
 	}
 
 	@bindThis

@@ -54,7 +54,7 @@ function fixture(enabled: unknown = true) {
 	const usedNames = { exists: vi.fn().mockResolvedValue(false) };
 	const profiles = { update: vi.fn().mockResolvedValue({}) };
 	const signup = { signup: vi.fn().mockResolvedValue({ account: { id: 'user1', username: 'applicant' }, applicationEmail: applicant.email }) };
-	const mail = { sendEmail: vi.fn().mockResolvedValue(undefined) };
+	const mail = { sendTemplateEmail: vi.fn().mockResolvedValue(undefined) };
 	const notification = { notifyNewApplication: vi.fn().mockResolvedValue(undefined) };
 	const captcha = { verifyTestcaptcha: vi.fn().mockResolvedValue(undefined) };
 	const id = { gen: vi.fn().mockReturnValue('newapp') };
@@ -73,7 +73,7 @@ function fixture(enabled: unknown = true) {
 	const apply = new ApplyEndpoint(serverMeta as never, repository as never, users as never, usedNames as never, id as never, captcha as never, notification as never);
 	const list = new ListEndpoint(serverMeta as never, repository as never, review as never);
 	const approve = new ApproveEndpoint({ url: 'https://example.test' } as never, serverMeta as never, signup as never, mail as never);
-	const reject = new RejectEndpoint(serverMeta as never, decisionDb as never, review as never);
+	const reject = new RejectEndpoint(serverMeta as never, decisionDb as never, review as never, { send: vi.fn().mockResolvedValue({ emailSent: false, notificationStatus: 'failed' }) } as never);
 	const cleanup = new CleanupEndpoint(serverMeta as never, repository as never);
 	return { review, serverMeta, application, repository, users, usedNames, profiles, signup, mail, notification, captcha, query, apply, list, approve, reject, cleanup, decisionTransaction, decisionDb };
 }
@@ -245,7 +245,7 @@ describe('registration application mode', () => {
 		expect(f.repository.update).not.toHaveBeenCalled();
 		expect(f.repository.createQueryBuilder).not.toHaveBeenCalled();
 		expect(f.signup.signup).not.toHaveBeenCalled();
-		expect(f.mail.sendEmail).not.toHaveBeenCalled();
+		expect(f.mail.sendTemplateEmail).not.toHaveBeenCalled();
 	});
 
 	test('ON lists applications without exposing password hashes; OFF during the read discards its result', async () => {
@@ -264,15 +264,10 @@ describe('registration application mode', () => {
 		await expect(f.list.exec({}, { id: 'admin' } as never, null, null)).rejects.toMatchObject(disabled);
 	});
 
-	test('approval email escapes server metadata in HTML while retaining a readable plaintext copy', async () => {
+	test('approval sends the structured template input with the approved username', async () => {
 		const f = fixture();
-		f.serverMeta.name = '<img src=x> & server';
 		await expect(f.approve.exec({ applicationId: 'app1', revision: reviewRevision }, { id: 'admin' } as never, null, null)).resolves.toEqual({ success: true, emailSent: true });
-		const html = f.mail.sendEmail.mock.calls[0][2];
-		const plain = f.mail.sendEmail.mock.calls[0][3];
-		expect(html).toContain('&lt;img src=x&gt; &amp; server');
-		expect(html).not.toContain('<img src=x>');
-		expect(plain).toContain('<img src=x> & server');
+		expect(f.mail.sendTemplateEmail).toHaveBeenCalledWith(applicant.email, { kind: 'registration-approved', username: 'applicant' });
 	});
 
 	test('ON approval delegates the atomic decision to signup and sends mail only afterwards', async () => {
@@ -281,7 +276,7 @@ describe('registration application mode', () => {
 		expect(f.signup.signup).toHaveBeenCalledWith({ registrationApplicationId: 'app1', reviewerId: 'admin', revision: reviewRevision });
 		expect(f.profiles.update).not.toHaveBeenCalled();
 		expect(f.repository.update).not.toHaveBeenCalled();
-		expect(f.mail.sendEmail).toHaveBeenCalledOnce();
+		expect(f.mail.sendTemplateEmail).toHaveBeenCalledOnce();
 	});
 
 	test('OFF during rejection lookup preserves pending application and avoids side effects', async () => {
@@ -292,12 +287,12 @@ describe('registration application mode', () => {
 		expect(f.repository.update).not.toHaveBeenCalled();
 		expect(f.decisionTransaction.update).not.toHaveBeenCalled();
 		expect(f.signup.signup).not.toHaveBeenCalled();
-		expect(f.mail.sendEmail).not.toHaveBeenCalled();
+		expect(f.mail.sendTemplateEmail).not.toHaveBeenCalled();
 	});
 
 	test('ON rejection keeps existing privacy behavior and retained email', async () => {
 		const f = fixture();
-		await expect(f.reject.exec({ applicationId: 'app1', revision: reviewRevision }, { id: 'admin' } as never, null, null)).resolves.toEqual({ success: true });
+		await expect(f.reject.exec({ applicationId: 'app1', revision: reviewRevision }, { id: 'admin' } as never, null, null)).resolves.toEqual({ success: true, emailSent: false, notificationStatus: 'failed' });
 		const changes = f.decisionTransaction.update.mock.calls[0][2];
 		expect(changes).toMatchObject({ status: 'rejected', username: null, hashedPassword: null, additionalContacts: null });
 		expect(changes).not.toHaveProperty('email');

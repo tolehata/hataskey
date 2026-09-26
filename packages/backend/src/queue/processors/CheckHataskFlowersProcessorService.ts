@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { HataskFlowerV2Service } from '@/core/HataskFlowerV2Service.js';
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
 import type { RegistryItemsRepository } from '@/models/_.js';
@@ -22,6 +23,7 @@ const PAGE_SIZE = 100;
 @Injectable()
 export class CheckHataskFlowersProcessorService {
 	constructor(
+		private flowerV2Service: HataskFlowerV2Service,
 		@Inject(DI.registryItemsRepository)
 		private registryItemsRepository: RegistryItemsRepository,
 		private idService: IdService,
@@ -31,6 +33,7 @@ export class CheckHataskFlowersProcessorService {
 
 	@bindThis
 	public async process(): Promise<void> {
+		await this.flowerV2Service.checkNotifications();
 		let cursor = '';
 		let failures = 0;
 		while (true) {
@@ -43,6 +46,7 @@ export class CheckHataskFlowersProcessorService {
 				.andWhere('flower.key = :key', { key: 'flower' })
 				.andWhere('owner.host IS NULL AND owner.isDeleted = false AND owner.isSuspended = false')
 				.andWhere('flower.userId > :cursor', { cursor })
+				.andWhere('NOT EXISTS (SELECT 1 FROM hatask_drop_wallet w WHERE w."userId" = flower."userId" AND w.flower IS NOT NULL)')
 				// Skip already delivered flowers without loading every user's marker separately.
 				.andWhere(`NOT EXISTS (
 					SELECT 1 FROM registry_item notified

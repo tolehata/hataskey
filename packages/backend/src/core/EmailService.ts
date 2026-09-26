@@ -5,7 +5,6 @@
 
 import * as nodemailer from 'nodemailer';
 import juice from 'juice';
-import sanitizeHtml from 'sanitize-html';
 import { Inject, Injectable } from '@nestjs/common';
 import { UtilityService } from '@/core/UtilityService.js';
 import { DI } from '@/di-symbols.js';
@@ -15,7 +14,8 @@ import type { MiMeta, UserProfilesRepository } from '@/models/_.js';
 import { LoggerService } from '@/core/LoggerService.js';
 import { bindThis } from '@/decorators.js';
 import { HttpRequestService } from '@/core/HttpRequestService.js';
-import { escapeHtml } from '@/misc/escape-html.js';
+import { createHataskeyEmail, type HataskeyEmailInput } from '@/core/email/hataskey-email-content.js';
+import { renderHataskeyEmail, type EmailBrand } from '@/core/email/render-hataskey-email.js';
 
 @Injectable()
 export class EmailService {
@@ -38,17 +38,50 @@ export class EmailService {
 		this.logger = this.loggerService.getLogger('email');
 	}
 
+	/** Compatibility entry point for the administrator's existing HTML input. */
 	@bindThis
 	public async sendEmail(to: string, subject: string, html: string, text: string) {
 		if (!this.meta.enableEmail) return;
 
-		const iconUrl = `${this.config.url}/static-assets/mi-white.png`;
-		const emailSettingUrl = `${this.config.url}/settings/email`;
+		const brand = this.emailBrand();
+		const message = createHataskeyEmail({ kind: 'admin-message', subject, text }, brand, this.emailLocale());
+		// The renderer sanitizes only this fragment, never the completed email layout.
+		const rendered = renderHataskeyEmail({ ...message, htmlBody: html }, brand);
+		await this.deliverEmail(to, rendered);
+	}
 
+	/** Templates accept plain data; recipient selection and eligibility remain with callers. */
+	@bindThis
+	public async sendTemplateEmail(to: string, input: HataskeyEmailInput, locale?: string | null) {
+		if (!this.meta.enableEmail) return;
+
+		const brand = this.emailBrand();
+		const message = createHataskeyEmail(input, brand, this.emailLocale(locale));
+		await this.deliverEmail(to, renderHataskeyEmail(message, brand));
+	}
+
+	private emailLocale(locale?: string | null): 'ja' | 'en' {
+		const language = locale || this.meta.langs?.[0] || 'ja';
+		return /^ja(?:[-_]|$)/i.test(language) ? 'ja' : 'en';
+	}
+
+	private emailBrand(): EmailBrand {
+		const fallbackIcon = `${this.config.url}/favicon.ico`;
+		let iconUrl = fallbackIcon;
+		// Older metadata accepts arbitrary strings. A bad icon must not block account emails.
+		if (this.meta.iconUrl && !/[\s\u0000-\u001f\u007f]/u.test(this.meta.iconUrl)) {
+			try {
+				const icon = new URL(this.meta.iconUrl, this.config.url);
+				if (['http:', 'https:'].includes(icon.protocol) && !icon.username && !icon.password) {
+					iconUrl = icon.href;
+				}
+			} catch { /* Use the server's fallback icon. */ }
+		}
+		return { name: this.meta.name || this.config.host, url: this.config.url, iconUrl };
+	}
+
+	private async deliverEmail(to: string, message: { subject: string; html: string; text: string }) {
 		const enableAuth = this.meta.smtpUser != null && this.meta.smtpUser !== '';
-
-		const sanitizedHtml = sanitizeHtml(html);
-
 		const transporter = nodemailer.createTransport({
 			host: this.meta.smtpHost,
 			port: this.meta.smtpPort,
@@ -61,89 +94,7 @@ export class EmailService {
 			} : undefined,
 		} as any);
 
-		const htmlContent = `<!doctype html>
-<html>
-	<head>
-		<meta charset="utf-8">
-		<title>${ escapeHtml(subject) }</title>
-		<style>
-			html {
-				background: #eee;
-			}
-
-			body {
-				padding: 16px;
-				margin: 0;
-				font-family: sans-serif;
-				font-size: 14px;
-			}
-
-			a {
-				text-decoration: none;
-				color: #ffbcdc;
-			}
-			a:hover {
-				text-decoration: underline;
-			}
-
-			main {
-				max-width: 500px;
-				margin: 0 auto;
-				background: #fff;
-				color: #555;
-			}
-				main > header {
-					padding: 32px;
-					background: #ffbcdc;
-				}
-					main > header > img {
-						max-width: 128px;
-						max-height: 28px;
-						vertical-align: bottom;
-					}
-				main > article {
-					padding: 32px;
-				}
-					main > article > h1 {
-						margin: 0 0 1em 0;
-					}
-				main > footer {
-					padding: 32px;
-					border-top: solid 1px #eee;
-				}
-
-			nav {
-				box-sizing: border-box;
-				max-width: 500px;
-				margin: 16px auto 0 auto;
-				padding: 0 32px;
-			}
-				nav > a {
-					color: #888;
-				}
-		</style>
-	</head>
-	<body>
-		<main>
-			<header>
-				<img src="${ escapeHtml(this.meta.logoImageUrl ?? this.meta.iconUrl ?? iconUrl) }"/>
-			</header>
-			<article>
-				<h1>${ escapeHtml(subject) }</h1>
-				<div>${ sanitizedHtml }</div>
-			</article>
-			<footer>
-				<a href="${ escapeHtml(emailSettingUrl) }">${ 'Email setting' }</a>
-			</footer>
-		</main>
-		<nav>
-			<a href="${ escapeHtml(this.config.url) }">${ escapeHtml(this.config.host) }</a>
-		</nav>
-	</body>
-</html>`;
-
-		const inlinedHtml = juice(htmlContent);
-
+		const inlinedHtml = juice(message.html);
 		try {
 			const info = await transporter.sendMail({
 				from: this.meta.name ? {
@@ -151,8 +102,8 @@ export class EmailService {
 					address: this.meta.email!,
 				} : this.meta.email!,
 				to: to,
-				subject: subject,
-				text: text,
+				subject: message.subject,
+				text: message.text,
 				html: inlinedHtml,
 			});
 

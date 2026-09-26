@@ -14,8 +14,8 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-describe('宴の編集判定と連合配送の分離', () => {
-	test.each([false, true])('宴の判定エラー=%sでも本文を保って編集を配送する', async (utageFails) => {
+describe('宴の編集判定と保存の原子性', () => {
+	test.each([false, true])('宴の保存エラー=%sの場合だけ本文保存と配送を取り消す', async (utageFails) => {
 		vi.spyOn(console, 'log').mockImplementation(() => {});
 		const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const user = { id: 'user-a', username: 'alice', host: null, isBot: false };
@@ -37,8 +37,16 @@ describe('宴の編集判定と連合配送の分離', () => {
 		const noteHistoryService = { recordHistory: vi.fn().mockResolvedValue(undefined) };
 		const utageError = new Error('utage storage unavailable');
 		const utageService = {
-			onNoteUpdated: utageFails ? vi.fn().mockRejectedValue(utageError) : vi.fn().mockResolvedValue(undefined),
+			isCandidate: () => true,
+			lock: vi.fn().mockResolvedValue({ id: 'session' }),
+			onNoteUpdatedInTransaction: utageFails ? vi.fn().mockRejectedValue(utageError) : vi.fn().mockResolvedValue({ id: 'session' }),
+			afterCommit: vi.fn().mockResolvedValue(undefined),
 		};
+		const manager = { update: (_type: unknown, criteria: unknown, values: Partial<MiNote>) => notesRepository.update(criteria, values) };
+		const db = { transaction: async (fn: (m: typeof manager) => Promise<void>) => {
+			const backup = { ...saved };
+			try { await fn(manager); } catch (error) { saved = backup; throw error; }
+		} };
 		const deliverManager = { deliverToFollowers: vi.fn().mockResolvedValue(undefined) };
 		const relayService = { deliverToRelays: vi.fn().mockResolvedValue(undefined) };
 		const apRendererService = {
@@ -48,7 +56,7 @@ describe('宴の編集判定と連合配送の分離', () => {
 		};
 		const globalEventService = { publishNoteStream: vi.fn() };
 		const sut = new NoteUpdateService(
-			{} as never,
+			db as never,
 			{} as never,
 			notesRepository as never,
 			{ isLocalUser: () => true } as never,
@@ -65,17 +73,24 @@ describe('宴の編集判定と連合配送の分離', () => {
 		services.push(sut);
 		const text = ':kyattukya:$[fg.color=0000 宴]';
 
+		if (utageFails) {
+			await expect(sut.update(user, { text, cw: null }, original)).rejects.toThrow(utageError);
+			expect(saved.text).toBe(original.text);
+			expect(deliverManager.deliverToFollowers).not.toHaveBeenCalled();
+			expect(utageService.afterCommit).not.toHaveBeenCalled();
+			return;
+		}
 		const result = await sut.update(user, { text, cw: null }, original);
 		await vi.waitFor(() => expect(relayService.deliverToRelays).toHaveBeenCalledTimes(1));
 
 		expect(result?.text).toBe(text);
-		expect(utageService.onNoteUpdated).toHaveBeenCalledWith(original, expect.objectContaining({ text, cw: null }));
+		expect(utageService.onNoteUpdatedInTransaction).toHaveBeenCalledWith(manager, original, expect.objectContaining({ text, cw: null }), { id: 'session' });
+		expect(utageService.afterCommit).toHaveBeenCalledWith([{ id: 'session' }]);
 		expect(noteHistoryService.recordHistory).toHaveBeenCalledTimes(1);
 		expect(apRendererService.renderNote).toHaveBeenCalledWith(expect.objectContaining({ text, cw: null }), false);
 		expect(deliverManager.deliverToFollowers).toHaveBeenCalledWith(user, apRendererService.renderUpdate.mock.results[0].value);
 		expect(globalEventService.publishNoteStream).toHaveBeenCalledWith(
 			expect.objectContaining({ id: original.id }), 'updated', expect.objectContaining({ text, cw: null }),
 		);
-		if (utageFails) expect(errorLog).toHaveBeenCalledWith('[utage] onNoteUpdated failed:', utageError);
 	});
 });

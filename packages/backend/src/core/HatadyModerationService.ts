@@ -12,7 +12,7 @@ import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import type { DataSource, EntityManager } from 'typeorm';
 
 export const MODERATION_CATEGORIES = ['all', 'collection', 'record', 'comment', 'reaction'] as const;
-export const MODERATION_ACTIVITIES = ['all', 'study', 'movie', 'game', 'exercise', 'work'] as const;
+export const MODERATION_ACTIVITIES = ['all', 'study', 'movie', 'game', 'exercise', 'work', 'cooking'] as const;
 export const MODERATION_VISIBILITIES = ['all', 'public', 'followers', 'private'] as const;
 export const MODERATION_ERRORS = { denied: 'MODERATION_ACCESS_DENIED', missing: 'NO_SUCH_TARGET', conflict: 'REVIEW_CONFLICT', invalid: 'INVALID_MODERATION_FILTER', cursor: 'INVALID_MODERATION_CURSOR' } as const;
 const TABLES: Record<HatadyModerationTarget, string> = {
@@ -90,7 +90,7 @@ export const HATADY_MODERATION_UNION = [
 	source('mediaComment', 'comment', mediaActivity, `${mediaTitle} || ' へのコメント'`, 'x.text', 'COALESCE(s.visibility,w.visibility)', 'CASE WHEN p.id IS NOT NULL THEN \'mediaComment:\' || p.id WHEN s.id IS NOT NULL THEN \'mediaSession:\' || s.id ELSE \'mediaWork:\' || x."workId" END', 'LEFT JOIN hatady_media_comment p ON p.id=x."replyId" LEFT JOIN hatady_media_session s ON s.id=x."sessionId" LEFT JOIN hatady_media_work w ON w.id=COALESCE(x."workId",s."workId")'),
 	source('mediaReaction', 'reaction', mediaActivity, `${mediaTitle} || ' へのリアクション'`, '\'\'', 'COALESCE(s.visibility,w.visibility)', 'CASE WHEN c.id IS NOT NULL THEN \'mediaComment:\' || c.id WHEN s.id IS NOT NULL THEN \'mediaSession:\' || s.id ELSE \'mediaWork:\' || x."workId" END', 'LEFT JOIN hatady_media_comment c ON c.id=x."commentId" LEFT JOIN hatady_media_session s ON s.id=COALESCE(x."sessionId",c."sessionId") LEFT JOIN hatady_media_work w ON w.id=COALESCE(x."workId",c."workId",s."workId")', 'x.reaction'),
 ].join(' UNION ALL ');
-const cte = `WITH content AS (${HATADY_MODERATION_UNION}), versioned AS (
+export const HATADY_MODERATION_CTE = `WITH content AS (${HATADY_MODERATION_UNION}), versioned AS (
 	SELECT c.*, c."targetType" || ':' || c."targetId" AS key,
 	encode(sha256(convert_to(((CASE WHEN c.category='record' AND COALESCE(c.data->'fileIds','[]'::jsonb)='[]'::jsonb THEN c.data-'fileIds' ELSE c.data END) - 'reactionsCount' - 'commentsCount')::text,'UTF8')),'hex') AS "contentVersion"
 	FROM content c
@@ -100,6 +100,7 @@ const cte = `WITH content AS (${HATADY_MODERATION_UNION}), versioned AS (
 	CASE WHEN r."contentVersion"=c."contentVersion" THEN r.state ELSE 'unreviewed' END AS state
 	FROM versioned c LEFT JOIN hatady_moderation_review r ON r."targetType"=c."targetType" AND r."targetId"=c."targetId"
 )`;
+const cte = HATADY_MODERATION_CTE;
 const iso = (value: Date | string) => new Date(value).toISOString();
 
 const fieldLabels: Record<string, string> = {

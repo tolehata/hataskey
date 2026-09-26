@@ -54,18 +54,23 @@ import { NoteFavoriteFolderService } from './NoteFavoriteFolderService.js';
 import { NotificationService } from './NotificationService.js';
 import { RegistrationApplicationNotificationService } from './RegistrationApplicationNotificationService.js';
 import { RegistrationApplicationReviewService } from './RegistrationApplicationReviewService.js';
+import { RegistrationRejectionNotificationService } from './RegistrationRejectionNotificationService.js';
 import { PollService } from './PollService.js';
 import { UtageService } from './UtageService.js';
 import { LtlEmojiVoteService } from './LtlEmojiVoteService.js';
 import { HataskRankingService } from './HataskRankingService.js';
 import { HataskSupportService } from './HataskSupportService.js';
+import { HataskFlowerV2Service } from './HataskFlowerV2Service.js';
+import { HataskRecipeService } from './HataskRecipeService.js';
 import { HataskRecordReviewService } from './HataskRecordReviewService.js';
 import { FeedbackService } from './FeedbackService.js';
+import { FeedbackEmojiService } from './FeedbackEmojiService.js';
 import { HatadyService } from './HatadyService.js';
 import { HatadyMediaService } from './HatadyMediaService.js';
 import { HatadyActivityService } from './HatadyActivityService.js';
 import { HatadyAttachmentService } from './HatadyAttachmentService.js';
 import { HatadyModerationService } from './HatadyModerationService.js';
+import { RecordModerationService } from './RecordModerationService.js';
 import { ChannelService } from './ChannelService.js';
 import { EarthquakeService } from './EarthquakeService.js';
 import { PushNotificationService } from './PushNotificationService.js';
@@ -409,17 +414,22 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		NotificationService,
 		RegistrationApplicationNotificationService,
 		RegistrationApplicationReviewService,
+		RegistrationRejectionNotificationService,
 		PollService,
 		UtageService,
 		LtlEmojiVoteService,
 		HataskRankingService,
 		HataskSupportService,
+		HataskRecipeService,
+		HataskFlowerV2Service,
 		HataskRecordReviewService,
 		FeedbackService,
+		FeedbackEmojiService,
 		HatadyService,
 		HatadyMediaService,
 		HatadyActivityService,
 		HatadyModerationService,
+		RecordModerationService,
 		HatadyAttachmentService,
 		ChannelService,
 		EarthquakeService,
@@ -763,17 +773,22 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		NotificationService,
 		RegistrationApplicationNotificationService,
 		RegistrationApplicationReviewService,
+		RegistrationRejectionNotificationService,
 		PollService,
 		UtageService,
 		LtlEmojiVoteService,
 		HataskRankingService,
 		HataskSupportService,
+		HataskRecipeService,
+		HataskFlowerV2Service,
 		HataskRecordReviewService,
 		FeedbackService,
+		FeedbackEmojiService,
 		HatadyService,
 		HatadyMediaService,
 		HatadyActivityService,
 		HatadyModerationService,
+		RecordModerationService,
 		HatadyAttachmentService,
 		ChannelService,
 		EarthquakeService,

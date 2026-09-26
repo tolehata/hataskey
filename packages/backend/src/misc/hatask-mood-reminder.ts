@@ -10,6 +10,10 @@ const reminderTimes = new Map([
 	['寝る前 23:00', '23:00'],
 ]);
 const defaultReminderTimes = ['昼 12:00', '寝る前 23:00'];
+// The system queue runs one job at a time, so daily maintenance jobs or a paused
+// host can delay this per-minute check by tens of minutes. Reminder slots are at
+// least three hours apart, so this window cannot merge two slots.
+const catchUpMinutes = 120;
 
 function isObject(value: unknown): value is Record<string, unknown> {
 	return value != null && typeof value === 'object' && !Array.isArray(value);
@@ -27,7 +31,11 @@ function isMoodEntry(value: unknown): value is Record<string, unknown> & { date:
 	return typeof value.level === 'number' && Number.isInteger(value.level) && value.level >= 1 && value.level <= 5;
 }
 
-export function getDueHataskMoodReminder(settings: unknown, moods: unknown, handledSlots: readonly string[], now: number): {
+/**
+ * @param notBefore When the settings were last saved. Slots that had already passed
+ * then are not caught up, so enabling reminders or adding a time does not notify at once.
+ */
+export function getDueHataskMoodReminder(settings: unknown, moods: unknown, handledSlots: readonly string[], now: number, notBefore?: number): {
 	date: string;
 	time: string;
 	key: string;
@@ -53,15 +61,22 @@ export function getDueHataskMoodReminder(settings: unknown, moods: unknown, hand
 	const date = `${part('year')}-${part('month')}-${part('day')}`;
 	if (moods.some(mood => isMoodEntry(mood) && mood.date === date)) return null;
 	const localMinutes = Number(part('hour')) * 60 + Number(part('minute'));
+	let due: { date: string; time: string; key: string; timeZone: string } | null = null;
+	let dueElapsed = Infinity;
 	for (const label of times) {
 		const time = reminderTimes.get(label)!;
 		const [hour, minute] = time.split(':').map(Number);
 		const elapsedMinutes = localMinutes - (hour * 60 + minute);
 		// Bounded catch-up for delayed workers, without delivering stale reminders after an outage.
-		if (elapsedMinutes < 0 || elapsedMinutes >= 15) continue;
+		if (elapsedMinutes < 0 || elapsedMinutes >= catchUpMinutes || elapsedMinutes >= dueElapsed) continue;
+		// Wall-clock start of the slot, rounded down to the checked minute.
+		const slotStart = Math.floor(now / 60_000) * 60_000 - elapsedMinutes * 60_000;
+		if (notBefore != null && Number.isFinite(notBefore) && slotStart < Math.floor(notBefore / 60_000) * 60_000) continue;
 		const key = `${date}T${time}`;
 		// Exclude the timezone so travel and repeated DST hours cannot repeat the same local slot.
-		if (!handledSlots.includes(key)) return { date, time, key, timeZone };
+		if (handledSlots.includes(key)) continue;
+		due = { date, time, key, timeZone };
+		dueElapsed = elapsedMinutes;
 	}
-	return null;
+	return due;
 }

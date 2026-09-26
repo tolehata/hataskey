@@ -252,22 +252,6 @@ export const packedRolePoliciesSchema = {
 			type: 'boolean',
 			optional: false, nullable: false,
 		},
-		canUseHatacordingUi: {
-			type: 'boolean',
-			optional: false, nullable: false,
-		},
-		hatacordingUiSubpaneMaxTabs: {
-			type: 'integer',
-			optional: false, nullable: false,
-		},
-		hatacordingUiRateLimit: {
-			type: 'integer',
-			optional: false, nullable: false,
-		},
-		canBypassHatacordingUiRateLimit: {
-			type: 'boolean',
-			optional: false, nullable: false,
-		},
 		canUseHatadySync: {
 			type: 'boolean',
 			optional: false, nullable: false,

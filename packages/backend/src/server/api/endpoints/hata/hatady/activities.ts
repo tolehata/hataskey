@@ -60,7 +60,7 @@ const studySchema = {
 		durationSeconds: { type: 'number', nullable: true },
 		startedAt: { type: 'string', nullable: true },
 		tags: { type: 'array', items: { type: 'string' } },
-		kind: { type: 'string', enum: ['study', 'exercise', 'work'] },
+		kind: { type: 'string', enum: ['study', 'exercise', 'work', 'cooking'] },
 		details: { type: 'object', additionalProperties: true },
 		mediaWorkId: { type: 'string', nullable: true },
 		isPublic: { type: 'boolean', optional: false, nullable: false },
@@ -91,7 +91,7 @@ const activitySchema = {
 	nullable: false,
 	properties: {
 		id: { type: 'string', format: 'misskey:id', optional: false, nullable: false },
-		type: { type: 'string', enum: ['study', 'exercise', 'work', 'movie_viewing', 'game_play', 'game_match', 'game_roguelike', 'game_pve'], optional: false, nullable: false },
+		type: { type: 'string', enum: ['study', 'exercise', 'work', 'cooking', 'movie_viewing', 'game_play', 'game_match', 'game_roguelike', 'game_pve'], optional: false, nullable: false },
 		occurredAt: { type: 'string', format: 'date-time', optional: false, nullable: false },
 		visibility: { type: 'string', enum: ['private', 'followers', 'public'], optional: false, nullable: false },
 		user: userLiteSchema,
@@ -139,7 +139,7 @@ export const paramDef = {
 	properties: {
 		userId: { type: 'string', format: 'misskey:id' },
 		scope: { type: 'string', enum: ['mine', 'recent', 'public', 'popular', 'following', 'all'], default: 'recent' },
-		kinds: { type: 'array', minItems: 1, maxItems: 5, uniqueItems: true, items: { type: 'string', enum: ['study', 'movie', 'game', 'exercise', 'work'] } },
+		kinds: { type: 'array', minItems: 1, maxItems: 6, uniqueItems: true, items: { type: 'string', enum: ['study', 'movie', 'game', 'exercise', 'work', 'cooking'] } },
 		sinceDate: { type: 'integer', minimum: 0, maximum: 8640000000000000, nullable: true },
 		untilDate: { type: 'integer', minimum: 0, maximum: 8640000000000000, nullable: true },
 		cursor: { type: 'string', minLength: 1, maxLength: 1024 },

@@ -5,6 +5,7 @@
 
 import { setTimeout } from 'node:timers/promises';
 import { Inject, Injectable } from '@nestjs/common';
+import * as Redis from 'ioredis';
 import { DataSource, IsNull, LessThan, QueryFailedError, Not } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { MiMeta, MiNote, NotesRepository } from '@/models/_.js';
@@ -13,6 +14,9 @@ import { bindThis } from '@/decorators.js';
 import { IdService } from '@/core/IdService.js';
 import { QueueLoggerService } from '../QueueLoggerService.js';
 import type * as Bull from 'bullmq';
+
+const CURSOR_REDIS_KEY = 'cleanRemoteNotes:cursor';
+const CURSOR_ORIGIN = '0';
 
 @Injectable()
 export class CleanRemoteNotesProcessorService {
@@ -27,6 +31,9 @@ export class CleanRemoteNotesProcessorService {
 
 		@Inject(DI.db)
 		private db: DataSource,
+
+		@Inject(DI.redis)
+		private redisClient: Redis.Redis,
 
 		private idService: IdService,
 		private queueLoggerService: QueueLoggerService,
@@ -49,6 +56,7 @@ export class CleanRemoteNotesProcessorService {
 		deletedCount: number;
 		oldest: number | null;
 		newest: number | null;
+		cursor: string | null;
 		skipped: boolean;
 		transientErrors: number;
 	}> {
@@ -62,6 +70,7 @@ export class CleanRemoteNotesProcessorService {
 			};
 		};
 
+		const storedCursor = await this.redisClient.get(CURSOR_REDIS_KEY);
 		const initialConfig = getConfig();
 		if (!this.meta.enableRemoteNotesCleaning) {
 			this.logger.info('Remote notes cleaning is disabled, skipping...');
@@ -69,6 +78,7 @@ export class CleanRemoteNotesProcessorService {
 				deletedCount: 0,
 				oldest: null,
 				newest: null,
+				cursor: storedCursor,
 				skipped: true,
 				transientErrors: 0,
 			};
@@ -109,10 +119,12 @@ export class CleanRemoteNotesProcessorService {
 
 		if (!minId) {
 			this.logger.info('No notes can possibly be deleted, skipping...');
+			await this.redisClient.del(CURSOR_REDIS_KEY);
 			return {
 				deletedCount: 0,
 				oldest: null,
 				newest: null,
+				cursor: null,
 				skipped: false,
 				transientErrors: 0,
 			};
@@ -121,7 +133,16 @@ export class CleanRemoteNotesProcessorService {
 		// start with a conservative limit and adjust it based on the query duration
 		const minimumLimit = 10;
 		let currentLimit = 100;
-		let cursorLeft = '0';
+		let cursorLeft = (storedCursor !== null && storedCursor < initialConfig.newestLimit) ? storedCursor : CURSOR_ORIGIN;
+		if (cursorLeft !== CURSOR_ORIGIN) {
+			job.log(`Resuming from the cursor left by a previous run: ${cursorLeft}`);
+		}
+
+		// Revisiting the beginning after a complete pass catches notes that became removable later.
+		const restartFromBeginningNextTime = async () => {
+			await this.redisClient.del(CURSOR_REDIS_KEY);
+			cursorLeft = CURSOR_ORIGIN;
+		};
 
 		const candidateNotesCteName = 'candidate_notes';
 
@@ -249,11 +270,13 @@ export class CleanRemoteNotesProcessorService {
 						const lastId = idWindow.at(minimumLimit)?.id;
 
 						if (!lastId) {
-							job.log('No more notes to clean.');
+							job.log('No more notes to clean. The next run will start from the beginning.');
+							await restartFromBeginningNextTime();
 							break;
 						}
 
 						cursorLeft = lastId;
+						await this.redisClient.set(CURSOR_REDIS_KEY, cursorLeft);
 						continue;
 					}
 					currentLimit = Math.max(minimumLimit, Math.floor(currentLimit * 0.25));
@@ -263,7 +286,8 @@ export class CleanRemoteNotesProcessorService {
 			}
 
 			if (noteIds.length === 0) {
-				job.log('No more notes to clean.');
+				job.log('No more notes to clean. The next run will start from the beginning.');
+				await restartFromBeginningNextTime();
 				break;
 			}
 
@@ -307,6 +331,7 @@ export class CleanRemoteNotesProcessorService {
 			}
 
 			cursorLeft = noteIds.filter(result => result.isBase).reduce((max, { id }) => id > max ? id : max, cursorLeft);
+			await this.redisClient.set(CURSOR_REDIS_KEY, cursorLeft);
 
 			job.log(`Deleted ${noteIds.length} notes; ${Date.now() - batchBeginAt}ms`);
 
@@ -326,6 +351,7 @@ export class CleanRemoteNotesProcessorService {
 			deletedCount: stats.deletedCount,
 			oldest: stats.oldest,
 			newest: stats.newest,
+			cursor: cursorLeft === CURSOR_ORIGIN ? null : cursorLeft,
 			skipped: false,
 			transientErrors,
 		};

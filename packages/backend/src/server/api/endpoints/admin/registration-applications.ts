@@ -10,6 +10,7 @@ import { Raw } from 'typeorm';
 import { redactRegistrationReviewText } from '@/misc/registration-review-privacy.js';
 import { ApiError } from '@/server/api/error.js';
 import { RegistrationApplicationReviewService } from '@/core/RegistrationApplicationReviewService.js';
+import { rejectionNotificationSchema, rejectionNotificationRetryAvailable } from '@/core/RegistrationRejectionNotificationService.js';
 import { registrationReviewErrors, registrationReviewSchema } from '@/core/registration-review-policy.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
@@ -38,6 +39,8 @@ export const meta = {
 				review: registrationReviewSchema,
 				additionalContacts: { type: 'string', nullable: true },
 				status: { type: 'string' },
+				notificationStatus: rejectionNotificationSchema,
+				notificationRetryAvailable: { type: 'boolean' },
 				createdAt: { type: 'string' },
 				// 旗鯖fork: 個人情報削除済みフラグと削除日時
 				personalDataDeletedAt: { type: 'string', nullable: true },
@@ -76,6 +79,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 					id: true, username: true, reason: true, email: true, status: true,
 					reviewVotes: true, reviewVersion: true, reviewDecision: true,
 					createdAt: true, personalDataDeletedAt: true, rejectedAt: true,
+					rejectionNotificationStatus: true, rejectionNotificationAttemptedAt: true,
 					additionalContacts: ps.status === 'pending',
 				},
 				where: { status: ps.status, ...(ps.needsReview && !viewer.isRoot ? {
@@ -106,6 +110,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 					review,
 					additionalContacts: ps.status === 'pending' && app.status === 'pending' ? redact(app.additionalContacts ?? null) : null,
 					status: app.status,
+					notificationStatus: viewer.isRoot ? app.rejectionNotificationStatus ?? null : null,
+					notificationRetryAvailable: viewer.isRoot && rejectionNotificationRetryAvailable(app),
 					createdAt: app.createdAt.toISOString(),
 					personalDataDeletedAt: app.personalDataDeletedAt ? app.personalDataDeletedAt.toISOString() : null,
 					rejectedAt: app.rejectedAt ? app.rejectedAt.toISOString() : null,

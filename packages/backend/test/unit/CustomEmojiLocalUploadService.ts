@@ -7,6 +7,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { FindOperator } from 'typeorm';
 import { CustomEmojiService } from '@/core/CustomEmojiService.js';
 import type { MiDriveFile } from '@/models/DriveFile.js';
+import type { EmojiTransaction } from '@/misc/emoji-transaction.js';
 
 const services: CustomEmojiService[] = [];
 const originalUrl = 'http://localhost:3000/files/source-key';
@@ -23,7 +24,7 @@ function fixture(source: Partial<MiDriveFile> | null = {}) {
 		webpublicUrl: 'http://localhost:3000/files/webpublic-source-key',
 		storedInternal: true, isLink: false, accessKey: 'source-key', ...source,
 	};
-	const copied = { id: 'copied-file', url: 'http://localhost:3000/files/copy-key', type: 'image/png', webpublicUrl: null, webpublicType: null };
+	const copied = { id: 'copied-file', url: 'http://localhost:3000/files/copy-key', type: 'image/png', size: 8, webpublicUrl: null, webpublicType: null };
 	const files = {
 		findOneBy: vi.fn(async ({ url }: { url: string }) => original?.url === url ? original : null),
 		count: vi.fn().mockResolvedValue(0),
@@ -40,6 +41,9 @@ function fixture(source: Partial<MiDriveFile> | null = {}) {
 	const emojiReferences: { originalUrl: string; publicUrl: string }[] = [];
 	const emojis = {
 		insertOne: vi.fn(async (emoji: object) => emoji), find: vi.fn().mockResolvedValue([]),
+		findOneBy: vi.fn(async () => ({ id: 'emoji-id', name: 'test_emoji', originalUrl: '/previous.png', publicUrl: '/previous.png', host: null })),
+		findOneByOrFail: vi.fn(async () => ({ id: 'emoji-id', name: 'test_emoji', originalUrl: '/previous.png', publicUrl: '/previous.png', host: null })),
+		update: vi.fn().mockResolvedValue(undefined), delete: vi.fn().mockResolvedValue(undefined),
 		exists: vi.fn(async ({ where }: { where: { originalUrl?: FindOperator<string>; publicUrl?: FindOperator<string> }[] }) => {
 			return emojiReferences.some(emoji => where.some(condition => {
 				return condition.originalUrl?.value.includes(emoji.originalUrl) || condition.publicUrl?.value.includes(emoji.publicUrl);
@@ -74,6 +78,40 @@ afterEach(() => {
 });
 
 describe('custom emoji local source re-upload', () => {
+	test('an image review retains its source and publishes only after commit', async () => {
+		const f = fixture();
+		const tx: EmojiTransaction = { manager: { getRepository: () => f.emojis } as never, afterCommit: [], afterRollback: [] };
+		await f.service.update({ id: 'emoji-id', originalUrl, license: 'own image' }, undefined, tx);
+		expect(f.emojis.update).toHaveBeenCalledWith('emoji-id', expect.objectContaining({ originalUrl: f.copied.url }));
+		expect(f.drive.deleteFile).not.toHaveBeenCalled(); expect(f.events.publishBroadcastStream).not.toHaveBeenCalled();
+		for (const publish of tx.afterCommit) await publish();
+		expect(f.events.publishBroadcastStream).toHaveBeenCalledWith('emojiUpdated', { emojis: [f.packed] });
+		expect(f.drive.deleteFile).not.toHaveBeenCalled();
+	});
+	test('failed reviews clean up only the independent replacement copy', async () => {
+		const f = fixture();
+		const tx: EmojiTransaction = { manager: { getRepository: () => f.emojis } as never, afterCommit: [], afterRollback: [] };
+		f.emojis.update.mockRejectedValueOnce(new Error('database failed'));
+		await expect(f.service.update({ id: 'emoji-id', originalUrl }, undefined, tx)).rejects.toThrow('database failed');
+		for (const cleanup of tx.afterRollback) await cleanup();
+		expect(f.drive.deleteFile.mock.calls).toEqual([[f.copied]]); expect(f.events.publishBroadcastStream).not.toHaveBeenCalled();
+	});
+	test('transactional withdrawal uses the transaction repository and defers deletion broadcast', async () => {
+		const f = fixture();
+		const tx: EmojiTransaction = { manager: { getRepository: () => f.emojis } as never, afterCommit: [], afterRollback: [] };
+		await f.service.delete('emoji-id', undefined, tx);
+		expect(f.emojis.delete).toHaveBeenCalledWith('emoji-id'); expect(f.events.publishBroadcastStream).not.toHaveBeenCalled();
+		for (const publish of tx.afterCommit) await publish();
+		expect(f.events.publishBroadcastStream).toHaveBeenCalledWith('emojiDeleted', { emojis: [f.packed] });
+	});
+	test('uncertain commit cleanup preserves a replacement already referenced by an emoji', async () => {
+		const f = fixture();
+		const tx: EmojiTransaction = { manager: { getRepository: () => f.emojis } as never, afterCommit: [], afterRollback: [] };
+		await f.service.update({ id: 'emoji-id', originalUrl }, undefined, tx);
+		f.emojiReferences.push({ originalUrl: f.copied.url, publicUrl: f.copied.url });
+		for (const cleanup of tx.afterRollback) await cleanup();
+		expect(f.drive.deleteFile).not.toHaveBeenCalled();
+	});
 	test('内部保存の原本をHTTP再取得せず独立した絵文字用ファイルへ複製する', async () => {
 		const f = fixture();
 		await expect(f.add()).resolves.toMatchObject({ id: 'emoji-id', originalUrl: f.copied.url });
