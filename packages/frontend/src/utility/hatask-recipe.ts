@@ -16,6 +16,19 @@ export type HataskRecipeVisibility = HataskRecipe['visibility'];
 export type HataskCookingVisibility = HataskCookingRecord['visibility'];
 export type HataskCookingMealSlot = NonNullable<HataskCookingRecord['mealSlot']>;
 
+/** Validate and normalize a reference URL without accessing the external site. */
+export function normalizeRecipeReferenceUrl(value: string): string | null {
+	const text = value.trim();
+	if (text.length > 2048 || !/^https?:\/\//i.test(text)) return null;
+	try {
+		const url = new URL(text);
+		if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password) return null;
+		return url.href.length <= 2048 ? url.href : null;
+	} catch {
+		return null;
+	}
+}
+
 export const HATASK_RECIPE_CATEGORIES: { id: HataskRecipeCategory; label: string }[] = [
 	{ id: 'main', label: copy.categoryMain },
 	{ id: 'side', label: copy.categorySide },

@@ -4,10 +4,28 @@
  */
 
 import { describe, expect, test, vi } from 'vitest';
-import { formatCookingDuration, formatRecipeTimer, parseRecipeTimer, scaleRecipeAmount } from './hatask-recipe.js';
+import { formatCookingDuration, formatRecipeTimer, normalizeRecipeReferenceUrl, parseRecipeTimer, scaleRecipeAmount } from './hatask-recipe.js';
 import { i18n } from '@/i18n.js';
 
 vi.mock('@/i18n.js', async () => ({ i18n: (await import('./hatask-test-i18n.js')).createTestHataskI18n() }));
+
+describe('reference URLs', () => {
+	test('normalizes absolute HTTP(S) URLs without fetching', () => {
+		expect(normalizeRecipeReferenceUrl(' HTTPS://EXAMPLE.COM/料理 ')).toBe('https://example.com/%E6%96%99%E7%90%86');
+		expect(normalizeRecipeReferenceUrl('http://example.com')).toBe('http://example.com/');
+	});
+
+	test.each(['', '/recipe', '//example.com', 'https:example.com', 'javascript:alert(1)', 'ftp://example.com', 'https://', 'https://user@example.com', 'https://user:pass@example.com', 'https://example.com:invalid/'])('rejects unsafe or malformed URL: %s', value => {
+		expect(normalizeRecipeReferenceUrl(value)).toBeNull();
+	});
+
+	test('checks both input and normalized URL lengths', () => {
+		const prefix = 'https://example.com/';
+		expect(normalizeRecipeReferenceUrl(prefix + 'a'.repeat(2048 - prefix.length))).toHaveLength(2048);
+		expect(normalizeRecipeReferenceUrl(prefix + 'a'.repeat(2049 - prefix.length))).toBeNull();
+		expect(normalizeRecipeReferenceUrl(prefix + 'あ'.repeat(230))).toBeNull();
+	});
+});
 
 describe('scaleRecipeAmount', () => {
 	test('scales plain numbers and keeps the unit', () => {

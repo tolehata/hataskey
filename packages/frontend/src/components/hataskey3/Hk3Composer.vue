@@ -77,6 +77,7 @@ Hataskey UI 3: 画面下の投稿欄。返信・引用・チャンネルの文�
 			:class="$style.input"
 			:placeholder="placeholder"
 			@input="resizeInput"
+			@paste="onPaste"
 			@focus="focused = true"
 			@blur="focused = false"
 			@keydown.ctrl.enter.prevent="submit"
@@ -151,6 +152,7 @@ import { mfmFunctionPicker } from '@/utility/mfm-function-picker.js';
 import { createPostSendDelayController, postSendDelayEnabled, postSendDelaySeconds } from '@/utility/post-send-delay.js';
 import { Autocomplete } from '@/utility/autocomplete.js';
 import { deepClone } from '@/utility/clone.js';
+import { formatTimeString } from '@/utility/format-time-string.js';
 import { getPluginHandlers } from '@/plugin.js';
 import { globalEvents } from '@/events.js';
 import { claimAchievement } from '@/utility/achievements.js';
@@ -202,6 +204,8 @@ const toolsOpen = ref(false);
 const visMenuOpen = ref(false);
 const focused = ref(false);
 const submitting = ref(false);
+const pendingAttachments = ref(0);
+let unmounted = false;
 const sendState = ref<SendState>('idle');
 const postDelay = createPostSendDelayController();
 const reducedMotion = computed(() => !prefer.r.animation.value);
@@ -223,7 +227,7 @@ const effectiveLocalOnly = computed(() => composerChannel.value ? true : localOn
 const maxLength = computed(() => instance.maxNoteTextLength ?? 3000);
 const characterCount = computed(() => Array.from(draftText.value).length);
 const overLimit = computed(() => characterCount.value > maxLength.value);
-const canSubmit = computed(() => !submitting.value && !overLimit.value && (draftText.value.trim().length > 0 || draftFiles.value.length > 0 || pollEnabled.value || event.value != null));
+const canSubmit = computed(() => !submitting.value && pendingAttachments.value === 0 && !overLimit.value && (draftText.value.trim().length > 0 || draftFiles.value.length > 0 || pollEnabled.value || event.value != null));
 const placeholder = computed(() => {
 	if (context.value?.kind === 'reply' && context.value.note) return i18n.tsx._hata._hataskeyUi3.replyTo({ name: context.value.note.user.name || context.value.note.user.username });
 	if (context.value?.kind === 'quote') return copy.quotePlaceholder;
@@ -399,14 +403,72 @@ function openEmojiPicker(ev: MouseEvent) {
 	});
 }
 
+function canAttach() {
+	return !unmounted && !submitting.value && !postDelay.active.value && sendState.value === 'idle';
+}
+
+function appendDraftFiles(files: Misskey.entities.DriveFile[]) {
+	const known = new Set(draftFiles.value.map(file => file.id));
+	let overflow = false;
+	for (const file of files) {
+		if (known.has(file.id)) continue;
+		if (draftFiles.value.length >= 16) {
+			overflow = true;
+			continue;
+		}
+		known.add(file.id);
+		draftFiles.value.push(file);
+	}
+	if (overflow) void os.alert({ type: 'warning', text: i18n.ts._hata._drawingTool.attachmentLimit });
+}
+
+async function addFiles(loader: () => Promise<Misskey.entities.DriveFile[]>, generation = draftGeneration, blockSubmit = false) {
+	if (!canAttach() || generation !== draftGeneration) return;
+	if (draftFiles.value.length >= 16) {
+		void os.alert({ type: 'warning', text: i18n.ts._hata._drawingTool.attachmentLimit });
+		return;
+	}
+	// Clipboard uploader settles on cancel; existing menu pickers may remain pending.
+	if (blockSubmit) pendingAttachments.value++;
+	try {
+		const files = await loader();
+		if (generation === draftGeneration && canAttach()) appendDraftFiles(files);
+	} catch { /* 選択・アップロードの取り消し、アップローダー側で通知済みの失敗 */
+	} finally {
+		if (blockSubmit && generation === draftGeneration) pendingAttachments.value--;
+	}
+}
+
+function onPaste(ev: ClipboardEvent) {
+	if (!ev.clipboardData) return;
+	const files: { file: File; index: number }[] = [];
+	Array.from(ev.clipboardData.items ?? []).forEach((item, index) => {
+		if (item.kind !== 'file') return;
+		const file = item.getAsFile();
+		if (file) files.push({ file, index });
+	});
+	if (files.length === 0) {
+		Array.from(ev.clipboardData.files ?? []).forEach((file, index) => files.push({ file, index }));
+	}
+	if (files.length === 0) return;
+	ev.preventDefault();
+	if (!canAttach()) return;
+	const pastedFiles = files.map(({ file, index }) => {
+		const dot = file.name.lastIndexOf('.');
+		const ext = dot >= 0 ? file.name.slice(dot) : '';
+		const name = formatTimeString(new Date(file.lastModified), 'yyyy-MM-dd HH-mm-ss [{{number}}]').replace(/{{number}}/g, `${index + 1}`) + ext;
+		return new File([file], name, { type: file.type });
+	});
+	void addFiles(() => os.launchUploader(pastedFiles), draftGeneration, true);
+}
+
 function openAttachmentMenu(ev: MouseEvent) {
-	const addFiles = async (loader: () => Promise<Misskey.entities.DriveFile[]>) => {
-		try { draftFiles.value.push(...await loader()); } catch { /* 選択・アップロードの取り消し */ }
-	};
+	if (!canAttach()) return;
+	const generation = draftGeneration;
 	os.popupMenu([
-		{ type: 'button', icon: 'ti ti-upload', text: i18n.ts.upload, action: () => addFiles(() => chooseFileFromPcAndUpload({ multiple: true })) },
-		{ type: 'button', icon: 'ti ti-cloud', text: i18n.ts.fromDrive, action: () => addFiles(() => chooseDriveFile({ multiple: true })) },
-		{ type: 'button', icon: 'ti ti-link', text: i18n.ts.fromUrl, action: () => addFiles(async () => [await chooseFileFromUrl()]) },
+		{ type: 'button', icon: 'ti ti-upload', text: i18n.ts.upload, action: () => addFiles(() => chooseFileFromPcAndUpload({ multiple: true }), generation) },
+		{ type: 'button', icon: 'ti ti-cloud', text: i18n.ts.fromDrive, action: () => addFiles(() => chooseDriveFile({ multiple: true }), generation) },
+		{ type: 'button', icon: 'ti ti-link', text: i18n.ts.fromUrl, action: () => addFiles(async () => [await chooseFileFromUrl()], generation) },
 	], ev.currentTarget as HTMLElement);
 }
 
@@ -423,14 +485,11 @@ function updateDraftFileName(file: Misskey.entities.DriveFile, name: string) {
 }
 
 function openDrawingTool() {
+	if (!canAttach()) return;
+	const generation = draftGeneration;
 	const { dispose } = os.popup(MkDrawingTool, { canAttach: true }, {
 		done: (file: Misskey.entities.DriveFile) => {
-			if (draftFiles.value.some(item => item.id === file.id)) return;
-			if (draftFiles.value.length >= 16) {
-				void os.alert({ type: 'warning', text: i18n.ts._hata._drawingTool.attachmentLimit });
-				return;
-			}
-			draftFiles.value.push(file);
+			if (generation === draftGeneration && canAttach()) appendDraftFiles([file]);
 		},
 		closed: () => dispose(),
 	});
@@ -466,7 +525,7 @@ function openFullComposer() {
 }
 
 function clearComposer() {
-	draftGeneration++;
+	invalidateDraft();
 	draftText.value = '';
 	draftFiles.value = [];
 	cwEnabled.value = false;
@@ -485,6 +544,12 @@ function clearComposer() {
 }
 
 let draftGeneration = 0;
+
+function invalidateDraft() {
+	draftGeneration++;
+	pendingAttachments.value = 0;
+	postDelay.cancel();
+}
 
 /** 「削除して編集」「編集」: 元ノートの内容を投稿欄に戻す。 */
 function restoreFromNote(init: Misskey.entities.Note, channel: Channel | null, updateMode: boolean) {
@@ -582,6 +647,17 @@ function cancelPostDelay() {
 
 async function submit() {
 	if (!canSubmit.value || sendState.value !== 'idle') return;
+	submitting.value = true;
+	try {
+		await submitDraft();
+	} finally {
+		submitting.value = false;
+		sendState.value = 'idle';
+	}
+}
+
+async function submitDraft() {
+	const generation = draftGeneration;
 	if (!composerChannel.value && visibility.value === 'specified' && visibleUsers.value.length === 0) {
 		await os.alert({ type: 'warning', text: copy.recipientRequired });
 		return;
@@ -592,6 +668,7 @@ async function submit() {
 		return;
 	}
 	if (!await confirmWarnings()) return;
+	if (unmounted || generation !== draftGeneration || pendingAttachments.value > 0) return;
 
 	const expiredAfter = { original: null, infinite: null, hour: 3_600_000, day: 86_400_000, week: 604_800_000 }[pollExpiredAfterUnit.value];
 	const submittedContext = context.value;
@@ -617,6 +694,7 @@ async function submit() {
 			console.error('Hataskey UI 3 plugin interruptor failed', error);
 		}
 	}
+	if (unmounted || generation !== draftGeneration || pendingAttachments.value > 0) return;
 	if (postData == null || typeof postData !== 'object') {
 		await os.alert({ type: 'error', text: copy.pluginInvalidPost });
 		return;
@@ -630,8 +708,8 @@ async function submit() {
 			return;
 		}
 	}
+	if (unmounted || generation !== draftGeneration || pendingAttachments.value > 0) return;
 
-	submitting.value = true;
 	sendState.value = 'sending';
 	try {
 		if (editing) {
@@ -684,9 +762,6 @@ async function submit() {
 		console.error('Hataskey UI 3 post failed', error);
 		sendState.value = 'failure';
 		await os.alert({ type: 'error', text: copy.postFailed });
-	} finally {
-		submitting.value = false;
-		sendState.value = 'idle';
 	}
 }
 
@@ -694,7 +769,7 @@ async function submit() {
 function adopt(request: PostFormProps): boolean {
 	if (!hk3CanAdoptPostForm(request)) return false;
 	if (request.initialNote) clearComposer();
-	else draftGeneration++;
+	else invalidateDraft();
 
 	const source = request.reply ?? request.renote ?? null;
 	const channel = (request.channel ?? source?.channel ?? null) as Channel | null;
@@ -710,8 +785,7 @@ function adopt(request: PostFormProps): boolean {
 		cwText.value = request.initialCw;
 	}
 	if (request.initialFiles?.length) {
-		const known = new Set(draftFiles.value.map(file => file.id));
-		draftFiles.value.push(...request.initialFiles.filter(file => !known.has(file.id)));
+		appendDraftFiles(request.initialFiles);
 	}
 	if (!channel && request.initialVisibility) visibility.value = request.initialVisibility as Visibility;
 	if (!channel && request.initialLocalOnly !== undefined) localOnly.value = request.initialLocalOnly;
@@ -747,6 +821,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	unmounted = true;
+	invalidateDraft();
 	autocomplete?.detach();
 	autocomplete = null;
 	postDelay.cancel();

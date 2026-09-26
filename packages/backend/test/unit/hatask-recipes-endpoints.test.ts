@@ -6,8 +6,11 @@
 import { describe, expect, test, vi } from 'vitest';
 import { HATASK_RECIPE_CATEGORIES } from '@/models/HataskRecipe.js';
 import { HATASK_COOKING_MEAL_SLOTS } from '@/models/HataskCookingRecord.js';
-import RecipeListEndpoint from '@/server/api/endpoints/hatask/recipes/list.js';
-import RecipeCreateEndpoint from '@/server/api/endpoints/hatask/recipes/create.js';
+import RecipeListEndpoint, { meta as listMeta } from '@/server/api/endpoints/hatask/recipes/list.js';
+import RecipeCreateEndpoint, { meta as createMeta } from '@/server/api/endpoints/hatask/recipes/create.js';
+import RecipeUpdateEndpoint, { meta as updateMeta } from '@/server/api/endpoints/hatask/recipes/update.js';
+import { meta as showMeta } from '@/server/api/endpoints/hatask/recipes/show.js';
+import { packedHataskRecipeSchema } from '@/server/api/endpoints/hatask/recipes/_schema.js';
 import CookedCreateEndpoint from '@/server/api/endpoints/hatask/recipes/cooked/create.js';
 
 const me = { id: 'owner' } as never;
@@ -60,6 +63,57 @@ describe('hatask/recipes/list Endpoint.exec', () => {
 		const { endpoint, service } = recipeList();
 		await endpoint.exec({}, me, null, null);
 		expect(service.list).toHaveBeenCalledExactlyOnceWith(me, expect.objectContaining({ scope: 'mine', category: null }));
+	});
+});
+
+describe('hatask/recipes reference links API contract', () => {
+	for (const operation of ['create', 'update'] as const) {
+		function setupRecipeEndpoint() {
+			const service = { create: vi.fn(async () => ({})), update: vi.fn(async () => ({})) };
+			const endpoint = operation === 'create' ? new RecipeCreateEndpoint(service as never) : new RecipeUpdateEndpoint(service as never);
+			const params = operation === 'create' ? { title: '料理' } : { title: '料理', recipeId: 'recipe' };
+			return { endpoint, params, call: service[operation] };
+		}
+
+		test(`${operation} preserves omission as undefined and accepts explicit []`, async () => {
+			const { endpoint, params, call } = setupRecipeEndpoint();
+			await endpoint.exec(params, me, null, null);
+			expect(call.mock.calls[0].at(-1)).toHaveProperty('referenceLinks', undefined);
+			await endpoint.exec({ ...params, referenceLinks: [] }, me, null, null);
+			expect(call.mock.calls[1].at(-1)).toHaveProperty('referenceLinks', []);
+		});
+
+		test(`${operation} defaults only a link's omitted title`, async () => {
+			const { endpoint, params, call } = setupRecipeEndpoint();
+			await endpoint.exec({ ...params, referenceLinks: [{ url: 'https://example.com' }] }, me, null, null);
+			expect(call.mock.calls[0].at(-1)).toHaveProperty('referenceLinks', [{ title: '', url: 'https://example.com' }]);
+		});
+
+		test.each([
+			['missing URL', [{ title: '参考' }]],
+			['null links', null],
+			['non-array links', {}],
+			['null title', [{ title: null, url: 'https://example.com' }]],
+			['non-string URL', [{ url: 123 }]],
+			['11 links', Array.from({ length: 11 }, () => ({ url: 'https://example.com' }))],
+			['121-character title', [{ title: 'a'.repeat(121), url: 'https://example.com' }]],
+			['2049-character URL', [{ url: `https://example.com/${'a'.repeat(2029)}` }]],
+		] satisfies [string, unknown][])(`${operation} rejects %s before calling the service`, async (_, referenceLinks) => {
+			const { endpoint, params, call } = setupRecipeEndpoint();
+			await expect(endpoint.exec({ ...params, referenceLinks }, me, null, null)).rejects.toMatchObject({ code: 'INVALID_PARAM' });
+			expect(call).not.toHaveBeenCalled();
+		});
+	}
+
+	test('create, update, show and list all declare required reference links and title/url', () => {
+		for (const schema of [createMeta.res, updateMeta.res, showMeta.res, listMeta.res.properties.items.items]) {
+			expect(schema).toBe(packedHataskRecipeSchema);
+			expect(schema.required).toContain('referenceLinks');
+			expect(schema.properties.referenceLinks).toMatchObject({
+				type: 'array', optional: false, nullable: false,
+				items: { required: ['title', 'url'] },
+			});
+		}
 	});
 });
 

@@ -30591,6 +30591,46 @@ export interface Locale extends ILocale {
             };
             "_recipe": {
                 /**
+                 * 参考サイト
+                 */
+                "referenceSites": string;
+                /**
+                 * サイト名（任意）
+                 */
+                "referenceSiteName": string;
+                /**
+                 * URL（必須）
+                 */
+                "referenceUrl": string;
+                /**
+                 * 参考サイトを追加
+                 */
+                "addReferenceSite": string;
+                /**
+                 * 参考サイト{number}
+                 */
+                "referenceSiteNumber": ParameterizedString<"number">;
+                /**
+                 * 参考サイト{number}を削除
+                 */
+                "removeReferenceSite": ParameterizedString<"number">;
+                /**
+                 * 10件まで登録できます。http:// または https:// で始まるURLを入力してください。
+                 */
+                "referenceHelp": string;
+                /**
+                 * 参考サイト{number}のサイト名は120文字以内で入力してください。
+                 */
+                "referenceTitleInvalid": ParameterizedString<"number">;
+                /**
+                 * 参考サイト{number}のURLを確認してください。http:// または https:// で始まるURLを2048文字以内で入力してください。URLにユーザー名やパスワードを含めないでください。
+                 */
+                "referenceUrlInvalid": ParameterizedString<"number">;
+                /**
+                 * 参考サイトは10件まで登録できます。
+                 */
+                "referenceLimit": string;
+                /**
                  * 主菜
                  */
                 "categoryMain": string;
@@ -37800,7 +37840,7 @@ export interface Locale extends ILocale {
                  */
                 "noRejectionEmail": string;
                 /**
-                 * 審査中、または却下済みの申請情報が残っている間は、
+                 * 審査中、または却下済みの申請情報が残っている間⁠は、
                  * 同じメールアドレスで再申請できません。
                  */
                 "emailReuseWarning": string;

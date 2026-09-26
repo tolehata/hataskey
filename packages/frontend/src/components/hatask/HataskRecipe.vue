@@ -140,6 +140,14 @@ Hatask レシピ。一覧・詳細・調理中・料理の記録・作成編集�
 					</ol>
 					<p v-if="!current.steps.length" :class="$style.hint">{{ copy.noSteps }}</p>
 				</section>
+				<section v-if="detailReferenceLinks.length" :class="[$style.card, $style.section]" aria-labelledby="hatask-recipe-references">
+					<h2 id="hatask-recipe-references" :class="$style.sectionTitle"><i class="ti ti-link" aria-hidden="true"></i>{{ copy.referenceSites }}</h2>
+					<ul :class="$style.referenceList">
+						<li v-for="(link, index) in detailReferenceLinks" :key="index">
+							<a :href="link.url" target="_blank" rel="noopener noreferrer" :class="$style.referenceLink"><strong>{{ link.title || link.url }}</strong><span v-if="link.title">{{ link.url }}</span></a>
+						</li>
+					</ul>
+				</section>
 			</div>
 		</div>
 	</div>
@@ -286,6 +294,18 @@ Hatask レシピ。一覧・詳細・調理中・料理の記録・作成編集�
 					</div>
 					<button type="button" :class="[$style.secondary, $style.wide, $style.addRow]" :disabled="editor.steps.length >= 40" @click="addStep"><i class="ti ti-plus" aria-hidden="true"></i>{{ copy.addStep }}</button>
 				</div>
+				<section :class="[$style.card, $style.formCard]" aria-labelledby="hatask-recipe-reference-editor">
+					<h2 id="hatask-recipe-reference-editor" :class="$style.sectionTitle"><i class="ti ti-link" aria-hidden="true"></i>{{ copy.referenceSites }}</h2>
+					<p :class="$style.hint">{{ copy.referenceHelp }}</p>
+					<div v-for="(link, index) in editor.referenceLinks" :key="link.key" :class="$style.referenceRow">
+						<div :class="$style.referenceFields">
+							<label :class="$style.field"><span>{{ i18n.tsx._hata._hatask._recipe.referenceSiteNumber({ number: String(index + 1) }) }} · {{ copy.referenceSiteName }}</span><input v-model="link.title" maxlength="120" :class="$style.input" :placeholder="copy.referenceSiteName"></label>
+							<label :class="$style.field"><span>{{ i18n.tsx._hata._hatask._recipe.referenceSiteNumber({ number: String(index + 1) }) }} · {{ copy.referenceUrl }}</span><input v-model="link.url" type="url" maxlength="2048" :class="$style.input" placeholder="https://example.com/" autocapitalize="off" spellcheck="false"></label>
+						</div>
+						<button type="button" :class="$style.iconButton" :aria-label="i18n.tsx._hata._hatask._recipe.removeReferenceSite({ number: String(index + 1) })" @click="editor.referenceLinks.splice(index, 1)"><i class="ti ti-trash" aria-hidden="true"></i></button>
+					</div>
+					<button type="button" :class="[$style.secondary, $style.wide, $style.addRow]" :disabled="editor.referenceLinks.length >= 10" @click="addReferenceLink"><i class="ti ti-plus" aria-hidden="true"></i>{{ copy.addReferenceSite }}</button>
+				</section>
 				<div :class="[$style.card, $style.formCard]">
 					<h2 :class="$style.smallTitle">{{ copy.visibility }}</h2>
 					<div :class="$style.visChoices" role="group" :aria-label="copy.visibility">
@@ -341,6 +361,7 @@ import {
 	HATASK_RECIPE_VISIBILITIES,
 	formatRecipeTimer,
 	parseRecipeTimer,
+	normalizeRecipeReferenceUrl,
 	recipeCategoryLabel,
 	recipeVisibility,
 	scaleRecipeAmount,
@@ -387,6 +408,10 @@ const busy = ref(false);
 const confirmPending = ref(false);
 const current = ref<HataskRecipe | null>(null);
 const servings = ref(2);
+const detailReferenceLinks = computed(() => (current.value?.referenceLinks ?? []).flatMap(link => {
+	const url = normalizeRecipeReferenceUrl(link.url);
+	return url ? [{ title: link.title.trim(), url }] : [];
+}));
 const memberNames = reactive<Record<string, string>>({});
 let listRequest = 0;
 let rowKey = 0;
@@ -713,6 +738,7 @@ const editor = reactive({
 	file: null as Photo | null,
 	ingredients: [] as { key: number; name: string; amount: string }[],
 	steps: [] as EditorStep[],
+	referenceLinks: [] as { key: number; title: string; url: string }[],
 	visibility: 'private' as HataskRecipeVisibility,
 	visibleUserIds: [] as string[],
 });
@@ -723,6 +749,7 @@ function blankEditor() {
 		id: null, title: '', summary: '', category: 'main' as HataskRecipeCategory, servings: 2, minutes: null, scalable: true, tags: '', file: null,
 		ingredients: [{ key: ++rowKey, name: '', amount: '' }],
 		steps: [{ key: ++rowKey, text: '', timerSeconds: null, timerLabel: '' }],
+		referenceLinks: [],
 		visibility: 'private' as HataskRecipeVisibility, visibleUserIds: [],
 	};
 }
@@ -748,6 +775,7 @@ function openEditor(recipe: HataskRecipe | null): void {
 			scalable: recipe.scalable, tags: recipe.tags.join(' '), file: recipe.photo,
 			ingredients: recipe.ingredients.map(item => ({ key: ++rowKey, ...item })),
 			steps: recipe.steps.map(step => ({ key: ++rowKey, ...step })),
+			referenceLinks: (recipe.referenceLinks ?? []).map(link => ({ key: ++rowKey, ...link })),
 			visibility: recipe.visibility, visibleUserIds: [...recipe.visibleUserIds],
 		});
 	} else {
@@ -755,6 +783,7 @@ function openEditor(recipe: HataskRecipe | null): void {
 		Object.assign(editor, blankEditor(), draft ?? {}, { id: null });
 		editor.ingredients = editor.ingredients.map(item => ({ ...item, key: ++rowKey }));
 		editor.steps = editor.steps.map(step => ({ ...step, key: ++rowKey }));
+		editor.referenceLinks = (editor.referenceLinks ?? []).map(link => ({ ...link, key: ++rowKey }));
 	}
 	void showScreen('edit');
 }
@@ -775,6 +804,10 @@ function leaveEditor(): void {
 }
 
 function addIngredient(): void { editor.ingredients.push({ key: ++rowKey, name: '', amount: '' }); }
+
+function addReferenceLink(): void {
+	if (editor.referenceLinks.length < 10) editor.referenceLinks.push({ key: ++rowKey, title: '', url: '' });
+}
 
 function addStep(): void { editor.steps.push({ key: ++rowKey, text: '', timerSeconds: null, timerLabel: '' }); }
 
@@ -822,7 +855,28 @@ async function saveRecipe(isDraft: boolean): Promise<void> {
 		os.alert({ type: 'error', text: copy.tagsInvalid });
 		return;
 	}
+	const referenceLinks: { title: string; url: string }[] = [];
+	for (const [index, link] of editor.referenceLinks.entries()) {
+		const title = link.title.trim();
+		if (!title && !link.url.trim()) continue;
+		const number = String(index + 1);
+		if (title.length > 120) {
+			os.alert({ type: 'error', text: i18n.tsx._hata._hatask._recipe.referenceTitleInvalid({ number }) });
+			return;
+		}
+		const url = normalizeRecipeReferenceUrl(link.url);
+		if (!url) {
+			os.alert({ type: 'error', text: i18n.tsx._hata._hatask._recipe.referenceUrlInvalid({ number }) });
+			return;
+		}
+		referenceLinks.push({ title, url });
+	}
+	if (referenceLinks.length > 10) {
+		os.alert({ type: 'error', text: copy.referenceLimit });
+		return;
+	}
 	const params = {
+		referenceLinks,
 		title: editor.title.trim(),
 		summary: editor.summary,
 		category: editor.category,
@@ -1147,6 +1201,10 @@ button.tag { cursor: pointer; }
 	display: grid; grid-template-columns: 22px minmax(0, 1fr) 96px 40px; gap: 8px; align-items: center; padding: 6px 0;
 	&[data-dragging='true'] { opacity: .5; }
 }
+.referenceRow { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.referenceFields { min-width: 0; display: grid; gap: 8px; }
+.referenceList { margin: 0; padding-left: 1.2em; li + li { margin-top: 12px; } }
+.referenceLink { display: block; overflow-wrap: anywhere; color: var(--accent-ink); line-height: 1.7; span { display: block; color: var(--fg-2); font-size: 12px; } }
 .grip { width: 22px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--fg-3); cursor: grab; :global(.ti) { font-size: 17px; } }
 .addRow { margin-top: 10px; min-height: 44px; font-size: 13px; :global(.ti) { font-size: 17px; } }
 .stepRow { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 8px 0; border-bottom: 1px solid var(--rule); }

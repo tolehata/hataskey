@@ -6,18 +6,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <button
 	ref="buttonEl"
-	v-ripple="canToggle"
-	class="_button"
-	:class="[$style.root, { [$style.reacted]: myReaction == reaction, [$style.canToggle]: (canToggle || alternative), [$style.small]: prefer.s.reactionsDisplaySize === 'small', [$style.large]: prefer.s.reactionsDisplaySize === 'large' }]"
+	v-ripple="!custom && canToggle"
+	type="button"
+	:class="custom ? [] : ['_button', $style.root, { [$style.reacted]: myReaction == reaction, [$style.canToggle]: (canToggle || alternative), [$style.small]: prefer.s.reactionsDisplaySize === 'small', [$style.large]: prefer.s.reactionsDisplaySize === 'large' }]"
 	@click.stop="onReactionClick"
 	@touchstart.stop.passive="onReactionTouchStart"
 	@touchmove.passive="onReactionTouchMove"
 	@touchend.stop="onReactionTouchEnd"
 	@touchcancel.stop="onReactionTouchCancel"
 	@contextmenu.prevent.stop="onReactionContextMenu"
+	@focus="onReactionFocus"
+	@blur="onReactionBlur"
 >
-	<MkReactionIcon style="pointer-events: none;" :class="prefer.s.limitWidthOfReaction ? $style.limitWidth : ''" :reaction="reaction" :emojiUrl="reactionEmojis[emojiName]"/>
-	<span :class="$style.count">{{ count }}</span>
+	<slot v-if="custom"/>
+	<template v-else>
+		<MkReactionIcon style="pointer-events: none;" :class="prefer.s.limitWidthOfReaction ? $style.limitWidth : ''" :reaction="reaction" :emojiUrl="reactionEmojis[emojiName]"/>
+		<span :class="$style.count">{{ count }}</span>
+	</template>
 </button>
 </template>
 
@@ -35,7 +40,7 @@ import * as os from '@/os.js';
 import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
 import { useTooltip } from '@/composables/use-tooltip.js';
 import { $i } from '@/i.js';
-import { isMutedUser } from '@/utility/muted-users.js';
+import { fetchMutedUsers, isMutedUser } from '@/utility/muted-users.js';
 import { hideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
 import { prefer } from '@/preferences.js';
 import MkReactionEffect from '@/components/MkReactionEffect.vue';
@@ -52,7 +57,9 @@ import { hideReaction, unhideReaction, isReactionHidden } from '@/utility/hidden
 import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
 import { ReactionTouchGesture } from '@/utility/reaction-touch-gesture.js';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
+	/** Render the default slot and emit activate; reuse standard tooltips, long press and context menus. */
+	custom?: boolean;
 	noteId: Misskey.entities.Note['id'];
 	reaction: string;
 	reactionEmojis: Misskey.entities.Note['reactionEmojis'];
@@ -66,11 +73,12 @@ const props = defineProps<{
 	 *   チップだけ戻って「誰が押したか」は結局分からず、ⓘ を押した意味が無くなる）。
 	 */
 	revealMuted?: boolean;
-}>();
+}>(), { custom: false });
 
 const mock = inject(DI.mock, false);
 
 const emit = defineEmits<{
+	(ev: 'activate', event: MouseEvent): void;
 	(ev: 'reactionToggled', emoji: string, newCount: number): void;
 }>();
 
@@ -118,6 +126,10 @@ const reactionTouchGesture = new ReactionTouchGesture({
 function onReactionClick(ev: MouseEvent) {
 	if (reactionTouchGesture.consumeSyntheticClick()) {
 		ev.preventDefault();
+		return;
+	}
+	if (props.custom) {
+		emit('activate', ev);
 		return;
 	}
 	if (canToggle.value || alternative.value) {
@@ -493,7 +505,7 @@ async function menu(ev) {
 }
 
 function anime() {
-	if (window.document.hidden || !prefer.s.animation || buttonEl.value == null) return;
+	if (props.custom || window.document.hidden || !prefer.s.animation || buttonEl.value == null) return;
 
 	const rect = buttonEl.value.getBoundingClientRect();
 	const x = rect.left + 16;
@@ -522,30 +534,49 @@ onMounted(() => {
 });
 
 async function showReactionDetails(showing: Ref<boolean>) {
-	const reactions = await misskeyApi('notes/reactions', {
-		noteId: props.noteId,
-		type: props.reaction,
-		limit: 10,
-	});
+	try {
+		const reactions = await misskeyApi('notes/reactions', {
+			noteId: props.noteId,
+			type: props.reaction,
+			limit: 10,
+		});
 
-	if (!showing.value || buttonEl.value == null) return;
+		if (!showing.value || buttonEl.value == null) return;
 
-	let users = reactions.map(x => x.user);
-	// ミュートユーザーを非表示（旗鯖独自機能・端末ローカル/ベータ）
-	// ⚠️詳細画面で ⓘ を押して開いている間だけは除外しない（そこで初めて中身を見せる）。
-	if (hideMutedReactionsLocal.value && !props.revealMuted) {
-		users = users.filter(u => !isMutedUser(u.id));
+		let users = reactions.map(x => x.user);
+		// 詳細画面でミュートを公開している間だけは除外しない。
+		if (hideMutedReactionsLocal.value && !props.revealMuted) {
+			await fetchMutedUsers();
+			if (!showing.value || buttonEl.value == null) return;
+			users = users.filter(u => !isMutedUser(u.id));
+		}
+
+		const { dispose } = os.popup(XDetails, {
+			showing,
+			reaction: props.reaction,
+			users,
+			count: props.count,
+			anchorElement: buttonEl.value,
+		}, {
+			closed: () => dispose(),
+		});
+	} catch {
+		// Details are optional; a failed request must not reject a tooltip or touch callback.
 	}
+}
 
-	const { dispose } = os.popup(XDetails, {
-		showing,
-		reaction: props.reaction,
-		users,
-		count: props.count,
-		anchorElement: buttonEl.value,
-	}, {
-		closed: () => dispose(),
-	});
+let focusDetailsShowing: Ref<boolean> | null = null;
+
+function onReactionFocus() {
+	if (mock || !buttonEl.value?.matches(':focus-visible')) return;
+	onReactionBlur();
+	focusDetailsShowing = ref(true);
+	void showReactionDetails(focusDetailsShowing);
+}
+
+function onReactionBlur() {
+	if (focusDetailsShowing != null) focusDetailsShowing.value = false;
+	focusDetailsShowing = null;
 }
 
 if (!mock) {
@@ -555,6 +586,7 @@ if (!mock) {
 }
 
 onBeforeUnmount(() => {
+	onReactionBlur();
 	reactionTouchGesture.dispose();
 });
 </script>

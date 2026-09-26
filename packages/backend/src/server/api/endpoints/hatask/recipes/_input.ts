@@ -15,6 +15,7 @@ type RecipeParams = {
 	scalable?: boolean;
 	ingredients?: { name: string; amount?: string }[];
 	steps?: { text: string; timerSeconds?: number | null; timerLabel?: string }[];
+	referenceLinks?: { title?: string; url: string }[];
 	tags?: string[];
 	fileId?: string | null;
 	isDraft?: boolean;
@@ -32,6 +33,7 @@ export function toRecipeInput(ps: RecipeParams): HataskRecipeInput {
 		scalable: ps.scalable ?? true,
 		ingredients: (ps.ingredients ?? []).map(item => ({ name: item.name, amount: item.amount ?? '' })),
 		steps: (ps.steps ?? []).map(step => ({ text: step.text, timerSeconds: step.timerSeconds ?? null, timerLabel: step.timerLabel ?? '' })),
+		referenceLinks: ps.referenceLinks?.map(link => ({ title: link.title ?? '', url: link.url })),
 		tags: ps.tags ?? [],
 		fileId: ps.fileId ?? null,
 		isDraft: ps.isDraft ?? false,

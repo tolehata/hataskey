@@ -30,6 +30,12 @@ const stepSchema = {
 	required: ['text', 'timerSeconds', 'timerLabel'],
 } as const;
 
+const referenceLinkSchema = {
+	type: 'object', optional: false, nullable: false,
+	properties: { title: text, url: text },
+	required: ['title', 'url'],
+} as const;
+
 export const packedHataskRecipeSchema = {
 	type: 'object', optional: false, nullable: false,
 	properties: {
@@ -47,6 +53,7 @@ export const packedHataskRecipeSchema = {
 		scalable: bool,
 		ingredients: { type: 'array', optional: false, nullable: false, items: ingredientSchema },
 		steps: { type: 'array', optional: false, nullable: false, items: stepSchema },
+		referenceLinks: { type: 'array', optional: false, nullable: false, items: referenceLinkSchema },
 		tags: { type: 'array', optional: false, nullable: false, items: text },
 		photo: photoSchema,
 		visibility: { ...text, enum: HATASK_RECIPE_VISIBILITIES },
@@ -55,7 +62,7 @@ export const packedHataskRecipeSchema = {
 		cookedCount: int,
 		lastCookedAt: { ...text, format: 'date-time', nullable: true },
 	},
-	required: ['id', 'createdAt', 'updatedAt', 'userId', 'user', 'isMine', 'title', 'summary', 'category', 'servings', 'minutes', 'scalable', 'ingredients', 'steps', 'tags', 'photo', 'visibility', 'visibleUserIds', 'isDraft', 'cookedCount', 'lastCookedAt'],
+	required: ['id', 'createdAt', 'updatedAt', 'userId', 'user', 'isMine', 'title', 'summary', 'category', 'servings', 'minutes', 'scalable', 'ingredients', 'steps', 'referenceLinks', 'tags', 'photo', 'visibility', 'visibleUserIds', 'isDraft', 'cookedCount', 'lastCookedAt'],
 } as const;
 
 export const packedHataskCookingRecordSchema = {
@@ -117,6 +124,17 @@ export const recipeInputProperties = {
 				timerLabel: { type: 'string', maxLength: HATASK_RECIPE_LIMITS.timerLabel, default: '' },
 			},
 			required: ['text'],
+		},
+	},
+	referenceLinks: {
+		type: 'array', maxItems: HATASK_RECIPE_LIMITS.referenceLinks,
+		items: {
+			type: 'object',
+			properties: {
+				title: { type: 'string', maxLength: HATASK_RECIPE_LIMITS.referenceLinkTitle, default: '' },
+				url: { type: 'string', maxLength: HATASK_RECIPE_LIMITS.referenceLinkUrl },
+			},
+			required: ['url'],
 		},
 	},
 	tags: { type: 'array', maxItems: HATASK_RECIPE_LIMITS.tags, items: { type: 'string', maxLength: HATASK_RECIPE_LIMITS.tag + 2 }, default: [] },

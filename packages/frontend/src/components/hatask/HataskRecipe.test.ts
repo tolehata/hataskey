@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
 	selectUser: vi.fn(),
 	fileSelect: vi.fn(),
 }));
+vi.mock('@/i18n.js', async () => ({ i18n: (await import('@/utility/hatask-test-i18n.js')).createTestHataskI18n() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api }));
 vi.mock('@/os.js', () => ({
 	toast: mocks.toast, alert: mocks.alert, confirm: mocks.confirm, select: mocks.select, selectUser: mocks.selectUser,
@@ -38,6 +39,7 @@ function recipe(overrides: Record<string, unknown> = {}) {
 		title: '鶏むねのねぎ塩だれ', summary: '片栗粉をまとわせて焼く。', category: 'main', servings: 2, minutes: 25, scalable: true,
 		ingredients: [{ name: '鶏むね肉', amount: '300g' }, { name: '塩', amount: '小さじ1/2' }, { name: 'こしょう', amount: '少々' }],
 		steps: [{ text: '下味をつける。', timerSeconds: 600, timerLabel: '置く' }, { text: '焼く。', timerSeconds: null, timerLabel: '' }],
+		referenceLinks: [],
 		tags: ['作りおき'], photo: null, visibility: 'followers', visibleUserIds: [], isDraft: false, cookedCount: 6, lastCookedAt: null,
 		...overrides,
 	};
@@ -121,6 +123,142 @@ afterEach(() => {
 });
 
 describe('HataskRecipe', () => {
+	test('参考サイトを複数保存し、詳細と再編集に反映して削除できる', async () => {
+		let saved = recipe();
+		mocks.api.mockImplementation(async (endpoint: string, params: Record<string, unknown>) => {
+			if (endpoint === 'hatask/recipes/list') return listResult([saved]);
+			if (endpoint === 'hatask/recipes/show') return saved;
+			if (endpoint === 'hatask/recipes/create' || endpoint === 'hatask/recipes/update') {
+				saved = recipe(params);
+				return saved;
+			}
+			return {};
+		});
+		const container = await mount();
+		button(container, 'レシピを書く').click();
+		await settle();
+		input(container.querySelector<HTMLInputElement>('input[maxlength="128"]')!, '参考つきレシピ');
+		for (const [title, url] of [['  料理の基本  ', ' HTTPS://EXAMPLE.COM/base '], ['', 'http://example.org/recipe']]) {
+			button(container, '参考サイトを追加').click();
+			await settle();
+			input([...container.querySelectorAll<HTMLInputElement>('input[maxlength="120"]')].at(-1)!, title);
+			input([...container.querySelectorAll<HTMLInputElement>('input[type="url"]')].at(-1)!, url);
+		}
+		// Completely empty (including whitespace-only) rows are not sent.
+		button(container, '参考サイトを追加').click();
+		await settle();
+		input([...container.querySelectorAll<HTMLInputElement>('input[type="url"]')].at(-1)!, '  ');
+		button(container, '保存する').click();
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('hatask/recipes/create', expect.objectContaining({ referenceLinks: [
+			{ title: '料理の基本', url: 'https://example.com/base' },
+			{ title: '', url: 'http://example.org/recipe' },
+		] }));
+		const links = [...container.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]')];
+		expect(links).toHaveLength(2);
+		expect(links[0].textContent).toContain('料理の基本');
+		expect(links[0].textContent).toContain('https://example.com/base');
+		expect(links[1].textContent).toBe('http://example.org/recipe');
+		for (const link of links) {
+			expect(link.getAttribute('target')).toBe('_blank');
+			expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+		}
+		button(container, '編集').click();
+		await settle();
+		expect([...container.querySelectorAll<HTMLInputElement>('input[type="url"]')].map(el => el.value)).toEqual(['https://example.com/base', 'http://example.org/recipe']);
+		labeledButton(container, '参考サイト1を削除').click();
+		await settle();
+		input(container.querySelector<HTMLInputElement>('input[maxlength="120"]')!, '変更したサイト');
+		input(container.querySelector<HTMLInputElement>('input[type="url"]')!, 'https://example.net/new');
+		button(container, '保存する').click();
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('hatask/recipes/update', expect.objectContaining({ recipeId: 'r1', referenceLinks: [{ title: '変更したサイト', url: 'https://example.net/new' }] }));
+		expect(container.querySelector('a[target="_blank"]')?.getAttribute('href')).toBe('https://example.net/new');
+		button(container, '編集').click();
+		await settle();
+		labeledButton(container, '参考サイト1を削除').click();
+		await settle();
+		button(container, '保存する').click();
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('hatask/recipes/update', expect.objectContaining({ referenceLinks: [] }));
+		expect(container.querySelector('#hatask-recipe-references')).toBeNull();
+	});
+
+	test.each([
+		['名前のみ', ''],
+		['', '/relative'],
+		['', 'https:example.com'],
+		['', 'javascript:alert(1)'],
+		['', 'https://user:pass@example.com'],
+		['', 'https://example.com/' + 'a'.repeat(2048)],
+		['', 'https://example.com/' + 'あ'.repeat(230)],
+		['名'.repeat(121), 'https://example.com'],
+	])('不正な参考サイト2は通常保存と下書き保存を抑止する (%s, %s)', async (title, url) => {
+		const container = await mount();
+		button(container, 'レシピを書く').click();
+		await settle();
+		input(container.querySelector<HTMLInputElement>('input[maxlength="128"]')!, '入力確認');
+		button(container, '参考サイトを追加').click();
+		await settle();
+		button(container, '参考サイトを追加').click();
+		await settle();
+		input(container.querySelectorAll<HTMLInputElement>('input[maxlength="120"]')[1], title);
+		input(container.querySelectorAll<HTMLInputElement>('input[type="url"]')[1], url);
+		await settle();
+		for (const action of ['保存する', '下書き保存']) {
+			button(container, action).click();
+			await settle();
+			expect(mocks.alert).toHaveBeenLastCalledWith({ type: 'error', text: expect.stringContaining('参考サイト2の' + (title.length > 120 ? 'サイト名' : 'URL')) });
+		}
+		expect(mocks.api.mock.calls.some(([endpoint]) => endpoint === 'hatask/recipes/create' || endpoint === 'hatask/recipes/update')).toBe(false);
+	});
+
+	test('referenceLinksのない旧下書きを保存すると空配列を送る', async () => {
+		window.localStorage.setItem('hatask:recipe-editor-draft', JSON.stringify({ title: '旧下書き' }));
+		mocks.api.mockImplementation(async (endpoint: string, params: Record<string, unknown>) => endpoint === 'hatask/recipes/create' ? recipe(params) : listResult([]));
+		const container = await mount();
+		button(container, 'レシピを書く').click();
+		await settle();
+		expect(container.querySelectorAll('input[type="url"]')).toHaveLength(0);
+		button(container, '保存する').click();
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('hatask/recipes/create', expect.objectContaining({ title: '旧下書き', referenceLinks: [] }));
+		expect(container.querySelector('#hatask-recipe-references')).toBeNull();
+	});
+
+	test('古い下書きは参考サイトなしで開き、新しい参考サイトも自動保存して再開できる', async () => {
+		window.localStorage.setItem('hatask:recipe-editor-draft', JSON.stringify({ title: '以前の下書き' }));
+		const container = await mount();
+		button(container, 'レシピを書く').click();
+		await settle();
+		expect(container.querySelector<HTMLInputElement>('input[maxlength="128"]')?.value).toBe('以前の下書き');
+		expect(container.querySelectorAll('input[type="url"]')).toHaveLength(0);
+		button(container, '参考サイトを追加').click();
+		await settle();
+		input(container.querySelector<HTMLInputElement>('input[maxlength="120"]')!, '下書きのサイト');
+		input(container.querySelector<HTMLInputElement>('input[type="url"]')!, 'https://example.com/draft');
+		await settle();
+		vi.advanceTimersByTime(1000);
+		expect(JSON.parse(window.localStorage.getItem('hatask:recipe-editor-draft')!).referenceLinks).toEqual([expect.objectContaining({ title: '下書きのサイト', url: 'https://example.com/draft' })]);
+		button(container, '一覧にもどる').click();
+		await settle();
+		button(container, 'レシピを書く').click();
+		await settle();
+		expect(container.querySelector<HTMLInputElement>('input[type="url"]')?.value).toBe('https://example.com/draft');
+		for (let i = 1; i < 10; i++) {
+			button(container, '参考サイトを追加').click();
+			await settle();
+		}
+		expect(button(container, '参考サイトを追加').disabled).toBe(true);
+		labeledButton(container, '参考サイト2を削除').click();
+		await settle();
+		expect(button(container, '参考サイトを追加').disabled).toBe(false);
+		mocks.api.mockImplementation(async (endpoint: string, params: Record<string, unknown>) => endpoint === 'hatask/recipes/create' ? recipe(params) : listResult([]));
+		button(container, '下書き保存').click();
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('hatask/recipes/create', expect.objectContaining({ isDraft: true, referenceLinks: [{ title: '下書きのサイト', url: 'https://example.com/draft' }] }));
+	});
+
 	test('Hatadyからの料理記録成功だけ戻り確認イベントを一度発火する', async () => {
 		const { container, instance, onHatadyCookingSaved } = await mountFlow();
 		instance.openRecordFromHatady();

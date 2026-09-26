@@ -22,6 +22,7 @@ import {
 	HATASK_RECIPE_VISIBILITIES,
 	type HataskRecipeCategory,
 	type HataskRecipeIngredient,
+	type HataskRecipeReferenceLink,
 	type HataskRecipeStep,
 	type HataskRecipeVisibility,
 	type MiHataskRecipe,
@@ -53,6 +54,9 @@ export const HATASK_RECIPE_LIMITS = {
 	steps: 40,
 	stepText: 1000,
 	timerLabel: 32,
+	referenceLinks: 10,
+	referenceLinkTitle: 120,
+	referenceLinkUrl: 2048,
 	tags: 10,
 	tag: 32,
 	memo: 2000,
@@ -79,6 +83,7 @@ export type HataskRecipeInput = {
 	scalable: boolean;
 	ingredients: HataskRecipeIngredient[];
 	steps: HataskRecipeStep[];
+	referenceLinks?: { title?: string; url: string }[];
 	tags: string[];
 	fileId: string | null;
 	visibility: HataskRecipeVisibility;
@@ -325,6 +330,9 @@ export class HataskRecipeService {
 			.map(step => ({ text: step.text.trim(), timerSeconds: step.timerSeconds && step.timerSeconds > 0 ? Math.floor(step.timerSeconds) : null, timerLabel: step.timerLabel.trim() }))
 			.filter(step => step.text.length > 0);
 		if (steps.length > HATASK_RECIPE_LIMITS.steps) throw invalid();
+		const referenceLinks = input.referenceLinks === undefined
+			? previous?.referenceLinks ?? []
+			: this.normalizeReferenceLinks(input.referenceLinks);
 		const tags = [...new Set(input.tags.map(tag => tag.trim().replace(/^#+/, '').trim()).filter(tag => tag.length > 0))];
 		if (tags.length > HATASK_RECIPE_LIMITS.tags || tags.some(tag => tag.length > HATASK_RECIPE_LIMITS.tag)) throw invalid();
 		const file = input.fileId === previous?.fileId && input.fileId != null ? { id: input.fileId } : await this.validatePhoto(me, input.fileId);
@@ -337,12 +345,35 @@ export class HataskRecipeService {
 			scalable: input.scalable,
 			ingredients,
 			steps,
+			referenceLinks,
 			tags,
 			fileId: file?.id ?? null,
 			visibility: input.visibility,
 			visibleUserIds: await this.validateAudience(me, input.visibility, input.visibleUserIds),
 			isDraft: input.isDraft,
 		};
+	}
+
+	private normalizeReferenceLinks(links: NonNullable<HataskRecipeInput['referenceLinks']>): HataskRecipeReferenceLink[] {
+		const invalid = () => new ApiError(HATASK_RECIPE_ERRORS.invalidRecipe);
+		if (!Array.isArray(links) || links.length > HATASK_RECIPE_LIMITS.referenceLinks) throw invalid();
+		const normalized: HataskRecipeReferenceLink[] = [];
+		for (const link of links) {
+			if (link == null || typeof link.url !== 'string' || (link.title !== undefined && typeof link.title !== 'string')) throw invalid();
+			const title = (link.title ?? '').trim();
+			const url = link.url.trim();
+			if (title === '' && url === '') continue;
+			if (title.length > HATASK_RECIPE_LIMITS.referenceLinkTitle || url.length > HATASK_RECIPE_LIMITS.referenceLinkUrl || !/^https?:\/\//i.test(url)) throw invalid();
+			let parsed: URL;
+			try {
+				parsed = new URL(url);
+			} catch {
+				throw invalid();
+			}
+			if (!parsed.hostname || parsed.username || parsed.password || !['http:', 'https:'].includes(parsed.protocol) || parsed.href.length > HATASK_RECIPE_LIMITS.referenceLinkUrl) throw invalid();
+			normalized.push({ title, url: parsed.href });
+		}
+		return normalized;
 	}
 
 	private async validatePhoto(me: MiUser, fileId: string | null): Promise<MiDriveFile | null> {
@@ -402,6 +433,7 @@ export class HataskRecipeService {
 				scalable: recipe.scalable,
 				ingredients: recipe.ingredients,
 				steps: recipe.steps,
+				referenceLinks: recipe.referenceLinks ?? [],
 				tags: recipe.tags,
 				photo: await this.packPhoto(recipe.fileId),
 				visibility: recipe.visibility,

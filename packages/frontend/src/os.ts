@@ -858,20 +858,27 @@ export function launchUploader(
 		features?: UploaderFeatures;
 	},
 ): Promise<Misskey.entities.DriveFile[]> {
-	return new Promise(async (res, rej) => {
-		if (files.length === 0) return rej();
-		const { dispose } = await popupAsyncWithDialog(import('@/components/MkUploaderDialog.vue').then(x => x.default), {
+	return new Promise((res, rej) => {
+		if (files.length === 0) return res([]);
+		let dialog: { dispose: () => void } | undefined;
+		let closed = false;
+		popupAsyncWithDialog(import('@/components/MkUploaderDialog.vue').then(x => x.default), {
 			files: markRaw(files),
 			folderId: options?.folderId,
 			multiple: options?.multiple,
 			features: options?.features,
 		}, {
-			done: driveFiles => {
-				if (driveFiles.length === 0) return rej();
-				res(driveFiles);
+			done: driveFiles => res(driveFiles),
+			canceled: () => res([]),
+			closed: () => {
+				closed = true;
+				res([]);
+				dialog?.dispose();
 			},
-			closed: () => dispose(),
-		});
+		}).then(result => {
+			dialog = result;
+			if (closed) dialog.dispose();
+		}, rej);
 	});
 }
 

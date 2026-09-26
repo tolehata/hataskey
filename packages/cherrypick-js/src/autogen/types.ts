@@ -42261,6 +42261,11 @@ export interface operations {
                         /** @default  */
                         timerLabel?: string;
                     }[];
+                    referenceLinks?: {
+                        /** @default  */
+                        title?: string;
+                        url: string;
+                    }[];
                     /** @default [] */
                     tags?: string[];
                     /**
@@ -42313,6 +42318,10 @@ export interface operations {
                             text: string;
                             timerSeconds: number | null;
                             timerLabel: string;
+                        }[];
+                        referenceLinks: {
+                            title: string;
+                            url: string;
                         }[];
                         tags: string[];
                         photo: {
@@ -42524,6 +42533,10 @@ export interface operations {
                                 timerSeconds: number | null;
                                 timerLabel: string;
                             }[];
+                            referenceLinks: {
+                                title: string;
+                                url: string;
+                            }[];
                             tags: string[];
                             photo: {
                                 /** Format: id */
@@ -42651,6 +42664,10 @@ export interface operations {
                             timerSeconds: number | null;
                             timerLabel: string;
                         }[];
+                        referenceLinks: {
+                            title: string;
+                            url: string;
+                        }[];
                         tags: string[];
                         photo: {
                             /** Format: id */
@@ -42758,6 +42775,11 @@ export interface operations {
                         /** @default  */
                         timerLabel?: string;
                     }[];
+                    referenceLinks?: {
+                        /** @default  */
+                        title?: string;
+                        url: string;
+                    }[];
                     /** @default [] */
                     tags?: string[];
                     /**
@@ -42810,6 +42832,10 @@ export interface operations {
                             text: string;
                             timerSeconds: number | null;
                             timerLabel: string;
+                        }[];
+                        referenceLinks: {
+                            title: string;
+                            url: string;
                         }[];
                         tags: string[];
                         photo: {

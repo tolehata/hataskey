@@ -27,6 +27,11 @@ export type HataskRecipeStep = {
 	timerLabel: string;
 };
 
+export type HataskRecipeReferenceLink = {
+	title: string;
+	url: string;
+};
+
 @Entity('hatask_recipe')
 @Index('IDX_hatask_recipe_userId_updatedAt', ['userId', 'updatedAt'])
 export class MiHataskRecipe {
@@ -72,6 +77,9 @@ export class MiHataskRecipe {
 
 	@Column('jsonb', { default: () => '\'[]\'::jsonb' })
 	public steps: HataskRecipeStep[];
+
+	@Column('jsonb', { default: () => '\'[]\'::jsonb' })
+	public referenceLinks: HataskRecipeReferenceLink[];
 
 	@Column('varchar', { length: 32, array: true, default: '{}' })
 	public tags: string[];

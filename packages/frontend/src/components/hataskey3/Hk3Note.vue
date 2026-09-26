@@ -49,6 +49,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 		</div>
 		<div v-if="!threadReply" :class="$style.avatarCol">
 			<MkAvatar :user="appearNote.user" :class="$style.avatar" link preview/>
+			<Hk3AudienceIcons v-if="showAudienceIcons" :visibility="appearNote.visibility" :localOnly="appearNote.localOnly" :class="$style.audienceIcons"/>
 			<span v-if="hasThread" :class="$style.threadLine"></span>
 		</div>
 		<div :class="$style.body">
@@ -57,8 +58,10 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 				<Bot v-if="appearNote.user.isBot" :size="14" :class="$style.muted700"/>
 				<span :class="$style.acct">@{{ appearNote.user.username }}<template v-if="appearNote.user.host">@{{ appearNote.user.host }}</template></span>
 				<span :class="$style.meta">
-					<component :is="visibilityIcon" v-if="visibilityIcon" :size="13"/>
-					<GlobeLock v-if="appearNote.localOnly" :size="13"/>
+					<template v-if="!showAudienceIcons">
+						<component :is="visibilityIcon" v-if="visibilityIcon" :size="13"/>
+						<GlobeLock v-if="appearNote.localOnly" :size="13"/>
+					</template>
 					<MkA :to="notePage(appearNote)" :class="$style.time"><MkTime :time="appearNote.createdAt"/></MkA>
 				</span>
 			</header>
@@ -89,13 +92,17 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 				</MkA>
 			</template>
 			<MkA v-if="appearNote.channel" :to="`/channels/${appearNote.channel.id}`" :class="$style.channel"><Tv :size="13"/>{{ appearNote.channel.name }}</MkA>
+			<div v-if="utageResult" :class="$style.utageBadge" :data-utage-result="utageResult">
+				<component :is="utageResult === 'succeeded' ? Check : X" :size="14" aria-hidden="true"/>
+				{{ utageResult === 'succeeded' ? i18n.ts._hata._utage.success : i18n.ts._hata._utage.failed }}
+			</div>
 			<MkUtageStatus v-if="utageRevivalShown" :note="$appearNote"/>
 
 			<div v-if="!sideReactions && reactions.length > 0" :class="$style.rxInline">
 				<div ref="inlineEl" :class="$style.rxInlineList" :style="{ maxHeight: rxOpen && inlineOverflow ? `${inlineOverflow}px` : `${chipHeight}px` }">
-					<button v-for="r in reactions" :key="r.reaction" type="button" :class="$style.chip" :data-reaction="r.reaction" :data-mine="r.mine ? 'true' : undefined" :title="r.title" @click="toggleReaction(r.reaction, $event)">
+					<XReaction v-for="r in reactions" :key="r.reaction" custom :noteId="appearNote.id" :note="appearNote" :reaction="r.reaction" :reactionEmojis="$appearNote.reactionEmojis" :myReaction="$appearNote.myReaction" :count="r.count" :isInitial="true" :class="$style.chip" :data-reaction="r.reaction" :data-mine="r.mine ? 'true' : undefined" :aria-label="r.title" @activate="toggleReaction(r.reaction, $event)">
 						<span :class="[$style.emojiBox, $style.chipEmoji]"><MkReactionIcon :reaction="r.reaction" :emojiUrl="$appearNote.reactionEmojis[emojiKey(r.reaction)]"/></span>{{ r.count }}
-					</button>
+					</XReaction>
 					<button v-if="canAddReaction" type="button" :class="$style.chipAdd" :title="copy.addReaction" @click="react($event)"><SmilePlus :size="18"/></button>
 				</div>
 				<button v-if="inlineOverflow" type="button" :class="$style.chipMore" :data-open="rxOpen ? 'true' : undefined" :title="copy.allReactions" @click="rxOpen = !rxOpen">
@@ -119,17 +126,17 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 		<div v-if="sideReactions" ref="sideEl" :class="$style.side">
 			<!-- CSS grid だと付与・変更直後の枠が一部しか描かれない環境があるため、位置を明示して並べる。 -->
 			<div :class="$style.sideGrid">
-				<button v-for="(r, i) in sideList" :key="r.reaction" type="button" :class="$style.sideChip" :style="sideCell(i)" :data-reaction="r.reaction" :data-mine="r.mine ? 'true' : undefined" :title="r.title" @click="toggleReaction(r.reaction, $event)">
+				<XReaction v-for="(r, i) in sideList" :key="r.reaction" custom :noteId="appearNote.id" :note="appearNote" :reaction="r.reaction" :reactionEmojis="$appearNote.reactionEmojis" :myReaction="$appearNote.myReaction" :count="r.count" :isInitial="true" :class="$style.sideChip" :style="sideCell(i)" :data-reaction="r.reaction" :data-mine="r.mine ? 'true' : undefined" :aria-label="r.title" @activate="toggleReaction(r.reaction, $event)">
 					<span :class="[$style.emojiBox, $style.sideEmoji]"><MkReactionIcon :reaction="r.reaction" :emojiUrl="$appearNote.reactionEmojis[emojiKey(r.reaction)]"/></span>
 					<span>{{ r.count }}</span>
-				</button>
+				</XReaction>
 				<button v-if="canAddReaction" type="button" :class="$style.sideAdd" :style="sideCell(sideList.length)" :title="copy.addReaction" @click="react($event)"><SmilePlus :size="18"/></button>
 				<button v-if="sideOverflow" type="button" :class="$style.sideMore" :style="sideCell(sideList.length + (canAddReaction ? 1 : 0))" :data-open="rxOpen ? 'true' : undefined" :title="copy.allReactions" @click="rxOpen = !rxOpen">
 					<component :is="rxOpen ? ChevronRight : ChevronLeft" :size="15"/>{{ rxOpen ? '' : `+${reactions.length - sideCap}` }}
 				</button>
 			</div>
 		</div>
-		<span v-if="appearNote.user.host" :class="$style.host"><Server :size="11"/><span>{{ appearNote.user.host }}</span></span>
+		<Hk3InstanceBadge v-if="appearNote.user.host" :host="appearNote.user.host" :instance="appearNote.user.instance" :class="$style.host" :data-position="instanceBadgePosition"/>
 	</article>
 
 	<div v-if="size === 'lg' && !threadReply && (hover || menuOpen)" :class="$style.hoverBar" :style="{ right: `${sideReactions ? sideWidth + 32 : 12}px` }">
@@ -142,8 +149,11 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 				<div v-if="threadLoading" :class="$style.treeLoading"><MkLoading :em="true"/></div>
 				<div v-for="(r, i) in replies" :key="r.id" :class="$style.treeRow" :style="{ '--hk3-delay': `${120 + i * 70}ms` }">
 					<div :class="$style.treeRail"><span :class="$style.treeRailV"></span><span :class="$style.treeRailH"></span></div>
-					<MkAvatar :user="r.user" :class="$style.treeAvatar" link preview/>
-					<Hk3Note :note="r" :size="size" threadReply :hideSensitive="hideSensitive" :inLocal="inLocal" :class="$style.treeBubble"/>
+					<div :class="$style.treeAvatarCol">
+						<MkAvatar :user="r.user" :class="$style.treeAvatar" link preview/>
+						<Hk3AudienceIcons v-if="showAudienceIcons" :visibility="r.visibility" :localOnly="r.localOnly" tiny :class="$style.audienceIcons"/>
+					</div>
+					<Hk3Note :note="r" :size="size" threadReply :showAudienceIcons="showAudienceIcons" :hideSensitive="hideSensitive" :inLocal="inLocal" :instanceBadgePosition="instanceBadgePosition" :class="$style.treeBubble"/>
 				</div>
 				<div :class="$style.treeRow" :style="{ '--hk3-delay': `${120 + replies.length * 70}ms` }">
 					<div :class="$style.treeRail"><span :class="[$style.treeRailV, $style.treeRailEnd]"></span><span :class="$style.treeRailH"></span></div>
@@ -160,12 +170,16 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import * as Misskey from 'cherrypick-js';
-import { ArrowDown, Bot, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CornerUpLeft, Ellipsis, Eye, EyeOff, House, Lock, Mail, MessageCircle, Quote, Repeat2, Reply, GlobeLock, Server, SmilePlus, Tv, Undo2 } from '@lucide/vue';
+import { ArrowDown, Bot, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CornerUpLeft, Ellipsis, Eye, EyeOff, House, Lock, Mail, MessageCircle, Quote, Repeat2, Reply, GlobeLock, SmilePlus, Tv, Undo2, X } from '@lucide/vue';
 import type { Component } from 'vue';
 import MkMediaList from '@/components/MkMediaList.vue';
 import MkPoll from '@/components/MkPoll.vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
+import XReaction from '@/components/MkReactionsViewer.reaction.vue';
+import { useHk3Reactions } from './use-hk3-reactions.js';
 import Hk3ConfirmBubble from './Hk3ConfirmBubble.vue';
+import Hk3InstanceBadge from './Hk3InstanceBadge.vue';
+import Hk3AudienceIcons from './Hk3AudienceIcons.vue';
 import MkUtageStatus from '@/components/MkUtageStatus.vue';
 import * as os from '@/os.js';
 import * as sound from '@/utility/sound.js';
@@ -190,12 +204,16 @@ const props = withDefaults(defineProps<{
 	inLocal?: boolean;
 	hideSensitive?: boolean;
 	threadReply?: boolean;
+	showAudienceIcons?: boolean;
+	instanceBadgePosition?: 'left' | 'right';
 }>(), {
 	size: 'lg',
 	linked: null,
 	inLocal: false,
 	hideSensitive: false,
 	threadReply: false,
+	showAudienceIcons: false,
+	instanceBadgePosition: 'right',
 });
 
 const copy = i18n.ts._hata._hataskeyUi3;
@@ -242,7 +260,8 @@ function emojiKey(reaction: string): string {
 const visibilityIcon = computed<Component | null>(() => ({ public: null, home: House, followers: Lock, specified: Mail } as Record<string, Component | null>)[appearNote.visibility] ?? null);
 
 type ReactionEntry = { reaction: string; count: number; mine: boolean; title: string };
-const reactions = computed<ReactionEntry[]>(() => Object.entries($appearNote.reactions)
+const visibleReactionCounts = useHk3Reactions(appearNote.id, () => $appearNote.reactions, () => $appearNote.myReaction);
+const reactions = computed<ReactionEntry[]>(() => Object.entries(visibleReactionCounts.value)
 	.filter(([, count]) => count > 0)
 	.sort((a, b) => b[1] - a[1])
 	.map(([reaction, count]) => ({ reaction, count, mine: $appearNote.myReaction === reaction, title: `${reaction.replace(/^:(.+?)(@\.)?:$/, ':$1:')} ${count}` })));
@@ -303,23 +322,37 @@ const articleStyle = computed(() => ({
 
 // 宴(うたげ): ローカルTLで進行中の宴ノートは、残り時間を枠のゲージとして描く。
 const UTAGE_WINDOW_MS = 15 * 60 * 1000;
-const utageActive = computed(() => props.inLocal && appearNote.user.host == null && ($appearNote.utageStatus === 'running' || $appearNote.utageStatus === 'reviving'));
-const utageRemain = computed(() => {
-	const expiresAt = Date.parse($appearNote.utageExpiresAt ?? '');
-	if (!Number.isFinite(expiresAt)) return 100;
-	return Math.max(0, Math.min(100, (expiresAt - now.value) / UTAGE_WINDOW_MS * 100));
-});
-// 復活チャンスの状況表示は、通常のノートと同じく復活の記録があるときだけ出す(進行中の宴には付けない)。
 const UTAGE_EXPIRE_MS = 6 * 60 * 60 * 1000;
-const utageRevivalShown = computed(() => props.inLocal
-	&& appearNote.user.host == null
-	&& $appearNote.utageStatus != null
-	&& $appearNote.utageRevival != null
-	&& Date.now() - new Date(appearNote.createdAt).getTime() < UTAGE_EXPIRE_MS);
-let utageTimer: number | null = null;
-watch(utageActive, active => {
-	if (utageTimer != null) window.clearInterval(utageTimer);
-	utageTimer = active ? window.setInterval(() => { now.value = Date.now(); }, 1000) : null;
+const utageDisplayUntil = new Date(appearNote.createdAt).getTime() + UTAGE_EXPIRE_MS;
+const utageTarget = computed(() => props.inLocal && appearNote.user.host == null && $appearNote.utageStatus != null);
+const utageShown = computed(() => utageTarget.value && now.value < utageDisplayUntil);
+// 確定結果にはintervalを増やさず、6時間の表示境界だけで再評価する。
+watch(utageTarget, (target, _, cleanup) => {
+	now.value = Date.now();
+	const remaining = utageDisplayUntil - now.value;
+	if (!target || !Number.isFinite(remaining) || remaining <= 0) return;
+	const timer = window.setTimeout(() => { now.value = Date.now(); }, remaining);
+	cleanup(() => window.clearTimeout(timer));
+}, { immediate: true });
+const utageActive = computed(() => utageShown.value && ($appearNote.utageStatus === 'running' || $appearNote.utageStatus === 'reviving'));
+const utageRemain = computed(() => {
+	const reviving = $appearNote.utageStatus === 'reviving';
+	const expiresAt = Date.parse((reviving ? $appearNote.utageRevival?.expiresAt : $appearNote.utageExpiresAt) ?? '');
+	const duration = reviving ? expiresAt - Date.parse($appearNote.utageRevival?.startedAt ?? '') : UTAGE_WINDOW_MS;
+	if (!Number.isFinite(expiresAt) || !Number.isFinite(duration) || duration <= 0) return 100;
+	return Math.max(0, Math.min(100, (expiresAt - now.value) / duration * 100));
+});
+// 復活の記録がある結果は共有表示に任せ、通常結果を重ねない。
+const utageResult = computed(() => utageShown.value && $appearNote.utageRevival == null
+	&& ($appearNote.utageStatus === 'succeeded' || $appearNote.utageStatus === 'failed')
+	? $appearNote.utageStatus : null);
+const utageRevivalShown = computed(() => utageShown.value && $appearNote.utageRevival != null
+	&& ($appearNote.utageStatus === 'reviving' || $appearNote.utageStatus === 'succeeded' || $appearNote.utageStatus === 'failed'));
+watch(utageActive, (active, _, cleanup) => {
+	if (!active) return;
+	now.value = Date.now();
+	const timer = window.setInterval(() => { now.value = Date.now(); }, 1000);
+	cleanup(() => window.clearInterval(timer));
 }, { immediate: true });
 
 const participants = computed(() => {
@@ -519,7 +552,6 @@ watch(reactions, () => nextTick(scheduleMeasure));
 onBeforeUnmount(() => {
 	resizeObserver?.disconnect();
 	window.cancelAnimationFrame(measureFrame);
-	if (utageTimer != null) window.clearInterval(utageTimer);
 });
 </script>
 
@@ -553,6 +585,23 @@ onBeforeUnmount(() => {
 
 .utageTrack { stroke: var(--hk3-accent-200); }
 .utageBar { stroke: var(--hk3-accent); transition: stroke-dasharray 1s linear; }
+
+.utageBadge {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	width: fit-content;
+	margin-top: 8px;
+	padding: 2px 6px;
+	border: 1px solid currentColor;
+	border-radius: 0;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1.4;
+
+	&[data-utage-result='succeeded'] { color: var(--MI_THEME-success); }
+	&[data-utage-result='failed'] { color: var(--MI_THEME-error); }
+}
 
 .linkBadge {
 	position: absolute;
@@ -718,6 +767,10 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	align-items: center;
 	align-self: stretch;
+}
+
+.audienceIcons {
+	margin-top: 8px;
 }
 
 .avatar {
@@ -1116,6 +1169,7 @@ onBeforeUnmount(() => {
 // 付与・変更で描き直された直後も、画像の元の大きさで枠からはみ出して一部だけ見えることがないようにする。
 .emojiBox {
 	flex: none;
+	pointer-events: none;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -1160,29 +1214,15 @@ onBeforeUnmount(() => {
 	&[data-open] { background: var(--hk3-text); color: var(--hk3-bg); }
 }
 
-.host {
+.root > .article > .host {
 	position: absolute;
 	right: 12px;
 	bottom: 8px;
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	box-sizing: border-box;
 	max-width: calc(100% - 24px);
-	padding: 2px 6px;
-	background: var(--hk3-neutral-200);
-	color: var(--hk3-neutral-800);
-	font-size: 11px;
-	font-weight: 700;
-	line-height: 16px;
-	pointer-events: none;
 
-	> :global(svg) { flex: none; }
-	> span {
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+	&[data-position="left"] {
+		left: 12px;
+		right: auto;
 	}
 }
 
@@ -1274,10 +1314,18 @@ onBeforeUnmount(() => {
 	background: var(--hk3-neutral-500);
 }
 
+.treeAvatarCol {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 0;
+}
+
 .treeAvatar {
 	margin-top: 9px;
 	width: 30px;
 	height: 30px;
+	flex: none;
 	border-radius: 0 !important;
 	:global(img) { border-radius: 0 !important; }
 }

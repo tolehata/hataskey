@@ -23,6 +23,20 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 					<i :class="[t.icon, $style.tabIcon]" aria-hidden="true"></i>
 					<span v-if="t.id === tab">{{ t.label }}</span>
 				</button>
+
+				<template v-if="$i">
+					<template v-for="item in collectionNav" :key="item.id">
+						<button v-if="item.id === 'channel'" type="button" :class="$style.tab" data-collection-nav="channel" :title="collectionCopy.channel" :aria-label="collectionCopy.channel" @click.stop="goToChannels"><i class="ti ti-device-tv" :class="$style.tabIcon" aria-hidden="true"></i></button>
+						<div v-else :class="$style.collectionTab" :data-active="tab === item.id ? 'true' : undefined">
+							<button type="button" :class="$style.tab" :data-collection-nav="item.id" :data-active="tab === item.id ? 'true' : undefined" :aria-pressed="tab === item.id" :title="item.label" :aria-label="item.label" :aria-expanded="pickerKind === item.id" :aria-controls="pickerKind === item.id ? pickerId : undefined" aria-haspopup="dialog" @click.stop="openCollection(item.id, $event)">
+								<i :class="[item.icon, $style.tabIcon]" aria-hidden="true"></i>
+								<span v-if="tab === item.id" :class="$style.collectionCopy"><span>{{ item.label }}</span><span :class="$style.collectionName">{{ activeCollection?.name }}</span></span>
+							</button>
+							<button v-if="tab === item.id" type="button" :class="$style.collectionAction" :data-collection-switch="item.id" :title="item.switchLabel" :aria-label="item.switchLabel" :aria-expanded="pickerKind === item.id" :aria-controls="pickerKind === item.id ? pickerId : undefined" aria-haspopup="dialog" @click.stop="toggleCollectionPicker(item.id, $event)"><i class="ti ti-selector" aria-hidden="true"></i></button>
+							<button v-if="tab === item.id" type="button" :class="$style.collectionAction" :data-collection-settings="item.id" :title="item.settingsLabel" :aria-label="item.settingsLabel" @click.stop="openCollectionSettings(item.id)"><i class="ti ti-settings" aria-hidden="true"></i></button>
+						</div>
+					</template>
+				</template>
 			</div>
 			<div :class="$style.navEnd">
 				<!-- 表示の切り替え(リノート・ファイル・センシティブ・LIVE)を「…」の一覧にまとめる。 -->
@@ -43,6 +57,13 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 					</Transition>
 				</div>
 			</div>
+		</div>
+		<div v-if="pickerKind" :id="pickerId" ref="pickerEl" :class="$style.collectionPicker" :data-collection-picker="pickerKind" :data-state="pickerState" role="dialog" :aria-label="pickerKind === 'list' ? collectionCopy.selectList : collectionCopy.selectAntenna" :aria-busy="pickerState === 'loading'" tabindex="-1" @click.stop @keydown="onPickerKeydown">
+			<div v-if="pickerState === 'loading'" :class="$style.collectionPickerState" role="status"><MkLoading/></div>
+			<div v-else-if="pickerState === 'error'" :class="$style.collectionPickerState" role="status"><span>{{ copy.loadFailed }}</span><button type="button" :class="$style.retry" data-collection-retry @click="retryCollection">{{ copy.retry }}</button></div>
+			<div v-else-if="pickerState === 'empty'" :class="$style.collectionPickerState" role="status"><span>{{ pickerKind === 'list' ? collectionCopy.noLists : collectionCopy.noAntennas }}</span></div>
+			<button v-for="item in pickerState === 'ready' ? pickerItems : []" :key="item.id" type="button" :class="$style.collectionPickerItem" :data-collection-id="item.id" :data-active="item.id === selectedCollections[pickerKind] ? 'true' : undefined" :aria-pressed="item.id === selectedCollections[pickerKind]" @click="selectCollection(pickerKind, item.id)"><i :class="pickerKind === 'list' ? 'ti ti-list' : 'ti ti-antenna'" aria-hidden="true"></i><span>{{ item.name }}</span><Check v-if="item.id === selectedCollections[pickerKind]" :size="16"/></button>
+			<a :class="$style.collectionPickerItem" :href="pickerKind === 'list' ? '/my/lists' : '/my/antennas'" data-collection-manage @click.prevent="openCollectionSettings(pickerKind, true)"><i class="ti ti-settings" aria-hidden="true"></i><span>{{ pickerKind === 'list' ? collectionCopy.configureList : collectionCopy.configureAntenna }}</span></a>
 		</div>
 		<div v-if="emojiVoteRound && emojiVoteAnchor" :class="$style.voteNavbar">
 			<MkLtlEmojiVote
@@ -106,7 +127,11 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 			<!-- 外部アカウントのタイムラインは、Hataskey UI と同じ外部TL部品で表示する。 -->
 			<MkExternalTimeline v-if="isExternalTab && externalHost && externalToken" :key="tab" :src="tab === 'ohtl' ? 'ohtl' : 'oltl'" :newNotesNavbarKey="`hk3:${tab}`" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :class="$style.external"/>
 			<template v-else>
-				<div v-if="loading && notes.length === 0" :class="$style.state"><MkLoading/></div>
+				<div v-if="isCollectionTab && !activeCollection" :class="$style.state">
+					<MkLoading v-if="loading || activeCollectionState === 'loading'"/>
+					<template v-else><span>{{ activeCollectionState === 'error' ? copy.loadFailed : tab === 'list' ? collectionCopy.noLists : collectionCopy.noAntennas }}</span><button type="button" :class="$style.retry" @click="openCollection(tab as CollectionKind, $event)">{{ activeCollectionState === 'error' ? copy.retry : tab === 'list' ? collectionCopy.selectList : collectionCopy.selectAntenna }}</button></template>
+				</div>
+				<div v-else-if="loading && notes.length === 0" :class="$style.state"><MkLoading/></div>
 				<div v-else-if="error && notes.length === 0" :class="$style.state">
 					<span>{{ copy.loadFailed }}</span>
 					<button type="button" :class="$style.retry" @click="reload()">{{ copy.retry }}</button>
@@ -119,9 +144,11 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 						:key="note.id"
 						:data-note-removal-id="note.id"
 						:note="note"
+						instanceBadgePosition="left"
 						:size="compact ? 'sm' : 'lg'"
 						:linked="linkKindFor(note)"
 						:inLocal="tab === 'local'"
+						:showAudienceIcons="tab === 'following' || tab === 'social'"
 						:hideSensitive="!filterState.withSensitive"
 					/>
 				</div>
@@ -138,7 +165,7 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useId, watch } from 'vue';
 import { ArrowUp, AtSign, Ellipsis, Bell, ChartBar, Check, Clock, Paperclip, Pencil, SmilePlus, Star, Trash2, Eye, Filter, Heart, Image, Moon, Quote, Repeat2, Reply, Rss, SendHorizontal, Sun, UserPlus, Zap, ZapOff } from '@lucide/vue';
 import * as Misskey from 'cherrypick-js';
 import Hk3Note from './Hk3Note.vue';
@@ -168,6 +195,7 @@ import { useGlobalEvent } from '@/events.js';
 import { useNoteRemoval } from '@/composables/use-note-removal.js';
 import { isHataskeyTimelineAllowed } from '@/utility/hataskey-timeline-availability.js';
 import { mainRouter } from '@/router.js';
+import { userListsCache, antennasCache } from '@/cache.js';
 import * as sound from '@/utility/sound.js';
 
 withDefaults(defineProps<{
@@ -176,10 +204,14 @@ withDefaults(defineProps<{
 	compact: false,
 });
 
-type TabId = 'following' | 'local' | 'social' | 'mixed' | 'trending' | 'ohtl' | 'oltl';
+type CollectionKind = 'list' | 'antenna';
+type TabId = 'following' | 'local' | 'social' | 'mixed' | 'trending' | 'ohtl' | 'oltl' | CollectionKind;
+type CollectionItem = { id: string; name: string };
+type CollectionState = 'loading' | 'error' | 'empty' | 'ready';
 type FilterKey = 'withRenotes' | 'onlyFiles' | 'withSensitive';
 
 const copy = i18n.ts._hata._hataskeyUi3;
+const collectionCopy = i18n.ts._hata._hatasabaUi._simple;
 const PAGE = 20;
 const QUEUE_MAX = 99;
 
@@ -206,7 +238,7 @@ const allTabs = computed<{ id: TabId; label: string; icon: string; external?: bo
 ]);
 const tabs = computed(() => allTabs.value.filter(t => t.external || isHataskeyTimelineAllowed(t.id)));
 const storedTab = miLocalStorage.getItem('hataskeyUi3Tab') as TabId | null;
-const tab = ref<TabId>(storedTab && tabs.value.some(t => t.id === storedTab) ? storedTab : (tabs.value.some(t => t.id === 'local') ? 'local' : 'following'));
+const tab = ref<TabId>(storedTab && (tabs.value.some(t => t.id === storedTab) || ($i && (storedTab === 'list' || storedTab === 'antenna'))) ? storedTab : (tabs.value.some(t => t.id === 'local') ? 'local' : 'following'));
 const live = ref(miLocalStorage.getItem('hataskeyUi3Live') === 'true');
 const isExternalTab = computed(() => tab.value === 'ohtl' || tab.value === 'oltl');
 // 外部TLの新着はその部品がキューを持つ。ここでは知らせだけ受け取り、上部の新着バナーで出す。
@@ -215,7 +247,155 @@ provide(hataskeyTimelineNewNotesKey, externalNewNotes);
 const externalNotice = externalNewNotes.notice;
 // 連携を解除した・外部TLを非表示にした場合は、残っているタブへ戻す。
 watch(tabs, list => {
+	if ($i && (tab.value === 'list' || tab.value === 'antenna')) return;
 	if (!list.some(t => t.id === tab.value)) void onTabClick(list.some(t => t.id === 'local') ? 'local' : 'following');
+});
+
+// リスト・アンテナはこのTLで表示し、選択IDを共有キャッシュの一覧と照合する。
+const collectionNav = computed(() => [
+	{ id: 'list' as const, label: collectionCopy.list, icon: 'ti ti-list', switchLabel: collectionCopy.switchList, settingsLabel: collectionCopy.configureList },
+	{ id: 'channel' as const, label: collectionCopy.channel },
+	{ id: 'antenna' as const, label: collectionCopy.antenna, icon: 'ti ti-antenna', switchLabel: collectionCopy.switchAntenna, settingsLabel: collectionCopy.configureAntenna },
+]);
+const collectionItems = ref<Record<CollectionKind, CollectionItem[]>>({ list: [], antenna: [] });
+const collectionStates = ref<Record<CollectionKind, CollectionState>>({ list: 'empty', antenna: 'empty' });
+const selectedCollections = ref<Record<CollectionKind, string | null>>({ list: null, antenna: null });
+const collectionRequests = { list: 0, antenna: 0 };
+const isCollectionTab = computed(() => tab.value === 'list' || tab.value === 'antenna');
+const activeCollection = computed(() => isCollectionTab.value ? collectionItems.value[tab.value as CollectionKind].find(item => item.id === selectedCollections.value[tab.value as CollectionKind]) : undefined);
+const pickerKind = ref<CollectionKind | null>(null);
+const pickerId = useId();
+const pickerEl = shallowRef<HTMLElement | null>(null);
+const pickerTrigger = shallowRef<HTMLElement | null>(null);
+const pickerItems = computed(() => pickerKind.value ? collectionItems.value[pickerKind.value] : []);
+const pickerState = computed(() => pickerKind.value ? collectionStates.value[pickerKind.value] : 'empty');
+const activeCollectionState = computed(() => isCollectionTab.value ? collectionStates.value[tab.value as CollectionKind] : null);
+let collectionIntent = 0;
+let preferredPicker = false;
+
+function rememberedCollectionKey(kind: CollectionKind) {
+	return kind === 'list' ? 'hatasabaLastListId' : 'hatasabaLastAntennaId';
+}
+
+async function fetchCollections(kind: CollectionKind): Promise<CollectionItem[] | null> {
+	const request = ++collectionRequests[kind];
+	collectionStates.value[kind] = 'loading';
+	try {
+		const items = await (kind === 'list' ? userListsCache.fetch() : antennasCache.fetch());
+		if (request !== collectionRequests[kind]) return null;
+		collectionItems.value[kind] = items;
+		collectionStates.value[kind] = items.length > 0 ? 'ready' : 'empty';
+		return items;
+	} catch {
+		if (request === collectionRequests[kind]) collectionStates.value[kind] = 'error';
+		return null;
+	}
+}
+
+function closeCollectionPicker(restoreFocus = false) {
+	collectionIntent++;
+	pickerKind.value = null;
+	if (restoreFocus && pickerTrigger.value?.isConnected) pickerTrigger.value.focus();
+}
+
+async function showCollectionPicker(kind: CollectionKind, event?: MouseEvent) {
+	optionsOpen.value = false;
+	if (event?.currentTarget instanceof HTMLElement) pickerTrigger.value = event.currentTarget;
+	pickerKind.value = kind;
+	const intent = collectionIntent;
+	await nextTick();
+	if (intent === collectionIntent && pickerKind.value === kind) pickerEl.value?.focus();
+}
+
+async function openCollection(kind: CollectionKind, event?: MouseEvent) {
+	if (!$i) return;
+	const intent = ++collectionIntent;
+	preferredPicker = true;
+	void showCollectionPicker(kind, event);
+	const items = await fetchCollections(kind);
+	if (intent !== collectionIntent || !items) return;
+	const remembered = miLocalStorage.getItem(rememberedCollectionKey(kind));
+	const item = items.find(item => item.id === remembered) ?? items[0];
+	if (item) await selectCollection(kind, item.id);
+}
+
+async function toggleCollectionPicker(kind: CollectionKind, event: MouseEvent) {
+	if (pickerKind.value === kind) { closeCollectionPicker(true); return; }
+	const intent = ++collectionIntent;
+	preferredPicker = false;
+	void showCollectionPicker(kind, event);
+	await fetchCollections(kind);
+	if (intent === collectionIntent) focusPickerItem();
+}
+
+function focusPickerItem(intent = collectionIntent) {
+	void nextTick(() => {
+		if (intent !== collectionIntent || !pickerKind.value) return;
+		(pickerEl.value?.querySelector<HTMLElement>('[data-collection-id][data-active], [data-collection-id], button, a') ?? pickerEl.value)?.focus();
+	});
+}
+
+async function retryCollection() {
+	const kind = pickerKind.value;
+	if (!kind) return;
+	if (preferredPicker) await openCollection(kind);
+	else {
+		const intent = collectionIntent;
+		await fetchCollections(kind);
+		focusPickerItem(intent);
+	}
+}
+
+async function selectCollection(kind: CollectionKind, id: string) {
+	if (!collectionItems.value[kind].some(item => item.id === id)) return;
+	const changed = selectedCollections.value[kind] !== id;
+	selectedCollections.value[kind] = id;
+	miLocalStorage.setItem(rememberedCollectionKey(kind), id);
+	closeCollectionPicker(true);
+	await onTabClick(kind, changed, true);
+}
+
+function openCollectionSettings(kind: CollectionKind, manage = false) {
+	navigationRevision++;
+	const id = selectedCollections.value[kind];
+	closeCollectionPicker();
+	mainRouter.pushByPath(`/my/${kind === 'list' ? 'lists' : 'antennas'}${!manage && id ? `/${encodeURIComponent(id)}` : ''}`);
+}
+
+function goToChannels() {
+	navigationRevision++;
+	closeCollectionPicker();
+	mainRouter.pushByPath('/channels');
+}
+
+function onPickerPointerDown(event: Event) {
+	if (!pickerKind.value || pickerEl.value?.contains(event.target as Node) || pickerTrigger.value?.contains(event.target as Node)) return;
+	closeCollectionPicker();
+}
+
+function onPickerEscape(event: KeyboardEvent) {
+	if (event.key === 'Escape' && pickerKind.value) { event.preventDefault(); closeCollectionPicker(true); }
+}
+
+function onPickerKeydown(event: KeyboardEvent) {
+	if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+	const items = Array.from(pickerEl.value?.querySelectorAll<HTMLElement>('button:not(:disabled), a') ?? []);
+	if (items.length === 0) return;
+	event.preventDefault();
+	const current = items.indexOf(window.document.activeElement as HTMLElement);
+	const index = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : current < 0 ? (event.key === 'ArrowDown' ? 0 : items.length - 1) : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+	items[index].focus();
+}
+
+watch(pickerKind, kind => {
+	window.document.removeEventListener('pointerdown', onPickerPointerDown, true);
+	window.document.removeEventListener('click', onPickerPointerDown, true);
+	window.document.removeEventListener('keydown', onPickerEscape);
+	if (kind) {
+		window.document.addEventListener('pointerdown', onPickerPointerDown, true);
+		window.document.addEventListener('click', onPickerPointerDown, true);
+		window.document.addEventListener('keydown', onPickerEscape);
+	}
 });
 
 const notes = ref<Misskey.entities.Note[]>([]);
@@ -277,6 +457,7 @@ function onOptionsKeydown(ev: KeyboardEvent) {
 
 watch(optionsOpen, open => {
 	if (open) {
+		closeCollectionPicker();
 		window.document.addEventListener('pointerdown', onOptionsPointerDown, true);
 		window.document.addEventListener('keydown', onOptionsKeydown);
 	} else {
@@ -401,6 +582,8 @@ async function fetchPage(untilId?: string, offset = 0): Promise<Misskey.entities
 		case 'local': return await misskeyApi('notes/local-timeline', params);
 		case 'social': return await misskeyApi('notes/hybrid-timeline', params);
 		case 'mixed': return await misskeyApi('notes/global-timeline', params);
+		case 'list': return activeCollection.value ? await misskeyApi('notes/user-list-timeline', { ...params, listId: activeCollection.value.id }) : [];
+		case 'antenna': return activeCollection.value ? await misskeyApi('antennas/notes', { limit: PAGE, untilId, antennaId: activeCollection.value.id }) : [];
 		case 'trending': return await misskeyApi('notes/trending', { limit: PAGE, offset, seed: trendingSeed });
 		default: return [];
 	}
@@ -410,11 +593,13 @@ async function fetchPage(untilId?: string, offset = 0): Promise<Misskey.entities
 let trendingSeed = 1;
 let loadSeq = 0;
 
-async function reload() {
+async function reload(collectionValidated = false) {
 	removal.cancelAll();
 	const seq = ++loadSeq;
+	const intent = collectionIntent;
 	trendingSeed = Math.floor(Math.random() * 2147483646) + 1;
 	loading.value = true;
+	loadingMore.value = false;
 	error.value = false;
 	queue.value = [];
 	loadMoreFailed.value = false;
@@ -425,6 +610,29 @@ async function reload() {
 		return;
 	}
 	try {
+		if (isCollectionTab.value) {
+			const kind = tab.value as CollectionKind;
+			if (!collectionValidated && !activeCollection.value) {
+				preferredPicker = true;
+				void showCollectionPicker(kind);
+			}
+			const items = collectionValidated ? collectionItems.value[kind] : await fetchCollections(kind);
+			if (seq !== loadSeq) return;
+			const remembered = selectedCollections.value[kind] ?? miLocalStorage.getItem(rememberedCollectionKey(kind));
+			const selected = items?.find(item => item.id === remembered) ?? items?.[0];
+			selectedCollections.value[kind] = selected?.id ?? null;
+			if (!selected) {
+				notes.value = [];
+				hasMore.value = false;
+				if (!pickerKind.value && intent === collectionIntent) {
+					preferredPicker = true;
+					void showCollectionPicker(kind);
+				}
+				return;
+			}
+			miLocalStorage.setItem(rememberedCollectionKey(kind), selected.id);
+			if (intent === collectionIntent && preferredPicker && pickerKind.value === kind) closeCollectionPicker();
+		}
 		const result = await fetchPage();
 		if (seq !== loadSeq) return;
 		notes.value = result;
@@ -455,10 +663,11 @@ async function loadMore() {
 		hasMore.value = result.length > 0;
 		loadMoreFailed.value = false;
 	} catch {
+		if (seq !== loadSeq) return;
 		// 一時的な失敗で「これより前は無い」と誤って伝えないよう、再試行を促す。
 		loadMoreFailed.value = true;
 	} finally {
-		loadingMore.value = false;
+		if (seq === loadSeq) loadingMore.value = false;
 	}
 }
 
@@ -466,16 +675,34 @@ async function loadMore() {
 const stream = useStream();
 let connection: { dispose: () => void } | null = null;
 
+let streamRevision = 0;
+
 function connect() {
 	if (tab.value === 'trending' || tab.value === 'ohtl' || tab.value === 'oltl') return;
 	const filter = store.s.tl.filter;
-	const channel = ({ following: 'homeTimeline', local: 'localTimeline', social: 'hybridTimeline', mixed: 'globalTimeline' } as const)[tab.value];
-	const channelConnection = stream.useChannel(channel, { withRenotes: filter.withRenotes, withFiles: filter.onlyFiles ? true : undefined });
-	channelConnection.on('note', onStreamNote);
-	connection = channelConnection;
+	const params = { withRenotes: filter.withRenotes, withFiles: filter.onlyFiles ? true : undefined };
+	const revision = streamRevision;
+	const receive = (note: Misskey.entities.Note) => { if (revision === streamRevision) onStreamNote(note); };
+	if (tab.value === 'list') {
+		if (!activeCollection.value) return;
+		const channelConnection = stream.useChannel('userList', { ...params, listId: activeCollection.value.id });
+		channelConnection.on('note', receive);
+		connection = channelConnection;
+	} else if (tab.value === 'antenna') {
+		if (!activeCollection.value) return;
+		const channelConnection = stream.useChannel('antenna', { antennaId: activeCollection.value.id });
+		channelConnection.on('note', receive);
+		connection = channelConnection;
+	} else {
+		const channel = ({ following: 'homeTimeline', local: 'localTimeline', social: 'hybridTimeline', mixed: 'globalTimeline' } as const)[tab.value];
+		const channelConnection = stream.useChannel(channel, params);
+		channelConnection.on('note', receive);
+		connection = channelConnection;
+	}
 }
 
 function disconnect() {
+	streamRevision++;
 	connection?.dispose();
 	connection = null;
 }
@@ -506,7 +733,7 @@ useGlobalEvent('noteDeleted', noteId => {
 });
 
 watch(hk3PostedNote, note => {
-	if (note == null || isKnown(note.id) || tab.value === 'trending') return;
+	if (note == null || isKnown(note.id) || tab.value === 'trending' || isCollectionTab.value) return;
 	notes.value.unshift(note);
 	hk3PostedNote.value = null;
 	scrollEl.value?.scrollTo({ top: 0, behavior: motion() ? 'smooth' : 'auto' });
@@ -522,25 +749,33 @@ function onNavClick(ev: MouseEvent) {
 	scrollTop();
 }
 
-let switching = false;
+let navigationRevision = 0;
+let navigationPending = false;
 
-async function onTabClick(id: TabId) {
-	if (id === tab.value) {
+async function onTabClick(id: TabId, force = false, collectionValidated = false) {
+	closeCollectionPicker();
+	const revision = ++navigationRevision;
+	if (id === tab.value && !force && !navigationPending) {
 		scrollTop();
 		return;
 	}
-	if (switching) return;
-	switching = true;
+	navigationPending = true;
+	++loadSeq;
+	disconnect();
+	queue.value = [];
 	try {
 		await hideList();
+		if (revision !== navigationRevision) return;
+		notes.value = [];
 		tab.value = id;
 		miLocalStorage.setItem('hataskeyUi3Tab', id);
 		scrollEl.value?.scrollTo({ top: 0 });
-		await reload();
+		await reload(collectionValidated);
+		if (revision !== navigationRevision) return;
 		await nextTick();
-		revealList(60);
+		if (revision === navigationRevision) revealList(60);
 	} finally {
-		switching = false;
+		if (revision === navigationRevision) navigationPending = false;
 	}
 }
 
@@ -791,6 +1026,13 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	loadSeq++;
+	navigationRevision++;
+	collectionIntent++;
+	collectionRequests.list++;
+	collectionRequests.antenna++;
+	window.document.removeEventListener('pointerdown', onPickerPointerDown, true);
+	window.document.removeEventListener('click', onPickerPointerDown, true);
+	window.document.removeEventListener('keydown', onPickerEscape);
 	disconnect();
 	observer?.disconnect();
 	collapseObserver?.disconnect();
@@ -837,14 +1079,11 @@ defineExpose({ scrollTop, reload });
 .tabs {
 	display: flex;
 	align-items: stretch;
-
-	.root[data-compact] & {
-		flex: 1;
-		justify-content: safe center;
-		overflow-x: auto;
-		min-width: 0;
-		scrollbar-width: none;
-	}
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow-x: auto;
+	scrollbar-width: none;
+	.root[data-compact] & { flex: 1; justify-content: safe center; }
 }
 
 .tabIcon {
@@ -853,6 +1092,7 @@ defineExpose({ scrollTop, reload });
 }
 
 .tab {
+	flex: none;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -875,6 +1115,71 @@ defineExpose({ scrollTop, reload });
 
 	.root[data-compact] & { flex: none; gap: 6px; min-width: 50px; padding: 0 14px; font-size: 13px; }
 }
+
+.collectionTab {
+	display: flex;
+	flex: none;
+	align-items: stretch;
+	&[data-active] { background: var(--hk3-accent-100); color: var(--hk3-accent-800); box-shadow: inset 0 -3px 0 var(--hk3-accent); }
+}
+
+.collectionCopy { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.collectionName { max-width: 140px; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-weight: 500; }
+.collectionAction {
+	flex: none;
+	width: 36px;
+	padding: 0;
+	border: 0;
+	border-right: 1px solid var(--hk3-divider);
+	border-radius: 0;
+	font: inherit;
+	font-size: 18px;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	&:hover { background: var(--hk3-accent-200); }
+}
+
+.collectionPicker {
+	position: absolute;
+	top: 100%;
+	right: 0;
+	z-index: 30;
+	box-sizing: border-box;
+	width: min(320px, 100%);
+	max-height: min(420px, 60dvh);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 6px;
+	border: 2px solid var(--hk3-text);
+	border-radius: 0;
+	background: var(--hk3-bg);
+	color: var(--hk3-text);
+	box-shadow: var(--hk3-shadow-lg);
+}
+.collectionPickerState { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 12px; }
+.collectionPickerItem {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 44px;
+	padding: 10px 12px;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-size: 14px;
+	text-align: left;
+	text-decoration: none;
+	cursor: pointer;
+	> span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+	&[data-active], &:hover { background: var(--hk3-accent-100); color: var(--hk3-accent-800); }
+	&[data-collection-manage] { border-top: 1px solid var(--hk3-divider); }
+}
+.collectionAction, .collectionPickerItem, .tab { &:focus-visible { outline: 2px solid var(--hk3-accent); outline-offset: -3px; } }
 
 // 外部TLのタブは印を付けず、アイコンの色で見分ける。
 .tab[data-external] > .tabIcon {
@@ -912,8 +1217,8 @@ defineExpose({ scrollTop, reload });
 }
 
 .navEnd {
-	flex: 1 1 0;
-	min-width: 0;
+	flex: 1 0 58px;
+	min-width: 58px;
 	display: flex;
 	justify-content: flex-end;
 	align-items: stretch;
