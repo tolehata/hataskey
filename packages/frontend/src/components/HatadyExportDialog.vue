@@ -1,14 +1,14 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<HyDialog ref="dialog" title="記録を書き出す" :busy="busy" @close="dialog?.close()" @closed="emit('closed')">
+<HyDialog ref="dialog" :title="copy.dialogTitle" :busy="busy" @close="dialog?.close()" @closed="emit('closed')">
 	<form class="hy-form" @submit.prevent="prepare">
 		<div class="hy-field" :class="$style.choiceField">
-			<span>書き出す活動</span>
-			<HyCapsule v-model="kind" :options="kinds" label="書き出す活動" :class="$style.choices"/>
+			<span>{{ copy.activities }}</span>
+			<HyCapsule v-model="kind" :options="kinds" :label="copy.activities" :class="$style.choices"/>
 		</div>
 		<div class="hy-field" :class="$style.choiceField">
-			<span>形式</span>
-			<HyCapsule v-model="format" :options="formats" label="書き出す形式" :class="$style.choices"/>
+			<span>{{ copy.format }}</span>
+			<HyCapsule v-model="format" :options="formats" :label="copy.formatLabel" :class="$style.choices"/>
 		</div>
 		<div class="hy-field">
 			<span>{{ copy.period }}</span>
@@ -28,35 +28,35 @@
 		<div :class="$style.dates">
 			<label class="hy-field">
 				<span>
-					開始日
-					<small>任意</small>
+					{{ copy.from }}
+					<small>{{ i18n.ts.optional }}</small>
 				</span>
 				<input v-model="since" class="hy-input" type="date" @input="mode = 'custom'"/>
 			</label>
 			<label class="hy-field">
 				<span>
-					終了日
-					<small>任意</small>
+					{{ copy.to }}
+					<small>{{ i18n.ts.optional }}</small>
 				</span>
 				<input v-model="until" class="hy-input" type="date" @input="mode = 'custom'"/>
 			</label>
 		</div>
-		<p class="hy-muted">自分の作品・記録・しおり・内容メモを書き出します。非公開の記録と私的メモも含みます。</p>
+		<p class="hy-muted">{{ copy.privacy }}</p>
 		<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
 	</form>
 	<section v-if="prepared" :class="$style.preview">
-		<p>{{ prepared.records }}件の記録 · {{ prepared.works }}件の作品・作業</p>
-		<textarea class="hy-input" :value="prepared.contents" readonly rows="9" aria-label="書き出す内容"></textarea>
+		<p>{{ i18n.tsx._hata._hatady._exportDialog.previewCount({ records: String(prepared.records), works: String(prepared.works) }) }}</p>
+		<textarea class="hy-input" :value="prepared.contents" readonly rows="9" :aria-label="copy.exportTarget"></textarea>
 	</section>
 	<template #actions>
 		<button class="hy-secondary" :disabled="busy" @click="dialog?.close()">{{ copy.cancel }}</button>
 		<button v-if="!prepared" class="hy-primary" :disabled="busy || !valid" @click="prepare">
 			<i v-if="busy" class="ti ti-loader-2"></i>
-			内容を確かめる
+			{{ copy.review }}
 		</button>
 		<button v-else class="hy-primary" @click="download">
 			<i class="ti ti-download"></i>
-			この内容を書き出す
+			{{ copy.exportContents }}
 		</button>
 	</template>
 </HyDialog>
@@ -82,10 +82,10 @@ const dialog = ref<any>(),
 	error = ref(''),
 	prepared = ref<HatadyPreparedExport | null>(null);
 const copy = i18n.ts._hata._hatady._exportDialog;
-const kinds = [{ value: 'all', label: 'すべて', icon: 'ti ti-notebook' }, ...HATADY_ACTIVITY_CHOICES];
+const kinds = [{ value: 'all', label: copy.mediaKindAll, icon: 'ti ti-notebook' }, ...HATADY_ACTIVITY_CHOICES];
 const formats = [
 	{ value: 'json', label: 'JSON', icon: 'ti ti-braces' },
-	{ value: 'txt', label: 'テキスト', icon: 'ti ti-file-text' },
+	{ value: 'txt', label: copy.text, icon: 'ti ti-file-text' },
 ];
 const presets = [
 	{ value: 'all', label: copy.all },
@@ -120,7 +120,7 @@ function setMode(value: string) {
 watch([kind, format, since, until], () => {
 	prepared.value = null;
 	request++;
-	error.value = valid.value ? '' : '期間の順序を確かめてください';
+	error.value = valid.value ? '' : copy.dateOrderError;
 });
 
 async function prepare() {
@@ -137,7 +137,7 @@ async function prepare() {
 		});
 		if (seq === request) prepared.value = prepareHatadyExport(archive, selectedFormat);
 	} catch {
-		error.value = '書き出す内容を読み込めませんでした';
+		error.value = copy.loadFailed;
 	} finally {
 		busy.value = false;
 	}
@@ -147,9 +147,9 @@ function download() {
 	if (!prepared.value) return;
 	try {
 		downloadPreparedHatadyExport(prepared.value);
-		hatadyNotify(`${prepared.value.records}件の記録を書き出しました`);
+		hatadyNotify(i18n.tsx._hata._hatady._exportDialog.success({ count: String(prepared.value.records) }));
 	} catch {
-		error.value = 'ファイルを書き出せませんでした';
+		error.value = copy.failed;
 	}
 }
 </script>

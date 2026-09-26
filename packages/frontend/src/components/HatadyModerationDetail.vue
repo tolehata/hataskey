@@ -11,21 +11,21 @@
 		<span><strong>{{ detail.item.actor.name || detail.item.actor.username }}</strong><small>@{{ detail.item.actor.username }}{{ detail.item.actor.host ? `@${detail.item.actor.host}` : '' }}</small></span>
 	</div>
 	<div :class="$style.meta">
-		<time :datetime="detail.item.createdAt">{{ detail.item.category === 'reaction' ? '付与・最終変更 ' : '' }}{{ moderationDate(detail.item.createdAt) }}</time>
+		<time :datetime="detail.item.createdAt">{{ detail.item.category === 'reaction' ? copy.reactionChangedPrefix : '' }}{{ moderationDate(detail.item.createdAt) }}</time>
 		<span><i :class="visibility.icon" aria-hidden="true"></i>{{ visibility.label }}</span>
 		<span>{{ activity }}</span>
 	</div>
 	<div v-if="detail.item.emoji" :class="$style.reaction">
 		<MkReactionIcon :reaction="detail.item.emoji" :class="$style.emoji"/>
-		<div><strong>{{ detail.item.emoji }}</strong><small>付けた人：{{ detail.item.actor.name || detail.item.actor.username }}</small></div>
+		<div><strong>{{ detail.item.emoji }}</strong><small>{{ i18n.tsx._hata._hatady._moderationView.reactedBy({ name: detail.item.actor.name || detail.item.actor.username }) }}</small></div>
 	</div>
-	<div :class="$style.content">{{ detail.item.body || '本文なし' }}</div>
+	<div :class="$style.content">{{ detail.item.body || copy.noBody }}</div>
 	<MkMediaList v-if="detail.item.files?.length" :mediaList="detail.item.files" :user="detail.item.actor"/>
 	<dl v-if="detail.fields.length" :class="$style.fields">
 		<template v-for="(field, index) in detail.fields" :key="index"><dt>{{ field.label }}</dt><dd>{{ field.value }}</dd></template>
 	</dl>
-	<section v-if="relations.length || detail.relatedHasMore" :class="$style.relations" aria-label="関連する内容">
-		<h3>関連する内容</h3>
+	<section v-if="relations.length || detail.relatedHasMore" :class="$style.relations" :aria-label="copy.relatedContent">
+		<h3>{{ copy.relatedContent }}</h3>
 		<button v-for="relation in relations" :key="`${relation.label}:${relation.entry.key}`" type="button" :class="$style.context" @click="emit('select', relation.entry)">
 			<span>
 				<i :class="moderationCategory(relation.entry.category).icon" aria-hidden="true"></i>
@@ -35,14 +35,14 @@
 			</span>
 			<i class="ti ti-chevron-right" aria-hidden="true"></i>
 		</button>
-		<p v-if="detail.relatedHasMore" :class="$style.hint">関連する内容の一部を表示しています。続きは一覧で確認できます。</p>
+		<p v-if="detail.relatedHasMore" :class="$style.hint">{{ copy.relatedPartial }}</p>
 	</section>
-	<section :class="$style.review" aria-label="確認状態とメモ">
-		<h3>確認メモ</h3>
-		<p v-if="detail.item.review.stale" :class="$style.hint">確認後に内容が更新されています。変更を確かめてから確認状態を保存してください。</p>
+	<section :class="$style.review" :aria-label="copy.reviewAndMemo">
+		<h3>{{ copy.reviewMemo }}</h3>
+		<p v-if="detail.item.review.stale" :class="$style.hint">{{ copy.staleHint }}</p>
 		<label :class="$style.note">
-			<span :class="$style.srOnly">管理者・モデレーター向けの確認メモ</span>
-			<textarea :value="note" :disabled="busy" maxlength="1000" rows="3" placeholder="気になった点や確認したこと" @input="emit('update:note', ($event.target as HTMLTextAreaElement).value)"></textarea>
+			<span :class="$style.srOnly">{{ copy.adminMemo }}</span>
+			<textarea :value="note" :disabled="busy" maxlength="1000" rows="3" :placeholder="copy.memoPlaceholder" @input="emit('update:note', ($event.target as HTMLTextAreaElement).value)"></textarea>
 			<small :class="$style.counter">{{ note.length }} / 1000</small>
 		</label>
 		<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
@@ -61,10 +61,11 @@
 			</button>
 		</div>
 		<div :class="$style.noteSave">
-			<button type="button" :class="$style.saveLink" :disabled="busy || note.length > 1000" @click="emit('save', detail.item.review.state)">メモを保存</button>
+			<button type="button" :class="$style.saveLink" :disabled="busy || note.length > 1000" @click="emit('save', detail.item.review.state)">{{ copy.saveMemo }}</button>
 			<small v-if="detail.item.review.reviewer">{{ detail.item.review.reviewer.name || detail.item.review.reviewer.username }}<template v-if="detail.item.review.reviewedAt"> · {{ moderationDate(detail.item.review.reviewedAt) }}</template></small>
 		</div>
 	</section>
+	<RecordModerationActions :target="{ product: 'hatady', targetType: detail.item.targetType, targetId: detail.item.targetId }" :busy="busy" @completed="emit('moderated')"/>
 </div>
 </template>
 
@@ -74,9 +75,13 @@ import type { ModerationDetail, ModerationEntry, ModerationStatus } from '@/util
 import { moderationActivities, moderationCategory, moderationDate, moderationStatus, moderationStatuses, moderationVisibilities } from '@/utility/hatady-moderation.js';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import MkMediaList from '@/components/MkMediaList.vue';
+import RecordModerationActions from '@/components/RecordModerationActions.vue';
+import { i18n } from '@/i18n.js';
+const copy = i18n.ts._hata._hatady._moderationView;
 
 const props = defineProps<{ detail: ModerationDetail; note: string; busy?: boolean; error?: string }>();
 const emit = defineEmits<{
+	(event: 'moderated'): void;
 	(event: 'update:note', value: string): void;
 	(event: 'save', state: ModerationStatus): void;
 	(event: 'select', entry: ModerationEntry): void;
@@ -87,8 +92,8 @@ const status = computed(() => moderationStatus(props.detail.item.review.state));
 const visibility = computed(() => moderationVisibilities[props.detail.item.visibility]);
 const activity = computed(() => moderationActivities.find(item => item.value === props.detail.item.activity)?.label ?? '');
 const relations = computed(() => [
-	...props.detail.ancestors.map(entry => ({ entry, label: entry.key === props.detail.item.parentKey ? '対象' : '関連元' })),
-	...props.detail.related.map(entry => ({ entry, label: 'この内容への投稿' })),
+	...props.detail.ancestors.map(entry => ({ entry, label: entry.key === props.detail.item.parentKey ? copy.target : copy.relatedSource })),
+	...props.detail.related.map(entry => ({ entry, label: copy.postedHere })),
 ]);
 defineExpose({ focusHeading: () => heading.value?.focus({ preventScroll: true }) });
 </script>

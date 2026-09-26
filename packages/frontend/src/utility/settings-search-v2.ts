@@ -208,11 +208,10 @@ const KNOWN_SETTINGS_ROUTES = new Set([
 	'/settings/theme', '/settings/navbar', '/settings/timeline', '/settings/statusbar', '/settings/sounds', '/settings/plugin/install', '/settings/plugin',
 	'/settings/account-data', '/settings/mute-block', '/settings/connect', '/settings/apps', '/settings/webhook/edit/:webhookId', '/settings/webhook/new',
 	'/settings/deck', '/settings/custom-css', '/settings/profiles', '/settings/accounts', '/settings/other', '/settings/hata-custom', '/settings/external-account',
-	'/settings/hidden-reactions', '/settings/account-stats', '/settings/cherrypick', '/settings/hatafeed', '/settings/hatasnscord-ui',
+	'/settings/hidden-reactions', '/settings/account-stats', '/settings/cherrypick', '/settings/hatafeed',
 ]);
 
 const ENGLISH_CATEGORY_LABELS_V2: Record<string, string> = {
-	'hatasnscord-ui': 'HataSNSCordUI',
 	'hataskey-ui': 'Hataskey UI', 'display-notes': 'Display density and notes', 'theme-font': 'Themes and fonts', 'timeline-posting': 'Timeline and posting',
 	reactions: 'Reactions', 'notification-sound': 'Notifications and sounds', account: 'Account', 'hata-tools': 'Hataskey tools', cherrypick: 'CherryPick',
 	'data-connect': 'Data and connections', 'misskey-ui': 'Misskey UI', behavior: 'Behavior',
@@ -403,8 +402,7 @@ function categoryFor(
 	// `/settings/hata-custom` is a launch surface, not a product category.  Its
 	// individual source and activation are the only deterministic evidence for
 	// the redesigned IA, so resolve those before route/term heuristics.
-	if (route === '/settings/hatasnscord-ui') id = 'hatasnscord-ui';
-	else if (sourceFile === 'src/components/HatasabaUi2SettingsBody.vue'
+	if (sourceFile === 'src/components/HatasabaUi2SettingsBody.vue'
 		|| sourceFile === 'src/components/HatasabaUi2ImmediateSettings.vue'
 		|| /hatasaba-ui2|hatasaba-ui-/u.test(semantic)
 		|| (context.activation?.kind === 'popup' && context.activation.popup === 'hatasaba-ui2')) id = 'hataskey-ui';
@@ -429,7 +427,6 @@ function catalogOwnerFor(sourceFile: string | undefined, route: string): Setting
 	if (route === '/settings/cherrypick') return 'cherrypick';
 	if (route === '/settings/hata-custom'
 		|| sourceFile === 'settings-shell'
-		|| sourceFile?.includes('Hatacording') === true
 		|| sourceFile?.includes('HatasabaUi2') === true
 		|| sourceFile?.includes('HataSettings') === true
 		|| sourceFile?.endsWith('/HataskSettings.vue') === true
@@ -441,7 +438,6 @@ function catalogOwnerFor(sourceFile: string | undefined, route: string): Setting
 }
 
 function catalogApplicableUiFor(sourceFile: string | undefined, route: string): SettingsApplicableUiV2 {
-	if (sourceFile === 'src/components/HatacordingUiSettings.vue') return 'hatacording';
 	if (sourceFile === 'src/components/HatasabaUi2SettingsBody.vue'
 		|| sourceFile === 'src/components/HatasabaUi2ImmediateSettings.vue') return 'simple';
 	if (route === '/settings/deck' || sourceFile?.endsWith('/settings/deck.vue') === true) return 'deck';
@@ -467,7 +463,6 @@ function applicableUiContexts(value: SettingsApplicableUiV2): Set<Exclude<Settin
 			contexts.add('deck');
 			contexts.add('simple');
 			contexts.add('simple-deck');
-			contexts.add('hatacording');
 		} else if (item === 'simple') {
 			contexts.add('simple');
 			contexts.add('simple-deck');
@@ -651,7 +646,7 @@ const SETTINGS_SEARCH_STOPWORDS = new Set([
 	// Source-expression/internal vocabulary.
 	'i18n', 'ts', 'editor', 'draft', 'copy', 'model', 'value', 'hata', 'settings', 'setting', 'preference', 'preferences', 'option', 'options',
 	// Generic UI verbs/nouns do not prove two settings are meaningfully close.
-	'show', 'hide', 'display', 'enable', 'enabled', 'disable', 'disabled', 'use', 'used', 'using', 'usage', 'function', 'feature', 'features', 'configure', 'configuration', 'config', 'toggle', 'on', 'off', 'general', 'other', 'custom', 'cherrypick', 'misskey', 'hataskey', 'hatasaba', 'ui', 'hatasnscord',
+	'show', 'hide', 'display', 'enable', 'enabled', 'disable', 'disabled', 'use', 'used', 'using', 'usage', 'function', 'feature', 'features', 'configure', 'configuration', 'config', 'toggle', 'on', 'off', 'general', 'other', 'custom', 'cherrypick', 'misskey', 'hataskey', 'hatasaba', 'ui',
 	'設定', '項目', 'オプション', '表示', '有効', '無効', '利用', '使用', 'する', '機能', '変更', '選択', '内容', '詳細', 'その他', '全般', '一般', 'カスタム', 'オン', 'オフ',
 ]);
 
@@ -895,7 +890,7 @@ function relationEvidence(
 	const nearestA = a.legacyMarkerParentId ?? markerPath(a).at(-1);
 	const nearestB = b.legacyMarkerParentId ?? markerPath(b).at(-1);
 	const commonMarker = deepestSharedMarker(a, b);
-	const brandOnly = /^(?:CherryPick|Misskey|Hataskey|Hatasaba|UI|HataSNSCord)$/iu;
+	const brandOnly = /^(?:CherryPick|Misskey|Hataskey|Hatasaba|UI)$/iu;
 	const sharedToken = a.label.length <= 80 && b.label.length <= 80 && a.categoryId === b.categoryId && a.owner === b.owner && !brandOnly.test(a.label.trim()) && !brandOnly.test(b.label.trim()) && !internalLabel.test(b.label)
 		? sharedRelationToken(a, b, tokens)
 		: null;

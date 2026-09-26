@@ -21,10 +21,11 @@ const fixture = vi.hoisted(() => ({ wizard: null as WizardProps | null, api: vi.
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
 vi.mock('@/os.js', () => ({ popup: vi.fn() }));
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatady: {
-	_home: { activityStudy: '勉強・読書', activityPrivate: '自分のみ' },
-	_media: { status: {}, session: { types: { movie_viewing: '映画', game_play: 'ゲーム' } }, detail: { showSpoilerSession: 'ネタバレを含む記録' } },
-} } } } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/utility/hatady-subjects.js', async () => {
 	const { ref } = await import('vue');
 	return { hySubjects: ref([]), loadHySubjects: vi.fn(async () => []), saveHySubject: vi.fn(async () => undefined) };

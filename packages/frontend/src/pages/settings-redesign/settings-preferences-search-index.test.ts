@@ -75,6 +75,32 @@ function legacyMarkers(): SearchIndexItem[] {
 }
 
 describe('redesigned preferences search index', () => {
+	test('finds UI S RSS controls and keeps their device-local destination', () => {
+		const merged = mergeRedesignedPreferenceSearchItems([]);
+		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
+		for (const key of ['hataskeyUi3RssEnabled', 'hataskeyUi3RssFeeds', 'hataskeyUi3RssAutoSwitch', 'hataskeyUi3RssReadSeconds', 'hataskeyUi3RssReadMode']) {
+			const stableId = generatedPreferenceSearchId(key);
+			expect(merged.find(item => item.stableId === stableId)).toMatchObject({ destinationId: 'hataskey-ui-s', preferenceKeys: [key], persistence: 'device' });
+			for (const query of ['RSS', 'フィード', 'リーダー']) expect(searchSettingsV2(catalog, query).results.some(result => result.stableId === stableId)).toBe(true);
+		}
+	});
+	test('finds all UI3 composer preferences in Hataskey UI S under each search term', () => {
+		const key = 'hataskeyUi3ComposerPosition';
+		const stableId = generatedPreferenceSearchId(key);
+		const merged = mergeRedesignedPreferenceSearchItems([]);
+		const descriptor = merged.find(item => item.stableId === stableId);
+		expect(descriptor).toMatchObject({ destinationId: 'hataskey-ui-s', preferenceKeys: [key], persistence: 'profile', saveMode: 'immediate', owner: 'hatasaba' });
+		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
+		const keys = ['hataskeyUi3ComposerShortcut1', 'hataskeyUi3ComposerShortcut2', 'hataskeyUi3ComposerEmojiPosition', key];
+		for (const preferenceKey of keys) {
+			const item = merged.find(entry => entry.stableId === generatedPreferenceSearchId(preferenceKey));
+			expect(item).toMatchObject({ destinationId: 'hataskey-ui-s', preferenceKeys: [preferenceKey], categoryId: 'hataskey-ui' });
+			for (const query of ['投稿フォーム', 'Hataskey UI S', 'UI3']) {
+				expect(searchSettingsV2(catalog, query).results.some(result => result.stableId === item?.stableId)).toBe(true);
+			}
+		}
+		expect(searchSettingsV2(catalog, '投稿フォームの位置').results.some(result => result.stableId === stableId)).toBe(true);
+	});
 	test('finds both navbar switches even though they have no legacy settings controls', () => {
 		const merged = mergeRedesignedPreferenceSearchItems([]);
 		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
@@ -87,14 +113,14 @@ describe('redesigned preferences search index', () => {
 		}
 	});
 	test('legacy and new preference controls are each materialized exactly once', () => {
-		expect(preferenceControls).toHaveLength(103);
+		expect(preferenceControls).toHaveLength(112);
 		expect(preferenceAuxiliaryControls).toHaveLength(18);
-		expect(settingsInventoryKeys).toHaveLength(121);
+		expect(settingsInventoryKeys).toHaveLength(130);
 		const merged = mergeRedesignedPreferenceSearchItems(generatedLegacyControls());
 		const preferenceDescriptors = merged.filter(item => item.route === '/settings/preferences');
-		expect(preferenceDescriptors).toHaveLength(121);
-		expect(new Set(preferenceDescriptors.map(item => item.preferenceKeys[0])).size).toBe(121);
-		expect(new Set(preferenceDescriptors.map(item => item.stableId)).size).toBe(121);
+		expect(preferenceDescriptors).toHaveLength(130);
+		expect(new Set(preferenceDescriptors.map(item => item.preferenceKeys[0])).size).toBe(130);
+		expect(new Set(preferenceDescriptors.map(item => item.stableId)).size).toBe(130);
 		for (const key of settingsInventoryKeys) {
 			const descriptor = preferenceDescriptors.find(item => item.preferenceKeys[0] === key);
 			expect(descriptor?.stableId, key).toBe(generatedPreferenceSearchId(key));
@@ -214,7 +240,7 @@ describe('redesigned preferences search index', () => {
 
 	test('the legacy page generator cannot make a dynamic new-surface setting disappear', () => {
 		const merged = mergeRedesignedPreferenceSearchItems([]);
-		expect(merged).toHaveLength(121);
+		expect(merged).toHaveLength(130);
 		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
 		for (const key of settingsInventoryKeys) {
 			const stableId = generatedPreferenceSearchId(key);
@@ -243,8 +269,7 @@ describe('redesigned preferences search index', () => {
 
 	test('manifest destinationと明示source mapが、旧markerではない関連fallbackの正本になる', () => {
 		const destinations = settingsDestinationCatalogItemsV2();
-		// ⚠️56件から52件へ。テーマの管理・インストールを2件、項目0件の重複だった
-		//   misskey-search と Hataskey UI切り替えを各1件落とした分。
+		// Hataskey UI S を Hataskey UI 節に追加した現在の destination は52件。
 		expect(destinations).toHaveLength(52);
 		expect(new Set(destinations.map(item => item.destinationId)).size).toBe(52);
 		for (const destination of destinations) expect(destination.label.trim(), destination.destinationId).not.toBe('');
@@ -291,7 +316,7 @@ describe('redesigned preferences search index', () => {
 		source.relatedIds = source.related.map(relation => relation.stableId);
 		source.relatedTotal = beforeTotal + 1;
 		suppressLegacyPreferenceSearchMarkers(catalog);
-		expect(markers).toHaveLength(121);
+		expect(markers).toHaveLength(130);
 		for (const descriptor of markers) {
 			expect(descriptor.searchable).toBe(false);
 			expect(descriptor.related).toEqual([]);

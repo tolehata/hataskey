@@ -6,7 +6,6 @@
 import { resolve } from 'node:path';
 import { compileScript, compileStyleAsync, compileTemplate, parse } from '@vue/compiler-sfc';
 import { describe, expect, test } from 'vitest';
-import hatacordingSource from '../pages/hatacording-ui.vue?raw';
 import hataskeyDeckSource from '../ui/_common_/hatasaba-deck.vue?raw';
 import simpleUiSource from '../ui/simple.vue?raw';
 import noteSource from './MkExternalNote.vue?raw';
@@ -54,13 +53,6 @@ describe('external timeline Hataskey UI contract', () => {
 			expect(externalTimeline).toContain(':glassBg="timelineGlassBg"');
 		}
 		expect(hataskeyDeckSource).toMatch(/tab\.type === 'ohtl' \|\| tab\.type === 'oltl'[^\n]+hataskeyUi:\s*true/u);
-		const hatacordingTimeline = hatacordingSource.match(/<MkExternalTimeline[^>]+simpleUi\/>/u)?.[0] ?? '';
-		expect(hatacordingTimeline).not.toBe('');
-		expect(hatacordingTimeline).not.toContain('hataskeyUi');
-		const directlyPlacedNote = hatacordingSource.match(/<MkExternalNote[^>]+\/>/u)?.[0] ?? '';
-		expect(directlyPlacedNote).not.toBe('');
-		expect(directlyPlacedNote).not.toContain('visualMode');
-		expect(directlyPlacedNote).not.toContain('glassBg');
 	});
 
 	test('外部ノートへvisual modeを渡し、純リノート連鎖だけを展開して引用を残す', () => {

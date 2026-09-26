@@ -19,15 +19,12 @@ type MockMeta = {
 	policies: { ltlAvailable: boolean };
 	clientOptions: { showTimelineForVisitor: boolean; showActivitiesForVisitor?: boolean };
 };
-type Panel = 'notes' | 'active' | 'members';
+type Panel = 'active' | 'members';
 type Direction = 'prev' | 'next';
 
 const instance = productionInstance as unknown as MockMeta;
 const mocks = vi.hoisted(() => ({
 	api: vi.fn<(endpoint: string, params: Record<string, unknown>, token: string | null, signal: AbortSignal) => Promise<unknown>>(),
-	notesMounted: vi.fn(),
-	notesAvailable: true,
-	notesSetters: new Set<(available: boolean) => void>(),
 	scrollTo: vi.fn<(options?: ScrollToOptions | number, y?: number) => void>(),
 }));
 
@@ -37,23 +34,6 @@ vi.mock('@/instance.js', async () => {
 	return { instance: reactive<MockMeta>({
 		policies: { ltlAvailable: true },
 		clientOptions: { showTimelineForVisitor: true, showActivitiesForVisitor: true },
-	}) };
-});
-vi.mock('./welcome.entrance.notes.vue', async () => {
-	const { defineComponent: component, h: element, onBeforeUnmount, onMounted } = await import('vue');
-	return { default: component({
-		props: { language: { type: String, required: true } },
-		emits: ['availability', 'resize'],
-		setup(props, { emit }) {
-			const setAvailable = (available: boolean) => emit('availability', available);
-			mocks.notesSetters.add(setAvailable);
-			onMounted(() => {
-				mocks.notesMounted();
-				setAvailable(mocks.notesAvailable);
-			});
-			onBeforeUnmount(() => mocks.notesSetters.delete(setAvailable));
-			return () => element('div', { 'data-notes-stub': props.language }, [element('button', { type: 'button' }, '公開された実投稿')]);
-		},
 	}) };
 });
 
@@ -137,25 +117,19 @@ function assertActivePanel(container: HTMLElement, active: Panel): void {
 	const panels = container.querySelectorAll<HTMLElement>('[data-activity-panel]');
 	assert.ok(panels.length > 0, 'active-panel checks must inspect real panels');
 	for (const panel of panels) {
-		if (panel.style.display === 'none') {
-			expect(panel.dataset.activityVisible, 'unavailable notes must not start their entrance').toBe('false');
-			continue;
-		}
 		const selected = panel.dataset.activityPanel === active;
 		expect(panel.dataset.activityVisible, panel.dataset.activityPanel).toBe(String(selected));
 		expect(panel.inert, panel.dataset.activityPanel).toBe(!selected);
 		expect(panel.getAttribute('aria-hidden'), panel.dataset.activityPanel).toBe(selected ? null : 'true');
 	}
 	const current = container.querySelector('[data-activity-current]');
-	if (Array.from(panels).filter(panel => panel.style.display !== 'none').length > 1) assert.ok(current, 'multiple panels need a current-panel label');
-	if (current) expect(current.textContent.trim()).toBe({ notes: 'サーバーの投稿', active: 'アクティブ人数', members: 'サーバー人数' }[active]);
+	if (panels.length > 1) assert.ok(current, 'multiple panels need a current-panel label');
+	if (current) expect(current.textContent.trim()).toBe({ active: 'アクティブ人数', members: 'サーバー人数' }[active]);
 }
 
 beforeEach(() => {
 	vi.clearAllMocks();
 	mocks.api.mockReset().mockImplementation(endpoint => Promise.resolve(responseFor(endpoint)));
-	mocks.notesAvailable = true;
-	mocks.notesSetters.clear();
 	observers.length = 0;
 	instance.policies.ltlAvailable = true;
 	instance.clientOptions.showTimelineForVisitor = true;
@@ -195,6 +169,15 @@ describe('ログイン前のサーバーアクティビティ取得と表示', (
 		expect(item.onResize).toHaveBeenCalled();
 	});
 
+	test('サーバーの投稿パネルは持たず、統計の2パネルだけを表示する', async () => {
+		const item = mount({ width: 1200 });
+		await flush();
+		expect(Array.from(item.container.querySelectorAll('[data-activity-panel]'), panel => panel.getAttribute('data-activity-panel'))).toEqual(['active', 'members']);
+		expect(item.container.querySelector('[data-activity-panel="notes"]')).toBeNull();
+		expect(item.container.textContent).not.toContain('サーバーの投稿');
+		expect(mocks.api.mock.calls.map(call => call[0]).sort()).toEqual(['charts/active-users', 'stats']);
+	});
+
 	test('英語では英語ラベルと小数1桁までの平均を表示する', async () => {
 		mocks.api.mockImplementation(endpoint => Promise.resolve(endpoint === 'stats' ? { originalUsersCount: 12345 } : { read: [999, 8, 4, 3, 2, 1, 0, 0] }));
 		const item = mount({ language: 'en' });
@@ -203,51 +186,34 @@ describe('ログイン前のサーバーアクティビティ取得と表示', (
 		expect(item.container.querySelector('[data-activity-average]')?.textContent).toBe('2.6');
 		expect(item.container.querySelector('[data-activity-yesterday]')?.textContent).toBe('8');
 		expect(item.container.textContent).toContain('Last 7 complete days · UTC');
-		expect(item.container.querySelector('[data-activity-current]')?.textContent.trim()).toBe('Server notes');
+		expect(item.container.querySelector('[data-activity-current]')?.textContent.trim()).toBe('Active users');
 		expect(arrowButton(item.container, 'prev').getAttribute('aria-label')).toBe('Previous panel');
 		expect(arrowButton(item.container, 'next').getAttribute('aria-label')).toBe('Next panel');
-		arrowButton(item.container, 'prev').click();
+		arrowButton(item.container, 'next').click();
 		await flush();
-		expect(item.container.querySelector('[data-activity-current]')?.textContent.trim()).toBe('Active users');
-		expect(item.container.querySelector('[data-notes-stub]')?.getAttribute('data-notes-stub')).toBe('en');
+		expect(item.container.querySelector('[data-activity-current]')?.textContent.trim()).toBe('Members');
 	});
 
-	test('統計の表示許可がfalseなら二つの統計APIを呼ばず、許可された投稿だけを表示する', async () => {
+	test('統計の表示許可がfalseなら二つの統計APIを呼ばず、表示領域もナビゲーションも出さない', async () => {
 		instance.clientOptions.showActivitiesForVisitor = false;
 		const item = mount();
 		await flush();
 		expect(mocks.api).not.toHaveBeenCalled();
-		expect(mocks.notesMounted).toHaveBeenCalledOnce();
-		expect(item.container.querySelector('[data-activity-panel="notes"]')).not.toBeNull();
-		expect(item.container.querySelector('[data-activity-panel="active"]')).toBeNull();
-		expect(item.container.querySelector('[data-activity-panel="members"]')).toBeNull();
+		expect(item.container.querySelector('[data-activity-panel]')).toBeNull();
+		expect(item.container.querySelector<HTMLElement>('[data-welcome-activity]')?.style.display).toBe('none');
 		expect(item.container.querySelector('[data-activity-prev]')).toBeNull();
 		expect(item.container.querySelector('[data-activity-next]')).toBeNull();
 	});
 
-	test.each([[false, true], [true, false], [false, false]])('LTL=%s / 投稿表示=%s は統計の表示許可と独立している', async (ltl, showTimeline) => {
+	test.each([[false, true], [true, false], [false, false]])('LTL=%s / 投稿表示=%s でも統計は表示許可だけに従う', async (ltl, showTimeline) => {
 		instance.policies.ltlAvailable = ltl;
 		instance.clientOptions.showTimelineForVisitor = showTimeline;
 		const item = mount();
 		await flush();
-		expect(mocks.notesMounted).not.toHaveBeenCalled();
-		expect(item.container.querySelector('[data-activity-panel="notes"]')).toBeNull();
 		expect(mocks.api).toHaveBeenCalledTimes(2);
 		expect(item.container.querySelector('[data-activity-average]')?.textContent).toBe('4');
 		expect(item.container.querySelector('[data-activity-members]')?.textContent).toBe('42');
 		assertActivePanel(item.container, 'active');
-	});
-
-	test('投稿と統計の両方が非公開なら表示領域もナビゲーションも出さない', async () => {
-		instance.clientOptions.showActivitiesForVisitor = false;
-		instance.clientOptions.showTimelineForVisitor = false;
-		const item = mount();
-		await flush();
-		expect(mocks.api).not.toHaveBeenCalled();
-		expect(mocks.notesMounted).not.toHaveBeenCalled();
-		expect(item.container.querySelector<HTMLElement>('[data-welcome-activity]')?.style.display).toBe('none');
-		expect(item.container.querySelector('[data-activity-prev]')).toBeNull();
-		expect(item.container.querySelector('[data-activity-next]')).toBeNull();
 	});
 
 	test.each([
@@ -266,7 +232,9 @@ describe('ログイン前のサーバーアクティビティ取得と表示', (
 		expect(item.container.querySelector(`[data-activity-panel="${missing}"]`)).toBeNull();
 		expect(item.container.querySelector(`[data-activity-panel="${surviving}"]`)).not.toBeNull();
 		expect(item.container.querySelector(surviving === 'active' ? '[data-activity-average]' : '[data-activity-members]')?.textContent).toBe(surviving === 'active' ? '4' : '42');
-		expect(item.container.querySelector('[data-activity-panel="notes"]')).not.toBeNull();
+		// A single remaining panel needs no pager.
+		expect(item.container.querySelector('[data-activity-prev]')).toBeNull();
+		assertActivePanel(item.container, surviving);
 	});
 
 	test('正常な0人は取得失敗と区別して表示する', async () => {
@@ -280,23 +248,14 @@ describe('ログイン前のサーバーアクティビティ取得と表示', (
 });
 
 describe('ログイン前のモバイルパネル操作', () => {
-	test('モバイルはアクティブ・投稿・サーバー人数の順で投稿を中央に初期表示し、未選択パネルを操作と読み上げから除外する', async () => {
+	test('モバイルはアクティブ人数・サーバー人数の順でアクティブ人数を初期表示し、未選択パネルを操作と読み上げから除外する', async () => {
 		const item = mount();
 		await flush();
 		expect(item.track.dataset.mobile).toBe('true');
-		// DOM order remains the desktop order. Mobile visual/state order is
-		// exercised through the left/center/right scroll offsets below.
-		expect(Array.from(item.container.querySelectorAll('[data-activity-panel]'), panel => panel.getAttribute('data-activity-panel'))).toEqual(['notes', 'active', 'members']);
+		expect(Array.from(item.container.querySelectorAll('[data-activity-panel]'), panel => panel.getAttribute('data-activity-panel'))).toEqual(['active', 'members']);
 		expect(item.container.querySelector('[data-panel-button]')).toBeNull();
-		expect(item.track.scrollLeft).toBe(320);
-		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: 'auto' });
-		assertActivePanel(item.container, 'notes');
-		expect(arrowButton(item.container, 'prev').disabled).toBe(false);
-		expect(arrowButton(item.container, 'next').disabled).toBe(false);
-		mocks.scrollTo.mockClear();
-		arrowButton(item.container, 'prev').click();
-		await flush();
-		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'smooth' });
+		expect(item.track.scrollLeft).toBe(0);
+		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'auto' });
 		assertActivePanel(item.container, 'active');
 		expect(arrowButton(item.container, 'prev').disabled).toBe(true);
 		expect(arrowButton(item.container, 'next').disabled).toBe(false);
@@ -307,12 +266,8 @@ describe('ログイン前のモバイルパネル操作', () => {
 		assertActivePanel(item.container, 'active');
 		arrowButton(item.container, 'next').click();
 		await flush();
-		assertActivePanel(item.container, 'notes');
+		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: 'smooth' });
 		expect(item.track.scrollLeft).toBe(320);
-		arrowButton(item.container, 'next').click();
-		await flush();
-		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 640, behavior: 'smooth' });
-		expect(item.track.scrollLeft).toBe(640);
 		assertActivePanel(item.container, 'members');
 		expect(arrowButton(item.container, 'prev').disabled).toBe(false);
 		expect(arrowButton(item.container, 'next').disabled).toBe(true);
@@ -321,29 +276,49 @@ describe('ログイン前のモバイルパネル操作', () => {
 		await flush();
 		expect(mocks.scrollTo).not.toHaveBeenCalled();
 		assertActivePanel(item.container, 'members');
+		arrowButton(item.container, 'prev').click();
+		await flush();
+		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'smooth' });
+		assertActivePanel(item.container, 'active');
 	});
 
 	test.each([
-		['prev', 'ArrowLeft', 'active', 0],
-		['prev', 'ArrowRight', 'members', 640],
-		['prev', 'Home', 'active', 0],
-		['prev', 'End', 'members', 640],
-		['next', 'ArrowLeft', 'active', 0],
-		['next', 'ArrowRight', 'members', 640],
-		['next', 'Home', 'active', 0],
-		['next', 'End', 'members', 640],
-	] as const)('%sボタンで%sを押すと%sへ移動し、有効なボタンのフォーカスを保つ', async (direction, key, to, left) => {
+		['prev', 'ArrowRight'],
+		['prev', 'End'],
+		['next', 'ArrowRight'],
+		['next', 'End'],
+	] as const)('%sボタンで%sを押すとサーバー人数へ移動する', async (direction, key) => {
 		const item = mount();
 		await flush();
+		const button = arrowButton(item.container, direction);
+		const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+		button.dispatchEvent(event);
+		await flush();
+		expect(event.defaultPrevented).toBe(true);
+		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: 'smooth' });
+		assertActivePanel(item.container, 'members');
+	});
+
+	test.each([
+		['prev', 'ArrowLeft'],
+		['prev', 'Home'],
+		['next', 'ArrowLeft'],
+		['next', 'Home'],
+	] as const)('%sボタンで%sを押すとアクティブ人数へ戻り、有効なボタンのフォーカスを保つ', async (direction, key) => {
+		const item = mount();
+		await flush();
+		arrowButton(item.container, 'next').click();
+		await flush();
+		assertActivePanel(item.container, 'members');
 		const button = arrowButton(item.container, direction);
 		button.focus();
 		const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
 		button.dispatchEvent(event);
 		await flush();
 		expect(event.defaultPrevented).toBe(true);
-		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left, behavior: 'smooth' });
+		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'smooth' });
 		if (!button.disabled) expect(window.document.activeElement).toBe(button);
-		assertActivePanel(item.container, to);
+		assertActivePanel(item.container, 'active');
 	});
 
 	test('日本語の矢印名と現在項目を読み上げ、位置のドットは装飾として扱う', async () => {
@@ -357,12 +332,12 @@ describe('ログイン前のモバイルパネル操作', () => {
 		expect(current.getAttribute('aria-live')).toBe('polite');
 		expect(current.getAttribute('aria-atomic')).toBe('true');
 		const dots = item.container.querySelectorAll<HTMLElement>('[data-active]');
-		expect(dots).toHaveLength(3);
+		expect(dots).toHaveLength(2);
 		for (const dot of dots) expect(dot.closest('[aria-hidden="true"]')).not.toBeNull();
-		expect(Array.from(dots, dot => dot.dataset.active)).toEqual(['false', 'true', 'false']);
-		arrowButton(item.container, 'prev').click();
+		expect(Array.from(dots, dot => dot.dataset.active)).toEqual(['true', 'false']);
+		arrowButton(item.container, 'next').click();
 		await flush();
-		expect(Array.from(dots, dot => dot.dataset.active)).toEqual(['true', 'false', 'false']);
+		expect(Array.from(dots, dot => dot.dataset.active)).toEqual(['false', 'true']);
 	});
 
 	test('矢印を続けて操作しても途中のscrollイベントで目標パネルを巻き戻さず、直接スワイプで中断できる', async () => {
@@ -375,24 +350,18 @@ describe('ログイン前のモバイルパネル操作', () => {
 		});
 		arrowButton(item.container, 'next').click();
 		await flush();
-		item.track.scrollLeft = 450;
+		item.track.scrollLeft = 100;
 		item.track.dispatchEvent(new Event('scroll'));
 		await flush();
 		assertActivePanel(item.container, 'members');
 		arrowButton(item.container, 'prev').click();
 		await flush();
-		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: 'smooth' });
-		item.track.scrollLeft = 500;
+		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'smooth' });
+		item.track.scrollLeft = 220;
 		item.track.dispatchEvent(new Event('scroll'));
 		await flush();
-		assertActivePanel(item.container, 'notes');
-		item.track.scrollLeft = 320;
-		item.track.dispatchEvent(new Event('scroll'));
-		await flush();
-		assertActivePanel(item.container, 'notes');
-		arrowButton(item.container, 'prev').click();
-		await flush();
-		item.track.scrollLeft = 150;
+		assertActivePanel(item.container, 'active');
+		item.track.scrollLeft = 0;
 		item.track.dispatchEvent(new Event('scroll'));
 		await flush();
 		assertActivePanel(item.container, 'active');
@@ -400,13 +369,11 @@ describe('ログイン前のモバイルパネル操作', () => {
 		item.track.scrollLeft = 320;
 		item.track.dispatchEvent(new Event('scroll'));
 		await flush();
-		assertActivePanel(item.container, 'notes');
+		assertActivePanel(item.container, 'members');
 	});
 
 	test('端からのキーボード操作も循環せず、対象外のキーは妨げない', async () => {
 		const item = mount();
-		await flush();
-		arrowButton(item.container, 'prev').click();
 		await flush();
 		arrowButton(item.container, 'next').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
 		await flush();
@@ -417,7 +384,7 @@ describe('ログイン前のモバイルパネル操作', () => {
 		arrowButton(item.container, 'prev').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
 		await flush();
 		assertActivePanel(item.container, 'members');
-		expect(item.track.scrollLeft).toBe(640);
+		expect(item.track.scrollLeft).toBe(320);
 		mocks.scrollTo.mockClear();
 		const unrelated = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true });
 		arrowButton(item.container, 'prev').dispatchEvent(unrelated);
@@ -429,7 +396,7 @@ describe('ログイン前のモバイルパネル操作', () => {
 	test('scrollLeftを一枚の幅で丸め、範囲外のスクロールは先頭か末尾へ収める', async () => {
 		const item = mount();
 		await flush();
-		for (const [left, panel] of [[-100, 'active'], [0, 'active'], [159, 'active'], [160, 'notes'], [319, 'notes'], [480, 'members'], [99999, 'members']] as const) {
+		for (const [left, panel] of [[-100, 'active'], [0, 'active'], [159, 'active'], [160, 'members'], [319, 'members'], [99999, 'members']] as const) {
 			item.track.scrollLeft = left;
 			item.track.dispatchEvent(new Event('scroll'));
 			await flush();
@@ -444,10 +411,10 @@ describe('ログイン前のモバイルパネル操作', () => {
 		}));
 		const item = mount();
 		await flush();
-		arrowButton(item.container, 'prev').click();
+		arrowButton(item.container, 'next').click();
 		await flush();
-		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'auto' });
-		assertActivePanel(item.container, 'active');
+		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: 'auto' });
+		assertActivePanel(item.container, 'members');
 	});
 
 	test('PCでは全パネルを操作可能にし、モバイルから広げた場合もinertを外す', async () => {
@@ -461,8 +428,8 @@ describe('ログイン前のモバイルパネル操作', () => {
 		expect(item.track.dataset.mobile).toBe('false');
 		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'auto' });
 		const panels = item.container.querySelectorAll<HTMLElement>('[data-activity-panel]');
-		expect(panels).toHaveLength(3);
-		expect(Array.from(panels, panel => panel.dataset.activityPanel)).toEqual(['notes', 'active', 'members']);
+		expect(panels).toHaveLength(2);
+		expect(Array.from(panels, panel => panel.dataset.activityPanel)).toEqual(['active', 'members']);
 		for (const panel of panels) {
 			expect(panel.dataset.activityVisible).toBe('true');
 			expect(panel.inert).toBe(false);
@@ -471,116 +438,71 @@ describe('ログイン前のモバイルパネル操作', () => {
 		item.resize(400);
 		await flush();
 		assertActivePanel(item.container, 'members');
-		expect(item.track.scrollLeft).toBe(640);
+		expect(item.track.scrollLeft).toBe(320);
 	});
 
-	test('PCからモバイルへ狭めたときも未操作なら中央の投稿を初期表示する', async () => {
+	test('PCからモバイルへ狭めたときも未操作なら先頭のアクティブ人数を表示する', async () => {
 		const item = mount({ width: 1200 });
 		await flush();
 		expect(item.track.dataset.mobile).toBe('false');
 		expect(item.track.scrollLeft).toBe(0);
 		item.resize(400);
 		await flush();
-		assertActivePanel(item.container, 'notes');
-		expect(item.track.scrollLeft).toBe(320);
+		assertActivePanel(item.container, 'active');
+		expect(item.track.scrollLeft).toBe(0);
 	});
 
-	test('後着の統計が投稿より左に追加されても、デフォルトの投稿を維持する', async () => {
+	test('サーバー人数が先に届いても、未操作なら後着のアクティブ人数を先頭に表示する', async () => {
 		const stats = deferred<unknown>();
 		const activity = deferred<unknown>();
 		mocks.api.mockImplementation(endpoint => endpoint === 'stats' ? stats.promise : activity.promise);
 		const item = mount();
 		await flush();
-		assertActivePanel(item.container, 'notes');
+		expect(item.container.querySelector('[data-activity-panel]')).toBeNull();
+		stats.resolve(statsFixture());
+		await flush();
+		assertActivePanel(item.container, 'members');
 		expect(item.track.scrollLeft).toBe(0);
 		activity.resolve(activityFixture());
 		await flush();
-		assertActivePanel(item.container, 'notes');
-		expect(item.track.scrollLeft).toBe(320);
-		stats.resolve(statsFixture());
-		await flush();
-		assertActivePanel(item.container, 'notes');
-		expect(item.track.scrollLeft).toBe(320);
-	});
-
-	test('投稿未取得では統計から始め、未操作なら後着の投稿を中央に表示する', async () => {
-		mocks.notesAvailable = false;
-		const item = mount();
-		await flush();
-		expect(item.container.querySelector<HTMLElement>('[data-activity-panel="notes"]')?.style.display).toBe('none');
 		assertActivePanel(item.container, 'active');
 		expect(item.track.scrollLeft).toBe(0);
-		for (const setAvailable of mocks.notesSetters) setAvailable(true);
-		await flush();
-		assertActivePanel(item.container, 'notes');
-		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: 'auto' });
-		for (const setAvailable of mocks.notesSetters) setAvailable(false);
-		await flush();
-		assertActivePanel(item.container, 'active');
-		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'auto' });
 	});
 
-	test.each([
-		['button', 'members', 640],
-		['pointer', 'members', 640],
-		['button', 'active', 0],
-		['pointer', 'active', 0],
-	] as const)('%sで選んだ%sを後着の投稿へ勝手に切り替えない', async (interaction, panel, left) => {
-		mocks.notesAvailable = false;
+	test('操作で選んだサーバー人数を、後着のアクティブ人数で勝手に切り替えない', async () => {
+		const stats = deferred<unknown>();
+		const activity = deferred<unknown>();
+		mocks.api.mockImplementation(endpoint => endpoint === 'stats' ? stats.promise : activity.promise);
 		const item = mount();
 		await flush();
-		if (interaction === 'button') {
-			arrowButton(item.container, 'next').click();
-			await flush();
-			if (panel === 'active') arrowButton(item.container, 'prev').click();
-		} else {
-			item.track.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-			item.track.scrollLeft = panel === 'active' ? 0 : 320;
-			item.track.dispatchEvent(new Event('scroll'));
-		}
+		stats.resolve(statsFixture());
 		await flush();
-		assertActivePanel(item.container, panel);
-		for (const setAvailable of mocks.notesSetters) setAvailable(true);
+		assertActivePanel(item.container, 'members');
+		item.track.dispatchEvent(new Event('pointerdown', { bubbles: true }));
 		await flush();
-		assertActivePanel(item.container, panel);
-		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left, behavior: 'auto' });
+		activity.resolve(activityFixture());
+		await flush();
+		// Without the interaction, the new first panel would take over.
+		assertActivePanel(item.container, 'members');
+		expect(mocks.scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: 'auto' });
+		expect(item.track.scrollLeft).toBe(320);
 	});
 });
 
 describe('サーバー情報の登場状態', () => {
-	test('PCでも未取得の投稿は登場させず、後着の実データだけを表示する', async () => {
-		mocks.notesAvailable = false;
-		const item = mount({ width: 1200 });
-		await flush();
-		const notes = item.container.querySelector<HTMLElement>('[data-activity-panel="notes"]');
-		assert.ok(notes, 'the notes component must remain mounted while it loads');
-		expect(notes.dataset.activityVisible).toBe('false');
-		for (const name of ['active', 'members']) expect(item.container.querySelector<HTMLElement>(`[data-activity-panel="${name}"]`)?.dataset.activityVisible).toBe('true');
-		for (const setAvailable of mocks.notesSetters) setAvailable(true);
-		await flush();
-		expect(notes.dataset.activityVisible).toBe('true');
-		for (const setAvailable of mocks.notesSetters) setAvailable(false);
-		await flush();
-		expect(notes.dataset.activityVisible).toBe('false');
-		expect(mocks.notesMounted).toHaveBeenCalledOnce();
-	});
-
-	test('後着の統計と繰り返しの切り替えでも投稿を再マウントせず、選択パネルだけ登場させる', async () => {
+	test('後着の統計と繰り返しの切り替えでも、選択パネルだけ登場させる', async () => {
 		const stats = deferred<unknown>();
 		const activity = deferred<unknown>();
 		mocks.api.mockImplementation(endpoint => endpoint === 'stats' ? stats.promise : activity.promise);
 		const item = mount();
 		await flush();
-		const notes = item.container.querySelector('[data-notes-stub]');
-		assert.ok(notes, 'the notes content must exist before statistics arrive');
-		assertActivePanel(item.container, 'notes');
+		activity.resolve(activityFixture());
+		await flush();
+		assertActivePanel(item.container, 'active');
 		stats.resolve(statsFixture());
 		await flush();
-		assertActivePanel(item.container, 'notes');
+		assertActivePanel(item.container, 'active');
 		arrowButton(item.container, 'next').click();
-		await flush();
-		assertActivePanel(item.container, 'members');
-		activity.resolve(activityFixture());
 		await flush();
 		assertActivePanel(item.container, 'members');
 		item.track.dispatchEvent(new Event('pointerdown', { bubbles: true }));
@@ -590,12 +512,11 @@ describe('サーバー情報の登場状態', () => {
 		assertActivePanel(item.container, 'active');
 		arrowButton(item.container, 'next').click();
 		await flush();
-		assertActivePanel(item.container, 'notes');
-		expect(item.container.querySelector('[data-notes-stub]')).toBe(notes);
-		expect(mocks.notesMounted).toHaveBeenCalledOnce();
+		assertActivePanel(item.container, 'members');
 		expect(mocks.api).toHaveBeenCalledTimes(2);
 	});
 });
+
 
 // These contracts inspect compiled stylesheet declarations. They do not claim
 // that Happy DOM renders CSS motion or measures native scroll-snap geometry.
@@ -650,11 +571,11 @@ function assertStationarySnapBoxes(styles: Root): void {
 
 function assertInterruptibleMotion(styles: Root): void {
 	const reduced = { name: 'media', params: '(prefers-reduced-motion: reduce)' };
-	for (const selector of ['.panel[data-activity-visible=true]', '.panel[data-activity-visible=true] > *', '.panel[data-activity-visible=true] .heading > i', '.root .notes[data-activity-visible=true] :global(.hero-server-notes)']) {
+	for (const selector of ['.panel[data-activity-visible=true]', '.panel[data-activity-visible=true] > *', '.panel[data-activity-visible=true] .heading > i']) {
 		assert.equal(declaration(styles, selector, 'animation', reduced), 'none', `${selector} must honor reduced motion`);
 	}
 	for (const state of ['focus-within', 'active']) {
-		for (const selector of [`.panel:${state}`, `.panel:${state} > *`, `.panel:${state} .heading > i`, `.root .notes:${state} :global(.hero-server-notes)`]) {
+		for (const selector of [`.panel:${state}`, `.panel:${state} > *`, `.panel:${state} .heading > i`]) {
 			assert.equal(declaration(styles, selector, 'animation'), 'none', `${selector} must immediately reveal an interacted control`);
 		}
 	}
@@ -704,7 +625,7 @@ describe('サーバー情報の登場CSS契約', () => {
 });
 
 describe('ログイン前アクティビティのライフサイクル', () => {
-	test('公開許可が取り消されたら取得済み統計を消し、投稿は維持する', async () => {
+	test('公開許可が取り消されたら取得済み統計を消し、表示領域を隠す', async () => {
 		const item = mount();
 		await flush();
 		expect(item.container.querySelector('[data-activity-members]')?.textContent).toBe('42');
@@ -715,7 +636,7 @@ describe('ログイン前アクティビティのライフサイクル', () => {
 		expect(mocks.api).toHaveBeenCalledTimes(2);
 		expect(item.container.querySelector('[data-activity-panel="active"]')).toBeNull();
 		expect(item.container.querySelector('[data-activity-panel="members"]')).toBeNull();
-		expect(item.container.querySelector('[data-notes-stub]')).not.toBeNull();
+		expect(item.container.querySelector<HTMLElement>('[data-welcome-activity]')?.style.display).toBe('none');
 	});
 
 	test('権限取消しで中断し、再許可後の新しい統計を古い応答で上書きしない', async () => {

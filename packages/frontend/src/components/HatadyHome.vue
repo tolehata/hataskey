@@ -5,15 +5,15 @@
 		<div>
 			<small>{{ dateLabel }}</small>
 			<h1>
-				{{ summary.mode === 'new' ? '今日のひとつから、' : '今日も、' }}
+				{{ summary.mode === 'new' ? dashboardCopy.newGreetingFirst : dashboardCopy.returnGreetingFirst }}
 				<br/>
-				{{ summary.mode === 'new' ? 'はじめよう。' : '自分のペースで。' }}
+				{{ summary.mode === 'new' ? dashboardCopy.newGreetingSecond : dashboardCopy.returnGreetingSecond }}
 			</h1>
 		</div>
 		<div :class="$style.greetingActions">
 			<button
 				class="hy-secondary"
-				:aria-label="`${focusLabel || 'いろいろな日々'}の記録を見る`"
+				:aria-label="i18n.tsx._hata._hatady._homeDashboard.viewFocusRecords({ focus: focusLabel || dashboardCopy.mixedDays })"
 				@click="overviewOpen = true"
 			>
 				<i :class="focusIcon" aria-hidden="true"></i>
@@ -23,7 +23,7 @@
 	</header>
 	<div v-if="error" class="hy-error" role="alert">
 		{{ error }}
-		<button class="hy-secondary" @click="load">再読み込み</button>
+		<button class="hy-secondary" @click="load">{{ dashboardCopy.reload }}</button>
 	</div>
 	<p v-if="loading && !loaded" class="hy-empty" role="status">{{ copy.loading }}</p>
 	<div v-else-if="loaded" :class="$style.bento">
@@ -39,7 +39,7 @@
 				<button
 					v-if="recommendations.length > 1 && !contextHero"
 					class="hy-icon-button"
-					aria-label="次のおすすめ"
+					:aria-label="dashboardCopy.nextRecommendation"
 					@click="nextRecommendation"
 				>
 					<i class="ti ti-refresh" aria-hidden="true"></i>
@@ -52,7 +52,7 @@
 					<p>{{ contextHero.body }}</p>
 					<span :class="$style.recommendFoot">
 						<i class="ti ti-notebook" aria-hidden="true"></i>
-						記録をひらく
+						{{ dashboardCopy.openRecord }}
 						<i class="ti ti-arrow-right" aria-hidden="true"></i>
 					</span>
 				</span>
@@ -75,7 +75,7 @@
 						<h3>{{ recommendation.work.title }}</h3>
 						<p>{{ recommendation.work.description }}</p>
 						<span :class="$style.recommendFoot">
-							{{ recommendation.work.mine ? '自分の作品をひらく' : '公開コレクションをひらく' }}
+							{{ recommendation.work.mine ? dashboardCopy.openOwnWork : dashboardCopy.openPublicCollection }}
 							<i class="ti ti-arrow-right" aria-hidden="true"></i>
 						</span>
 					</span>
@@ -97,15 +97,15 @@
 					/>
 				</button>
 			</Transition>
-			<p v-if="!recommendation && !contextHero" class="hy-empty">気になる作品が見つかったら、ここに。</p>
+			<p v-if="!recommendation && !contextHero" class="hy-empty">{{ dashboardCopy.recommendationEmpty }}</p>
 		</section>
 		<section :class="$style.metrics" data-hy-entrance="home">
 			<header :class="$style.head">
 				<h2>
 					<i :class="focusIcon" aria-hidden="true"></i>
-					最近30日
+					{{ dashboardCopy.recentThirtyDays }}
 				</h2>
-				<button class="hy-icon-button" aria-label="詳しい統計を見る" @click="emit('stats')">
+				<button class="hy-icon-button" :aria-label="dashboardCopy.viewStats" @click="emit('stats')">
 					<i class="ti ti-arrow-up-right" aria-hidden="true"></i>
 				</button>
 			</header>
@@ -114,17 +114,17 @@
 				<small>
 					{{
 						summary.primary === 'movie' || summary.primary === 'game'
-							? `作品 · ${metricRows.length}記録`
-							: `記録 · ${metricDays}日`
+							? i18n.tsx._hata._hatady._homeDashboard.workRecordCount({ count: String(metricRows.length) })
+							: i18n.tsx._hata._hatady._homeDashboard.recordDays({ days: String(metricDays) })
 					}}
 				</small>
 			</div>
 			<div
 				:class="$style.bars"
 				role="img"
-				:aria-label="`直近7日の記録数：${bars.map((bar) => `${bar.date} ${bar.count}件`).join('、')}`"
+				:aria-label="i18n.tsx._hata._hatady._homeDashboard.lastSevenRecordCount({ records: barRecordDescription })"
 			>
-				<small>直近7日</small>
+				<small>{{ dashboardCopy.lastSevenDays }}</small>
 				<div v-for="bar in bars" :key="bar.date" :data-today="bar.today">
 					<i :style="{ height: `${Math.max(4, (bar.count / maxBar) * 80)}%` }"></i>
 					<small>{{ bar.label }}</small>
@@ -134,11 +134,11 @@
 				<i class="ti ti-clock" aria-hidden="true"></i>
 				{{
 					summary.primary === 'work'
-						? `${workItems.filter((item) => !item.done).length}件 継続中`
+						? i18n.tsx._hata._hatady._homeDashboard.inProgressCount({ count: String(workItems.filter((item) => !item.done).length) })
 						: metricSeconds === null
 							? metricRows.length
-								? '時間の入力なし'
-								: 'まずはひとつから'
+								? dashboardCopy.noTime
+								: dashboardCopy.startWithOne
 							: hatadyDuration(metricSeconds)
 				}}
 			</small>
@@ -147,18 +147,18 @@
 			<header :class="$style.head">
 				<h2>
 					<i class="ti ti-users" aria-hidden="true"></i>
-					みんなの一歩
+					{{ dashboardCopy.communityTitle }}
 				</h2>
 			</header>
 			<div :class="$style.total">
 				<strong>{{ communityUsers.length }}</strong>
-				<small>人が今日記録</small>
+				<small>{{ communityUsers.length === 1 ? dashboardCopy.personRecordedToday : dashboardCopy.peopleRecordedToday }}</small>
 			</div>
 			<div :class="$style.avatars">
 				<button
 					v-for="user in communityUsers.slice(0, 6)"
 					:key="user.id"
-					:aria-label="`${user.name || user.username}のプロフィール`"
+					:aria-label="i18n.tsx._hata._hatady._homeDashboard.userProfile({ name: user.name || user.username })"
 					@click="emit('profile', user.id)"
 				>
 					<HfAvatar v-if="preview" :user="user" :class="$style.avatar"/>
@@ -166,12 +166,12 @@
 				</button>
 			</div>
 			<p>
-				それぞれのペースで。
+				{{ dashboardCopy.communityFirst }}
 				<br/>
-				今日も記録が届いているよ。
+				{{ dashboardCopy.communitySecond }}
 			</p>
 			<button :class="$style.link" @click="emit('community')">
-				近況をのぞく
+				{{ dashboardCopy.browseCommunity }}
 				<i class="ti ti-arrow-right" aria-hidden="true"></i>
 			</button>
 		</section>
@@ -183,7 +183,7 @@
 				</h2>
 				<button
 					class="hy-icon-button"
-					aria-label="自分の記録をすべて見る"
+					:aria-label="dashboardCopy.viewAllOwnRecords"
 					@click="emit('records', focusKind || 'all')"
 				>
 					<i class="ti ti-arrow-up-right" aria-hidden="true"></i>
@@ -206,7 +206,7 @@
 					<small>{{ activityData(row).seconds === null ? '' : hatadyDuration(activityData(row).seconds) }}</small>
 				</button>
 				<p v-if="!recentRows.length" class="hy-empty">
-					{{ summary.mode === 'quiet' ? '最近30日の記録はありません' : copy.emptyLog }}
+					{{ summary.mode === 'quiet' ? dashboardCopy.noRecentThirty : copy.emptyLog }}
 				</p>
 			</div>
 		</section>
@@ -214,12 +214,12 @@
 			<header :class="$style.head">
 				<h2>
 					<i :class="focusIcon" aria-hidden="true"></i>
-					{{ focusKind === 'work' ? '作業の状況' : focusKind === 'exercise' ? '運動の種類' : 'コレクション' }}
+					{{ focusKind === 'work' ? dashboardCopy.workStatus : focusKind === 'exercise' ? dashboardCopy.exerciseTypes : dashboardCopy.collection }}
 				</h2>
 				<button
 					v-if="shelfOverflow && motion && focusKind !== 'exercise' && focusKind !== 'work'"
 					class="hy-icon-button"
-					:aria-label="shelfPaused ? '自動スクロールを再開' : '自動スクロールを一時停止'"
+					:aria-label="shelfPaused ? dashboardCopy.resumeScroll : dashboardCopy.pauseScroll"
 					:aria-pressed="shelfPaused"
 					@click="shelfPaused = !shelfPaused"
 				>
@@ -228,7 +228,7 @@
 				<button
 					v-else
 					class="hy-icon-button"
-					aria-label="すべて見る"
+					:aria-label="dashboardCopy.viewAll"
 					@click="
 						focusKind === 'exercise'
 							? emit('records', 'exercise')
@@ -248,14 +248,12 @@
 					>
 						<span>
 							<strong>{{ group.name }}</strong>
-							<small>{{ group.count }}回 · {{ hatadyDuration(group.seconds) }}</small>
+							<small>{{ i18n.tsx._hata._hatady._homeDashboard.timesDuration({ count: String(group.count), duration: hatadyDuration(group.seconds) }) }}</small>
 						</span>
 					</button>
 				</div>
 				<small>
-					{{ calories.count ? `入力済み ${calories.total} kcal` : 'カロリー未入力' }} · {{ calories.count }}/{{
-						exerciseRows.length
-					}}記録
+					{{ calories.count ? i18n.tsx._hata._hatady._homeDashboard.caloriesEntered({ calories: String(calories.total) }) : dashboardCopy.caloriesMissing }} · {{ i18n.tsx._hata._hatady._homeDashboard.exerciseRecordCount({ done: String(calories.count), total: String(exerciseRows.length) }) }}
 				</small>
 			</template>
 			<template v-else-if="focusKind === 'work'">
@@ -277,8 +275,7 @@
 					</button>
 				</div>
 				<small>
-					{{ workItems.filter((item) => !item.done).length }}件 継続中 ·
-					{{ workItems.filter((item) => item.done).length }}件 全体の完了
+					{{ i18n.tsx._hata._hatady._homeDashboard.workProgressSummary({ active: String(workItems.filter((item) => !item.done).length), done: String(workItems.filter((item) => item.done).length) }) }}
 				</small>
 			</template>
 			<template v-else>
@@ -294,15 +291,15 @@
 						/>
 						<HyMediaCover v-else :kind="work.kind" :title="work.title" :colorIndex="work.colorIndex" :width="66"/>
 					</button>
-					<p v-if="!shelf.length" class="hy-empty">好きな作品を、少しずつ。</p>
+					<p v-if="!shelf.length" class="hy-empty">{{ dashboardCopy.shelfEmpty }}</p>
 				</div>
 				<button
 					:class="$style.shelfCaption"
 					@click="emit('collection', focusKind === 'study' ? 'book' : focusKind || 'book')"
 				>
-					<span>{{ shelf.length }}作品</span>
+					<span>{{ i18n.tsx._hata._hatady._homeDashboard.worksCount({ count: String(shelf.length) }) }}</span>
 					<span>
-						自分のコレクション
+						{{ dashboardCopy.ownCollection }}
 						<i class="ti ti-arrow-right" aria-hidden="true"></i>
 					</span>
 				</button>
@@ -312,11 +309,11 @@
 			<div>
 				<h2>
 					<i class="ti ti-target" aria-hidden="true"></i>
-					{{ focusLabel ? `${focusLabel}の積み重ね` : '自分のペースで' }}
+					{{ focusLabel ? i18n.tsx._hata._hatady._homeDashboard.focusProgress({ focus: focusLabel }) : dashboardCopy.ownPace }}
 				</h2>
-				<strong>活動の変化を振り返る</strong>
+				<strong>{{ dashboardCopy.reviewChanges }}</strong>
 				<small>
-					{{ stats?.streakDays ? `${stats.streakDays}日、記録が続いているよ` : '短い記録も、今日のひとつに。' }}
+					{{ stats?.streakDays ? i18n.tsx._hata._hatady._homeDashboard.streakDays({ count: String(stats.streakDays) }) : dashboardCopy.shortRecord }}
 				</small>
 			</div>
 			<div :class="$style.tools">
@@ -332,21 +329,21 @@
 			</div>
 		</section>
 	</div>
-	<HyDialog v-if="overviewOpen && !preview" title="ホームの傾向" @close="overviewOpen = false" @closed="overviewOpen = false">
+	<HyDialog v-if="overviewOpen && !preview" :title="dashboardCopy.overviewTitle" @close="overviewOpen = false" @closed="overviewOpen = false">
 		<div :class="$style.overview">
 			<h3>
 				{{
 					summary.emerging
-						? `最近は${kindLabel(summary.emerging)}`
+						? i18n.tsx._hata._hatady._homeDashboard.emergingKind({ kind: kindLabel(summary.emerging) })
 						: summary.primary
-							? `${kindLabel(summary.primary)}中心`
-							: 'いろいろな日々'
+							? i18n.tsx._hata._hatady._homeDashboard.primaryKind({ kind: kindLabel(summary.primary) })
+							: dashboardCopy.mixedDays
 				}}
 			</h3>
 			<div>
-				<span>自分の記録</span>
-				<span>30日</span>
-				<span>7日</span>
+				<span>{{ dashboardCopy.ownRecords }}</span>
+				<span>{{ dashboardCopy.thirtyDays }}</span>
+				<span>{{ dashboardCopy.sevenDays }}</span>
 			</div>
 			<button
 				v-for="item in summary.ranked"
@@ -411,6 +408,7 @@ const emit = defineEmits<{
 	(event: 'stats' | 'goals' | 'streaks' | 'community' | 'ready'): void;
 }>();
 const copy = i18n.ts._hata._hatady._home;
+const dashboardCopy = i18n.ts._hata._hatady._homeDashboard;
 const rows = ref<HatadyActivity[]>([]),
 	communityRows = ref<HatadyActivity[]>([]),
 	works = ref<HatadyHomeWork[]>([]);
@@ -444,20 +442,20 @@ const metricRows = computed(() =>
 );
 const recentHeading = computed(
 	() =>
-		({ study: '最近の学び', movie: '鑑賞のメモ', game: '最近のプレイ', exercise: '運動の記録', work: '作業の歩み' })[
+		({ study: dashboardCopy.recentStudy, movie: dashboardCopy.recentMovie, game: dashboardCopy.recentGame, exercise: dashboardCopy.recentExercise, work: dashboardCopy.recentWork })[
 			summary.value.primary as HatadyLogKind
-		] || '最近の記録',
+		] || dashboardCopy.recentRecords,
 );
 const heroHeading = computed(
 	() =>
 		contextHero.value?.heading ||
 		(focusKind.value === 'movie'
-			? '次に観たい'
+			? dashboardCopy.nextMovie
 			: focusKind.value === 'game'
-				? '次に遊びたい'
+				? dashboardCopy.nextGame
 				: focusKind.value === 'study'
-					? '次に読みたい'
-					: '次の楽しみ'),
+					? dashboardCopy.nextBook
+					: dashboardCopy.nextFun),
 );
 const dateLabel = computed(() =>
 	new Intl.DateTimeFormat(versatileLang, { month: 'long', day: 'numeric', weekday: 'long' }).format(now.value),
@@ -485,6 +483,14 @@ const bars = computed(() =>
 		};
 	}),
 );
+const barRecordDescription = computed(() => {
+	const labels = bars.value.map((bar) =>
+		i18n.tsx._hata._hatady._homeDashboard.dayRecordCount({ date: bar.date, count: String(bar.count) }),
+	);
+	return versatileLang.startsWith('ja')
+		? labels.join('、')
+		: new Intl.ListFormat(versatileLang, { style: 'short', type: 'conjunction' }).format(labels);
+});
 const maxBar = computed(() => Math.max(1, ...bars.value.map((bar) => bar.count)));
 const communityUsers = computed(() => [
 	...new Map(
@@ -541,14 +547,14 @@ const workItems = computed(() =>
 				done,
 				attention,
 				label: done
-					? '全体の完了'
+					? dashboardCopy.workDone
 					: attention === 2
-						? '躓いている'
+						? dashboardCopy.workBlocked
 						: attention === 1
-							? '見てほしい'
+							? dashboardCopy.workReview
 							: tags.includes('doneDay')
-								? '今日の完了'
-								: '継続中',
+								? dashboardCopy.workDoneToday
+								: dashboardCopy.workInProgress,
 			};
 		})
 		.sort(
@@ -575,15 +581,15 @@ const contextHero = computed(() => {
 		body: data?.body || project?.work.description || '',
 		heading: project
 			? project.done
-				? 'かたちになった作業'
+				? dashboardCopy.heroWorkDone
 				: project.attention === 2
-					? '立ち止まっていること'
+					? dashboardCopy.heroWorkPaused
 					: project.attention === 1
-						? '見てほしい作業'
-						: '作業の続き'
+						? dashboardCopy.heroWorkReview
+						: dashboardCopy.heroWorkContinue
 			: focusKind.value === 'exercise'
-				? 'からだを動かした日'
-				: '学びの続き',
+				? dashboardCopy.heroExercise
+				: dashboardCopy.heroStudy,
 		eyebrow:
 			project?.label || `${data ? localDateKey(new Date(data.occurredAt)) : ''} · ${hatadyDuration(data?.seconds)}`,
 		icon: project?.done ? 'ti ti-checks' : focusIcon.value,
@@ -618,12 +624,12 @@ const recommendations = computed(() => {
 					(work.mine ? 0 : 2) +
 					(work.recommended ? 1 : 0),
 				reason: interested
-					? `${work.genre}への興味から`
+					? i18n.tsx._hata._hatady._homeDashboard.interestReason({ genre: work.genre })
 					: work.mine
-						? 'あなたのコレクションから'
+						? dashboardCopy.ownCollectionReason
 						: work.recommended
-							? 'みんなの公開記録から'
-							: '公開コレクションから',
+							? dashboardCopy.publicRecordsReason
+							: dashboardCopy.publicCollectionReason,
 			};
 		})
 		.sort((a, b) => b.score - a.score);
@@ -726,7 +732,7 @@ async function load(): Promise<void> {
 		now.value = current;
 		loaded.value = true;
 	} catch {
-		if (request === generation) error.value = 'ホームを読み込めませんでした';
+		if (request === generation) error.value = dashboardCopy.loadFailed;
 	} finally {
 		if (request === generation) loading.value = false;
 	}

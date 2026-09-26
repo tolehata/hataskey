@@ -262,8 +262,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 							<SearchMarker :keywords="['post', 'form', 'timeline']">
 								<MkPreferenceContainer k="showFixedPostForm">
-									<MkSwitch v-model="showFixedPostForm">
+									<MkSwitch v-model="showFixedPostForm" :disabled="ui === 'hataskey3'">
 										<template #label><SearchLabel>{{ i18n.ts.showFixedPostForm }}</SearchLabel></template>
+										<template v-if="ui === 'hataskey3'" #caption><SearchText>{{ i18n.ts._hata._customSettings._general.ui3ComposerUsePosition }}</SearchText></template>
 									</MkSwitch>
 								</MkPreferenceContainer>
 							</SearchMarker>

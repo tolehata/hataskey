@@ -6,7 +6,11 @@ const fixture = vi.hoisted(() => ({ api: vi.fn(), notify: vi.fn(), picker: vi.fn
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api, misskeyApiGet: fixture.api }));
 vi.mock('@/utility/hatady-ui.js', () => ({ hatadyNotify: fixture.notify }));
 vi.mock('@/utility/reaction-picker.js', () => ({ reactionPicker: { show: fixture.picker } }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatady: { _reactions: { add: 'リアクションする', remove: '取り消す' } } } } } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/i.js', () => ({ $i: null }));
 vi.mock('@/os.js', () => ({ popup: vi.fn(), popupMenu: vi.fn(), confirm: vi.fn() }));
 vi.mock('@/preferences.js', async () => {

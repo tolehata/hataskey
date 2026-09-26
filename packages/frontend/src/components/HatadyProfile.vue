@@ -16,10 +16,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 >
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.surface" :style="designStyle">
 		<div v-if="!previewData" :class="$style.toolbar">
-			<h1>プロフィール</h1>
+			<h1>{{ copy.title }}</h1>
 			<button v-if="profile?.isMe" class="hy-secondary" @click="designOpen = true">
 				<i class="ti ti-palette"></i>
-				デザインを編集
+				{{ profileCopy.editDesign }}
 			</button>
 		</div>
 		<div v-if="loading" class="hy-empty">{{ copy.loading }}</div>
@@ -51,7 +51,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 									:aria-expanded="biographyExpanded"
 									@click="expandBiography"
 								>
-									もっと見る
+									{{ profileCopy.showMore }}
 									<i class="ti ti-chevron-down" aria-hidden="true"></i>
 								</button>
 							</div>
@@ -71,11 +71,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div>
 							<button class="hy-secondary" @click="openUserList('following')">
 								<i class="ti ti-user-check"></i>
-								{{ profile.followingCount }} フォロー中
+								{{ profile.followingCount }} {{ copy.following }}
 							</button>
 							<button class="hy-secondary" @click="openUserList('followers')">
 								<i class="ti ti-users"></i>
-								{{ profile.followersCount }} フォロワー
+								{{ profile.followersCount }} {{ copy.followers }}
 							</button>
 						</div>
 						<button v-if="!profile.isMe" class="hy-secondary" :disabled="followBusy" @click="toggleFollow">
@@ -97,8 +97,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</h3>
 					<template v-if="key === 'stats'">
 						<div :class="$style.weekHeading">
-							<span>この1週間</span>
-							<strong>{{ weekRecords }} 記録</strong>
+							<span>{{ profileCopy.thisWeek }}</span>
+							<strong>{{ i18n.tsx._hata._hatady._profileView.recordCount({ count: weekRecords }) }}</strong>
 						</div>
 						<div :class="$style.week">
 							<button
@@ -107,7 +107,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								:disabled="!day.logs.length"
 								:data-recorded="!!day.logs.length"
 								:aria-current="day.today ? 'date' : undefined"
-								:aria-label="`${day.date} ${day.logs.length}件の記録`"
+								:aria-label="i18n.tsx._hata._hatady._statsView.dayCount({ date: day.date, count: day.logs.length })"
 								@click="openDay(day)"
 							>
 								<small>{{ day.weekday }}</small>
@@ -119,15 +119,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.numbers">
 							<div>
 								<strong>{{ profile.logCount }}</strong>
-								<span>これまでの記録</span>
+								<span>{{ profileCopy.allRecords }}</span>
 							</div>
 							<div>
 								<strong>{{ profile.recordedDays ?? profile.streakDays }}</strong>
-								<span>{{ profile.recordedDays != null ? '記録した日' : '連続記録' }}</span>
+								<span>{{ profile.recordedDays != null ? profileCopy.recordedDays : copy.streak }}</span>
 							</div>
 							<div>
 								<strong>{{ duration(profile.totalSeconds ?? profile.totalMinutes * 60) }}</strong>
-								<span>積み重ねた時間</span>
+								<span>{{ profileCopy.totalTime }}</span>
 							</div>
 						</div>
 					</template>
@@ -141,7 +141,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								</div>
 							</section>
 						</div>
-						<p v-else class="hy-empty">タグをつけた記録がここにまとまります</p>
+						<p v-else class="hy-empty">{{ profileCopy.emptyTraits }}</p>
 					</template>
 					<template v-else-if="key === 'shelf'">
 						<div :class="$style.shelfFilters">
@@ -155,7 +155,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								{{ f.label }}
 							</button>
 						</div>
-						<p v-if="mediaWorksTruncated" class="hy-error">コレクションの一部を読み込めませんでした</p>
+						<p v-if="mediaWorksTruncated" class="hy-error">{{ profileCopy.collectionPartial }}</p>
 						<div :class="$style.collectionGrid">
 							<button v-for="book in shownShelfBooks" :key="book.id" @click="openBook(book.id)">
 								<HyBookCover
@@ -186,7 +186,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							class="hy-secondary"
 							@click="expandedShelf = true"
 						>
-							もっと見る
+							{{ profileCopy.showMore }}
 						</button>
 						<p v-if="!(profile.books?.length || mediaWorks.length)" class="hy-empty">{{ copy.noBooks }}</p>
 					</template>
@@ -217,9 +217,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 						>
 							<i class="ti ti-briefcase"></i>
 							<strong>{{ work.title }}</strong>
-							<small>{{ work.status === 'completed' ? '全体の完了' : '継続中' }}</small>
+							<small>{{ work.status === 'completed' ? i18n.ts._hata._hatady._recordTags.doneAll : profileCopy.ongoing }}</small>
 						</button>
-						<p v-if="!mediaWorks.some((w) => w.kind === 'work')" class="hy-empty">作業の記録がここにまとまります</p>
+						<p v-if="!mediaWorks.some((w) => w.kind === 'work')" class="hy-empty">{{ profileCopy.emptyWork }}</p>
 					</template>
 				</section>
 			</div>
@@ -234,7 +234,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@saved="saveDesign"
 	@closed="designOpen = false"
 />
-<HyDialog v-if="selectedDay" :title="`${selectedDay.date}の記録`" @close="selectedDay = null">
+<HyDialog v-if="selectedDay" :title="i18n.tsx._hata._hatady._statsView.dayRecords({ date: selectedDay.date })" @close="selectedDay = null">
 	<HatadyActivityCard
 		v-for="activity in selectedDay.logs"
 		:key="activity.id"
@@ -266,6 +266,7 @@ import {
 import HyBookCover from '@/components/HyBookCover.vue';
 import HyMediaCover from '@/components/HyMediaCover.vue';
 import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { HY_BANNER_PRESETS } from '@/utility/hatady.js';
@@ -289,6 +290,7 @@ const dialog = ref<any>(null);
 const theme = hatadyTheme;
 const copy = i18n.ts._hata._hatady._profile;
 const copyx = i18n.tsx._hata._hatady._profile;
+const profileCopy = i18n.ts._hata._hatady._profileView;
 
 const profile = ref<any>(props.previewData || null);
 const biographyId = useId();
@@ -518,7 +520,7 @@ async function toggleFollow() {
 		await reload();
 		emit('changed');
 	} catch {
-		hatadyNotify('フォローを変更できませんでした');
+		hatadyNotify(profileCopy.followFailed);
 	} finally {
 		followBusy.value = false;
 	}
@@ -532,11 +534,11 @@ function editProfile() {
 const designOpen = ref(false),
 	selectedDay = ref<any>(null);
 const sectionLabels: Record<string, { label: string; icon: string }> = {
-	stats: { label: '積み重ね', icon: 'ti-calendar' },
-	traits: { label: 'ジャンルとタグ', icon: 'ti-sparkles' },
-	shelf: { label: 'コレクション', icon: 'ti-books' },
-	recent: { label: '最近の記録', icon: 'ti-notebook' },
-	work: { label: '作業の記録', icon: 'ti-briefcase' },
+	stats: { label: profileCopy.statsSection, icon: 'ti-calendar' },
+	traits: { label: profileCopy.traitsSection, icon: 'ti-sparkles' },
+	shelf: { label: i18n.ts._hata._hatady._media.collection, icon: 'ti-books' },
+	recent: { label: profileCopy.recentSection, icon: 'ti-notebook' },
+	work: { label: profileCopy.workSection, icon: 'ti-briefcase' },
 };
 const design = computed<any>(() => {
 	const d = props.previewDesign || profile.value?.design || {};
@@ -593,7 +595,7 @@ const week = computed(() =>
 		return {
 			date: key,
 			day: d.getDate(),
-			weekday: ['日', '月', '火', '水', '木', '金', '土'][d.getDay()],
+			weekday: new Intl.DateTimeFormat(versatileLang, { weekday: 'short' }).format(d),
 			today: i === 6,
 			logs: recent.value.filter((a) => new Date(a.occurredAt).toLocaleDateString('sv-SE') === key),
 		};
@@ -613,7 +615,7 @@ const traitGroups = computed<any[]>(() => {
 					: a.type.startsWith('game')
 						? 'game'
 						: a.type;
-		const genre = r.subject || a.media?.work?.genres?.[0] || r.details?.genre || '未設定';
+		const genre = r.subject || a.media?.work?.genres?.[0] || r.details?.genre || i18n.ts._hata._hatady._workWizard.unset;
 		if (!groups.has(kind)) groups.set(kind, new Map());
 		const g = groups.get(kind)!;
 		if (!g.has(genre)) g.set(genre, new Set());

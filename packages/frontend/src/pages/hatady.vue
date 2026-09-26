@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 	<div :class="[$style.root, 'hatady-scope']" :data-hatady-theme="hatadyTheme" :data-hatady-lang="versatileLang">
 		<header :class="$style.header" :data-staff-nav="canModerate">
 			<button :class="$style.brand" @click="setTab('home')">Hatady</button>
-			<button :class="[$style.mobileExit, 'hy-icon-button']" type="button" aria-label="Hatadyを終了" title="Hatadyを終了" @click="exitHatady">
+			<button :class="[$style.mobileExit, 'hy-icon-button']" type="button" :aria-label="pageCopy.exit" :title="pageCopy.exit" @click="exitHatady">
 				<i class="ti ti-logout-2" aria-hidden="true"></i>
 			</button>
 			<HyNav :class="$style.nav" :modelValue="activeTab" :options="tabs" @update:modelValue="setTab($event, true)"/>
@@ -64,7 +64,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				:refresher="refreshRecords"
 			>
 				<div :class="$style.pageTitle">
-					<h1>日々の記録</h1>
+					<h1>{{ pageCopy.recordsTitle }}</h1>
 					<button
 						:class="[$style.compactRecord, 'hy-primary']"
 						:aria-label="copy.recordActivity"
@@ -78,7 +78,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 						<HyCapsule
 							:modelValue="recordScope"
 							:options="scopeOptions"
-							label="記録の範囲"
+							:label="pageCopy.recordScope"
 							@update:modelValue="setRecordScope"
 						/>
 						<div :class="$style.toolbar">
@@ -95,26 +95,26 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 							<HyCategorySelect
 								:modelValue="recordKind"
 								:options="recordKinds"
-								label="活動の種類"
+								:label="pageCopy.activityKind"
 								@update:modelValue="setRecordKind"
 							/>
 						</div>
 					</div>
-					<form v-if="periodOpen" :class="$style.periodTools" aria-label="記録の日付" @submit.prevent="applyPeriod">
-						<div :class="$style.periodRange" role="group" aria-label="表示する期間">
+					<form v-if="periodOpen" :class="$style.periodTools" :aria-label="pageCopy.recordDate" @submit.prevent="applyPeriod">
+						<div :class="$style.periodRange" role="group" :aria-label="pageCopy.displayPeriod">
 							<label :class="$style.dateField">
-								<span>開始</span>
-								<input v-model="sinceDraft" type="date" aria-label="開始日"/>
+								<span>{{ pageCopy.start }}</span>
+								<input v-model="sinceDraft" type="date" :aria-label="pageCopy.startDate"/>
 							</label>
 							<span aria-hidden="true">〜</span>
 							<label :class="$style.dateField">
-								<span>終了</span>
-								<input v-model="untilDraft" type="date" aria-label="終了日"/>
+								<span>{{ pageCopy.end }}</span>
+								<input v-model="untilDraft" type="date" :aria-label="pageCopy.endDate"/>
 							</label>
 						</div>
 						<div :class="$style.periodActions">
-							<select :class="$style.periodPreset" aria-label="期間の候補" @change="selectPeriodPreset">
-								<option value="">期間を選ぶ</option>
+							<select :class="$style.periodPreset" :aria-label="pageCopy.periodPresets" @change="selectPeriodPreset">
+								<option value="">{{ pageCopy.choosePeriod }}</option>
 								<option value="month">{{ copy.thisMonth }}</option>
 								<option value="lastMonth">{{ copy.lastMonth }}</option>
 								<option value="30days">{{ copy.last30 }}</option>
@@ -126,7 +126,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 						</div>
 						<label :class="[$style.dateField, $style.dateJump]">
 							<i class="ti ti-calendar-search" aria-hidden="true"></i>
-							<span>日付へ</span>
+							<span>{{ pageCopy.toDate }}</span>
 							<input v-model="jumpDraft" type="date" :aria-label="copy.jumpTo" @change="jumpToDate"/>
 						</label>
 					</form>
@@ -139,7 +139,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				</div>
 				<div v-if="recordsError" class="hy-error" role="alert">
 					{{ recordsError }}
-					<button class="hy-secondary" @click="loadRecords()">再読み込み</button>
+					<button class="hy-secondary" @click="loadRecords()">{{ pageCopy.reload }}</button>
 				</div>
 				<p v-if="recordsLoading && !activities.length" class="hy-empty" role="status">{{ copy.loading }}</p>
 				<div v-else :class="$style.entries" :aria-busy="recordsLoading">
@@ -166,18 +166,18 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				</div>
 			</component>
 			<section v-else-if="activeTab === 'collection'" :class="$style.page">
-				<div :class="$style.pageTitle"><h1>コレクション</h1></div>
+				<div :class="$style.pageTitle"><h1>{{ pageCopy.collection }}</h1></div>
 				<div :class="$style.collectionTabs" data-hy-page-controls>
 					<HyCapsule
 						:modelValue="collectionScope"
 						:options="scopeOptions"
-						label="コレクションの範囲"
+						:label="pageCopy.collectionScope"
 						@update:modelValue="setCollectionScope"
 					/>
 					<HyCapsule
 						:modelValue="collectionKind"
 						:options="collectionKinds"
-						label="作品の種類"
+						:label="pageCopy.workKind"
 						@update:modelValue="setCollectionKind"
 					/>
 				</div>
@@ -188,11 +188,11 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 						@click="collectionFiltersOpen = !collectionFiltersOpen"
 					>
 						<i class="ti ti-filter" aria-hidden="true"></i>
-						<span v-if="!collectionLoading">{{ filteredWorks.length }}件</span>
+						<span v-if="!collectionLoading">{{ i18n.tsx._hata._hatady._page.itemCount({ count: String(filteredWorks.length) }) }}</span>
 					</button>
 					<button v-if="collectionScope === 'mine'" class="hy-primary" @click="addCollectionWork($event)">
 						<i class="ti ti-plus" aria-hidden="true"></i>
-						{{ collectionKind === 'work' ? '作業を登録' : '作品を登録' }}
+						{{ collectionKind === 'work' ? pageCopy.addWork : pageCopy.addMedia }}
 					</button>
 				</div>
 				<div v-if="collectionFiltersOpen" :class="[$style.filterPanel, 'hy-form']">
@@ -216,7 +216,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 							</select>
 						</label>
 						<label class="hy-field">
-							並び順
+							{{ pageCopy.sortOrder }}
 							<select v-model="collectionSort" class="hy-input">
 								<option value="updatedAt">{{ mediaCopy.sortUpdated }}</option>
 								<option value="title">{{ mediaCopy.sortTitle }}</option>
@@ -232,15 +232,15 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					<div class="hy-actions">
 						<label>
 							<input v-model="favoritesOnly" type="checkbox"/>
-							お気に入り
+							{{ mediaCopy.form.favorite }}
 						</label>
 						<label>
 							<input v-model="recommendedOnly" type="checkbox"/>
-							おすすめ
+							{{ mediaCopy.form.recommend }}
 						</label>
 						<button class="hy-secondary" @click="sortAsc = !sortAsc">
 							<i :class="sortAsc ? 'ti ti-sort-ascending' : 'ti ti-sort-descending'" aria-hidden="true"></i>
-							{{ sortAsc ? '昇順' : '降順' }}
+							{{ sortAsc ? pageCopy.ascending : pageCopy.descending }}
 						</button>
 					</div>
 					<details v-if="collectionKind === 'movie' || collectionKind === 'game'" :class="$style.mediaAdvanced">
@@ -343,7 +343,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				</div>
 				<div v-if="collectionError" class="hy-error" role="alert">
 					{{ collectionError }}
-					<button class="hy-secondary" @click="loadCollection">再読み込み</button>
+					<button class="hy-secondary" @click="loadCollection">{{ pageCopy.reload }}</button>
 				</div>
 				<p v-if="collectionLoading && !collectionWorks.length" class="hy-empty" role="status">{{ copy.loading }}</p>
 				<div v-else :class="$style.gallery" :data-kind="collectionKind" :aria-busy="collectionLoading">
@@ -374,7 +374,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 								{{ work.raw.activity.latest.body }}
 							</p>
 							<div :class="$style.workFoot">
-								<small v-if="work.raw.activity?.count != null">{{ work.raw.activity?.count }}件の記録 · {{ hatadyDuration(work.raw.activity.seconds) }}</small>
+								<small v-if="work.raw.activity?.count != null">{{ i18n.tsx._hata._hatady._page.recordCount({ count: String(work.raw.activity.count) }) }} · {{ hatadyDuration(work.raw.activity.seconds) }}</small>
 								<i class="ti ti-arrow-right" aria-hidden="true"></i>
 							</div>
 						</template>
@@ -406,7 +406,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 								<i
 									v-if="work.raw.isFavorite"
 									:class="[$style.favorite, 'ti ti-star-filled']"
-									aria-label="お気に入り"
+									:aria-label="mediaCopy.form.favorite"
 								></i>
 							</div>
 							<div :class="$style.workMeta">
@@ -433,7 +433,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 								></progress>
 								<span v-if="work.recommended" class="hy-tag">
 									<i class="ti ti-thumb-up" aria-hidden="true"></i>
-									おすすめ
+									{{ mediaCopy.form.recommend }}
 								</span>
 							</div>
 						</template>
@@ -442,14 +442,14 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				<p v-if="!filteredWorks.length && !collectionLoading && !collectionError" class="hy-empty">
 					{{
 						collectionKind === 'all'
-							? 'まだ作品・作業がありません'
+							? pageCopy.emptyCollection
 							: collectionKind === 'book'
 								? copy.emptyShelf
 								: collectionKind === 'movie'
 									? mediaCopy.emptyMovie
 									: collectionKind === 'game'
 										? mediaCopy.emptyGame
-										: 'まだ作業がありません'
+										: pageCopy.emptyWorks
 					}}
 				</p>
 			</section>
@@ -519,18 +519,19 @@ import { HATADY_ACTIVITY_CHOICES, HATADY_RECORD_TAGS, hatadyDialogSurfaces, hata
 import '@/components/hatady-ui.css';
 
 const copy = i18n.ts._hata._hatady._home,
-	mediaCopy = hatadyMediaCopy();
+	mediaCopy = hatadyMediaCopy(),
+	pageCopy = i18n.ts._hata._hatady._page;
 const router = useRouter(),
 	mainEl = useTemplateRef('mainEl'),
 	bell = useTemplateRef('bell'),
 	menu = useTemplateRef('menu');
 const canModerate = computed(() => !!($i?.isAdmin || $i?.isModerator));
 const tabs = computed(() => [
-	{ value: 'home', label: 'ホーム', icon: 'ti ti-home' },
-	{ value: 'records', label: '記録', icon: 'ti ti-notebook' },
-	{ value: 'collection', label: 'コレクション', icon: 'ti ti-books' },
-	{ value: 'profile', label: 'プロフィール', icon: 'ti ti-user' },
-	...(canModerate.value ? [{ value: 'moderation', label: '管理', icon: 'ti ti-shield' }] : []),
+	{ value: 'home', label: i18n.ts.home, icon: 'ti ti-home' },
+	{ value: 'records', label: copy.logs, icon: 'ti ti-notebook' },
+	{ value: 'collection', label: pageCopy.collection, icon: 'ti ti-books' },
+	{ value: 'profile', label: i18n.ts.profile, icon: 'ti ti-user' },
+	...(canModerate.value ? [{ value: 'moderation', label: pageCopy.moderation, icon: 'ti ti-shield' }] : []),
 ]);
 
 function saved(key: string): string | null {
@@ -586,15 +587,15 @@ const recordKind = ref(
 			: 'saved',
 );
 const recordKinds = computed(() => [
-	{ value: 'all', label: 'すべて', icon: 'ti ti-notebook' },
+	{ value: 'all', label: copy.filterAll, icon: 'ti ti-notebook' },
 	...HATADY_ACTIVITY_CHOICES,
-	...(recordKind.value === 'saved' ? [{ value: 'saved', label: '保存した絞り込み', icon: 'ti ti-filter' }] : []),
+	...(recordKind.value === 'saved' ? [{ value: 'saved', label: pageCopy.savedFilter, icon: 'ti ti-filter' }] : []),
 ]);
 const scopeOptions = computed(() => [
-	{ value: 'mine', label: '自分の記録', icon: 'ti ti-user' },
-	{ value: 'recent', label: 'みんな', icon: 'ti ti-users' },
-	{ value: 'following', label: 'フォロー中', icon: 'ti ti-user-check' },
-	...(($i as any)?.isModerator || ($i as any)?.isAdmin ? [{ value: 'all', label: '管理', icon: 'ti ti-shield' }] : []),
+	{ value: 'mine', label: pageCopy.myRecords, icon: 'ti ti-user' },
+	{ value: 'recent', label: pageCopy.everyone, icon: 'ti ti-users' },
+	{ value: 'following', label: copy.tabFollowing, icon: 'ti ti-user-check' },
+	...(($i as any)?.isModerator || ($i as any)?.isAdmin ? [{ value: 'all', label: pageCopy.moderation, icon: 'ti ti-shield' }] : []),
 ]);
 const activities = ref<HatadyActivity[]>([]),
 	recordsLoading = ref(false),
@@ -749,7 +750,7 @@ async function loadRecords(append = false): Promise<void> {
 		cursor.value = page.nextCursor;
 		hasMore.value = page.hasMore && !!page.nextCursor;
 	} catch {
-		if (request === recordsRequest) recordsError.value = '記録を読み込めませんでした';
+		if (request === recordsRequest) recordsError.value = pageCopy.recordsLoadFailed;
 	} finally {
 		if (request === recordsRequest) recordsLoading.value = false;
 	}
@@ -757,7 +758,7 @@ async function loadRecords(append = false): Promise<void> {
 
 function applyPeriod(): void {
 	if (sinceDraft.value && untilDraft.value && sinceDraft.value > untilDraft.value) {
-		recordsError.value = '終了日は開始日以降にしてください';
+		recordsError.value = pageCopy.invalidDateRange;
 		return;
 	}
 	since.value = sinceDraft.value;
@@ -821,11 +822,11 @@ function showCommunity(): void {
 }
 
 const collectionKinds = [
-	{ value: 'all', label: 'すべて', icon: 'ti ti-layout-grid' },
-	{ value: 'book', label: '本', icon: 'ti ti-books' },
-	{ value: 'movie', label: '映画', icon: 'ti ti-movie' },
-	{ value: 'game', label: 'ゲーム', icon: 'ti ti-device-gamepad-2' },
-	{ value: 'work', label: '作業', icon: 'ti ti-briefcase' },
+	{ value: 'all', label: copy.filterAll, icon: 'ti ti-layout-grid' },
+	{ value: 'book', label: copy.books, icon: 'ti ti-books' },
+	{ value: 'movie', label: pageCopy.movie, icon: 'ti ti-movie' },
+	{ value: 'game', label: pageCopy.game, icon: 'ti ti-device-gamepad-2' },
+	{ value: 'work', label: pageCopy.work, icon: 'ti ti-briefcase' },
 ];
 const collectionKind = ref(
 	({ books: 'book', movies: 'movie', games: 'game' } as Record<string, string>)[saved('hatadyCollectionKind') || ''] ||
@@ -858,7 +859,7 @@ const collectionStatuses = computed(() => collectionKind.value === 'all'
 
 function statusLabel(status: string, kind = collectionKind.value): string {
 	if (kind === 'book') return String((copy as any)[`status_${status}`] || status);
-	if (kind === 'work') return ({ in_progress: '進行中', completed: '完了', on_hold: '保留' } as Record<string, string>)[status] || status;
+	if (kind === 'work') return ({ in_progress: pageCopy.workInProgress, completed: pageCopy.workCompleted, on_hold: pageCopy.workOnHold } as Record<string, string>)[status] || status;
 	return String(
 		mediaCopy.status?.[mediaStatusCopyKey(kind as HatadyMediaKind, status as any)] ?? status,
 	);
@@ -873,7 +874,7 @@ function visibilityIcon(value: string): string {
 }
 
 function visibilityLabel(value: string): string {
-	return value === 'private' ? '自分のみ' : value === 'followers' ? 'フォロワーのみ' : '公開';
+	return value === 'private' ? copy.activityPrivate : value === 'followers' ? pageCopy.followersOnly : copy.activityPublic;
 }
 
 const collator = new Intl.Collator(versatileLang, { usage: 'sort', sensitivity: 'base' });
@@ -1020,7 +1021,7 @@ async function openActivityComposer(_kind?: unknown): Promise<void> {
 async function addCollectionWork(event?: MouseEvent, kind = collectionKind.value): Promise<void> {
 	if (kind === 'all') {
 		os.popupMenu(collectionKinds.filter(option => option.value !== 'all').map(option => ({
-			text: `${option.label}を登録`,
+			text: i18n.tsx._hata._hatady._page.addKind({ kind: option.label }),
 			icon: option.icon,
 			action: () => addCollectionWork(undefined, option.value),
 		})), event?.currentTarget as HTMLElement | undefined);
@@ -1254,7 +1255,7 @@ function openMenu(event: MouseEvent): void {
 			{ text: copy.settings, icon: 'ti ti-settings', action: openSettings },
 			{ text: copy.toolStats, icon: 'ti ti-chart-bar', action: openStatsDetail },
 			{ text: copy.toolGoals, icon: 'ti ti-target', action: openGoals },
-			{ text: 'Hatadyを終了', icon: 'ti ti-logout-2', action: exitHatady },
+			{ text: pageCopy.exit, icon: 'ti ti-logout-2', action: exitHatady },
 		],
 		event.currentTarget as HTMLElement,
 	);

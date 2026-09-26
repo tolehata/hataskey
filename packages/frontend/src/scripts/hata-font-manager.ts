@@ -6,20 +6,27 @@
 /**
  * hata-font-manager.ts
  * フォント変更機能のユーティリティ
- * - Google Fontsプリセット読み込み
+ * - セルフホスト / Google Fonts プリセット読み込み
  * - ドライブからの自前フォント読み込み（免責事項同意必須）
  */
 
-import { prefer } from '@/preferences.js';
 import { watch } from 'vue';
+import { prefer } from '@/preferences.js';
 
-export type HataFontId = 'zen-kaku' | 'm-plus-1p' | 'dotgothic16' | 'train-one' | 'ibm-plex-sans-jp' | 'custom' | 'system';
+export type HataFontId = 'line-seed-jp' | 'zen-kaku-antique' | 'm-plus-1p' | 'dotgothic16' | 'train-one' | 'ibm-plex-sans-jp' | 'custom' | 'system';
+export type SavedHataFontId = HataFontId | 'zen-kaku';
+export const DEFAULT_HATA_FONT_ID: HataFontId = 'line-seed-jp';
+
+/** The old default ID is retained in saved profiles, including cloud backups. */
+export function resolveHataFontId(savedId: SavedHataFontId): HataFontId {
+	return savedId === 'zen-kaku' ? DEFAULT_HATA_FONT_ID : savedId;
+}
 
 export interface HataFontDef {
 	id: HataFontId;
 	label: string;
 	family: string;
-	googleFontsQuery: string | null; // null = system or custom
+	googleFontsQuery: string | null; // null = セルフホスト
 	weights: string;
 	license: string;
 	author: string;
@@ -28,8 +35,18 @@ export interface HataFontDef {
 
 export const HATA_FONT_PRESETS: HataFontDef[] = [
 	{
-		id: 'zen-kaku',
-		label: 'Zen 角ゴシック Antique（既定）',
+		id: 'line-seed-jp',
+		label: 'LINE Seed JP（既定）',
+		family: "'LINE Seed JP'",
+		googleFontsQuery: null,
+		weights: '400;700;800',
+		license: 'SIL Open Font License 1.1',
+		author: 'LY Corporation',
+		sampleText: 'あいうえお ABC 123',
+	},
+	{
+		id: 'zen-kaku-antique',
+		label: 'Zen 角ゴシック Antique',
 		family: "'Zen Kaku Gothic Antique'",
 		googleFontsQuery: 'Zen+Kaku+Gothic+Antique:wght@300;400;500;700',
 		weights: '300;400;500;700',
@@ -80,6 +97,7 @@ export const HATA_FONT_PRESETS: HataFontDef[] = [
 ];
 
 const FALLBACK_STACK = ", 'Hiragino Kaku Gothic Pro', 'BIZ UDGothic', Roboto, HelveticaNeue, Arial, sans-serif";
+export const SYSTEM_HATA_FONT_STACK = "-apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', 'Hiragino Sans', 'Apple SD Gothic Neo', Meiryo, Arial, sans-serif";
 
 let currentLinkEl: HTMLLinkElement | null = null;
 let currentCustomStyleEl: HTMLStyleElement | null = null;
@@ -100,16 +118,16 @@ function loadGoogleFont(query: string): void {
 	if (typeof query !== 'string' || query.length === 0 || query.length > 200) return;
 	if (/[\u0000-\u001F"'`<>\\#?&]/.test(query)) return;
 
-	const link = document.createElement('link');
+	const link = window.document.createElement('link');
 	link.rel = 'stylesheet';
 	link.href = `https://fonts.googleapis.com/css2?family=${query}&display=swap`;
 	link.id = 'hata-google-font';
-	document.head.appendChild(link);
+	window.document.head.appendChild(link);
 	currentLinkEl = link;
 }
 
 /**
- * 自鯖ドライブと同じ origin (location.origin) のフォント URL のみ許可。
+ * 自鯖ドライブと同じ origin (window.location.origin) のフォント URL のみ許可。
  * これにより
  *   - SSRF / トラッキング用の外部 URL を弾く
  *   - data:, javascript:, blob:, vbscript: 等の危険スキームを弾く
@@ -119,9 +137,9 @@ function isSafeFontUrl(url: unknown): url is string {
 	if (url.length === 0 || url.length > 2048) return false;
 	if (/[\u0000-\u001F"'`<>\\]/.test(url)) return false;
 	try {
-		const u = new URL(url, location.origin);
+		const u = new URL(url, window.location.origin);
 		// 同 origin のみ許可 (自鯖ドライブを想定)
-		if (u.origin !== location.origin) return false;
+		if (u.origin !== window.location.origin) return false;
 		// http/https のみ
 		if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
 		return true;
@@ -158,7 +176,7 @@ function loadCustomFont(url: string, fontName: string): void {
 	}
 	const safeName = sanitizeFontName(fontName);
 
-	const style = document.createElement('style');
+	const style = window.document.createElement('style');
 	style.id = 'hata-custom-font';
 	// safeName / url ともにサニタイズ済みだが、念のため CSS リテラルコンテキストで使用
 	style.textContent = `
@@ -168,7 +186,7 @@ function loadCustomFont(url: string, fontName: string): void {
 	font-display: swap;
 }
 `;
-	document.head.appendChild(style);
+	window.document.head.appendChild(style);
 	currentCustomStyleEl = style;
 }
 
@@ -176,14 +194,14 @@ function loadCustomFont(url: string, fontName: string): void {
  * html要素の font-family を変更
  */
 function applyFontFamily(family: string): void {
-	document.documentElement.style.fontFamily = family + FALLBACK_STACK;
+	window.document.documentElement.style.fontFamily = family + FALLBACK_STACK;
 }
 
 /**
  * フォント設定を適用（起動時 & 設定変更時に呼ばれる）
  */
 export function applyHataFont(): void {
-	const fontId = prefer.s['hataFont.id'] as HataFontId;
+	const fontId = resolveHataFontId(prefer.s['hataFont.id'] as SavedHataFontId);
 	const customUrl = prefer.s['hataFont.customUrl'] as string;
 	const customName = prefer.s['hataFont.customName'] as string;
 	const customConsent = prefer.s['hataFont.customFontConsent'] as boolean;
@@ -200,16 +218,19 @@ export function applyHataFont(): void {
 			currentLinkEl.remove();
 			currentLinkEl = null;
 		}
-		document.documentElement.style.removeProperty('font-family');
+		window.document.documentElement.style.fontFamily = SYSTEM_HATA_FONT_STACK;
 		return;
 	}
 
 	if (fontId === 'custom') {
 		if (!customConsent || !customUrl || !isSafeFontUrl(customUrl)) {
 			// 同意なし / URL未設定 / URL不正 → 既定フォントへフォールバック
-			const defaultPreset = HATA_FONT_PRESETS[0];
-			if (defaultPreset.googleFontsQuery) loadGoogleFont(defaultPreset.googleFontsQuery);
-			applyFontFamily(defaultPreset.family);
+			if (currentLinkEl) {
+				currentLinkEl.remove();
+				currentLinkEl = null;
+			}
+			// CSSの既定スタックに戻す。html.useSystemFont も尊重される。
+			window.document.documentElement.style.removeProperty('font-family');
 			return;
 		}
 		// ドライブからカスタムフォント読み込み
@@ -229,8 +250,16 @@ export function applyHataFont(): void {
 
 	if (preset.googleFontsQuery) {
 		loadGoogleFont(preset.googleFontsQuery);
+	} else if (currentLinkEl) {
+		currentLinkEl.remove();
+		currentLinkEl = null;
 	}
-	applyFontFamily(preset.family);
+	if (preset.id === DEFAULT_HATA_FONT_ID) {
+		// CSS の既定スタックを使い、別設定の useSystemFont を上書きしない。
+		window.document.documentElement.style.removeProperty('font-family');
+	} else {
+		applyFontFamily(preset.family);
+	}
 }
 
 /**
@@ -241,8 +270,14 @@ export function initHataFontWatcher(): void {
 	applyHataFont();
 
 	// prefer変更を監視
-	watch(() => prefer.s['hataFont.id'], () => applyHataFont());
-	watch(() => prefer.s['hataFont.customUrl'], () => applyHataFont());
-	watch(() => prefer.s['hataFont.customName'], () => applyHataFont());
-	watch(() => prefer.s['hataFont.customFontConsent'], () => applyHataFont());
+	if (fontWatcherStarted) return;
+	fontWatcherStarted = true;
+	watch([
+		prefer.r['hataFont.id'],
+		prefer.r['hataFont.customUrl'],
+		prefer.r['hataFont.customName'],
+		prefer.r['hataFont.customFontConsent'],
+	], () => applyHataFont());
 }
+
+let fontWatcherStarted = false;

@@ -73,28 +73,22 @@ describe('post send delay UI wiring', () => {
 		for (const component of ['src/components/MkPostForm.vue', 'src/components/MkPostFormSimple.vue']) {
 			const vue = source(component);
 			expect(vue).not.toContain('os.toast(i18n.ts.posted, \'posted\')');
-			expect(vue).toContain('if (replyTargetNote.value) os.toast(i18n.ts.replied, \'reply\');');
+			expect(vue).toContain('if (props.updateMode) os.toast(i18n.ts.noteEdited, \'edited\');');
+			expect(vue).toContain('else if (replyTargetNote.value) os.toast(i18n.ts.replied, \'reply\');');
 			expect(vue).toContain('else if (renoteTargetNote.value) os.toast(i18n.ts.quoted, \'quote\');');
-			expect(vue).toContain('else if (props.updateMode) os.toast(i18n.ts.noteEdited, \'edited\');');
 			expect(vue).toContain('submitMotionState.value = \'success\';');
 		}
-		const cord = source('src/pages/hatacording-ui.vue');
-		expect(cord).not.toContain('copy.posted, \'posted\'');
-		expect(cord).toContain('if (composerContext.value?.kind === \'reply\') os.toast(copy.replied, \'reply\');');
-		expect(cord).toContain('else if (composerContext.value?.kind === \'quote\') os.toast(copy.quoted, \'quote\');');
-		expect(cord).toContain('submitMotionState.value = \'success\';');
+		// Hataskey UI 3 の投稿欄は、成功を上部トーストではなく新着バナーへ流す。
+		const ui3 = source('src/components/hataskey3/Hk3Composer.vue');
+		expect(ui3).not.toContain('os.toast(');
+		expect(ui3).toContain("sendState.value = 'success';");
 	});
 
-	test('HataSNSCordUIは待機中にプレビューを畳み、周回枠を描画しない', () => {
-		const page = source('src/pages/hatacording-ui.vue');
-		expect(page).toContain("v-if=\"draftText.trim().length > 0 && submitMotionState === 'idle'\"");
-		expect(page).toContain(':name="animationEnabled ? \'hatacording-composer-preview\' : \'\'"');
-		// ⚠️公開範囲の色枠は廃止した（hatacording-ui-source.test.ts が正本）。
-		expect(page).toContain('<div :class="$style.postFormPill">');
-		expect(page).not.toContain('$style.delayActive');
-		expect(page).not.toContain('postDelay.frameStyle.value');
-		expect(page).not.toContain('.delayActive::before');
-		expect(page).toContain('`hata-delay-status-${postDelay.exitMode.value}`');
+	test('Hataskey UI 3 は待機中にプレビューを畳み、既存の待機表示で取り消せる', () => {
+		const composer = source('src/components/hataskey3/Hk3Composer.vue');
+		expect(composer).toContain("v-if=\"!compact && draftText.trim().length > 0 && sendState === 'idle'\"");
+		expect(composer).toContain('<MkHataPostDelayStatus v-if="postDelay.active.value"');
+		expect(composer).toContain('if (!await postDelay.begin(postSendDelaySeconds.value)) {');
 	});
 
 	test('HataFeedベータ画面では3・5・10秒だけを選べ、任意秒数の入力欄を置かない', () => {

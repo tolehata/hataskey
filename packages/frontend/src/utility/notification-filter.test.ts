@@ -21,6 +21,12 @@ describe('notification filter persistence', () => {
 		expect(resolveNotificationFilter(enabled.excludeTypes, enabled.knownTypes).excludeTypes).not.toContain('hataskFlowerReady');
 	});
 
+	test.each(['hataskFlowerBloomed', 'hataskZukanUpdated', 'hataskFestivalBloomed'] as const)('保存済みフィルタでは新しい%s通知を初期状態でOFFにする', type => {
+		const oldTypes = notificationTypes.filter(knownType => knownType !== type);
+		expect(resolveNotificationFilter([], oldTypes).excludeTypes).toContain(type);
+		expect(resolveNotificationFilter([], []).excludeTypes).not.toContain(type);
+	});
+
 	test('旧設定は現在の表示状態を勝手に変えない', () => {
 		const result = resolveNotificationFilter(['reaction'], []);
 

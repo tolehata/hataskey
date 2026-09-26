@@ -14,11 +14,11 @@
 		<header class="head">
 			<slot name="headerAction"><span></span></slot>
 			<h2>{{ title }}</h2>
-			<button type="button" class="hy-icon-button" aria-label="閉じる" @click="requestClose">
+			<button type="button" class="hy-icon-button" :aria-label="i18n.ts.close" @click="requestClose">
 				<i class="ti ti-x" aria-hidden="true"></i>
 			</button>
 		</header>
-		<nav class="steps" aria-label="ガイドのページ">
+		<nav class="steps" :aria-label="copy.guidePages">
 			<button
 				v-for="(item, number) in pages"
 				:key="item.id"
@@ -30,7 +30,7 @@
 				{{ number + 1 }}
 			</button>
 		</nav>
-		<div class="mobileStep" aria-label="ガイドの進み具合">
+		<div class="mobileStep" :aria-label="copy.guideProgress">
 			<span><i :class="page.icon" aria-hidden="true"></i>{{ page.label }}</span><span>{{ index + 1 }} / {{ pages.length }}</span>
 		</div>
 		<div class="pageHost">
@@ -59,11 +59,11 @@
 		</div>
 		<footer class="actions">
 			<button v-if="index" type="button" class="hy-secondary" @click="go(Math.max(0, (pendingIndex ?? index) - 1))">
-				<i class="ti ti-arrow-left" aria-hidden="true"></i>戻る
+				<i class="ti ti-arrow-left" aria-hidden="true"></i>{{ copy.back }}
 			</button>
-			<button v-else type="button" class="hy-secondary" @click="finish(false)">あとで見る</button>
+			<button v-else type="button" class="hy-secondary" @click="finish(false)">{{ copy.viewLater }}</button>
 			<button type="button" class="hy-primary" @click="next">
-				{{ index === pages.length - 1 ? finishLabel : '次へ'
+				{{ index === pages.length - 1 ? finishLabel : copy.next
 				}}<i class="ti ti-arrow-right" aria-hidden="true"></i>
 			</button>
 		</footer>
@@ -75,8 +75,11 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef, watch } from 'vue';
 import type { HyTutorialPage } from '@/utility/hy-tutorial.js';
 import type { HatadyTheme } from '@/utility/hatady-prefs.js';
+import { i18n } from '@/i18n.js';
 import HyDialog from '@/components/HyDialog.vue';
 import { prefer } from '@/preferences.js';
+
+const copy = i18n.ts._hata._hatady._controls;
 
 const props = withDefaults(defineProps<{
 	kind: 'initial' | 'update';

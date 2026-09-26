@@ -1,13 +1,16 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? '本の情報を編集' : '本を加える'" label="本" icon="ti ti-book" :pages="pages" :draftId="`hatady:book:${isEdit ? `edit:${source.id}` : 'create'}`" :embedded="embedded" :restore="restoreDraft" :save="save" :saveLabel="isEdit ? '変更を保存' : 'コレクションに加える'" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
+<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? copy.editBook : copy.addBook" :label="i18n.ts._hata._hatady._composer.bookLabel" icon="ti ti-book" :pages="pages" :draftId="`hatady:book:${isEdit ? `edit:${source.id}` : 'create'}`" :embedded="embedded" :restore="restoreDraft" :save="save" :saveLabel="isEdit ? composerCopy.saveChanges : copy.addToCollection" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
 </template>
 <script setup lang="ts">
 import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
 import type { HatadyFormPage, HatadyFormValues } from '@/utility/hatady-form.js';
 import HatadyFormWizard from '@/components/HatadyFormWizard.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { formField as f, formTimestamp, localDateTime, optionalPages, saveBookNotes } from '@/utility/hatady-form.js';
+import { HatadyFormPartialError, formField as f, formTimestamp, localDateTime, optionalPages, saveBookNotes } from '@/utility/hatady-form.js';
+import { i18n } from '@/i18n.js';
+const copy = i18n.ts._hata._hatady._bookWizard;
+const composerCopy = i18n.ts._hata._hatady._wizardComposer;
 const props = withDefaults(defineProps<{ editBook?: any; embedded?: boolean }>(), { embedded: false });
 const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void; (event: 'back'): void }>();
 const wizard = useTemplateRef('wizard'), source = props.editBook, isEdit = source != null;
@@ -21,16 +24,16 @@ const values = ref<HatadyFormValues>({
 	bookmarks: clone(source?.bookmarks ?? []), memos: clone(source?.memos ?? []), _bookmarksBaseline: clone(source?.bookmarks ?? []), _memosBaseline: clone(source?.memos ?? []),
 });
 const pages: HatadyFormPage[] = [
-	{ id: 'basics', title: '気になるひとつを、残そう', fields: [f('title', '本のタイトル', { required: true, maxlength: 512, placeholder: '例：夜を編む庭' }), f('genre', 'ジャンル', { maxlength: 64 }), f('author', '著者', { maxlength: 256 })] },
-	{ id: 'status', title: '今、どんな一冊？', fields: [f('status', '今の状態', { type: 'choice', options: [{ value: 'want', label: '読みたい', icon: 'ti ti-bookmark' }, { value: 'reading', label: '読書中', icon: 'ti ti-book' }, { value: 'finished', label: '読了', icon: 'ti ti-check' }, { value: 'tsundoku', label: '積読', icon: 'ti ti-books' }] }), f('isFavorite', 'お気に入り', { type: 'checkbox' }), f('isRecommended', 'おすすめ', { type: 'checkbox' })] },
-	{ id: 'details', title: '残したい情報を選ぶ', choices: true, fields: [] },
-	...optionalPages('progress', '読書の進み具合', [f('currentPage', '読んだページ', { type: 'number', min: 0, max: 100000 }), f('totalPages', '総ページ数', { type: 'number', min: 1, max: 100000 }), f('finishedAt', '読了日', { type: 'date' })], 'ti ti-book'),
-	...optionalPages('bookmarks', 'しおり', [f('bookmarks', 'しおり', { type: 'bookmarks' })], 'ti ti-bookmark'),
-	...optionalPages('memos', 'ページのメモ', [f('memos', 'ページのメモ', { type: 'memos' })], 'ti ti-pencil'),
-	...optionalPages('description', '作品の紹介', [f('description', '説明', { type: 'textarea', maxlength: 8192 })]),
-	...optionalPages('memo', '自分だけのメモ', [f('memo', '自分だけのメモ', { type: 'textarea', maxlength: 8192 })], 'ti ti-lock'),
-	...optionalPages('cover', '表紙の色', [f('colorIndex', '表紙の色', { type: 'color' })], 'ti ti-palette'),
-	{ id: 'sharing', title: '誰に見せる？', summary: true, fields: [f('visibility', '本の公開範囲', { type: 'visibility' })] },
+	{ id: 'basics', title: copy.intro, fields: [f('title', copy.bookTitle, { required: true, maxlength: 512, placeholder: copy.titleExample }), f('genre', copy.genre, { maxlength: 64 }), f('author', i18n.ts._hata._hatady._bookForm.authorLabel, { maxlength: 256 })] },
+	{ id: 'status', title: copy.statusQuestion, fields: [f('status', copy.currentStatus, { type: 'choice', options: [{ value: 'want', label: i18n.ts._hata._hatady._bookForm.status_want, icon: 'ti ti-bookmark' }, { value: 'reading', label: i18n.ts._hata._hatady._bookForm.status_reading, icon: 'ti ti-book' }, { value: 'finished', label: i18n.ts._hata._hatady._bookForm.status_finished, icon: 'ti ti-check' }, { value: 'tsundoku', label: i18n.ts._hata._hatady._bookForm.status_tsundoku, icon: 'ti ti-books' }] }), f('isFavorite', i18n.ts._hata._hatady._bookDetail.favorite, { type: 'checkbox' }), f('isRecommended', i18n.ts._hata._hatady._bookDetail.recommend, { type: 'checkbox' })] },
+	{ id: 'details', title: copy.detailsQuestion, choices: true, fields: [] },
+	...optionalPages('progress', copy.readingProgress, [f('currentPage', copy.pageRead, { type: 'number', min: 0, max: 100000 }), f('totalPages', i18n.ts._hata._hatady._bookForm.pagesLabel, { type: 'number', min: 1, max: 100000 }), f('finishedAt', copy.finishedDate, { type: 'date' })], 'ti ti-book'),
+	...optionalPages('bookmarks', i18n.ts._hata._hatady._bookDetail.bookmarks, [f('bookmarks', i18n.ts._hata._hatady._bookDetail.bookmarks, { type: 'bookmarks' })], 'ti ti-bookmark'),
+	...optionalPages('memos', copy.pageMemos, [f('memos', copy.pageMemos, { type: 'memos' })], 'ti ti-pencil'),
+	...optionalPages('description', copy.introduction, [f('description', copy.description, { type: 'textarea', maxlength: 8192 })]),
+	...optionalPages('memo', copy.privateMemo, [f('memo', copy.privateMemo, { type: 'textarea', maxlength: 8192 })], 'ti ti-lock'),
+	...optionalPages('cover', i18n.ts._hata._hatady._bookDetail.coverColor, [f('colorIndex', i18n.ts._hata._hatady._bookDetail.coverColor, { type: 'color' })], 'ti ti-palette'),
+	{ id: 'sharing', title: copy.sharingQuestion, summary: true, fields: [f('visibility', copy.bookVisibility, { type: 'visibility' })] },
 ];
 
 function restoreDraft(draft: HatadyFormValues) {
@@ -53,7 +56,7 @@ onMounted(async () => {
 });
 
 async function save(data: HatadyFormValues) {
-	if (!notesReady) throw new Error('一部のしおり・メモを読み込めませんでした。画面を開き直してください');
+	if (!notesReady) throw new HatadyFormPartialError(copy.notesLoadFailed);
 	const bookId = data.savedBookId || source?.id;
 	const payload = {
 		title: data.title.trim(), author: data.author.trim() || null, totalPages: data.totalPages === '' || data.totalPages == null ? null : Number(data.totalPages), currentPage: Number(data.currentPage) || 0,
@@ -63,7 +66,7 @@ async function save(data: HatadyFormValues) {
 	};
 	const book = await api(bookId ? 'hata/hatady/books/update' : 'hata/hatady/books/create', { ...payload, ...(bookId ? { bookId } : {}) });
 	data.savedBookId = book.id;
-	try { await saveBookNotes(data, book.id, api); } catch { throw new Error('一部のしおり・メモを保存できませんでした。入力と保存済みの内容を保ったまま、もう一度保存できます'); }
+	try { await saveBookNotes(data, book.id, api); } catch { throw new HatadyFormPartialError(copy.notesSaveFailed); }
 	return { ...book, bookmarks: data.bookmarks, memos: data.memos };
 }
 

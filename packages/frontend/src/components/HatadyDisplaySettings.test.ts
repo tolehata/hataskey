@@ -9,10 +9,12 @@ const fixtures = vi.hoisted(() => ({
 	notify: vi.fn(),
 }));
 vi.mock('@/i.js', () => ({ $i: { id: 'theme-user' } }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatady: { _displaySettings: {
-	title: 'Hatady設定', theme: 'テーマ', themePaper: 'やわらかい紙', themeEspresso: '夜の書斎', themeHataskey: 'Hataskey準拠',
-	manage: '記録の管理', manageSubjects: '学びの分野', rerunTutorial: '使い方', exportAll: '書き出す', save: '保存する', cancel: '閉じる', saveFailed: '保存できませんでした',
-} } } } } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	i18n.locale._hata._hatady._displaySettings.saveFailed = '保存できませんでした';
+	return { i18n };
+});
 vi.mock('@/utility/hatady-prefs.js', () => ({ hatadyTheme: fixtures.theme, saveHatadyDisplay: fixtures.save }));
 vi.mock('@/utility/hatady-ui.js', () => ({ hatadyNotify: fixtures.notify, registerHatadySurface: () => () => {} }));
 vi.mock('@/utility/hatady-tutorial-launcher.js', () => ({ showHatadyTutorial: vi.fn(async () => () => {}) }));

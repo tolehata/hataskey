@@ -3,11 +3,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import hataSabaSource from '../../components/HatasabaUi2SettingsBody.vue?raw';
-import hataCordingSource from '../../components/HatacordingUiSettings.vue?raw';
 import hataskSource from '../HataskSettings.vue?raw';
 import hatadySource from '../../components/HatadyDisplaySettings.vue?raw';
 import previewSource from '../../components/MkHatasabaUi2PreviewWindow.vue?raw';
-import hataSnsSource from './HataSNSCordSettingsSurface.vue?raw';
 import hataFeedSource from './HataFeedSettingsSurface.vue?raw';
 import mobileSource from './SettingsMobileOverview.vue?raw';
 import indexSource from './index.vue?raw';
@@ -30,9 +28,7 @@ describe('settings brand coverage', () => {
 		expect(mobileSource).toContain('settingsBrandText: hasSettingsBrand(section.description)');
 		expect(mobileSource).toContain('settingsBrandText: hasSettingsBrand(activeCategory.description)');
 		expect(hataFeedSource).toContain('<HataFeedDisplaySettings embedded/>');
-		expect(hataSnsSource).toContain('class="settingsBrandText"');
 		expect(hataSabaSource).toContain('settingsBrand');
-		expect(hataCordingSource).toContain(':class="[$style.note, \'settingsBrandText\']"');
 		expect(hataskSource).toContain('<span class="settingsBrandText">{{ copy.title }}</span>');
 		// Hatady の表示設定は独自のブランド書体と共通ダイアログへ移行した。
 		expect(hatadySource).toContain(':title="copy.title"');

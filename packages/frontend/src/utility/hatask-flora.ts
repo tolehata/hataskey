@@ -245,7 +245,7 @@ export function generateFlowerName(flora: FloraItem): string {
   return `${adj}${flora.name}`;
 }
 
-export type HataskContentLanguage = 'ja' | 'en' | 'zh';
+export type HataskContentLanguage = 'ja' | 'en' | 'zh' | 'zhTW';
 
 function activeContentLocale(): string {
   // 起動時に選ばれた言語は <html lang> が正本。言語を端末へ明示保存していない場合、
@@ -260,6 +260,7 @@ function activeContentLocale(): string {
 function resolveContentLanguage(locale?: string): HataskContentLanguage {
   const normalized = (locale ?? activeContentLocale()).toLowerCase();
   if (normalized.startsWith('en')) return 'en';
+  if (normalized.startsWith('zh-tw') || normalized.startsWith('zh-hant') || normalized.startsWith('zh-hk')) return 'zhTW';
   if (normalized.startsWith('zh')) return 'zh';
   return 'ja';
 }
@@ -348,5 +349,5 @@ export function localizeHanakotoba(source: string, locale?: string): string {
   const language = resolveContentLanguage(locale);
   if (language === 'ja') return source;
   const index = hanakotobaIndex.get(source);
-  return index == null ? source : (floraTranslations[index]?.[language].hanakotoba ?? source);
+	return index == null ? source : (floraTranslations[index]?.[language].hanakotoba ?? source);
 }

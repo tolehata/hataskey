@@ -82,10 +82,21 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		miLocalStorage.setItem('ui', 'simple');
 	}
 
+	// 旗鯖fork: HataSNSCordUI は Hataskey UI 3 に置き換えて廃止した。利用中だった端末は UI3 へ移す。
+	if (miLocalStorage.getItem('ui') === 'hatacording') {
+		miLocalStorage.setItem('ui', 'hataskey3');
+	}
+	// 旧UIの端末ローカル設定・通知履歴キャッシュは参照元が無くなったため片付ける。
+	try {
+		for (const key of Object.keys(window.localStorage)) {
+			if (key.startsWith('hatacordingUi:') || key.startsWith('hatacordingActivityCache:')) window.localStorage.removeItem(key);
+		}
+	} catch { /* ストレージにアクセスできない環境では何もしない */ }
+
 	// 旗鯖: デッキUI以外のユーザーをSimple UIに一度だけ強制移行
 	if (!miLocalStorage.getItem('hata_ui_migrated')) {
 		const currentUi = miLocalStorage.getItem('ui');
-		if (currentUi !== 'deck' && currentUi !== 'simple' && currentUi !== 'hatacording') {
+		if (currentUi !== 'deck' && currentUi !== 'simple' && currentUi !== 'hataskey3') {
 			miLocalStorage.setItem('ui', 'simple');
 		}
 		miLocalStorage.setItem('hata_ui_migrated', '1');

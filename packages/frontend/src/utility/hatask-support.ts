@@ -4,6 +4,15 @@
  */
 
 import type { Endpoints } from 'cherrypick-js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
+
+const copy = i18n.ts._hata._hatask._support;
+type LocalizedPolicy = { name: string; description: string; unit?: string; unitSingular?: string; enabledLabel?: string; disabledLabel?: string; headingFirst?: string; headingSecond?: string };
+
+function localizedPolicy(key: string): LocalizedPolicy | undefined {
+	return (copy._policies as Record<string, LocalizedPolicy>)[key];
+}
 
 /** Display metadata only. Effective permissions always come from the server. */
 export const SUPPORT_POLICIES = [
@@ -19,9 +28,6 @@ export const SUPPORT_POLICIES = [
 	{ key: 'mascotMaxExpressions', name: 'マスコットの最大表情数', icon: 'mood-smile', type: 'count', unit: '表情 / キャラクター', description: '1キャラクターあたりに登録できる、\n通常の表情の上限が増えます' },
 	{ key: 'mascotMaxPhrases', name: 'マスコットの最大文言数', icon: 'message-circle', type: 'count', unit: '件 / キャラクター', description: '1キャラクターあたりに登録できる、\n通常のセリフの上限が増えます。表情ごとの上限ではありません' },
 	{ key: 'mascotMaxCharacters', name: 'マスコットの最大キャラクター数', icon: 'users', type: 'count', unit: '体', description: '登録して切り替えられる、\nマスコットキャラクターの総数が増えます' },
-	{ key: 'canUseHatacordingUi', name: 'HataSNSCordUIの利用', icon: 'layout-grid', type: 'boolean', enabledLabel: '利用できます', disabledLabel: '利用できません', description: 'HataSNSCordUIに切り替えて利用できます' },
-	{ key: 'hatacordingUiRateLimit', name: 'HataSNSCordUIの専用レートリミット', icon: 'gauge', type: 'hourly', description: 'HataSNSCordUIからのAPI操作に適用する、1時間あたりの共通枠です。\n投稿だけでなくデータの取得なども数え、一般APIの枠とは別に適用されます' },
-	{ key: 'canBypassHatacordingUiRateLimit', name: 'HataSNSCordUIの専用枠の免除', icon: 'shield-check', type: 'boolean', enabledLabel: '専用枠を免除', disabledLabel: '専用枠を適用', description: 'HataSNSCordUI専用の1時間枠だけを免除します。\n一般APIの枠とは別で、API固有の制限や権限確認は維持されます' },
 	{ key: 'rateLimitFactor', name: 'APIの利用制限', icon: 'gauge', type: 'rate', description: '一般APIの回数上限・最短間隔が緩和されます。機能ごとの専用制限は別に適用されます' },
 ] as const;
 
@@ -35,31 +41,40 @@ export function supportPolicyDefinition(key: string): SupportPolicyDefinition | 
 	return SUPPORT_POLICIES.find(policy => policy.key === key);
 }
 
+/** Translate only known server defaults; preserve administrator-authored copy. */
+export function supportPolicyDisplay(key: string, title: string, description: string): { title: string; description: string } {
+	const definition = supportPolicyDefinition(key);
+	const localized = localizedPolicy(key);
+	return {
+		title: definition && localized && title === definition.name ? localized.name : title,
+		description: definition && localized && description === definition.description ? localized.description : description,
+	};
+}
+
 export function formatSupportSnapshot(key: string, snapshot: SupportSnapshot | null | undefined, _baseline?: SupportSnapshot | null): string {
 	const policy = supportPolicyDefinition(key);
-	if (!policy || !snapshot) return '未設定';
-	if (snapshot.unlimited && policy.type === 'hourly') return '専用の1時間枠を免除';
-	if (snapshot.unlimited && policy.type === 'rate') return '一般APIの制限を免除';
+	if (!policy || !snapshot) return copy.unset;
+	if (snapshot.unlimited && policy.type === 'rate') return copy.rateExempt;
 	const value = snapshot.value;
-	if (policy.type === 'boolean') return typeof value !== 'boolean' ? '未設定' : value ? policy.enabledLabel : policy.disabledLabel;
-	if (typeof value !== 'number' || !Number.isFinite(value)) return '未設定';
+	if (policy.type === 'boolean') return typeof value !== 'boolean' ? copy.unset : value ? (localizedPolicy(key)?.enabledLabel ?? policy.enabledLabel) : (localizedPolicy(key)?.disabledLabel ?? policy.disabledLabel);
+	if (typeof value !== 'number' || !Number.isFinite(value)) return copy.unset;
 	if (policy.type === 'capacity') return value >= 1024 ? `${number(value / 1024)} GB` : `${number(value)} MB`;
-	if (policy.type === 'hourly') return Number.isInteger(value) && value >= 1 && value <= 1000 ? `${number(value)} 回 / 1時間` : '未設定';
 	if (policy.type === 'rate') {
-		if (value <= 0) return '一般APIの制限を免除';
+		if (value <= 0) return copy.rateExempt;
 		const multiplier = snapshot.rateMultiplier;
-		if (multiplier == null || !Number.isFinite(multiplier) || multiplier <= 0) return `設定値 ${number(value)}`;
-		return multiplier === 1 ? '標準の制限' : `回数上限 ${number(multiplier)}倍相当`;
+		if (multiplier == null || !Number.isFinite(multiplier) || multiplier <= 0) return i18n.tsx._hata._hatask._support.configuredValue({ value: number(value) });
+		return multiplier === 1 ? copy.standardLimit : i18n.tsx._hata._hatask._support.rateMultiplier({ value: number(multiplier) });
 	}
-	return `${number(value)} ${policy.unit}`;
+	const localized = localizedPolicy(key);
+	return `${number(value)} ${value === 1 ? (localized?.unitSingular ?? localized?.unit ?? policy.unit) : (localized?.unit ?? policy.unit)}`;
 }
 
 function number(value: number): string {
-	return value.toLocaleString('ja-JP', { maximumFractionDigits: 2 });
+	return value.toLocaleString(versatileLang, { maximumFractionDigits: 2 });
 }
 
 export function supportSnapshotCondition(snapshot: SupportSnapshot | null | undefined): string | null {
-	return snapshot?.condition === 'mascotUnavailable' ? 'マスコット機能は利用できません' : snapshot?.condition === 'snsUiUnavailable' ? 'HataSNSCordUIは利用できません' : null;
+	return snapshot?.condition === 'mascotUnavailable' ? copy.mascotUnavailable : null;
 }
 
 export function supportBenefitHeading(key: string, title: string): readonly string[] {
@@ -71,7 +86,10 @@ export function supportBenefitHeading(key: string, title: string): readonly stri
 		mascotMaxPhrases: ['マスコットの', '最大文言数'],
 		mascotMaxCharacters: ['マスコットの', '最大キャラクター数'],
 	};
-	return title === supportPolicyDefinition(key)?.name ? (breaks[key as SupportPolicyKey] ?? [title]) : [title];
+	if (title !== supportPolicyDefinition(key)?.name) return [title];
+	const localized = localizedPolicy(key);
+	if (localized?.headingFirst && localized.headingSecond) return [localized.headingFirst, localized.headingSecond];
+	return localized ? [localized.name] : (breaks[key as SupportPolicyKey] ?? [title]);
 }
 
 /** Conservative sizing budget for the existing Japanese and Latin fonts. */

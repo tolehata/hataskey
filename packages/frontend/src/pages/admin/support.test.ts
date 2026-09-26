@@ -159,11 +159,11 @@ afterEach(() => {
 });
 
 describe('コンパネのHatask支援管理', () => {
-	test('初期OFF・未設定でも16項目を非公開の編集行として用意し、実際の標準値を読み取り専用で表示する', async () => {
+	test('初期OFF・未設定でも13項目を非公開の編集行として用意し、実際の標準値を読み取り専用で表示する', async () => {
 		initialResponse.settings.benefits = [];
 		const { container } = await mount();
 		expect(find<HTMLInputElement>(container, '[data-support-field="enabled"] input').checked).toBe(false);
-		expect(container.querySelectorAll('[data-support-benefit]')).toHaveLength(16);
+		expect(container.querySelectorAll('[data-support-benefit]')).toHaveLength(13);
 		for (const element of container.querySelectorAll<HTMLInputElement>('[data-benefit-field="visible"] input')) expect(element.checked).toBe(false);
 		for (const element of container.querySelectorAll<HTMLSelectElement>('[data-benefit-field="roleId"] select')) expect(element.value).toBe('');
 		expect(find<HTMLElement>(container, '[data-baseline-preview="driveCapacityMb"]').textContent).toBe('879 MB');
@@ -437,7 +437,7 @@ describe('コンパネのHatask支援管理', () => {
 		expect(container.querySelector('[data-preview-title] img')).toBeNull();
 		expect(find<HTMLElement>(container, '[data-preview-message]').textContent).toBe('みなさんのご支援が、\nこの場所を支えています');
 		expect(find<HTMLElement>(container, '[data-preview-enabled]').textContent).toBe('有効');
-		expect(find<HTMLElement>(container, '[data-preview-benefits]').textContent).toBe('16件');
+		expect(find<HTMLElement>(container, '[data-preview-benefits]').textContent).toBe('13件');
 		expect(find<HTMLElement>(container, '[data-preview-supporters]').textContent).toBe('2人');
 		expect(find<HTMLAnchorElement>(container, '[data-open-saved-support]').getAttribute('href')).toBe('/hatask?tab=support');
 		expect(callsTo('admin/hatask/support/update')).toHaveLength(0);

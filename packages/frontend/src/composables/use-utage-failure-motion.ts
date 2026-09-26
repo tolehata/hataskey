@@ -8,7 +8,7 @@ export const UTAGE_FAILURE_DURATION = 1650;
 type Options = {
 	root: Readonly<Ref<HTMLElement | null>>;
 	article: Readonly<Ref<HTMLElement | null>>;
-	state: Readonly<Ref<'none' | 'flashing' | 'failed' | 'success'>>;
+	state: Readonly<Ref<'none' | 'flashing' | 'reviving' | 'failed' | 'success'>>;
 	animationEnabled: Readonly<Ref<boolean>>;
 	failedText: string;
 };
@@ -17,7 +17,7 @@ const clamp = (value: number) => Math.max(0, Math.min(1, value));
 const easeOut = (value: number) => 1 - (1 - clamp(value)) ** 3;
 const smooth = (value: number) => clamp(value) ** 2 * (3 - 2 * clamp(value));
 
-function isVisible(article: HTMLElement): boolean {
+export function isVisible(article: HTMLElement): boolean {
 	const rect = article.getBoundingClientRect();
 	let left = Math.max(0, rect.left), top = Math.max(0, rect.top);
 	let right = Math.min(window.innerWidth, rect.right), bottom = Math.min(window.innerHeight, rect.bottom);

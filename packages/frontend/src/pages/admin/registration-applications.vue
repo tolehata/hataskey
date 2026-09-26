@@ -164,6 +164,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</MkButton>
 						</div>
 					</div>
+					<section v-if="item.status === 'rejected' && item.review.isRoot" :class="$style.actionPanel" aria-live="polite">
+						<h3 :class="$style.reviewTitle">{{ notificationCopy.title }}</h3>
+						<p :class="$style.reviewHint">{{ notificationLabel(item.notificationStatus) }}</p>
+						<MkButton v-if="item.notificationRetryAvailable" rounded :disabled="actionBusy || loading" @click="resendNotification(item)">
+							<i class="ti ti-mail-forward" aria-hidden="true"></i> {{ notificationCopy.retry }}
+						</MkButton>
+					</section>
 					<div v-if="item.status !== 'pending'" :class="$style.cardStatus">
 						<span v-if="item.status === 'approved'" :class="$style.statusApproved"><i class="ti ti-check" aria-hidden="true"></i> {{ copy.approved }}</span>
 						<span v-if="item.status === 'rejected'" :class="$style.statusRejected"><i class="ti ti-x" aria-hidden="true"></i> {{ copy.rejected }}</span>
@@ -203,6 +210,7 @@ const copyx = i18n.tsx._hata._registrationApplications._admin;
 const modeCopy = i18n.ts._hata._registrationApplications;
 const reviewCopy = i18n.ts._hata._registrationApplications._review;
 const reviewCopyx = i18n.tsx._hata._registrationApplications._review;
+const notificationCopy = i18n.ts._hata._registrationApplications._notification;
 const modeUnavailable = ref(false);
 const permissionDenied = ref(false);
 const isAdmin = computed(() => $i?.isAdmin === true);
@@ -419,6 +427,31 @@ async function reject(item: RegistrationApplication) {
 	await decide(item, 'reject');
 }
 
+function notificationLabel(value: RegistrationApplication['notificationStatus']) {
+	return value == null ? notificationCopy.legacy : notificationCopy[value];
+}
+
+async function resendNotification(item: RegistrationApplication) {
+	const version = revision;
+	if (!isCurrent(version) || actionBusy.value || loading.value || item.status !== 'rejected' || !item.review.isRoot || !item.notificationRetryAvailable) return;
+	actionBusy.value = true;
+	try {
+		const { canceled } = await os.confirm({ type: 'warning', title: notificationCopy.retry, text: notificationCopy.retryConfirm });
+		if (canceled || !isCurrent(version)) return;
+		const result = await misskeyApi('admin/resend-registration-rejection', { applicationId: item.id });
+		if (!isCurrent(version)) return;
+		os.alert({ type: result.emailSent ? 'success' : 'warning', text: result.emailSent ? notificationCopy.retrySent : result.notificationStatus === 'sending' ? notificationCopy.sendingDescription : notificationCopy.retryFailed });
+		await load();
+	} catch (err: any) {
+		if (!isCurrent(version)) return;
+		if (err?.code === 'REJECTION_NOTIFICATION_NOT_RETRYABLE') os.alert({ type: 'warning', text: notificationCopy.unavailable });
+		else await handleError(err);
+		if (isCurrent(version)) await load();
+	} finally {
+		if (version === revision) actionBusy.value = false;
+	}
+}
+
 async function decide(item: RegistrationApplication, decision: 'approve' | 'reject') {
 	const version = revision;
 	if (!isCurrent(version) || actionBusy.value || loading.value || item.status !== 'pending' || !item.review.isRoot || (decision === 'approve' && !item.review.canFinalize)) return;
@@ -438,9 +471,9 @@ async function decide(item: RegistrationApplication, decision: 'approve' | 'reje
 			if (!isCurrent(version)) return;
 			os.alert({ type: result.emailSent ? 'success' : 'warning', text: result.emailSent ? copyx.approvedSuccess({ username }) : reviewCopy.emailFailed });
 		} else {
-			await misskeyApi('admin/reject-registration', { applicationId: item.id, revision: reviewRevision });
+			const result = await misskeyApi('admin/reject-registration', { applicationId: item.id, revision: reviewRevision });
 			if (!isCurrent(version)) return;
-			os.alert({ type: 'success', text: copyx.rejectedSuccess({ username }) });
+			os.alert({ type: result.emailSent ? 'success' : 'warning', text: result.emailSent ? notificationCopy.sentDescription : result.notificationStatus === 'sending' ? notificationCopy.sendingDescription : notificationCopy.failedDescription });
 		}
 		await load();
 	} catch (err: any) {

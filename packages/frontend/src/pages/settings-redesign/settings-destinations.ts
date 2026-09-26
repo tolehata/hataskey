@@ -13,8 +13,9 @@ export type SettingsDestination = SettingsSearchNavigationTargetV2 & {
 	showCount?: boolean;
 	primary?: boolean;
 	categoryId?: string;
+	description?: string;
 	legacyGroup?: string;
-	brand?: 'Hataskey' | 'Hatask' | 'Hatady' | 'HataFeed' | 'HataSNSCordUI';
+	brand?: 'Hataskey' | 'Hatask' | 'Hatady' | 'HataFeed';
 	/**
 	 * 旗鯖fork: Tabler の代わりに出す絵。⚠️これがあるときは icon を描かない。
 	 *   ⚠️icon は空にしないこと。検索索引が icon を持つ前提で並べている。
@@ -25,8 +26,6 @@ export type SettingsDestinationSection = { id: string; label: string; descriptio
 
 const copy = i18n.ts._hata._settingsRedesign;
 const pref = '/settings/preferences';
-/** 旗鯖fork: HataSNSCordUI の柴犬。⚠️出典は MkUISetup.vue の選択画面。 */
-const HATASNSCORD_MASCOT = '/client-assets/hatacording/mascot-shiba-v1.webp';
 const destination = (id: string, label: string, route: string, icon: string, extra: Partial<SettingsDestination> = {}): SettingsDestination => ({
 	id, stableId: 'settings.destination.' + id, label, route, icon, ...extra,
 });
@@ -40,13 +39,9 @@ const destination = (id: string, label: string, route: string, icon: string, ext
  * ⚠️項目のidは `preferenceDestinationIds` が参照している。消すと起動時に例外になる。
  */
 export const settingsDestinationSections: SettingsDestinationSection[] = [{
-	id: 'hataskey-ui', label: 'Hataskey UI', description: copy.nav.appearanceDescription, icon: 'ti ti-sparkles', brand: 'Hataskey', items: [
+	id: 'hataskey-ui', label: 'hataskeyUI / S', description: copy.nav.appearanceDescription, icon: 'ti ti-sparkles', brand: 'Hataskey', items: [
 		destination('hataskey-ui', 'Hataskey UI', '/settings/hata-custom', 'ti ti-sparkles', { brand: 'Hataskey', primary: true, showCount: true, activation: { kind: 'hata-custom-category', category: 'glassUi' } }),
-	],
-}, {
-	// 旗鯖fork: HataSNSCordUI は Hataskey UI と対になる「UIそのもの」の設定なので直下に置く。
-	id: 'hatasnscord-ui', label: 'HataSNSCordUI', description: `${i18n.ts._hata._customSettings._ui.hataSnsCordUiDescriptionPrefix}${i18n.ts._hata._customSettings._ui.hataSnsCordUiSync}${i18n.ts._hata._customSettings._ui.hataSnsCordUiDescriptionSuffix}`, icon: 'ti ti-layout-sidebar-right', iconImage: HATASNSCORD_MASCOT, brand: 'HataSNSCordUI', items: [
-		destination('hatasnscord-settings', 'HataSNSCordUI', '/settings/hatasnscord-ui', 'ti ti-layout-sidebar-right', { iconImage: HATASNSCORD_MASCOT, brand: 'HataSNSCordUI', primary: true, showCount: true }),
+		destination('hataskey-ui-s', 'Hataskey UI S', pref, 'ti ti-pencil', { brand: 'Hataskey', categoryId: 'hataskey-ui', description: i18n.ts._hata._uiSetup.ui3SettingsDescription }),
 	],
 }, {
 	id: 'hataskey-tools', label: copy.nav.hataTools, description: copy.nav.hataToolsDescription, icon: 'ti ti-flag', brand: 'Hataskey', items: [

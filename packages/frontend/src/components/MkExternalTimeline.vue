@@ -80,7 +80,7 @@ import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as sound from '@/utility/sound.js';
 import * as os from '@/os.js';
-import { preloadExternalEmojiMap, callExternalApi, getExternalAccount } from '@/utility/external-api.js';
+import { preloadExternalEmojiMap, callExternalApi, getExternalAccount, getExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
 import { rebuildExternalNotePath, resolveExternalNotePresentation } from '@/utility/external-note-presentation.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { versatileLang } from '@/utility/intl-const.js';
@@ -134,6 +134,25 @@ const SCROLL_TOP_THRESHOLD = 50; // px以内なら「最上部」とみなす
 
 const queuedCount = computed(() => queuedNotes.value.length);
 const displayedNotes = computed(() => notes.value);
+const queuedAuthor = computed(() => {
+	const user = queuedNotes.value[0]?.user;
+	return user ? { ...user, host: user.host ?? props.host } : null;
+});
+const queuedEmojiUrls = computed(() => {
+	const user = queuedAuthor.value;
+	const urls: Record<string, string> = { ...getExternalEmojiUrlMapForHost(user?.host ?? props.host) };
+	const emojis = user?.emojis;
+	if (Array.isArray(emojis)) {
+		for (const emoji of emojis) {
+			if (typeof emoji?.name === 'string' && typeof emoji.url === 'string') urls[emoji.name] = emoji.url;
+		}
+	} else if (emojis && typeof emojis === 'object') {
+		for (const [name, url] of Object.entries(emojis)) {
+			if (typeof url === 'string') urls[name] = url;
+		}
+	}
+	return urls;
+});
 
 const newNotesInNavbar = useHataskeyTimelineNewNotes(() => props.newNotesNavbarKey, () => {
 	const behavior = prefer.r.newNoteReceivedNotificationBehavior.value;
@@ -142,6 +161,12 @@ const newNotesInNavbar = useHataskeyTimelineNewNotes(() => props.newNotesNavbarK
 		text: behavior === 'count' ? i18n.tsx.newNoteRecivedCount({ n: formatCount(queuedCount.value) }) : i18n.ts.newNoteRecived,
 		icon: 'ti ti-arrow-up',
 		show: releaseQueue,
+		avatars: queuedNotes.value.slice(0, 3).flatMap((note: any) => {
+			const url = note.user?.avatarUrl;
+			return typeof url === 'string' && /^https?:\/\//i.test(url) ? [{ id: String(note.id), url }] : [];
+		}),
+		author: queuedAuthor.value,
+		emojiUrls: queuedEmojiUrls.value,
 	};
 });
 

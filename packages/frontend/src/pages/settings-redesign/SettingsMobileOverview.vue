@@ -143,7 +143,7 @@ const emit = defineEmits<{
 const copy = i18n.ts._hata._settingsRedesign;
 const activeCategory = computed(() => [...props.sections, ...props.deprecatedSections].find(section => section.id === props.activeCategoryId) ?? null);
 const activeSectionId = computed(() => [...props.sections, ...props.deprecatedSections].find(section => section.items.some(item => item.id === props.activeItemId))?.id ?? null);
-const hasSettingsBrand = (value: string) => /Hataskey|Hatask|Hatady|HataFeed|HataSNSCordUI/u.test(value);
+const hasSettingsBrand = (value: string) => /Hataskey|Hatask|Hatady|HataFeed/u.test(value);
 const categoryBackEl = ref<HTMLButtonElement | null>(null);
 const categoryButtonEls = new Map<string, HTMLButtonElement>();
 

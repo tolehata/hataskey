@@ -1,49 +1,49 @@
 <!-- SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<HyDialog ref="dialog" title="統計とカレンダー" @close="close" @closed="emit('closed')">
+<HyDialog ref="dialog" :title="copy.title" @close="close" @closed="emit('closed')">
 	<div :class="$style.controls">
-		<HyCapsule v-model="kind" :options="kinds" label="集計する活動" @update:modelValue="load"/>
-		<HyCapsule v-model="months" :options="ranges" label="集計期間" @update:modelValue="load"/>
+		<HyCapsule v-model="kind" :options="kinds" :label="copy.activityFilter" @update:modelValue="load"/>
+		<HyCapsule v-model="months" :options="ranges" :label="copy.period" @update:modelValue="load"/>
 	</div>
 	<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
-	<p v-if="loading" class="hy-empty">読み込み中</p>
+	<p v-if="loading" class="hy-empty">{{ i18n.ts._hata._hatady._statsDetail.loading }}</p>
 	<template v-else>
 		<section :class="$style.summary">
 			<small>{{ startDate }} — {{ today }}</small>
 			<div>
 				<span>
-					<small>記録</small>
+					<small>{{ copy.records }}</small>
 					<strong>
 						{{ rows.length }}
-						<small>件</small>
+						<small>{{ copy.itemsUnit }}</small>
 					</strong>
 				</span>
 				<span>
-					<small>記録した時間</small>
+					<small>{{ copy.recordedTime }}</small>
 					<strong>{{ duration(totalSeconds) }}</strong>
-					<small v-if="untimed">時間未入力 {{ untimed }}件</small>
+					<small v-if="untimed">{{ i18n.tsx._hata._hatady._statsView.untimed({ count: untimed }) }}</small>
 				</span>
 				<span>
-					<small>最長の連続記録</small>
+					<small>{{ copy.longestStreak }}</small>
 					<strong>
 						{{ longest }}
-						<small>日</small>
+						<small>{{ i18n.ts._hata._hatady._statsDetail.dayUnit }}</small>
 					</strong>
 				</span>
 			</div>
 		</section>
 		<section :class="$style.calendar">
 			<header>
-				<h3>{{ calendarMonth.replace('-', '年') }}月</h3>
+				<h3>{{ formatMonth(calendarMonth) }}</h3>
 				<div>
-					<button class="hy-icon-button" :disabled="monthIndex === 0" aria-label="前の月" @click="moveMonth(-1)">
+					<button class="hy-icon-button" :disabled="monthIndex === 0" :aria-label="copy.previousMonth" @click="moveMonth(-1)">
 						<i class="ti ti-chevron-left"></i>
 					</button>
 					<button
 						class="hy-icon-button"
 						:disabled="monthIndex === monthKeys.length - 1"
-						aria-label="次の月"
+						:aria-label="copy.nextMonth"
 						@click="moveMonth(1)"
 					>
 						<i class="ti ti-chevron-right"></i>
@@ -60,7 +60,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 						:disabled="cell.date > today"
 						:aria-current="cell.date === today ? 'date' : undefined"
 						:aria-pressed="selectedDay === cell.date"
-						:aria-label="`${cell.date} ${cell.count}件の記録`"
+						:aria-label="i18n.tsx._hata._hatady._statsView.dayCount({ date: cell.date, count: cell.count })"
 						@click="selectDay(cell.date)"
 					>
 						<span>{{ cell.day }}</span>
@@ -71,8 +71,8 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 			</div>
 			<section v-if="selectedDay" :class="$style.dayPreview">
 				<header>
-					<h4 ref="dayTitle" tabindex="-1">{{ selectedDay }}の記録</h4>
-					<button class="hy-icon-button" aria-label="簡易記録ビューを閉じる" @click="closeDay">
+					<h4 ref="dayTitle" tabindex="-1">{{ i18n.tsx._hata._hatady._statsView.dayRecords({ date: selectedDay }) }}</h4>
+					<button class="hy-icon-button" :aria-label="copy.closeDay" @click="closeDay">
 						<i class="ti ti-x"></i>
 					</button>
 				</header>
@@ -94,53 +94,53 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 						@openSession="() => {}"
 					/>
 				</details>
-				<p v-if="!dayRows.length" class="hy-empty">この日の記録はありません</p>
+				<p v-if="!dayRows.length" class="hy-empty">{{ copy.emptyDay }}</p>
 			</section>
 		</section>
 		<details :class="$style.detail">
 			<summary>
 				<i class="ti ti-clock"></i>
-				時間の傾向
+				{{ copy.timeTrend }}
 			</summary>
-			<HyCapsule v-model="timeView" :options="timeChoices" label="時間の表示"/>
+			<HyCapsule v-model="timeView" :options="timeChoices" :label="copy.timeDisplay"/>
 			<HyStatsChart
 				:title="
-					timeView === 'hour' ? '開始時刻ごとの記録' : timeView === 'weekday' ? '曜日ごとの時間' : '月ごとの時間'
+					timeView === 'hour' ? copy.hourlyRecords : timeView === 'weekday' ? copy.weekdayTime : copy.monthlyTime
 				"
 				:rows="timeRows"
-				:unit="timeView === 'hour' ? '件' : 'seconds'"
+				:unit="timeView === 'hour' ? copy.itemsUnit : 'seconds'"
 			/>
-			<p v-if="timeView === 'hour'" class="hy-muted">開始時刻を入力した記録のみ</p>
+			<p v-if="timeView === 'hour'" class="hy-muted">{{ copy.startedOnly }}</p>
 		</details>
 		<details :class="$style.detail">
 			<summary>
 				<i class="ti ti-palette"></i>
-				分野の移り変わり
+				{{ copy.subjectTrend }}
 			</summary>
-			<HyCapsule v-model="subjectView" :options="subjectChoices" label="分野の表示"/>
-			<select v-if="subjectView === 'month'" v-model="subject" class="hy-input" aria-label="月別で見る分野">
-				<option value="">すべての分野</option>
+			<HyCapsule v-model="subjectView" :options="subjectChoices" :label="copy.subjectDisplay"/>
+			<select v-if="subjectView === 'month'" v-model="subject" class="hy-input" :aria-label="copy.subjectByMonth">
+				<option value="">{{ copy.allSubjects }}</option>
 				<option v-for="s in subjects" :key="s">{{ s }}</option>
 			</select>
-			<HyStatsChart :title="subjectView === 'month' ? '分野の月別時間' : '分野別の時間'" :rows="subjectRows"/>
+			<HyStatsChart :title="subjectView === 'month' ? copy.subjectMonthlyTime : copy.subjectTime" :rows="subjectRows"/>
 		</details>
 		<details :class="$style.detail">
 			<summary>
 				<i class="ti ti-flag"></i>
-				自己ベスト{{ kind === 'all' || kind === 'study' ? 'と読了' : '' }}
+				{{ kind === 'all' || kind === 'study' ? copy.bestAndFinished : copy.personalBest }}
 			</summary>
 			<div :class="$style.bests">
 				<span>
-					<small>1回の記録</small>
+					<small>{{ copy.oneRecord }}</small>
 					<strong>{{ duration(bestSession) }}</strong>
 				</span>
 				<span>
-					<small>1日の合計</small>
+					<small>{{ copy.dayTotal }}</small>
 					<strong>{{ duration(bestDay) }}</strong>
 				</span>
 			</div>
-			<HyStatsChart v-if="kind === 'all' || kind === 'study'" title="月ごとの読了" :rows="finishedRows" unit="冊"/>
-			<p v-if="legacyPages && (kind === 'all' || kind === 'study')">{{ legacyPages }}ページ</p>
+			<HyStatsChart v-if="kind === 'all' || kind === 'study'" :title="copy.monthlyFinished" :rows="finishedRows" :unit="copy.booksUnit"/>
+			<p v-if="legacyPages && (kind === 'all' || kind === 'study')">{{ i18n.tsx._hata._hatady._statsView.pageCount({ count: legacyPages }) }}</p>
 		</details>
 	</template>
 </HyDialog>
@@ -156,6 +156,11 @@ import { hatadyTzOffset } from '@/utility/hatady-prefs.js';
 import { requireHatadyActivityPage } from '@/utility/hatady-media.js';
 import { collectActivityPages, localDateKey, activityKind } from '@/utility/hatady-home.js';
 import { HATADY_ACTIVITY_CHOICES, hatadyDuration as duration, hatadySeconds } from '@/utility/hatady-ui.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
+const copy = i18n.ts._hata._hatady._statsView;
+const formatMonth = (month: string) => month ? versatileLang.startsWith('ja') ? `${month.slice(0, 4)}年${month.slice(5, 7)}月` : new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'long' }).format(new Date(`${month}-01T12:00:00`)) : '';
+const shortMonth = (month: string) => new Intl.DateTimeFormat(versatileLang, { month: 'short' }).format(new Date(`${month}-01T12:00:00`));
 const props = defineProps<{ initialKind?: string }>();
 const emit = defineEmits<{ (e: 'closed'): void }>();
 const dialog = ref<any>(),
@@ -174,17 +179,17 @@ const dialog = ref<any>(),
 const dayButtons: Record<string, any> = {};
 let previousScroll = 0,
 	request = 0;
-const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-const kinds = [{ value: 'all', label: 'すべて', icon: 'ti ti-chart-bar' }, ...HATADY_ACTIVITY_CHOICES];
-const ranges = [3, 6, 12].map((n) => ({ value: String(n), label: `${n}か月`, icon: 'ti ti-calendar' }));
+const weekdays = Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(versatileLang, { weekday: 'short' }).format(new Date(2023, 0, 1 + i)));
+const kinds = [{ value: 'all', label: i18n.ts._hata._hatady._media.all, icon: 'ti ti-chart-bar' }, ...HATADY_ACTIVITY_CHOICES];
+const ranges = [3, 6, 12].map((n) => ({ value: String(n), label: i18n.tsx._hata._hatady._statsView.monthRange({ count: n }), icon: 'ti ti-calendar' }));
 const timeChoices = [
-	{ value: 'month', label: '月別', icon: 'ti ti-calendar' },
-	{ value: 'weekday', label: '曜日別', icon: 'ti ti-calendar-week' },
-	{ value: 'hour', label: '時間帯', icon: 'ti ti-clock' },
+	{ value: 'month', label: copy.byMonth, icon: 'ti ti-calendar' },
+	{ value: 'weekday', label: copy.byWeekday, icon: 'ti ti-calendar-week' },
+	{ value: 'hour', label: copy.byHour, icon: 'ti ti-clock' },
 ];
 const subjectChoices = [
-	{ value: 'total', label: '内訳', icon: 'ti ti-chart-pie' },
-	{ value: 'month', label: '月別', icon: 'ti ti-chart-bar' },
+	{ value: 'total', label: copy.breakdown, icon: 'ti ti-chart-pie' },
+	{ value: 'month', label: copy.byMonth, icon: 'ti ti-chart-bar' },
 ];
 const today = localDateKey(new Date()),
 	monthKeys = computed(() =>
@@ -213,7 +218,7 @@ function date(a: any) {
 }
 
 function genre(a: any) {
-	return record(a).subject || a.media?.work?.genres?.[0] || record(a).details?.genre || '未設定';
+	return record(a).subject || a.media?.work?.genres?.[0] || record(a).details?.genre || i18n.ts._hata._hatady._workWizard.unset;
 }
 
 const totalSeconds = computed(() => sum(rows.value)),
@@ -255,17 +260,17 @@ const timeRows = computed(() =>
 	timeView.value === 'month'
 		? monthKeys.value.map((m) => ({
 			label: m,
-			short: `${Number(m.slice(5))}月`,
+			short: shortMonth(m),
 			value: sum(rows.value.filter((a) => date(a).startsWith(m))),
 		}))
 		: timeView.value === 'weekday'
 			? weekdays.map((d, i) => ({
-				label: `${d}曜日`,
+				label: i18n.tsx._hata._hatady._statsView.weekdayLabel({ day: d }),
 				short: d,
 				value: sum(rows.value.filter((a) => new Date(a.occurredAt).getDay() === i)),
 			}))
 			: Array.from({ length: 24 }, (_, h) => ({
-				label: `${h}時台`,
+				label: i18n.tsx._hata._hatady._statsView.hourLabel({ hour: h }),
 				short: String(h),
 				value: rows.value.filter((a) => {
 					const start = record(a).startedAt || record(a).details?.startedAt;
@@ -278,7 +283,7 @@ const subjects = computed(() => [...new Set(rows.value.map(genre))] as string[])
 		subjectView.value === 'month'
 			? monthKeys.value.map((m) => ({
 				label: m,
-				short: `${Number(m.slice(5))}月`,
+				short: shortMonth(m),
 				value: sum(rows.value.filter((a) => date(a).startsWith(m) && (!subject.value || genre(a) === subject.value))),
 			}))
 			: subjects.value.map((s) => ({ label: s, value: sum(rows.value.filter((a) => genre(a) === s)) })),
@@ -286,7 +291,7 @@ const subjects = computed(() => [...new Set(rows.value.map(genre))] as string[])
 	finishedRows = computed(() =>
 		monthKeys.value.map((m) => ({
 			label: m,
-			short: `${Number(m.slice(5))}月`,
+			short: shortMonth(m),
 			value: legacy.value?.monthlyFinished?.find((r: any) => r.month === m)?.books || 0,
 		})),
 	),
@@ -322,7 +327,7 @@ async function load() {
 		legacy.value = stats;
 		if (!monthKeys.value.includes(calendarMonth.value)) calendarMonth.value = monthKeys.value.at(-1)!;
 	} catch {
-		if (seq === request) error.value = '統計を読み込めませんでした';
+		if (seq === request) error.value = copy.loadFailed;
 	} finally {
 		if (seq === request) loading.value = false;
 	}

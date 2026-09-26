@@ -117,7 +117,7 @@ async function toggle(emoji: string) {
 		if (remove) localApplyUnreact();
 		else localApplyReact(emoji);
 	} catch {
-		hatadyNotify('リアクションを変更できませんでした');
+		hatadyNotify(copy.updateFailed);
 	} finally {
 		busy.value = false;
 	}

@@ -33,7 +33,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<button type="button" class="hy-icon-button" :disabled="saving" :aria-label="t('edit')" :title="t('edit')" @click="openEdit">
 								<i class="ti ti-pencil" aria-hidden="true"></i>
 							</button>
-							<button type="button" class="hy-icon-button" :disabled="saving" aria-label="本を削除" title="本を削除" @click="removeBook">
+							<button type="button" class="hy-icon-button" :disabled="saving" :aria-label="bookExtra.deleteBook" :title="bookExtra.deleteBook" @click="removeBook">
 								<i class="ti ti-trash" aria-hidden="true"></i>
 							</button>
 						</div>
@@ -42,17 +42,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<span
 							:title="
 								book.visibility === 'private'
-									? '自分のみ'
+									? homeCopy.activityPrivate
 									: book.visibility === 'followers'
-										? 'フォロワーのみ'
-										: '公開'
+										? bookExtra.followersOnly
+										: homeCopy.activityPublic
 							"
 							:aria-label="
 								book.visibility === 'private'
-									? '自分のみ'
+									? homeCopy.activityPrivate
 									: book.visibility === 'followers'
-										? 'フォロワーのみ'
-										: '公開'
+										? bookExtra.followersOnly
+										: homeCopy.activityPublic
 							"
 							role="img"
 						>
@@ -86,7 +86,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<section v-if="book.details?.memo" :class="$style.description">
 				<h3>
 					<i class="ti ti-lock"></i>
-					自分だけのメモ
+					{{ bookExtra.privateMemo }}
 				</h3>
 				<p>{{ book.details.memo }}</p>
 			</section>
@@ -321,8 +321,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 </HyDialog>
 <HatadyDraftPrompt
 	v-if="closePrompt"
-	title="本の編集をどうする？"
-	description="読んだページや書きかけのメモを、端末に下書きとして残せます。"
+	:title="bookExtra.draftQuestion"
+	:description="bookExtra.draftDescription"
 	:error="draftError"
 	@save="leave(true)"
 	@discard="leave(false)"
@@ -343,6 +343,7 @@ import { $i } from '@/i.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { openRecordModeration } from '@/utility/record-moderation.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { hySubjectPalette, HY_BOOKMARK_COLORS, hyBookmarkColor } from '@/utility/hatady.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
@@ -352,6 +353,8 @@ const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'deleted'): void; (ev: 'o
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
 const copy = i18n.ts._hata._hatady._bookDetail;
+const bookExtra = i18n.ts._hata._hatady._bookDetailExtra;
+const homeCopy = i18n.ts._hata._hatady._home;
 const copyx = i18n.tsx._hata._hatady._bookDetail;
 const dateFormat = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'short', day: 'numeric' });
 
@@ -397,7 +400,7 @@ async function saveBmMemo(bm: any) {
 		bmMemoDraft.value = '';
 		emit('changed');
 	} catch {
-		hatadyNotify('変更を保存できませんでした');
+		hatadyNotify(bookExtra.saveFailed);
 	} finally {
 		saving.value = false;
 	}
@@ -479,11 +482,11 @@ function requestClose() {
 
 function leave(save: boolean) {
 	if (!(save ? inlineDraft.saveDraft() : inlineDraft.clearDraft())) {
-		draftError.value = '端末の下書きを更新できませんでした';
+		draftError.value = bookExtra.draftUpdateFailed;
 		return;
 	}
 	closePrompt.value = false;
-	if (save) hatadyNotify('下書きを保存しました');
+	if (save) hatadyNotify(bookExtra.draftSaved);
 	dialog.value?.close();
 }
 
@@ -503,7 +506,7 @@ async function addMemo() {
 		newMemoPage.value = null;
 		emit('changed');
 	} catch {
-		hatadyNotify('変更を保存できませんでした');
+		hatadyNotify(bookExtra.saveFailed);
 	} finally {
 		saving.value = false;
 	}
@@ -536,7 +539,7 @@ async function saveMemo(m: any) {
 		cancelEditMemo();
 		emit('changed');
 	} catch {
-		hatadyNotify('変更を保存できませんでした');
+		hatadyNotify(bookExtra.saveFailed);
 	} finally {
 		saving.value = false;
 	}
@@ -618,7 +621,7 @@ async function saveProgress() {
 		book.value = b;
 		emit('changed');
 	} catch {
-		hatadyNotify('変更を保存できませんでした');
+		hatadyNotify(bookExtra.saveFailed);
 	} finally {
 		saving.value = false;
 	}
@@ -641,7 +644,7 @@ async function addBookmark() {
 		newBmName.value = '';
 		emit('changed');
 	} catch {
-		hatadyNotify('変更を保存できませんでした');
+		hatadyNotify(bookExtra.saveFailed);
 	} finally {
 		saving.value = false;
 	}
@@ -661,7 +664,7 @@ async function toggleFlag(key: 'isFavorite' | 'isRecommended') {
 		book.value = b;
 		emit('changed');
 	} catch {
-		hatadyNotify('変更を保存できませんでした');
+		hatadyNotify(bookExtra.saveFailed);
 	} finally {
 		saving.value = false;
 	}
@@ -675,7 +678,7 @@ async function setStatus(s: (typeof statuses)[number]) {
 		book.value = b;
 		emit('changed');
 	} catch {
-		hatadyNotify('変更を保存できませんでした');
+		hatadyNotify(bookExtra.saveFailed);
 	} finally {
 		saving.value = false;
 	}
@@ -703,15 +706,15 @@ async function removeBook() {
 	if (!book.value || !isMine.value || saving.value) return;
 	saving.value = true;
 	try {
-		const { canceled } = await os.confirm({ type: 'warning', text: 'この本を削除しますか？ しおりと内容メモも削除されます。読書の記録は残ります。' });
+		const { canceled } = await os.confirm({ type: 'warning', text: bookExtra.deleteConfirm });
 		if (canceled) return;
 		await misskeyApi('hata/hatady/books/delete', { bookId: book.value.id });
-		hatadyNotify('本を削除しました');
+		hatadyNotify(bookExtra.deleted);
 		emit('deleted');
 		emit('changed');
 		dialog.value?.close();
 	} catch {
-		hatadyNotify('本を削除できませんでした。もう一度お試しください');
+		hatadyNotify(bookExtra.deleteFailed);
 	} finally {
 		saving.value = false;
 	}
@@ -730,12 +733,10 @@ async function recordDeleted(logId: string) {
 // モデレーター/管理者による他ユーザーの本の削除。
 async function modDeleteBook() {
 	if (!book.value) return;
-	const { canceled } = await os.confirm({ type: 'warning', text: t('modDeleteConfirm') });
-	if (canceled) return;
-	await misskeyApi('hata/hatady/admin/delete-book', { bookId: book.value.id });
-	hatadyNotify('変更を保存しました');
-	emit('changed');
-	dialog.value?.close();
+	await openRecordModeration({ product: 'hatady', targetType: 'book', targetId: book.value.id }, 'delete', () => {
+		emit('changed');
+		dialog.value?.close();
+	});
 }
 
 function logActivity(log: any) {

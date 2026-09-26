@@ -1316,7 +1316,7 @@ export interface Locale extends ILocale {
      */
     "showUtageSuccessCount": string;
     /**
-     * 15分間逃げ切って宴に成功した回数を表示します。
+     * 15分間の逃げ切りや復活チャンスで、宴に成功した回数を表示します。
      */
     "showUtageSuccessCountDescription": string;
     /**
@@ -7830,6 +7830,46 @@ export interface Locale extends ILocale {
     };
     "_serverSettings": {
         /**
+         * Hataskのおはなルール
+         */
+        "hataskFlowerRules": string;
+        /**
+         * 完了タスクの最低経過時間（分）
+         */
+        "hataskFlowerTodoMinAgeMinutes": string;
+        /**
+         * タスク名の最低文字数
+         */
+        "hataskFlowerTodoMinLength": string;
+        /**
+         * Hatady報酬の最低間隔（秒）
+         */
+        "hataskFlowerHatadyGapSeconds": string;
+        /**
+         * 水やり1回の成長時間（分）
+         */
+        "hataskFlowerPourMinutes": string;
+        /**
+         * タスク報酬の1日上限
+         */
+        "hataskFlowerTodoCap": string;
+        /**
+         * Hatady報酬の1日上限
+         */
+        "hataskFlowerHatadyCap": string;
+        /**
+         * ログイン報酬の1日上限
+         */
+        "hataskFlowerLoginCap": string;
+        /**
+         * 花まつりの目標数
+         */
+        "hataskFlowerFestivalGoal": string;
+        /**
+         * 目標数の変更は次の花まつりシーズンから適用されます。
+         */
+        "hataskFlowerFestivalGoalDescription": string;
+        /**
          * アイコン画像のURL
          */
         "iconUrl": string;
@@ -12596,6 +12636,18 @@ export interface Locale extends ILocale {
              */
             "hataskFlowerReady": string;
             /**
+             * お花が咲きました
+             */
+            "hataskFlowerBloomed": string;
+            /**
+             * お花の図鑑に追加
+             */
+            "hataskZukanUpdated": string;
+            /**
+             * 花まつりが満開
+             */
+            "hataskFestivalBloomed": string;
+            /**
              * 地震・津波情報
              */
             "earthquake": string;
@@ -15302,6 +15354,18 @@ export interface Locale extends ILocale {
              * {time}をお知らせします
              */
             "timeSignal": ParameterizedString<"time">;
+            /**
+             * お気に入りに追加しました
+             */
+            "favoriteAdded": string;
+            /**
+             * クリップに追加しました
+             */
+            "clipAdded": string;
+            /**
+             * ノートを削除しました
+             */
+            "noteDeleted": string;
         };
         "_notificationToast": {
             /**
@@ -15338,6 +15402,18 @@ export interface Locale extends ILocale {
              * お花が満開になりました。Hataskの「おはな」で収穫できます。
              */
             "flowerReady": string;
+            /**
+             * お花が咲きました。Hataskの「おはな」で収穫できます。
+             */
+            "flowerBloomed": string;
+            /**
+             * お花の図鑑に新しい花が追加されました。Hataskの「おはな」で確認できます。
+             */
+            "zukanUpdated": string;
+            /**
+             * 花まつりが満開になりました。限定の種が届きました。
+             */
+            "festivalBloomed": string;
             /**
              * 新しいお知らせ
              */
@@ -16166,62 +16242,6 @@ export interface Locale extends ILocale {
              * 絵文字申請の週あたり上限
              */
             "emojiRequestLimitName": string;
-            /**
-             * UI切り替え画面から利用できます。既定ではすべてのユーザーに許可されます。
-             */
-            "hatacordingAccessBaseCaption": string;
-            /**
-             * HataSNSCordUIを利用できる
-             */
-            "hatacordingAccessName": string;
-            /**
-             * HataSNSCordUIの利用を許可
-             */
-            "hatacordingAccessToggle": string;
-            /**
-             * このUIから行う全API操作の1時間あたりの上限です。1〜1000の範囲で指定します（既定: 500）。通常UIや連合処理には適用されません。
-             */
-            "hatacordingRateLimitBaseCaption": string;
-            /**
-             * HataSNSCordUIから行う全API操作だけに適用されます（1〜1000、既定: 500）。
-             */
-            "hatacordingRateLimitEditorCaption": string;
-            /**
-             * 1時間あたりの操作上限
-             */
-            "hatacordingRateLimitInputLabel": string;
-            /**
-             * HataSNSCordUI専用レートリミット
-             */
-            "hatacordingRateLimitName": string;
-            /**
-             * 既定ではオフです。オンにすると、すべての利用者がHataSNSCordUI専用の1時間枠を消費しなくなります。API固有の安全制限や権限確認は維持されます。
-             */
-            "hatacordingRateLimitBypassBaseCaption": string;
-            /**
-             * この設定を有効にした個別ロールを利用者へ割り当てると、その利用者はHataSNSCordUI専用の1時間枠を消費しません。API固有の安全制限や権限確認は維持されます。
-             */
-            "hatacordingRateLimitBypassEditorCaption": string;
-            /**
-             * HataSNSCordUIのAPI共通枠を免除
-             */
-            "hatacordingRateLimitBypassName": string;
-            /**
-             * 専用の1時間枠を適用しない
-             */
-            "hatacordingRateLimitBypassToggle": string;
-            /**
-             * 右側に作成できるタブ数です。1〜5の範囲で指定します（既定: 3）。
-             */
-            "hatacordingTabsBaseCaption": string;
-            /**
-             * 最大タブ数
-             */
-            "hatacordingTabsInputLabel": string;
-            /**
-             * HataSNSCordUIのサブペイン最大タブ数
-             */
-            "hatacordingTabsName": string;
             /**
              * ユーザーが本棚に追加できる本の上限（デフォルト 100）。
              */
@@ -17292,7 +17312,7 @@ export interface Locale extends ILocale {
                  */
                 "feastChallengeTitle": string;
                 /**
-                 * 「宴」「うたげ」「utage」を含む投稿をローカルへ出すと、15分間のチャレンジが始まります。誰からも反応されずに逃げ切ると成功、途中でリアクション・返信・リノートを受けると失敗です。
+                 * 「宴」「うたげ」「utage」を含む投稿をローカルへ出すと、15分間のチャレンジが始まります。誰からも反応されずに逃げ切ると成功です。阻止された際に復活チャンスが発動すると、制限時間内に目標人数の新しいリアクションを集めても成功します。
                  */
                 "feastChallengeBody": string;
                 /**
@@ -17759,228 +17779,40 @@ export interface Locale extends ILocale {
                 "loadFailed": string;
             };
         };
-        "_hatacordingUi": {
-            "_settings": {
+        "_hataskeyUi3": {
+            "_rss": {
                 /**
-                 * UIカラー
+                 * RSS
                  */
-                "uiColor": string;
+                "settings": string;
                 /**
-                 * 表示に合わせて全体の配色を切り替えます
+                 * RSS情報表示中
                  */
-                "uiColorDescription": string;
+                "reading": string;
                 /**
-                 * テーマ
+                 * 記事を読む
                  */
-                "theme": string;
+                "openReader": string;
                 /**
-                 * ライト
+                 * 記事がありません
                  */
-                "light": string;
+                "empty": string;
                 /**
-                 * ダーク
+                 * 読み込み中…
                  */
-                "dark": string;
+                "loading": string;
                 /**
-                 * UI全体の大きさ
+                 * RSSを読み込めませんでした
                  */
-                "uiScale": string;
+                "error": string;
                 /**
-                 * 情報量と読みやすさを調整します
+                 * 再試行
                  */
-                "uiScaleDescription": string;
+                "retry": string;
                 /**
-                 * 小
+                 * フィードを追加してください
                  */
-                "small": string;
-                /**
-                 * 中
-                 */
-                "medium": string;
-                /**
-                 * 大
-                 */
-                "large": string;
-                /**
-                 * リアルタイム更新
-                 */
-                "realtimeUpdate": string;
-                /**
-                 * 新しい投稿と投稿の変化をその場で反映します。
-                 */
-                "realtimeUpdateDescription": string;
-                /**
-                 * 現在のタイムラインはリアルタイム更新に対応していません。
-                 */
-                "realtimeUnavailable": string;
-                /**
-                 * 右ペインは同じタブで遷移
-                 */
-                "reuseSubpaneTab": string;
-                /**
-                 * レートリミット円に数値を表示
-                 */
-                "showRateLimitNumber": string;
-                /**
-                 * 投稿欄に文字数チェッカーを表示
-                 */
-                "showCharacterCounter": string;
-                /**
-                 * テキストのshimmerアニメーションを表示
-                 */
-                "showShimmerAnimation": string;
-                /**
-                 * この内容は端末内に保存され、HataSNSCordUI左上の調整メニューと常に同期します。
-                 */
-                "savedLocally": string;
-            };
-            "_rateLimit": {
-                /**
-                 * APIのひと息メーター
-                 */
-                "title": string;
-                /**
-                 * レートリミット残量 {remaining}/{limit}
-                 */
-                "remainingAccessible": ParameterizedString<"remaining" | "limit">;
-                /**
-                 * 1時間の共通枠 {limit} 回のうち
-                 */
-                "hourlyQuota": ParameterizedString<"limit">;
-                /**
-                 * 残りのレートリミット
-                 */
-                "remaining": string;
-                /**
-                 * HataSNSCordUI専用のAPI共通枠は制限なし
-                 */
-                "unlimitedAccessible": string;
-                /**
-                 * このUI専用の1時間枠は適用されません
-                 */
-                "unlimitedHourlyQuota": string;
-                /**
-                 * 制限なしで利用できます
-                 */
-                "unlimitedReady": string;
-                /**
-                 * サーバーの管理者から制限なし利用が割り当てられています
-                 */
-                "unlimitedAssigned": string;
-                /**
-                 * HataSNSCordUI専用の共通枠のみ免除されています。API固有の安全制限、認証、権限確認、通常UIや外部アプリの制御は変更されません。
-                 */
-                "unlimitedDescription": string;
-                /**
-                 * 次の操作で残量を再計測
-                 */
-                "remeasureNext": string;
-                /**
-                 * 利用する準備ができています
-                 */
-                "ready": string;
-                /**
-                 * まだ {remaining} 回活用できます
-                 */
-                "availableCount": ParameterizedString<"remaining">;
-                /**
-                 * 新しい計測枠へ切り替わる時刻です
-                 */
-                "newWindowNow": string;
-                /**
-                 * あと {hours}時間{minutes}分で操作枠が復活
-                 */
-                "resetInHoursMinutes": ParameterizedString<"hours" | "minutes">;
-                /**
-                 * あと {hours}時間で操作枠が復活
-                 */
-                "resetInHours": ParameterizedString<"hours">;
-                /**
-                 * あと {minutes}分{seconds}秒で操作枠が復活
-                 */
-                "resetInMinutesSeconds": ParameterizedString<"minutes" | "seconds">;
-                /**
-                 * あと {minutes}分で操作枠が復活
-                 */
-                "resetInMinutes": ParameterizedString<"minutes">;
-                /**
-                 * あと {seconds}秒で操作枠が復活
-                 */
-                "resetInSeconds": ParameterizedString<"seconds">;
-                /**
-                 * 次のAPI操作から新しい計測区間になります
-                 */
-                "nextOperationStartsWindow": string;
-                /**
-                 * {time} ごろ復活
-                 */
-                "resetAround": ParameterizedString<"time">;
-                /**
-                 * {time}にリセットされます
-                 */
-                "bannerResetAt": ParameterizedString<"time">;
-                /**
-                 * 最初のAPI操作を待っています
-                 */
-                "waitingTitle": string;
-                /**
-                 * タイムラインの更新などを行うと、サーバーから実際の残量を受け取ります。
-                 */
-                "waitingDescription": string;
-                /**
-                 * HataSNSCordUIからサーバーへ送るAPI操作の共通枠です。受信するだけのリアルタイム配信や、通常UI・外部アプリ・連合処理には適用されません。
-                 */
-                "description": string;
-            };
-            "_tutorial": {
-                /**
-                 * HataSNSCordUIへようこそ
-                 */
-                "title": string;
-                /**
-                 * 高機能だけど、会話アプリのように馴染みやすいHataskey用UIです。
-                 */
-                "lead": string;
-                /**
-                 * 会話のように流れるタイムライン
-                 */
-                "step1Title": string;
-                /**
-                 * 新しい投稿は下へ滑らかに追加されます。自分の投稿は右、ほかの人の投稿は左に並び、通常のリアクションや投稿操作もそのまま使えます。
-                 */
-                "step1Body": string;
-                /**
-                 * 左ペインから表示を選ぶ
-                 */
-                "step2Title": string;
-                /**
-                 * ホーム・ローカル・ソーシャルのほか、リスト、アンテナ、チャンネルを選べます。タイムライン横の＋を押すと、中央を変えず右ペインにも追加できます。
-                 */
-                "step2Body": string;
-                /**
-                 * 設定と並び替えは左上から
-                 */
-                "step3Title": string;
-                /**
-                 * 左上の調整ボタンに、リアルタイム更新、UIカラー、表示サイズなど必要な設定をまとめています。「メニューを編集」では、ピン留め、上下移動、表示の出し入れをこの端末だけに保存できます。
-                 */
-                "step3Body": string;
-                /**
-                 * 右ペインを作業スペースに
-                 */
-                "step4Title": string;
-                /**
-                 * 投稿詳細、検索、通知、タイムライン、ウィジェットをタブで並べられます。タブ数と、このUIを使えるかどうかはサーバーのロール設定に従います。
-                 */
-                "step4Body": string;
-                /**
-                 * このUI専用のレートリミット
-                 */
-                "step5Title": string;
-                /**
-                 * 右上の円は、このUIから行ったAPI操作の残り目安です。円を押すと残量と復活時刻を確認できます。通常のUIや連合処理には影響しません。
-                 */
-                "step5Body": string;
+                "noFeeds": string;
                 /**
                  * 前へ
                  */
@@ -17990,973 +17822,81 @@ export interface Locale extends ILocale {
                  */
                 "next": string;
                 /**
-                 * 使い始める
-                 */
-                "start": string;
-                /**
-                 * 初回のみ表示されます。安全に使えるよう、最後まで確認してください。
-                 */
-                "required": string;
-            };
-            "_activity": {
-                /**
-                 * 自動でリロードする設定です。案内の表示後に画面を再読み込みします。
-                 */
-                "disconnectedReload": string;
-                /**
-                 * ダイアログ警告の代わりに、この案内から再接続できます。
-                 */
-                "disconnectedDialog": string;
-                /**
-                 * 自動再接続を待っています。必要な場合は再接続してください。
-                 */
-                "disconnectedQuiet": string;
-                /**
-                 * 自動ではリロードしない設定です。必要な場合は再接続してください。
-                 */
-                "disconnectedNone": string;
-                /**
-                 * サーバーから切断されました...
-                 */
-                "disconnected": string;
-                /**
-                 * サーバーへ再接続しました
-                 */
-                "reconnected": string;
-                /**
-                 * 自動リロードの設定に従い、まもなく画面を再読み込みします。
-                 */
-                "reconnectedReload": string;
-                /**
-                 * タイムラインのリアルタイム受信を再開しました。
-                 */
-                "reconnectedRealtime": string;
-                /**
-                 * リアルタイム更新を開始しました
-                 */
-                "realtimeStarted": string;
-                /**
-                 * リアルタイム更新を停止しました
-                 */
-                "realtimeStopped": string;
-                /**
-                 * 新しいノートや更新を受信すると、タイムラインへすぐに反映します。
-                 */
-                "realtimeStartedDescription": string;
-                /**
-                 * 現在の表示はそのまま残ります。再開するまで新しいノートや更新は自動反映されません。
-                 */
-                "realtimeStoppedDescription": string;
-                /**
-                 * ノート「{note}」
-                 */
-                "noteLabel": ParameterizedString<"note">;
-                /**
-                 * 本文なし
-                 */
-                "noContent": string;
-                /**
-                 * リアクション
-                 */
-                "reaction": string;
-                /**
-                 * だれか
-                 */
-                "someone": string;
-                /**
-                 * さんが{note}を投稿しました
-                 */
-                "actionNote": ParameterizedString<"note">;
-                /**
-                 * さんが{note}であなたをメンションしました
-                 */
-                "actionMention": ParameterizedString<"note">;
-                /**
-                 * さんが{note}へ返信しました
-                 */
-                "actionReply": ParameterizedString<"note">;
-                /**
-                 * さんが{note}をリノートしました
-                 */
-                "actionRenote": ParameterizedString<"note">;
-                /**
-                 * さんが{note}を引用しました
-                 */
-                "actionQuote": ParameterizedString<"note">;
-                /**
-                 * さんが{note}に「{reaction}」のリアクションを付けました
-                 */
-                "actionReaction": ParameterizedString<"note" | "reaction">;
-                /**
-                 * さんにフォローされました
-                 */
-                "actionFollow": string;
-                /**
-                 * さんからフォロー申請が届きました
-                 */
-                "actionFollowRequest": string;
-                /**
-                 * さんがフォロー申請を承認しました
-                 */
-                "actionFollowRequestAccepted": string;
-                /**
-                 * さんからグループへ招待されました
-                 */
-                "actionGroupInvited": string;
-                /**
-                 * さんほか{count}人が{note}にリアクションを付けました
-                 */
-                "actionGroupedReaction": ParameterizedString<"count" | "note">;
-                /**
-                 * さんが{note}にリアクションを付けました
-                 */
-                "actionSingleGroupedReaction": ParameterizedString<"note">;
-                /**
-                 * さんが{count}件のノートにリアクションを付けました
-                 */
-                "actionGroupedByUserReaction": ParameterizedString<"count">;
-                /**
-                 * さんほか{count}人が{note}をリノートしました
-                 */
-                "actionGroupedRenote": ParameterizedString<"count" | "note">;
-                /**
-                 * さんが{note}をリノートしました
-                 */
-                "actionSingleGroupedRenote": ParameterizedString<"note">;
-                /**
-                 * {name}が投稿しました
-                 */
-                "titleNote": ParameterizedString<"name">;
-                /**
-                 * {name}からメンション
-                 */
-                "titleMention": ParameterizedString<"name">;
-                /**
-                 * {name}から返信
-                 */
-                "titleReply": ParameterizedString<"name">;
-                /**
-                 * {name}がリノート
-                 */
-                "titleRenote": ParameterizedString<"name">;
-                /**
-                 * {name}が引用しました
-                 */
-                "titleQuote": ParameterizedString<"name">;
-                /**
-                 * {name}がリアクションしました
-                 */
-                "titleReaction": ParameterizedString<"name">;
-                /**
-                 * アンケートが終了しました
-                 */
-                "pollEnded": string;
-                /**
-                 * アンケートに投票されました
-                 */
-                "pollVote": string;
-                /**
-                 * 予約投稿を公開しました
-                 */
-                "scheduledNotePosted": string;
-                /**
-                 * 予約投稿に失敗しました
-                 */
-                "scheduledNotePostFailed": string;
-                /**
-                 * {name}にフォローされました
-                 */
-                "titleFollow": ParameterizedString<"name">;
-                /**
-                 * {name}からフォロー申請
-                 */
-                "titleFollowRequest": ParameterizedString<"name">;
-                /**
-                 * {name}がフォロー申請を承認しました
-                 */
-                "titleFollowRequestAccepted": ParameterizedString<"name">;
-                /**
-                 * {name}からグループへの招待
-                 */
-                "titleGroupInvited": ParameterizedString<"name">;
-                /**
-                 * ロール「{role}」が付与されました
-                 */
-                "roleAssigned": ParameterizedString<"role">;
-                /**
-                 * 名称未設定
-                 */
-                "unnamed": string;
-                /**
-                 * チャットルームへの招待が届きました
-                 */
-                "chatRoomInvitation": string;
-                /**
-                 * 実績を獲得しました
-                 */
-                "achievementEarned": string;
-                /**
-                 * データの書き出しが完了しました
-                 */
-                "exportCompleted": string;
-                /**
-                 * アカウントへのログインを検知しました
-                 */
-                "loginDetected": string;
-                /**
-                 * アクセストークンが作成されました
-                 */
-                "tokenCreated": string;
-                /**
-                 * アプリからのお知らせ
-                 */
-                "appNotification": string;
-                /**
-                 * HataFeedからのお知らせ
-                 */
-                "hataFeedNotification": string;
-                /**
-                 * プライベートチャンネルへの招待
-                 */
-                "privateChannelInvitation": string;
-                /**
-                 * プライベートチャンネルから退出しました
-                 */
-                "privateChannelRemoved": string;
-                /**
-                 * {count}件のリアクションがあります
-                 */
-                "groupedReactions": ParameterizedString<"count">;
-                /**
-                 * {name}が{count}件の投稿にリアクションしました
-                 */
-                "groupedReactionsByUser": ParameterizedString<"name" | "count">;
-                /**
-                 * {count}件のリノートがあります
-                 */
-                "groupedRenotes": ParameterizedString<"count">;
-                /**
-                 * {count}件の新しい投稿があります
-                 */
-                "groupedNotes": ParameterizedString<"count">;
-                /**
-                 * テスト通知を受信しました
-                 */
-                "testNotification": string;
-                /**
-                 * 新しい通知があります
-                 */
-                "newNotification": string;
-                /**
-                 * 通知画面で詳しい内容を確認できます。
-                 */
-                "notificationDetails": string;
-                /**
-                 * 外部アカウント・{title}
-                 */
-                "externalAccountTitle": ParameterizedString<"title">;
-                /**
-                 * お気に入りに追加しました
-                 */
-                "favoriteAdded": string;
-                /**
-                 * お気に入り画面から、あとで読み返せます。
-                 */
-                "favoriteAddedDescription": string;
-                /**
-                 * お気に入りから外しました
-                 */
-                "favoriteRemoved": string;
-                /**
-                 * お気に入りの一覧を更新しました。
-                 */
-                "favoriteRemovedDescription": string;
-                /**
-                 * クリップに追加しました
-                 */
-                "clipAdded": string;
-                /**
-                 * クリップ画面から、保存したノートを確認できます。
-                 */
-                "clipAddedDescription": string;
-                /**
-                 * クリップから外しました
-                 */
-                "clipRemoved": string;
-                /**
-                 * クリップの一覧を更新しました。
-                 */
-                "clipRemovedDescription": string;
-            };
-            "_main": {
-                /**
-                 * パネルを閉じる
-                 */
-                "closePanels": string;
-                /**
-                 * タイムライン設定
-                 */
-                "timelineSettings": string;
-                /**
-                 * メニューを縮める
-                 */
-                "collapseMenu": string;
-                /**
                  * 閉じる
                  */
                 "close": string;
                 /**
-                 * メニューを広げる
+                 * 元の記事を読む
                  */
-                "expandMenu": string;
+                "readOriginal": string;
                 /**
-                 * このUIのメニューを編集
+                 * 本文を取得できませんでした
                  */
-                "editMenuTitle": string;
+                "noContent": string;
                 /**
-                 * 表示・順序はこの端末だけに保存されます。分類横の色見本ボタンからアイコンを変更できます。
+                 * 無題の記事
                  */
-                "editMenuDescription": string;
+                "untitled": string;
                 /**
-                 * 縮小順を取込
+                 * タイトルをスクロール
                  */
-                "importCollapsedOrder": string;
+                "titleScroll": string;
                 /**
-                 * 初期化
+                 * デッキのRSS設定を取り込む
                  */
-                "reset": string;
+                "importDeck": string;
                 /**
-                 * 保存して終了
+                 * http/https のURLを入力してください。ユーザー名やパスワードを含むURLは使えません。
                  */
-                "saveAndFinish": string;
+                "invalidUrl": string;
                 /**
-                 * HataSNSCordUI メニュー
+                 * RSSを表示
                  */
-                "menuAria": string;
+                "enabled": string;
                 /**
-                 * タイムライン
+                 * フィード
                  */
-                "timelines": string;
+                "feeds": string;
                 /**
-                 * タイムラインを追加
+                 * 記事を自動で切り替える
                  */
-                "addTimeline": string;
+                "autoSwitch": string;
                 /**
-                 * 追加
+                 * 記事の表示時間
                  */
-                "add": string;
+                "readSeconds": string;
                 /**
-                 * よく使う機能
+                 * 読む画面の表示
                  */
-                "frequentFeatures": string;
+                "readMode": string;
                 /**
-                 * {category}の分類アイコンを変更
+                 * 全文
                  */
-                "changeCategoryIcon": ParameterizedString<"category">;
+                "full": string;
                 /**
-                 * まだありません
+                 * 要約
                  */
-                "noneYet": string;
-                /**
-                 * もっと！
-                 */
-                "more": string;
-                /**
-                 * {item}を上部メニューへ追加
-                 */
-                "addToTopMenu": ParameterizedString<"item">;
-                /**
-                 * 上部へ
-                 */
-                "moveToTop": string;
-                /**
-                 * HataFeedで新規イシューを作成
-                 */
-                "createHataFeedIssue": string;
-                /**
-                 * フィードバックを送る
-                 */
-                "sendFeedback": string;
-                /**
-                 * アカウントメニュー
-                 */
-                "accountMenu": string;
-                /**
-                 * 設定
-                 */
-                "settings": string;
-                /**
-                 * コントロールパネル
-                 */
-                "controlPanel": string;
-                /**
-                 * メニュー
-                 */
-                "menu": string;
-                /**
-                 * ひとつ前のページへ戻る
-                 */
-                "backOnePage": string;
-                /**
-                 * タイムラインへ戻る
-                 */
-                "backToTimeline": string;
-                /**
-                 * HataSNSCordUI内で表示
-                 */
-                "shownInsideUi": string;
-                /**
-                 * {count}人がオンライン
-                 */
-                "onlineUsers": ParameterizedString<"count">;
-                /**
-                 * 更新
-                 */
-                "refresh": string;
-                /**
-                 * サブペインを開く
-                 */
-                "openSubpane": string;
-                /**
-                 * タイムラインを読み込んでいます
-                 */
-                "loadingTimeline": string;
-                /**
-                 * タイムラインを読み込めませんでした
-                 */
-                "timelineLoadFailed": string;
-                /**
-                 * 再試行
-                 */
-                "retry": string;
-                /**
-                 * 表示できるノートはありません
-                 */
-                "noNotes": string;
-                /**
-                 * 過去の会話を読み込み中
-                 */
-                "loadingPastConversations": string;
-                /**
-                 * 過去の会話をたどる
-                 */
-                "browsePastConversations": string;
-                /**
-                 * 件の通知がありました
-                 */
-                "pastNotificationsSuffix": string;
-                /**
-                 * 件の通知があります
-                 */
-                "currentNotificationsSuffix": string;
-                /**
-                 * 件のBotからの通知がありました
-                 */
-                "pastBotNotificationsSuffix": string;
-                /**
-                 * 件のBotからの通知があります
-                 */
-                "currentBotNotificationsSuffix": string;
-                /**
-                 * 外部
-                 */
-                "external": string;
-                /**
-                 * 画面を再読み込みして再接続
-                 */
-                "reloadAndReconnect": string;
-                /**
-                 * 再接続
-                 */
-                "reconnect": string;
-                /**
-                 * 詳細をたたむ
-                 */
-                "collapseDetails": string;
-                /**
-                 * 詳細を表示
-                 */
-                "showDetails": string;
-                /**
-                 * プロフィールを開く
-                 */
-                "openProfile": string;
-                /**
-                 * サブペインで投稿詳細を開く
-                 */
-                "openNoteInSubpane": string;
-                /**
-                 * {count}件の新しいノートがあります
-                 */
-                "newNotes": ParameterizedString<"count">;
-                /**
-                 * 最新のノートへ戻る
-                 */
-                "backToLatest": string;
-                /**
-                 * 返信・引用を解除
-                 */
-                "clearReplyOrQuote": string;
-                /**
-                 * 宛先
-                 */
-                "recipients": string;
-                /**
-                 * {user}を宛先から外す
-                 */
-                "removeRecipient": ParameterizedString<"user">;
-                /**
-                 * 宛先を追加
-                 */
-                "addRecipient": string;
-                /**
-                 * 本文内のメンションが宛先に含まれていません。
-                 */
-                "mentionsMissingRecipients": string;
-                /**
-                 * 宛先に追加
-                 */
-                "addToRecipients": string;
-                /**
-                 * 内容を隠す理由
-                 */
-                "cwReason": string;
-                /**
-                 * 選択肢{number}
-                 */
-                "pollChoice": ParameterizedString<"number">;
-                /**
-                 * 選択肢を追加
-                 */
-                "addPollChoice": string;
-                /**
-                 * 複数回答を許可
-                 */
-                "allowMultipleChoices": string;
-                /**
-                 * 期限
-                 */
-                "deadline": string;
-                /**
-                 * なし
-                 */
-                "none": string;
-                /**
-                 * 日時を指定
-                 */
-                "specifyDateTime": string;
-                /**
-                 * 投稿後の時間を指定
-                 */
-                "specifyTimeAfterPosting": string;
-                /**
-                 * アンケートの終了日時
-                 */
-                "pollDeadlineDateTime": string;
-                /**
-                 * アンケート終了までの時間
-                 */
-                "pollTimeUntilEnd": string;
-                /**
-                 * アンケート終了までの単位
-                 */
-                "pollTimeUnit": string;
+                "summary": string;
                 /**
                  * 秒
                  */
                 "seconds": string;
                 /**
-                 * 分
+                 * 追加して保存
                  */
-                "minutes": string;
+                "addFeed": string;
                 /**
-                 * 時間
+                 * URLを入力して「追加して保存」を押すと、すぐに保存されます。登録後の編集は自動保存されます。
                  */
-                "hours": string;
+                "saveDescription": string;
                 /**
-                 * 日
+                 * フィードを保存しました
                  */
-                "days": string;
+                "feedSaved": string;
                 /**
-                 * あと{seconds}秒
+                 * 削除
                  */
-                "secondsRemaining": ParameterizedString<"seconds">;
-                /**
-                 * 今すぐ投稿
-                 */
-                "postNow": string;
-                /**
-                 * 投稿プレビュー
-                 */
-                "postPreview": string;
-                /**
-                 * プレビュー
-                 */
-                "preview": string;
-                /**
-                 * 投稿機能
-                 */
-                "postFeatures": string;
-                /**
-                 * 添付メニュー
-                 */
-                "attachmentMenu": string;
-                /**
-                 * CWを解除
-                 */
-                "disableCw": string;
-                /**
-                 * CWを使う
-                 */
-                "enableCw": string;
-                /**
-                 * よく使う投稿機能
-                 */
-                "frequentPostFeatures": string;
-                /**
-                 * カスタム絵文字を挿入
-                 */
-                "insertCustomEmoji": string;
-                /**
-                 * 待機を取り消す
-                 */
-                "cancelWait": string;
-                /**
-                 * 投稿
-                 */
-                "post": string;
-                /**
-                 * サブペインの幅を変更
-                 */
-                "resizeSubpane": string;
-                /**
-                 * タブを閉じる
-                 */
-                "closeTab": string;
-                /**
-                 * 内容を追加
-                 */
-                "addContent": string;
-                /**
-                 * 内容を差し替える
-                 */
-                "replaceContent": string;
-                /**
-                 * ウィジェットを編集
-                 */
-                "editWidgets": string;
-                /**
-                 * Hataskey UIのウィジェットを取り込む
-                 */
-                "importHatasabaWidgets": string;
-                /**
-                 * サブペインを縮める
-                 */
-                "collapseSubpane": string;
-                /**
-                 * ここがサブペインです
-                 */
-                "subpaneHere": string;
-                /**
-                 * 投稿や機能を選ぶと、ここに内容が表示されます。
-                 */
-                "subpaneHereDescription": string;
-                /**
-                 * HataSNSCordUI
-                 */
-                "welcomeSubpaneTitle": string;
-                /**
-                 * 投稿やアクションを選ぶと、ここに内容が表示されます。
-                 */
-                "welcomeSubpaneDescription": string;
-                /**
-                 * 外部アカウントが未接続です
-                 */
-                "externalAccountNotConnected": string;
-                /**
-                 * 接続するまで外部サーバーへ通信しません。
-                 */
-                "externalAccountNotConnectedDescription": string;
-                /**
-                 * 外部アカウント連携
-                 */
-                "externalAccountLinking": string;
-                /**
-                 * 連携設定を開く
-                 */
-                "openLinkSettings": string;
-                /**
-                 * HataSideStudioはこのUIでは利用できません
-                 */
-                "studioUnavailable": string;
-                /**
-                 * Hataskey UIへ切り替えてから起動してください。
-                 */
-                "studioUnavailableDescription": string;
-                /**
-                 * UI切り替えを開く
-                 */
-                "openUiSwitcher": string;
-                /**
-                 * ウィジェットを追加してみませんか？
-                 */
-                "addWidgetsPrompt": string;
-                /**
-                 * 編集を始めると、このタブに好きなウィジェットを配置できます。
-                 */
-                "emptyWidgetTabDescription": string;
-                /**
-                 * 編集を始める
-                 */
-                "startEditing": string;
-                /**
-                 * 既存構成を取り込む
-                 */
-                "importExistingLayout": string;
-                /**
-                 * 中央ペインで開きます
-                 */
-                "openInCenterDescription": string;
-                /**
-                 * 中央で開く
-                 */
-                "openInCenter": string;
-                /**
-                 * サブペインを読み込んでいます
-                 */
-                "loadingSubpane": string;
-                /**
-                 * 詳細
-                 */
-                "details": string;
-                /**
-                 * アンケート
-                 */
-                "poll": string;
-                /**
-                 * メンション
-                 */
-                "mention": string;
-                /**
-                 * ハッシュタグ
-                 */
-                "hashtag": string;
-                /**
-                 * イベント
-                 */
-                "event": string;
-                /**
-                 * Hatadint
-                 */
-                "drawing": string;
-                /**
-                 * 予約・自動削除
-                 */
-                "scheduleAndAutoDelete": string;
-                /**
-                 * リアクション制限
-                 */
-                "reactionRestrictions": string;
-                /**
-                 * 配信先
-                 */
-                "deliveryDestination": string;
-                /**
-                 * 投稿フォームをすべて開く
-                 */
-                "fullPostForm": string;
-                /**
-                 * 利用状況を測定中
-                 */
-                "measuringRateLimit": string;
-                /**
-                 * 残り{remaining}/{limit}
-                 */
-                "rateLimitRemaining": ParameterizedString<"remaining" | "limit">;
-                /**
-                 * ホーム
-                 */
-                "home": string;
-                /**
-                 * ローカル
-                 */
-                "local": string;
-                /**
-                 * ソーシャル
-                 */
-                "social": string;
-                /**
-                 * グローバル
-                 */
-                "global": string;
-                /**
-                 * トレンド
-                 */
-                "trending": string;
-                /**
-                 * 検索
-                 */
-                "search": string;
-                /**
-                 * 通知
-                 */
-                "notifications": string;
-                /**
-                 * ドライブ
-                 */
-                "drive": string;
-                /**
-                 * UI切り替え
-                 */
-                "switchUi": string;
-                /**
-                 * お知らせ
-                 */
-                "announcements": string;
-                /**
-                 * 外部通知
-                 */
-                "externalNotifications": string;
-                /**
-                 * みつける
-                 */
-                "explore": string;
-                /**
-                 * お気に入り
-                 */
-                "favorites": string;
-                /**
-                 * クリップ
-                 */
-                "clips": string;
-                /**
-                 * チャット
-                 */
-                "chat": string;
-                /**
-                 * リスト設定
-                 */
-                "listSettings": string;
-                /**
-                 * 表示中のリストを設定
-                 */
-                "configureCurrentList": string;
-                /**
-                 * アンテナ設定
-                 */
-                "antennaSettings": string;
-                /**
-                 * 表示中のアンテナを設定
-                 */
-                "configureCurrentAntenna": string;
-                /**
-                 * チャンネル設定
-                 */
-                "channelSettings": string;
-                /**
-                 * 表示中のチャンネルを設定
-                 */
-                "configureCurrentChannel": string;
-                /**
-                 * チャンネル
-                 */
-                "channel": string;
-                /**
-                 * 表示中のチャンネルを開く
-                 */
-                "openCurrentChannel": string;
-                /**
-                 * フォロー中のチャンネル
-                 */
-                "followedChannels": string;
-                /**
-                 * リスト
-                 */
-                "lists": string;
-                /**
-                 * アンテナ
-                 */
-                "antennas": string;
-                /**
-                 * チャンネル投稿はサーバー内だけに配信されます
-                 */
-                "channelPostServerOnly": string;
-                /**
-                 * パブリック
-                 */
-                "public": string;
-                /**
-                 * フォロワー
-                 */
-                "followers": string;
-                /**
-                 * 宛先指定
-                 */
-                "direct": string;
-                /**
-                 * チャンネル・サーバー内
-                 */
-                "channelServerShort": string;
-                /**
-                 * 公開
-                 */
-                "publicShort": string;
-                /**
-                 * フォロワー
-                 */
-                "followersShort": string;
-                /**
-                 * 宛先
-                 */
-                "recipientsShort": string;
-                /**
-                 * ・サーバー内
-                 */
-                "serverOnlySuffix": string;
-                /**
-                 * 返信を書く
-                 */
-                "writeReply": string;
-                /**
-                 * 引用にコメント
-                 */
-                "commentOnQuote": string;
-                /**
-                 * いまどうしてる？
-                 */
-                "whatsHappening": string;
-                /**
-                 * 非公開・
-                 */
-                "privatePrefix": string;
-                /**
-                 * 添付付きで投稿
-                 */
-                "postWithAttachments": string;
-                /**
-                 * タイムラインは1つ以上残してください。
-                 */
-                "keepOneTimeline": string;
-                /**
-                 * メニューを初期化しますか？
-                 */
-                "resetMenuTitle": string;
-                /**
-                 * この端末に保存した表示・並び順・分類アイコンを初期状態へ戻します。
-                 */
-                "resetMenuDescription": string;
-                /**
-                 * Hataskey UIの縮小順を取り込みました
-                 */
-                "importedCollapsedOrder": string;
-                /**
-                 * ピン留めを外す
-                 */
-                "unpin": string;
-                /**
-                 * ピン留め
-                 */
-                "pin": string;
+                "removeFeed": string;
                 /**
                  * 上へ
                  */
@@ -18966,392 +17906,616 @@ export interface Locale extends ILocale {
                  */
                 "moveDown": string;
                 /**
-                 * タイムラインから外す
+                 * フィードURL
                  */
-                "removeFromTimelines": string;
+                "feedUrl": string;
                 /**
-                 * もっと！へ移動
+                 * 表示名（任意）
                  */
-                "moveToMore": string;
+                "feedName": string;
                 /**
-                 * 追加できるタイムラインはありません
+                 * 色
                  */
-                "noTimelinesToAdd": string;
+                "feedColor": string;
                 /**
-                 * プロフィール
+                 * URLを保存
                  */
-                "profile": string;
+                "saveUrl": string;
                 /**
-                 * 投稿詳細
+                 * フィードは最大5件です
                  */
-                "noteDetails": string;
+                "maxFeeds": string;
                 /**
-                 * ページ
+                 * デッキのRSS設定とは別に管理します。
                  */
-                "page": string;
+                "deviceOnly": string;
                 /**
-                 * TV
+                 * デッキに取り込めるフィードがありません
                  */
-                "television": string;
+                "importNothing": string;
                 /**
-                 * フォルダー
+                 * デッキに不正なURLがあります。取り込みませんでした
                  */
-                "folder": string;
-                /**
-                 * レイヤー
-                 */
-                "layers": string;
-                /**
-                 * ほかの項目はありません
-                 */
-                "noOtherItems": string;
-                /**
-                 * タイムライン表示
-                 */
-                "timelineDisplay": string;
-                /**
-                 * リノートを表示
-                 */
-                "showRenotes": string;
-                /**
-                 * センシティブなファイルを表示
-                 */
-                "showSensitiveFiles": string;
-                /**
-                 * ファイル付き投稿のみ
-                 */
-                "onlyPostsWithFiles": string;
-                /**
-                 * 投稿フォームを表示
-                 */
-                "showPostForm": string;
-                /**
-                 * よく使う投稿機能を選ぶ
-                 */
-                "chooseComposerShortcuts": string;
-                /**
-                 * チュートリアルをもう一度見る
-                 */
-                "replayTutorial": string;
-                /**
-                 * メニューを編集
-                 */
-                "editMenu": string;
-                /**
-                 * メニュー設定を保存しました
-                 */
-                "menuSaved": string;
-                /**
-                 * 過去の会話を読み込めませんでした
-                 */
-                "pastConversationsLoadFailed": string;
-                /**
-                 * 過去の通知を展開
-                 */
-                "expandPastNotifications": string;
-                /**
-                 * 日時不明
-                 */
-                "unknownDateTime": string;
-                /**
-                 * たった今
-                 */
-                "justNow": string;
-                /**
-                 * 少し前
-                 */
-                "momentsAgo": string;
-                /**
-                 * {minutes}分前
-                 */
-                "minutesAgo": ParameterizedString<"minutes">;
-                /**
-                 * {title}。{detail}
-                 */
-                "activityWithDetail": ParameterizedString<"title" | "detail">;
-                /**
-                 * {count}件の通知がありました
-                 */
-                "pastNotifications": ParameterizedString<"count">;
-                /**
-                 * 通知を展開
-                 */
-                "expandNotifications": string;
-                /**
-                 * {count}件の通知があります
-                 */
-                "currentNotifications": ParameterizedString<"count">;
-                /**
-                 * {count}件のBotからの通知がありました
-                 */
-                "pastBotNotifications": ParameterizedString<"count">;
-                /**
-                 * {count}件のBotからの通知があります
-                 */
-                "currentBotNotifications": ParameterizedString<"count">;
-                /**
-                 * 投稿内容
-                 */
-                "postContent": string;
-                /**
-                 * アンケートを外す
-                 */
-                "removePoll": string;
-                /**
-                 * アンケートを追加
-                 */
-                "addPoll": string;
-                /**
-                 * 絵文字
-                 */
-                "emoji": string;
-                /**
-                 * イベントを追加
-                 */
-                "addEvent": string;
-                /**
-                 * イベントを外す
-                 */
-                "removeEvent": string;
-                /**
-                 * 添付・拡張
-                 */
-                "attachmentsAndExtensions": string;
-                /**
-                 * プラグイン
-                 */
-                "plugins": string;
-                /**
-                 * よく使う機能を選ぶ
-                 */
-                "chooseFrequentButtons": string;
-                /**
-                 * 詳細設定
-                 */
-                "advancedSettings": string;
-                /**
-                 * リアクション制限を変更
-                 */
-                "changeReactionRestrictions": string;
-                /**
-                 * 内容を消去
-                 */
-                "clearContent": string;
-                /**
-                 * よく使う機能は2つまで
-                 */
-                "frequentButtonsLimit": string;
-                /**
-                 * 投稿欄の中に最大2つ表示します。
-                 */
-                "frequentButtonsMaxTwo": string;
-                /**
-                 * Hatadintの作品を添付できませんでした
-                 */
-                "drawingAttachFailed": string;
-                /**
-                 * リアクション受け入れ範囲
-                 */
-                "reactionAcceptanceRange": string;
-                /**
-                 * すべて
-                 */
-                "all": string;
-                /**
-                 * リモートはいいねのみ
-                 */
-                "remoteLikesOnly": string;
-                /**
-                 * センシティブではないリアクションのみ
-                 */
-                "nonSensitiveOnly": string;
-                /**
-                 * ローカルは非センシティブ・リモートはいいねのみ
-                 */
-                "localNonSensitiveRemoteLikesOnly": string;
-                /**
-                 * いいねのみ
-                 */
-                "likesOnly": string;
-                /**
-                 * ファイル・画像を選ぶ
-                 */
-                "chooseFileOrImage": string;
-                /**
-                 * 写真を撮る
-                 */
-                "takePhoto": string;
-                /**
-                 * ドライブから選ぶ
-                 */
-                "chooseFromDrive": string;
-                /**
-                 * URLから取り込む
-                 */
-                "importFromUrl": string;
-                /**
-                 * チャンネル投稿では公開範囲と連合有無はチャンネル設定に従います。
-                 */
-                "channelVisibilityFixed": string;
-                /**
-                 * フォロワー限定
-                 */
-                "followersOnly": string;
-                /**
-                 * 投稿を見られる人
-                 */
-                "visibilityAudience": string;
-                /**
-                 * 連合する
-                 */
-                "federate": string;
-                /**
-                 * 公開範囲を記憶
-                 */
-                "rememberVisibility": string;
-                /**
-                 * CWの注釈を入力してください
-                 */
-                "cwAnnotationRequired": string;
-                /**
-                 * 説明がない添付ファイルがあります。
-                 */
-                "attachmentsWithoutDescription": string;
-                /**
-                 * 代替テキスト未設定の添付ファイルがあります。
-                 */
-                "attachmentsWithoutAltText": string;
-                /**
-                 * このまま投稿
-                 */
-                "postAsIs": string;
-                /**
-                 * 戻る
-                 */
-                "back": string;
-                /**
-                 * 激しい動きのあるMFMが含まれています。
-                 */
-                "annoyingMfmWarning": string;
-                /**
-                 * ホームに変更
-                 */
-                "changeToHome": string;
-                /**
-                 * パブリックのまま
-                 */
-                "keepPublic": string;
-                /**
-                 * 宛先指定には受信者が必要です
-                 */
-                "directRecipientRequired": string;
-                /**
-                 * アンケートには2つ以上の選択肢が必要です
-                 */
-                "pollNeedsTwoChoices": string;
-                /**
-                 * アンケートの期限は未来の日時にしてください
-                 */
-                "pollDeadlineMustBeFuture": string;
-                /**
-                 * アンケートの期間は1以上にしてください
-                 */
-                "pollDurationAtLeastOne": string;
-                /**
-                 * プラグインが無効な投稿内容を返しました
-                 */
-                "pluginReturnedInvalidPost": string;
-                /**
-                 * 返信しました
-                 */
-                "replied": string;
-                /**
-                 * 引用しました
-                 */
-                "quoted": string;
-                /**
-                 * 投稿しました
-                 */
-                "posted": string;
-                /**
-                 * 投稿できませんでした。入力内容は残しています。
-                 */
-                "postFailedDraftKept": string;
-                /**
-                 * ウィジェット
-                 */
-                "widgets": string;
-                /**
-                 * チャンネル
-                 */
-                "channels": string;
-                /**
-                 * {collection}を選択
-                 */
-                "chooseCollection": ParameterizedString<"collection">;
-                /**
-                 * {collection}はありません
-                 */
-                "collectionEmpty": ParameterizedString<"collection">;
-                /**
-                 * {host} ホーム
-                 */
-                "externalHome": ParameterizedString<"host">;
-                /**
-                 * {host} ローカル
-                 */
-                "externalLocal": ParameterizedString<"host">;
-                /**
-                 * @{user} をメンション
-                 */
-                "mentionUser": ParameterizedString<"user">;
-                /**
-                 * {name}へ返信
-                 */
-                "replyTo": ParameterizedString<"name">;
-                /**
-                 * {name}の投稿を引用
-                 */
-                "quotePostBy": ParameterizedString<"name">;
-                /**
-                 * {name}へ投稿
-                 */
-                "postTo": ParameterizedString<"name">;
-                /**
-                 * {privacy}{name}へ投稿
-                 */
-                "postToChannel": ParameterizedString<"privacy" | "name">;
-                /**
-                 * {item}を右ペインで開く
-                 */
-                "openInRightPane": ParameterizedString<"item">;
-                /**
-                 * 取り込めるHataskey UIウィジェットがありません
-                 */
-                "noHatasabaWidgetsToImport": string;
-                /**
-                 * {count}個のウィジェットを取り込みました
-                 */
-                "importWidgetCount": ParameterizedString<"count">;
-                /**
-                 * 現在の内容を差し替える
-                 */
-                "replaceCurrentContent": string;
-                /**
-                 * 現在の内容へ追加する
-                 */
-                "appendToCurrentContent": string;
-                /**
-                 * プロフィールを読み込めませんでした
-                 */
-                "profileLoadFailed": string;
-                /**
-                 * このUIは現在未開放です
-                 */
-                "uiUnavailable": string;
+                "importInvalid": string;
             };
+            /**
+             * リノートを解除しますか？
+             */
+            "unrenoteConfirm": string;
+            /**
+             * 解除する
+             */
+            "unrenoteConfirmAction": string;
+            /**
+             * アカウント
+             */
+            "account": string;
+            /**
+             * 選択肢を追加
+             */
+            "addPollChoice": string;
+            /**
+             * リアクションを追加
+             */
+            "addReaction": string;
+            /**
+             * 宛先を追加
+             */
+            "addRecipient": string;
+            /**
+             * ショートカットを追加
+             */
+            "addShortcut": string;
+            /**
+             * 終日
+             */
+            "allDay": string;
+            /**
+             * すべてのリアクション
+             */
+            "allReactions": string;
+            /**
+             * きょうのToDoはすべて完了しました
+             */
+            "allTodosDone": string;
+            /**
+             * 添付
+             */
+            "attach": string;
+            /**
+             * （添付ファイル）
+             */
+            "attachmentsOnly": string;
+            /**
+             * 咲きました
+             */
+            "bloomed": string;
+            /**
+             * あと約{hours}時間で咲きます
+             */
+            "bloomsIn": ParameterizedString<"hours">;
+            /**
+             * まもなく咲きます
+             */
+            "bloomsSoon": string;
+            /**
+             * 送信待ちを取り消す
+             */
+            "cancelWait": string;
+            /**
+             * チャンネル
+             */
+            "channel": string;
+            /**
+             * ここに置く機能
+             */
+            "chooseShortcut": string;
+            /**
+             * 解除
+             */
+            "clearContext": string;
+            /**
+             * ToDoを完了できませんでした
+             */
+            "completeFailed": string;
+            /**
+             * 完了にする
+             */
+            "completeTodo": string;
+            /**
+             * コントロールパネル
+             */
+            "controlPanel": string;
+            /**
+             * 会話
+             */
+            "conversation": string;
+            /**
+             * 注釈
+             */
+            "cw": string;
+            /**
+             * 注釈
+             */
+            "cwPlaceholder": string;
+            /**
+             * 注釈を入力してください
+             */
+            "cwRequired": string;
+            /**
+             * ダークモード
+             */
+            "darkMode": string;
+            /**
+             * ダークモードにしました
+             */
+            "darkModeOn": string;
+            /**
+             * デッキ
+             */
+            "deckView": string;
+            /**
+             * お絵描き
+             */
+            "drawing": string;
+            /**
+             * サイドメニューを編集（HataSideStudio）
+             */
+            "editSideMenu": string;
+            /**
+             * 絵文字
+             */
+            "emoji": string;
+            /**
+             * これより前のノートはありません
+             */
+            "endOfTimeline": string;
+            /**
+             * イベント
+             */
+            "event": string;
+            /**
+             * フォームを広げる
+             */
+            "expandForm": string;
+            /**
+             * 連合
+             */
+            "federate": string;
+            /**
+             * 連合あり
+             */
+            "federateTitle": string;
+            /**
+             * {filter}：{state}
+             */
+            "filterChanged": ParameterizedString<"filter" | "state">;
+            /**
+             * 育てているお花
+             */
+            "growingFlower": string;
+            /**
+             * ハッシュタグ
+             */
+            "hashtag": string;
+            /**
+             * Hatask
+             */
+            "hatask": string;
+            /**
+             * {h}時間{m}分
+             */
+            "hoursMinutes": ParameterizedString<"h" | "m">;
+            /**
+             * ライトモード
+             */
+            "lightMode": string;
+            /**
+             * ライトモードにしました
+             */
+            "lightModeOn": string;
+            /**
+             * リアルタイム表示をオフにしました
+             */
+            "liveOff": string;
+            /**
+             * リアルタイム表示をオンにしました
+             */
+            "liveOn": string;
+            /**
+             * タイムラインを読み込めませんでした
+             */
+            "loadFailed": string;
+            /**
+             * 以前のノートを読み込めませんでした。タップして再試行
+             */
+            "loadOlderFailed": string;
+            /**
+             * 連合なし
+             */
+            "localOnly": string;
+            /**
+             * （連合なし）
+             */
+            "localOnlySuffix": string;
+            /**
+             * 連合なし（このサーバーのみ）
+             */
+            "localOnlyTitle": string;
+            /**
+             * 食べた
+             */
+            "mealAte": string;
+            /**
+             * 朝
+             */
+            "mealBreakfast": string;
+            /**
+             * 夜
+             */
+            "mealDinner": string;
+            /**
+             * 少しだけ
+             */
+            "mealLittle": string;
+            /**
+             * 昼
+             */
+            "mealLunch": string;
+            /**
+             * 食べなかった
+             */
+            "mealNone": string;
+            /**
+             * 食事の記録
+             */
+            "mealRecords": string;
+            /**
+             * メンション
+             */
+            "mention": string;
+            /**
+             * メニュー
+             */
+            "menu": string;
+            /**
+             * MFM
+             */
+            "mfm": string;
+            /**
+             * {m}分
+             */
+            "minutesOnly": ParameterizedString<"m">;
+            /**
+             * ミュートしたワードを含むノート
+             */
+            "mutedNote": string;
+            /**
+             * 説明（代替テキスト）のない添付ファイルがあります
+             */
+            "noAltText": string;
+            /**
+             * 期限なし
+             */
+            "noDue": string;
+            /**
+             * きょうの予定はありません
+             */
+            "noEventsToday": string;
+            /**
+             * まだノートがありません
+             */
+            "noNotes": string;
+            /**
+             * きょうのToDoはありません
+             */
+            "noTodosToday": string;
+            /**
+             * 未記録
+             */
+            "notRecorded": string;
+            /**
+             * ノート
+             */
+            "note": string;
+            /**
+             * オフ
+             */
+            "off": string;
+            /**
+             * オン
+             */
+            "on": string;
+            /**
+             * 開催中
+             */
+            "ongoing": string;
+            /**
+             * Hataskで開く
+             */
+            "openInHatask": string;
+            /**
+             * ウィジェット
+             */
+            "paneWidgets": string;
+            /**
+             * プラグインが不正な投稿内容を返しました
+             */
+            "pluginInvalidPost": string;
+            /**
+             * 投票
+             */
+            "poll": string;
+            /**
+             * 選択肢{number}
+             */
+            "pollChoice": ParameterizedString<"number">;
+            /**
+             * 期限
+             */
+            "pollDeadline": string;
+            /**
+             * 複数選択を許可
+             */
+            "pollMultiple": string;
+            /**
+             * 投票の選択肢を2つ以上入力してください
+             */
+            "pollNeedsTwo": string;
+            /**
+             * なし
+             */
+            "pollNoDeadline": string;
+            /**
+             * 1日
+             */
+            "pollOneDay": string;
+            /**
+             * 1時間
+             */
+            "pollOneHour": string;
+            /**
+             * 1週間
+             */
+            "pollOneWeek": string;
+            /**
+             * ノート
+             */
+            "post": string;
+            /**
+             * このまま投稿
+             */
+            "postAnyway": string;
+            /**
+             * 投稿できませんでした。下書きは残っています
+             */
+            "postFailed": string;
+            /**
+             * {name} に投稿
+             */
+            "postToChannel": ParameterizedString<"name">;
+            /**
+             * 投稿機能
+             */
+            "postTools": string;
+            /**
+             * ノートしました
+             */
+            "posted": string;
+            /**
+             * プレビュー
+             */
+            "preview": string;
+            /**
+             * 引用
+             */
+            "quote": string;
+            /**
+             * ひとこと添えて引用
+             */
+            "quotePlaceholder": string;
+            /**
+             * 引用しました
+             */
+            "quoted": string;
+            /**
+             * 引用中
+             */
+            "quoting": string;
+            /**
+             * リアクションの受け入れ
+             */
+            "reactionAcceptance": string;
+            /**
+             * リアルタイム
+             */
+            "realtime": string;
+            /**
+             * ダイレクトの宛先を選んでください
+             */
+            "recipientRequired": string;
+            /**
+             * 宛先
+             */
+            "recipients": string;
+            /**
+             * 記録あり
+             */
+            "recorded": string;
+            /**
+             * 残り文字数
+             */
+            "remaining": string;
+            /**
+             * 宛先から外す
+             */
+            "removeRecipient": string;
+            /**
+             * 返信しました
+             */
+            "replied": string;
+            /**
+             * 返信
+             */
+            "reply": string;
+            /**
+             * {name} に返信
+             */
+            "replyTo": ParameterizedString<"name">;
+            /**
+             * 返信中
+             */
+            "replying": string;
+            /**
+             * 左下に戻す
+             */
+            "resetWindow": string;
+            /**
+             * 再読み込み
+             */
+            "retry": string;
+            /**
+             * センシティブなファイルを含むノート
+             */
+            "sensitiveNote": string;
+            /**
+             * あとから変更するときは、設定で「投稿フォーム」と検索してください
+             */
+            "shortcutGuide": string;
+            /**
+             * 標準
+             */
+            "standardView": string;
+            /**
+             * あと{time}
+             */
+            "startsIn": ParameterizedString<"time">;
+            /**
+             * 予定
+             */
+            "statEvents": string;
+            /**
+             * 食事
+             */
+            "statMeals": string;
+            /**
+             * 外部ホーム
+             */
+            "tabExternalHome": string;
+            /**
+             * 外部ローカル
+             */
+            "tabExternalLocal": string;
+            /**
+             * グローバル
+             */
+            "tabGlobal": string;
+            /**
+             * ホーム
+             */
+            "tabHome": string;
+            /**
+             * ローカル
+             */
+            "tabLocal": string;
+            /**
+             * ソーシャル
+             */
+            "tabSocial": string;
+            /**
+             * トレンド
+             */
+            "tabTrending": string;
+            /**
+             * {name}にフォローされました
+             */
+            "toastFollow": ParameterizedString<"name">;
+            /**
+             * {name}からフォローリクエストが届きました
+             */
+            "toastFollowRequest": ParameterizedString<"name">;
+            /**
+             * 新しい通知があります
+             */
+            "toastGeneric": string;
+            /**
+             * {name}がメンションしました
+             */
+            "toastMention": ParameterizedString<"name">;
+            /**
+             * 投票が終了しました
+             */
+            "toastPollEnded": string;
+            /**
+             * {name}が引用しました
+             */
+            "toastQuote": ParameterizedString<"name">;
+            /**
+             * {name}がリアクションしました
+             */
+            "toastReaction": ParameterizedString<"name">;
+            /**
+             * {name}がリノートしました
+             */
+            "toastRenote": ParameterizedString<"name">;
+            /**
+             * {name}が返信しました
+             */
+            "toastReply": ParameterizedString<"name">;
+            /**
+             * きょうの予定
+             */
+            "todayEvents": string;
+            /**
+             * きょうの気分
+             */
+            "todayMood": string;
+            /**
+             * 表示切替
+             */
+            "toggleContent": string;
+            /**
+             * 公開範囲
+             */
+            "visibility": string;
+            /**
+             * いまどうしてる？
+             */
+            "whatsHappening": string;
+            /**
+             * ToDo
+             */
+            "todoLabel": string;
         };
         "_uiSetup": {
+            /**
+             * UIを切り替える
+             */
+            "title": string;
+            /**
+             * 使いたいUIを選んで切り替え
+             */
+            "hint": string;
+            /**
+             * Hataskeyの標準UI
+             */
+            "standardDescription": string;
+            /**
+             * タイムラインを中心に、はっきりした区切りで情報を並べる新しいUI（ベータ版）
+             */
+            "ui3Description": string;
+            /**
+             * その他のUI
+             */
+            "otherUis": string;
+            /**
+             * 独自カスタマイズと競合する場合があります
+             */
+            "conflictNote": string;
+            /**
+             * 切り替える
+             */
+            "switchAction": string;
             /**
              * ここは {instance}
              */
@@ -19392,10 +18556,6 @@ export interface Locale extends ILocale {
              * Hataskey UI で続行
              */
             "continueHatasaba": string;
-            /**
-             * 会話のように流れるタイムライン、機能を開けるサブペイン、コンパクトな投稿欄を一つの画面にまとめます。
-             */
-            "hatacordingDescription": string;
             /**
              * ホーム
              */
@@ -19453,10 +18613,6 @@ export interface Locale extends ILocale {
              */
             "subpaneHint": string;
             /**
-             * HataSNSCordUIを使用する
-             */
-            "useHatacording": string;
-            /**
              * その他のUIも利用できますが、動作が不安定な場合があります
              */
             "otherUiWarning": string;
@@ -19493,9 +18649,21 @@ export interface Locale extends ILocale {
              */
             "deprecatedWarning": string;
             /**
-             * このUIは現在未開放です。
+             * が使用可能になりました。
              */
-            "unavailable": string;
+            "announcementAvailable": string;
+            /**
+             * Beta
+             */
+            "beta": string;
+            /**
+             * 切り替えて使ってみませんか？
+             */
+            "announcementTry": string;
+            /**
+             * Hataskey UIの良さはそのまま、シンプルで遊び心のあるUIです。
+             */
+            "ui3SettingsDescription": string;
         };
         "_hatady": {
             "_media": {
@@ -20779,6 +19947,58 @@ export interface Locale extends ILocale {
                  * 書き出しに失敗しました。
                  */
                 "exportFailed": string;
+                /**
+                 * 記録を書き出す
+                 */
+                "dialogTitle": string;
+                /**
+                 * 書き出す活動
+                 */
+                "activities": string;
+                /**
+                 * 形式
+                 */
+                "format": string;
+                /**
+                 * 書き出す形式
+                 */
+                "formatLabel": string;
+                /**
+                 * 自分の作品・記録・しおり・内容メモを書き出します。非公開の記録と私的メモも含みます。
+                 */
+                "privacy": string;
+                /**
+                 * {records}件の記録 · {works}件の作品・作業
+                 */
+                "previewCount": ParameterizedString<"records" | "works">;
+                /**
+                 * 内容を確かめる
+                 */
+                "review": string;
+                /**
+                 * この内容を書き出す
+                 */
+                "exportContents": string;
+                /**
+                 * テキスト
+                 */
+                "text": string;
+                /**
+                 * 期間の順序を確かめてください
+                 */
+                "dateOrderError": string;
+                /**
+                 * 書き出す内容を読み込めませんでした
+                 */
+                "loadFailed": string;
+                /**
+                 * {count}件の記録を書き出しました
+                 */
+                "success": ParameterizedString<"count">;
+                /**
+                 * ファイルを書き出せませんでした
+                 */
+                "failed": string;
             };
             "_mediaExportText": {
                 /**
@@ -21825,6 +21045,354 @@ export interface Locale extends ILocale {
                  * このチュートリアルと簡単な紹介は、<b>Hatady設定 → 管理 → チュートリアルを再度実行</b>からいつでも見返せます。<br>今すべて覚えなくても大丈夫です
                  */
                 "revisitDescription": string;
+                "initial": {
+                    "about": {
+                        /**
+                         * はじめに
+                         */
+                        "label": string;
+                        /**
+                         * Hatadyって？
+                         */
+                        "title": string;
+                        /**
+                         * 日々の活動を記録して、自分の積み重ねを振り返る場所です。
+                         */
+                        "description": string;
+                        /**
+                         * みんなの記録を読むことや、交流も楽しめます。
+                         */
+                        "note": string;
+                        /**
+                         * Hatadyの活動と積み重ねの見本。勉強・読書、映画、ゲーム、運動、作業を記録して、日々の積み重ねを振り返れます。
+                         */
+                        "figure": string;
+                        /**
+                         * 読んだことも、つくったことも
+                         */
+                        "caption": string;
+                    };
+                    "record": {
+                        /**
+                         * 記録の入り口
+                         */
+                        "label": string;
+                        /**
+                         * 今日のひとつを、残そう
+                         */
+                        "title": string;
+                        /**
+                         * 上の「＋」から、今日の活動を選びます。読んだ本も、つくったことも同じ入り口から。
+                         */
+                        "description": string;
+                        /**
+                         * 記録の種類を選ぶ画面。勉強・読書、映画、ゲーム、運動、作業の5種類があります。
+                         */
+                        "figure": string;
+                        /**
+                         * 「＋」から、活動を選ぶ
+                         */
+                        "caption": string;
+                    };
+                    "draft": {
+                        /**
+                         * 入力と下書き
+                         */
+                        "label": string;
+                        /**
+                         * ひとつずつ、書いていこう
+                         */
+                        "title": string;
+                        /**
+                         * ひとつずつ入力して、最後に内容を確認します。途中なら、下書きを端末に保存できます。
+                         */
+                        "description": string;
+                        /**
+                         * 続きは、同じ端末で書き足せます。
+                         */
+                        "note": string;
+                        /**
+                         * 記録を入力する画面。種類、内容、確認の順に進み、途中の内容は端末に下書きとして残せます。
+                         */
+                        "figure": string;
+                        /**
+                         * 少しずつ進めて、最後に確認
+                         */
+                        "caption": string;
+                    };
+                    "visibility": {
+                        /**
+                         * 公開範囲
+                         */
+                        "label": string;
+                        /**
+                         * 見せる相手を、自分で選ぶ
+                         */
+                        "title": string;
+                        /**
+                         * 公開・フォロワーのみ・自分のみから、記録ごとに選べます。作品と記録の公開範囲は、それぞれ設定できます。
+                         */
+                        "description": string;
+                        /**
+                         * 「自分のみ」の記録も、モデレーターは閲覧できます。
+                         */
+                        "note": string;
+                        /**
+                         * 記録の公開範囲。公開、フォロワーのみ、自分のみのうち、自分のみを選んだ例です。
+                         */
+                        "figure": string;
+                        /**
+                         * 記録にも、作品にも公開範囲
+                         */
+                        "caption": string;
+                    };
+                    "collection": {
+                        /**
+                         * コレクション
+                         */
+                        "label": string;
+                        /**
+                         * 作品のそばに、記録がたまる
+                         */
+                        "title": string;
+                        /**
+                         * 本・映画・ゲーム・作業は、コレクションにまとまります。ひとつの作品を開くと、これまでの記録が見られます。
+                         */
+                        "description": string;
+                        /**
+                         * コレクションの本棚。作品を種類ごとに並べ、同じ作品の記録をまとめて振り返れます。
+                         */
+                        "figure": string;
+                        /**
+                         * 好きな作品と、これまでの記録
+                         */
+                        "caption": string;
+                    };
+                    "following": {
+                        /**
+                         * つながり
+                         */
+                        "label": string;
+                        /**
+                         * 気になる人の、ひとつを読む
+                         */
+                        "title": string;
+                        /**
+                         * 気になる人をフォローして、公開された記録を読みましょう。感想やリアクションで、少しずつつながれます。
+                         */
+                        "description": string;
+                        /**
+                         * Hatadyのフォローは、hataskey本体とは別のつながりです。
+                         */
+                        "note": string;
+                        /**
+                         * フォロー中の人の記録。記録には感想を返信したり、リアクションを付けたりできます。
+                         */
+                        "figure": string;
+                        /**
+                         * 記録を読んで、気持ちを届ける
+                         */
+                        "caption": string;
+                    };
+                    "reflection": {
+                        /**
+                         * 振り返り
+                         */
+                        "label": string;
+                        /**
+                         * 自分のペースが、見えてくる
+                         */
+                        "title": string;
+                        /**
+                         * ホームやプロフィールから、日々の積み重ねを振り返れます。色や並べ方は、自分の好みに整えられます。
+                         */
+                        "description": string;
+                        /**
+                         * 使い方は、設定からいつでも見返せます。
+                         */
+                        "note": string;
+                        /**
+                         * プロフィールの積み重ね。1週間の記録、合計の件数や時間を確認できます。統計、カレンダー、目標にも移動できます。
+                         */
+                        "figure": string;
+                        /**
+                         * 少しずつが、ひと目でわかる
+                         */
+                        "caption": string;
+                    };
+                };
+                "update": {
+                    "home": {
+                        /**
+                         * 新しいホーム
+                         */
+                        "label": string;
+                        /**
+                         * いつもの記録を、新しい画面で
+                         */
+                        "title": string;
+                        /**
+                         * ホームから、最近の記録や積み重ねをひと目で。上のタブで、記録・コレクション・プロフィールへ移動できます。
+                         */
+                        "description": string;
+                        /**
+                         * これまでの記録も、そのまま振り返れます。
+                         */
+                        "note": string;
+                        /**
+                         * 新しいホームの見本。上部にホーム、記録、コレクション、プロフィールのタブと記録用のプラスがあります。カードにはおすすめの作品、最近30日の記録、コレクションが並びます。
+                         */
+                        "figure": string;
+                        /**
+                         * いつもの場所へ、上のタブから
+                         */
+                        "caption": string;
+                    };
+                    "record": {
+                        /**
+                         * 記録と下書き
+                         */
+                        "label": string;
+                        /**
+                         * 「＋」から、ひとつずつ
+                         */
+                        "title": string;
+                        /**
+                         * 活動を選んで、項目ごとに入力します。途中の内容は、端末に下書きとして残せます。
+                         */
+                        "description": string;
+                        /**
+                         * 公開範囲を選んで、最後に内容を確認。
+                         */
+                        "note": string;
+                        /**
+                         * 新しい記録画面の見本。勉強・読書、映画、ゲーム、運動、作業から活動を選び、項目ごとに進めます。例は内容・感想の入力で、戻る・次へで移動し、途中の内容を端末に下書きとして残せます。
+                         */
+                        "figure": string;
+                        /**
+                         * 一度に全部、埋めなくて大丈夫
+                         */
+                        "caption": string;
+                    };
+                    "records": {
+                        /**
+                         * 日々の記録
+                         */
+                        "label": string;
+                        /**
+                         * 読みたい記録へ、すぐに
+                         */
+                        "title": string;
+                        /**
+                         * 自分の記録も、みんなの記録も「記録」タブへ。活動の種類や日付で、見たい記録を絞り込めます。
+                         */
+                        "description": string;
+                        /**
+                         * 選んでいるタブだけ、名前が表示されます。
+                         */
+                        "note": string;
+                        /**
+                         * 日々の記録の見本。自分の記録、みんな、フォロー中を切り替え、勉強・読書などの活動で絞り込めます。カレンダーから期間を指定でき、記録カードの右上に日付と公開範囲があります。
+                         */
+                        "figure": string;
+                        /**
+                         * 自分・みんな・フォロー中を切り替え
+                         */
+                        "caption": string;
+                    };
+                    "collection": {
+                        /**
+                         * コレクション
+                         */
+                        "label": string;
+                        /**
+                         * 作品のそばに、これまでの記録
+                         */
+                        "title": string;
+                        /**
+                         * 本や映画などの作品は、コレクションから。作品を開くと、これまでの記録をまとめて見られます。
+                         */
+                        "description": string;
+                        /**
+                         * 自分の作品は、タイトル横の鉛筆から編集できます。
+                         */
+                        "note": string;
+                        /**
+                         * コレクションから開く作品の詳細の見本。本棚、映画、ゲーム、作業を切り替えられます。夜を編む庭のタイトルの横には情報編集の鉛筆があり、下にこれまでの記録が並びます。
+                         */
+                        "figure": string;
+                        /**
+                         * 作品の情報も、記録もここに
+                         */
+                        "caption": string;
+                    };
+                    "profile": {
+                        /**
+                         * プロフィール
+                         */
+                        "label": string;
+                        /**
+                         * 積み重ねを、自分らしく
+                         */
+                        "title": string;
+                        /**
+                         * プロフィールも、カードで見やすく。週ごとの記録を振り返ったり、色や並び方を整えたりできます。
+                         */
+                        "description": string;
+                        /**
+                         * 「デザインを編集」から、自分の好みに。
+                         */
+                        "note": string;
+                        /**
+                         * 新しいプロフィールの見本。基本情報も1枚のカードとしてジャンルとタグや週間記録と並びます。色や表示項目、順番、並べ方をデザインを編集から変えられます。
+                         */
+                        "figure": string;
+                        /**
+                         * 記録が増えるほど、自分のページに
+                         */
+                        "caption": string;
+                    };
+                };
+                /**
+                 * Hatadyの使い方
+                 */
+                "titleInitial": string;
+                /**
+                 * Welcome to Hatady V2
+                 */
+                "titleUpdate": string;
+                /**
+                 * Hatadyをはじめる
+                 */
+                "finish": string;
+                /**
+                 * 配色を選ぶ
+                 */
+                "chooseTheme": string;
+                /**
+                 * ライト
+                 */
+                "themeLight": string;
+                /**
+                 * ダーク
+                 */
+                "themeDark": string;
+                /**
+                 * ペーパー
+                 */
+                "themePaper": string;
+                /**
+                 * エスプレッソ
+                 */
+                "themeEspresso": string;
+                /**
+                 * Hataskeyに合わせる
+                 */
+                "themeHataskey": string;
+                /**
+                 * 配色を保存できませんでした
+                 */
+                "themeSaveFailed": string;
             };
             "_subjectManager": {
                 /**
@@ -21905,6 +21473,10 @@ export interface Locale extends ILocale {
                  * リアクションを削除
                  */
                 "remove": string;
+                /**
+                 * リアクションを変更できませんでした
+                 */
+                "updateFailed": string;
             };
             "_tags": {
                 /**
@@ -22735,6 +22307,22 @@ export interface Locale extends ILocale {
                  * このユーザーをフォロワーから外しますか？（相手に通知はされません）
                  */
                 "removeFollowerConfirm": string;
+                /**
+                 * つながり
+                 */
+                "connections": string;
+                /**
+                 * フォロワーを解除できませんでした
+                 */
+                "removeFollowerFailed": string;
+                /**
+                 * つながりを読み込めませんでした
+                 */
+                "loadFailed": string;
+                /**
+                 * フォローを変更できませんでした
+                 */
+                "followChangeFailed": string;
             };
             "_goals": {
                 /**
@@ -22917,6 +22505,10 @@ export interface Locale extends ILocale {
                  * {count}冊
                  */
                 "bookCount": ParameterizedString<"count">;
+                /**
+                 * 目標を読み込めませんでした
+                 */
+                "loadFailed": string;
             };
             "_search": {
                 /**
@@ -22999,6 +22591,26 @@ export interface Locale extends ILocale {
                  * p.{page}
                  */
                 "pageNumber": ParameterizedString<"page">;
+                /**
+                 * 作品・作業
+                 */
+                "mediaWorks": string;
+                /**
+                 * 映画・ゲームの記録
+                 */
+                "mediaSessions": string;
+                /**
+                 * 記録
+                 */
+                "records": string;
+                /**
+                 * ネタバレを含む内容
+                 */
+                "spoilerContent": string;
+                /**
+                 * 検索できませんでした
+                 */
+                "searchFailed": string;
             };
             "_statsDetail": {
                 /**
@@ -23088,7 +22700,7 @@ export interface Locale extends ILocale {
                  */
                 "title": string;
                 /**
-                 * 読み込み中…
+                 * 読み込み中
                  */
                 "loading": string;
                 /**
@@ -23124,7 +22736,7 @@ export interface Locale extends ILocale {
                  */
                 "milestones": string;
                 /**
-                 * 達成済み
+                 * 達成
                  */
                 "achieved": string;
                 /**
@@ -23155,6 +22767,3160 @@ export interface Locale extends ILocale {
                  * {start} 〜 {end}
                  */
                 "dateRange": ParameterizedString<"start" | "end">;
+                /**
+                 * 今の連続記録
+                 */
+                "currentStreak": string;
+                /**
+                 * 日
+                 */
+                "daySingular": string;
+                /**
+                 * 自己ベスト
+                 */
+                "personalBest": string;
+                /**
+                 * 次の節目 {days}日
+                 */
+                "nextMilestone": ParameterizedString<"days">;
+                /**
+                 * 365日の節目を達成
+                 */
+                "completed365": string;
+                /**
+                 * あと{days}日
+                 */
+                "daysRemaining": ParameterizedString<"days">;
+                /**
+                 * 次の節目への進み具合
+                 */
+                "milestoneProgress": string;
+                /**
+                 * 連続記録の節目
+                 */
+                "streakMilestones": string;
+                /**
+                 * 次の節目
+                 */
+                "next": string;
+                /**
+                 * これから
+                 */
+                "upcoming": string;
+                /**
+                 * すべての節目
+                 */
+                "allMilestones": string;
+                /**
+                 * 月ごとの歩み
+                 */
+                "monthlyProgress": string;
+                /**
+                 * 日記録
+                 */
+                "recordedDaysUnit": string;
+                /**
+                 * 最長{days}日
+                 */
+                "longest": ParameterizedString<"days">;
+                /**
+                 * {month} 記録した日 {days}
+                 */
+                "recordedDayList": ParameterizedString<"month" | "days">;
+                /**
+                 * 、
+                 */
+                "dayListSeparator": string;
+                /**
+                 * {days}日
+                 */
+                "dayCount": ParameterizedString<"days">;
+                /**
+                 * 最初の記録から、始まります。
+                 */
+                "empty": string;
+                /**
+                 * {range}の記録
+                 */
+                "periodRecords": ParameterizedString<"range">;
+                /**
+                 * 記録を読み込めませんでした
+                 */
+                "recordsLoadFailed": string;
+                /**
+                 * 連続記録を読み込めませんでした
+                 */
+                "loadFailed": string;
+            };
+            "_imageAttachments": {
+                /**
+                 * 任意 · {count} / 16枚
+                 */
+                "attachmentCount": ParameterizedString<"count">;
+                /**
+                 * {name}の添付を外す
+                 */
+                "remove": ParameterizedString<"name">;
+                /**
+                 * 画像を追加
+                 */
+                "add": string;
+                /**
+                 * ドライブから
+                 */
+                "fromDrive": string;
+                /**
+                 * 画像ファイルを選んでください。
+                 */
+                "imageOnlyError": string;
+                /**
+                 * 画像は16枚まで添付できます。
+                 */
+                "limitError": string;
+                /**
+                 * 画像を追加できませんでした。もう一度お試しください。
+                 */
+                "addFailed": string;
+            };
+            "_profileDesign": {
+                /**
+                 * プロフィールを整える
+                 */
+                "title": string;
+                /**
+                 * 編集とプレビュー
+                 */
+                "panes": string;
+                /**
+                 * カラー
+                 */
+                "palette": string;
+                /**
+                 * 並べ方
+                 */
+                "layout": string;
+                /**
+                 * 表示するもの
+                 */
+                "visibleSections": string;
+                /**
+                 * {label}を上へ
+                 */
+                "moveUp": ParameterizedString<"label">;
+                /**
+                 * {label}を下へ
+                 */
+                "moveDown": ParameterizedString<"label">;
+                /**
+                 * カードの形
+                 */
+                "corners": string;
+                /**
+                 * 余白
+                 */
+                "spacing": string;
+                /**
+                 * プロフィールのプレビュー
+                 */
+                "previewAria": string;
+                /**
+                 * 保存する
+                 */
+                "save": string;
+                /**
+                 * デザインの編集をどうする？
+                 */
+                "draftQuestion": string;
+                /**
+                 * 編集途中のデザインを、端末に下書きとして残せます。
+                 */
+                "draftDescription": string;
+                /**
+                 * テーマ
+                 */
+                "paletteTheme": string;
+                /**
+                 * 若葉
+                 */
+                "paletteLeaf": string;
+                /**
+                 * すみれ
+                 */
+                "paletteViolet": string;
+                /**
+                 * 土色
+                 */
+                "paletteClay": string;
+                /**
+                 * バランス
+                 */
+                "layoutBalanced": string;
+                /**
+                 * 日記
+                 */
+                "layoutJournal": string;
+                /**
+                 * 本棚
+                 */
+                "layoutBookshelf": string;
+                /**
+                 * 編集
+                 */
+                "edit": string;
+                /**
+                 * プレビュー
+                 */
+                "preview": string;
+                /**
+                 * まるく
+                 */
+                "cornerSoft": string;
+                /**
+                 * すっきり
+                 */
+                "cornerNeat": string;
+                /**
+                 * ゆったり
+                 */
+                "spacingRelaxed": string;
+                /**
+                 * コンパクト
+                 */
+                "spacingCompact": string;
+                /**
+                 * 下書きを保存・削除できませんでした
+                 */
+                "draftFailed": string;
+                /**
+                 * 下書きを保存しました
+                 */
+                "draftSaved": string;
+                /**
+                 * デザインを保存しましたが、端末の下書きを削除できませんでした
+                 */
+                "savedDraftCleanupFailed": string;
+                /**
+                 * プロフィールのデザインを保存しました
+                 */
+                "saved": string;
+                /**
+                 * 保存できませんでした。編集内容は残っています。
+                 */
+                "saveFailed": string;
+            };
+            "_homeDashboard": {
+                /**
+                 * 再読み込み
+                 */
+                "reload": string;
+                /**
+                 * 今日のひとつから、
+                 */
+                "newGreetingFirst": string;
+                /**
+                 * 今日も、
+                 */
+                "returnGreetingFirst": string;
+                /**
+                 * はじめよう。
+                 */
+                "newGreetingSecond": string;
+                /**
+                 * 自分のペースで。
+                 */
+                "returnGreetingSecond": string;
+                /**
+                 * いろいろな日々
+                 */
+                "mixedDays": string;
+                /**
+                 * {focus}の記録を見る
+                 */
+                "viewFocusRecords": ParameterizedString<"focus">;
+                /**
+                 * 次のおすすめ
+                 */
+                "nextRecommendation": string;
+                /**
+                 * 記録をひらく
+                 */
+                "openRecord": string;
+                /**
+                 * 自分の作品をひらく
+                 */
+                "openOwnWork": string;
+                /**
+                 * 公開コレクションをひらく
+                 */
+                "openPublicCollection": string;
+                /**
+                 * 気になる作品が見つかったら、ここに。
+                 */
+                "recommendationEmpty": string;
+                /**
+                 * 最近30日
+                 */
+                "recentThirtyDays": string;
+                /**
+                 * 詳しい統計を見る
+                 */
+                "viewStats": string;
+                /**
+                 * 作品 · {count}記録
+                 */
+                "workRecordCount": ParameterizedString<"count">;
+                /**
+                 * 記録 · {days}日
+                 */
+                "recordDays": ParameterizedString<"days">;
+                /**
+                 * 直近7日の記録数：{records}
+                 */
+                "lastSevenRecordCount": ParameterizedString<"records">;
+                /**
+                 * {date} {count}件
+                 */
+                "dayRecordCount": ParameterizedString<"date" | "count">;
+                /**
+                 * 直近7日
+                 */
+                "lastSevenDays": string;
+                /**
+                 * {count}件 継続中
+                 */
+                "inProgressCount": ParameterizedString<"count">;
+                /**
+                 * 時間の入力なし
+                 */
+                "noTime": string;
+                /**
+                 * まずはひとつから
+                 */
+                "startWithOne": string;
+                /**
+                 * みんなの一歩
+                 */
+                "communityTitle": string;
+                /**
+                 * 人が今日記録
+                 */
+                "peopleRecordedToday": string;
+                /**
+                 * 人が今日記録
+                 */
+                "personRecordedToday": string;
+                /**
+                 * {name}のプロフィール
+                 */
+                "userProfile": ParameterizedString<"name">;
+                /**
+                 * それぞれのペースで。
+                 */
+                "communityFirst": string;
+                /**
+                 * 今日も記録が届いているよ。
+                 */
+                "communitySecond": string;
+                /**
+                 * 近況をのぞく
+                 */
+                "browseCommunity": string;
+                /**
+                 * 自分の記録をすべて見る
+                 */
+                "viewAllOwnRecords": string;
+                /**
+                 * 最近30日の記録はありません
+                 */
+                "noRecentThirty": string;
+                /**
+                 * 作業の状況
+                 */
+                "workStatus": string;
+                /**
+                 * 運動の種類
+                 */
+                "exerciseTypes": string;
+                /**
+                 * コレクション
+                 */
+                "collection": string;
+                /**
+                 * 自動スクロールを再開
+                 */
+                "resumeScroll": string;
+                /**
+                 * 自動スクロールを一時停止
+                 */
+                "pauseScroll": string;
+                /**
+                 * すべて見る
+                 */
+                "viewAll": string;
+                /**
+                 * {count}回 · {duration}
+                 */
+                "timesDuration": ParameterizedString<"count" | "duration">;
+                /**
+                 * 入力済み {calories} kcal
+                 */
+                "caloriesEntered": ParameterizedString<"calories">;
+                /**
+                 * カロリー未入力
+                 */
+                "caloriesMissing": string;
+                /**
+                 * {done}/{total}記録
+                 */
+                "exerciseRecordCount": ParameterizedString<"done" | "total">;
+                /**
+                 * {active}件 継続中 · {done}件 全体の完了
+                 */
+                "workProgressSummary": ParameterizedString<"active" | "done">;
+                /**
+                 * 好きな作品を、少しずつ。
+                 */
+                "shelfEmpty": string;
+                /**
+                 * {count}作品
+                 */
+                "worksCount": ParameterizedString<"count">;
+                /**
+                 * 自分のコレクション
+                 */
+                "ownCollection": string;
+                /**
+                 * {focus}の積み重ね
+                 */
+                "focusProgress": ParameterizedString<"focus">;
+                /**
+                 * 自分のペースで
+                 */
+                "ownPace": string;
+                /**
+                 * 活動の変化を振り返る
+                 */
+                "reviewChanges": string;
+                /**
+                 * {count}日、記録が続いているよ
+                 */
+                "streakDays": ParameterizedString<"count">;
+                /**
+                 * 短い記録も、今日のひとつに。
+                 */
+                "shortRecord": string;
+                /**
+                 * ホームの傾向
+                 */
+                "overviewTitle": string;
+                /**
+                 * 最近は{kind}
+                 */
+                "emergingKind": ParameterizedString<"kind">;
+                /**
+                 * {kind}中心
+                 */
+                "primaryKind": ParameterizedString<"kind">;
+                /**
+                 * 自分の記録
+                 */
+                "ownRecords": string;
+                /**
+                 * 30日
+                 */
+                "thirtyDays": string;
+                /**
+                 * 7日
+                 */
+                "sevenDays": string;
+                /**
+                 * 最近の学び
+                 */
+                "recentStudy": string;
+                /**
+                 * 鑑賞のメモ
+                 */
+                "recentMovie": string;
+                /**
+                 * 最近のプレイ
+                 */
+                "recentGame": string;
+                /**
+                 * 運動の記録
+                 */
+                "recentExercise": string;
+                /**
+                 * 作業の歩み
+                 */
+                "recentWork": string;
+                /**
+                 * 最近の記録
+                 */
+                "recentRecords": string;
+                /**
+                 * 次に観たい
+                 */
+                "nextMovie": string;
+                /**
+                 * 次に遊びたい
+                 */
+                "nextGame": string;
+                /**
+                 * 次に読みたい
+                 */
+                "nextBook": string;
+                /**
+                 * 次の楽しみ
+                 */
+                "nextFun": string;
+                /**
+                 * 全体の完了
+                 */
+                "workDone": string;
+                /**
+                 * 躓いている
+                 */
+                "workBlocked": string;
+                /**
+                 * 見てほしい
+                 */
+                "workReview": string;
+                /**
+                 * 今日の完了
+                 */
+                "workDoneToday": string;
+                /**
+                 * 継続中
+                 */
+                "workInProgress": string;
+                /**
+                 * かたちになった作業
+                 */
+                "heroWorkDone": string;
+                /**
+                 * 立ち止まっていること
+                 */
+                "heroWorkPaused": string;
+                /**
+                 * 見てほしい作業
+                 */
+                "heroWorkReview": string;
+                /**
+                 * 作業の続き
+                 */
+                "heroWorkContinue": string;
+                /**
+                 * からだを動かした日
+                 */
+                "heroExercise": string;
+                /**
+                 * 学びの続き
+                 */
+                "heroStudy": string;
+                /**
+                 * {genre}への興味から
+                 */
+                "interestReason": ParameterizedString<"genre">;
+                /**
+                 * あなたのコレクションから
+                 */
+                "ownCollectionReason": string;
+                /**
+                 * みんなの公開記録から
+                 */
+                "publicRecordsReason": string;
+                /**
+                 * 公開コレクションから
+                 */
+                "publicCollectionReason": string;
+                /**
+                 * ホームを読み込めませんでした
+                 */
+                "loadFailed": string;
+            };
+            "_subjects": {
+                /**
+                 * 分野を編集
+                 */
+                "edit": string;
+                /**
+                 * 分野を追加
+                 */
+                "add": string;
+                /**
+                 * 分野の名前
+                 */
+                "name": string;
+                /**
+                 * デザイン、数学、英語
+                 */
+                "nameExample": string;
+                /**
+                 * 色
+                 */
+                "color": string;
+                /**
+                 * 分野の色を指定
+                 */
+                "chooseColor": string;
+                /**
+                 * 自動の色に戻す
+                 */
+                "resetColor": string;
+                /**
+                 * この分野の記録は、新しい名前へ引き継がれます
+                 */
+                "renameTransfer": string;
+                /**
+                 * 保存する
+                 */
+                "save": string;
+                /**
+                 * 分野の編集をどうする？
+                 */
+                "draftQuestion": string;
+                /**
+                 * 途中の名前と色を、端末に下書きとして残せます。
+                 */
+                "draftDescription": string;
+                /**
+                 * 端末の下書きを更新できませんでした
+                 */
+                "draftFailed": string;
+                /**
+                 * 下書きを保存しました
+                 */
+                "draftSaved": string;
+                /**
+                 * 同じ名前の分野があります
+                 */
+                "duplicateName": string;
+                /**
+                 * 分野を保存しましたが、端末の下書きを削除できませんでした
+                 */
+                "savedDraftCleanupFailed": string;
+                /**
+                 * 分野を保存しました
+                 */
+                "saved": string;
+                /**
+                 * 分野を保存できませんでした
+                 */
+                "saveFailed": string;
+                /**
+                 * 分野を更新しました
+                 */
+                "updated": string;
+                /**
+                 * 分野を更新できませんでした
+                 */
+                "updateFailed": string;
+            };
+            "_report": {
+                /**
+                 * 通報
+                 */
+                "title": string;
+                /**
+                 * {name}さんの内容
+                 */
+                "personContent": ParameterizedString<"name">;
+                /**
+                 * 通報の理由・詳細
+                 */
+                "reason": string;
+                /**
+                 * 問題だと感じた点や、確認してほしいことを書いてください。
+                 */
+                "reasonExample": string;
+                /**
+                 * 端末の下書きを削除して閉じる
+                 */
+                "closeSent": string;
+                /**
+                 * 通報する
+                 */
+                "submit": string;
+                /**
+                 * 書きかけの通報をどうする？
+                 */
+                "draftQuestion": string;
+                /**
+                 * 理由の下書きを端末に残して、あとで続きを書けます。
+                 */
+                "draftDescription": string;
+                /**
+                 * 通報を送信しましたが、端末の下書きを削除できませんでした
+                 */
+                "sentDraftCleanupFailed": string;
+                /**
+                 * 端末の下書きを更新できませんでした。入力内容は残っています
+                 */
+                "draftUpdateFailed": string;
+                /**
+                 * 下書きを保存しました
+                 */
+                "draftSaved": string;
+                /**
+                 * 通報を送信しました
+                 */
+                "sent": string;
+                /**
+                 * 通報を送信できませんでした。入力内容は残っています
+                 */
+                "sendFailed": string;
+            };
+            "_activityKinds": {
+                /**
+                 * 勉強・読書
+                 */
+                "study": string;
+                /**
+                 * 運動
+                 */
+                "exercise": string;
+                /**
+                 * 作業
+                 */
+                "work": string;
+                /**
+                 * 料理
+                 */
+                "cooking": string;
+            };
+            "_recordTags": {
+                /**
+                 * がんばった
+                 */
+                "effort": string;
+                /**
+                 * 進捗
+                 */
+                "progress": string;
+                /**
+                 * 順調
+                 */
+                "smooth": string;
+                /**
+                 * 躓いている
+                 */
+                "blocked": string;
+                /**
+                 * 見てほしい
+                 */
+                "review": string;
+                /**
+                 * 今日の完了
+                 */
+                "doneDay": string;
+                /**
+                 * 全体の完了
+                 */
+                "doneAll": string;
+            };
+            "_duration": {
+                /**
+                 * {count}時間
+                 */
+                "hours": ParameterizedString<"count">;
+                /**
+                 * {count}分
+                 */
+                "minutes": ParameterizedString<"count">;
+                /**
+                 * {count}秒
+                 */
+                "seconds": ParameterizedString<"count">;
+            };
+            "_wizardComposer": {
+                /**
+                 * 記録を編集
+                 */
+                "editRecord": string;
+                /**
+                 * 今日の記録
+                 */
+                "todayRecord": string;
+                /**
+                 * 変更を保存
+                 */
+                "saveChanges": string;
+                /**
+                 * 記録を保存
+                 */
+                "saveRecord": string;
+                /**
+                 * どんな運動をした？
+                 */
+                "exerciseQuestion": string;
+                /**
+                 * どの作業を進めた？
+                 */
+                "workQuestion": string;
+                /**
+                 * どんな料理を作った？
+                 */
+                "cookingQuestion": string;
+                /**
+                 * 今日は、何を学んだ？
+                 */
+                "studyQuestion": string;
+                /**
+                 * 作業
+                 */
+                "work": string;
+                /**
+                 * 作業を選ぶ
+                 */
+                "chooseWork": string;
+                /**
+                 * 作業を登録
+                 */
+                "addWork": string;
+                /**
+                 * 運動の種類
+                 */
+                "exerciseType": string;
+                /**
+                 * 今日取り組んだこと
+                 */
+                "workToday": string;
+                /**
+                 * 作った料理
+                 */
+                "cookedDish": string;
+                /**
+                 * 学んだこと・読んだ本
+                 */
+                "studiedOrRead": string;
+                /**
+                 * 例：ウォーキング
+                 */
+                "exerciseExample": string;
+                /**
+                 * 例：トップページを整えた
+                 */
+                "workExample": string;
+                /**
+                 * 例：気になった一節をノートに
+                 */
+                "studyExample": string;
+                /**
+                 * カテゴリ
+                 */
+                "category": string;
+                /**
+                 * 分野を管理
+                 */
+                "manageSubjects": string;
+                /**
+                 * 本と一緒に残す？
+                 */
+                "bookQuestion": string;
+                /**
+                 * 本を選ばずに記録
+                 */
+                "noBook": string;
+                /**
+                 * 本を登録
+                 */
+                "addBook": string;
+                /**
+                 * 読み始めたページ
+                 */
+                "pageFrom": string;
+                /**
+                 * 読み終えたページ
+                 */
+                "pageTo": string;
+                /**
+                 * ひとこと、残そう
+                 */
+                "bodyQuestion": string;
+                /**
+                 * 内容・感想
+                 */
+                "body": string;
+                /**
+                 * 感じたことを、ひとこと。
+                 */
+                "bodyPlaceholder": string;
+                /**
+                 * 画像
+                 */
+                "images": string;
+                /**
+                 * どのくらい取り組んだ？
+                 */
+                "timeQuestion": string;
+                /**
+                 * 運動時間
+                 */
+                "exerciseTime": string;
+                /**
+                 * 作業時間
+                 */
+                "workTime": string;
+                /**
+                 * 取り組んだ時間
+                 */
+                "activityTime": string;
+                /**
+                 * 消費カロリー（kcal）
+                 */
+                "calories": string;
+                /**
+                 * 進み具合と次の一歩
+                 */
+                "progressQuestion": string;
+                /**
+                 * 作業の状態
+                 */
+                "workStatus": string;
+                /**
+                 * 次にやること
+                 */
+                "nextStep": string;
+                /**
+                 * どんな記録になった？
+                 */
+                "tagsQuestion": string;
+                /**
+                 * この記録につけるタグ
+                 */
+                "tags": string;
+                /**
+                 * 詳しく残すことを選ぼう
+                 */
+                "detailsQuestion": string;
+                /**
+                 * 場所と補足
+                 */
+                "context": string;
+                /**
+                 * 場所
+                 */
+                "place": string;
+                /**
+                 * 読んだページの補足
+                 */
+                "pagesNote": string;
+                /**
+                 * 補足
+                 */
+                "note": string;
+                /**
+                 * 記録日と公開範囲
+                 */
+                "sharingQuestion": string;
+                /**
+                 * 記録日
+                 */
+                "recordDate": string;
+                /**
+                 * 記録の公開範囲
+                 */
+                "visibility": string;
+                /**
+                 * 「自分のみ」の記録も、モデレーターは閲覧できます。
+                 */
+                "privateHint": string;
+                /**
+                 * この内容で残す
+                 */
+                "reviewQuestion": string;
+            };
+            "_formWizard": {
+                /**
+                 * 入力の進み具合
+                 */
+                "progress": string;
+                /**
+                 * 保存する
+                 */
+                "saveDefault": string;
+                /**
+                 * 入力あり
+                 */
+                "hasInput": string;
+                /**
+                 * 任意
+                 */
+                "optional": string;
+                /**
+                 * 戻る
+                 */
+                "back": string;
+                /**
+                 * 保存中
+                 */
+                "saving": string;
+                /**
+                 * 次へ
+                 */
+                "next": string;
+                /**
+                 * {count}枚
+                 */
+                "imageCount": ParameterizedString<"count">;
+                /**
+                 * {count}件
+                 */
+                "itemCount": ParameterizedString<"count">;
+                /**
+                 * あり
+                 */
+                "yes": string;
+                /**
+                 * {field}を入力してください
+                 */
+                "enterField": ParameterizedString<"field">;
+                /**
+                 * {field}を確認してください
+                 */
+                "checkField": ParameterizedString<"field">;
+                /**
+                 * 入力した値を確認してください
+                 */
+                "checkInput": string;
+                /**
+                 * 保存は完了しましたが、端末の下書きを削除できませんでした。もう一度保存ボタンを押すと削除を再試行します
+                 */
+                "savedDraftCleanupFailed": string;
+                /**
+                 * 保存しました
+                 */
+                "saved": string;
+                /**
+                 * 添付した画像を確認してください。削除済みの画像は添付を外してから保存できます。入力内容は残っています
+                 */
+                "checkAttachments": string;
+                /**
+                 * 保存できませんでした。入力内容は残っています
+                 */
+                "saveFailed": string;
+                /**
+                 * 端末に下書きを保存できませんでした。編集内容は残っています
+                 */
+                "draftSaveFailed": string;
+                /**
+                 * 端末の下書きを削除できませんでした
+                 */
+                "draftDeleteFailed": string;
+                /**
+                 * 下書きを保存しました
+                 */
+                "draftSaved": string;
+            };
+            "_bookWizard": {
+                /**
+                 * 本の情報を編集
+                 */
+                "editBook": string;
+                /**
+                 * 本を加える
+                 */
+                "addBook": string;
+                /**
+                 * コレクションに加える
+                 */
+                "addToCollection": string;
+                /**
+                 * 気になるひとつを、残そう
+                 */
+                "intro": string;
+                /**
+                 * 本のタイトル
+                 */
+                "bookTitle": string;
+                /**
+                 * 例：夜を編む庭
+                 */
+                "titleExample": string;
+                /**
+                 * ジャンル
+                 */
+                "genre": string;
+                /**
+                 * 今、どんな一冊？
+                 */
+                "statusQuestion": string;
+                /**
+                 * 今の状態
+                 */
+                "currentStatus": string;
+                /**
+                 * 残したい情報を選ぶ
+                 */
+                "detailsQuestion": string;
+                /**
+                 * 読書の進み具合
+                 */
+                "readingProgress": string;
+                /**
+                 * 読んだページ
+                 */
+                "pageRead": string;
+                /**
+                 * 読了日
+                 */
+                "finishedDate": string;
+                /**
+                 * ページのメモ
+                 */
+                "pageMemos": string;
+                /**
+                 * 作品の紹介
+                 */
+                "introduction": string;
+                /**
+                 * 説明
+                 */
+                "description": string;
+                /**
+                 * 自分だけのメモ
+                 */
+                "privateMemo": string;
+                /**
+                 * 誰に見せる？
+                 */
+                "sharingQuestion": string;
+                /**
+                 * 本の公開範囲
+                 */
+                "bookVisibility": string;
+                /**
+                 * 一部のしおり・メモを読み込めませんでした。画面を開き直してください
+                 */
+                "notesLoadFailed": string;
+                /**
+                 * 一部のしおり・メモを保存できませんでした。入力と保存済みの内容を保ったまま、もう一度保存できます
+                 */
+                "notesSaveFailed": string;
+            };
+            "_sessionWizard": {
+                /**
+                 * 作品の記録
+                 */
+                "workRecord": string;
+                /**
+                 * どんなふうに遊んだ？
+                 */
+                "playQuestion": string;
+                /**
+                 * 鑑賞時間
+                 */
+                "viewingTime": string;
+                /**
+                 * プレイ時間
+                 */
+                "playTime": string;
+            };
+            "_activityChooser": {
+                /**
+                 * 今日は、何をした？
+                 */
+                "title": string;
+                /**
+                 * 料理を記録しますか？
+                 */
+                "cookingQuestion": string;
+                /**
+                 * Hatadyを離れてHataskのレシピ画面へ移動し、作った料理を記録します。
+                 */
+                "cookingDescription": string;
+                /**
+                 * Hataskで記録する
+                 */
+                "recordInHatask": string;
+                /**
+                 * どの映画を観た？
+                 */
+                "movieQuestion": string;
+                /**
+                 * どのゲームで遊んだ？
+                 */
+                "gameQuestion": string;
+                /**
+                 * 作品を検索
+                 */
+                "searchWork": string;
+                /**
+                 * 作品を探す
+                 */
+                "findWork": string;
+                /**
+                 * 作品を登録
+                 */
+                "addWork": string;
+                /**
+                 * 再読み込み
+                 */
+                "reload": string;
+                /**
+                 * 条件に合う作品はありません
+                 */
+                "noMatches": string;
+                /**
+                 * 作品を登録して、今日の記録を残そう
+                 */
+                "emptyWorks": string;
+                /**
+                 * さらに表示
+                 */
+                "showMore": string;
+                /**
+                 * 学んだこと、読んだ本
+                 */
+                "studyDescription": string;
+                /**
+                 * 観た作品と感想
+                 */
+                "movieDescription": string;
+                /**
+                 * 遊んだ時間やできごと
+                 */
+                "gameDescription": string;
+                /**
+                 * 運動の種類と時間
+                 */
+                "exerciseDescription": string;
+                /**
+                 * 同じ作業に、日々の記録を
+                 */
+                "workDescription": string;
+                /**
+                 * Hataskで作った料理を記録
+                 */
+                "cookingChoiceDescription": string;
+                /**
+                 * 作品を読み込めませんでした
+                 */
+                "loadFailed": string;
+            };
+            "_workWizard": {
+                /**
+                 * {type}の情報を編集
+                 */
+                "editTitle": ParameterizedString<"type">;
+                /**
+                 * {type}を加える
+                 */
+                "addTitle": ParameterizedString<"type">;
+                /**
+                 * {type}のタイトル
+                 */
+                "typeTitle": ParameterizedString<"type">;
+                /**
+                 * {type}の公開範囲
+                 */
+                "visibility": ParameterizedString<"type">;
+                /**
+                 * 未設定
+                 */
+                "unset": string;
+                /**
+                 * これから取り組むこと
+                 */
+                "workIntro": string;
+                /**
+                 * 作業の名前
+                 */
+                "workName": string;
+                /**
+                 * 例：季節のイラスト制作
+                 */
+                "workExample": string;
+                /**
+                 * 例：霧のむこうの灯
+                 */
+                "movieExample": string;
+                /**
+                 * 例：風待ちの航路
+                 */
+                "gameExample": string;
+                /**
+                 * 作者・制作者
+                 */
+                "creator": string;
+                /**
+                 * 今の状態を選ぼう
+                 */
+                "statusQuestion": string;
+                /**
+                 * 進行中
+                 */
+                "inProgress": string;
+                /**
+                 * 完了
+                 */
+                "completed": string;
+                /**
+                 * 休止中
+                 */
+                "onHold": string;
+                /**
+                 * 作品の基本情報
+                 */
+                "basicInfo": string;
+                /**
+                 * 原題
+                 */
+                "originalTitle": string;
+                /**
+                 * 公式サイト
+                 */
+                "officialSite": string;
+                /**
+                 * 次の一歩
+                 */
+                "nextStepTitle": string;
+                /**
+                 * 制作と言語
+                 */
+                "productionLanguage": string;
+                /**
+                 * 制作地域
+                 */
+                "productionRegion": string;
+                /**
+                 * 国内
+                 */
+                "domestic": string;
+                /**
+                 * 海外
+                 */
+                "foreign": string;
+                /**
+                 * 共同制作
+                 */
+                "coProduction": string;
+                /**
+                 * 字幕・吹き替え
+                 */
+                "subtitlesDubbing": string;
+                /**
+                 * 原語
+                 */
+                "originalAudio": string;
+                /**
+                 * 吹き替え
+                 */
+                "dubbed": string;
+                /**
+                 * 言語
+                 */
+                "language": string;
+                /**
+                 * 作品の長さ（分）
+                 */
+                "runtimeMinutes": string;
+                /**
+                 * 遊べる環境・制作元
+                 */
+                "platformInfo": string;
+                /**
+                 * プラットフォーム
+                 */
+                "platforms": string;
+                /**
+                 * あらすじにネタバレを含む
+                 */
+                "summarySpoiler": string;
+                /**
+                 * 見どころにネタバレを含む
+                 */
+                "highlightsSpoiler": string;
+                /**
+                 * 感想にネタバレを含む
+                 */
+                "reviewSpoiler": string;
+                /**
+                 * おすすめ度（0〜5）
+                 */
+                "recommendationRating": string;
+                /**
+                 * 取り組みたいこと
+                 */
+                "workGoal": string;
+            };
+            "_formValidation": {
+                /**
+                 * {field}を入力してください
+                 */
+                "enterField": ParameterizedString<"field">;
+                /**
+                 * {field}を確認してください
+                 */
+                "checkField": ParameterizedString<"field">;
+                /**
+                 * 添付する画像を確認してください
+                 */
+                "checkImages": string;
+                /**
+                 * 画像は{count}枚まで添付できます
+                 */
+                "maxImages": ParameterizedString<"count">;
+                /**
+                 * {field}を正しく入力してください
+                 */
+                "invalidField": ParameterizedString<"field">;
+                /**
+                 * {field}は{count}以上で入力してください
+                 */
+                "minimum": ParameterizedString<"field" | "count">;
+                /**
+                 * {field}は{count}以下で入力してください
+                 */
+                "maximum": ParameterizedString<"field" | "count">;
+                /**
+                 * {field}は{count}文字以内で入力してください
+                 */
+                "maxCharacters": ParameterizedString<"field" | "count">;
+                /**
+                 * {field}は{count}件以内で入力してください
+                 */
+                "maxItems": ParameterizedString<"field" | "count">;
+                /**
+                 * {field}は1項目{count}文字以内で入力してください
+                 */
+                "maxItemCharacters": ParameterizedString<"field" | "count">;
+                /**
+                 * 公式サイトは http または https のURLを入力してください
+                 */
+                "urlProtocol": string;
+                /**
+                 * 公式サイトのURLを確認してください
+                 */
+                "checkUrl": string;
+                /**
+                 * 一部のメモが空欄です。内容を入力するか、そのメモを削除してください
+                 */
+                "emptyMemo": string;
+            };
+            "_statsView": {
+                /**
+                 * 統計とカレンダー
+                 */
+                "title": string;
+                /**
+                 * 集計する活動
+                 */
+                "activityFilter": string;
+                /**
+                 * 集計期間
+                 */
+                "period": string;
+                /**
+                 * 記録
+                 */
+                "records": string;
+                /**
+                 * 件
+                 */
+                "itemsUnit": string;
+                /**
+                 * 記録した時間
+                 */
+                "recordedTime": string;
+                /**
+                 * 時間未入力 {count}件
+                 */
+                "untimed": ParameterizedString<"count">;
+                /**
+                 * 最長の連続記録
+                 */
+                "longestStreak": string;
+                /**
+                 * 前の月
+                 */
+                "previousMonth": string;
+                /**
+                 * 次の月
+                 */
+                "nextMonth": string;
+                /**
+                 * {date} {count}件の記録
+                 */
+                "dayCount": ParameterizedString<"date" | "count">;
+                /**
+                 * {date}の記録
+                 */
+                "dayRecords": ParameterizedString<"date">;
+                /**
+                 * 簡易記録ビューを閉じる
+                 */
+                "closeDay": string;
+                /**
+                 * この日の記録はありません
+                 */
+                "emptyDay": string;
+                /**
+                 * 時間の傾向
+                 */
+                "timeTrend": string;
+                /**
+                 * 時間の表示
+                 */
+                "timeDisplay": string;
+                /**
+                 * 開始時刻ごとの記録
+                 */
+                "hourlyRecords": string;
+                /**
+                 * 曜日ごとの時間
+                 */
+                "weekdayTime": string;
+                /**
+                 * 月ごとの時間
+                 */
+                "monthlyTime": string;
+                /**
+                 * 開始時刻を入力した記録のみ
+                 */
+                "startedOnly": string;
+                /**
+                 * 分野の移り変わり
+                 */
+                "subjectTrend": string;
+                /**
+                 * 分野の表示
+                 */
+                "subjectDisplay": string;
+                /**
+                 * 月別で見る分野
+                 */
+                "subjectByMonth": string;
+                /**
+                 * すべての分野
+                 */
+                "allSubjects": string;
+                /**
+                 * 分野の月別時間
+                 */
+                "subjectMonthlyTime": string;
+                /**
+                 * 分野別の時間
+                 */
+                "subjectTime": string;
+                /**
+                 * 自己ベストと読了
+                 */
+                "bestAndFinished": string;
+                /**
+                 * 自己ベスト
+                 */
+                "personalBest": string;
+                /**
+                 * 1回の記録
+                 */
+                "oneRecord": string;
+                /**
+                 * 1日の合計
+                 */
+                "dayTotal": string;
+                /**
+                 * 月ごとの読了
+                 */
+                "monthlyFinished": string;
+                /**
+                 * 冊
+                 */
+                "booksUnit": string;
+                /**
+                 * {count}ページ
+                 */
+                "pageCount": ParameterizedString<"count">;
+                /**
+                 * {count}か月
+                 */
+                "monthRange": ParameterizedString<"count">;
+                /**
+                 * 月別
+                 */
+                "byMonth": string;
+                /**
+                 * 曜日別
+                 */
+                "byWeekday": string;
+                /**
+                 * 時間帯
+                 */
+                "byHour": string;
+                /**
+                 * 内訳
+                 */
+                "breakdown": string;
+                /**
+                 * {day}曜日
+                 */
+                "weekdayLabel": ParameterizedString<"day">;
+                /**
+                 * {hour}時台
+                 */
+                "hourLabel": ParameterizedString<"hour">;
+                /**
+                 * 統計を読み込めませんでした
+                 */
+                "loadFailed": string;
+            };
+            "_profileView": {
+                /**
+                 * デザインを編集
+                 */
+                "editDesign": string;
+                /**
+                 * もっと見る
+                 */
+                "showMore": string;
+                /**
+                 * この1週間
+                 */
+                "thisWeek": string;
+                /**
+                 * {count} 記録
+                 */
+                "recordCount": ParameterizedString<"count">;
+                /**
+                 * これまでの記録
+                 */
+                "allRecords": string;
+                /**
+                 * 記録した日
+                 */
+                "recordedDays": string;
+                /**
+                 * 積み重ねた時間
+                 */
+                "totalTime": string;
+                /**
+                 * タグをつけた記録がここにまとまります
+                 */
+                "emptyTraits": string;
+                /**
+                 * コレクションの一部を読み込めませんでした
+                 */
+                "collectionPartial": string;
+                /**
+                 * 継続中
+                 */
+                "ongoing": string;
+                /**
+                 * 作業の記録がここにまとまります
+                 */
+                "emptyWork": string;
+                /**
+                 * フォローを変更できませんでした
+                 */
+                "followFailed": string;
+                /**
+                 * 積み重ね
+                 */
+                "statsSection": string;
+                /**
+                 * ジャンルとタグ
+                 */
+                "traitsSection": string;
+                /**
+                 * 最近の記録
+                 */
+                "recentSection": string;
+                /**
+                 * 作業の記録
+                 */
+                "workSection": string;
+            };
+            "_formFields": {
+                /**
+                 * 任意
+                 */
+                "optional": string;
+                /**
+                 * 必須
+                 */
+                "required": string;
+                /**
+                 * 表紙の色 {count}
+                 */
+                "coverColorNumber": ParameterizedString<"count">;
+                /**
+                 * また読みたいページに、しおりを。
+                 */
+                "emptyBookmarks": string;
+                /**
+                 * 心に残ったページを、ひとこと。
+                 */
+                "emptyMemos": string;
+                /**
+                 * {label} {count}を削除
+                 */
+                "removeItem": ParameterizedString<"label" | "count">;
+                /**
+                 * しおりの名前
+                 */
+                "bookmarkName": string;
+                /**
+                 * しおりの色
+                 */
+                "bookmarkColor": string;
+                /**
+                 * {label}を追加
+                 */
+                "addItem": ParameterizedString<"label">;
+                /**
+                 * 赤
+                 */
+                "red": string;
+                /**
+                 * 橙
+                 */
+                "orange": string;
+                /**
+                 * 黄
+                 */
+                "yellow": string;
+                /**
+                 * 緑
+                 */
+                "green": string;
+                /**
+                 * 青
+                 */
+                "blue": string;
+                /**
+                 * 紫
+                 */
+                "purple": string;
+                /**
+                 * 桃
+                 */
+                "pink": string;
+                "weaponStats": {
+                    /**
+                     * 記録する成績
+                     */
+                    "statFieldsLabel": string;
+                    "fieldLabels": {
+                        /**
+                         * キル
+                         */
+                        "kills": string;
+                        /**
+                         * デス
+                         */
+                        "deaths": string;
+                        /**
+                         * アシスト
+                         */
+                        "assists": string;
+                        /**
+                         * スペシャル
+                         */
+                        "specials": string;
+                        /**
+                         * 救助
+                         */
+                        "rescues": string;
+                    };
+                    /**
+                     * 武器
+                     */
+                    "weaponLabel": string;
+                    /**
+                     * 武器の名前
+                     */
+                    "weaponPlaceholder": string;
+                    /**
+                     * 武器を追加
+                     */
+                    "addRow": string;
+                    /**
+                     * この武器を削除
+                     */
+                    "removeRow": string;
+                    /**
+                     * 合計
+                     */
+                    "totalLabel": string;
+                    /**
+                     * 記録する成績を選んでください
+                     */
+                    "pickAtLeastOne": string;
+                };
+            };
+            "_activityCard": {
+                /**
+                 * ネタバレを含む記録
+                 */
+                "spoilerRecord": string;
+                /**
+                 * 記録と返信を開く
+                 */
+                "openReplies": string;
+                /**
+                 * 消費カロリー
+                 */
+                "calories": string;
+                /**
+                 * 進み具合
+                 */
+                "progress": string;
+            };
+            "_conversationView": {
+                /**
+                 * 作品の詳細へ
+                 */
+                "workDetails": string;
+                /**
+                 * ネタバレを含む内容
+                 */
+                "spoilerContent": string;
+                /**
+                 * 続きを表示
+                 */
+                "showMore": string;
+                /**
+                 * 選択した返信
+                 */
+                "selectedReply": string;
+                /**
+                 * この記録
+                 */
+                "thisRecord": string;
+                /**
+                 * {name}への返信
+                 */
+                "replyToRecord": ParameterizedString<"name">;
+                /**
+                 * 返信先を解除
+                 */
+                "clearReplyTarget": string;
+                /**
+                 * 返信に絵文字を挿入
+                 */
+                "insertEmoji": string;
+                /**
+                 * 絵文字
+                 */
+                "emoji": string;
+                /**
+                 * プレビュー
+                 */
+                "preview": string;
+                /**
+                 * 書きかけの返信をどうする？
+                 */
+                "draftQuestion": string;
+                /**
+                 * 返信を読み込めませんでした
+                 */
+                "repliesLoadFailed": string;
+                /**
+                 * 記録を読み込めませんでした
+                 */
+                "recordLoadFailed": string;
+                /**
+                 * 返信しましたが、端末の下書きを削除できませんでした
+                 */
+                "sentDraftCleanupFailed": string;
+                /**
+                 * 返信しました
+                 */
+                "sent": string;
+                /**
+                 * 返信できませんでした。入力は残っています。
+                 */
+                "sendFailed": string;
+                /**
+                 * 下書きを保存・削除できませんでした
+                 */
+                "draftChangeFailed": string;
+                /**
+                 * 返信を削除できませんでした
+                 */
+                "deleteFailed": string;
+            };
+            "_notificationsView": {
+                /**
+                 * 通知をすべて削除
+                 */
+                "deleteAll": string;
+                /**
+                 * {count}件の通知を削除します
+                 */
+                "deleteCount": ParameterizedString<"count">;
+                /**
+                 * 記録・返信・フォローは残ります
+                 */
+                "retainContent": string;
+                /**
+                 * 削除する
+                 */
+                "deleteAction": string;
+                /**
+                 * 通知を削除しました
+                 */
+                "deleted": string;
+                /**
+                 * 元に戻す
+                 */
+                "undo": string;
+                /**
+                 * 通知の種類
+                 */
+                "typeFilter": string;
+                /**
+                 * 通知を読み込めませんでした
+                 */
+                "loadFailed": string;
+                /**
+                 * 既読にできませんでした
+                 */
+                "readFailed": string;
+                /**
+                 * 残りの通知を削除できませんでした
+                 */
+                "deleteRemainingFailed": string;
+                /**
+                 * 通知を元に戻しました
+                 */
+                "restored": string;
+                /**
+                 * 残りの通知を元に戻せませんでした
+                 */
+                "restoreRemainingFailed": string;
+            };
+            "_settingsView": {
+                /**
+                 * 見た目を選ぶ
+                 */
+                "chooseAppearance": string;
+                /**
+                 * 前のテーマ
+                 */
+                "previousTheme": string;
+                /**
+                 * 次のテーマ
+                 */
+                "nextTheme": string;
+                /**
+                 * 今日のひとつ。
+                 */
+                "previewTitle": string;
+                /**
+                 * 選択中
+                 */
+                "selected": string;
+                /**
+                 * 選ぶ
+                 */
+                "choose": string;
+                /**
+                 * テーマの一覧
+                 */
+                "themeList": string;
+                /**
+                 * Hatady V2の変更点
+                 */
+                "v2Changes": string;
+                /**
+                 * 表示設定の編集をどうする？
+                 */
+                "draftQuestion": string;
+                /**
+                 * 選んだテーマを、端末に下書きとして残せます。
+                 */
+                "draftDescription": string;
+                /**
+                 * ライト
+                 */
+                "light": string;
+                /**
+                 * ダーク
+                 */
+                "dark": string;
+                /**
+                 * 明るく、すっきり
+                 */
+                "lightDescription": string;
+                /**
+                 * 静かな深緑
+                 */
+                "darkDescription": string;
+                /**
+                 * 紙のような温もり
+                 */
+                "paperDescription": string;
+                /**
+                 * 落ち着いた茶色
+                 */
+                "espressoDescription": string;
+                /**
+                 * Hataskeyと同じ見た目
+                 */
+                "hataskeyDescription": string;
+                /**
+                 * 端末の下書きを更新できませんでした
+                 */
+                "draftUpdateFailed": string;
+                /**
+                 * 表示設定を保存しましたが、端末の下書きを削除できませんでした
+                 */
+                "savedDraftCleanupFailed": string;
+                /**
+                 * 表示設定を保存しました
+                 */
+                "saved": string;
+            };
+            "_moderationView": {
+                /**
+                 * 未確認
+                 */
+                "unreviewed": string;
+                /**
+                 * 要確認
+                 */
+                "flagged": string;
+                /**
+                 * 確認済み
+                 */
+                "reviewed": string;
+                /**
+                 * フォロワーのみ
+                 */
+                "followersOnly": string;
+                /**
+                 * この内容は削除されています
+                 */
+                "deletedContent": string;
+                /**
+                 * 内容を読み込めませんでした
+                 */
+                "detailLoadFailed": string;
+                /**
+                 * 一覧を読み込めませんでした
+                 */
+                "listLoadFailed": string;
+                /**
+                 * 確認メモは1000文字以内で入力してください
+                 */
+                "memoTooLong": string;
+                /**
+                 * 確認状態とメモを保存しました
+                 */
+                "saved": string;
+                /**
+                 * 内容または確認状態が更新されています。最新の内容を確かめて、もう一度保存してください。入力メモは残っています
+                 */
+                "reviewConflict": string;
+                /**
+                 * この内容は削除されています。入力メモは残っています
+                 */
+                "deletedWithMemo": string;
+                /**
+                 * 保存できませんでした。入力メモは残っています
+                 */
+                "saveFailed": string;
+                /**
+                 * 管理者・モデレーター向けの内容確認
+                 */
+                "adminReview": string;
+                /**
+                 * 管理者・モデレーター
+                 */
+                "admins": string;
+                /**
+                 * 内容の確認
+                 */
+                "reviewTitle": string;
+                /**
+                 * 公開範囲を問わず、投稿とリアクションをまとめて確認。
+                 */
+                "intro": string;
+                /**
+                 * 全内容の確認状態
+                 */
+                "allStatus": string;
+                /**
+                 * 確認する内容の種類
+                 */
+                "categoryFilter": string;
+                /**
+                 * 検索内容を入力...
+                 */
+                "searchPlaceholder": string;
+                /**
+                 * 本文・名前・作品名を検索
+                 */
+                "searchLabel": string;
+                /**
+                 * 絞り込み
+                 */
+                "filters": string;
+                /**
+                 * 新しい順
+                 */
+                "newest": string;
+                /**
+                 * 古い順
+                 */
+                "oldest": string;
+                /**
+                 * 公開範囲
+                 */
+                "visibility": string;
+                /**
+                 * 活動
+                 */
+                "activity": string;
+                /**
+                 * 開始日
+                 */
+                "startDate": string;
+                /**
+                 * 終了日
+                 */
+                "endDate": string;
+                /**
+                 * 投稿一覧
+                 */
+                "postList": string;
+                /**
+                 * 読み込み中
+                 */
+                "loadingShort": string;
+                /**
+                 * {count}件
+                 */
+                "totalCount": ParameterizedString<"count">;
+                /**
+                 * すべて表示
+                 */
+                "showAll": string;
+                /**
+                 * 日付の範囲を確かめてください
+                 */
+                "dateRangeError": string;
+                /**
+                 * 開始日は終了日以前を選んでください。
+                 */
+                "dateRangeHint": string;
+                /**
+                 * 読み込んでいます
+                 */
+                "loading": string;
+                /**
+                 * もう一度読み込む
+                 */
+                "retry": string;
+                /**
+                 * 一致する内容がありません
+                 */
+                "noMatches": string;
+                /**
+                 * 種類や確認状態を変えて探せます。
+                 */
+                "noMatchesHint": string;
+                /**
+                 * 絞り込みを解除
+                 */
+                "clearFilters": string;
+                /**
+                 * 公開範囲：{scope}
+                 */
+                "visibilityLabel": ParameterizedString<"scope">;
+                /**
+                 * 本文なし
+                 */
+                "noBody": string;
+                /**
+                 * 一覧のページ
+                 */
+                "listPages": string;
+                /**
+                 * 前へ
+                 */
+                "previous": string;
+                /**
+                 * 次へ
+                 */
+                "next": string;
+                /**
+                 * 選択した内容の詳細
+                 */
+                "selectedDetail": string;
+                /**
+                 * 内容を読み込んでいます
+                 */
+                "loadingDetail": string;
+                /**
+                 * 内容を選ぶと、詳細を確認できます。
+                 */
+                "selectHint": string;
+                /**
+                 * 付与・最終変更
+                 */
+                "reactionChangedPrefix": string;
+                /**
+                 * 付けた人：{name}
+                 */
+                "reactedBy": ParameterizedString<"name">;
+                /**
+                 * 関連する内容
+                 */
+                "relatedContent": string;
+                /**
+                 * 関連する内容の一部を表示しています。続きは一覧で確認できます。
+                 */
+                "relatedPartial": string;
+                /**
+                 * 確認状態とメモ
+                 */
+                "reviewAndMemo": string;
+                /**
+                 * 確認メモ
+                 */
+                "reviewMemo": string;
+                /**
+                 * 確認後に内容が更新されています。変更を確かめてから確認状態を保存してください。
+                 */
+                "staleHint": string;
+                /**
+                 * 管理者・モデレーター向けの確認メモ
+                 */
+                "adminMemo": string;
+                /**
+                 * 気になった点や確認したこと
+                 */
+                "memoPlaceholder": string;
+                /**
+                 * メモを保存
+                 */
+                "saveMemo": string;
+                /**
+                 * 対象
+                 */
+                "target": string;
+                /**
+                 * 関連元
+                 */
+                "relatedSource": string;
+                /**
+                 * この内容への投稿
+                 */
+                "postedHere": string;
+            };
+            "_page": {
+                /**
+                 * Hatadyを終了
+                 */
+                "exit": string;
+                /**
+                 * 日々の記録
+                 */
+                "recordsTitle": string;
+                /**
+                 * 記録の範囲
+                 */
+                "recordScope": string;
+                /**
+                 * 活動の種類
+                 */
+                "activityKind": string;
+                /**
+                 * 記録の日付
+                 */
+                "recordDate": string;
+                /**
+                 * 表示する期間
+                 */
+                "displayPeriod": string;
+                /**
+                 * 開始
+                 */
+                "start": string;
+                /**
+                 * 開始日
+                 */
+                "startDate": string;
+                /**
+                 * 終了
+                 */
+                "end": string;
+                /**
+                 * 終了日
+                 */
+                "endDate": string;
+                /**
+                 * 期間の候補
+                 */
+                "periodPresets": string;
+                /**
+                 * 期間を選ぶ
+                 */
+                "choosePeriod": string;
+                /**
+                 * 日付へ
+                 */
+                "toDate": string;
+                /**
+                 * 再読み込み
+                 */
+                "reload": string;
+                /**
+                 * コレクション
+                 */
+                "collection": string;
+                /**
+                 * コレクションの範囲
+                 */
+                "collectionScope": string;
+                /**
+                 * 作品の種類
+                 */
+                "workKind": string;
+                /**
+                 * {count}件
+                 */
+                "itemCount": ParameterizedString<"count">;
+                /**
+                 * 作業を登録
+                 */
+                "addWork": string;
+                /**
+                 * 作品を登録
+                 */
+                "addMedia": string;
+                /**
+                 * 並び順
+                 */
+                "sortOrder": string;
+                /**
+                 * 昇順
+                 */
+                "ascending": string;
+                /**
+                 * 降順
+                 */
+                "descending": string;
+                /**
+                 * {count}件の記録
+                 */
+                "recordCount": ParameterizedString<"count">;
+                /**
+                 * まだ作品・作業がありません
+                 */
+                "emptyCollection": string;
+                /**
+                 * まだ作業がありません
+                 */
+                "emptyWorks": string;
+                /**
+                 * 管理
+                 */
+                "moderation": string;
+                /**
+                 * 保存した絞り込み
+                 */
+                "savedFilter": string;
+                /**
+                 * 自分の記録
+                 */
+                "myRecords": string;
+                /**
+                 * みんな
+                 */
+                "everyone": string;
+                /**
+                 * 記録を読み込めませんでした
+                 */
+                "recordsLoadFailed": string;
+                /**
+                 * 終了日は開始日以降にしてください
+                 */
+                "invalidDateRange": string;
+                /**
+                 * 映画
+                 */
+                "movie": string;
+                /**
+                 * ゲーム
+                 */
+                "game": string;
+                /**
+                 * 作業
+                 */
+                "work": string;
+                /**
+                 * 進行中
+                 */
+                "workInProgress": string;
+                /**
+                 * 完了
+                 */
+                "workCompleted": string;
+                /**
+                 * 保留
+                 */
+                "workOnHold": string;
+                /**
+                 * フォロワーのみ
+                 */
+                "followersOnly": string;
+                /**
+                 * {kind}を登録
+                 */
+                "addKind": ParameterizedString<"kind">;
+            };
+            "_tutorialExample": {
+                /**
+                 * 勉強・読書
+                 */
+                "study": string;
+                /**
+                 * 映画
+                 */
+                "movie": string;
+                /**
+                 * ゲーム
+                 */
+                "game": string;
+                /**
+                 * 運動
+                 */
+                "exercise": string;
+                /**
+                 * 作業
+                 */
+                "work": string;
+                /**
+                 * 日々の積み重ね
+                 */
+                "dailyProgress": string;
+                /**
+                 * この1週間
+                 */
+                "thisWeek": string;
+                /**
+                 * 記録
+                 */
+                "records": string;
+                /**
+                 * 金
+                 */
+                "friday": string;
+                /**
+                 * 1件
+                 */
+                "oneItem": string;
+                /**
+                 * 土
+                 */
+                "saturday": string;
+                /**
+                 * 0件
+                 */
+                "zeroItems": string;
+                /**
+                 * 日
+                 */
+                "sunday": string;
+                /**
+                 * 月
+                 */
+                "monday": string;
+                /**
+                 * 3件
+                 */
+                "threeItems": string;
+                /**
+                 * 火
+                 */
+                "tuesday": string;
+                /**
+                 * 水
+                 */
+                "wednesday": string;
+                /**
+                 * 木
+                 */
+                "thursday": string;
+                /**
+                 * 2件
+                 */
+                "twoItems": string;
+                /**
+                 * 今日は、何をした？
+                 */
+                "whatToday": string;
+                /**
+                 * 記録する
+                 */
+                "recordAction": string;
+                /**
+                 * 今日の記録
+                 */
+                "todaysRecords": string;
+                /**
+                 * 種類
+                 */
+                "type": string;
+                /**
+                 * 内容
+                 */
+                "content": string;
+                /**
+                 * 確認
+                 */
+                "review": string;
+                /**
+                 * 内容・感想
+                 */
+                "thoughts": string;
+                /**
+                 * 任意
+                 */
+                "optional": string;
+                /**
+                 * 気になった一節をノートに。
+                 */
+                "sampleNoteOne": string;
+                /**
+                 * 次は隣の章へ。
+                 */
+                "sampleNoteTwo": string;
+                /**
+                 * 次へ
+                 */
+                "next": string;
+                /**
+                 * 今日はここまででも、大丈夫。
+                 */
+                "pauseTitle": string;
+                /**
+                 * 端末に下書きを保存して閉じられます。
+                 */
+                "pauseHint": string;
+                /**
+                 * 記録の公開範囲
+                 */
+                "visibilityTitle": string;
+                /**
+                 * 自分のみ
+                 */
+                "private": string;
+                /**
+                 * は
+                 */
+                "avatarH": string;
+                /**
+                 * はる
+                 */
+                "haru": string;
+                /**
+                 * 9月10日
+                 */
+                "sep10": string;
+                /**
+                 * 興味
+                 */
+                "interest": string;
+                /**
+                 * おすすめ
+                 */
+                "recommended": string;
+                /**
+                 * 夜を編む庭
+                 */
+                "gardenBook": string;
+                /**
+                 * ファンタジー
+                 */
+                "fantasy": string;
+                /**
+                 * 30分
+                 */
+                "thirtyMinutes": string;
+                /**
+                 * 公開範囲は、アイコンで確かめられます。
+                 */
+                "visibilityHint": string;
+                /**
+                 * コレクション
+                 */
+                "collection": string;
+                /**
+                 * 本棚
+                 */
+                "bookshelf": string;
+                /**
+                 * タイトルやジャンルで探す
+                 */
+                "searchTitleGenre": string;
+                /**
+                 * 読んでいる
+                 */
+                "reading": string;
+                /**
+                 * 月の郵便室
+                 */
+                "moonBook": string;
+                /**
+                 * 読みたい
+                 */
+                "wantToRead": string;
+                /**
+                 * 余白のつくり方
+                 */
+                "spacesBook": string;
+                /**
+                 * 夜を編む庭の記録
+                 */
+                "gardenRecords": string;
+                /**
+                 * 日々の記録
+                 */
+                "dailyRecords": string;
+                /**
+                 * フォロー中
+                 */
+                "following": string;
+                /**
+                 * そ
+                 */
+                "avatarS": string;
+                /**
+                 * そら
+                 */
+                "sora": string;
+                /**
+                 * やさしい言葉に出会えた。
+                 */
+                "sampleReplyOne": string;
+                /**
+                 * また少しずつ、読み進めよう。
+                 */
+                "sampleReplyTwo": string;
+                /**
+                 * プロフィール
+                 */
+                "profile": string;
+                /**
+                 * 読んだり、つくったり。少しずつ。
+                 */
+                "profileBioLong": string;
+                /**
+                 * これまでの記録
+                 */
+                "allRecords": string;
+                /**
+                 * 15時間
+                 */
+                "fifteenHours": string;
+                /**
+                 * 積み重ねた時間
+                 */
+                "timeSpent": string;
+                /**
+                 * 統計
+                 */
+                "stats": string;
+                /**
+                 * カレンダー
+                 */
+                "calendar": string;
+                /**
+                 * 目標
+                 */
+                "goals": string;
+                /**
+                 * ホーム
+                 */
+                "home": string;
+                /**
+                 * 次に読みたい
+                 */
+                "wantNext": string;
+                /**
+                 * ファンタジーへの興味から
+                 */
+                "fromFantasyInterest": string;
+                /**
+                 * 最近30日
+                 */
+                "last30Days": string;
+                /**
+                 * 8時間11分
+                 */
+                "eightHours": string;
+                /**
+                 * 作品
+                 */
+                "works": string;
+                /**
+                 * 自分のコレクションへ
+                 */
+                "toMyCollection": string;
+                /**
+                 * ひとこと、残そう
+                 */
+                "leaveThought": string;
+                /**
+                 * ネタバレを含む
+                 */
+                "containsSpoiler": string;
+                /**
+                 * 戻る
+                 */
+                "back": string;
+                /**
+                 * 閉じるときに、
+                 */
+                "whenClosing": string;
+                /**
+                 * 端末に下書きを保存できます。
+                 */
+                "saveDraftHint": string;
+                /**
+                 * 自分の記録
+                 */
+                "myRecords": string;
+                /**
+                 * 9月1日 〜 9月30日
+                 */
+                "sepRange": string;
+                /**
+                 * 青葉 なぎ
+                 */
+                "nagi": string;
+                /**
+                 * 読書中
+                 */
+                "readingStatus": string;
+                /**
+                 * この作品の記録
+                 */
+                "workRecords": string;
+                /**
+                 * 9月8日
+                 */
+                "sep8": string;
+                /**
+                 * 少しずつ、続きを読んだ。
+                 */
+                "sampleEarlierNote": string;
+                /**
+                 * デザインを編集
+                 */
+                "editDesign": string;
+                /**
+                 * 読んだり、つくったり。
+                 */
+                "profileBioPart1": string;
+                /**
+                 * 少しずつ。
+                 */
+                "profileBioPart2": string;
+                /**
+                 * ジャンルとタグ
+                 */
+                "genresTags": string;
+            };
+            "_bookDetailExtra": {
+                /**
+                 * 本を削除
+                 */
+                "deleteBook": string;
+                /**
+                 * フォロワーのみ
+                 */
+                "followersOnly": string;
+                /**
+                 * 自分だけのメモ
+                 */
+                "privateMemo": string;
+                /**
+                 * 本の編集をどうする？
+                 */
+                "draftQuestion": string;
+                /**
+                 * 読んだページや書きかけのメモを、端末に下書きとして残せます。
+                 */
+                "draftDescription": string;
+                /**
+                 * 変更を保存できませんでした
+                 */
+                "saveFailed": string;
+                /**
+                 * 端末の下書きを更新できませんでした
+                 */
+                "draftUpdateFailed": string;
+                /**
+                 * 下書きを保存しました
+                 */
+                "draftSaved": string;
+                /**
+                 * この本を削除しますか？ しおりと内容メモも削除されます。読書の記録は残ります。
+                 */
+                "deleteConfirm": string;
+                /**
+                 * 本を削除しました
+                 */
+                "deleted": string;
+                /**
+                 * 本を削除できませんでした。もう一度お試しください
+                 */
+                "deleteFailed": string;
+            };
+            "_mediaWorkDetail": {
+                /**
+                 * 作業の詳細
+                 */
+                "workDetail": string;
+                /**
+                 * 作品の詳細
+                 */
+                "mediaDetail": string;
+                /**
+                 * 作業
+                 */
+                "work": string;
+                /**
+                 * 作品
+                 */
+                "media": string;
+                /**
+                 * 作業を削除
+                 */
+                "deleteWork": string;
+                /**
+                 * 作品を削除
+                 */
+                "deleteMedia": string;
+                /**
+                 * 作業を記録
+                 */
+                "recordWork": string;
+                /**
+                 * 次にやること
+                 */
+                "nextStep": string;
+                /**
+                 * 自分だけのメモ
+                 */
+                "privateMemo": string;
+                /**
+                 * 作業の積み重ね
+                 */
+                "workProgress": string;
+                /**
+                 * {count} 記録
+                 */
+                "recordCount": ParameterizedString<"count">;
+                /**
+                 * {count} 日
+                 */
+                "dayCount": ParameterizedString<"count">;
+                /**
+                 * 記録の詳細
+                 */
+                "recordDetails": string;
+                /**
+                 * 返信先を解除
+                 */
+                "clearReplyTarget": string;
+                /**
+                 * 絵文字を挿入
+                 */
+                "insertEmoji": string;
+                /**
+                 * プレビュー
+                 */
+                "preview": string;
+                /**
+                 * ネタバレを含む返信
+                 */
+                "spoilerReply": string;
+                /**
+                 * 書きかけの返信をどうする？
+                 */
+                "draftQuestion": string;
+                /**
+                 * 時間の入力なし
+                 */
+                "noDuration": string;
+                /**
+                 * 下書きを保存・削除できませんでした
+                 */
+                "draftFailed": string;
+                /**
+                 * 下書きを保存しました
+                 */
+                "draftSaved": string;
+                /**
+                 * カレンダーに登録しました
+                 */
+                "calendarAdded": string;
+                /**
+                 * カレンダーへ登録できませんでした
+                 */
+                "calendarAddFailed": string;
+                /**
+                 * この{name}を削除しますか？ {name}への返信とリアクションも削除されます。記録と、記録への返信・リアクションは残ります。
+                 */
+                "deleteConfirm": ParameterizedString<"name" | "name">;
+                /**
+                 * {name}を削除しました
+                 */
+                "deleted": ParameterizedString<"name">;
+                /**
+                 * 削除できませんでした。もう一度お試しください
+                 */
+                "deleteFailed": string;
+                /**
+                 * 返信しましたが、端末の下書きを削除できませんでした
+                 */
+                "replyDraftDeleteFailed": string;
+                /**
+                 * 返信できませんでした。入力は残っています。
+                 */
+                "replyFailed": string;
+            };
+            "_goalEditor": {
+                /**
+                 * 目標を編集
+                 */
+                "editGoal": string;
+                /**
+                 * 次の目標
+                 */
+                "nextGoal": string;
+                /**
+                 * 目標
+                 */
+                "goal": string;
+                /**
+                 * 今月は本を1冊読み終える
+                 */
+                "goalPlaceholder": string;
+                /**
+                 * ひとこと
+                 */
+                "note": string;
+                /**
+                 * 任意
+                 */
+                "optional": string;
+                /**
+                 * 期間
+                 */
+                "period": string;
+                /**
+                 * 目標の期間
+                 */
+                "goalPeriod": string;
+                /**
+                 * 期限
+                 */
+                "deadline": string;
+                /**
+                 * 達成の目安
+                 */
+                "metric": string;
+                /**
+                 * 目標
+                 */
+                "target": string;
+                /**
+                 * 勉強・読書の記録から進み具合を表示します
+                 */
+                "progressHint": string;
+                /**
+                 * 閉じる
+                 */
+                "close": string;
+                /**
+                 * 保存する
+                 */
+                "save": string;
+                /**
+                 * 目標を作る
+                 */
+                "createGoal": string;
+                /**
+                 * 目標の編集をどうする？
+                 */
+                "draftQuestion": string;
+                /**
+                 * 途中の目標を、端末に下書きとして残せます。
+                 */
+                "draftDescription": string;
+                /**
+                 * 短期
+                 */
+                "shortTerm": string;
+                /**
+                 * 長期
+                 */
+                "longTerm": string;
+                /**
+                 * 自分で達成
+                 */
+                "manual": string;
+                /**
+                 * 時間
+                 */
+                "time": string;
+                /**
+                 * 記録数
+                 */
+                "logCount": string;
+                /**
+                 * 読了数
+                 */
+                "bookCount": string;
+                /**
+                 * 分
+                 */
+                "minuteUnit": string;
+                /**
+                 * 件
+                 */
+                "recordUnit": string;
+                /**
+                 * 冊
+                 */
+                "bookUnit": string;
+                /**
+                 * 端末の下書きを更新できませんでした
+                 */
+                "draftUpdateFailed": string;
+                /**
+                 * 下書きを保存しました
+                 */
+                "draftSaved": string;
+                /**
+                 * 目標を保存しましたが、端末の下書きを削除できませんでした
+                 */
+                "savedDraftDeleteFailed": string;
+                /**
+                 * 目標を保存しました
+                 */
+                "saved": string;
+                /**
+                 * 目標を保存できませんでした
+                 */
+                "saveFailed": string;
+            };
+            "_controls": {
+                /**
+                 * 戻る
+                 */
+                "back": string;
+                /**
+                 * ガイドのページ
+                 */
+                "guidePages": string;
+                /**
+                 * ガイドの進み具合
+                 */
+                "guideProgress": string;
+                /**
+                 * あとで見る
+                 */
+                "viewLater": string;
+                /**
+                 * 次へ
+                 */
+                "next": string;
+                /**
+                 * 公開
+                 */
+                "visibilityPublic": string;
+                /**
+                 * フォロワーのみ
+                 */
+                "visibilityFollowers": string;
+                /**
+                 * 自分のみ
+                 */
+                "visibilityPrivate": string;
+                /**
+                 * 取り組んだ時間
+                 */
+                "durationLabel": string;
+                /**
+                 * 時間
+                 */
+                "hoursUnit": string;
+                /**
+                 * 分
+                 */
+                "minutesUnit": string;
+                /**
+                 * 秒
+                 */
+                "secondsUnit": string;
+                /**
+                 * {label}（{unit}）
+                 */
+                "durationInputLabel": ParameterizedString<"label" | "unit">;
+                /**
+                 * 時間を選ぶ
+                 */
+                "chooseDuration": string;
+                /**
+                 * {count}分
+                 */
+                "minutesPreset": ParameterizedString<"count">;
+                /**
+                 * {count}時間
+                 */
+                "hoursPreset": ParameterizedString<"count">;
+                /**
+                 * 分で入力
+                 */
+                "inputMinutes": string;
+                /**
+                 * 時・分・秒
+                 */
+                "inputPrecise": string;
+                /**
+                 * 時間を未入力に戻す
+                 */
+                "clearDuration": string;
+                /**
+                 * 時間の合計が入力できる範囲を超えています
+                 */
+                "durationTooLarge": string;
+                /**
+                 * 数値を見る
+                 */
+                "viewNumbers": string;
+                /**
+                 * 時間未入力
+                 */
+                "durationMissing": string;
+                /**
+                 * 端末に下書きを保存して閉じる
+                 */
+                "draftSaveClose": string;
+                /**
+                 * 下書きを破棄して閉じる
+                 */
+                "draftDiscardClose": string;
+                /**
+                 * 編集に戻る
+                 */
+                "draftReturn": string;
+                /**
+                 * 途中の編集をどうする？
+                 */
+                "draftTitle": string;
+                /**
+                 * 次に続けられるよう、端末に下書きを残せます。
+                 */
+                "draftDescription": string;
             };
         };
         "_hatask": {
@@ -24282,9 +27048,53 @@ export interface Locale extends ILocale {
                  */
                 "reminderNotification": string;
                 /**
-                 * 記録がない日に、設定した時間帯にリマインド通知を送ります。時間帯の指定は Hatask の「きもち記録」設定から行えます。
+                 * 選んだ時刻になっても、その日のきもちをまだ記録していなければ通知します。
+                 * 記録済みの日は通知しません。
                  */
                 "moodReminderDescription": string;
+                /**
+                 * 記録がない日にリマインドする
+                 */
+                "moodReminderToggle": string;
+                /**
+                 * 通知する時刻
+                 */
+                "moodReminderTimes": string;
+                /**
+                 * 時刻が1つも選ばれていないため、通知は届きません。
+                 */
+                "moodReminderNoTimes": string;
+                /**
+                 * 時刻の基準
+                 */
+                "moodReminderTimeZone": string;
+                /**
+                 * この地域の時刻をもとに通知します。
+                 */
+                "moodReminderTimeZoneDescription": string;
+                /**
+                 * この端末の地域（{zone}）と異なります。
+                 * 旅行や引っ越しで地域が変わった場合は、下のボタンで合わせてください。
+                 */
+                "moodReminderTimeZoneMismatch": ParameterizedString<"zone">;
+                /**
+                 * この端末の地域に合わせる
+                 */
+                "moodReminderUseDeviceTimeZone": string;
+                /**
+                 * 通知は{name}の通知欄に届きます。
+                 * {name}を閉じていても受け取るには、受け取りたい端末でプッシュ通知を有効にしてください。
+                 */
+                "moodReminderDelivery": ParameterizedString<"name" | "name">;
+                /**
+                 * 通知の受信設定で「連携アプリからの通知」を受け取らない設定になっています。
+                 * このままではリマインドは届きません。
+                 */
+                "moodReminderAppNotificationsOff": string;
+                /**
+                 * 通知の設定を開く
+                 */
+                "openNotificationSettings": string;
                 /**
                  * データ同期
                  */
@@ -26340,10 +29150,22 @@ export interface Locale extends ILocale {
                  * 期日: {date}
                  */
                 "dueDateLabel": ParameterizedString<"date">;
+                /**
+                 * 通知を読み込んでいます
+                 */
+                "notificationLoading": string;
+                /**
+                 * 通知を読み込めませんでした
+                 */
+                "notificationFailed": string;
+                /**
+                 * ToDoを完了しました · {reward}
+                 */
+                "todoCompletedRewardToast": ParameterizedString<"reward">;
             };
             "_flowerWidget": {
                 /**
-                 * お花のお庭
+                 * お花
                  */
                 "title": string;
                 /**
@@ -26390,6 +29212,2530 @@ export interface Locale extends ILocale {
                  * 名前のない花
                  */
                 "unnamedFlower": string;
+                /**
+                 * 読み込み中…
+                 */
+                "loading": string;
+                /**
+                 * お花を読み込めませんでした。
+                 */
+                "loadFailed": string;
+                /**
+                 * お花が咲いています
+                 */
+                "bloomed": string;
+                /**
+                 * 水をあげる。しずく{count}個
+                 */
+                "waterDrops": ParameterizedString<"count">;
+                /**
+                 * 更新できませんでした。
+                 */
+                "updateFailed": string;
+                /**
+                 * 毎日0:00にリセット
+                 */
+                "resetDaily": string;
+                /**
+                 * {season}の図鑑 {count}/12、Hataskで開く
+                 */
+                "openCatalog": ParameterizedString<"season" | "count">;
+                /**
+                 * {season}の図鑑、12種類
+                 */
+                "catalogTwelve": ParameterizedString<"season">;
+                /**
+                 * 未発見
+                 */
+                "undiscovered": string;
+                /**
+                 * 新しいお花
+                 */
+                "newFlower": string;
+                /**
+                 * 咲いています
+                 */
+                "bloomedShort": string;
+                /**
+                 * もうすぐ
+                 */
+                "soon": string;
+                /**
+                 * {hours}h
+                 */
+                "hoursShort": ParameterizedString<"hours">;
+                /**
+                 * 次の季節の種
+                 */
+                "nextSeasonSeed": string;
+                /**
+                 * 8種で次の季節の種
+                 */
+                "seedAfterEight": string;
+            };
+            "_flowerIntro": {
+                /**
+                 * お花の育て方
+                 */
+                "title": string;
+                /**
+                 * しずくで育てられるようになりました
+                 */
+                "introTitle": string;
+                /**
+                 * ToDo・Hatady・ログインでしずくが届く
+                 */
+                "introStepOne": string;
+                /**
+                 * 自分の花にも、みんなの花壇にも注げる
+                 */
+                "introStepTwo": string;
+                /**
+                 * 8種そろうと次の季節の種
+                 */
+                "introStepThree": string;
+                /**
+                 * はじめる
+                 */
+                "start": string;
+            };
+            "_flowerFestival": {
+                /**
+                 * 春
+                 */
+                "spring": string;
+                /**
+                 * 夏
+                 */
+                "summer": string;
+                /**
+                 * 秋
+                 */
+                "autumn": string;
+                /**
+                 * 冬
+                 */
+                "winter": string;
+                /**
+                 * {season}の花まつり
+                 */
+                "title": ParameterizedString<"season">;
+                /**
+                 * / {goal}しずく
+                 */
+                "goalDrops": ParameterizedString<"goal">;
+                /**
+                 * 花まつり
+                 */
+                "label": string;
+                /**
+                 * 満開になりました
+                 */
+                "fullBloom": string;
+                /**
+                 *  · 限定の「月見草」の種が届きました
+                 */
+                "seedReceived": string;
+                /**
+                 * 〜{date} · 満開で参加者全員に「月見草」の種
+                 */
+                "endSummary": ParameterizedString<"date">;
+                /**
+                 * {name}さんが注ぎました
+                 */
+                "participantPoured": ParameterizedString<"name">;
+            };
+            "_flowerCare": {
+                /**
+                 * 育てているお花
+                 */
+                "growingFlower": string;
+                /**
+                 * お花の育て方
+                 */
+                "howToGrow": string;
+                /**
+                 * あげなくても時間で育ち、枯れません。
+                 */
+                "helpBefore": string;
+                /**
+                 * しずくを注ぐと、1しずくで約{duration}はやく咲きます。
+                 */
+                "helpAfter": ParameterizedString<"duration">;
+                /**
+                 * お花を読み込めませんでした
+                 */
+                "loadFailed": string;
+                /**
+                 * お花を読み込んでいます
+                 */
+                "loading": string;
+                /**
+                 * お花の成長
+                 */
+                "growth": string;
+                /**
+                 * 花言葉
+                 */
+                "flowerMeaning": string;
+                /**
+                 * 成長 {progress}% / 累計 {duration}
+                 */
+                "growthTotal": ParameterizedString<"progress" | "duration">;
+                /**
+                 * 収穫して名前をつける
+                 */
+                "harvestAndName": string;
+                /**
+                 * ToDo
+                 */
+                "todo": string;
+                /**
+                 * 最新の状態を確認できませんでした
+                 */
+                "refreshFailed": string;
+                /**
+                 * お花が咲きました
+                 */
+                "bloomed": string;
+                /**
+                 * あと{duration}で咲きます
+                 */
+                "bloomsIn": ParameterizedString<"duration">;
+                /**
+                 * {minutes}分
+                 */
+                "minutes": ParameterizedString<"minutes">;
+                /**
+                 * {hours}時間{minutes}
+                 */
+                "hoursMinutes": ParameterizedString<"hours" | "minutes">;
+                /**
+                 * {hours}時間
+                 */
+                "hoursOnly": ParameterizedString<"hours">;
+                /**
+                 * お花に水をあげました
+                 */
+                "wateredFlower": string;
+                /**
+                 * みんなの花壇にしずくを注ぎました
+                 */
+                "wateredGarden": string;
+                /**
+                 * 水やりを確認できませんでした · もう一度お試しください
+                 */
+                "waterFailed": string;
+                /**
+                 * 収穫して図鑑にのせました
+                 */
+                "harvested": string;
+                /**
+                 * 収穫を確認できませんでした · もう一度お試しください
+                 */
+                "harvestFailed": string;
+                /**
+                 * 次の季節の種を受けとりました
+                 */
+                "seedReceived": string;
+                /**
+                 * 種を受けとれませんでした · もう一度お試しください
+                 */
+                "seedFailed": string;
+                /**
+                 * 受けとり済み
+                 */
+                "rewardReceived": string;
+                /**
+                 * 完了でしずく+1
+                 */
+                "rewardOnCompletion": string;
+                /**
+                 * つくってから{minutes}分後から対象{remaining}
+                 */
+                "rewardTooYoung": ParameterizedString<"minutes" | "remaining">;
+                /**
+                 *  · あと{minutes}分
+                 */
+                "rewardRemaining": ParameterizedString<"minutes">;
+                /**
+                 * 短すぎるToDoは対象外
+                 */
+                "rewardTooShort": string;
+                /**
+                 * 同じ内容はきょう1回まで
+                 */
+                "rewardDuplicate": string;
+                /**
+                 * きょう届く分は受けとり済み · 00:00にリセット
+                 */
+                "rewardCap": string;
+                /**
+                 * 続けての記録は{minutes}分あけると対象
+                 */
+                "rewardGap": ParameterizedString<"minutes">;
+                /**
+                 * じょうろがいっぱいです
+                 */
+                "rewardStoreFull": string;
+                /**
+                 * このToDoはしずくの対象外です
+                 */
+                "rewardIneligible": string;
+                /**
+                 * ToDoを保存できませんでした
+                 */
+                "todoSaveFailed": string;
+            };
+            "_flowerZukan": {
+                /**
+                 * 保存する
+                 */
+                "save": string;
+                /**
+                 * おはな図鑑
+                 */
+                "title": string;
+                /**
+                 * 全体
+                 */
+                "overall": string;
+                /**
+                 * 季節
+                 */
+                "season": string;
+                /**
+                 * 春
+                 */
+                "spring": string;
+                /**
+                 * 夏
+                 */
+                "summer": string;
+                /**
+                 * 秋
+                 */
+                "autumn": string;
+                /**
+                 * 冬
+                 */
+                "winter": string;
+                /**
+                 * 種を受けとる
+                 */
+                "claimSeed": string;
+                /**
+                 * {season}の図鑑
+                 */
+                "seasonCatalog": ParameterizedString<"season">;
+                /**
+                 * レア
+                 */
+                "rare": string;
+                /**
+                 * 種待ち
+                 */
+                "waitingForSeed": string;
+                /**
+                 * 「{meaning}」の花
+                 */
+                "undiscoveredMeaning": ParameterizedString<"meaning">;
+                /**
+                 * はじめて
+                 */
+                "first": string;
+                /**
+                 * {rank}人目
+                 */
+                "rank": ParameterizedString<"rank">;
+                /**
+                 * {season}のあいだに育てると出会えます
+                 */
+                "findInSeason": ParameterizedString<"season">;
+                /**
+                 * 花言葉
+                 */
+                "flowerMeaning": string;
+                /**
+                 * レア
+                 */
+                "rarity": string;
+                /**
+                 * ✦ レア
+                 */
+                "rareMarked": string;
+                /**
+                 * ふつう
+                 */
+                "common": string;
+                /**
+                 * はたすきーで
+                 */
+                "onHataskey": string;
+                /**
+                 * はじめて咲かせた人
+                 */
+                "firstGrower": string;
+                /**
+                 * 収穫日
+                 */
+                "harvestDate": string;
+                /**
+                 * 育てている間に終えたこと
+                 */
+                "memories": string;
+                /**
+                 * 名前を変える
+                 */
+                "rename": string;
+                /**
+                 * 名前を保存できませんでした。もう一度お試しください。
+                 */
+                "renameFailed": string;
+                /**
+                 * {season}の種待ち
+                 */
+                "waitingForSeasonSeed": ParameterizedString<"season">;
+                /**
+                 * 前の季節を8種あつめると届きます
+                 */
+                "collectPreviousSeason": string;
+                /**
+                 * {season}の種が届きました
+                 */
+                "seasonSeedArrived": ParameterizedString<"season">;
+                /**
+                 * {season}の種 受けとり済み
+                 */
+                "seasonSeedReceived": ParameterizedString<"season">;
+                /**
+                 * あと{count}種で{season}の種
+                 */
+                "moreForSeasonSeed": ParameterizedString<"count" | "season">;
+                /**
+                 * {name}{rarity}
+                 */
+                "discoveredSlot": ParameterizedString<"name" | "rarity">;
+                /**
+                 * 、レア
+                 */
+                "rareSuffix": string;
+                /**
+                 * 未発見、花言葉「{meaning}」
+                 */
+                "undiscoveredSlot": ParameterizedString<"meaning">;
+            };
+            "_dropSources": {
+                /**
+                 * きょう届く分
+                 */
+                "title": string;
+                /**
+                 * Hatadyへ移動
+                 */
+                "openHatady": string;
+                /**
+                 * {source}のしずく獲得条件
+                 */
+                "eligibility": ParameterizedString<"source">;
+                /**
+                 * きょうは上限
+                 */
+                "dailyLimit": string;
+                /**
+                 * 条件を満たすToDoを完了すると、
+                 */
+                "todoIntro": string;
+                /**
+                 * しずくが1つたまります
+                 */
+                "oneDrop": string;
+                /**
+                 * 作成から{minutes}分以上たっている
+                 */
+                "todoAge": ParameterizedString<"minutes">;
+                /**
+                 * タイトルが空白を除いて{length}文字以上
+                 */
+                "todoLength": ParameterizedString<"length">;
+                /**
+                 * 同じ内容は1日1回まで（空白・英字の大文字小文字などの違いは同じ内容として扱います）
+                 */
+                "todoUnique": string;
+                /**
+                 * 一度しずくを受け取ったToDoは、完了を戻しても再獲得できません
+                 */
+                "todoOnce": string;
+                /**
+                 * 1日{count}個まで
+                 */
+                "dailyCap": ParameterizedString<"count">;
+                /**
+                 * 新しい記録を保存すると、
+                 */
+                "hatadyIntro": string;
+                /**
+                 * しずくを獲得できるのは{duration}に1回まで
+                 */
+                "hatadyGap": ParameterizedString<"duration">;
+                /**
+                 * 既存の記録の編集では獲得できません
+                 */
+                "hatadyNewOnly": string;
+                /**
+                 * 毎日00:00にリセット。じょうろは最大{capacity}個までためられます。満杯のときの分は後から受け取れません
+                 */
+                "footer": ParameterizedString<"capacity">;
+                /**
+                 * {seconds}秒
+                 */
+                "seconds": ParameterizedString<"seconds">;
+                /**
+                 * {minutes}分
+                 */
+                "minutes": ParameterizedString<"minutes">;
+                /**
+                 * {minutes}分{seconds}秒
+                 */
+                "minutesSeconds": ParameterizedString<"minutes" | "seconds">;
+                /**
+                 * {time}にリセット
+                 */
+                "resetsAt": ParameterizedString<"time">;
+                /**
+                 * ToDo
+                 */
+                "todo": string;
+                /**
+                 * ログイン
+                 */
+                "login": string;
+            };
+            "_support": {
+                /**
+                 * 支援情報
+                 */
+                "title": string;
+                /**
+                 * 支援情報を読み込んでいます
+                 */
+                "loading": string;
+                /**
+                 * 支援情報を読み込めませんでした
+                 */
+                "loadFailed": string;
+                /**
+                 * 再試行
+                 */
+                "retry": string;
+                /**
+                 * このサーバーでは支援情報がありません。
+                 */
+                "unconfiguredBefore": string;
+                /**
+                 * また、後ほどご確認ください
+                 */
+                "unconfiguredAfter": string;
+                /**
+                 * この場所を、これからも。
+                 */
+                "tagline": string;
+                /**
+                 * ご支援への感謝
+                 */
+                "thanksLabel": string;
+                /**
+                 * ご支援
+                 */
+                "defaultBannerFirst": string;
+                /**
+                 * ありがとうございます！
+                 */
+                "defaultBannerSecond": string;
+                /**
+                 * 管理者による支援確認済み
+                 */
+                "adminConfirmed": string;
+                /**
+                 * ご支援を確認しています
+                 */
+                "confirmingSupport": string;
+                /**
+                 * 支援特典が有効になっています
+                 */
+                "benefitsActive": string;
+                /**
+                 * いま使える支援特典
+                 */
+                "activeBenefits": string;
+                /**
+                 * 支援によって利用できる機能
+                 */
+                "availableBenefits": string;
+                /**
+                 * あなたのアカウントで現在有効な内容です。
+                 * 設定の反映状況も、特典ごとに確認できます
+                 */
+                "activeBenefitsDescription": string;
+                /**
+                 * 管理者が案内している特典です。
+                 * 利用条件や反映の時期は、支援先の案内をご確認ください
+                 */
+                "availableBenefitsDescription": string;
+                /**
+                 * 特典の案内は準備中です
+                 */
+                "benefitsPending": string;
+                /**
+                 * 掲載内容が決まるまでお待ちください
+                 */
+                "benefitsPendingDescription": string;
+                /**
+                 * 利用内容の比較
+                 */
+                "comparisonLabel": string;
+                /**
+                 * 利用できます
+                 */
+                "available": string;
+                /**
+                 * 設定が反映されています
+                 */
+                "reflected": string;
+                /**
+                 * 特典の設定が未反映です
+                 */
+                "notReflected": string;
+                /**
+                 * 閉じる
+                 */
+                "close": string;
+                /**
+                 * 支援特典をもっとみる
+                 */
+                "moreBenefits": string;
+                /**
+                 * 支えてくださるみなさん
+                 */
+                "supporters": string;
+                /**
+                 *  人
+                 */
+                "peopleUnit": string;
+                /**
+                 *  人
+                 */
+                "personUnit": string;
+                /**
+                 * ご支援、本当にありがとうございます
+                 */
+                "thanksSupporters": string;
+                /**
+                 * 支援者を読み込んでいます
+                 */
+                "supportersLoading": string;
+                /**
+                 * 支援者を読み込めませんでした
+                 */
+                "supportersLoadFailed": string;
+                /**
+                 * 支援者の掲載はまだありません
+                 */
+                "noSupporters": string;
+                /**
+                 * 管理者が確認・登録したローカルユーザーを、こちらに表示します
+                 */
+                "noSupportersDescription": string;
+                /**
+                 * 支援者をもっとみる
+                 */
+                "moreSupporters": string;
+                /**
+                 * 支援先とご案内
+                 */
+                "destinationLabel": string;
+                /**
+                 * 支援の停止・変更について
+                 */
+                "cancelTitle": string;
+                /**
+                 * 継続的な支援を停止・変更する場合は、支援したプラットフォームで手続きするか、サーバー管理者へご連絡ください。Hatask内では停止手続きはできません
+                 */
+                "cancelDescription": string;
+                /**
+                 * 支援先で確認する
+                 */
+                "manageSupport": string;
+                /**
+                 * 支援先のURLが未設定です。支援に使用したプラットフォームをご確認ください
+                 */
+                "manageUrlMissing": string;
+                /**
+                 * サーバーを支援する
+                 */
+                "supportServer": string;
+                /**
+                 * 支援先を確認する
+                 */
+                "viewDestination": string;
+                /**
+                 * 支援先はまだ設定されていません
+                 */
+                "noDestination": string;
+                /**
+                 * 管理者からの案内をお待ちください
+                 */
+                "noDestinationDescription": string;
+                /**
+                 * 支援先の案内を確認
+                 */
+                "stepOne": string;
+                /**
+                 * 利用条件や支払い方法をご確認ください
+                 */
+                "stepOneDescription": string;
+                /**
+                 * 管理者が支援を確認
+                 */
+                "stepTwo": string;
+                /**
+                 * 支援の確認・反映には時間がかかる場合があります
+                 */
+                "stepTwoDescription": string;
+                /**
+                 * この画面で特典を確認
+                 */
+                "stepThree": string;
+                /**
+                 * 支援確認後は、あなたの利用状況に合った表示になります
+                 */
+                "stepThreeDescription": string;
+                /**
+                 * 現在の設定
+                 */
+                "currentSetting": string;
+                /**
+                 * 支援なし
+                 */
+                "withoutSupport": string;
+                /**
+                 * 支援なしでも利用できます
+                 */
+                "availableWithoutSupport": string;
+                /**
+                 * 支援特典
+                 */
+                "supportBenefit": string;
+                /**
+                 * サーバー管理者が、
+                 * あなたからの支援を確認しています。
+                 * 特典の案内はまだ設定されていません。
+                 * 詳しくは管理者へご確認ください
+                 */
+                "confirmingNoBenefits": string;
+                /**
+                 * サーバー管理者が、
+                 * あなたからの支援を確認しています。
+                 * 一部の特典は設定がまだ反映されていません。
+                 * 現在利用できる内容を下でご確認ください
+                 */
+                "confirmingSomeBenefits": string;
+                /**
+                 * サーバー管理者が、
+                 * あなたからの支援を確認しました。
+                 * 現在ご利用いただける支援特典を、
+                 * 下にまとめています
+                 */
+                "confirmedBenefits": string;
+                /**
+                 * 未設定
+                 */
+                "unset": string;
+                /**
+                 * 一般APIの制限を免除
+                 */
+                "rateExempt": string;
+                /**
+                 * 設定値 {value}
+                 */
+                "configuredValue": ParameterizedString<"value">;
+                /**
+                 * 標準の制限
+                 */
+                "standardLimit": string;
+                /**
+                 * 回数上限 {value}倍相当
+                 */
+                "rateMultiplier": ParameterizedString<"value">;
+                /**
+                 * マスコット機能は利用できません
+                 */
+                "mascotUnavailable": string;
+                "_policies": {
+                    "driveCapacityMb": {
+                        /**
+                         * ドライブ容量
+                         */
+                        "name": string;
+                        /**
+                         * 画像や動画、ファイルを保存できる容量が増えます
+                         */
+                        "description": string;
+                    };
+                    "canMakePrivateChannel": {
+                        /**
+                         * プライベートチャンネル
+                         */
+                        "name": string;
+                        /**
+                         * 参加者を限定したチャンネルを作成できます
+                         */
+                        "description": string;
+                        /**
+                         * 作成できます
+                         */
+                        "enabledLabel": string;
+                        /**
+                         * 作成できません
+                         */
+                        "disabledLabel": string;
+                        /**
+                         * プライベート
+                         */
+                        "headingFirst": string;
+                        /**
+                         * チャンネル
+                         */
+                        "headingSecond": string;
+                    };
+                    "hataSideStudioProfileLimit": {
+                        /**
+                         * HataSideStudio
+                         */
+                        "name": string;
+                        /**
+                         * 保存できるサイドメニューのレイアウトが増えます
+                         */
+                        "description": string;
+                        /**
+                         * 件
+                         */
+                        "unit": string;
+                        /**
+                         * 件
+                         */
+                        "unitSingular": string;
+                    };
+                    "favoriteFolderLimit": {
+                        /**
+                         * お気に入りフォルダ
+                         */
+                        "name": string;
+                        /**
+                         * お気に入りを整理できるフォルダ数が増えます。
+                         * 親フォルダと子フォルダを合わせた上限です
+                         */
+                        "description": string;
+                        /**
+                         * 個
+                         */
+                        "unit": string;
+                        /**
+                         * 個
+                         */
+                        "unitSingular": string;
+                        /**
+                         * お気に入り
+                         */
+                        "headingFirst": string;
+                        /**
+                         * フォルダ
+                         */
+                        "headingSecond": string;
+                    };
+                    "canCreateFavoriteSubfolders": {
+                        /**
+                         * お気に入りの子フォルダ
+                         */
+                        "name": string;
+                        /**
+                         * お気に入りフォルダの中に子フォルダを作成できます。
+                         * 親・子の最大2階層まで整理できます
+                         */
+                        "description": string;
+                        /**
+                         * 作成できます
+                         */
+                        "enabledLabel": string;
+                        /**
+                         * 作成できません
+                         */
+                        "disabledLabel": string;
+                        /**
+                         * お気に入りの
+                         */
+                        "headingFirst": string;
+                        /**
+                         * 子フォルダ
+                         */
+                        "headingSecond": string;
+                    };
+                    "avatarDecorationLimit": {
+                        /**
+                         * アバターデコレーション
+                         */
+                        "name": string;
+                        /**
+                         * アバターに同時に付けられる飾りが増えます
+                         */
+                        "description": string;
+                        /**
+                         * 個
+                         */
+                        "unit": string;
+                        /**
+                         * 個
+                         */
+                        "unitSingular": string;
+                        /**
+                         * アバター
+                         */
+                        "headingFirst": string;
+                        /**
+                         * デコレーション
+                         */
+                        "headingSecond": string;
+                    };
+                    "hatadyBookLimit": {
+                        /**
+                         * Hatadyの本棚
+                         */
+                        "name": string;
+                        /**
+                         * 本棚に登録できる本の上限が増えます
+                         */
+                        "description": string;
+                        /**
+                         * 冊
+                         */
+                        "unit": string;
+                        /**
+                         * 冊
+                         */
+                        "unitSingular": string;
+                    };
+                    "canUseHatadySync": {
+                        /**
+                         * Hatadyの端末間データ同期
+                         */
+                        "name": string;
+                        /**
+                         * Hatadyの表示設定などを、
+                         * 同じアカウントの端末間で共有できます
+                         */
+                        "description": string;
+                        /**
+                         * 同期できます
+                         */
+                        "enabledLabel": string;
+                        /**
+                         * 同期できません
+                         */
+                        "disabledLabel": string;
+                    };
+                    "canUseMascot": {
+                        /**
+                         * マスコット機能
+                         */
+                        "name": string;
+                        /**
+                         * 好きな画像でマスコットを表示し、
+                         * 表情やセリフを設定できます
+                         */
+                        "description": string;
+                        /**
+                         * 利用できます
+                         */
+                        "enabledLabel": string;
+                        /**
+                         * 利用できません
+                         */
+                        "disabledLabel": string;
+                    };
+                    "mascotMaxExpressions": {
+                        /**
+                         * マスコットの最大表情数
+                         */
+                        "name": string;
+                        /**
+                         * 1キャラクターあたりに登録できる、
+                         * 通常の表情の上限が増えます
+                         */
+                        "description": string;
+                        /**
+                         * 表情 / キャラクター
+                         */
+                        "unit": string;
+                        /**
+                         * 表情 / キャラクター
+                         */
+                        "unitSingular": string;
+                    };
+                    "mascotMaxPhrases": {
+                        /**
+                         * マスコットの最大文言数
+                         */
+                        "name": string;
+                        /**
+                         * 1キャラクターあたりに登録できる、
+                         * 通常のセリフの上限が増えます。表情ごとの上限ではありません
+                         */
+                        "description": string;
+                        /**
+                         * 件 / キャラクター
+                         */
+                        "unit": string;
+                        /**
+                         * 件 / キャラクター
+                         */
+                        "unitSingular": string;
+                        /**
+                         * マスコットの
+                         */
+                        "headingFirst": string;
+                        /**
+                         * 最大文言数
+                         */
+                        "headingSecond": string;
+                    };
+                    "mascotMaxCharacters": {
+                        /**
+                         * マスコットの最大キャラクター数
+                         */
+                        "name": string;
+                        /**
+                         * 登録して切り替えられる、
+                         * マスコットキャラクターの総数が増えます
+                         */
+                        "description": string;
+                        /**
+                         * 体
+                         */
+                        "unit": string;
+                        /**
+                         * 体
+                         */
+                        "unitSingular": string;
+                        /**
+                         * マスコットの
+                         */
+                        "headingFirst": string;
+                        /**
+                         * 最大キャラクター数
+                         */
+                        "headingSecond": string;
+                    };
+                    "rateLimitFactor": {
+                        /**
+                         * APIの利用制限
+                         */
+                        "name": string;
+                        /**
+                         * 一般APIの回数上限・最短間隔が緩和されます。機能ごとの専用制限は別に適用されます
+                         */
+                        "description": string;
+                    };
+                };
+            };
+            "_akatsukiApps": {
+                /**
+                 * カルーセル
+                 */
+                "carousel": string;
+                /**
+                 * {app} 特集
+                 */
+                "featureLabel": ParameterizedString<"app">;
+                /**
+                 * スライド
+                 */
+                "slide": string;
+                /**
+                 * 前の特集へ
+                 */
+                "previousFeature": string;
+                /**
+                 * 次の特集へ
+                 */
+                "nextFeature": string;
+                /**
+                 * 特集の自動送りを再生
+                 */
+                "resumeFeatures": string;
+                /**
+                 * 特集の自動送りを一時停止
+                 */
+                "pauseFeatures": string;
+                /**
+                 * {number}枚目の特集へ
+                 */
+                "goToFeature": ParameterizedString<"number">;
+                /**
+                 * {app}を開く
+                 */
+                "openApp": ParameterizedString<"app">;
+                /**
+                 * カレンダー
+                 */
+                "appCal": string;
+                /**
+                 * 予定と出欠の管理。月表示から一日を開き、日付と時間を指定して登録できます。公開予定や参加する予定も確認できます
+                 */
+                "appCalDescription": string;
+                /**
+                 * 今日のタスクと締切の管理。並べ替えや完了のチェックができ、フォルダーや優先度で整理できます
+                 */
+                "appTodoDescription": string;
+                /**
+                 * きもち
+                 */
+                "appMood": string;
+                /**
+                 * いまの気分とひとことを残す記録。日付や週ごとの並びで振り返れて、記録のリマインドも設定できます
+                 */
+                "appMoodDescription": string;
+                /**
+                 * ごはん
+                 */
+                "appMeal": string;
+                /**
+                 * 朝・昼・夜・間食の記録。そのときの様子をひとこと添えて、あとから日付や時間を指定して残せます
+                 */
+                "appMealDescription": string;
+                /**
+                 * レシピ
+                 */
+                "appRecipe": string;
+                /**
+                 * 作り方を書いて残せます。作った日はHatadyの「料理」に記録できます
+                 */
+                "appRecipeDescription": string;
+                /**
+                 * おはな
+                 */
+                "appGarden": string;
+                /**
+                 * 時間とともに育つ花。育ち具合と開花までの時間を確認し、咲いた花を収穫して名前を付けられます
+                 */
+                "appGardenDescription": string;
+                /**
+                 * ランキング
+                 */
+                "appRanking": string;
+                /**
+                 * お花・宴の成功・宴の阻止・ログイン日数の順位。今月・今週・今日の記録を見られ、参加するかは自分で選べます
+                 */
+                "appRankingDescription": string;
+                /**
+                 * 見た目
+                 */
+                "appAppearance": string;
+                /**
+                 * テーマ・明暗・動きなど、Hataskの見え方と使い方をまとめて調整できます
+                 */
+                "appAppearanceDescription": string;
+                /**
+                 * Hataskeyへの要望・不具合報告を送り、返信や対応状況を追えるフィードバック窓口。絵文字申請やベータ機能の入口もここにあります
+                 */
+                "appFeedDescription": string;
+                /**
+                 * 映画・ゲーム・学びの記録を、ひとつの活動タイムラインで振り返れます。本棚や作品の一覧、ノート、目標もまとめて管理できます
+                 */
+                "appHatadyDescription": string;
+                /**
+                 * 自分のプロフィールを使った自己紹介カード。アクセントや透明度などを整えて、画像として書き出せます
+                 */
+                "appCardDescription": string;
+                /**
+                 * HATAlyze（感情分析）
+                 */
+                "appAnalyze": string;
+                /**
+                 * 自分の投稿から感情の傾向や言葉の特徴を分析。結果を見比べて振り返れます。利用できる範囲はアカウントの権限に従います
+                 */
+                "appAnalyzeDescription": string;
+                /**
+                 * サイドメニューのグループ・ボタン・ウィジェットを組み替え、自分の使い方に合う配置を作れます
+                 */
+                "appStudioDescription": string;
+                /**
+                 * 地震・津波情報
+                 */
+                "appEarthquake": string;
+                /**
+                 * 気象庁が発表した地震・津波情報を地図と一覧で確認。震度や津波警報の通知も設定できます（緊急地震速報は扱いません）
+                 */
+                "appEarthquakeDescription": string;
+                /**
+                 * マスコット
+                 */
+                "appMascot": string;
+                /**
+                 * ハタキュなどのマスコットの表示やセリフを設定します。利用できるアカウントでは、同意後に設定を開けます
+                 */
+                "appMascotDescription": string;
+                /**
+                 * ゲーム
+                 */
+                "appGames": string;
+                /**
+                 * 積み上げゲーム・絵文字たたき・絵文字シュートなど、Hataskeyのミニゲームをまとめた入口
+                 */
+                "appGamesDescription": string;
+                /**
+                 * 画面の見方や操作手順を、図と一緒にひとつずつ確認できるはじめてガイド
+                 */
+                "appIntroDescription": string;
+                /**
+                 * ペンや色、レイヤーを選んで絵を描き、ドライブへの保存や投稿への添付ができます
+                 */
+                "appDrawingDescription": string;
+                /**
+                 * 今回の更新内容
+                 */
+                "appWhatsNew": string;
+                /**
+                 * 今回の更新で加わった機能や変更点を確認できます
+                 */
+                "appWhatsNewDescription": string;
+                /**
+                 * Hataskey設定
+                 */
+                "appHataskeySettings": string;
+                /**
+                 * Hataskey独自の機能や表示に関する設定を開きます
+                 */
+                "appHataskeySettingsDescription": string;
+                /**
+                 * ツール
+                 */
+                "groupTools": string;
+                /**
+                 * 記録と共有
+                 */
+                "groupRecords": string;
+                /**
+                 * 防災・情報
+                 */
+                "groupInformation": string;
+                /**
+                 * あそび
+                 */
+                "groupPlay": string;
+                /**
+                 * 設定と案内
+                 */
+                "groupSettings": string;
+                /**
+                 * きょう
+                 */
+                "featureTodoKicker": string;
+                /**
+                 * 残り {count} 件を、
+                 */
+                "featureTodoCountLine": ParameterizedString<"count">;
+                /**
+                 * 先に片づける。
+                 */
+                "featureTodoCountNext": string;
+                /**
+                 * きょうのタスクを、
+                 */
+                "featureTodoEmptyLine": string;
+                /**
+                 * ひとつ書きとめる。
+                 */
+                "featureTodoEmptyNext": string;
+                /**
+                 * そろそろ
+                 */
+                "featureGardenKicker": string;
+                /**
+                 * 花の育ちぐあいを、
+                 */
+                "featureGardenLine": string;
+                /**
+                 * そっと見に行く。
+                 */
+                "featureGardenNext": string;
+                /**
+                 * ふりかえり
+                 */
+                "featureMoodKicker": string;
+                /**
+                 * いまの気分を、
+                 */
+                "featureMoodLine": string;
+                /**
+                 * ひとこと残そう。
+                 */
+                "featureMoodNext": string;
+                /**
+                 * 予定
+                 */
+                "featureCalKicker": string;
+                /**
+                 * この先の予定を、
+                 */
+                "featureCalLine": string;
+                /**
+                 * ひと目で見渡す。
+                 */
+                "featureCalNext": string;
+                /**
+                 * 日々
+                 */
+                "featureMealKicker": string;
+                /**
+                 * きょう食べたものを、
+                 */
+                "featureMealLine": string;
+                /**
+                 * ひとこと添えて。
+                 */
+                "featureMealNext": string;
+                /**
+                 * 自分らしく
+                 */
+                "featureAppearanceKicker": string;
+                /**
+                 * 色も、明るさも、
+                 */
+                "featureAppearanceLine": string;
+                /**
+                 * 心地よい見た目に。
+                 */
+                "featureAppearanceNext": string;
+                /**
+                 * 特集
+                 */
+                "featureAnalyzeKicker": string;
+                /**
+                 * 自分の言葉から、
+                 */
+                "featureAnalyzeLine": string;
+                /**
+                 * 気分の波を読む。
+                 */
+                "featureAnalyzeNext": string;
+                /**
+                 * 定番
+                 */
+                "featureHatadyKicker": string;
+                /**
+                 * 映画もゲームも、
+                 */
+                "featureHatadyLine": string;
+                /**
+                 * 学びもひとつに。
+                 */
+                "featureHatadyNext": string;
+                /**
+                 * つくる
+                 */
+                "featureCardKicker": string;
+                /**
+                 * 自分の一枚を、
+                 */
+                "featureCardLine": string;
+                /**
+                 * カードにする。
+                 */
+                "featureCardNext": string;
+                /**
+                 * 描く
+                 */
+                "featureDrawingKicker": string;
+                /**
+                 * 浮かんだイメージを、
+                 */
+                "featureDrawingLine": string;
+                /**
+                 * 一枚の絵に。
+                 */
+                "featureDrawingNext": string;
+                /**
+                 * 整える
+                 */
+                "featureStudioKicker": string;
+                /**
+                 * いつもの道具を、
+                 */
+                "featureStudioLine": string;
+                /**
+                 * 使いやすい場所へ。
+                 */
+                "featureStudioNext": string;
+                /**
+                 * はじめる
+                 */
+                "featureIntroKicker": string;
+                /**
+                 * はじめての操作を、
+                 */
+                "featureIntroLine": string;
+                /**
+                 * 図と一緒にたどる。
+                 */
+                "featureIntroNext": string;
+            };
+            "_recipe": {
+                /**
+                 * 主菜
+                 */
+                "categoryMain": string;
+                /**
+                 * 副菜
+                 */
+                "categorySide": string;
+                /**
+                 * 汁物
+                 */
+                "categorySoup": string;
+                /**
+                 * 主食
+                 */
+                "categoryStaple": string;
+                /**
+                 * デザート
+                 */
+                "categoryDessert": string;
+                /**
+                 * 非公開
+                 */
+                "visibilityPrivate": string;
+                /**
+                 * フォロワー
+                 */
+                "visibilityFollowers": string;
+                /**
+                 * 指定メンバー
+                 */
+                "visibilitySpecified": string;
+                /**
+                 * 公開
+                 */
+                "visibilityPublic": string;
+                /**
+                 * 朝ごはん
+                 */
+                "mealBreakfast": string;
+                /**
+                 * 昼ごはん
+                 */
+                "mealLunch": string;
+                /**
+                 * 夜ごはん
+                 */
+                "mealDinner": string;
+                /**
+                 * 間食
+                 */
+                "mealSnack": string;
+                /**
+                 * {minutes}分
+                 */
+                "minutes": ParameterizedString<"minutes">;
+                /**
+                 * {hours}時間
+                 */
+                "hours": ParameterizedString<"hours">;
+                /**
+                 * {hours}時間{minutes}分
+                 */
+                "hoursMinutes": ParameterizedString<"hours" | "minutes">;
+                /**
+                 * と
+                 */
+                "mixedFractionSeparator": string;
+                /**
+                 * レシピ
+                 */
+                "title": string;
+                /**
+                 * つくる
+                 */
+                "createKicker": string;
+                /**
+                 * 作り方を残して、作った日は料理として記録する。
+                 */
+                "lede": string;
+                /**
+                 * 表示するレシピ
+                 */
+                "recipeScope": string;
+                /**
+                 * 自分のレシピ
+                 */
+                "mine": string;
+                /**
+                 * みんなのレシピ
+                 */
+                "shared": string;
+                /**
+                 * レシピを書く
+                 */
+                "write": string;
+                /**
+                 * レシピからご飯を記録
+                 */
+                "recordFromRecipe": string;
+                /**
+                 * まだレシピがありません
+                 */
+                "noRecipes": string;
+                /**
+                 * いつも作っているものを1つ書いておくと、作った日の記録がかんたんになります。
+                 */
+                "emptyHint": string;
+                /**
+                 * レシピ名・材料・タグで検索
+                 */
+                "searchPlaceholder": string;
+                /**
+                 * レシピを検索
+                 */
+                "search": string;
+                /**
+                 * 並び順
+                 */
+                "sortOrder": string;
+                /**
+                 * カテゴリ
+                 */
+                "category": string;
+                /**
+                 * すべて
+                 */
+                "all": string;
+                /**
+                 * タグ
+                 */
+                "tags": string;
+                /**
+                 * 再読み込み
+                 */
+                "retry": string;
+                /**
+                 * 写真なし
+                 */
+                "noPhoto": string;
+                /**
+                 * 下書き
+                 */
+                "draft": string;
+                /**
+                 * もっと見る
+                 */
+                "more": string;
+                /**
+                 * レシピ一覧にもどる
+                 */
+                "backList": string;
+                /**
+                 * 作りはじめる
+                 */
+                "startCooking": string;
+                /**
+                 * 編集
+                 */
+                "edit": string;
+                /**
+                 * 削除
+                 */
+                "delete": string;
+                /**
+                 * 材料
+                 */
+                "ingredients": string;
+                /**
+                 * 分量
+                 */
+                "amount": string;
+                /**
+                 * 1人分へらす
+                 */
+                "decreaseServing": string;
+                /**
+                 * 1人分ふやす
+                 */
+                "increaseServing": string;
+                /**
+                 * 材料は書かれていません。
+                 */
+                "noIngredients": string;
+                /**
+                 * 手順
+                 */
+                "steps": string;
+                /**
+                 * 手順は書かれていません。
+                 */
+                "noSteps": string;
+                /**
+                 * レシピにもどる
+                 */
+                "backRecipe": string;
+                /**
+                 * 調理中
+                 */
+                "cooking": string;
+                /**
+                 * 作り終わった
+                 */
+                "finishCooking": string;
+                /**
+                 * 押すと料理の記録シートが開きます。記録しなくても閉じられます。
+                 */
+                "finishHint": string;
+                /**
+                 * もどる
+                 */
+                "back": string;
+                /**
+                 * 作ったことを記録する
+                 */
+                "recordTitle": string;
+                /**
+                 * Hatadyの「料理」に残ります。
+                 */
+                "recordLede": string;
+                /**
+                 * レシピを選んでください
+                 */
+                "chooseRecipe": string;
+                /**
+                 * 変更
+                 */
+                "change": string;
+                /**
+                 * 選ぶ
+                 */
+                "choose": string;
+                /**
+                 * 写真を変更
+                 */
+                "changePhoto": string;
+                /**
+                 * 写真を追加
+                 */
+                "addPhoto": string;
+                /**
+                 * 写真を外す
+                 */
+                "removePhoto": string;
+                /**
+                 * 作った日時
+                 */
+                "cookedAt": string;
+                /**
+                 * 所要時間
+                 */
+                "duration": string;
+                /**
+                 * 人数・分量
+                 */
+                "servingsAndAmount": string;
+                /**
+                 * ごはん
+                 */
+                "meal": string;
+                /**
+                 * 選ばない
+                 */
+                "none": string;
+                /**
+                 * 材料費
+                 */
+                "ingredientCost": string;
+                /**
+                 * 約
+                 */
+                "approximately": string;
+                /**
+                 * 円
+                 */
+                "yen": string;
+                /**
+                 * メモ・次回への改善点
+                 */
+                "memo": string;
+                /**
+                 * 公開範囲
+                 */
+                "visibility": string;
+                /**
+                 * メンバーを追加
+                 */
+                "addMember": string;
+                /**
+                 * 料理として記録する
+                 */
+                "saveMeal": string;
+                /**
+                 * あとで
+                 */
+                "later": string;
+                /**
+                 * 一覧にもどる
+                 */
+                "backToList": string;
+                /**
+                 * 下書きは自動保存
+                 */
+                "autoDraft": string;
+                /**
+                 * レシピを編集
+                 */
+                "editRecipe": string;
+                /**
+                 * レシピ名
+                 */
+                "recipeName": string;
+                /**
+                 * ひとこと
+                 */
+                "summary": string;
+                /**
+                 * 基準の人数
+                 */
+                "baseServings": string;
+                /**
+                 * 目安の時間
+                 */
+                "estimatedTime": string;
+                /**
+                 * 分量の自動調整をゆるす
+                 */
+                "scaleAllow": string;
+                /**
+                 * 見る人が人数を変えたとき、材料の数値を計算して表示します。
+                 */
+                "scaleExplain": string;
+                /**
+                 * タグ（スペース区切り・10個まで）
+                 */
+                "tagsHint": string;
+                /**
+                 * 作りおき 鶏むね
+                 */
+                "tagExample": string;
+                /**
+                 * 写真
+                 */
+                "photo": string;
+                /**
+                 * 材料名
+                 */
+                "ingredientName": string;
+                /**
+                 * 材料を追加
+                 */
+                "addIngredient": string;
+                /**
+                 * 手順を追加
+                 */
+                "addStep": string;
+                /**
+                 * 保存する
+                 */
+                "save": string;
+                /**
+                 * 下書き保存
+                 */
+                "saveDraft": string;
+                /**
+                 * はじめてのご利用
+                 */
+                "firstUse": string;
+                /**
+                 * レシピ機能のご利用にあたって
+                 */
+                "consentTitle": string;
+                /**
+                 * 同意して使う
+                 */
+                "consentUse": string;
+                /**
+                 * 閉じる
+                 */
+                "close": string;
+                /**
+                 * Hatady / 料理
+                 */
+                "recordBar": string;
+                /**
+                 * 分
+                 */
+                "minuteUnit": string;
+                /**
+                 * 人分
+                 */
+                "servingUnit": string;
+                /**
+                 * 読み込み中…
+                 */
+                "loading": string;
+                /**
+                 * 読み込みに失敗しました
+                 */
+                "loadFailedShort": string;
+                /**
+                 * レシピを読み込めませんでした。
+                 */
+                "loadFailed": string;
+                /**
+                 * 条件に合うレシピはありません。
+                 */
+                "noMatch": string;
+                /**
+                 * フォロー中の人や、あなたを指定したメンバーのレシピがここに並びます。
+                 */
+                "sharedEmpty": string;
+                /**
+                 * 人数に合わせて計算しています
+                 */
+                "scaling": string;
+                /**
+                 * 出来上がりを1枚。ドライブに保存され、公開範囲はこの記録に従います。
+                 */
+                "recordPhotoHelp": string;
+                /**
+                 * この記録は外部サーバーへ送信されません。Hatadyでは「指定メンバー」の記録は自分だけに表示されます。
+                 */
+                "recordPrivacy": string;
+                /**
+                 * 書籍・雑誌・他サイトの写真は使わず、自分で撮ったものを選んでください。
+                 */
+                "recipePhotoHelp": string;
+                /**
+                 * レシピは連合に流れません。指定メンバーはローカルの利用者から選べます。
+                 */
+                "recipePrivacy": string;
+                /**
+                 * レシピの内容は利用者が投稿したものです。アレルギー・衛生・加熱の可否などはご自身でご確認ください。レシピの活用によって生じた損害について、サーバー管理者およびサーバーソフトウェアの開発者は一切の責任を負いません。
+                 */
+                "consentBody": string;
+                /**
+                 * レシピの作成・共有にあたって、他者の権利（著作権・商標・肖像・営業上の秘密など）を侵害する内容は認められません。書籍・雑誌・他サイトのレシピ文面や写真の転載はご遠慮ください。
+                 */
+                "consentRights": string;
+                /**
+                 * 権利侵害が確認されたレシピは、サーバー管理者が予告なく非公開または削除する場合があります。
+                 */
+                "consentRemoval": string;
+                /**
+                 * レシピ・料理の記録は外部サーバーへ連合されません。
+                 */
+                "consentFederation": string;
+                /**
+                 * よく作る順
+                 */
+                "sortCooked": string;
+                /**
+                 * 新しい順
+                 */
+                "sortRecent": string;
+                /**
+                 * 名前順
+                 */
+                "sortTitle": string;
+                /**
+                 * フォロワーまで公開
+                 */
+                "followersPublic": string;
+                /**
+                 * 指定メンバーに公開
+                 */
+                "specifiedPublic": string;
+                /**
+                 * {name} を外す
+                 */
+                "removeMember": ParameterizedString<"name">;
+                /**
+                 * {name} の順番（上下キーで移動）
+                 */
+                "ingredientOrder": ParameterizedString<"name">;
+                /**
+                 * {name} を削除
+                 */
+                "removeIngredient": ParameterizedString<"name">;
+                /**
+                 * 手順 {number}
+                 */
+                "stepNumber": ParameterizedString<"number">;
+                /**
+                 * 手順 {number} のタイマー
+                 */
+                "stepTimer": ParameterizedString<"number">;
+                /**
+                 * 手順 {number} を削除
+                 */
+                "removeStep": ParameterizedString<"number">;
+                /**
+                 * {count}件のレシピ
+                 */
+                "recipesCount": ParameterizedString<"count">;
+                /**
+                 * {count}人分
+                 */
+                "servings": ParameterizedString<"count">;
+                /**
+                 * 基準は{count}人分
+                 */
+                "baseServingsInfo": ParameterizedString<"count">;
+                /**
+                 * このレシピは公開者が分量の自動調整をオフにしています。表示は{count}人分のままです。
+                 */
+                "scalingDisabledInfo": ParameterizedString<"count">;
+                /**
+                 * {count}回作った
+                 */
+                "timesCooked": ParameterizedString<"count">;
+                /**
+                 * {count}回
+                 */
+                "times": ParameterizedString<"count">;
+                /**
+                 * {time} 経過
+                 */
+                "elapsed": ParameterizedString<"time">;
+                /**
+                 * {done} / {total} 完了
+                 */
+                "stepsDone": ParameterizedString<"done" | "total">;
+                /**
+                 * 並び順：{sort}
+                 */
+                "sortLabel": ParameterizedString<"sort">;
+                /**
+                 * 「{title}」を削除しますか？作った記録は残ります。
+                 */
+                "recipeDeleteConfirm": ParameterizedString<"title">;
+                /**
+                 * タイマー終了{label}（STEP {step}）
+                 */
+                "timerDone": ParameterizedString<"label" | "step">;
+                /**
+                 * ：
+                 */
+                "timerLabelSeparator": string;
+                /**
+                 * レシピを削除できませんでした。
+                 */
+                "deleteFailed": string;
+                /**
+                 * 入力内容を破棄してもどりますか？
+                 */
+                "discardConfirm": string;
+                /**
+                 * 記録に使えるレシピがまだありません。先にレシピを書いてください。
+                 */
+                "noRecordRecipe": string;
+                /**
+                 * どのレシピを作りましたか？
+                 */
+                "chooseCookedRecipe": string;
+                /**
+                 * 作った日時を確認してください。
+                 */
+                "invalidCookedAt": string;
+                /**
+                 * 指定メンバーを1人以上選んでください。
+                 */
+                "memberRequired": string;
+                /**
+                 * 料理として記録しました
+                 */
+                "recordSaved": string;
+                /**
+                 * 記録を保存できませんでした。時間をおいてもう一度お試しください。
+                 */
+                "recordSaveFailed": string;
+                /**
+                 * タイマー
+                 */
+                "timer": string;
+                /**
+                 * 分、または 06:00 のように入力します。空にすると外します。
+                 */
+                "timerHelp": string;
+                /**
+                 * タイマーの時間を読み取れませんでした。
+                 */
+                "timerInvalid": string;
+                /**
+                 * タイマーの名前
+                 */
+                "timerName": string;
+                /**
+                 * 「焼く」「置く」など。省略できます。
+                 */
+                "timerNameHelp": string;
+                /**
+                 * タグは32文字以内で10個までです。
+                 */
+                "tagsInvalid": string;
+                /**
+                 * 下書きを保存しました
+                 */
+                "draftSaved": string;
+                /**
+                 * レシピを保存しました
+                 */
+                "recipeSaved": string;
+                /**
+                 * レシピを保存できませんでした。入力内容を確認してください。
+                 */
+                "recipeSaveFailed": string;
+                /**
+                 * 画像ファイルを選んでください。
+                 */
+                "chooseImage": string;
+            };
+            "_akatsuki": {
+                /**
+                 * 朝
+                 */
+                "breakfast": string;
+                /**
+                 * 昼
+                 */
+                "lunch": string;
+                /**
+                 * 夜
+                 */
+                "dinner": string;
+                /**
+                 * {slot}ごはん
+                 */
+                "mealName": ParameterizedString<"slot">;
+                /**
+                 * 記録を読み込めません
+                 */
+                "recordLoadFailed": string;
+                /**
+                 * ごはんの記録を読み込めません
+                 */
+                "mealLoadFailed": string;
+                /**
+                 * 食事なしを記録
+                 */
+                "noMeal": string;
+                /**
+                 * 少し食べた
+                 */
+                "ateLittle": string;
+                /**
+                 * 記録済み
+                 */
+                "recorded": string;
+                /**
+                 * まだ記録がありません
+                 */
+                "notRecorded": string;
+                /**
+                 * {slots}ごはんが未記録
+                 */
+                "mealPending": ParameterizedString<"slots">;
+                /**
+                 * 朝・昼・夜のごはんを記録済み
+                 */
+                "mealsAllRecorded": string;
+                /**
+                 * 終日
+                 */
+                "allDay": string;
+                /**
+                 * 時刻未定
+                 */
+                "timeUnknown": string;
+                /**
+                 * 今日
+                 */
+                "today": string;
+                /**
+                 * 予定を開く
+                 */
+                "openEvent": string;
+                /**
+                 * ツール
+                 */
+                "tools": string;
+                /**
+                 * ツールを開く
+                 */
+                "openTools": string;
+                /**
+                 * 使いたいツールを、ここから
+                 */
+                "toolsIntro": string;
+                /**
+                 * よく使うツール
+                 */
+                "frequentTools": string;
+                /**
+                 * ここから始める
+                 */
+                "startHere": string;
+                /**
+                 * 画面の見方・投稿・設定を、図と一緒に
+                 */
+                "introSummary": string;
+                /**
+                 * はじめてのHataskeyに
+                 */
+                "introReason": string;
+                /**
+                 * 予定
+                 */
+                "events": string;
+                /**
+                 * このあとの予定はありません
+                 */
+                "noUpcoming": string;
+                /**
+                 * 予定を読み込めませんでした
+                 */
+                "eventsLoadFailed": string;
+                /**
+                 * まもなく・進行中の予定
+                 */
+                "eventsNear": string;
+                /**
+                 * このあとの予定
+                 */
+                "eventsLater": string;
+                /**
+                 * ToDoを読み込めませんでした
+                 */
+                "todoLoadFailed": string;
+                /**
+                 * 未完了のToDoはありません
+                 */
+                "noTodo": string;
+                /**
+                 * 締切を迎えたToDo
+                 */
+                "overdueTodo": string;
+                /**
+                 * 今日のToDo
+                 */
+                "todayTodo": string;
+                /**
+                 * 次に進めたいこと
+                 */
+                "nextTodo": string;
+                /**
+                 * 未読の通知が {count} 件あります
+                 */
+                "notificationsUnread": ParameterizedString<"count">;
+                /**
+                 * 未読の通知はありません
+                 */
+                "noUnread": string;
+                /**
+                 * 通知を読み込めませんでした
+                 */
+                "notificationsLoadFailed": string;
+                /**
+                 * 届いているお知らせ
+                 */
+                "notificationsReason": string;
+                /**
+                 * ごはん
+                 */
+                "meals": string;
+                /**
+                 * {slot}ごはんの記録
+                 */
+                "mealRecordReason": ParameterizedString<"slot">;
+                /**
+                 * きょうの食事を振り返る
+                 */
+                "mealsReflect": string;
+                /**
+                 * ログイン {count} 日
+                 */
+                "loginDays": ParameterizedString<"count">;
+                /**
+                 * 記録を読み込んでいます
+                 */
+                "loadingRecords": string;
+                /**
+                 * 予定 {events} 件、ToDo 残り {todos} 件
+                 */
+                "dailySummary": ParameterizedString<"events" | "todos">;
+                /**
+                 * 予定・ToDoの記録を読み込めません
+                 */
+                "plannerUnavailable": string;
+                /**
+                 * 今週の予定
+                 */
+                "weekEvents": string;
+                /**
+                 * ToDo 完了
+                 */
+                "todoCompleted": string;
+                /**
+                 * きもち記録
+                 */
+                "moodRecords": string;
+                /**
+                 * ごはん記録
+                 */
+                "mealRecords": string;
+                /**
+                 * 件
+                 */
+                "eventUnit": string;
+                /**
+                 * 日
+                 */
+                "dayUnit": string;
+                /**
+                 * 食
+                 */
+                "mealUnit": string;
+                /**
+                 * 読み込めません
+                 */
+                "moodUnavailable": string;
+                /**
+                 * 未記録
+                 */
+                "moodNotRecorded": string;
+                /**
+                 * きもち {level}
+                 */
+                "moodLevel": ParameterizedString<"level">;
+                /**
+                 * 開花しました
+                 */
+                "flowerBloomed": string;
+                /**
+                 * 開花まで {remaining}
+                 */
+                "flowerUntilBloom": ParameterizedString<"remaining">;
+                /**
+                 * ログイン累計 {count} 日
+                 */
+                "loginTotal": ParameterizedString<"count">;
+                /**
+                 * 期限なし
+                 */
+                "noDue": string;
+                /**
+                 * Hatask ナビゲーション
+                 */
+                "railNav": string;
+                /**
+                 * メニューを開閉
+                 */
+                "toggleMenu": string;
+                /**
+                 * Hatask を閉じる
+                 */
+                "exit": string;
+                /**
+                 * Hatask を検索
+                 */
+                "searchHatask": string;
+                /**
+                 * Hatask 設定
+                 */
+                "settings": string;
+                /**
+                 * 検索を閉じる
+                 */
+                "closeSearch": string;
+                /**
+                 * 検索
+                 */
+                "search": string;
+                /**
+                 * Hatask の検索結果
+                 */
+                "searchResultsAria": string;
+                /**
+                 * 検索結果
+                 */
+                "searchResults": string;
+                /**
+                 * 検索結果を閉じる
+                 */
+                "closeSearchResults": string;
+                /**
+                 * ホーム
+                 */
+                "home": string;
+                /**
+                 * 表示を選ぶ
+                 */
+                "chooseDisplay": string;
+                /**
+                 * きょうの予定と記録を、ここから
+                 */
+                "heroFallback": string;
+                /**
+                 * いま使いたいもの
+                 */
+                "focusArea": string;
+                /**
+                 * ホームに表示する内容
+                 */
+                "homeDisplay": string;
+                /**
+                 * お気に入り
+                 */
+                "favorites": string;
+                /**
+                 * おすすめ
+                 */
+                "recommended": string;
+                /**
+                 * お気に入りに表示する内容
+                 */
+                "favoriteDisplay": string;
+                /**
+                 * 1つか2つ選べます。すべて外すと、おすすめに戻ります。
+                 */
+                "favoriteHelp": string;
+                /**
+                 * 設定を読み込んでいます
+                 */
+                "settingsLoading": string;
+                /**
+                 * 設定を読み込めませんでした。Hataskを開き直してください。
+                 */
+                "settingsFailed": string;
+                /**
+                 * 保存中…
+                 */
+                "saving": string;
+                /**
+                 * 保存
+                 */
+                "save": string;
+                /**
+                 * キャンセル
+                 */
+                "cancel": string;
+                /**
+                 * ノートの読み方から、投稿や設定まで
+                 */
+                "introLedeFirst": string;
+                /**
+                 * 図と一緒に、ひとつずつ
+                 */
+                "introLedeSecond": string;
+                /**
+                 * HataIntro はじめてガイドを開く
+                 */
+                "introOpenAria": string;
+                /**
+                 * はじめてガイドを開く
+                 */
+                "introOpen": string;
+                /**
+                 * ホームの予定表示はオフになっています
+                 */
+                "eventsHidden": string;
+                /**
+                 * つぎは、
+                 */
+                "nextLead": string;
+                /**
+                 * つぎの予定は、
+                 */
+                "noNextLead": string;
+                /**
+                 * まだありません
+                 */
+                "noNext": string;
+                /**
+                 * 予定を追加
+                 */
+                "addEvent": string;
+                /**
+                 * きょうの時間帯別の予定
+                 */
+                "todayTimeline": string;
+                /**
+                 * 現在 {time}
+                 */
+                "currentTime": ParameterizedString<"time">;
+                /**
+                 * このあとの予定はありません
+                 */
+                "noLater": string;
+                /**
+                 * {title}：完了にする
+                 */
+                "todoComplete": ParameterizedString<"title">;
+                /**
+                 * {title}：未完了に戻す
+                 */
+                "todoRestore": ParameterizedString<"title">;
+                /**
+                 * ToDoを追加
+                 */
+                "addTodo": string;
+                /**
+                 * 一覧を開く
+                 */
+                "openList": string;
+                /**
+                 * HataFeedを開く
+                 */
+                "openFeed": string;
+                /**
+                 * ホームのごはん表示はオフになっています
+                 */
+                "mealsHidden": string;
+                /**
+                 * 記録する
+                 */
+                "recordMeal": string;
+                /**
+                 * ごはんの記録を開く
+                 */
+                "openMeals": string;
+                /**
+                 * おはなを表示できません
+                 */
+                "flowerUnavailable": string;
+                /**
+                 * ほかにも
+                 */
+                "moreSections": string;
+                /**
+                 * きろく
+                 */
+                "records": string;
+                /**
+                 * 今週のきもち
+                 */
+                "weekMood": string;
+                /**
+                 * 記録
+                 */
+                "recordButton": string;
+                /**
+                 * 下部ナビから外したアプリ
+                 */
+                "removedTabs": string;
+                /**
+                 * 記録メニューを閉じる
+                 */
+                "closeRecordMenu": string;
+                /**
+                 * Hatask 下部ナビゲーション
+                 */
+                "bottomNav": string;
+                /**
+                 * 育成 {percent}%
+                 */
+                "flowerProgress": ParameterizedString<"percent">;
+                /**
+                 * 育成の記録
+                 */
+                "growthRecord": string;
+                /**
+                 * このあと
+                 */
+                "later": string;
+                /**
+                 * Hatask Appから使いたいツールを開けます
+                 */
+                "appEmpty": string;
+                /**
+                 * 閉じる
+                 */
+                "close": string;
+                /**
+                 * カレンダー
+                 */
+                "calendarTab": string;
+                /**
+                 * きもち
+                 */
+                "moodTab": string;
+                /**
+                 * レシピ
+                 */
+                "recipeTab": string;
+                /**
+                 * おはな
+                 */
+                "flowerTab": string;
+                /**
+                 * 支援情報
+                 */
+                "supportTab": string;
+                /**
+                 * ランキング
+                 */
+                "rankingTab": string;
+                /**
+                 * 記録確認
+                 */
+                "reviewTab": string;
+                /**
+                 * カレンダーに 1 件
+                 */
+                "quickCalendar": string;
+                /**
+                 * ToDo を書く
+                 */
+                "quickTodo": string;
+                /**
+                 * 今日のタスク
+                 */
+                "quickTodoDesc": string;
+                /**
+                 * きもちを記録
+                 */
+                "quickMood": string;
+                /**
+                 * いまの気分
+                 */
+                "quickMoodDesc": string;
+                /**
+                 * ごはんを記録
+                 */
+                "quickMeal": string;
+                /**
+                 * 朝・昼・夜
+                 */
+                "quickMealDesc": string;
+                /**
+                 * 料理を記録
+                 */
+                "quickCooking": string;
+                /**
+                 * 作ったレシピから
+                 */
+                "quickCookingDesc": string;
+                /**
+                 * おはなの様子を見る
+                 */
+                "quickFlower": string;
+                /**
+                 * きょうの食事
+                 */
+                "todayMeals": string;
             };
         };
         "_hatafeed": {
@@ -27158,6 +32504,46 @@ export interface Locale extends ILocale {
                  * 申請の状態を取得できませんでした。
                  */
                 "requestStatusFailed": string;
+                /**
+                 * 通知を絞り込む
+                 */
+                "filter": string;
+                /**
+                 * 通知の種類：{type}
+                 */
+                "filterCurrent": ParameterizedString<"type">;
+                /**
+                 * 通知を閉じる
+                 */
+                "close": string;
+                /**
+                 * 通知の種類
+                 */
+                "filterType": string;
+                /**
+                 * 再読み込み
+                 */
+                "reload": string;
+                /**
+                 * 前のページ
+                 */
+                "previousPage": string;
+                /**
+                 * 次のページ
+                 */
+                "nextPage": string;
+                /**
+                 * 通知を読み込めませんでした
+                 */
+                "loadError": string;
+                /**
+                 * すべて既読にしました
+                 */
+                "markedAllRead": string;
+                /**
+                 * 既読にできませんでした
+                 */
+                "markReadFailed": string;
             };
             "_text": {
                 /**
@@ -27967,6 +33353,66 @@ export interface Locale extends ILocale {
                  * セキュリティに関わる内容は慎重にお取り扱いください。詳細はスタッフのみの閲覧を想定しています。
                  */
                 "securityDescriptionCaption": string;
+                /**
+                 * 端末に保存した下書きがあります
+                 */
+                "draftAvailable": string;
+                /**
+                 * 続きから編集
+                 */
+                "resumeDraft": string;
+                /**
+                 * 種類
+                 */
+                "stepType": string;
+                /**
+                 * 内容
+                 */
+                "stepDetails": string;
+                /**
+                 * 確認
+                 */
+                "stepConfirm": string;
+                /**
+                 * 使用環境
+                 */
+                "environment": string;
+                /**
+                 * 任意
+                 */
+                "optional": string;
+                /**
+                 * 使用端末
+                 */
+                "device": string;
+                /**
+                 * 例: iPhone、Pixel、Windows PC
+                 */
+                "deviceExample": string;
+                /**
+                 * OS・バージョン
+                 */
+                "osVersion": string;
+                /**
+                 * 例: iOS・Androidのバージョン、Windows 11
+                 */
+                "osVersionExample": string;
+                /**
+                 * ブラウザ・開き方
+                 */
+                "browser": string;
+                /**
+                 * 例: Safari、Chrome、ホーム画面から起動
+                 */
+                "browserExample": string;
+                /**
+                 * 詳しい説明と使用環境を合わせて8,192文字以内にしてください。
+                 */
+                "environmentDescriptionLimit": string;
+                /**
+                 * イシューを作成しました
+                 */
+                "created": string;
             };
             "_roadmapWizard": {
                 /**
@@ -28185,6 +33631,1293 @@ export interface Locale extends ILocale {
                  * {name}が絵文字「{emoji}」の申請をリジェクトしました。
                  */
                 "emojiRejectedByActor": ParameterizedString<"name" | "emoji">;
+                /**
+                 * 画像更新
+                 */
+                "emojiImageUpdate": string;
+                /**
+                 * 取り下げ
+                 */
+                "emojiWithdraw": string;
+                /**
+                 * 承認
+                 */
+                "emojiDecisionApproved": string;
+                /**
+                 * 保留
+                 */
+                "emojiDecisionHeld": string;
+                /**
+                 * 却下
+                 */
+                "emojiDecisionRejected": string;
+                /**
+                 * 絵文字「{emoji}」の{kind}申請が届きました。
+                 */
+                "emojiChangeReceived": ParameterizedString<"emoji" | "kind">;
+                /**
+                 * 絵文字「{emoji}」の{kind}申請が{status}されました。
+                 */
+                "emojiChangeDecided": ParameterizedString<"emoji" | "kind" | "status">;
+                /**
+                 * 絵文字「{emoji}」の{kind}申請が{status}されました。（理由: {reason}）
+                 */
+                "emojiChangeDecidedWithReason": ParameterizedString<"emoji" | "kind" | "status" | "reason">;
+                /**
+                 * 絵文字「{emoji}」の{kind}申請を{status}しました。
+                 */
+                "emojiChangeStaffDecided": ParameterizedString<"emoji" | "kind" | "status">;
+            };
+            "_header": {
+                /**
+                 * HataFeed から退出
+                 */
+                "exit": string;
+                /**
+                 * HataFeed のページ
+                 */
+                "pages": string;
+                /**
+                 * 報告・申請
+                 */
+                "createMenu": string;
+                /**
+                 * 報告・申請を閉じる
+                 */
+                "createMenuClose": string;
+                /**
+                 * プロジェクトを切り替え：{name}
+                 */
+                "switchProject": ParameterizedString<"name">;
+                /**
+                 * 設定
+                 */
+                "settings": string;
+                /**
+                 * HataFeed ホーム
+                 */
+                "brandHome": string;
+                /**
+                 * ホーム
+                 */
+                "home": string;
+            };
+            "_emojiChangeCommon": {
+                /**
+                 * 画像更新
+                 */
+                "imageUpdate": string;
+                /**
+                 * 取り下げ
+                 */
+                "withdraw": string;
+                /**
+                 * 申請の状態が変わりました。履歴を読み込み直して確認してください。
+                 */
+                "requestConflict": string;
+                /**
+                 * 対象の絵文字が変更または削除されています。最新の内容で申請し直してください。
+                 */
+                "targetChanged": string;
+                /**
+                 * この絵文字には確認中の変更申請があります。履歴をご確認ください。
+                 */
+                "changePending": string;
+                /**
+                 * 自分のドライブに保存した5 MiB以下のPNG・JPEG・GIF・WebP画像を選んでください。
+                 */
+                "invalidImage": string;
+                /**
+                 * 理由と必要な項目を入力してください。
+                 */
+                "reasonRequired": string;
+                /**
+                 * 対象の申請を確認できませんでした。
+                 */
+                "requestMissing": string;
+                /**
+                 * この操作を行う権限がありません。
+                 */
+                "accessDenied": string;
+                /**
+                 * 処理できませんでした。入力内容を残しています。もう一度お試しください。
+                 */
+                "failed": string;
+                /**
+                 * 取消済み
+                 */
+                "cancelled": string;
+                /**
+                 * 取り下げ済み
+                 */
+                "removed": string;
+                /**
+                 * 登録先なし
+                 */
+                "missing": string;
+            };
+            "_displaySettings": {
+                /**
+                 * HataFeed の設定
+                 */
+                "header": string;
+                /**
+                 * テーマ
+                 */
+                "theme": string;
+                /**
+                 * HataFeed のテーマ
+                 */
+                "feedTheme": string;
+                /**
+                 * 前のテーマ
+                 */
+                "previousTheme": string;
+                /**
+                 * 次のテーマ
+                 */
+                "nextTheme": string;
+                /**
+                 * テーマを選ぶ
+                 */
+                "chooseTheme": string;
+                /**
+                 * 選択中
+                 */
+                "selected": string;
+                /**
+                 * 選ぶ
+                 */
+                "select": string;
+                /**
+                 * 背景に若葉のアニメーションを表示する
+                 */
+                "leavesAnimation": string;
+                /**
+                 * チュートリアル
+                 */
+                "tutorial": string;
+                /**
+                 * HataFeedの使い方
+                 */
+                "howToUse": string;
+                /**
+                 * 新しくなったHataFeed
+                 */
+                "whatIsNew": string;
+                /**
+                 * ライト
+                 */
+                "light": string;
+                /**
+                 * ダーク
+                 */
+                "dark": string;
+                /**
+                 * ペーパー
+                 */
+                "paper": string;
+                /**
+                 * エスプレッソ
+                 */
+                "espresso": string;
+                /**
+                 * テーマを保存できませんでした
+                 */
+                "saveFailed": string;
+            };
+            "_emojiHistory": {
+                /**
+                 * あなたの絵文字申請
+                 */
+                "header": string;
+                /**
+                 * 申請一覧へ戻る
+                 */
+                "backToList": string;
+                /**
+                 * 自分の申請を確認し、絵文字の変更を申請できます。
+                 */
+                "intro": string;
+                /**
+                 * 絵文字名・タグで検索
+                 */
+                "searchLabel": string;
+                /**
+                 * 例：hata_otsukare、おつ
+                 */
+                "searchPlaceholder": string;
+                /**
+                 * 検索
+                 */
+                "search": string;
+                /**
+                 * 検索を解除
+                 */
+                "clearSearch": string;
+                /**
+                 * 再読み込み
+                 */
+                "reload": string;
+                /**
+                 * 読み込んでいます
+                 */
+                "loading": string;
+                /**
+                 * 一致する申請はありません。検索条件を変えてください。
+                 */
+                "noMatches": string;
+                /**
+                 * まだ申請はありません
+                 */
+                "empty": string;
+                /**
+                 * 取消日時：
+                 */
+                "cancelledAt": string;
+                /**
+                 * {kind}の{status}
+                 */
+                "changeWaiting": ParameterizedString<"kind" | "status">;
+                /**
+                 * 保留中
+                 */
+                "held": string;
+                /**
+                 * 確認待ち
+                 */
+                "waiting": string;
+                /**
+                 * 画像更新を申請
+                 */
+                "requestUpdateImage": string;
+                /**
+                 * 取り下げを申請
+                 */
+                "requestWithdraw": string;
+                /**
+                 * この追加申請を取り消す
+                 */
+                "cancelRequest": string;
+                /**
+                 * 登録先の絵文字が見つからないため、変更を申請できません。
+                 */
+                "missingEmoji": string;
+                /**
+                 * 変更申請の内容・履歴を見る
+                 */
+                "changeHistory": string;
+                /**
+                 * 前のページ
+                 */
+                "previousPage": string;
+                /**
+                 * 次のページ
+                 */
+                "nextPage": string;
+                /**
+                 * 閉じる
+                 */
+                "close": string;
+                /**
+                 * すべて
+                 */
+                "all": string;
+                /**
+                 * 登録済み
+                 */
+                "registered": string;
+                /**
+                 * 申請履歴を読み込めませんでした
+                 */
+                "historyLoadError": string;
+            };
+            "_emojiChangeList": {
+                /**
+                 * 変更申請の履歴
+                 */
+                "historyTitle": string;
+                /**
+                 * 画像更新・取り下げ申請
+                 */
+                "title": string;
+                /**
+                 * 申請の状態
+                 */
+                "filterLabel": string;
+                /**
+                 * 再読み込み
+                 */
+                "reload": string;
+                /**
+                 * 読み込んでいます
+                 */
+                "loading": string;
+                /**
+                 * 該当する変更申請はありません
+                 */
+                "empty": string;
+                /**
+                 * 前のページ
+                 */
+                "previousPage": string;
+                /**
+                 * 次のページ
+                 */
+                "nextPage": string;
+                /**
+                 * すべて
+                 */
+                "all": string;
+                /**
+                 * 未処理
+                 */
+                "pending": string;
+                /**
+                 * 保留
+                 */
+                "held": string;
+                /**
+                 * 承認済み
+                 */
+                "approved": string;
+                /**
+                 * 却下
+                 */
+                "rejected": string;
+                /**
+                 * 変更申請を読み込めませんでした。
+                 */
+                "loadError": string;
+            };
+            "_emojiChangeReview": {
+                /**
+                 * {kind}申請の確認
+                 */
+                "header": ParameterizedString<"kind">;
+                /**
+                 * {name}からの{kind}申請 · {status}
+                 */
+                "requestedBy": ParameterizedString<"name" | "kind" | "status">;
+                /**
+                 * 承認すると、登録済み絵文字が削除されます
+                 */
+                "withdrawNoticeTitle": string;
+                /**
+                 * 対象と理由を確認してください。過去のノートやリアクションの表示にも影響する場合があります。
+                 */
+                "withdrawNotice": string;
+                /**
+                 * 承認すると、同じ絵文字の画像と利用条件を更新します。名前・カテゴリ・タグは維持されます。
+                 */
+                "updateNotice": string;
+                /**
+                 * 変更前
+                 */
+                "beforeImage": string;
+                /**
+                 * 変更前の画像
+                 */
+                "beforeImageAlt": string;
+                /**
+                 * 変更後
+                 */
+                "afterImage": string;
+                /**
+                 * 変更後の画像
+                 */
+                "afterImageAlt": string;
+                /**
+                 * 申請理由
+                 */
+                "reason": string;
+                /**
+                 * 利用条件
+                 */
+                "license": string;
+                /**
+                 * 申請者へのコメント（保留・却下時は必須）
+                 */
+                "commentLabel": string;
+                /**
+                 * 承認すると対象の絵文字が削除されることを確認しました。
+                 */
+                "ackWithdraw": string;
+                /**
+                 * 変更後の画像と利用条件を確認しました。
+                 */
+                "ackUpdate": string;
+                /**
+                 * 申請履歴
+                 */
+                "history": string;
+                /**
+                 * 最新の申請を読み込む
+                 */
+                "reloadLatest": string;
+                /**
+                 * 保留
+                 */
+                "hold": string;
+                /**
+                 * 却下
+                 */
+                "reject": string;
+                /**
+                 * 承認して取り下げ
+                 */
+                "approveWithdraw": string;
+                /**
+                 * 承認して更新
+                 */
+                "approveUpdate": string;
+                /**
+                 * 閉じる
+                 */
+                "close": string;
+                /**
+                 * 対象の申請を確認できませんでした。
+                 */
+                "notFound": string;
+                /**
+                 * 保留・却下の理由を入力してください。
+                 */
+                "commentRequired": string;
+                /**
+                 * {name} の{kind}申請を{status}しました
+                 */
+                "resolveSuccess": ParameterizedString<"name" | "kind" | "status">;
+                /**
+                 * 承認
+                 */
+                "approved": string;
+                /**
+                 * 保留
+                 */
+                "held": string;
+                /**
+                 * 却下
+                 */
+                "rejected": string;
+            };
+            "_emojiChangeWizard": {
+                /**
+                 * 申請を受け付けました
+                 */
+                "accepted": string;
+                /**
+                 * 審査中の追加申請を取り消す
+                 */
+                "cancelHeader": string;
+                /**
+                 * 申請内容の確認
+                 */
+                "confirmHeader": string;
+                /**
+                 * {kind}を申請
+                 */
+                "applyHeader": ParameterizedString<"kind">;
+                /**
+                 * 追加申請を取り消しました
+                 */
+                "cancelled": string;
+                /**
+                 * {kind}を申請しました
+                 */
+                "submitted": ParameterizedString<"kind">;
+                /**
+                 * 申請履歴で内容を確認できます。
+                 */
+                "historyHint": string;
+                /**
+                 * 新規追加の申請枠は変わりません。
+                 */
+                "quotaUnchanged": string;
+                /**
+                 * スタッフが確認するまで、現在の絵文字を引き続き利用できます。
+                 */
+                "currentEmojiContinues": string;
+                /**
+                 * 1 申請内容
+                 */
+                "stepsApply": string;
+                /**
+                 * 2 確認
+                 */
+                "stepsConfirm": string;
+                /**
+                 * この追加申請の審査を終了します
+                 */
+                "cancelNoticeTitle": string;
+                /**
+                 * まだ登録されていない絵文字の追加申請を取り消します。取消の記録は申請履歴に残ります。
+                 */
+                "cancelNotice": string;
+                /**
+                 * 取り消しても、新規追加の申請枠は戻りません。
+                 */
+                "cancelQuota": string;
+                /**
+                 * 取り下げ申請
+                 */
+                "withdrawNoticeTitle": string;
+                /**
+                 * スタッフが承認すると、この絵文字は削除されます。過去のノートやリアクションの表示にも影響する場合があります。
+                 */
+                "withdrawNotice": string;
+                /**
+                 * この申請は枠を消費しません。取り下げ後も申請枠は増えません。
+                 */
+                "withdrawQuota": string;
+                /**
+                 * 承認後に画像が切り替わります。絵文字名・カテゴリ・タグはそのままです。
+                 */
+                "updateNotice": string;
+                /**
+                 * 画像更新は新規追加の申請枠を消費しません。
+                 */
+                "updateQuota": string;
+                /**
+                 * 現在の画像
+                 */
+                "currentImage": string;
+                /**
+                 * {name}の現在の画像
+                 */
+                "currentImageAlt": ParameterizedString<"name">;
+                /**
+                 * 更新後の画像
+                 */
+                "newImage": string;
+                /**
+                 * {name}の更新後の画像
+                 */
+                "newImageAlt": ParameterizedString<"name">;
+                /**
+                 * 新しい画像を選ぶ
+                 */
+                "pickImage": string;
+                /**
+                 * PNG・JPEG・GIF・WebP / 5 MiB以下
+                 */
+                "imageLimit": string;
+                /**
+                 * 取消理由（任意）
+                 */
+                "cancelReason": string;
+                /**
+                 * {kind}の理由（必須）
+                 */
+                "reasonRequired": ParameterizedString<"kind">;
+                /**
+                 * 新しい画像の利用条件（必須）
+                 */
+                "licenseRequired": string;
+                /**
+                 * 新しい画像を申請・利用する権利と利用条件を確認しました。
+                 */
+                "ackUpdate": string;
+                /**
+                 * 承認後にこの絵文字が削除されることを確認しました。
+                 */
+                "ackWithdraw": string;
+                /**
+                 * 申請の種類
+                 */
+                "summaryKind": string;
+                /**
+                 * 理由
+                 */
+                "summaryReason": string;
+                /**
+                 * 利用条件
+                 */
+                "summaryLicense": string;
+                /**
+                 * 反映されるタイミング
+                 */
+                "effectiveTiming": string;
+                /**
+                 * スタッフの承認後
+                 */
+                "afterStaffApproval": string;
+                /**
+                 * 申請履歴へ
+                 */
+                "goToHistory": string;
+                /**
+                 * 戻って編集
+                 */
+                "edit": string;
+                /**
+                 * やめる
+                 */
+                "leave": string;
+                /**
+                 * 申請内容を確認
+                 */
+                "reviewApplication": string;
+                /**
+                 * 送信しています
+                 */
+                "sending": string;
+                /**
+                 * 追加申請を取り消す
+                 */
+                "cancelApplication": string;
+                /**
+                 * {kind}を申請する
+                 */
+                "submitKind": ParameterizedString<"kind">;
+                /**
+                 * 入力中の内容を破棄して閉じますか？
+                 */
+                "discardConfirm": string;
+                /**
+                 * 5 MiB以下のPNG・JPEG・GIF・WebP画像を選んでください。
+                 */
+                "invalidImage": string;
+            };
+            "_page": {
+                /**
+                 * 読み込んでいます
+                 */
+                "loading": string;
+                /**
+                 * 再読み込み
+                 */
+                "reload": string;
+                /**
+                 * HataFeed を利用できません
+                 */
+                "unavailable": string;
+                /**
+                 * 申請の種類
+                 */
+                "requestType": string;
+                /**
+                 * 新規追加
+                 */
+                "newAddition": string;
+                /**
+                 * 画像更新・取り下げ
+                 */
+                "imageUpdateWithdraw": string;
+                /**
+                 * 対応状況
+                 */
+                "responseStatus": string;
+                /**
+                 * 全 {count} 件
+                 */
+                "totalCount": ParameterizedString<"count">;
+                /**
+                 * 読み込み済みの件数
+                 */
+                "loadedCount": string;
+                /**
+                 * 改善予定を追加
+                 */
+                "addPlan": string;
+                /**
+                 * 検索
+                 */
+                "search": string;
+                /**
+                 * 受付終了を除く
+                 */
+                "excludeClosed": string;
+                /**
+                 * 受付終了も含む
+                 */
+                "includeClosed": string;
+                /**
+                 * イシューがありません
+                 */
+                "noIssues": string;
+                /**
+                 * 読み込めませんでした
+                 */
+                "loadError": string;
+                /**
+                 * プロジェクトを読み込めませんでした
+                 */
+                "projectsLoadError": string;
+                /**
+                 * 更新できない項目がありました
+                 */
+                "refreshPartial": string;
+                /**
+                 * 更新しました
+                 */
+                "refreshed": string;
+            };
+            "_tutorial": {
+                "initial": {
+                    "settings": {
+                        /**
+                         * 設定
+                         */
+                        "label": string;
+                        /**
+                         * 使い方は、設定からいつでも
+                         */
+                        "title": string;
+                        /**
+                         * 右上の歯車から、テーマや背景を変更できます
+                         */
+                        "description": string;
+                        /**
+                         * この案内も、設定の「チュートリアル」から見直せます
+                         */
+                        "note": string;
+                        /**
+                         * HataFeedの設定。テーマ、プロジェクト、チュートリアルの入口が並ぶ見本
+                         */
+                        "figure": string;
+                    };
+                    "admin": {
+                        /**
+                         * 申請管理
+                         */
+                        "label": string;
+                        /**
+                         * 申請を、一件ずつ確認
+                         */
+                        "title": string;
+                        /**
+                         * 「申請管理」では、画像やライセンスを確認して承認・保留・リジェクトを選びます
+                         */
+                        "description": string;
+                        /**
+                         * 「未処理を連続確認」から、次の申請へ進めます
+                         */
+                        "note": string;
+                        /**
+                         * スタッフ向けの申請管理。未処理の申請を選び、保留、リジェクト、承認を選ぶ見本
+                         */
+                        "figure": string;
+                    };
+                    "home": {
+                        /**
+                         * ホーム
+                         */
+                        "label": string;
+                        /**
+                         * 不具合の報告や、機能の要望に
+                         */
+                        "title": string;
+                        /**
+                         * HataFeedでは、不具合や要望をイシューとして投稿できます
+                         */
+                        "description": string;
+                        /**
+                         * ホームには、改善予定や自分の絵文字申請の状況がまとまっています
+                         */
+                        "note": string;
+                        /**
+                         * HataFeedのホーム。改善予定、自分の絵文字申請、最近の動きとイシューが並ぶ見本
+                         */
+                        "figure": string;
+                    };
+                    "create": {
+                        /**
+                         * 報告・申請
+                         */
+                        "label": string;
+                        /**
+                         * 作成は、上の「＋」から
+                         */
+                        "title": string;
+                        /**
+                         * 「＋」を押すと、絵文字申請とイシュー作成を選べます
+                         */
+                        "description": string;
+                        /**
+                         * 隣のプロジェクトを確認してから、報告先を選びましょう
+                         */
+                        "note": string;
+                        /**
+                         * 上部のプラスを開いたメニュー。絵文字申請と新規イシューが並び、隣にプロジェクトがある見本
+                         */
+                        "figure": string;
+                    };
+                    "issues": {
+                        /**
+                         * イシュー
+                         */
+                        "label": string;
+                        /**
+                         * 同じ報告があるか、探してみよう
+                         */
+                        "title": string;
+                        /**
+                         * 「イシュー」で検索すると、投稿や会話を探せます
+                         */
+                        "description": string;
+                        /**
+                         * 既にある報告にはコメントを追加できます
+                         * 詳細から一覧へは「←」で戻れます
+                         */
+                        "note": string;
+                        /**
+                         * イシュー一覧の検索と詳細の見本。検索欄、対応状況、コメントと一覧に戻る矢印がある
+                         */
+                        "figure": string;
+                    };
+                    "emoji": {
+                        /**
+                         * 絵文字申請
+                         */
+                        "label": string;
+                        /**
+                         * 使いたい絵文字を申請
+                         */
+                        "title": string;
+                        /**
+                         * 自分の画像か、ほかのサーバーの絵文字を選び、名前やライセンスを入力します
+                         */
+                        "description": string;
+                        /**
+                         * 結果とスタッフからのコメントは、ホームの申請履歴で確認できます
+                         */
+                        "note": string;
+                        /**
+                         * 絵文字申請の見本。自分の画像とリモート絵文字の入口、名前とライセンス、申請状況がある
+                         */
+                        "figure": string;
+                    };
+                    "roadmap": {
+                        /**
+                         * 改善予定とベータ
+                         */
+                        "label": string;
+                        /**
+                         * これからの予定も、ここで
+                         */
+                        "title": string;
+                        /**
+                         * 「ロードマップ」には、修正や改善の予定が並びます
+                         */
+                        "description": string;
+                        /**
+                         * 試験中の機能は「ベータ」タブから使えます
+                         */
+                        "note": string;
+                        /**
+                         * ロードマップの改善予定と、ベータ機能へのタブの見本
+                         */
+                        "figure": string;
+                    };
+                };
+                "update": {
+                    "home": {
+                        /**
+                         * 新しいホーム
+                         */
+                        "label": string;
+                        /**
+                         * 状況をまとめて
+                         * 見られるホームに
+                         */
+                        "title": string;
+                        /**
+                         * 改善予定、絵文字申請、最近の動きがホームにまとまりました
+                         */
+                        "description": string;
+                        /**
+                         * イシューの全件表示や検索は、上の「イシュー」タブへ
+                         */
+                        "note": string;
+                        /**
+                         * 刷新されたHataFeedのホーム。概要のカードと上部のタブで画面を切り替える見本
+                         */
+                        "figure": string;
+                    };
+                    "create": {
+                        /**
+                         * 作成と下書き
+                         */
+                        "label": string;
+                        /**
+                         * 作成ボタンは「＋」にまとまりました
+                         */
+                        "title": string;
+                        /**
+                         * 「＋」から、イシュー作成と絵文字申請を選びます
+                         * 隣のプロジェクトは、全タブ共通です
+                         */
+                        "description": string;
+                        /**
+                         * 入力途中で閉じるときは、端末に下書きを残すか選べます
+                         */
+                        "note": string;
+                        /**
+                         * プラスの作成メニューと下書き保存確認の見本。保存して閉じる、保存せず閉じる、編集に戻るを選べる
+                         */
+                        "figure": string;
+                    };
+                    "notifications": {
+                        /**
+                         * 通知
+                         */
+                        "label": string;
+                        /**
+                         * 通知と操作の結果は、上部に
+                         */
+                        "title": string;
+                        /**
+                         * HataFeedの通知一覧はベルから開きます
+                         * 既読ボタンの隣で、種類を絞り込めます
+                         */
+                        "description": string;
+                        /**
+                         * 保存や更新の結果は、上部のナビバーに表示されます
+                         */
+                        "note": string;
+                        /**
+                         * 上部ナビバーの更新メッセージとHataFeedの通知一覧。既読とフィルターボタンが隣り合う見本
+                         */
+                        "figure": string;
+                    };
+                    "emoji": {
+                        /**
+                         * 申請の結果は、ホームから
+                         */
+                        "title": string;
+                        /**
+                         * 「あなたの絵文字申請」から、申請の状態やスタッフのコメントを確認できます
+                         */
+                        "description": string;
+                        /**
+                         * 新しい申請は「＋」へ
+                         * 画像の選択から、順番に進めます
+                         */
+                        "note": string;
+                        /**
+                         * 新しい絵文字申請画面と、ホームに表示された申請履歴の見本
+                         */
+                        "figure": string;
+                    };
+                    "settings": {
+                        /**
+                         * テーマも、プロジェクトも設定へ
+                         */
+                        "title": string;
+                        /**
+                         * 設定は、右上の歯車から開きます
+                         * テーマ、プロジェクトの編集、エクスポートをここにまとめました
+                         */
+                        "description": string;
+                        /**
+                         * 編集やエクスポートは、権限がある場合に表示されます
+                         * チュートリアルもここから見直せます
+                         */
+                        "note": string;
+                    };
+                };
+                /**
+                 * HataFeedの使い方
+                 */
+                "title": string;
+                /**
+                 * 新しくなったHataFeed
+                 */
+                "updatedTitle": string;
+                /**
+                 * HataFeedを使う
+                 */
+                "finish": string;
+            };
+            "_tutorialExample": {
+                /**
+                 * 絵文字申請
+                 */
+                "emojiRequest": string;
+                /**
+                 * 新規イシュー
+                 */
+                "newIssue": string;
+                /**
+                 * ホーム
+                 */
+                "home": string;
+                /**
+                 * イシュー
+                 */
+                "issues": string;
+                /**
+                 * ロードマップ
+                 */
+                "roadmap": string;
+                /**
+                 * 申請管理
+                 */
+                "requestManagement": string;
+                /**
+                 * 更新しました
+                 */
+                "updated": string;
+                /**
+                 * 近々の修正・改善予定
+                 */
+                "upcomingPlans": string;
+                /**
+                 * カレンダーの予定を見やすく
+                 */
+                "calendarImprovement": string;
+                /**
+                 * 対応中
+                 */
+                "inProgress": string;
+                /**
+                 * イシュー検索の改善
+                 */
+                "issueSearchImprovement": string;
+                /**
+                 * 対応予定
+                 */
+                "planned": string;
+                /**
+                 * あなたの絵文字申請
+                 */
+                "yourEmojiRequests": string;
+                /**
+                 * 未処理
+                 */
+                "pending": string;
+                /**
+                 * 承認済み
+                 */
+                "approved": string;
+                /**
+                 * 一覧を見る →
+                 */
+                "viewList": string;
+                /**
+                 * 予定が重なって表示される
+                 */
+                "overlapIssue": string;
+                /**
+                 * 不具合 · 対応中
+                 */
+                "bugInProgress": string;
+                /**
+                 * 本棚の絞り込み条件を覚えてほしい
+                 */
+                "rememberBookFilters": string;
+                /**
+                 * 機能要望 · 受付中
+                 */
+                "featureOpen": string;
+                /**
+                 * ① 種類 · ② 内容 · ③ 確認
+                 */
+                "issueSteps": string;
+                /**
+                 * 不具合
+                 */
+                "bug": string;
+                /**
+                 * 機能要望
+                 */
+                "featureRequest": string;
+                /**
+                 * 未解決
+                 */
+                "unresolved": string;
+                /**
+                 * その他
+                 */
+                "other": string;
+                /**
+                 * 入力した内容をどうする？
+                 */
+                "draftQuestion": string;
+                /**
+                 * 編集中の内容は、このウィンドウに残っています
+                 */
+                "draftHint": string;
+                /**
+                 * 端末に下書きを保存して閉じる
+                 */
+                "saveDraft": string;
+                /**
+                 * 保存せず閉じる
+                 */
+                "discardDraft": string;
+                /**
+                 * 編集に戻る
+                 */
+                "returnToEdit": string;
+                /**
+                 * カレンダー
+                 */
+                "calendar": string;
+                /**
+                 * 受付中
+                 */
+                "open": string;
+                /**
+                 * カテゴリ⌄
+                 */
+                "category": string;
+                /**
+                 * ステータス⌄
+                 */
+                "status": string;
+                /**
+                 * 小さなウィンドウで予定が重なります
+                 */
+                "overlapDetail": string;
+                /**
+                 * 私の端末でも同じ状態でした
+                 */
+                "overlapComment": string;
+                /**
+                 * 絵文字を申請
+                 */
+                "requestEmoji": string;
+                /**
+                 * ① 画像 ·  ② 申請内容
+                 */
+                "emojiSteps": string;
+                /**
+                 * 自分の画像から
+                 */
+                "ownImage": string;
+                /**
+                 * リモート絵文字から
+                 */
+                "remoteEmoji": string;
+                /**
+                 * 絵文字名
+                 */
+                "emojiName": string;
+                /**
+                 * ライセンス
+                 */
+                "license": string;
+                /**
+                 * 自作・再配布可
+                 */
+                "selfMadeLicense": string;
+                /**
+                 * 利用条件を確認しました
+                 */
+                "licenseChecked": string;
+                /**
+                 * ベータ機能
+                 */
+                "betaFeatures": string;
+                /**
+                 * C/C++ プレイグラウンド
+                 */
+                "cppPlayground": string;
+                /**
+                 * 投稿前カウントダウン
+                 */
+                "postCountdown": string;
+                /**
+                 * 通知
+                 */
+                "notifications": string;
+                /**
+                 * イシューにコメントが届きました
+                 */
+                "commentReceived": string;
+                /**
+                 * 確認できました
+                 */
+                "confirmed": string;
+                /**
+                 * 絵文字が承認されました
+                 */
+                "emojiApproved": string;
+                /**
+                 * 絵文字の申請管理
+                 */
+                "emojiManagement": string;
+                /**
+                 * 保留中
+                 */
+                "held": string;
+                /**
+                 * 確認
+                 */
+                "review": string;
+                /**
+                 * 絵文字の申請を確認
+                 */
+                "reviewEmoji": string;
+                /**
+                 * ライセンス：自作・再配布可
+                 */
+                "licenseSample": string;
+                /**
+                 * 保留
+                 */
+                "hold": string;
+                /**
+                 * リジェクト
+                 */
+                "reject": string;
+                /**
+                 * 承認して次へ
+                 */
+                "approveNext": string;
+                /**
+                 * HataFeed の設定
+                 */
+                "settings": string;
+                /**
+                 * テーマ
+                 */
+                "theme": string;
+                /**
+                 * ライト
+                 */
+                "light": string;
+                /**
+                 * ダーク
+                 */
+                "dark": string;
+                /**
+                 * ペーパー
+                 */
+                "paper": string;
+                /**
+                 * エスプレッソ
+                 */
+                "espresso": string;
+                /**
+                 * プロジェクト
+                 */
+                "project": string;
+                /**
+                 * エクスポート
+                 */
+                "export": string;
+                /**
+                 * プロジェクトを編集
+                 */
+                "editProject": string;
+                /**
+                 * 権限がある場合に表示
+                 */
+                "permissionOnly": string;
+                /**
+                 * チュートリアル
+                 */
+                "tutorial": string;
+                /**
+                 * HataFeedの使い方
+                 */
+                "howToUse": string;
+                /**
+                 * 新しくなったHataFeed
+                 */
+                "whatIsNew": string;
             };
         };
         "_profileBadges": {
@@ -28197,7 +34930,7 @@ export interface Locale extends ILocale {
              */
             "utageSuccess": string;
             /**
-             * 15分間、誰にも反応されずに宴を成功させた回数
+             * 15分間の逃げ切りや復活チャンスで、宴を成功させた回数
              */
             "utageSuccessDescription": string;
             /**
@@ -29749,7 +36482,7 @@ export interface Locale extends ILocale {
              */
             "reviewTime": string;
             /**
-             * 申請が承認されなかった場合、登録申請許可に関するメールは送信されません。
+             * 承認・見送りのどちらの場合も、結果をメールでお知らせします。
              */
             "noRejectionEmail": string;
             /**
@@ -29993,7 +36726,7 @@ export interface Locale extends ILocale {
              */
             "tipFailure": string;
             /**
-             * になります。
+             * になります。復活チャンスが発動したら、制限時間内に目標人数のリアクションを集めると成功します。
              */
             "tipAfter": string;
             /**
@@ -30004,6 +36737,50 @@ export interface Locale extends ILocale {
              * 成功
              */
             "success": string;
+            /**
+             * 復活チャンス
+             */
+            "revival": string;
+            /**
+             * 復活成功
+             */
+            "revived": string;
+            /**
+             * 復活失敗
+             */
+            "revivalFailed": string;
+            /**
+             * 結果確認中
+             */
+            "waiting": string;
+            /**
+             * 残り
+             */
+            "remaining": string;
+            /**
+             * 人
+             */
+            "people": string;
+            /**
+             * 応援{count}人、目標{target}人
+             */
+            "progress": ParameterizedString<"count" | "target">;
+            /**
+             * 応援済み
+             */
+            "accepted": string;
+            /**
+             * 自分のリアクションは対象外
+             */
+            "authorExcluded": string;
+            /**
+             * 開始前のリアクションは対象外
+             */
+            "existingExcluded": string;
+            /**
+             * このアカウントのリアクションは対象外
+             */
+            "ineligible": string;
         };
         "_timelineCustom": {
             /**
@@ -30527,6 +37304,130 @@ export interface Locale extends ILocale {
             "backToBeta": string;
         };
         "_registrationApplications": {
+            "_flow": {
+                /**
+                 * 次へ
+                 */
+                "next": string;
+                /**
+                 * リンクを別タブで開き、内容を確認してから同意してください。
+                 */
+                "documentOpenHint": string;
+                /**
+                 * 設定された文書を表示できません。管理者へお問い合わせください。
+                 */
+                "documentUnavailable": string;
+                /**
+                 * ユーザーID、パスワード、メールアドレスをアカウントの登録と安全な運営のために使用します。
+                 */
+                "signupPrivacyUse": string;
+                /**
+                 * メールアドレスはアカウントに関する連絡やセキュリティ通知に、招待コードは登録のために使用します。
+                 */
+                "signupPrivacyContact": string;
+                /**
+                 * あなたに合った方法で、はじめましょう。
+                 */
+                "branchIntro": string;
+                /**
+                 * コードを使って登録します
+                 */
+                "inviteDescription": string;
+                /**
+                 * 管理者へ登録を申請します
+                 */
+                "applicationDescription": string;
+                /**
+                 * 登録情報を入力
+                 */
+                "inputTitle": string;
+                /**
+                 * 入力内容を確認
+                 */
+                "reviewTitle": string;
+                /**
+                 * 内容を確認してから送信してください。パスワードは表示しません。
+                 */
+                "reviewDescription": string;
+                /**
+                 * 入力内容を確認
+                 */
+                "confirmInput": string;
+                /**
+                 * 設定済み
+                 */
+                "passwordSet": string;
+                /**
+                 * パスワードは8〜64文字で入力してください。
+                 */
+                "passwordLengthDescription": string;
+                /**
+                 * 入力に戻る
+                 */
+                "backToInput": string;
+                /**
+                 * 同意事項に戻る
+                 */
+                "backToAgreements": string;
+            };
+            "_notification": {
+                /**
+                 * 結果通知メール
+                 */
+                "title": string;
+                /**
+                 * 未送信
+                 */
+                "pending": string;
+                /**
+                 * 送信中・結果確認待ち
+                 */
+                "sending": string;
+                /**
+                 * 送信済み
+                 */
+                "sent": string;
+                /**
+                 * 送信できませんでした
+                 */
+                "failed": string;
+                /**
+                 * 通知メールを再送
+                 */
+                "retry": string;
+                /**
+                 * 固定の結果通知メールを再送します。審査結果は変更しません。前回の送信結果が不明な場合、同じメールが届く可能性があります。
+                 */
+                "retryConfirm": string;
+                /**
+                 * 見送りを確定し、結果通知メールを送信しました。
+                 */
+                "sentDescription": string;
+                /**
+                 * 見送りは確定しています。通知メールを送信できませんでした。却下済みの一覧から再送できます。
+                 */
+                "failedDescription": string;
+                /**
+                 * 見送りは確定しています。メールの送信結果を確認できていません。一覧で状態を確認してください。
+                 */
+                "sendingDescription": string;
+                /**
+                 * 結果通知メールを送信しました。
+                 */
+                "retrySent": string;
+                /**
+                 * 結果通知メールを送信できませんでした。メール設定を確認してから再度お試しください。
+                 */
+                "retryFailed": string;
+                /**
+                 * 現在この申請の通知を再送できません。最新の状態を確認してください。
+                 */
+                "unavailable": string;
+                /**
+                 * この申請は結果通知メールの対象ではありません。
+                 */
+                "legacy": string;
+            };
             /**
              * 新規登録を完全に停止する
              */
@@ -30683,7 +37584,7 @@ export interface Locale extends ILocale {
                 "rejectTitle": string;
                 /**
                  * 審査を終了し、申請ユーザーID・パスワード情報・SNSなどの連絡先を削除します。確定後は投票を変更できません。
-                 * メールアドレスは連続申請を防ぐため、申請日から90日経過後の定期削除まで保管されます。拒否のメールは送信されません。
+                 * 申請者へ固定の結果通知メールを送信します。運営内の判断メモや投票理由は通知しません。メールアドレスは連続申請を防ぐため、申請日から90日経過後の定期削除まで保管されます。
                  */
                 "rejectText": string;
                 /**
@@ -30789,7 +37690,8 @@ export interface Locale extends ILocale {
                  */
                 "contactsPlaceholder": string;
                 /**
-                 * SNSのアカウント名やURLは、理由欄ではなく連絡先欄へご入力ください。空欄でも申請できます
+                 * SNSのアカウント名やURLは、理由欄ではなく連絡先欄へご入力ください。
+                 * 空欄でも申請できます
                  */
                 "contactsHint": string;
                 /**
@@ -30833,7 +37735,8 @@ export interface Locale extends ILocale {
                  */
                 "emailUnavailable": string;
                 /**
-                 * 申請が承認された場合、このアドレスに通知が届きます。今後のセキュリティ通知にも使用されます。
+                 * 承認・見送りの結果をこのアドレスにお知らせします。
+                 * 登録後のセキュリティ通知にも使用されます。
                  */
                 "emailDescription": string;
                 /**
@@ -30893,11 +37796,12 @@ export interface Locale extends ILocale {
                  */
                 "rejectedEmailRetention": string;
                 /**
-                 * 登録申請許可に関するメールは送信されません。
+                 * 結果をメールでお知らせします。
                  */
                 "noRejectionEmail": string;
                 /**
-                 * 審査中、または却下済みの申請情報が残っている間は、同じメールアドレスで再申請できません。
+                 * 審査中、または却下済みの申請情報が残っている間は、
+                 * 同じメールアドレスで再申請できません。
                  */
                 "emailReuseWarning": string;
                 /**
@@ -34364,14 +41268,6 @@ export interface Locale extends ILocale {
                      */
                     "hataSideStudioDescription": string;
                     /**
-                     * HataSNSCordUI
-                     */
-                    "hatacordingUiLabel": string;
-                    /**
-                     * メニュー、右ペイン、ウィジェットと端末ごとの表示設定
-                     */
-                    "hatacordingUiDescription": string;
-                    /**
                      * Hatask
                      */
                     "hataskLabel": string;
@@ -34859,6 +41755,50 @@ export interface Locale extends ILocale {
                  */
                 "showDrawingButton": string;
                 /**
+                 * Hataskey UI S の投稿欄ショートカット 1
+                 */
+                "ui3ComposerShortcut1": string;
+                /**
+                 * Hataskey UI S の投稿欄ショートカット 2
+                 */
+                "ui3ComposerShortcut2": string;
+                /**
+                 * 投稿欄の2つの枠に置く機能です。「なし」の枠は投稿欄に＋で表示され、そこから選ぶこともできます。
+                 */
+                "ui3ComposerShortcutCaption": string;
+                /**
+                 * なし（＋を表示）
+                 */
+                "ui3ComposerShortcutNone": string;
+                /**
+                 * Hataskey UI S の投稿欄の絵文字ボタンの位置
+                 */
+                "ui3ComposerEmojiPosition": string;
+                /**
+                 * ショートカットのすぐ右
+                 */
+                "ui3ComposerEmojiAfterShortcuts": string;
+                /**
+                 * 公開範囲のすぐ左
+                 */
+                "ui3ComposerEmojiBeforeVisibility": string;
+                /**
+                 * Hataskey UI S の投稿フォームの位置
+                 */
+                "ui3ComposerPosition": string;
+                /**
+                 * タイムラインの上
+                 */
+                "ui3ComposerPositionTop": string;
+                /**
+                 * タイムラインの下
+                 */
+                "ui3ComposerPositionBottom": string;
+                /**
+                 * Hataskey UI S では「投稿フォームの位置」で変更してください。
+                 */
+                "ui3ComposerUsePosition": string;
+                /**
                  * ログイン日数
                  */
                 "loginDays": string;
@@ -34965,11 +41905,11 @@ export interface Locale extends ILocale {
                  */
                 "uiFontSelection": string;
                 /**
-                 * UI全体のフォントを変更できます。すべてのプリセットフォントは SIL Open Font License 1.1 で提供されており、
+                 * UI全体のフォントを変更できます。プリセットは SIL Open Font License 1.1 で提供されています。
                  */
                 "presetDescriptionLine1": string;
                 /**
-                 * Google Fonts CDN から直接読み込まれます。サーバーにフォントデータは保存されません。
+                 * LINE Seed JP はサーバーから、その他のプリセットは Google Fonts から読み込まれます。
                  */
                 "presetDescriptionLine2": string;
                 /**
@@ -35061,7 +42001,11 @@ export interface Locale extends ILocale {
                  */
                 "disclaimerConfirm": string;
                 /**
-                 * Zen 角ゴシック Antique（既定）
+                 * LINE Seed JP（既定）
+                 */
+                "presetLineSeedJp": string;
+                /**
+                 * Zen 角ゴシック Antique
                  */
                 "presetZenKaku": string;
                 /**
@@ -35123,22 +42067,6 @@ export interface Locale extends ILocale {
                  */
                 "openHatasabaUi2Settings": string;
                 /**
-                 * HataSNSCordUI の設定
-                 */
-                "hataSnsCordUiSettings": string;
-                /**
-                 * UIカラー、表示密度、リアルタイム更新などを設定します。ここでの変更は端末内に保存され、
-                 */
-                "hataSnsCordUiDescriptionPrefix": string;
-                /**
-                 * HataSNSCordUI左上の調整メニューと常に同期
-                 */
-                "hataSnsCordUiSync": string;
-                /**
-                 * します。
-                 */
-                "hataSnsCordUiDescriptionSuffix": string;
-                /**
                  * オリジナルアイコンブランディング
                  */
                 "brandingSection": string;
@@ -35155,7 +42083,7 @@ export interface Locale extends ILocale {
                  */
                 "foldableSection": string;
                 /**
-                 * 横開きの折りたたみスマホの、開いたときの大きい方の画面で、表示はスマホのままにしつつ、右側にウィジェットを常に出します。Hataskey UI と HataSNSCordUI が対象です。
+                 * 横開きの折りたたみスマホの、開いたときの大きい方の画面で、表示はスマホのままにしつつ、右側にウィジェットを常に出します。Hataskey UI が対象です。
                  */
                 "foldableDescription": string;
                 /**
@@ -36072,6 +43000,10 @@ export interface Locale extends ILocale {
                  * プロフィール同期・すぐ反映
                  */
                 "profileImmediate": string;
+                /**
+                 * 変更はすぐに保存・反映されます。
+                 */
+                "uiSImmediate": string;
             };
             "catalog": {
                 "categories": {
@@ -37075,6 +44007,402 @@ export interface Locale extends ILocale {
              * 文脈による補正
              */
             "contextCorrection": string;
+        };
+        "_recordModeration": {
+            /**
+             * この記録への対応
+             */
+            "actionsTitle": string;
+            /**
+             * 警告を送る
+             */
+            "warn": string;
+            /**
+             * 記録を削除
+             */
+            "deleteRecord": string;
+            /**
+             * 対応履歴
+             */
+            "history": string;
+            /**
+             * 記録の削除
+             */
+            "deleteTitle": string;
+            /**
+             * 利用者への警告
+             */
+            "warnTitle": string;
+            /**
+             * 内容を読み込んでいます
+             */
+            "loading": string;
+            /**
+             * 記録を削除し、モデログに保存しました
+             */
+            "deletedSuccess": string;
+            /**
+             * 警告を本人向けのお知らせに保存しました
+             */
+            "warnedSuccess": string;
+            /**
+             * 警告も本人向けのお知らせに保存しました
+             */
+            "extraWarningSuccess": string;
+            /**
+             * 操作ID
+             */
+            "operationId": string;
+            /**
+             * この記録への対応履歴はありません
+             */
+            "noHistory": string;
+            /**
+             * 警告を送信
+             */
+            "warnSent": string;
+            /**
+             * 対象ユーザー
+             */
+            "targetUser": string;
+            /**
+             * 実行者
+             */
+            "moderator": string;
+            /**
+             * 実行日時
+             */
+            "performedAt": string;
+            /**
+             * 記録ID
+             */
+            "recordId": string;
+            /**
+             * 削除理由
+             */
+            "deletionReason": string;
+            /**
+             * 対応理由
+             */
+            "actionReason": string;
+            /**
+             * 警告
+             */
+            "warning": string;
+            /**
+             * 本人向けのお知らせに保存
+             */
+            "savedForUser": string;
+            /**
+             * なし
+             */
+            "none": string;
+            /**
+             * 新しい対応を最大50件表示します。モデログからも確認できます
+             */
+            "historyHint": string;
+            /**
+             * 削除する内容
+             */
+            "deleteImpact": string;
+            /**
+             * {count}件
+             */
+            "itemCount": ParameterizedString<"count">;
+            /**
+             * この操作は取り消せません
+             */
+            "irreversible": string;
+            /**
+             * 記録を残したまま、本人に警告を送ります
+             */
+            "warnWithoutDelete": string;
+            /**
+             * 必須
+             */
+            "required": string;
+            /**
+             * どの内容に、どの理由で対応したかを記入
+             */
+            "reasonPlaceholder": string;
+            /**
+             * 運営のみ閲覧できます
+             */
+            "internalOnly": string;
+            /**
+             * 利用者に警告を送る
+             */
+            "warnUser": string;
+            /**
+             * 利用者に送る警告文
+             */
+            "warningMessage": string;
+            /**
+             * 利用者に伝える内容と、今後気をつけてほしいこと
+             */
+            "warningPlaceholder": string;
+            /**
+             * 本人に送信
+             */
+            "sentToUser": string;
+            /**
+             * 本人に届く内容
+             */
+            "userPreview": string;
+            /**
+             * 警告文を入力すると、ここに表示されます
+             */
+            "previewPlaceholder": string;
+            /**
+             * 対象の記録を削除したこと
+             */
+            "deletedContext": string;
+            /**
+             * 対象の記録に警告したこと
+             */
+            "warnedContext": string;
+            /**
+             * と、記録ID・お問い合わせIDを添えます。内部理由は送信しません
+             */
+            "previewSuffix": string;
+            /**
+             * 対象ユーザー・理由・操作内容を確認しました
+             */
+            "confirmed": string;
+            /**
+             * 閉じる
+             */
+            "close": string;
+            /**
+             * 処理中…
+             */
+            "processing": string;
+            /**
+             * 同じ操作の結果を確認する
+             */
+            "checkSameResult": string;
+            /**
+             * 削除して警告を送る
+             */
+            "deleteAndWarn": string;
+            /**
+             * 記録を削除する
+             */
+            "deleteRecordAction": string;
+            /**
+             * 警告を送信する
+             */
+            "sendWarning": string;
+            /**
+             * 最新の内容を確認する
+             */
+            "checkLatest": string;
+            /**
+             * モデレーション権限がありません
+             */
+            "accessDenied": string;
+            /**
+             * 理由と警告文の入力内容を確認してください
+             */
+            "invalidInput": string;
+            /**
+             * この記録はすでに削除されています
+             */
+            "alreadyDeleted": string;
+            /**
+             * 記録や関連する内容が更新されました。最新の内容を再確認してください
+             */
+            "conflict": string;
+            /**
+             * 処理結果を確認できませんでした。同じ操作の結果を確認してから、次の対応を行ってください
+             */
+            "uncertainResult": string;
+            /**
+             * 活動記録
+             */
+            "impactActivity": string;
+            /**
+             * 作品
+             */
+            "impactWork": string;
+            /**
+             * 本のメモ
+             */
+            "impactBookMemo": string;
+            /**
+             * 関連する通知
+             */
+            "impactNotifications": string;
+            /**
+             * 公開・共有された予定
+             */
+            "impactEvents": string;
+            /**
+             * 予定の参加回答
+             */
+            "impactRsvp": string;
+            /**
+             * 公開用の開花記録
+             */
+            "impactFlower": string;
+            /**
+             * 端末と同期する記録（同一記録の保存コピーを含む）
+             */
+            "impactSynced": string;
+            /**
+             * 関連する活動記録は残り、本・作品との関連だけが解除されます。添付画像のファイル自体は削除しません。
+             */
+            "retainedCollection": string;
+            /**
+             * 対象に付随しない記録と、添付画像のファイル自体は削除しません。
+             */
+            "retainedOther": string;
+        };
+        "_ltlEmojiVote": {
+            /**
+             * LTLで絵文字投票
+             */
+            "title": string;
+            /**
+             * 結果を閉じる
+             */
+            "closeResults": string;
+            /**
+             * 投票を辞退する
+             */
+            "declineVote": string;
+            /**
+             * 残り{seconds}秒
+             */
+            "secondsRemaining": ParameterizedString<"seconds">;
+            /**
+             * {seconds}秒
+             */
+            "seconds": ParameterizedString<"seconds">;
+            /**
+             * 投票締切
+             */
+            "voteClosed": string;
+            /**
+             * 締切まで {seconds}秒
+             */
+            "untilClose": ParameterizedString<"seconds">;
+            /**
+             * どの絵文字にする？
+             */
+            "whichEmoji": string;
+            /**
+             * ログインして参加できます
+             */
+            "loginToJoin": string;
+            /**
+             * 投票しています...
+             */
+            "submitting": string;
+            /**
+             * ひとつだけ、選んでね。
+             */
+            "chooseOne": string;
+            /**
+             * カスタム絵文字を1回選択
+             */
+            "chooseCustomEmoji": string;
+            /**
+             * {emoji} に投票する
+             */
+            "voteFor": ParameterizedString<"emoji">;
+            /**
+             * この絵文字に決めた！
+             */
+            "chosen": string;
+            /**
+             * 他のユーザーの投票を待っています...
+             */
+            "waitingForOthers": string;
+            /**
+             * あなたの投票は受け付けました
+             */
+            "voteAccepted": string;
+            /**
+             * 集計しています...
+             */
+            "tallying": string;
+            /**
+             * もうすぐ結果が出ます。
+             */
+            "resultsSoon": string;
+            /**
+             * 辞退しました
+             */
+            "declined": string;
+            /**
+             * 集計が完了しました
+             */
+            "resultsReady": string;
+            /**
+             * 絵文字投票の結果
+             */
+            "resultsLabel": string;
+            /**
+             * {count}票
+             */
+            "votes": ParameterizedString<"count">;
+            /**
+             * {count}人が参加しました
+             */
+            "participants": ParameterizedString<"count">;
+            /**
+             * 今回は投票がありませんでした
+             */
+            "noVotes": string;
+            /**
+             * 順位なし
+             */
+            "unranked": string;
+            /**
+             * {rank}位
+             */
+            "rank": ParameterizedString<"rank">;
+            /**
+             * 同率{rank}位
+             */
+            "tiedRank": ParameterizedString<"rank">;
+            /**
+             * 絵文字投票が始まりました。{count}個からひとつ選んでください。
+             */
+            "announcementStarted": ParameterizedString<"count">;
+            /**
+             * あなたの投票は受け付けました。他のユーザーの投票を待っています。
+             */
+            "announcementAccepted": string;
+            /**
+             * 集計しています。
+             */
+            "announcementTallying": string;
+            /**
+             * 集計が完了しました。{results}
+             */
+            "announcementResults": ParameterizedString<"results">;
+            /**
+             * {rank}、{emoji}、{votes}
+             */
+            "announcementEntry": ParameterizedString<"rank" | "emoji" | "votes">;
+            /**
+             * 。
+             */
+            "announcementSeparator": string;
+            /**
+             * 集計が完了しました。今回は投票がありませんでした。
+             */
+            "announcementNoVotes": string;
+            /**
+             * 投票を送信できませんでした もう一度選んでください
+             */
+            "voteFailed": string;
+            /**
+             * 投票を確認できませんでした 再確認しています
+             */
+            "verifyingVote": string;
         };
     };
 }

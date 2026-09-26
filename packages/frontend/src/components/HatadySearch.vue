@@ -142,7 +142,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<section v-if="results?.mediaWorks?.length" :class="$style.group">
 					<div :class="$style.groupHead">
 						<i class="ti ti-books"></i>
-						作品・作業
+						{{ copy.mediaWorks }}
 						<span>{{ results.mediaWorks.length }}</span>
 					</div>
 					<button v-for="work in results.mediaWorks" :key="work.id" :class="$style.row" @click="openMedia(work.id)">
@@ -167,7 +167,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<section v-if="results?.mediaSessions?.length" :class="$style.group">
 					<div :class="$style.groupHead">
 						<i class="ti ti-notebook"></i>
-						映画・ゲームの記録
+						{{ copy.mediaSessions }}
 						<span>{{ results.mediaSessions.length }}</span>
 					</div>
 					<button
@@ -179,10 +179,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<span :class="$style.rowMain">
 							<strong
 								:class="$style.rowTitle"
-								v-html="hl(session.work?.title || session.workSnapshot?.title || '記録')"
+								v-html="hl(session.work?.title || session.workSnapshot?.title || copy.records)"
 							></strong>
 							<small v-if="!session.noteSpoiler" v-html="hl(snippet(session.note || ''))"></small>
-							<small v-else>ネタバレを含む内容</small>
+							<small v-else>{{ copy.spoilerContent }}</small>
 						</span>
 						<i class="ti ti-chevron-right"></i>
 					</button>
@@ -255,8 +255,8 @@ const typeLabel = (key: TypeKey): string =>
 		books: copy.books,
 		bookMemos: copy.bookMemos,
 		bookmarks: copy.bookmarks,
-		mediaWorks: '作品・作業',
-		mediaSessions: '映画・ゲームの記録',
+		mediaWorks: copy.mediaWorks,
+		mediaSessions: copy.mediaSessions,
 	})[key];
 const scopeOptions = computed(() => [
 	{ value: 'all', label: copy.scopeAll, icon: 'ti ti-search' },
@@ -320,7 +320,7 @@ async function runSearch(_immediate: boolean, preserveResults = false) {
 		})) as Results;
 		if (mySeq === seq) results.value = res;
 	} catch {
-		if (mySeq === seq) error.value = '検索できませんでした';
+		if (mySeq === seq) error.value = copy.searchFailed;
 	} finally {
 		if (mySeq === seq) loading.value = false;
 	}

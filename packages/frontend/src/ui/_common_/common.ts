@@ -236,7 +236,7 @@ export function openInstanceMenu(ev: MouseEvent, navigate?: (path: string) => vo
 		to: '/about-misskey',
 	});
 
-	os.popupMenu(navigate ? keepMenuNavigationInside(menuItems, navigate) : menuItems, ev.currentTarget ?? ev.target, {
+	return os.popupMenu(navigate ? keepMenuNavigationInside(menuItems, navigate) : menuItems, ev.currentTarget ?? ev.target, {
 		align: 'left',
 	});
 }

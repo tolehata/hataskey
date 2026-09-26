@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div v-if="!integratedWelcome">
+<div v-if="!integrated">
 	<Transition
 		:enterActiveClass="prefer.s.animation ? $style.transition_toast_enterActive : ''"
 		:leaveActiveClass="prefer.s.animation ? $style.transition_toast_leaveActive : ''"
@@ -26,6 +26,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						icon === 'renote' ? 'ti-repeat' :
 						icon === 'quote' ? 'ti-quote' :
 						icon === 'edited' ? 'ti ti-pencil' :
+						icon === 'clipped' ? 'ti ti-paperclip' :
+						icon === 'deleted' ? 'ti ti-trash' :
 						icon === 'drafted' ? 'ti ti-pencil-minus' :
 						icon === 'scheduled' ? 'ti ti-calendar-time' :
 						icon === 'copied' ? 'ti-copy' :
@@ -44,12 +46,13 @@ import { inject, onMounted, ref } from 'vue';
 import * as os from '@/os.js';
 import { prefer } from '@/preferences.js';
 import { $i } from '@/i.js';
-import { hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
+import { getNotificationPageContext, hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
 
 const props = defineProps<{
 	message: string;
 	icon?: string;
 	welcome?: boolean;
+	target?: string;
 }>();
 
 const emit = defineEmits<{
@@ -58,12 +61,17 @@ const emit = defineEmits<{
 
 const zIndex = os.claimZIndex('high');
 const hataskeyToasts = inject(hataskeyNotificationToastsKey, null);
-const integratedWelcome = props.welcome && $i != null && hataskeyToasts != null;
+const context = getNotificationPageContext() ?? hataskeyToasts;
+const target = context?.surface.value?.target.value ?? context?.target.value;
+const integratedWelcome = props.welcome && $i != null && context != null;
+const integrated = integratedWelcome || (!props.welcome && context != null && target != null && context.canIntegrateStatus.value);
 const showing = ref(true);
 
 onMounted(() => {
-	if (integratedWelcome && $i) {
-		hataskeyToasts.enqueueStatus(props.message, performance.now(), $i);
+	if (integrated && context) {
+		if (integratedWelcome && $i) context.enqueueStatus(props.message, performance.now(), $i);
+		else if (props.icon === 'edited' || props.icon === 'clipped' || props.icon === 'deleted') context.enqueueNavbarNotice({ kind: 'noteAction', action: props.icon === 'edited' ? 'edit' : props.icon === 'clipped' ? 'clip' : 'delete', message: props.message, target: props.target });
+		else context.enqueueNavbarNotice({ kind: 'status', message: props.message, icon: props.icon });
 		emit('closed');
 		return;
 	}

@@ -297,6 +297,9 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 				case 'app':
 				case 'hataFeed':
 				case 'hataskFlowerReady':
+				case 'hataskFlowerBloomed':
+				case 'hataskZukanUpdated':
+				case 'hataskFestivalBloomed':
 				case 'earthquake':
 				case 'addedToPrivateChannel':
 				case 'removedFromPrivateChannel': {
@@ -307,9 +310,14 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 					const rawHeader = data.body.header?.trim() ?? '';
 					let body = rawBody;
 					let header = rawHeader;
-					if (data.body.type === 'hataskFlowerReady') {
-						header = i18n.ts._notification._types.hataskFlowerReady;
-						body = i18n.ts._hata._customNotifications.flowerReady;
+					if (data.body.type === 'hataskFlowerReady' || data.body.type === 'hataskFlowerBloomed' || data.body.type === 'hataskZukanUpdated' || data.body.type === 'hataskFestivalBloomed') {
+						header = i18n.ts._notification._types[data.body.type];
+						body = {
+							hataskFlowerReady: i18n.ts._hata._customNotifications.flowerReady,
+							hataskFlowerBloomed: i18n.ts._hata._customNotifications.flowerBloomed,
+							hataskZukanUpdated: i18n.ts._hata._customNotifications.zukanUpdated,
+							hataskFestivalBloomed: i18n.ts._hata._customNotifications.festivalBloomed,
+						}[data.body.type];
 					} else if (data.body.type === 'hataFeed') {
 						body = hataFeedNotificationDisplayBody(rawBody, i18n);
 					} else if (data.body.type === 'addedToPrivateChannel' || data.body.type === 'removedFromPrivateChannel') {

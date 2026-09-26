@@ -47,9 +47,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<b>{{ number(user.followersCount) }}</b>
 				</MkA>
 			</div>
-			<button data-hatacording-user-popup-action class="_button" :class="[$style.menu, { [$style.isBlocked]: user.isBlocked || user.isBlocking }]" @click="showMenu"><i class="ti ti-dots"></i></button>
-			<button v-tooltip="user.notify === 'none' ? i18n.ts.notifyNotes : i18n.ts.unnotifyNotes" data-hatacording-user-popup-action class="_button" :class="[$style.notify, { [$style.isBlocked]: user.isBlocked || user.isBlocking }]" @click="toggleNotify"><i :class="user.notify === 'none' ? 'ti ti-bell-plus' : 'ti ti-bell-minus'"></i></button>
-			<MkFollowButton v-if="!user.isBlocked && !user.isBlocking" v-model:user="user" data-hatacording-user-popup-action :class="$style.follow" mini/>
+			<button class="_button" :class="[$style.menu, { [$style.isBlocked]: user.isBlocked || user.isBlocking }]" @click="showMenu"><i class="ti ti-dots"></i></button>
+			<button v-tooltip="user.notify === 'none' ? i18n.ts.notifyNotes : i18n.ts.unnotifyNotes" class="_button" :class="[$style.notify, { [$style.isBlocked]: user.isBlocked || user.isBlocking }]" @click="toggleNotify"><i :class="user.notify === 'none' ? 'ti ti-bell-plus' : 'ti ti-bell-minus'"></i></button>
+			<MkFollowButton v-if="!user.isBlocked && !user.isBlocking" v-model:user="user" :class="$style.follow" mini/>
 		</div>
 		<div v-else>
 			<MkLoading/>

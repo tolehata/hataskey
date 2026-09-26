@@ -4,8 +4,11 @@ import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { entities } from 'cherrypick-js';
 
 export const NOTIFICATION_TOAST_DURATION = 5000;
+export const NOTE_ACTION_TOAST_DURATION = 3000;
 
 export type HataskeyNavbarNotice =
+	| { kind: 'status'; message: string; icon?: string }
+	| { kind: 'noteAction'; action: 'favorite' | 'clip' | 'edit' | 'delete'; message: string; target?: string }
 	| { kind: 'emojiAdded'; emoji: Pick<entities.EmojiDetailed, 'id' | 'name' | 'url'> }
 	| { kind: 'hourlyTime'; time: string };
 
@@ -24,8 +27,12 @@ export type HataskeyToast = {
 	updatedAt: number;
 } & ({ source: 'local' | 'external'; notification: entities.Notification } | { source: 'status'; message: string; welcomeUser?: entities.UserLite; favoriteSaved?: true; navbarNotice?: HataskeyNavbarNotice });
 
+export function getToastDuration(item: HataskeyToast): number {
+	return item.source === 'status' && item.navbarNotice?.kind === 'noteAction' ? NOTE_ACTION_TOAST_DURATION : NOTIFICATION_TOAST_DURATION;
+}
+
 /** One queue for both accounts; changing presentation never restarts a timer. */
-export function createHataskeyNotificationToasts(nativeMobile: ComputedRef<boolean>, navbarVisible: ComputedRef<boolean>) {
+export function createHataskeyNotificationToasts(nativeMobile: ComputedRef<boolean>, navbarVisible: ComputedRef<boolean>, navbarAvailable: ComputedRef<boolean> = navbarVisible) {
 	const items = shallowRef<HataskeyToast[]>([]);
 	const target = shallowRef<HTMLElement | null>(null);
 	const outline = shallowRef<HTMLElement | null>(null);
@@ -33,6 +40,7 @@ export function createHataskeyNotificationToasts(nativeMobile: ComputedRef<boole
 	const surfaces = shallowRef<HataskeyToastSurface[]>([]);
 	const surface = computed(() => surfaces.value.findLast(value => value.active.value && value.target.value && value.outline.value));
 	const mobile = computed(() => !!surface.value || nativeMobile.value);
+	const canIntegrateStatus = computed(() => !!surface.value || nativeMobile.value || navbarAvailable.value);
 	const navbarNotice = computed(() => {
 		const item = items.value[0];
 		return item?.source === 'status' ? item.navbarNotice : undefined;
@@ -59,7 +67,7 @@ export function createHataskeyNotificationToasts(nativeMobile: ComputedRef<boole
 
 	/** In-app navbar feedback only: never a server notification or a floating card. */
 	function enqueueNavbarNotice(notice: HataskeyNavbarNotice, now = performance.now()) {
-		items.value = [shallowReactive<HataskeyToast>({ id: ++sequence, source: 'status', message: '', navbarNotice: notice, elapsed: 0, updatedAt: now })];
+		items.value = [shallowReactive<HataskeyToast>({ id: ++sequence, source: 'status', message: 'message' in notice ? notice.message : '', navbarNotice: notice, elapsed: 0, updatedAt: now })];
 	}
 
 	function dismissNavbarNotice(kind?: HataskeyNavbarNotice['kind']) {
@@ -72,18 +80,18 @@ export function createHataskeyNotificationToasts(nativeMobile: ComputedRef<boole
 
 	function tick(now: number, paused: ReadonlySet<number>) {
 		for (const item of items.value) {
-			if (!surface.value?.paused?.value && !paused.has(item.id)) item.elapsed = Math.min(NOTIFICATION_TOAST_DURATION, item.elapsed + Math.max(0, now - item.updatedAt));
+			if (!surface.value?.paused?.value && !paused.has(item.id)) item.elapsed = Math.min(getToastDuration(item), item.elapsed + Math.max(0, now - item.updatedAt));
 			item.updatedAt = now;
 		}
-		const expired = items.value.filter(item => item.elapsed >= NOTIFICATION_TOAST_DURATION);
-		if (expired.length) items.value = items.value.filter(item => item.elapsed < NOTIFICATION_TOAST_DURATION);
+		const expired = items.value.filter(item => item.elapsed >= getToastDuration(item));
+		if (expired.length) items.value = items.value.filter(item => item.elapsed < getToastDuration(item));
 	}
 
 	function clear() {
 		items.value = [];
 	}
 
-	return { mobile, integrated, navbarNotice, items, target, outline, height, surface, registerSurface, enqueue, enqueueStatus, enqueueNavbarNotice, dismissNavbarNotice, dismiss, tick, clear };
+	return { mobile, integrated, canIntegrateStatus, navbarNotice, items, target, outline, height, surface, registerSurface, enqueue, enqueueStatus, enqueueNavbarNotice, dismissNavbarNotice, dismiss, tick, clear };
 }
 
 export type HataskeyNotificationToasts = ReturnType<typeof createHataskeyNotificationToasts>;
@@ -98,6 +106,18 @@ export function registerNotificationPageContext(context: HataskeyNotificationToa
 }
 export function getNotificationPageContext(): HataskeyNotificationToasts | undefined {
 	return pageContexts.findLast(entry => entry.active())?.context;
+}
+
+/** 表示中の通知領域へ直接届け、ポップアップのマウント待ちによる表示順の逆転を防ぐ。 */
+export function enqueuePageStatusToast(message: string, icon?: string, target?: string): boolean {
+	const context = getNotificationPageContext();
+	if (!context?.canIntegrateStatus.value || !(context.surface.value?.target.value ?? context.target.value)) return false;
+	if (icon === 'edited' || icon === 'clipped' || icon === 'deleted') {
+		context.enqueueNavbarNotice({ kind: 'noteAction', action: icon === 'edited' ? 'edit' : icon === 'clipped' ? 'clip' : 'delete', message, target });
+	} else {
+		context.enqueueNavbarNotice({ kind: 'status', message, icon });
+	}
+	return true;
 }
 
 /** Open paths meet at the bottom; floating cards start at the top-right arc. */

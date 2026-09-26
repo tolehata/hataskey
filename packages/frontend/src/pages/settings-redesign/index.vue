@@ -140,7 +140,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<div v-else-if="activeNavSection != null" key="detail" :class="$style.detailPane">
 								<!-- 旗鯖fork: ⚠️ここにも分類の絵を出すこと。左ペインの一覧と詳細で見た目が
 								     食い違うと、同じ分類を見ているのか分からなくなる。
-								     ⚠️絵を持つ分類(HataSNSCordUIのマスコット)は絵を優先する。 -->
+								     ⚠️絵を持つ分類は絵を優先する。 -->
 								<button ref="navDetailBackEl" type="button" :class="$style.detailBack" data-settings-nav-detail-back @click="setNavPaneMode('categories')"><i class="ti ti-chevron-left" aria-hidden="true"></i><img v-if="activeNavSection.iconImage != null" :src="activeNavSection.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><i v-else :class="activeNavSection.icon" aria-hidden="true"></i><span :class="{ settingsBrand: activeNavSection.brand != null || hasSettingsBrand(activeNavSection.label) }">{{ activeNavSection.label }}</span></button>
 								<nav :class="$style.links" :aria-label="activeNavSection.label">
 									<component :is="opensSettingsPopup(item) ? 'button' : 'MkA'" v-for="item in activeNavSection.items" :key="item.id" v-bind="navBindings(item)" :class="[$style.navLink, { [$style.navLinkActive]: isActive(item) }]" :aria-current="isActive(item) ? 'page' : undefined" @click.prevent="goToSetting(item)"><img v-if="item.iconImage != null" :src="item.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><i v-else :class="item.icon" aria-hidden="true"></i><span><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span><span v-if="item.showCount && settingCountForItem(item) != null" :class="$style.countBadge">{{ settingCountForItem(item) }}</span></component>
@@ -251,6 +251,7 @@ import SettingsMobileOverview from './SettingsMobileOverview.vue';
 import SettingsPopupBridge from './SettingsPopupBridge.vue';
 import { createSettingsShellActions } from './settings-shell-actions.js';
 import { assertUniqueNavigationIds } from './settings-navigation-ids.js';
+import { sectionLandingItem } from './settings-section-landing.js';
 import { createSettingsSurfaceLeaveGuard } from './settings-surface-leave-guard.js';
 import { waitForSettingsNavigationFocus } from './settings-navigation-focus.js';
 import { createSettingsNavMotion } from './settings-nav-motion.js';
@@ -274,6 +275,7 @@ import type { SettingsShellActionId } from './settings-shell-actions.js';
 import { genSearchIndexes } from '@/utility/inapp-search.js';
 import { initIntlString } from '@/utility/intl-string.js';
 import { i18n } from '@/i18n.js';
+import { ui } from '@@/js/config.js';
 import { buildSettingsCatalogV2, canonicalStableIdForCatalogV2 } from '@/utility/settings-search-v2.js';
 import { toSettingsControlCatalogItemsV2 } from '@/utility/settings-control-search-v2.js';
 import { relatedSourcesForSettingsNavigationV2 } from '@/utility/settings-navigation-scope.js';
@@ -311,8 +313,7 @@ const copyx = i18n.tsx._hata._settingsRedesign;
 
 const settingsCatalogPresentation: SettingsCatalogPresentationV2 = {
 	categoryLabels: {
-		'hatasnscord-ui': 'HataSNSCordUI',
-		'hataskey-ui': copy.catalog.categories.hataskeyUi,
+		'hataskey-ui': settingsDestinationSections.find(section => section.id === 'hataskey-ui')?.label ?? copy.catalog.categories.hataskeyUi,
 		'display-notes': copy.catalog.categories.displayNotes,
 		'theme-font': copy.catalog.categories.themeFont,
 		'timeline-posting': copy.catalog.categories.timelinePosting,
@@ -811,7 +812,7 @@ function playPageEnter() {
 
 const compactSearchCollapsed = computed(() => compact.value && currentPage.value?.route.name != null);
 
-const hasSettingsBrand = (value: string) => /Hataskey|Hatask|Hatady|HataFeed|HataSNSCordUI/u.test(value);
+const hasSettingsBrand = (value: string) => /Hataskey|Hatask|Hatady|HataFeed/u.test(value);
 
 const mobilePageTitle = computed(() => {
 	if (compact.value && compactNavigationSection.value != null) {
@@ -918,20 +919,9 @@ watch(activeSectionId, id => {
 	if (id != null) revealActiveSectionPill(id);
 });
 
-/**
- * 旗鯖fork: 分類を選んだときに開く項目。
- * ⚠️並びの先頭をそのまま使うこと。以前は primary を優先していたが、
- *   「データと引っ越し」を選んだのに2番目が開くなど、左の並びと開く画面が
- *   食い違って読めなかった。⚠️並び順そのものが利用者への約束。
- */
-function sectionLandingItem(section: NavSection): NavItem | undefined {
-	const items: NavItem[] = section.items;
-	return items[0];
-}
-
 async function openNavigationSection(section: NavSection): Promise<void> {
 	requestedSectionId.value = section.id;
-	const item = sectionLandingItem(section);
+	const item = sectionLandingItem(section, ui);
 	if (item != null) await goToSetting(item);
 	// ⚠️自動では畳まないこと。分類を選ぶたびに左が消えると、隣の分類へ
 	//   移りたいだけなのに毎回開き直すことになり、かえって手数が増える。

@@ -61,6 +61,13 @@ async function run() {
 		out: (value) => {
 			// nop
 		},
+		err: (err) => {
+			os.alert({
+				type: 'error',
+				title: 'AiScript Error',
+				text: String(err),
+			});
+		},
 		log: (type, params) => {
 			// nop
 		},
@@ -72,7 +79,8 @@ async function run() {
 	} catch (err) {
 		os.alert({
 			type: 'error',
-			text: 'Syntax error :(',
+			title: 'Syntax Error',
+			text: String(err),
 		});
 		return;
 	}
@@ -81,7 +89,8 @@ async function run() {
 	} catch (err) {
 		os.alert({
 			type: 'error',
-			text: err instanceof Error ? err.message : String(err),
+			title: 'AiScript Internal Error',
+			text: String(err),
 		});
 	}
 }

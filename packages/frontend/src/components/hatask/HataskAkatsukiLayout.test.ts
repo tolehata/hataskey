@@ -221,13 +221,13 @@ describe('HataskAkatsukiLayout', () => {
 		expect(scroller.dataset.scrollMore).toBe('false');
 	});
 
-	test('モバイル通知の表示先を幅と可視状態に合わせ、検索中の入力とフォーカスを保持する', async () => {
+	test('共有通知をモバイルとPCのナビバー間で切り替え、検索中の入力とフォーカスを保持する', async () => {
 		size = { width: 599, height: 844 };
 		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
 		const nativeTarget = window.document.createElement('div');
 		context.target.value = nativeTarget;
 		const { container, liveProps } = await mountLayout({ model: { mealSummary: '昼ごはんは、これから' } }, context);
-		const viewport = required<HTMLElement>(container, '.hak-notification-viewport');
+		const viewport = required<HTMLElement>(container, '.hak-mobile-bar .hak-notification-viewport');
 		expect(context.surface.value?.target.value).toBe(viewport);
 		click(container, '.hak-search-toggle'); await nextTick();
 		const input = required<HTMLInputElement>(container, '.hak-mobile-search input');
@@ -240,14 +240,78 @@ describe('HataskAkatsukiLayout', () => {
 		expect(required(container, '.hak-meal-row > .hak-side-row-main').textContent).toBe('昼ごはんは、\nこれから');
 		context.tick(2300, new Set());
 		size.width = 600; resizeCallbacks.forEach(callback => callback()); await nextTick();
-		expect(context.surface.value).toBeUndefined();
+		const desktopViewport = required<HTMLElement>(container, '.hak-desktop-bar .hak-notification-viewport');
+		const desktopOutline = required<HTMLElement>(container, '.hak-desktop-bar');
+		expect(context.surface.value?.target.value).toBe(desktopViewport);
+		expect(context.surface.value?.outline.value).toBe(desktopOutline);
 		expect(context.target.value).toBe(nativeTarget);
 		expect(context.items.value[0].elapsed).toBe(2300);
 		expect(viewport.style.height).toBe('0px');
+		expect(desktopViewport.style.height).toBe('108px');
+		expect(desktopOutline.dataset.notification).toBe('true');
+		context.height.value = 0; await nextTick();
+		expect(desktopViewport.style.height).toBe('0px');
+		context.height.value = 108; await nextTick();
 		size.width = 599; resizeCallbacks.forEach(callback => callback()); await nextTick();
 		expect(context.surface.value?.target.value).toBe(viewport);
+		expect(viewport.style.height).toBe('108px');
+		expect(desktopViewport.style.height).toBe('0px');
 		liveProps.enabled = false; await nextTick(); await nextTick();
 		expect(context.surface.value).toBeUndefined();
+	});
+
+	test('PC通知は固定高の上部バーに重なって伸縮し、無効化すると表示先を解放する', async () => {
+		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
+		const { container, liveProps } = await mountLayout({}, context);
+		const header = required<HTMLElement>(container, '.hak-desktop-top');
+		const outline = required<HTMLElement>(header, '.hak-desktop-bar');
+		const surface = required<HTMLElement>(outline, '.hak-desktop-surface');
+		const viewport = required<HTMLElement>(surface, '.hak-notification-viewport');
+		expect(context.surface.value?.target.value).toBe(viewport);
+		expect(context.surface.value?.outline.value).toBe(outline);
+		expect(viewport.style.height).toBe('0px');
+		context.enqueue({ id: 'desktop', type: 'test', createdAt: '2026-09-14T00:00:00Z' }, 'local', 0);
+		context.height.value = 96; await nextTick();
+		expect(viewport.style.height).toBe('96px');
+		expect(outline.dataset.notification).toBe('true');
+		context.clear(); context.height.value = 0; await nextTick();
+		expect(viewport.style.height).toBe('0px');
+		expect(outline.dataset.notification).toBe('false');
+		liveProps.enabled = false; await nextTick(); await nextTick();
+		expect(context.surface.value).toBeUndefined();
+	});
+
+	test('プレビューはPCでも共有通知の表示先を取得しない', async () => {
+		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
+		const { container } = await mountLayout({ preview: true }, context);
+		expect(container.querySelector('.hak-desktop-bar')).not.toBeNull();
+		expect(context.surface.value).toBeUndefined();
+	});
+
+	test('PC通知の重なりとテーマ別の角丸、内側フォームの枠解除をCSSに保持する', async () => {
+		const source = readFileSync(resolve(process.cwd(), 'src/components/hatask/HataskAkatsukiLayout.vue'), 'utf8');
+		const { descriptor } = parse(source);
+		const style = descriptor.styles[0];
+		const compiled = await compileStyleAsync({ source: style.content, filename: 'HataskAkatsukiLayout.vue', id: 'data-v-notice-test', scoped: true, preprocessLang: 'scss' });
+		expect(compiled.errors).toEqual([]);
+		const rawResult = compiled.rawResult;
+		if (!rawResult) throw new Error('Missing compiled CSS');
+		const declarations = (fragment: string) => {
+			const values = new Map<string, string>();
+			rawResult.root.walkRules(rule => {
+				if (rule.selector.includes(fragment)) rule.walkDecls(decl => { if (!values.has(decl.prop)) values.set(decl.prop, decl.value); });
+			});
+			return values;
+		};
+		expect(declarations('.hak-desktop-top').get('height')).toBe('82px');
+		expect(declarations('.hak-desktop-bar').get('border-radius')).toBe('min(var(--case-radius, 28px), 28px)');
+		expect(declarations('.hak-mobile-bar').get('border-radius')).toBe('min(var(--case-radius, 24px), 24px)');
+		const form = declarations('.hak-desktop-bar .hak-desktop-surface > form.hak-desktop-case');
+		expect(form.get('border')).toBe('0');
+		expect(form.get('background')).toBe('transparent');
+		expect(form.get('box-shadow')).toBe('none');
+		expect(declarations('.hak-notification-viewport').get('overflow')).toBe('hidden');
+		expect(declarations('data-motion').get('transition')).toBe('none');
 	});
 
 	test('KeepAliveで閉じたページの通知先を解放し、再表示で同じ検索入力へ戻る', async () => {
@@ -963,7 +1027,7 @@ describe('HataskAkatsukiLayout', () => {
 	test('PCサイドはおはな・支援情報・ランキング・Hatask Appの順に並び、各タブの既存導線を保つ', async () => {
 		const { container, handlers } = await mountLayout();
 		expect([...container.querySelectorAll('.hak-rail-tab')].map(button => button.getAttribute('aria-label'))).toEqual([
-			'ホーム', 'カレンダー', 'ToDo', 'きもち', 'ごはん', 'おはな', '支援情報', 'ランキング', 'Hatask App', 'Hataskey App', 'Hatask を閉じる',
+			'ホーム', 'カレンダー', 'ToDo', 'きもち', 'ごはん', 'レシピ', 'おはな', '支援情報', 'ランキング', 'Hatask App', 'Hataskey App', 'Hatask を閉じる',
 		]);
 		click(container, '.hak-rail [aria-label="おはな"]');
 		click(container, '.hak-rail [aria-label="支援情報"]');
@@ -1011,7 +1075,7 @@ describe('HataskAkatsukiLayout', () => {
 	test('railのアイコンは意味をボタン側に残し、ハンバーガーも正方形の字形枠を使う', async () => {
 		const { container } = await mountLayout();
 		const buttons = [...container.querySelectorAll<HTMLButtonElement>('.hak-rail button')];
-		expect(buttons).toHaveLength(12);
+		expect(buttons).toHaveLength(13);
 		for (const button of buttons) {
 			expect(button.getAttribute('aria-label')?.length).toBeGreaterThan(0);
 			const icons = [...button.querySelectorAll('.ti')];

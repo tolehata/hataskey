@@ -5,7 +5,11 @@ import type { HatadyMediaAdvancedFilters } from './hatady-media.js';
 
 const fixture = vi.hoisted(() => ({ api: vi.fn() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: {}, tsx: {} } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/utility/hatady-ui.js', () => ({ hatadySeconds: vi.fn() }));
 
 const booksApi = 'hata/hatady/books';

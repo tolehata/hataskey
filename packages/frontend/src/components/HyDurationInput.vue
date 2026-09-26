@@ -1,18 +1,20 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <fieldset ref="field" :class="$style.field">
-	<legend>{{ label || '取り組んだ時間' }} <small>任意</small></legend>
-	<div v-if="!precise" :class="$style.minutes"><input :id="id" :name="`${id}-minutes`" :value="minuteDraft" type="number" inputmode="decimal" min="0" :max="maxSeconds / 60" step="any" placeholder="0" :aria-label="`${label || '取り組んだ時間'}（分）`" @input="setMinutes"><span>分</span></div>
-	<div v-else :class="$style.parts"><label v-for="(unit, index) in units" :key="unit"><input :name="`${id}-${index}`" :value="partDraft[index]" type="number" inputmode="numeric" min="0" :max="index ? 59 : Math.floor(maxSeconds / 3600)" step="1" placeholder="0" :aria-label="`${label || '取り組んだ時間'}（${unit}）`" @input="setPart(index, $event)"><span>{{ unit }}</span></label></div>
-	<div :class="$style.presets" role="group" aria-label="時間を選ぶ"><button v-for="minutes in presets || [5, 15, 30, 60]" :key="minutes" type="button" :disabled="!canChoose(minutes * 60)" :aria-pressed="!invalid && modelValue === minutes * 60" @click="choose(minutes * 60)">{{ minutes < 60 ? `${minutes}分` : `${minutes / 60}時間` }}</button><button type="button" @click="switchMode">{{ precise ? '分で入力' : '時・分・秒' }}</button><button v-if="hasInput || invalid" type="button" aria-label="時間を未入力に戻す" @click="choose(null)"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+	<legend>{{ label || copy.durationLabel }} <small>{{ i18n.ts.optional }}</small></legend>
+	<div v-if="!precise" :class="$style.minutes"><input :id="id" :name="`${id}-minutes`" :value="minuteDraft" type="number" inputmode="decimal" min="0" :max="maxSeconds / 60" step="any" placeholder="0" :aria-label="i18n.tsx._hata._hatady._controls.durationInputLabel({ label: label || copy.durationLabel, unit: copy.minutesUnit })" @input="setMinutes"><span>{{ copy.minutesUnit }}</span></div>
+	<div v-else :class="$style.parts"><label v-for="(unit, index) in units" :key="unit"><input :name="`${id}-${index}`" :value="partDraft[index]" type="number" inputmode="numeric" min="0" :max="index ? 59 : Math.floor(maxSeconds / 3600)" step="1" placeholder="0" :aria-label="i18n.tsx._hata._hatady._controls.durationInputLabel({ label: label || copy.durationLabel, unit })" @input="setPart(index, $event)"><span>{{ unit }}</span></label></div>
+	<div :class="$style.presets" role="group" :aria-label="copy.chooseDuration"><button v-for="minutes in presets || [5, 15, 30, 60]" :key="minutes" type="button" :disabled="!canChoose(minutes * 60)" :aria-pressed="!invalid && modelValue === minutes * 60" @click="choose(minutes * 60)">{{ minutes < 60 ? i18n.tsx._hata._hatady._controls.minutesPreset({ count: String(minutes) }) : i18n.tsx._hata._hatady._controls.hoursPreset({ count: String(minutes / 60) }) }}</button><button type="button" @click="switchMode">{{ precise ? copy.inputMinutes : copy.inputPrecise }}</button><button v-if="hasInput || invalid" type="button" :aria-label="copy.clearDuration" @click="choose(null)"><i class="ti ti-x" aria-hidden="true"></i></button></div>
 </fieldset>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useId, watch } from 'vue';
+import { i18n } from '@/i18n.js';
+const copy = i18n.ts._hata._hatady._controls;
 const props = withDefaults(defineProps<{ modelValue: number | null; label?: string; presets?: number[]; maxSeconds?: number }>(), { maxSeconds: 128849018820 });
 const emit = defineEmits<{ (event: 'update:modelValue', value: number | null): void }>();
-const id = useId(), units = ['時間', '分', '秒'];
+const id = useId(), units = [copy.hoursUnit, copy.minutesUnit, copy.secondsUnit];
 const field = ref<HTMLFieldSetElement>();
 const precise = ref(props.modelValue != null && props.modelValue % 60 !== 0);
 const minuteDraft = ref('');
@@ -51,7 +53,7 @@ function validate(): { valid: boolean; value: number | null } {
 	const value = blank ? null : precise.value ? Number(partDraft.value[0]) * 3600 + Number(partDraft.value[1]) * 60 + Number(partDraft.value[2]) : Math.round(Number(minuteDraft.value) * 60);
 	const nativeValid = inputs.every(input => input.validity.valid);
 	if (nativeValid && value != null && !canChoose(value)) {
-		inputs[0]?.setCustomValidity('時間の合計が入力できる範囲を超えています');
+		inputs[0]?.setCustomValidity(copy.durationTooLarge);
 	}
 	invalid.value = !nativeValid || (value != null && !canChoose(value));
 	return { valid: !invalid.value, value };

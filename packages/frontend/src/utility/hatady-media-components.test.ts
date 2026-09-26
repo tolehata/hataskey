@@ -8,9 +8,11 @@ import type { HatadyMediaSessionKind } from './hatady-media.js';
 const fixture = vi.hoisted(() => ({ wizard: null as any, api: vi.fn(async (endpoint: string, payload: any) => endpoint.endsWith('/list') ? [] : { id: 'saved', ...payload }) }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
 // Isolate locale loading so the actual form schemas and API payloads can run without fetching assets.
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatady: { _media: { status: {
-	planned: '予定', movie_in_progress: '鑑賞中', movie_completed: '鑑賞済み', game_in_progress: 'プレイ中', game_completed: 'クリア', mastered: 'やり込み完了', on_hold: '休止中', dropped: '中断',
-} } } } } } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/components/HatadyFormWizard.vue', async () => {
 	const { defineComponent, h } = await import('vue');
 	return { default: defineComponent({ props: ['modelValue', 'title', 'label', 'icon', 'pages', 'draftId', 'embedded', 'save', 'saveLabel', 'restore', 'summaryTitle'], emits: ['update:modelValue', 'done', 'closed', 'back'], setup(props) { fixture.wizard = props; return () => h('div'); } }) };

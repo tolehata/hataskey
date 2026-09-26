@@ -48,11 +48,57 @@ export interface HataFeedEmojiRequest {
 	originalUrl: string | null;
 	remoteHost: string | null;
 	imageUrl: string | null;
-	status: 'pending' | 'held' | 'approved' | 'rejected';
+	status: 'pending' | 'held' | 'approved' | 'rejected' | 'cancelled';
 	resolvedComment: string | null;
 	resolvedById: string | null;
 	resolvedAt: string | null;
 	resolvedEmojiId: string | null;
+	cancelledAt?: string | null;
+	cancellationReason?: string | null;
+	currentEmoji?: { id: string; name: string; imageUrl: string; license: string | null; category: string | null; aliases: string[] } | null;
+	latestChange?: HataFeedEmojiChangeRequest | null;
+}
+
+export interface HataFeedEmojiChangeRequest {
+	id: string;
+	originalRequestId: string;
+	targetEmojiId: string;
+	createdAt: string;
+	updatedAt: string;
+	requestedBy: Misskey.entities.UserLite | null;
+	kind: 'updateImage' | 'withdraw';
+	status: 'pending' | 'held' | 'approved' | 'rejected';
+	name: string;
+	reason: string;
+	previousImageUrl: string;
+	imageUrl: string | null;
+	license: string | null;
+	resolvedAt: string | null;
+	resolvedById: string | null;
+	resolvedComment: string | null;
+	events: { status: HataFeedEmojiChangeRequest['status']; at: string; actorId: string; comment: string | null }[];
+}
+
+export const emojiChangeLabel = { updateImage: i18n.ts._hata._hatafeed._emojiChangeCommon.imageUpdate, withdraw: i18n.ts._hata._hatafeed._emojiChangeCommon.withdraw } as const;
+export function emojiRequestDisplayStatus(request: HataFeedEmojiRequest): string {
+	if (request.status === 'approved' && request.currentEmoji === null) return request.latestChange?.kind === 'withdraw' && request.latestChange.status === 'approved' ? 'removed' : 'missing';
+	return request.status;
+}
+export function activeEmojiChange(request: HataFeedEmojiRequest): HataFeedEmojiChangeRequest | null {
+	return request.latestChange && ['pending', 'held'].includes(request.latestChange.status) ? request.latestChange : null;
+}
+export function emojiChangeError(error: unknown): string {
+	const labels = i18n.ts._hata._hatafeed._emojiChangeCommon;
+	const messages: Record<string, string> = {
+		HATAFEED_EMOJI_REQUEST_CONFLICT: labels.requestConflict,
+		HATAFEED_EMOJI_TARGET_CHANGED: labels.targetChanged,
+		HATAFEED_EMOJI_CHANGE_PENDING: labels.changePending,
+		HATAFEED_EMOJI_INVALID_IMAGE: labels.invalidImage,
+		HATAFEED_EMOJI_REASON_REQUIRED: labels.reasonRequired,
+		NO_SUCH_EMOJI_REQUEST: labels.requestMissing,
+		HATAFEED_ACCESS_DENIED: labels.accessDenied,
+	};
+	return messages[(error as { code?: string })?.code ?? ''] ?? labels.failed;
 }
 
 // 旗鯖fork: 現在試せるベータ機能の一覧。ベータページのカードと、ベータボタンのバッジ数の両方で使う。
@@ -167,6 +213,9 @@ export const emojiStatusLabel: Record<string, string> = {
 	held: copy.emojiHeld,
 	approved: copy.emojiApproved,
 	rejected: copy.emojiRejected,
+	cancelled: i18n.ts._hata._hatafeed._emojiChangeCommon.cancelled,
+	removed: i18n.ts._hata._hatafeed._emojiChangeCommon.removed,
+	missing: i18n.ts._hata._hatafeed._emojiChangeCommon.missing,
 };
 
 // 絵文字申請の状態アイコン(承認=✓ / 審査中=時計 / 却下=🚫)。
@@ -175,6 +224,9 @@ export const emojiStatusIcon: Record<string, string> = {
 	held: 'ti-player-pause',
 	approved: 'ti-circle-check',
 	rejected: 'ti-ban',
+	cancelled: 'ti-circle-minus',
+	removed: 'ti-circle-minus',
+	missing: 'ti-alert-circle',
 };
 
 // 通知タイプ → 日本語ラベル(ホーム通知フィルタ用)。
@@ -229,6 +281,7 @@ export interface HataFeedNotif {
 	actor: HataFeedNotifActor | null;
 	feedbackId: string | null;
 	emojiRequestId: string | null;
+	emojiChangeRequestId?: string | null;
 	commentId?: string | null;
 	[k: string]: unknown;
 }

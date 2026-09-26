@@ -12,10 +12,9 @@ vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixtures.api }));
 vi.mock('@/os.js', () => ({ form: fixtures.form, popup: fixtures.popup, confirm: fixtures.confirm, toast: vi.fn() }));
 vi.mock('@/components/HataFeedExportWindow.vue', () => ({ default: { name: 'HataFeedExportWindow', template: '<div/>' } }));
 vi.mock('@/i18n.js', async () => {
-	const { readFileSync } = await import('node:fs');
-	const { resolve } = await import('node:path');
-	const { load } = await import('js-yaml');
-	return { i18n: { ts: load(readFileSync(resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')), tsx: { _hata: { _hatafeed: { _home: { deleteProjectText: () => '関連するイシューも削除', suspendProjectText: () => 'プロジェクトを一時停止' } } } } } };
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
 });
 vi.mock('@/utility/hatasaba-device-prefs.js', async () => {
 	const theme = (await import('vue')).ref('light');

@@ -233,9 +233,21 @@ describe('HataskAkatsukiApps', () => {
 		const tools = mountApps({ kind: 'tools' });
 		const hataskRows = [...hatask.container.querySelectorAll('[data-app-layout="desktop"] [data-app-id]')];
 		const toolRows = [...tools.container.querySelectorAll('[data-app-layout="desktop"] [data-app-id]')];
-		expect(hataskRows).toHaveLength(7);
+		expect(hataskRows).toHaveLength(8);
 		expect(toolRows).toHaveLength(12);
 		for (const row of [...hataskRows, ...toolRows]) expect(row.className).toBe(hataskRows[0].className);
+	});
+
+	test('新しいレシピ入口だけにNEWバッジを件数バッジと同じ見た目で出す', () => {
+		for (const layout of ['mobile', 'desktop'] as const) {
+			const { container } = mountApps({ kind: 'hatask' });
+			const badges = [...container.querySelectorAll<HTMLElement>(`[data-app-layout="${layout}"] [data-new-badge]`)];
+			expect(badges.map(badge => badge.closest<HTMLElement>('[data-app-id]')!.dataset.appId)).toEqual(['recipe']);
+			expect(badges[0].textContent).toBe('NEW');
+			const countBadge = container.querySelector('[data-count-badge]');
+			if (countBadge) expect(badges[0].className).toBe(countBadge.className);
+		}
+		expect(mountApps({ kind: 'tools' }).container.querySelector('[data-new-badge]')).toBeNull();
 	});
 
 	test('両AppのPC・モバイルの件数バッジは白い数字で表示する', () => {
@@ -269,9 +281,9 @@ describe('HataskAkatsukiApps', () => {
 		}
 	});
 
-	test('Hataskの7入口と6特集はopenだけを親へ通知する', () => {
+	test('Hataskの8入口と6特集はopenだけを親へ通知する', () => {
 		const { container, open } = mountApps();
-		const ids = ['cal', 'todo', 'mood', 'meal', 'garden', 'ranking', 'settings'];
+		const ids = ['cal', 'todo', 'mood', 'meal', 'recipe', 'garden', 'ranking', 'settings'];
 		for (const layout of ['mobile', 'desktop'] as const) {
 			expect(appIds(container, layout)).toEqual(ids);
 			for (const id of ids) container.querySelector<HTMLButtonElement>(`[data-app-layout="${layout}"] [data-app-id="${id}"] button`)!.click();

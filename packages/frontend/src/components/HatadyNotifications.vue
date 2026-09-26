@@ -19,32 +19,32 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<button
 			class="hy-icon-button"
 			:disabled="busy || loading || !!deletingIds || !items.length"
-			aria-label="通知をすべて削除"
-			title="通知をすべて削除"
+			:aria-label="noticeCopy.deleteAll"
+			:title="noticeCopy.deleteAll"
 			@click="askDelete"
 		>
 			<i class="ti ti-trash"></i>
 		</button>
 	</template>
 	<div v-if="deletingIds" :class="$style.confirm">
-		<p>{{ deletingIds.length }}件の通知を削除します</p>
-		<p>記録・返信・フォローは残ります</p>
+		<p>{{ i18n.tsx._hata._hatady._notificationsView.deleteCount({ count: deletingIds.length }) }}</p>
+		<p>{{ noticeCopy.retainContent }}</p>
 		<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
 		<div>
-			<button class="hy-secondary" :disabled="busy" @click="cancelDelete">キャンセル</button>
-			<button class="hy-primary" :disabled="busy" @click="confirmDelete">削除する</button>
+			<button class="hy-secondary" :disabled="busy" @click="cancelDelete">{{ i18n.ts.cancel }}</button>
+			<button class="hy-primary" :disabled="busy" @click="confirmDelete">{{ noticeCopy.deleteAction }}</button>
 		</div>
 	</div>
 	<div v-if="undoIds.length && !deletingIds" :class="$style.undo">
-		<span>通知を削除しました</span>
-		<button class="hy-secondary" :disabled="busy" @click="undoDelete">元に戻す</button>
+		<span>{{ noticeCopy.deleted }}</span>
+		<button class="hy-secondary" :disabled="busy" @click="undoDelete">{{ noticeCopy.undo }}</button>
 	</div>
 	<p v-if="error && !deletingIds" class="hy-error" role="alert">{{ error }}</p>
 
 	<div v-show="!deletingIds" class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
 		<!-- フィルタ -->
 		<div :class="$style.filters">
-			<HyCapsule v-model="activeFilter" :options="filters" label="通知の種類"/>
+			<HyCapsule v-model="activeFilter" :options="filters" :label="noticeCopy.typeFilter"/>
 			<button type="button" :class="$style.readAll" :disabled="loading || markingRead" @click="markAllRead">
 				<i class="ti ti-checks"></i>
 				{{ copy.markAllRead }}
@@ -160,6 +160,7 @@ const dialog = ref<any>(null);
 const theme = hatadyTheme;
 const copy = i18n.ts._hata._hatady._notifications;
 const copyx = i18n.tsx._hata._hatady._notifications;
+const noticeCopy = i18n.ts._hata._hatady._notificationsView;
 const shortDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric' });
 
 const items = ref<any[]>([]);
@@ -285,7 +286,7 @@ async function reload() {
 		items.value = collected;
 		return true;
 	} catch {
-		error.value = '通知を読み込めませんでした';
+		error.value = noticeCopy.loadFailed;
 		return false;
 	} finally {
 		loading.value = false;
@@ -301,7 +302,7 @@ async function markAllRead() {
 		for (const n of items.value) n.isRead = true;
 		emit('read', true);
 	} catch {
-		error.value = '既読にできませんでした';
+		error.value = noticeCopy.readFailed;
 	} finally {
 		markingRead.value = false;
 	}
@@ -330,7 +331,7 @@ async function toggleFollowBack(n: any) {
 		await misskeyApi(next ? 'hata/hatady/following/create' : 'hata/hatady/following/delete', { userId: n.user.id });
 		n.isFollowingBack = next;
 	} catch {
-		error.value = 'フォローを変更できませんでした';
+		error.value = i18n.ts._hata._hatady._profileView.followFailed;
 	} finally {
 		n.busy = false;
 	}
@@ -380,9 +381,9 @@ async function confirmDelete() {
 		}
 		deletingIds.value = null;
 		emit('read');
-		hatadyNotify('通知を削除しました');
+		hatadyNotify(noticeCopy.deleted);
 	} catch {
-		error.value = '残りの通知を削除できませんでした';
+		error.value = noticeCopy.deleteRemainingFailed;
 		emit('read');
 	} finally {
 		busy.value = false;
@@ -402,9 +403,9 @@ async function undoDelete() {
 		}
 		await reload();
 		emit('read');
-		hatadyNotify('通知を元に戻しました');
+		hatadyNotify(noticeCopy.restored);
 	} catch {
-		error.value = '残りの通知を元に戻せませんでした';
+		error.value = noticeCopy.restoreRemainingFailed;
 		await reload();
 		emit('read');
 	} finally {

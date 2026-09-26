@@ -16,6 +16,7 @@ import shellSource from './index.vue?raw';
 import mobileSource from './SettingsMobileOverview.vue?raw';
 import searchSource from './SettingsSearchPanel.vue?raw';
 import { settingsDestinationSections, settingsDestinations } from './settings-destinations.js';
+import { preferenceGroups } from './settings-preferences-catalog.js';
 import routerSource from '@/router.definition.ts?raw';
 
 function navigationPathKey(item: (typeof settingsDestinations)[number]): string {
@@ -33,7 +34,7 @@ describe('settings redesign destination contract', () => {
 		// 旗鯖fork: ⚠️用途ごとに節を割り直した（10 → 15）。
 		//   「データと連携」に17項目が積まれていて、どこに何があるか読めなかった。
 		// 旗鯖fork: ⚠️プロフィールだけの節は畳んだ（左上に常設の入口があるため）。
-		expect(settingsDestinationSections).toHaveLength(14);
+		expect(settingsDestinationSections).toHaveLength(13);
 		expect(settingsDestinationSections.every(section => section.items.length > 0)).toBe(true);
 		expect(new Set(settingsDestinations.map(item => item.id)).size).toBe(settingsDestinations.length);
 		expect(settingsDestinations.length).toBeGreaterThan(0);
@@ -43,18 +44,25 @@ describe('settings redesign destination contract', () => {
 		const paths = settingsDestinations.map(navigationPathKey);
 		expect(new Set(paths).size).toBe(paths.length);
 	});
+	test('places Hataskey UI S directly under Hataskey UI', () => {
+		const section = settingsDestinationSections.find(item => item.id === 'hataskey-ui');
+		expect(section?.label).toBe('hataskeyUI / S');
+		expect(section?.items.map(item => item.id)).toEqual(['hataskey-ui', 'hataskey-ui-s']);
+		expect(section?.items[1]).toMatchObject({ label: 'Hataskey UI S', route: '/settings/preferences', categoryId: 'hataskey-ui' });
+		expect(preferenceGroups['hataskey-ui-s']).toEqual({ title: 'Hataskey UI S', description: 'HatsakeyUIの良さはそのまま、シンプルで遊び心のあるUIです。' });
+	});
 	test('active, brand, search, and route contracts are wired', () => {
 		for (const source of [shellSource, mobileSource]) expect(source).toContain('aria-current');
 		expect(searchSource).toContain('aria-selected');
 		for (const source of [shellSource, mobileSource, searchSource]) expect(source).toContain('settingsBrand');
-		for (const id of ['hataskey-ui', 'hataskey-tools', 'hatasnscord-ui']) {
+		for (const id of ['hataskey-ui', 'hataskey-tools']) {
 			expect(settingsDestinationSections.find(section => section.id === id)?.brand).toBeTruthy();
 		}
 		expect(shellSource).toContain('sectionHasActiveItem');
 		expect(searchSource).toContain('[aria-selected=\'true\']:hover');
 		expect(searchSource).toContain('hasSettingsBrand(item.label)');
 		expect(routerSource).toContain('name: \'hatafeed-settings\'');
-		expect(routerSource).toContain('name: \'hatasnscord-ui-settings\'');
+		expect(routerSource).not.toContain('hatasnscord-ui');
 		expect(routerSource).toContain('import(\'@/pages/settings/preferences.vue\')');
 	});
 });

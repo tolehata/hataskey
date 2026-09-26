@@ -19,8 +19,11 @@ import {
 	normalizeMediaSortForKind,
 } from './hatady-media.js';
 
-vi.mock('@/i18n.js', () => ({ i18n: { ts: {}, tsx: {} } }));
-
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 describe('Hatady media API payload helpers', () => {
 	test('movie payload excludes every game-only field', () => {
 		const payload = mediaWorkSpecificPayload('movie', {
@@ -242,9 +245,9 @@ describe('Hatady media API payload helpers', () => {
 	// 旗鯖fork(Hatady): マイログの表示種別。端末ローカルの保存値から復元するため壊れた値も来る。
 	test('log kind selection survives broken storage but keeps an explicit empty choice', () => {
 		// 保存が無い(初回)ときだけ全部表示に倒す。
-		expect(normalizeHatadyLogKinds(null)).toEqual(['study', 'movie', 'game', 'exercise', 'work']);
-		expect(normalizeHatadyLogKinds('not json')).toEqual(['study', 'movie', 'game', 'exercise', 'work']);
-		expect(normalizeHatadyLogKinds('{"a":1}')).toEqual(['study', 'movie', 'game', 'exercise', 'work']);
+		expect(normalizeHatadyLogKinds(null)).toEqual(['study', 'movie', 'game', 'exercise', 'work', 'cooking']);
+		expect(normalizeHatadyLogKinds('not json')).toEqual(['study', 'movie', 'game', 'exercise', 'work', 'cooking']);
+		expect(normalizeHatadyLogKinds('{"a":1}')).toEqual(['study', 'movie', 'game', 'exercise', 'work', 'cooking']);
 		// ⚠️空配列は「何も表示しない」という利用者の選択。全部表示に読み替えてはいけない。
 		expect(normalizeHatadyLogKinds('[]')).toEqual([]);
 		// 未知の値は落とし、保存順の揺れは定義順へ揃える。

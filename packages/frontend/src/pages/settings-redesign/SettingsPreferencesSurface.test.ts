@@ -30,7 +30,10 @@ import legacySource from '@/pages/settings/preferences.vue?raw';
 const unique = (values: string[]) => [...new Set(values)];
 const oldContainers = unique([...legacySource.matchAll(/<MkPreferenceContainer\s+k="([^"]+)"/gu)].map(match => match[1]));
 const oldModels = unique([...legacySource.matchAll(/prefer\.model\(\s*['"]([^'"]+)['"]/gu)].map(match => match[1]));
-const newKeys = ['emojiAdditionNotice', 'hourlyTimeNotice'];
+const navbarKeys = ['emojiAdditionNotice', 'hourlyTimeNotice'];
+const ui3ComposerKeys = ['hataskeyUi3ComposerShortcut1', 'hataskeyUi3ComposerShortcut2', 'hataskeyUi3ComposerEmojiPosition', 'hataskeyUi3ComposerPosition'];
+const ui3RssKeys = ['hataskeyUi3RssEnabled', 'hataskeyUi3RssFeeds', 'hataskeyUi3RssAutoSwitch', 'hataskeyUi3RssReadSeconds', 'hataskeyUi3RssReadMode'];
+const newKeys = [...navbarKeys, ...ui3ComposerKeys, ...ui3RssKeys];
 
 describe('redesigned preferences inventory', () => {
 	it('explains automatic Hataskey placement while retaining other UIs saved options', () => {
@@ -43,16 +46,26 @@ describe('redesigned preferences inventory', () => {
 		expect(byKey.get('notificationStackAxis')?.options).toEqual(['vertical', 'horizontal']);
 	});
 
-	it('retains every legacy container alongside the two new-settings-only navbar switches', () => {
+	it('retains every legacy container alongside the new-settings-only navbar switches and UI3 composer options', () => {
 		expect(oldContainers).toHaveLength(101);
-		expect(preferenceContainerKeys).toHaveLength(103);
+		expect(preferenceContainerKeys).toHaveLength(112);
 		expect(new Set(preferenceContainerKeys.filter(key => !newKeys.includes(key)))).toEqual(new Set(oldContainers));
 		for (const key of newKeys) {
 			expect(oldContainers).not.toContain(key);
 			expect(oldModels).not.toContain(key);
-			expect(preferenceControls.find(control => control.key === key)).toMatchObject({ kind: 'switch', destinationId: 'notifications-preferences' });
 			expect(modelsSource).toContain(`prefer.model('${key}')`);
 		}
+		for (const key of navbarKeys) {
+			expect(preferenceControls.find(control => control.key === key)).toMatchObject({ kind: 'switch', destinationId: 'notifications-preferences' });
+		}
+		expect(preferenceControls.find(control => control.key === 'hataskeyUi3ComposerShortcut1')).toMatchObject({ kind: 'select', destinationId: 'hataskey-ui-s' });
+		expect(preferenceControls.find(control => control.key === 'hataskeyUi3ComposerShortcut2')).toMatchObject({ kind: 'select', destinationId: 'hataskey-ui-s' });
+		expect(preferenceControls.find(control => control.key === 'hataskeyUi3ComposerEmojiPosition')).toMatchObject({ kind: 'radios', destinationId: 'hataskey-ui-s', options: ['afterShortcuts', 'beforeVisibility'] });
+		expect(preferenceControls.find(control => control.key === 'hataskeyUi3ComposerPosition')).toMatchObject({ kind: 'radios', destinationId: 'hataskey-ui-s', options: ['top', 'bottom'] });
+		expect(preferenceControls.filter(control => control.destinationId === 'hataskey-ui-s').map(control => control.key)).toEqual([...ui3ComposerKeys, ...ui3RssKeys]);
+		expect(preferenceControls.find(control => control.key === 'showFixedPostForm')?.destinationId).toBe('timeline-post-form');
+		expect(surfaceSource).toContain("key === 'showFixedPostForm') return ui === 'hataskey3'");
+		expect(surfaceSource).toContain("control.key === 'showFixedPostForm' && ui === 'hataskey3'");
 	});
 
 	it('keeps every explicit legacy model and the special animation inversion', () => {
@@ -66,8 +79,8 @@ describe('redesigned preferences inventory', () => {
 	});
 
 	it('has one manifest destination for all settings and auxiliary controls', () => {
-		expect(preferenceControls).toHaveLength(103);
-		expect(settingsInventoryKeys).toHaveLength(121);
+		expect(preferenceControls).toHaveLength(112);
+		expect(settingsInventoryKeys).toHaveLength(130);
 		assertPreferenceInventory(preferenceControls, preferenceAuxiliaryControls);
 		for (const item of [...preferenceControls, ...preferenceAuxiliaryControls]) expect(preferenceDestinationIds).toContain(item.destinationId);
 	});

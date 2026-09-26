@@ -36,7 +36,6 @@ import { fetchMutedUsers, refreshMutedUsers } from '@/utility/muted-users.js';
 import { hideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
 import { enqueueHataDialog } from '@/utility/hata-dialog-queue.js';
 import { HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
-import { shouldSuppressServerDisconnectUi } from '@/utility/server-disconnect-ui-suppression.js';
 import { startHataskFlowerGrowthTracker } from '@/utility/hatask-flower-growth.js';
 
 export async function mainBoot() {
@@ -89,8 +88,8 @@ export async function mainBoot() {
 			case 'visitor':
 				rootComponent = await import('@/ui/visitor.vue').then(x => x.default);
 				break;
-			case 'hatacording':
-				rootComponent = await import('@/ui/hatacording.vue').then(x => x.default);
+			case 'hataskey3':
+				rootComponent = await import('@/ui/hataskey3.vue').then(x => x.default);
 				break;
 			case 'simple':
 				rootComponent = await import('@/ui/simple.vue').then(x => x.default);
@@ -397,9 +396,6 @@ export async function mainBoot() {
 
 			let reloadDialogShowing = false;
 			stream.on('_disconnected_', async () => {
-				// HataSNSCordUIはタイムライン内のfoil案内で設定別の再接続処理を担う。
-				// 画面を離れると抑止参照が解放され、ここで従来動作へ戻る。
-				if (shouldSuppressServerDisconnectUi()) return;
 				if (prefer.s.serverDisconnectedBehavior === 'reload') {
 					window.location.reload();
 				} else if (prefer.s.serverDisconnectedBehavior === 'dialog') {
@@ -489,7 +485,7 @@ export async function mainBoot() {
 	let safemodeRequestCount = 0;
 	let safemodeRequestTimer: number | null = null;
 	const keymap = {
-		'p|n': () => {
+		[ui === 'hataskey3' ? 'p' : 'p|n']: () => {
 			if ($i == null) return;
 			post();
 		},

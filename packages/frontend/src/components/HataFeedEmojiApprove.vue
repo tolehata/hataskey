@@ -131,6 +131,7 @@ import MkWindow from '@/components/MkWindow.vue';
 import { useHataFeedDraft } from '@/utility/hatafeed-draft.js';
 import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
 import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
+import { $i } from '@/i.js';
 import '@/components/hatafeed-ui.css';
 import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
@@ -269,6 +270,7 @@ async function holdAndNext(): Promise<void> {
 			isSensitive: isSensitive.value,
 		});
 		heldCount.value++;
+		notifyReviewResult(req, '保留');
 		slideDirection.value = 'next';
 		removeCurrent();
 		emit('done');
@@ -321,7 +323,7 @@ async function approve(): Promise<void> {
 		approvedCount.value++;
 		removeCurrent();
 		emit('done');
-		hataFeedNotify('保存しました');
+		notifyReviewResult(req, '承認');
 	} catch {
 		error.value = '処理できませんでした。入力内容を残しています';
 	} finally {
@@ -340,6 +342,7 @@ async function reject(): Promise<void> {
 		if (!await ensureStillPending(req.id)) return;
 		await misskeyApi('hata/feedback/emoji-requests/reject', { requestId: req.id, comment: result.trim() === '' ? null : result });
 		rejectedCount.value++;
+		notifyReviewResult(req, '却下');
 		removeCurrent();
 		emit('done');
 	} catch {
@@ -351,6 +354,10 @@ async function reject(): Promise<void> {
 
 function closeWindow(): void {
 	dialog.value?.close();
+}
+
+function notifyReviewResult(req: HataFeedEmojiRequest, result: string) {
+	if (req.requestedBy?.id !== $i?.id) hataFeedNotify(`:${req.name}: の追加申請を${result}しました`);
 }
 </script>
 

@@ -34,8 +34,8 @@
   <div class="htk-sch-note">{{copy.searchScopeNote}}</div>
 </template>
 <template #home-feedback>
-	<p v-if="hfState==='loading'" role="status">通知を読み込んでいます</p>
-	<p v-else-if="hfState==='error'" role="status">通知を読み込めませんでした</p>
+	<p v-if="hfState==='loading'" role="status">{{ copy.notificationLoading }}</p>
+	<p v-else-if="hfState==='error'" role="status">{{ copy.notificationFailed }}</p>
 	<p v-else-if="!hfNotifs.length">{{copy.noNotifications}}</p>
 	<button v-for="n in akatsukiFeedbackNotifications" :key="n.id" type="button" class="htk-akatsuki-notification" :data-unread="!n.isRead" @click="openAkatsukiFeedbackNotification(n)">
 	  <i :class="['ti',hfIcon(n.type)]" aria-hidden="true"></i><HataFeedNotificationBody :text="notificationDisplayMessage(n)"/>
@@ -80,6 +80,7 @@
 />
 <HataskRecordReview v-if="activeTab === 'review' && canReviewRecords" ref="recordReview" :theme="plannerTheme" :mode="themeMode"/>
 <HataskSupport v-if="activeTab === 'support'" :theme="plannerTheme" :mode="themeMode" :animations="settings.animations !== false"/>
+<HataskRecipe v-if="recipeMounted" v-show="activeTab === 'recipe'" ref="recipeView" :theme="plannerTheme" :mode="themeMode" :consented="settings.recipeConsentShown === true" :settingsReady="dataLoaded && loadedKeys.has('settings')" @consent="ackRecipeConsent" @close="closeRecipe" @hatadyCookingSaved="offerHatadyReturn"/>
 <HataskRanking v-if="activeTab === 'ranking'" :theme="plannerTheme" :mode="themeMode" :showAchievementNotice="dataLoaded && loadedKeys.has('settings') && settings.showRankingAchievementNotice !== false"/>
 
 <!-- ========== CALENDAR ========== -->
@@ -457,14 +458,8 @@
     :save="saveMoodEntry"
     :remove="deleteMoodEntry"
     @info="showMoodDisclaimer=true"
-  >
-    <template #reminders>
-      <div class="htk-journal-reminders">
-        <button type="button" role="switch" :aria-checked="!!settings.moodRemind" :disabled="journalReminderSaving || !loadedKeys.has('settings')" @click="setJournalReminder(!settings.moodRemind)"><i class="ti ti-bell"></i>{{copy.reminder}}<i :class="settings.moodRemind?'ti ti-toggle-right':'ti ti-toggle-left'" aria-hidden="true"></i></button>
-        <div role="group" :aria-label="copy.reminderNotification"><button v-for="t in moodRemindTimes" :key="t" type="button" :aria-pressed="settings.moodRemindTimes?.includes(t)" :data-selected="settings.moodRemindTimes?.includes(t)" :disabled="journalReminderSaving || !loadedKeys.has('settings')" @click="toggleMoodRemindTime(t)">{{moodRemindTimeLabel(t)}}</button></div>
-      </div>
-    </template>
-  </HataskJournal>
+    @reminders="openHataskSettings('moodReminder')"
+  />
 </div>
 
 <div v-show="activeTab==='meal'" class="htk-tabpage htk-journal-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
@@ -491,14 +486,7 @@
 
 <!-- ========== GARDEN ========== -->
 <div v-if="activeTab==='garden'" class="htk-tabpage htk-garden-page htk-panels" data-garden-layout="streams">
-  <section class="htk-lg htk-anim htk-growing-panel"><div class="htk-gc">
-    <header class="htk-flower-heading"><h3 class="htk-sec-title">{{copy.currentFlower}}</h3><button type="button" class="htk-flower-icon-button" :aria-label="copy.howToGrowFlowers" @click="showFlowerInfo=true"><i class="ti ti-help" aria-hidden="true"></i></button></header>
-    <div class="htk-growing-content">
-      <div class="htk-fl-ring htk-growing-ring" role="progressbar" :aria-label="copy.flowerGrowth" :aria-valuenow="flower.progress" :aria-valuemin="0" :aria-valuemax="100"><svg viewBox="0 0 160 160" aria-hidden="true"><circle class="htk-fl-track" cx="80" cy="80" r="70"/><circle class="htk-fl-bar" cx="80" cy="80" r="70" :style="{strokeDasharray:'440',strokeDashoffset:440-440*(flower.progress/100)}"/></svg><div class="htk-fl-emo"><HataskEmoji :emoji="flower.emoji"/></div></div>
-      <div class="htk-growing-copy"><div class="htk-growing-name"><strong>{{currentFlowerDisplayName}}</strong><span v-if="isRareHataskFlower(flower)" class="htk-flower-rare-label"><i class="ti ti-sparkles" aria-hidden="true"></i>{{copy.rareFlower}}</span></div><p v-if="currentFlowerHanakotoba" class="htk-growing-meaning">{{copy.flowerMeaning}}: {{currentFlowerHanakotoba}}</p><p class="htk-growing-remaining">{{flower.progress<100?copyx.flowerBloomsIn({duration:estimateRemaining}):copy.flowerBloomedTitle}}</p><p class="htk-growing-progress">{{copyx.flowerProgressTotal({progress:flower.progress.toString(),total:formatMinutes(flower.totalMinutes)})}}</p><p v-if="isHatakyu" class="htk-growing-note">{{flower.progress>=100?copy.hkGardenBloomed:copy.hkGardenAlmost}}</p></div>
-      <button v-if="flower.progress>=100" type="button" class="htk-btn htk-primary htk-growing-harvest" :disabled="!flowerDataWritable || flowerDialogOpen" @click="handleFlowerHarvest">{{copy.harvestAndName}}</button>
-    </div>
-  </div></section>
+  <HataskFlowerCare ref="flowerCare" :todos="todos" :folders="folders" :animations="flowerAnimations" :theme="plannerTheme" :mode="themeMode" :readOnly="plannerReadOnly" :completeTodo="completeGardenTodo" @state="applyFlowerState" @harvested="onFlowerHarvested" @hatady="routeRouter.push('/hatady')"/>
   <div class="htk-garden-collections">
     <section class="htk-lg htk-anim" data-garden-group="community"><div class="htk-gc">
       <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{copy.communityFlowerGallery}}</h3><p class="htk-flower-summary">{{copyx.flowerCount({count:communityFlowerTotal.toString()})}} · {{seasonFlowerLabel}}</p></div><button type="button" class="htk-flower-icon-button" data-flower-collection-button="community" :aria-label="flowerCollectionLabel('community')" :title="flowerCollectionLabel('community')" aria-haspopup="dialog" :aria-expanded="flowerCollectionKind==='community'" @click="openFlowerCollection('community', $event)"><i class="ti ti-layout-grid" aria-hidden="true"></i></button><button type="button" class="htk-flower-icon-button" :aria-label="flowerPauseLabel('community')" :title="flowerPauseLabel('community')" :aria-pressed="flowerStreamPaused.community" :disabled="!flowerAnimations" @click="toggleFlowerStream('community')"><i :class="flowerStreamPaused.community?'ti ti-player-play':'ti ti-player-pause'" aria-hidden="true"></i></button></header>
@@ -517,7 +505,8 @@
     <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{copy.communityGarden}}</h3><p class="htk-flower-summary">{{copy.communityFlowerActivity}} · {{copyx.flowerCount({count:communityFlowerViews.length.toString()})}}</p></div><button type="button" class="htk-flower-icon-button" :aria-label="flowerPauseLabel('activity')" :title="flowerPauseLabel('activity')" :aria-pressed="flowerStreamPaused.activity" :disabled="!flowerAnimations" @click="toggleFlowerStream('activity')"><i :class="flowerStreamPaused.activity?'ti ti-player-play':'ti ti-player-pause'" aria-hidden="true"></i></button></header>
     <div v-if="communityFlowersLoading" class="htk-gal-state" role="status">{{copy.flowerGalleryLoading}}</div>
     <div v-else-if="communityFlowersError" class="htk-gal-state htk-gal-error" role="alert">{{copy.flowerGalleryLoadFailed}}<button type="button" class="htk-btn htk-xs" @click="loadCommunityFlowers">{{copy.retry}}</button></div>
-    <HataskCommunityGarden v-else :flowers="communityFlowerViews" :selectedId="selectedCommunityFlowerId" :label="copy.communityGarden" :theme="plannerTheme" :mode="themeMode">
+    <HataskFlowerFestival v-if="flowerState" :festival="flowerState.festival" :animations="flowerAnimations"/>
+    <HataskCommunityGarden v-if="!communityFlowersLoading && !communityFlowersError" :season="flowerState?.festival.season" :animations="flowerAnimations" :flowers="communityFlowerViews" :selectedId="selectedCommunityFlowerId" :label="copy.communityGarden" :theme="plannerTheme" :mode="themeMode">
       <HataskFlowerStream v-if="communityFlowerViews.length" ref="activityFlowerStream" :items="communityFlowerViews" activity :label="copy.communityFlowerActivity" :rareLabel="copy.rareFlower" :harvestedLabel="copy.flowerHarvestedAt" :animations="flowerAnimations" :paused="flowerStreamPaused.activity || flowerDialogOpen || flowerCollectionOpen" @select="selection=>openFlowerDetail('activity',selection)"/>
       <p v-else class="htk-gal-state">{{copy.flowerGalleryEmpty}}</p>
     </HataskCommunityGarden>
@@ -667,6 +656,7 @@ import { definePage } from '@/page.js';
 import * as os from '@/os.js';
 import { claimAchievement } from '@/utility/achievements.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { createHatadyCookingReturnPrompt } from '@/utility/hatady-cooking-return.js';
 import { $i } from '@/i.js';
 import { useRouter } from '@/router.js';
 import { DI } from '@/di.js';
@@ -681,11 +671,17 @@ import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
 import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
 import HataskEmoji from '@/components/HataskEmoji.vue';
 import HataskFlowerStream from '@/components/hatask/HataskFlowerStream.vue';
+import HataskFlowerCare from '@/components/hatask/HataskFlowerCare.vue';
+import HataskFlowerFestival from '@/components/hatask/HataskFlowerFestival.vue';
+import { HATASK_FLOWER_STATE_EVENT, getHataskFlowerState, refreshHataskFlowerStateAfterUpdate, renameHataskFlower, hataskDropRewardMessage } from '@/utility/hatask-flower-v2.js';
+import { enqueuePageStatusToast } from '@/utility/hataskey-notification-toast.js';
+import type { HataskFlowerState } from '@/utility/hatask-flower-v2.js';
 import HataskCommunityGarden from '@/components/hatask/HataskCommunityGarden.vue';
 import HataskFlowerDetail from '@/components/hatask/HataskFlowerDetail.vue';
 import HataskFlowerCollection from '@/components/hatask/HataskFlowerCollection.vue';
 import HataskRanking from '@/components/hatask/HataskRanking.vue';
 import HataskSupport from '@/components/hatask/HataskSupport.vue';
+import HataskRecipe from '@/components/hatask/HataskRecipe.vue';
 import HataskRecordReview from '@/components/hatask/HataskRecordReview.vue';
 import type { HataskFlowerView, HataskFlowerSelection } from '@/components/hatask/hatask-flower-view.js';
 import HataskCalendarPlanner from '@/components/hatask/HataskCalendarPlanner.vue';
@@ -706,7 +702,6 @@ import { readAkatsukiUsage, recordAkatsukiUsage } from '@/utility/hatask-akatsuk
 import HataskQuickCapture from '@/components/hatask/HataskQuickCapture.vue';
 import HataskJournal from '@/components/hatask/HataskJournal.vue';
 import { HATASK_MEAL_TEMPLATE_KEY, isJournalEntry, persistJournalChange } from '@/utility/hatask-journal.js';
-import { createHataskMoodReminderPatch } from '@/utility/hatask-mood-reminder.js';
 import type { HataskJournalChange, HataskJournalEntry, HataskMealTemplate } from '@/utility/hatask-journal.js';
 import type { HataskCaptureChip, HataskCaptureTool } from '@/components/hatask/HataskQuickCapture.vue';
 import HataskTemplateLibrary from '@/components/hatask/HataskTemplateLibrary.vue';
@@ -725,7 +720,8 @@ import { HATASK_PLANNER_COLLECTION_KEYS, HATASK_PLANNER_SCOPE, migrateHataskPlan
 import type { HataskPlannerCollectionKey, HataskPlannerEvent, HataskPlannerFolder, HataskPlannerRevision, HataskPlannerTemplate, HataskPlannerTodo, HataskRecurrenceFrequency } from '@/utility/hatask-planner-storage.js';
 import { normalizeHataskPlannerTemplates } from '@/utility/hatask-planner-templates.js';
 import { parseHataskCapture } from '@/utility/hatask-capture-parser.js';
-import { createNextRecurringTodo, expandHataskEventOccurrences } from '@/utility/hatask-planner-recurrence.js';
+import { expandHataskEventOccurrences } from '@/utility/hatask-planner-recurrence.js';
+import { completeHataskTodos } from '@/utility/hatask-todo-completion.js';
 import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive, currentExpression as mascotCurrentExpression, currentPhrase as mascotCurrentPhrase, pickRandomPhrase as mascotPickRandomPhrase, displaySettings as mascotDisplaySettings, loadDisplaySettings as loadMascotDisplaySettings, nextIdleDelayMs as mascotNextIdleDelayMs, escapeText as mascotEscapeText } from '@/utility/mascot-store.js';
 const copy = i18n.ts._hata._hatask._main;
 const copyx = i18n.tsx._hata._hatask._main;
@@ -739,13 +735,15 @@ definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
 const SCOPE=['client','hatask'];
 const canReviewRecords = computed(() => !!$i && ($i.isAdmin || $i.isModerator));
 const recordReview = ref<InstanceType<typeof HataskRecordReview>>();
-const tabs=computed(() => [{id:'home',icon:'ti ti-home',label:copy.tabHome},{id:'cal',icon:'ti ti-calendar',label:copy.tabCalendar},{id:'todo',icon:'ti ti-checkbox',label:'ToDo'},{id:'mood',icon:'ti ti-mood-smile',label:copy.tabMood},{id:'meal',icon:'ti ti-bowl',label:copy.tabMeal},{id:'garden',icon:'ti ti-flower',label:copy.tabGarden}, { id: 'support', icon: 'ti ti-heart-handshake', label: '支援情報' }, { id: 'ranking', icon: 'ti ti-trophy', label: i18n.ts._hata._hatask._ranking.title }, ...(canReviewRecords.value ? [{ id: 'review', icon: 'ti ti-shield-search', label: '記録確認' }] : [])]);
+const recipeView = ref<InstanceType<typeof HataskRecipe>>();
+// 調理中のタイマーや入力途中の記録を保つため、一度開いたレシピ画面はタブを離れても破棄しない。
+const recipeMounted = ref(false);
+const tabs=computed(() => [{id:'home',icon:'ti ti-home',label:copy.tabHome},{id:'cal',icon:'ti ti-calendar',label:copy.tabCalendar},{id:'todo',icon:'ti ti-checkbox',label:'ToDo'},{id:'mood',icon:'ti ti-mood-smile',label:copy.tabMood},{id:'meal',icon:'ti ti-bowl',label:copy.tabMeal},{ id: 'recipe', icon: 'ti ti-chef-hat', label: i18n.ts._hata._hatask._akatsuki.recipeTab },{id:'garden',icon:'ti ti-flower',label:copy.tabGarden}, { id: 'support', icon: 'ti ti-heart-handshake', label: i18n.ts._hata._hatask._akatsuki.supportTab }, { id: 'ranking', icon: 'ti ti-trophy', label: i18n.ts._hata._hatask._ranking.title }, ...(canReviewRecords.value ? [{ id: 'review', icon: 'ti ti-shield-search', label: i18n.ts._hata._hatask._akatsuki.reviewTab }] : [])]);
 // 旗鯖fork(v2 §16②): タブ切替の方向(配列上の左右関係に追従)。※watchはactiveTab宣言後に登録(下記)。
 const tabDir=ref<'fwd'|'back'>('fwd');
 const showMobileNav=ref(true);
 // 旗鯖fork(v2): きもち5段階は Tabler アイコンに統一(§05)。
 const moodIcons:Record<number,string>={1:'ti ti-mood-cry',2:'ti ti-mood-sad',3:'ti ti-mood-neutral',4:'ti ti-mood-smile',5:'ti ti-mood-heart'};
-const moodRemindTimes=['朝 8:00','昼 12:00','夜 20:00','寝る前 23:00'];
 // ===== 食事記録(meal) 定数。医療目的ではない自己記録メモ。数値評価・カロリー計算はしない =====
 const mealSlots=computed(() => [{id:'breakfast',emoji:'ti ti-sunrise',label:copy.mealSlotBreakfast},{id:'lunch',emoji:'ti ti-sun',label:copy.mealSlotLunch},{id:'dinner',emoji:'ti ti-moon',label:copy.mealSlotDinner},{id:'snack',emoji:'ti ti-cookie',label:copy.mealSlotSnack}]);
 // 3段階はすべて中立・等価に扱う。「食べれなかった」を否定的に強調しない
@@ -762,16 +760,8 @@ const notifyTimingLabels: Record<string, () => string> = {
 	'1時間前': () => copy.notify1HourBefore,
 	'1日前': () => copy.notify1DayBefore,
 };
-const moodRemindTimeLabels: Record<string, () => string> = {
-	'朝 8:00': () => copy.moodReminderMorning,
-	'昼 12:00': () => copy.moodReminderNoon,
-	'夜 20:00': () => copy.moodReminderEvening,
-	'寝る前 23:00': () => copy.moodReminderBedtime,
-};
 
 function notifyTimingLabel(value: string): string { return notifyTimingLabels[value]?.() ?? value; }
-
-function moodRemindTimeLabel(value: string): string { return moodRemindTimeLabels[value]?.() ?? value; }
 
 function moodNoteLabel(value: string): string { return value === '（ひとことなし）' ? copy.noMoodNote : value; }
 
@@ -795,7 +785,10 @@ const calendarWeekdays = Array.from({ length: 7 }, (_, index) => weekdayShortFor
 const dataLoaded = ref(false);
 const loadedKeys = new Set<string>();
 const plannerRevisions: Record<HataskPlannerCollectionKey, HataskPlannerRevision> = { todos: null, folders: null, events: null };
-const plannerStoragePort = createHataskPlannerApiStoragePort((endpoint, params) => misskeyApi(endpoint as never, params as never));
+const plannerStoragePort = createHataskPlannerApiStoragePort((endpoint, params) => misskeyApi(endpoint as never, params as never), rewards => {
+	for (const reward of Object.values(rewards)) enqueuePageStatusToast(copyx.todoCompletedRewardToast({ reward: hataskDropRewardMessage(reward, flowerState.value?.rules) }), reward.granted ? 'ti ti-droplet-filled' : 'ti ti-droplet-off');
+	void refreshHataskFlowerStateAfterUpdate().catch(() => {});
+});
 const plannerTemplates = ref<HataskPlannerTemplate[]>([]);
 const plannerTemplateRevision = ref<HataskPlannerRevision>(null);
 const templateKindFilter = ref<HataskTemplateKindFilter>('all');
@@ -855,7 +848,10 @@ async function registrySet(key:string,value:unknown):Promise<void>{
 			return;
 		} catch (error) {
 			storePlannerRecoveryCopy(key, value);
-			if ((error as { code?: string } | null)?.code === 'HATASK_PLANNER_CONFLICT') {
+			if ((error as { code?: string } | null)?.code === 'HATASK_RECORD_MODERATED') {
+				plannerStorageState.value = 'blocked';
+				plannerStorageDetail.value = '運営により削除された記録が含まれています。再読み込みして最新の記録を取得してください。';
+			} else if ((error as { code?: string } | null)?.code === 'HATASK_PLANNER_CONFLICT') {
 				plannerStorageState.value = 'conflict';
 				plannerStorageDetail.value = plannerCopy.conflict;
 			} else {
@@ -865,7 +861,15 @@ async function registrySet(key:string,value:unknown):Promise<void>{
 			throw error;
 		}
 	}
-	await misskeyApi('i/registry/set',{key,value,scope:SCOPE});
+	try {
+		await misskeyApi('i/registry/set',{key,value,scope:SCOPE});
+	} catch (error) {
+		if ((error as { code?: string } | null)?.code === 'HATASK_RECORD_MODERATED') {
+			plannerStorageState.value = 'blocked';
+			plannerStorageDetail.value = '運営により削除された記録が含まれています。再読み込みして最新の記録を取得してください。';
+		}
+		throw error;
+	}
 }
 
 async function loadPlannerTemplates(): Promise<void> {
@@ -977,6 +981,7 @@ watch(activeTab, () => {
     window.scrollTo({ top: window.scrollY }); // force scroll recalc
   });
 });
+watch(activeTab, t => { if (t === 'recipe') recipeMounted.value = true; }, { immediate: true });
 // meal タブを初めて開いたとき、免責ダイアログを必ず表示する(既読フラグは registry settings に同期)
 watch(activeTab, (t) => {
   if (t === 'meal' && dataLoaded.value && !settings.value.mealDisclaimerShown) {
@@ -1211,8 +1216,10 @@ function eventDateRangeLabel(ev:any):string {
 // 旗鯖fork(v2): 季ホーム末尾に並べる旗鯖独自セクション。
 // 旗鯖fork(#37): 設定UIは HataskSettings.vue に一本化(旗鯖独自設定と同じpopup)
 //   reopenTutorial イベントを受けて Hatask本体側のチュートリアル再表示を実行する
-function openHataskSettings(){
-  os.popup(defineAsyncComponent(()=>import('@/pages/HataskSettings.vue')), {}, {
+function openHataskSettings(focus?: 'moodReminder'){
+  // focus: きもち画面のリマインドボタンなど、開いた直後に見せたい設定項目。
+  // イベントハンドラとして直接渡される箇所があるため、引数は既知の値だけ通す。
+  os.popup(defineAsyncComponent(()=>import('@/pages/HataskSettings.vue')), { focus: focus === 'moodReminder' ? focus : undefined }, {
     reopenTutorial: () => { setTimeout(reopenTutorial, 250); },
     // 旗鯖fork(v2): 設定変更を即時反映(theme/darkMode/animations 等 → data-theme/data-anim/themeMode が反応)。
     changed: (s:any) => { if (s && typeof s === 'object') { settings.value = { ...settings.value, ...s }; } },
@@ -1725,6 +1732,28 @@ const loginNextReward=computed(()=>{const d=loginDays.value;for(const m of login
 const loginMessage=computed(()=>{const d=loginDays.value;if(d<=1)return copy.loginFirst;if(d<7)return copy.loginGettingUsed;if(d<30)return copy.loginRegular;if(d<100)return copy.loginThankYou;if(d<365)return copy.loginAmazing;return copy.loginLegend});
 async function fetchLoginRanking(){try{const res=await misskeyApi('hata/login-ranking',{});if(res&&typeof res.rank==='number'){loginRanking.value=res.rank;loginTotal.value=res.totalUsers??0}}catch(e){console.warn('Login ranking unavailable:',e)}}
 const settings=ref<any>({darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,showFeedbackNotif:true,showEarthquake:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],openOnStart:false,theme:'akatsuki',animations:true,todoSortModes:{},todoMobileTabOrder:['today','upcoming','all','completed','more']});
+const hatadyCookingRoute = computed(() => routeRouter.currentRef.value.props.get('tab') === 'recipe'
+	&& routeRouter.currentRef.value.props.get('from') === 'hatady'
+	&& routeRouter.currentRef.value.props.get('action') === 'cooking');
+let hatadyCookingOpened = false;
+watch(hatadyCookingRoute, () => { hatadyCookingOpened = false; });
+watch([hatadyCookingRoute, activeTab, dataLoaded, () => settings.value.recipeConsentShown, recipeView], async () => {
+	if (!hatadyCookingRoute.value || hatadyCookingOpened || activeTab.value !== 'recipe'
+		|| !dataLoaded.value || !loadedKeys.has('settings') || settings.value.recipeConsentShown !== true || !recipeView.value) return;
+	hatadyCookingOpened = true;
+	await nextTick();
+	if (hatadyCookingRoute.value && activeTab.value === 'recipe') recipeView.value?.openRecordFromHatady();
+}, { immediate: true });
+
+function closeRecipe(): void {
+	hatadyCookingOpened = true;
+	activeTab.value = 'hataskapps';
+}
+
+const offerHatadyReturn = createHatadyCookingReturnPrompt(
+	options => os.confirm(options),
+	() => { if (hataskPageActive) { cleanupHataskState(); routeRouter.push('/hatady'); } },
+);
 // 旗鯖fork: HataSideStudio・Hatask通知・HataIntroから、許可したタブへ直接移動する。
 // 明示的な tab を優先し、保存済み通知の notice は対応するタブへ読み替える。
 // すべてのテーマで共通のタブへ戻る。
@@ -1769,28 +1798,6 @@ function startHtkThemeWatch(){
 function stopHtkThemeWatch(){htk_themeObserver?.disconnect();htk_themeObserver=null}
 function toggleAutoTheme(){settings.value.autoTheme=!settings.value.autoTheme;saveSettings()}
 async function saveSettings(){await registrySet('settings',settings.value)}
-const journalReminderSaving = ref(false);
-
-async function saveJournalReminder(patch: { moodRemind?: boolean; moodRemindTimes?: string[] }): Promise<void> {
-	if (journalReminderSaving.value || !loadedKeys.has('settings')) return;
-	journalReminderSaving.value = true;
-	try {
-		const reminderPatch = createHataskMoodReminderPatch(settings.value, patch);
-		await registrySet('settings', { ...settings.value, ...reminderPatch });
-		settings.value = { ...settings.value, ...reminderPatch };
-	} catch {
-		os.alert({ type: 'error', text: i18n.ts._hata._hatask._journal.saveFailure });
-	} finally {
-		journalReminderSaving.value = false;
-	}
-}
-
-async function setJournalReminder(enabled: boolean): Promise<void> { await saveJournalReminder({ moodRemind: enabled }); }
-
-async function toggleMoodRemindTime(t: string): Promise<void> {
-	const times: string[] = Array.isArray(settings.value.moodRemindTimes) ? settings.value.moodRemindTimes : [];
-	await saveJournalReminder({ moodRemindTimes: times.includes(t) ? times.filter(time => time !== t) : [...times, t] });
-}
 function toggleNotifyTiming(t:string){const i=newEvent.value.notifyTimings.indexOf(t);if(i>=0)newEvent.value.notifyTimings.splice(i,1);else newEvent.value.notifyTimings.push(t)}
 
 // Calendar
@@ -2895,6 +2902,8 @@ type FlowerVisibility = 'public' | 'followers' | 'private';
 type CommunityFlower = { id: string; clientFlowerId?: string; emoji: string; name: string; hanakotoba?: string; harvestedAt: string; isOwner?: boolean; user?: Misskey.entities.UserLite };
 const flower = ref<HataskGrowingFlower>(createHataskGrowingFlower({ emoji: '🌱', name: 'わかば' }));
 const gallery=ref<any[]>([]);
+const flowerCare = ref<InstanceType<typeof HataskFlowerCare> | null>(null);
+const flowerState = ref<HataskFlowerState | null>(null);
 const flowerVisibility = ref<FlowerVisibility>('public');
 const flowerVisibilityOptions = computed(() => [
 	{ value: 'public' as const, icon: 'ti-world', label: copy.flowerVisibilityPublic },
@@ -3128,6 +3137,16 @@ function normalizeLocalFlowerGallery(value: unknown): { items: any[]; changed: b
 	return { items, changed: changed || items.length !== value.length };
 }
 
+function applyFlowerState(next: HataskFlowerState): void {
+	flowerState.value = next;
+	flower.value = next.flower;
+	const entries = next.zukan.entries.map(entry => ({ ...entry, name: entry.nickname || entry.name, clientFlowerId: entry.id, v2: true }));
+	gallery.value = [...entries, ...gallery.value.filter(item => !item.v2 && !entries.some(entry => entry.id === item.id))];
+}
+function onFlowerState(event: Event): void { applyFlowerState((event as CustomEvent<HataskFlowerState>).detail); }
+function onFlowerHarvested(next: HataskFlowerState): void { applyFlowerState(next); invalidateCommunityFlowers(); void syncHataskFlowerCount(); }
+async function completeGardenTodo(id: string, done: boolean): Promise<void> { registerCompletedUndo(await toggleTodo(id, done)); }
+
 function onHataskFlowerGrowth(event: Event): void {
 	const next = (event as CustomEvent<HataskGrowingFlower>).detail;
 	const normalized = normalizeHataskGrowingFlower(next);
@@ -3281,19 +3300,9 @@ async function addTodo(){
 	todos.value=next;
 	resetTodoEditor();
 }
-// 旗鯖fork(ハタキュ): 「今日終わった分」を数えるために、完了した時刻を残す。
-//   ⚠️過去に完了した分には doneAt が無い(遡って埋められない)。その分は今日の件数に入らない。
+// 完了処理は Hataskey UI 3 の右ペインと共有する(繰り返しToDoの次回分作成を含む)。
 function completeTodoDrafts(source:HataskPlannerTodo[],ids:readonly string[]):{next:HataskPlannerTodo[];undo:CompletedTodoUndoItem[]}{
-	const next=source.map(clonePlannerTodo);const undo:CompletedTodoUndoItem[]=[];const completedAt=new Date();
-	for(const id of ids){
-		const index=next.findIndex(item=>item.id===id);if(index<0||next[index].done||isTodoArchived(next[index]))continue;
-		const before=clonePlannerTodo(next[index]);const after=clonePlannerTodo(next[index]);after.done=true;after.doneAt=completedAt.toISOString();let generated:HataskPlannerTodo|undefined;
-		if(after.recurrence?.frequency!=='none'&&!next.some(item=>item.recurrenceParentId===after.id)){
-			const recurrence=createNextRecurringTodo(after,generateId(),completedAt);if(recurrence){generated=recurrence;next.unshift(generated);}
-		}
-		const completedIndex=next.findIndex(item=>item.id===id);next.splice(completedIndex,1,after);undo.push({before,after:clonePlannerTodo(after),...(generated?{generated:clonePlannerTodo(generated)}:{})});
-	}
-	return{next,undo};
+	return completeHataskTodos(source,ids,{generateId});
 }
 function registerCompletedUndo(entries:CompletedTodoUndoItem[]):void{
 	if(entries.length===0)return;completedUndoItems.value=[...completedUndoItems.value,...entries];
@@ -3443,6 +3452,14 @@ async function deleteMealTemplate(id: string): Promise<void> { await commitJourn
 
 function mealSlotInfo(id:string){return mealSlots.value.find(s=>s.id===id)||{emoji:'ti ti-tools-kitchen-2',label:''}}
 function mealLevelInfo(id:string){return mealLevels.value.find(l=>l.id===id)||{emoji:'ti ti-tools-kitchen-2',label:'',color:'var(--MI_THEME-fg)'}}
+
+// レシピの初回同意。同意しないまま閉じたら Hatask App 一覧へ戻る(同意フラグは registry settings に同期)。
+async function ackRecipeConsent(): Promise<void> {
+  if (settings.value.recipeConsentShown === true) return;
+  settings.value.recipeConsentShown = true;
+  await registrySet('settings', settings.value);
+}
+
 // 免責ダイアログ: 初回必ず表示、以降は!マークから手動表示
 async function ackMealDisclaimer(){showMealDisclaimer.value=false;if(!settings.value.mealDisclaimerShown){settings.value.mealDisclaimerShown=true;await registrySet('settings',settings.value)}}
 
@@ -3465,55 +3482,6 @@ async function inputFlowerName(props: { title: string; text: string; default: st
 	});
 }
 
-async function handleFlowerHarvest(): Promise<void> {
-	if (!hataskPageActive || activeTab.value !== 'garden' || !flowerDataWritable.value || flowerDialogOpen.value || flower.value.progress < 100) return;
-	flowerDialogOpen.value = true;
-	try {
-		await harvestFlower();
-	} catch (error) {
-		console.warn('Failed to harvest Hatask flower:', error);
-		os.toast(i18n.ts.somethingHappened);
-	} finally {
-		flowerDialogOpen.value = false;
-	}
-}
-
-async function harvestFlower() {
-	const sourceFlower = { ...flower.value };
-	const autoName = generateFlowerName({ emoji: flower.value.emoji, name: flower.value.name });
-	const localizedAutoName = localizeFloraName(autoName);
-	const { canceled, result } = await inputFlowerName({
-		title: copy.flowerBloomedTitle,
-		text: copy.flowerNamingPrompt,
-		default: localizedAutoName,
-		minLength: 1,
-		maxLength: 80,
-	});
-	const trimmedResult = typeof result === 'string' ? result.trim() : '';
-	if (canceled || !trimmedResult || !flowerDataWritable.value
-		|| flower.value.startedAt !== sourceFlower.startedAt || flower.value.emoji !== sourceFlower.emoji
-		|| flower.value.name !== sourceFlower.name || flower.value.speciesId !== sourceFlower.speciesId
-		|| flower.value.rare !== sourceFlower.rare || flower.value.targetMinutes !== sourceFlower.targetMinutes) return;
-	const flora = findHataskFlora(flower.value);
-	const flowerId = generateId();
-	gallery.value.unshift({
-		id: flowerId,
-		clientFlowerId: flowerId,
-		emoji: flower.value.emoji,
-		...(flora?.speciesId ? { speciesId: flora.speciesId } : {}),
-		name: trimmedResult === localizedAutoName ? autoName : trimmedResult,
-		hanakotoba: flora?.hanakotoba ?? '',
-		date: new Date().toLocaleDateString('ja-JP'),
-		harvestedAt: new Date().toISOString(),
-	});
-	const nf = pickRandomFlora();
-	flower.value = createHataskGrowingFlower({ emoji: nf.emoji, name: generateFlowerName(nf), speciesId: nf.speciesId, rare: nf.rare });
-	await registrySet('gallery', gallery.value);
-	await registrySet('flower', flower.value);
-	await syncFlowerGallery([gallery.value[0]]);
-	await syncHataskFlowerCount();
-	os.toast(copy.flowerHarvested);
-}
 async function renameFlower(fl: any) {
 	const sourceName = fl.name;
 	const localizedName = localizeFloraName(sourceName);
@@ -3527,6 +3495,11 @@ async function renameFlower(fl: any) {
 	const trimmedResult = typeof result === 'string' ? result.trim() : '';
 	if (canceled || !trimmedResult) return;
 	const renamed = { ...fl, name: trimmedResult === localizedName ? sourceName : trimmedResult };
+	if (fl.v2) {
+		applyFlowerState(await renameHataskFlower(fl.id, renamed.name));
+		invalidateCommunityFlowers();
+		return;
+	}
 	await registrySet('gallery', gallery.value.map(item => item.id === fl.id ? renamed : item));
 	fl.name = renamed.name;
 	await syncFlowerGallery([fl]);
@@ -3660,6 +3633,38 @@ let navVisibilityTimer:ReturnType<typeof setInterval>|null=null;
 const akatsukiNow = ref(new Date());
 const akatsukiMoodJournal = ref<InstanceType<typeof HataskJournal> | null>(null);
 const akatsukiMealJournal = ref<InstanceType<typeof HataskJournal> | null>(null);
+// Hataskey UI 3 の右ペインで選んだ気分(?tab=mood&mood=1〜5)を、記録欄で選択済みにして開く。
+// 同じURLで何度も上書きしないよう、適用した組み合わせを覚えておく。
+let appliedMoodRequest = '';
+watch([
+	() => routeRouter.currentRef.value.props.get('mood'),
+	activeTab,
+	dataLoaded,
+	akatsukiMoodJournal,
+], async ([mood, tab, loaded, journal]) => {
+	const level = Number(mood);
+	const request = `${routeRouter.currentRef.value.props.get('tab') ?? ''}:${mood ?? ''}`;
+	if (!mood) { appliedMoodRequest = ''; return; }
+	if (tab !== 'mood' || !loaded || journal == null || request === appliedMoodRequest) return;
+	appliedMoodRequest = request;
+	await nextTick();
+	journal.focusFromHome(undefined, level);
+}, { immediate: true });
+// 同じく ?tab=meal&meal=breakfast|lunch|dinner で、押した食事の枠を選択済みにして開く。
+let appliedMealRequest = '';
+watch([
+	() => routeRouter.currentRef.value.props.get('meal'),
+	activeTab,
+	dataLoaded,
+	akatsukiMealJournal,
+], async ([meal, tab, loaded, journal]) => {
+	const request = `${routeRouter.currentRef.value.props.get('tab') ?? ''}:${meal ?? ''}`;
+	if (!meal) { appliedMealRequest = ''; return; }
+	if (tab !== 'meal' || !loaded || journal == null || request === appliedMealRequest) return;
+	appliedMealRequest = request;
+	await nextTick();
+	journal.focusFromHome(String(meal));
+}, { immediate: true });
 const akatsukiUsageOwner = $i?.id;
 const akatsukiUsage = ref(readAkatsukiUsage(akatsukiUsageOwner));
 const akatsukiTools = computed(() => [
@@ -3794,6 +3799,11 @@ async function handleAkatsukiAction(action: HataskAkatsukiAction): Promise<void>
       await nextTick();
       akatsukiMealJournal.value?.focusFromHome(action.id);
       break;
+    case 'record-cooking':
+      activeTab.value = 'recipe';
+      await nextTick();
+      recipeView.value?.openRecord();
+      break;
     case 'water-flower': activeTab.value = 'garden'; break;
     case 'open-app': if (action.id) openAkatsukiApp(action.id); break;
     case 'toggle-todo':
@@ -3812,6 +3822,7 @@ onMounted(async () => {
 	window.document.addEventListener('visibilitychange', invalidateCommunityFlowers);
 	window.addEventListener('focus', invalidateCommunityFlowers);
 	window.addEventListener(HATASK_FLOWER_GROWTH_EVENT, onHataskFlowerGrowth);
+	window.addEventListener(HATASK_FLOWER_STATE_EVENT, onFlowerState);
 // 旗鯖fork(v2 §16①): ブートは onActivated(表示されるたび)で再生する。
 //   hatask は keep-alive のため遷移復帰では onMounted が走らず、以前は初回リロード時しか出なかった。
 //   keep-alive なら onActivated が初回mount含め必ず走るので、そちらに一本化。
@@ -3948,7 +3959,7 @@ try {
 
 const initFlower = pickRandomFlora();
 	const defaultFlower = createHataskGrowingFlower({ emoji: initFlower.emoji, name: generateFlowerName(initFlower), speciesId: initFlower.speciesId, rare: initFlower.rare });
-const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, theme: 'akatsuki', animations: true, todoSortModes: {}, todoMobileTabOrder: ['today', 'upcoming', 'all', 'completed', 'more'] };
+const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, recipeConsentShown: false, theme: 'akatsuki', animations: true, todoSortModes: {}, todoMobileTabOrder: ['today', 'upcoming', 'all', 'completed', 'more'] };
 
 // 各データを個別に取得（1つの失敗が他に影響しないようにする）
 const loadResults = await Promise.allSettled([
@@ -3997,7 +4008,10 @@ if (plannerMigrationReady) {
 }
 dataLoaded.value = true;
 	seedHataskFlowerGrowth(flower.value);
-await syncHataskFlowerCount();
+	try {
+		applyFlowerState(await getHataskFlowerState());
+		await syncHataskFlowerCount();
+	} catch { /* Keep the saved count when the authoritative gallery is unavailable. */ }
 await syncFlowerGallery(gallery.value);
 if (activeTab.value === 'garden') await loadCommunityFlowers();
 // 旗鯖fork(v2): 未設定キーを既定で補完(後方互換)。theme/animations 未設定の既存ユーザーには
@@ -4098,6 +4112,7 @@ if (eyeTimer) clearInterval(eyeTimer);
 	window.document.removeEventListener('visibilitychange', invalidateCommunityFlowers);
 	window.removeEventListener('focus', invalidateCommunityFlowers);
 	window.removeEventListener(HATASK_FLOWER_GROWTH_EVENT, onHataskFlowerGrowth);
+	window.removeEventListener(HATASK_FLOWER_STATE_EVENT, onFlowerState);
 if (mediaQuery) mediaQuery.removeEventListener('change', onMediaChange);
 stopHtkThemeWatch();
 eventTimerIds.forEach(id => clearTimeout(id));
@@ -4254,13 +4269,6 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-calendar-page{align-items:start}
 .htk-calendar-page > .htk-planner-shell{grid-column:1/-1;grid-row:1}
 .htk-journal-page{display:block;min-width:0}
-.htk-journal-reminders{display:grid;gap:12px}
-.htk-journal-reminders>div{display:flex;flex-wrap:wrap;gap:8px}
-.htk-journal-reminders button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 14px;border:1px solid var(--rule);border-radius:999px;background:var(--fill);color:var(--fg-2);font:inherit;font-size:.82rem;cursor:pointer}
-.htk-journal-reminders button[data-selected="true"]{background:var(--accent);color:var(--on-accent)}
-.htk-journal-reminders button:hover:not(:disabled){background:var(--fill-3);color:var(--fg)}
-.htk-journal-reminders button:disabled{opacity:.45;cursor:default}
-.htk-journal-reminders button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media(max-width:900px){.htk-panels{grid-template-columns:1fr}}
 .htk-rsvp-b{padding:5px 10px;border-radius:8px;font-size:.7rem;font-weight:600;border:1px solid var(--fill-3);background:var(--fill);color:var(--text-2);cursor:pointer;transition:all .2s;font-family:inherit}
 .htk-rsvp-summary{margin-top:12px;padding:14px;background:var(--fill);border-radius:14px;border:1px solid var(--hair)}

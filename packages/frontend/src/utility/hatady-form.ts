@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
+import { i18n } from '@/i18n.js';
 export type HatadyFormValues = Record<string, any>;
 export type HatadyFormOption = { value: string; label: string; icon?: string };
 export type HatadyFormField = {
@@ -21,6 +22,9 @@ export type HatadyFormField = {
 	action?: { label: string; run: () => void };
 };
 export type HatadyFormPage = { id: string; title: string; fields: HatadyFormField[]; group?: string; icon?: string; summary?: boolean; choices?: boolean; description?: string; when?: (values: HatadyFormValues) => boolean };
+
+/** Known local partial-save errors are safe to display; API errors use the generic fallback. */
+export class HatadyFormPartialError extends Error {}
 
 export function formField(key: string, label: string, options: Omit<HatadyFormField, 'key' | 'label'> = {}): HatadyFormField {
 	return { key, label, ...options };
@@ -58,28 +62,47 @@ export function formTimestamp(date: string, original?: string | null): string {
 export function formValidation(field: HatadyFormField, values: HatadyFormValues): string | null {
 	if (field.when && !field.when(values)) return null;
 	const value = values[field.key];
-	if (field.required && (value == null || String(value).trim() === '')) return `${field.label}を入力してください`;
+	if (field.required && (value == null || String(value).trim() === '' || field.type === 'duration' && Number(value) <= 0)) return i18n.tsx._hata._hatady._formValidation.enterField({ field: field.label });
 	if (value == null || value === '') return null;
 	if (field.type === 'images') {
-		if (!Array.isArray(value) || value.some(file => typeof file?.id !== 'string' || typeof file.type !== 'string' || !file.type.startsWith('image/'))) return '添付する画像を確認してください';
-		if (value.length > (field.maxItems ?? 16)) return `画像は${field.maxItems ?? 16}枚まで添付できます`;
+		if (!Array.isArray(value) || value.some(file => typeof file?.id !== 'string' || typeof file.type !== 'string' || !file.type.startsWith('image/'))) return i18n.ts._hata._hatady._formValidation.checkImages;
+		if (value.length > (field.maxItems ?? 16)) return i18n.tsx._hata._hatady._formValidation.maxImages({ count: field.maxItems ?? 16 });
 	}
 	if (field.type === 'duration' || field.type === 'number') {
 		const number = Number(value);
-		if (!Number.isFinite(number) || (field.step !== 'any' && Number(field.step ?? 1) >= 1 && !Number.isInteger(number))) return `${field.label}を正しく入力してください`;
-		if (field.min != null && number < field.min) return `${field.label}は${field.min}以上で入力してください`;
-		if (field.max != null && number > field.max) return `${field.label}は${field.max}以下で入力してください`;
+		if (!Number.isFinite(number) || (field.step !== 'any' && Number(field.step ?? 1) >= 1 && !Number.isInteger(number))) return i18n.tsx._hata._hatady._formValidation.invalidField({ field: field.label });
+		if (field.min != null && number < field.min) return i18n.tsx._hata._hatady._formValidation.minimum({ field: field.label, count: field.min });
+		if (field.max != null && number > field.max) return i18n.tsx._hata._hatady._formValidation.maximum({ field: field.label, count: field.max });
 	}
-	if (field.maxlength && typeof value === 'string' && value.length > field.maxlength) return `${field.label}は${field.maxlength}文字以内で入力してください`;
+	if (field.maxlength && typeof value === 'string' && value.length > field.maxlength) return i18n.tsx._hata._hatady._formValidation.maxCharacters({ field: field.label, count: field.maxlength });
 	if (field.type === 'list' && Array.isArray(value)) {
-		if (field.maxItems != null && value.length > field.maxItems) return `${field.label}は${field.maxItems}件以内で入力してください`;
-		if (field.maxlength != null && value.some(item => String(item).length > field.maxlength!)) return `${field.label}は1項目${field.maxlength}文字以内で入力してください`;
+		if (field.maxItems != null && value.length > field.maxItems) return i18n.tsx._hata._hatady._formValidation.maxItems({ field: field.label, count: field.maxItems });
+		if (field.maxlength != null && value.some(item => String(item).length > field.maxlength!)) return i18n.tsx._hata._hatady._formValidation.maxItemCharacters({ field: field.label, count: field.maxlength });
 	}
 	if (field.type === 'url') {
-		try { if (!['https:', 'http:'].includes(new URL(value).protocol)) return '公式サイトは http または https のURLを入力してください'; } catch { return '公式サイトのURLを確認してください'; }
+		try { if (!['https:', 'http:'].includes(new URL(value).protocol)) return i18n.ts._hata._hatady._formValidation.urlProtocol; } catch { return i18n.ts._hata._hatady._formValidation.checkUrl; }
 	}
-	if (field.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return `${field.label}を確認してください`;
-	if (field.type === 'time' && !/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?$/.test(String(value))) return `${field.label}を確認してください`;
+	if (field.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return i18n.tsx._hata._hatady._formValidation.checkField({ field: field.label });
+	if (field.type === 'time' && !/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?$/.test(String(value))) return i18n.tsx._hata._hatady._formValidation.checkField({ field: field.label });
+	return null;
+}
+
+// API parameters whose form field has a different key.
+const SERVER_PARAM_FIELDS: Record<string, string> = { studiedAt: 'date', occurredAt: 'date', fileIds: 'files' };
+
+/** Name the form field behind an API validation error so the user is not left with a bare save failure. */
+export function formServerError(reason: unknown, pages: readonly HatadyFormPage[], values: HatadyFormValues): { page: HatadyFormPage; field: HatadyFormField; message: string } | null {
+	const error = reason as { code?: string; info?: { param?: string; reason?: string } } | null;
+	if (error?.code !== 'INVALID_PARAM') return null;
+	const missing = /required property '([^']+)'/.exec(error.info?.reason ?? '')?.[1];
+	const param = missing ?? /^#\/properties\/([^/]+)/.exec(error.info?.param ?? '')?.[1] ?? error.info?.param;
+	if (!param) return null;
+	const key = SERVER_PARAM_FIELDS[param] ?? param;
+	for (const page of pages) {
+		if (page.when && !page.when(values)) continue;
+		const field = page.fields.find(item => item.key === key && (!item.when || item.when(values)));
+		if (field) return { page, field, message: missing ? i18n.tsx._hata._hatady._formValidation.enterField({ field: field.label }) : formValidation(field, values) ?? i18n.tsx._hata._hatady._formValidation.checkField({ field: field.label }) };
+	}
 	return null;
 }
 
@@ -126,7 +149,7 @@ export async function saveBookNotes(values: HatadyFormValues, bookId: string, ap
 			const old = baseline.find(item => item.id === row.id);
 			const payload: Record<string, any> = key === 'bookmarks' ? { page: Number(row.page) || 0, name: String(row.name ?? '').trim() || null, color: row.color || null, memo: String(row.memo ?? '').trim() || null } : { page: row.page === '' || row.page == null ? null : Number(row.page), text: String(row.text ?? '').trim() };
 			if (old && Object.entries(payload).every(([field, value]) => (old[field] ?? null) === value)) continue;
-			if (key === 'memos' && !payload.text) throw new Error('一部のメモが空欄です。内容を入力するか、そのメモを削除してください');
+			if (key === 'memos' && !payload.text) throw new HatadyFormPartialError(i18n.ts._hata._hatady._formValidation.emptyMemo);
 			if (row.id) {
 				const saved = await api(`hata/hatady/${key}/update`, { [key === 'bookmarks' ? 'bookmarkId' : 'memoId']: row.id, ...payload });
 				Object.assign(row, saved);

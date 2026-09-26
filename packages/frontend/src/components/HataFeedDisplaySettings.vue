@@ -5,33 +5,33 @@
 	class="hatady-scope hatafeed-scope" :class="$style.surface" :data-hatady-theme="hataFeedTheme" :data-embedded="embedded" :data-motion="prefer.r.animation.value"
 	v-bind="embedded ? {} : { initialWidth: 650, initialHeight: null, autoHeight: true, canResize: true, centerTitle: true }" @closed="emit('closed')"
 >
-	<template v-if="!embedded" #header>HataFeed の設定</template>
+	<template v-if="!embedded" #header>{{ displayCopy.header }}</template>
 	<div :class="$style.content">
 		<section :class="$style.themeGroup" aria-labelledby="hatafeed-theme-label" data-settings-search-group-id="settings.group.hatafeed-theme">
-			<h2 id="hatafeed-theme-label" :class="$style.title">テーマ</h2>
-			<div :class="$style.carousel" aria-label="HataFeed のテーマ">
-				<button type="button" class="hf-icon" aria-label="前のテーマ" :disabled="themeIndex === 0" @click="move(-1)"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
+			<h2 id="hatafeed-theme-label" :class="$style.title">{{ displayCopy.theme }}</h2>
+			<div :class="$style.carousel" :aria-label="displayCopy.feedTheme">
+				<button type="button" class="hf-icon" :aria-label="displayCopy.previousTheme" :disabled="themeIndex === 0" @click="move(-1)"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
 				<div :class="$style.viewport" @touchstart.passive="onTouchStart" @touchend.passive="onTouchEnd" @touchcancel="touchStart = null" @click.capture="guardSwipeClick">
 					<button
 						v-for="(theme, index) in themes" :key="theme.value" type="button" :class="$style.card" :style="{ '--offset': index - themeIndex }"
 						:aria-label="theme.label" :aria-pressed="theme.value === hataFeedTheme" :aria-hidden="Math.abs(index - themeIndex) > 1" :tabindex="Math.abs(index - themeIndex) > 1 ? -1 : 0" @click="choose(theme.value)"
 					>
-						<span class="hatady-scope" :class="$style.preview" :data-hatady-theme="theme.value" aria-hidden="true"><b>HataFeed</b><span><i :class="theme.icon"></i>イシュー</span><span :class="$style.previewRows"><i></i><i></i><i></i></span></span>
-						<strong>{{ theme.label }}</strong><small>{{ theme.value === hataFeedTheme ? '選択中' : '選ぶ' }}</small>
+						<span class="hatady-scope" :class="$style.preview" :data-hatady-theme="theme.value" aria-hidden="true"><b>HataFeed</b><span><i :class="theme.icon"></i>{{ i18n.ts._hata._hatafeed._home.issues }}</span><span :class="$style.previewRows"><i></i><i></i><i></i></span></span>
+						<strong>{{ theme.label }}</strong><small>{{ theme.value === hataFeedTheme ? displayCopy.selected : displayCopy.select }}</small>
 					</button>
 				</div>
-				<button type="button" class="hf-icon" aria-label="次のテーマ" :disabled="themeIndex === themes.length - 1" @click="move(1)"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+				<button type="button" class="hf-icon" :aria-label="displayCopy.nextTheme" :disabled="themeIndex === themes.length - 1" @click="move(1)"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
 			</div>
-			<div :class="$style.dots" role="group" aria-label="テーマを選ぶ">
+			<div :class="$style.dots" role="group" :aria-label="displayCopy.chooseTheme">
 				<button v-for="theme in themes" :key="theme.value" type="button" class="hf-icon" :aria-label="theme.label" :aria-pressed="theme.value === hataFeedTheme" @click="choose(theme.value)"><span :data-active="theme.value === hataFeedTheme"></span></button>
 			</div>
 		</section>
-		<label :class="$style.toggle"><span>背景に若葉のアニメーションを表示する</span><input type="checkbox" aria-label="背景に若葉のアニメーションを表示する" :checked="leaves" @change="setLeaves"></label>
+		<label :class="$style.toggle"><span>{{ displayCopy.leavesAnimation }}</span><input type="checkbox" :aria-label="displayCopy.leavesAnimation" :checked="leaves" @change="setLeaves"></label>
 		<HataFeedProjectSettings @changed="emit('projectsChanged')"/>
-		<section :class="$style.tutorials" aria-label="チュートリアル">
-			<h2 :class="$style.title">チュートリアル</h2>
-			<button type="button" class="hy-secondary" @click="rerunTutorial($event, 'initial')"><i class="ti ti-book" aria-hidden="true"></i>HataFeedの使い方<i class="ti ti-chevron-right" aria-hidden="true"></i></button>
-			<button type="button" class="hy-secondary" @click="rerunTutorial($event, 'update')"><i class="ti ti-sparkles" aria-hidden="true"></i>新しくなったHataFeed<i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+		<section :class="$style.tutorials" :aria-label="displayCopy.tutorial">
+			<h2 :class="$style.title">{{ displayCopy.tutorial }}</h2>
+			<button type="button" class="hy-secondary" @click="rerunTutorial($event, 'initial')"><i class="ti ti-book" aria-hidden="true"></i>{{ displayCopy.howToUse }}<i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+			<button type="button" class="hy-secondary" @click="rerunTutorial($event, 'update')"><i class="ti ti-sparkles" aria-hidden="true"></i>{{ displayCopy.whatIsNew }}<i class="ti ti-chevron-right" aria-hidden="true"></i></button>
 		</section>
 		<p v-if="error" role="alert">{{ error }}</p>
 	</div>
@@ -47,16 +47,18 @@ import HataFeedProjectSettings from '@/components/HataFeedProjectSettings.vue';
 import { hataFeedTheme, setHataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
 import { prefer } from '@/preferences.js';
 import { iAmModerator } from '@/i.js';
+import { i18n } from '@/i18n.js';
 import { showHataFeedTutorial } from '@/utility/hatafeed-tutorial-launcher.js';
 import '@/components/hatafeed-ui.css';
 
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
 const emit = defineEmits<{ closed: []; projectsChanged: [] }>();
+const displayCopy = i18n.ts._hata._hatafeed._displaySettings;
 const themes: { value: HataFeedTheme; label: string; icon: string }[] = [
-	{ value: 'light', label: 'ライト', icon: 'ti ti-sun' },
-	{ value: 'dark', label: 'ダーク', icon: 'ti ti-moon' },
-	{ value: 'paper', label: 'ペーパー', icon: 'ti ti-book' },
-	{ value: 'espresso', label: 'エスプレッソ', icon: 'ti ti-coffee' },
+	{ value: 'light', label: displayCopy.light, icon: 'ti ti-sun' },
+	{ value: 'dark', label: displayCopy.dark, icon: 'ti ti-moon' },
+	{ value: 'paper', label: displayCopy.paper, icon: 'ti ti-book' },
+	{ value: 'espresso', label: displayCopy.espresso, icon: 'ti ti-coffee' },
 ];
 const themeIndex = computed(() => themes.findIndex(theme => theme.value === hataFeedTheme.value));
 const leaves = prefer.r['hatafeed.leaves'];
@@ -65,7 +67,7 @@ let touchStart: { x: number; y: number } | null = null;
 let swipedUntil = 0;
 
 function choose(theme: HataFeedTheme) {
-	try { setHataFeedTheme(theme); error.value = ''; } catch { error.value = 'テーマを保存できませんでした'; }
+	try { setHataFeedTheme(theme); error.value = ''; } catch { error.value = displayCopy.saveFailed; }
 }
 
 function move(direction: number) {

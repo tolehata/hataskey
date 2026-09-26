@@ -367,6 +367,7 @@ import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
 import { getAbuseNoteMenu, getNoteClipMenu, getNoteMenu, getRenoteMenu, getRenoteOnly } from '@/utility/get-note-menu.js';
 import { noteEvents, useNoteCapture } from '@/composables/use-note-capture.js';
+import { useNoteRemoval } from '@/composables/use-note-removal.js';
 import { deepClone } from '@/utility/clone.js';
 import { useTooltip } from '@/composables/use-tooltip.js';
 import { claimAchievement } from '@/utility/achievements.js';
@@ -432,6 +433,7 @@ const { $note: $appearNote, subscribe: subscribeManuallyToNoteCapture } = useNot
 });
 
 const rootEl = useTemplateRef('rootEl');
+const removal = useNoteRemoval(() => rootEl.value?.parentElement ?? null);
 const menuButton = useTemplateRef('menuButton');
 const renoteButton = useTemplateRef('renoteButton');
 const renoteTime = useTemplateRef('renoteTime');
@@ -460,7 +462,7 @@ const history_raw = ref(false);
 
 useGlobalEvent('noteDeleted', (noteId) => {
 	if (noteId === note.id || noteId === appearNote.id) {
-		isDeleted.value = true;
+		removal.removeElement(note.id, rootEl.value, () => { isDeleted.value = true; });
 	}
 });
 

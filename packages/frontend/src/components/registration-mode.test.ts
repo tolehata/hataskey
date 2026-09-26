@@ -3,19 +3,22 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { load } from 'js-yaml';
 import { createApp, defineComponent, h, nextTick, Suspense } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { instance as productionInstance } from '@/instance.js';
 import SignupBranch from './MkSignupBranchDialog.vue';
 import RegistrationApplication from './MkRegistrationApplication.vue';
+import RegistrationRules from './MkRegistrationRules.vue';
 import RegistrationApplications from '@/pages/admin/registration-applications.vue';
 import RegistrationVoteDialog from '@/pages/admin/registration-applications.vote-dialog.vue';
 import { $i } from '@/i.js';
 import Moderation from '@/pages/admin/moderation.vue';
 import type { Component } from 'vue';
+
+// Node 26 test helpers bypass Vite's browser externalization of node: imports.
+const { readFileSync } = process.getBuiltinModule('node:fs');
+const { resolve } = process.getBuiltinModule('node:path');
 
 type MockMeta = {
 	disableRegistration: boolean;
@@ -51,7 +54,7 @@ vi.mock('@/i18n.js', () => {
 	const phrases = new Proxy({}, { get: (_, key) => () => String(key) });
 	return { i18n: {
 		ts: {
-			_hata: { _common: words, _registrationApplications: { _application: words, _admin: words, _review: words,
+			_hata: { _common: words, _registrationApplications: { _application: words, _admin: words, _review: words, _flow: words, _notification: words,
 				acceptApplications: '申請による登録を受け付ける', openRegistrationConfirm: '登録を一般開放しますか？',
 				openRegistrationActive: '現在は登録を一般開放中です', managementPaused: '受付済みの申請は保管されます', registrationModeChanged: '登録方法が変更されました',
 			} },
@@ -60,6 +63,7 @@ vi.mock('@/i18n.js', () => {
 		tsx: { _hata: { _registrationApplications: { _admin: phrases, _review: phrases } } },
 	} };
 });
+vi.mock('@/preferences.js', () => ({ prefer: { r: { animation: { value: false } } } }));
 vi.mock('@/page.js', () => ({ definePage: vi.fn() }));
 vi.mock('@/utility/hatakyu-assets.js', () => ({ useHatakyuBranding: () => false }));
 vi.mock('@/components/MkButton.vue', async () => {
@@ -91,9 +95,6 @@ type BranchSetup = {
 };
 type ApplicationSetup = {
 	applicationsEnabled: boolean;
-	serverRules: string[];
-	tosUrl: string | undefined;
-	privacyPolicyUrl: string | undefined;
 	reason: string;
 	hasAdminRelationship: boolean;
 	additionalContacts: string;
@@ -102,9 +103,11 @@ type ApplicationSetup = {
 	password: string;
 	passwordRetypeState: string | null;
 	email: string;
-	agreeRules: boolean;
-	agreeTos: boolean;
-	agreePrivacy: boolean;
+	agreementsAccepted: boolean;
+	step: string;
+	retypedPassword: string;
+	onAgreementChange: (value: boolean) => void;
+	reviewInput: () => void;
 	shouldDisableSubmitting: boolean;
 	onSubmit: () => Promise<void>;
 	onChangeUsername: () => void;
@@ -130,6 +133,7 @@ type AdminSetup = {
 	loadSummary: () => Promise<void>;
 	approve: (item: { id: string; username: string }) => Promise<void>;
 	reject: (item: { id: string; username: string }) => Promise<void>;
+	resendNotification: (item: ReturnType<typeof adminRow>) => Promise<void>;
 	runLegacyCleanup: () => Promise<void>;
 	runLegacyCleanupDryRun: () => Promise<void>;
 };
@@ -183,11 +187,11 @@ function validApplication(state: ApplicationSetup) {
 	state.username = 'new_member';
 	state.usernameState = 'ok';
 	state.password = 'sample-password';
-	state.passwordRetypeState = 'match';
+	state.retypedPassword = state.password;
 	state.email = ' member@example.test ';
-	state.agreeRules = true;
-	state.agreeTos = true;
-	state.agreePrivacy = true;
+	state.onAgreementChange(true);
+	state.step = 'input';
+	state.reviewInput();
 }
 
 beforeEach(() => {
@@ -204,6 +208,7 @@ beforeEach(() => {
 		};
 		if (endpoint === 'admin/cleanup-legacy-rejected-registrations') return { cleanedCount: 1, alreadyCleanedCount: 2, emailRetainedCount: 3, executedAt: '2026-08-31T00:00:00Z' };
 		if (endpoint === 'admin/approve-registration') return { success: true, emailSent: true };
+		if (endpoint === 'admin/reject-registration' || endpoint === 'admin/resend-registration-rejection') return { success: true, emailSent: true, notificationStatus: 'sent' };
 		if (endpoint === 'username/available') return { available: true };
 		return [];
 	});
@@ -302,7 +307,7 @@ describe('登録ダイアログのモード分岐', () => {
 describe('申請フォームのサーバー設定とモード競合', () => {
 	test('関係のチェックで理由と連絡先の必須・無効状態を切り替え、入力途中の内容を保つ', async () => {
 		const item = mountSetup<ApplicationSetup>(RegistrationApplication, {}, true);
-		const checkbox = item.container.querySelector<HTMLInputElement>('input[type="checkbox"]');
+		const checkbox = item.container.querySelector<HTMLInputElement>('input[type="checkbox"][aria-controls]');
 		const [reason, contact] = item.container.querySelectorAll<HTMLTextAreaElement>('textarea');
 		if (!checkbox || !reason || !contact) throw new Error('Missing registration relationship controls');
 		expect(checkbox.checked).toBe(false);
@@ -311,6 +316,7 @@ describe('申請フォームのサーバー設定とモード競合', () => {
 		expect(contact.required).toBe(false);
 		validApplication(item.state);
 		item.state.additionalContacts = '@member@example.test';
+		item.state.step = 'input';
 		await nextTick();
 		checkbox.click();
 		await nextTick();
@@ -327,6 +333,7 @@ describe('申請フォームのサーバー設定とモード競合', () => {
 		expect(contact.required).toBe(false);
 		expect(reason.value).toBe(' このサーバーで交流したいです ');
 		expect(contact.value).toBe('@member@example.test');
+		item.state.reviewInput();
 		await item.state.onSubmit();
 		expect(mocks.api).toHaveBeenCalledWith('registration/apply', expect.objectContaining({ hasAdminRelationship: false, reason: 'このサーバーで交流したいです' }), null);
 	});
@@ -363,7 +370,7 @@ describe('申請フォームのサーバー設定とモード競合', () => {
 	});
 
 	test.each(['rules', 'captcha', 'closed'])('関係を申告しても%sの条件は省略しない', async condition => {
-		const item = mountSetup<ApplicationSetup>(RegistrationApplication);
+		const item = mountSetup<ApplicationSetup>(RegistrationApplication, {}, true);
 		validApplication(item.state);
 		item.state.hasAdminRelationship = true;
 		item.state.reason = '';
@@ -429,42 +436,49 @@ describe('申請フォームのサーバー設定とモード競合', () => {
 		expect(state.additionalContacts).toBe('');
 	});
 
-	test('他サーバーの規則とURLを使い、規約が空なら不要な同意でブロックしない', () => {
-		const item = mountSetup<ApplicationSetup>(RegistrationApplication);
+	test('他サーバーの規則とURLを使い、規約が空なら取扱いへの同意だけで進める', async () => {
+		const item = mountSetup<ApplicationSetup>(RegistrationApplication, {}, true);
 		validApplication(item.state);
-		item.state.agreeRules = item.state.agreeTos = item.state.agreePrivacy = false;
 		expect(item.state.shouldDisableSubmitting).toBe(false);
 		instance.serverRules = ['他サーバーの規則'];
 		instance.tosUrl = 'https://other.example.test/terms';
 		instance.privacyPolicyUrl = 'https://other.example.test/privacy';
-		expect(item.state.serverRules).toEqual(['他サーバーの規則']);
-		expect(item.state.tosUrl).toBe('https://other.example.test/terms');
-		expect(item.state.privacyPolicyUrl).toBe('https://other.example.test/privacy');
 		expect(item.state.shouldDisableSubmitting).toBe(true);
+		expect(item.state.step).toBe('agreements');
+		await nextTick();
+		expect(item.container.textContent).toContain('他サーバーの規則');
+		expect(item.container.querySelector('a[href="https://other.example.test/terms"]')).not.toBeNull();
+		expect(item.container.querySelector('a[href="https://other.example.test/privacy"]')).not.toBeNull();
 	});
 
-	test('サーバー規則と規約URLの変更は同期的に再同意を要求する', () => {
+	test.each(['rules', 'terms', 'policy'])('%sの設定変更は共通の規約画面から同期的に再同意を要求し、入力を保持する', setting => {
 		instance.serverRules = ['規則'];
 		instance.tosUrl = 'https://other.example.test/terms';
 		instance.privacyPolicyUrl = 'https://other.example.test/privacy';
-		const item = mountSetup<ApplicationSetup>(RegistrationApplication);
+		const item = mountSetup<ApplicationSetup>(RegistrationApplication, {}, true);
 		validApplication(item.state);
 		expect(item.state.shouldDisableSubmitting).toBe(false);
-		instance.serverRules.push('追加規則');
-		instance.tosUrl += '/updated';
-		instance.privacyPolicyUrl += '/updated';
-		expect([item.state.agreeRules, item.state.agreeTos, item.state.agreePrivacy]).toEqual([false, false, false]);
+		if (setting === 'rules') instance.serverRules.push('追加規則');
+		if (setting === 'terms') instance.tosUrl += '/updated';
+		if (setting === 'policy') instance.privacyPolicyUrl += '/updated';
+		expect(item.state.agreementsAccepted).toBe(false);
+		expect(item.state.step).toBe('agreements');
 		expect(item.state.shouldDisableSubmitting).toBe(true);
+		expect(item.state.reason).toBe(' このサーバーで交流したいです ');
+		expect(item.state.password).toBe('sample-password');
 	});
 
-	test('HTTP以外のポリシーURLをリンクにしない（有効URLの陽性対照付き）', () => {
-		const item = mountSetup<ApplicationSetup>(RegistrationApplication);
+	test('HTTP以外のポリシーURLをリンクにせず同意を止める（有効URLの陽性対照付き）', async () => {
 		instance.tosUrl = 'https://other.example.test/terms';
-		expect(item.state.tosUrl).toBe(instance.tosUrl);
+		const item = mountSetup<{ sections: { id: string; document?: { url?: string } }[] }>(RegistrationRules, { application: true }, true);
+		expect(item.container.querySelector('a[href="https://other.example.test/terms"]')).not.toBeNull();
 		instance.tosUrl = 'javascript:alert(1)';
 		instance.privacyPolicyUrl = 'data:text/html,unsafe';
-		expect(item.state.tosUrl).toBeUndefined();
-		expect(item.state.privacyPolicyUrl).toBeUndefined();
+		await nextTick();
+		expect(item.state.sections.find(section => section.id === 'terms')?.document?.url).toBeUndefined();
+		expect(item.state.sections.find(section => section.id === 'policy')?.document?.url).toBeUndefined();
+		expect(item.container.querySelectorAll('a')).toHaveLength(0);
+		expect(item.container.textContent).toContain('documentUnavailable');
 	});
 
 	test('一般開放では送信とユーザー名照会を止める', async () => {
@@ -540,6 +554,7 @@ function adminRow() {
 	return {
 		id: 'pending-1', username: 'member', status: 'pending', createdAt: '2026-09-18T00:00:00Z',
 		email: 'private@example.test', reason: '参加したい', additionalContacts: '@private@example.test',
+		notificationStatus: null as null | 'sent' | 'failed' | 'sending' | 'pending' | 'unavailable', notificationRetryAvailable: false,
 		review: {
 			revision: 'review-revision-1', voters: [{ userId: 'moderator', name: '担当者', username: 'moderator', isCurrent: true, choice: 'agree', reason: '確認しました', votedAt: '2026-09-18T00:00:00Z' }],
 			requiredCount: 1, agreeCount: 1, opposeCount: 0, waitingCount: 0, myChoice: null as 'agree' | 'oppose' | null,
@@ -547,6 +562,95 @@ function adminRow() {
 		},
 	};
 }
+
+describe('拒否の確定と通知結果', () => {
+	test.each([
+		{ emailSent: true, notificationStatus: 'sent', type: 'success', text: 'sentDescription' },
+		{ emailSent: false, notificationStatus: 'failed', type: 'warning', text: 'failedDescription' },
+		{ emailSent: false, notificationStatus: 'sending', type: 'warning', text: 'sendingDescription' },
+	])('拒否確定後の通知$emailSent/$notificationStatusを別に案内する', async result => {
+		const row = adminRow();
+		mocks.api.mockResolvedValueOnce([row]);
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		mocks.api.mockResolvedValueOnce(result);
+		await item.state.reject(row);
+		expect(mocks.api).toHaveBeenCalledWith('admin/reject-registration', { applicationId: row.id, revision: row.review.revision });
+		expect(mocks.alert).toHaveBeenCalledWith({ type: result.type, text: result.text });
+		expect(mocks.api).toHaveBeenLastCalledWith('admin/registration-applications', { status: 'pending', limit: 20, offset: 0 }, undefined, expect.any(AbortSignal));
+		expect(item.state.items).toEqual([]);
+	});
+
+	test('鯖缶の再送可能な拒否済み申請だけ通知を再送できる', async () => {
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		const row = adminRow();
+		row.notificationRetryAvailable = true;
+		await item.state.resendNotification(row);
+		row.status = 'rejected';
+		row.review.isRoot = false;
+		await item.state.resendNotification(row);
+		row.review.isRoot = true;
+		row.notificationRetryAvailable = false;
+		await item.state.resendNotification(row);
+		expect(mocks.confirm).not.toHaveBeenCalled();
+		row.notificationRetryAvailable = true;
+		await item.state.resendNotification(row);
+		expect(mocks.api).toHaveBeenCalledWith('admin/resend-registration-rejection', { applicationId: row.id });
+		expect(mocks.alert).toHaveBeenCalledWith({ type: 'success', text: 'retrySent' });
+	});
+
+	test('再送失敗は拒否を取り消さず警告し、更新後の配送状態を取得する', async () => {
+		const row = adminRow();
+		row.status = 'rejected';
+		row.notificationStatus = 'failed';
+		row.notificationRetryAvailable = true;
+		mocks.api.mockResolvedValueOnce([row]);
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		mocks.api.mockResolvedValueOnce({ success: true, emailSent: false, notificationStatus: 'failed' }).mockResolvedValueOnce([row]);
+		await item.state.resendNotification(row);
+		expect(mocks.alert).toHaveBeenCalledWith({ type: 'warning', text: 'retryFailed' });
+		expect(row.status).toBe('rejected');
+		expect(item.state.items).toEqual([row]);
+	});
+
+	test('送信中は再送ボタンを無効にし、重複要求を送らない', async () => {
+		const row = adminRow();
+		row.status = 'rejected';
+		row.notificationStatus = 'failed';
+		row.notificationRetryAvailable = true;
+		mocks.api.mockResolvedValueOnce([row]);
+		const item = mountSetup<AdminSetup>(RegistrationApplications, {}, true);
+		await flush();
+		const button = Array.from(item.container.querySelectorAll('button')).find(element => element.textContent?.includes('retry'));
+		if (!button) throw new Error('Missing retry button');
+		expect(button.disabled).toBe(false);
+		const pending = deferred<{ success: boolean; emailSent: boolean; notificationStatus: string }>();
+		mocks.api.mockClear().mockReturnValueOnce(pending.promise);
+		const sending = item.state.resendNotification(row);
+		await flush();
+		expect(button.disabled).toBe(true);
+		await item.state.resendNotification(row);
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+		pending.resolve({ success: true, emailSent: true, notificationStatus: 'sent' });
+		await sending;
+	});
+
+	test.each(['reject', 'resendNotification'] as const)('%sの最終確認を取り消すと送信しない', async action => {
+		const item = mountSetup<AdminSetup>(RegistrationApplications);
+		await flush();
+		const row = adminRow();
+		if (action === 'resendNotification') row.status = 'rejected';
+		row.notificationRetryAvailable = true;
+		mocks.api.mockClear();
+		mocks.confirm.mockResolvedValueOnce({ canceled: true });
+		await item.state[action](row);
+		expect(mocks.api).not.toHaveBeenCalled();
+		expect(mocks.alert).not.toHaveBeenCalled();
+		expect(item.state.actionBusy).toBe(false);
+	});
+});
 
 describe('管理申請一覧の受付停止', () => {
 	test.each(['approve', 'reject'] as const)('%s後は表示から任意の連絡先も破棄する', async action => {
@@ -995,7 +1099,7 @@ describe('登録設定のテンプレート契約', () => {
 		const application = readFileSync(resolve(root, 'components/MkRegistrationApplication.vue'), 'utf8');
 		expect(application).toContain('<label :for="contactsId"');
 		expect(application).toContain(':aria-describedby="`${contactsId}-hint`"');
-		expect(application).toContain('copy.contactsDeletion');
+		expect(readFileSync(resolve(root, 'components/MkRegistrationRules.vue'), 'utf8')).toContain('copy.contactsDeletion');
 		expect(application).not.toContain('copy.contactsPurpose');
 		expect(application).not.toContain('copy.contactsSeparation');
 		expect(application).not.toContain('copy.contactsBackupNotice');
@@ -1014,9 +1118,12 @@ describe('登録設定のテンプレート契約', () => {
 		expect(admin).toContain('<MkInfo v-else-if="!applicationsEnabled">');
 		expect(admin).toContain('modeCopy.managementPaused');
 		expect(admin).toContain('<div v-else class="_gaps_m">');
-		expect(application).toContain(':href="tosUrl"');
-		expect(application).toContain(':href="privacyPolicyUrl"');
-		expect(application).toContain('v-for="(rule, index) in serverRules"');
+		const rules = readFileSync(resolve(root, 'components/MkRegistrationRules.vue'), 'utf8');
+		expect(application).toContain('<MkRegistrationRules');
+		expect(rules).toContain('registrationDocument(instance.tosUrl');
+		expect(rules).toContain('registrationDocument(instance.privacyPolicyUrl');
+		expect(rules).toContain(':href="section.document.url"');
+		expect(rules).toContain('v-for="(rule, ruleIndex) in instance.serverRules"');
 		const fixedPolicyPattern = /misskey\.hatachanoima\.net|copy\.rule(?:Age|Gdpr|Moderation)/u;
 		expect(fixedPolicyPattern.test('href="https://misskey.hatachanoima.net/policy"')).toBe(true);
 		expect(fixedPolicyPattern.test(application)).toBe(false);

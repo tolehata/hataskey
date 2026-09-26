@@ -33,7 +33,7 @@
 				v-if="back"
 				type="button"
 				class="hy-icon-button"
-				aria-label="戻る"
+				:aria-label="i18n.ts._hata._hatady._controls.back"
 				:disabled="busy"
 				@click="emit('back')"
 			>
@@ -43,7 +43,7 @@
 				<slot name="header">{{ title }}</slot>
 			</h2>
 			<slot name="headerActions"></slot>
-			<button type="button" class="hy-icon-button" aria-label="閉じる" :disabled="busy" @click="requestClose">
+			<button type="button" class="hy-icon-button" :aria-label="i18n.ts.close" :disabled="busy" @click="requestClose">
 				<i class="ti ti-x" aria-hidden="true"></i>
 			</button>
 		</header>
@@ -71,6 +71,7 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef, watch } from 'vue';
 import type { HatadyTheme } from '@/utility/hatady-prefs.js';
+import { i18n } from '@/i18n.js';
 import MkModal from '@/components/MkModal.vue';
 import { hatadyTheme as theme } from '@/utility/hatady-prefs.js';
 import { registerHatadySurface } from '@/utility/hatady-ui.js';

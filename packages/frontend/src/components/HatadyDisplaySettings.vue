@@ -16,8 +16,8 @@
 	<div :class="$style.settings" data-settings-search-group-id="settings.group.hatady-display-settings">
 		<section>
 			<h3>{{ copy.theme }}</h3>
-			<div :class="$style.carousel" aria-label="見た目を選ぶ">
-				<button type="button" :class="[$style.arrow, 'hy-icon-button']" aria-label="前のテーマ" :disabled="saving || themeIndex === 0" @click="move(-1)">
+			<div :class="$style.carousel" :aria-label="settingsCopy.chooseAppearance">
+				<button type="button" :class="[$style.arrow, 'hy-icon-button']" :aria-label="settingsCopy.previousTheme" :disabled="saving || themeIndex === 0" @click="move(-1)">
 					<i class="ti ti-chevron-left" aria-hidden="true"></i>
 				</button>
 				<div ref="viewport" :class="$style.viewport" @touchstart.passive="onTouchStart" @touchend.passive="onTouchEnd" @touchcancel="touchStart = null" @click.capture="guardSwipeClick">
@@ -37,22 +37,22 @@
 					>
 						<span :class="$style.preview" :data-theme-preview="opt.value" aria-hidden="true">
 							<b>Hatady</b>
-							<span><i :class="opt.icon"></i><strong>今日のひとつ。</strong></span>
+							<span><i :class="opt.icon"></i><strong>{{ settingsCopy.previewTitle }}</strong></span>
 							<span><i></i><i></i><i></i></span>
 						</span>
 						<strong>{{ opt.label }}</strong>
 						<small>{{ opt.description }}</small>
 						<span :class="$style.selection">
 							<i :class="editTheme === opt.value ? 'ti ti-check' : 'ti ti-circle-check'" aria-hidden="true"></i>
-							{{ editTheme === opt.value ? '選択中' : '選ぶ' }}
+							{{ editTheme === opt.value ? settingsCopy.selected : settingsCopy.choose }}
 						</span>
 					</button>
 				</div>
-				<button type="button" :class="[$style.arrow, 'hy-icon-button']" aria-label="次のテーマ" :disabled="saving || themeIndex === themeOptions.length - 1" @click="move(1)">
+				<button type="button" :class="[$style.arrow, 'hy-icon-button']" :aria-label="settingsCopy.nextTheme" :disabled="saving || themeIndex === themeOptions.length - 1" @click="move(1)">
 					<i class="ti ti-chevron-right" aria-hidden="true"></i>
 				</button>
 			</div>
-			<div :class="$style.dots" role="group" aria-label="テーマの一覧">
+			<div :class="$style.dots" role="group" :aria-label="settingsCopy.themeList">
 				<button v-for="(opt, index) in themeOptions" :key="opt.value" type="button" class="hy-icon-button" :aria-label="opt.label" :aria-pressed="editTheme === opt.value" :disabled="saving" @click="move(index - themeIndex)">
 					<i aria-hidden="true"></i>
 				</button>
@@ -74,7 +74,7 @@
 				</button>
 				<button @click="rerunTutorial($event, 'update')">
 					<i class="ti ti-sparkles"></i>
-					<span>Hatady V2の変更点</span>
+					<span>{{ settingsCopy.v2Changes }}</span>
 					<i class="ti ti-chevron-right"></i>
 				</button>
 				<button @click="doExportAll">
@@ -118,8 +118,8 @@
 </HyDialog>
 <HatadyDraftPrompt
 	v-if="prompt"
-	title="表示設定の編集をどうする？"
-	description="選んだテーマを、端末に下書きとして残せます。"
+	:title="settingsCopy.draftQuestion"
+	:description="settingsCopy.draftDescription"
 	:error="draftError"
 	@save="leave(true)"
 	@discard="leave(false)"
@@ -149,19 +149,20 @@ const dialog = ref<any>(),
 	error = ref(''),
 	draftError = ref('');
 const copy = i18n.ts._hata._hatady._displaySettings;
+const settingsCopy = i18n.ts._hata._hatady._settingsView;
 const dirty = computed(() => editTheme.value !== hatadyTheme.value),
 	canSync = computed(() => ($i as any)?.policies?.canUseHatadySync !== false);
 const themes = [
-	{ value: 'light' as const, label: 'ライト', icon: 'ti ti-sun', description: '明るく、すっきり' },
-	{ value: 'dark' as const, label: 'ダーク', icon: 'ti ti-moon', description: '静かな深緑' },
-	{ value: 'paper' as const, label: copy.themePaper, icon: 'ti ti-book', description: '紙のような温もり' },
-	{ value: 'espresso' as const, label: copy.themeEspresso, icon: 'ti ti-coffee', description: '落ち着いた茶色' },
+	{ value: 'light' as const, label: settingsCopy.light, icon: 'ti ti-sun', description: settingsCopy.lightDescription },
+	{ value: 'dark' as const, label: settingsCopy.dark, icon: 'ti ti-moon', description: settingsCopy.darkDescription },
+	{ value: 'paper' as const, label: copy.themePaper, icon: 'ti ti-book', description: settingsCopy.paperDescription },
+	{ value: 'espresso' as const, label: copy.themeEspresso, icon: 'ti ti-coffee', description: settingsCopy.espressoDescription },
 ];
 // Keep an existing shared-theme choice visible without rewriting its saved key.
 const legacyTheme = ref(editTheme.value === 'hataskey');
 const themeOptions = computed(() => legacyTheme.value ? [
 	...themes,
-	{ value: 'hataskey' as const, label: copy.themeHataskey, icon: 'ti ti-palette', description: 'Hataskeyと同じ見た目' },
+	{ value: 'hataskey' as const, label: copy.themeHataskey, icon: 'ti ti-palette', description: settingsCopy.hataskeyDescription },
 ] : themes);
 const themeIndex = computed(() => themeOptions.value.findIndex(opt => opt.value === editTheme.value));
 const syncItems = [
@@ -234,11 +235,11 @@ function requestClose() {
 
 function leave(save: boolean) {
 	if (!(save ? draft.saveDraft() : draft.clearDraft())) {
-		draftError.value = '端末の下書きを更新できませんでした';
+		draftError.value = settingsCopy.draftUpdateFailed;
 		return;
 	}
 	prompt.value = false;
-	if (save) hatadyNotify('下書きを保存しました');
+	if (save) hatadyNotify(i18n.ts._hata._hatady._formWizard.draftSaved);
 	dialog.value?.close();
 }
 
@@ -246,8 +247,8 @@ async function save() {
 	saving.value = true;
 	try {
 		await saveHatadyDisplay(editTheme.value);
-		if (!draft.clearDraft()) hatadyNotify('表示設定を保存しましたが、端末の下書きを削除できませんでした');
-		else hatadyNotify('表示設定を保存しました');
+		if (!draft.clearDraft()) hatadyNotify(settingsCopy.savedDraftCleanupFailed);
+		else hatadyNotify(settingsCopy.saved);
 		dialog.value?.close();
 	} catch {
 		error.value = copy.saveFailed;

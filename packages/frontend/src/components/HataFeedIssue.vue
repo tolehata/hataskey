@@ -225,7 +225,6 @@ import { $i } from '@/i.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
 import { emojiPicker } from '@/utility/emoji-picker.js';
 import { statusLabel, editableStatusKeys, priorityLabel } from '@/utility/hatafeed.js';
-import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
 
 const props = defineProps<{ issueId: string; isStaff: boolean }>();
 const emit = defineEmits<{ (ev: 'back'): void }>();
@@ -322,8 +321,18 @@ function copyText(text: string | null | undefined, label: string) {
 		os.alert({ type: 'warning', text: copyx.emptyCannotCopy({ label }) });
 		return;
 	}
-	copyToClipboard(text);
-	hataFeedNotify(copyx.copied({ label }));
+	writeClipboard(text, copyx.copied({ label }));
+}
+
+// 共通の copyToClipboard は独自トーストも出すため、HataFeed 内は上部の通知だけにそろえる。
+async function writeClipboard(text: string, message: string) {
+	try {
+		await navigator.clipboard.writeText(text);
+		hataFeedNotify(message);
+	} catch (error) {
+		console.error(error);
+		hataFeedNotify(i18n.ts.somethingHappened);
+	}
 }
 
 async function toggleAgree() {
@@ -386,8 +395,7 @@ async function removeComment(c: any) {
 }
 
 function copyComment(c: any) {
-	navigator.clipboard?.writeText(c.text ?? '');
-	hataFeedNotify('保存しました');
+	writeClipboard(c.text ?? '', i18n.ts.copiedContent);
 }
 
 function openCommentMenu(c: any, ev: MouseEvent) {

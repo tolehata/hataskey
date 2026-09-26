@@ -8,13 +8,11 @@ const fixture = vi.hoisted(() => ({ api: vi.fn(), confirm: vi.fn(), notify: vi.f
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
 vi.mock('@/os.js', () => ({ confirm: fixture.confirm, popup: fixture.popup }));
 vi.mock('@/i.js', () => ({ $i: { id: 'owner', isAdmin: false, isModerator: false } }));
-vi.mock('@/i18n.js', () => ({ i18n: {
-	ts: { _hata: { _hatady: { _bookDetail: { title: '本の詳細', edit: '編集' }, _media: { edit: '編集', movies: '映画', games: 'ゲーム', status: {}, detail: {}, session: { types: {} } } } } },
-	tsx: { _hata: { _hatady: { _bookDetail: {}, _home: {
-		durationMinutes: ({ minutes }: { minutes: string }) => `${minutes}分`,
-		durationHoursMinutes: ({ hours, minutes }: { hours: string; minutes: string }) => `${hours}時間${minutes}分`,
-	} } } },
-} }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/utility/hatady-prefs.js', async () => ({ hatadyTheme: (await import('vue')).ref('light') }));
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 vi.mock('@/utility/hatady-ui.js', async importOriginal => ({ ...await importOriginal<typeof import('@/utility/hatady-ui.js')>(), hatadyNotify: fixture.notify }));

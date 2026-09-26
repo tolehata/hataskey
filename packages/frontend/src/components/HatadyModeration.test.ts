@@ -7,6 +7,7 @@ import type { ModerationDetail, ModerationEntry } from '@/utility/hatady-moderat
 const fixtures = vi.hoisted(() => ({ api: vi.fn(), width: 800 }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixtures.api }));
 vi.mock('@/utility/hatady-ui.js', () => ({ hatadyNotify: vi.fn() }));
+vi.mock('@/utility/record-moderation.js', () => ({ openRecordModeration: vi.fn() }));
 vi.mock('@/i.js', () => ({ $i: { id: 'staff', isModerator: true, isAdmin: false } }));
 vi.mock('@/components/MkReactionIcon.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');

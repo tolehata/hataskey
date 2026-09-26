@@ -11,7 +11,11 @@ vi.mock('@/utility/hatasaba-device-prefs.js', async () => ({ hataFeedTheme: (awa
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
 vi.mock('@/os.js', () => ({ toast: vi.fn(), inputText: async () => ({ canceled: false, result: '確認中' }) }));
 vi.mock('@/preferences.js', async () => ({ prefer: { r: { animation: (await import('vue')).ref(false) } } }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatafeed: { _emojiApprove: new Proxy({}, { get: (_, key) => String(key) }), _categorySelect: {} } } }, tsx: { _hata: { _hatafeed: { _emojiApprove: new Proxy({}, { get: () => () => '' }) } } } } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/components/MkWindow.vue', () => ({ default: defineComponent({ template: '<section><slot name="header"/><slot/></section>' }) }));
 vi.mock('@/components/MkButton.vue', () => ({ default: defineComponent({ template: '<button><slot/></button>' }) }));
 vi.mock('@/components/MkInput.vue', () => ({ default: defineComponent({ props: ['modelValue'], emits: ['update:modelValue'], template: '<label><slot name="label"/><input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)"/></label>' }) }));
@@ -43,8 +47,8 @@ describe('HataFeed review queue input safety', () => {
 	test.each([false, true])('switching pending requests preserves independent edits (motion=%s)', async motion => {
 		prefer.r.animation.value = motion;
 		const target = await mount(); await changeName(target, 'edited_first');
-		await click(target, 'nextRequest'); await vi.waitFor(() => expect(target.querySelector<HTMLInputElement>('input')?.value).toBe('second'));
-		await changeName(target, 'edited_second'); await click(target, 'previousRequest');
+		await click(target, '次の申請'); await vi.waitFor(() => expect(target.querySelector<HTMLInputElement>('input')?.value).toBe('second'));
+		await changeName(target, 'edited_second'); await click(target, '前の申請');
 		await vi.waitFor(() => expect(target.querySelector<HTMLInputElement>('input')?.value).toBe('edited_first'));
 	});
 	test('resuming a saved review for another item retains both restored edits', async () => {
@@ -52,11 +56,11 @@ describe('HataFeed review queue input safety', () => {
 		fixture.records.set('hataFormDrafts:reviewer', JSON.stringify({ 'hatafeed:emoji-review': { version: 1, updatedAt: Date.now(), data: { changes: { first: fields('restored_first'), second: fields('restored_second') }, selectedId: 'second' } } }));
 		const target = await mount(); await click(target, '続きから編集');
 		expect(target.querySelector<HTMLInputElement>('input')?.value).toBe('restored_second');
-		await click(target, 'previousRequest'); expect(target.querySelector<HTMLInputElement>('input')?.value).toBe('restored_first');
+		await click(target, '前の申請'); expect(target.querySelector<HTMLInputElement>('input')?.value).toBe('restored_first');
 	});
 	test('failed approval retains the request and edited values for retry', async () => {
 		fixture.api.mockImplementation(async (endpoint: string) => { if (endpoint.endsWith('/approve')) throw new Error('offline'); return endpoint.endsWith('emoji-requests') ? [request('first')] : []; });
-		const target = await mount(); await changeName(target, 'keep_this'); await click(target, 'approveAndNext');
+		const target = await mount(); await changeName(target, 'keep_this'); await click(target, '承認して登録、次へ');
 		await vi.waitFor(() => expect(target.querySelector('[role="alert"]')).not.toBeNull());
 		expect(target.querySelector<HTMLInputElement>('input')?.value).toBe('keep_this');
 		expect(fixture.api).toHaveBeenCalledWith('hata/feedback/emoji-requests/approve', expect.objectContaining({ requestId: 'first', name: 'keep_this' }));

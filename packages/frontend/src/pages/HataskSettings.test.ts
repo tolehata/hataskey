@@ -522,7 +522,7 @@ describe('暁のドラッグと項目別メニューによる4枠設定', () => 
 	test.each(['todo', 'apps'])('任意の%sにはEYEを含まない未使用の機能だけを置換候補に出す', async tab => {
 		const { container } = await mountSettings();
 		const menu = openTabMenu(container, tab);
-		expect(menu.filter(item => item.action).map(item => item.text)).toEqual(['カレンダー', 'きもち', 'ごはん', 'おはな', '支援情報', 'ランキング']);
+		expect(menu.filter(item => item.action).map(item => item.text)).toEqual(['カレンダー', 'きもち', 'ごはん', 'レシピ', 'おはな', '支援情報', 'ランキング']);
 		expect(positions(menu)).toHaveLength(4);
 		menuAction(menu, 'カレンダー');
 		await flush();

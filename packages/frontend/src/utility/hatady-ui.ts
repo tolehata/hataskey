@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { shallowRef } from 'vue';
+import { i18n } from '@/i18n.js';
 
 export type HatadyNotice = { id: number; message: string; duration: number };
 export const hatadyNotice = shallowRef<HatadyNotice | null>(null);
@@ -21,27 +22,28 @@ export function registerHatadySurface(element: HTMLElement): () => void {
 }
 
 export const HATADY_ACTIVITY_CHOICES = [
-	{ value: 'study', label: '勉強・読書', icon: 'ti ti-book' },
-	{ value: 'movie', label: '映画', icon: 'ti ti-movie' },
-	{ value: 'game', label: 'ゲーム', icon: 'ti ti-device-gamepad-2' },
-	{ value: 'exercise', label: '運動', icon: 'ti ti-run' },
-	{ value: 'work', label: '作業', icon: 'ti ti-briefcase' },
+	{ value: 'study', get label() { return i18n.ts._hata._hatady._activityKinds.study; }, icon: 'ti ti-book' },
+	{ value: 'movie', get label() { return i18n.ts._hata._hatady._profile.movie; }, icon: 'ti ti-movie' },
+	{ value: 'game', get label() { return i18n.ts._hata._hatady._profile.game; }, icon: 'ti ti-device-gamepad-2' },
+	{ value: 'exercise', get label() { return i18n.ts._hata._hatady._activityKinds.exercise; }, icon: 'ti ti-run' },
+	{ value: 'work', get label() { return i18n.ts._hata._hatady._activityKinds.work; }, icon: 'ti ti-briefcase' },
+	{ value: 'cooking', get label() { return i18n.ts._hata._hatady._activityKinds.cooking; }, icon: 'ti ti-tools-kitchen-2' },
 ] as const;
 
 export const HATADY_RECORD_TAGS = [
-	{ value: 'strength', label: '得意', icon: 'ti ti-star' },
-	{ value: 'weak', label: '苦手', icon: 'ti ti-flag' },
-	{ value: 'interest', label: '興味', icon: 'ti ti-bulb' },
-	{ value: 'effort', label: 'がんばった', icon: 'ti ti-flame' },
-	{ value: 'recommend', label: 'おすすめ', icon: 'ti ti-thumb-up' },
-	{ value: 'progress', label: '進捗', icon: 'ti ti-pencil' },
-	{ value: 'smooth', label: '順調', icon: 'ti ti-circle-check' },
-	{ value: 'blocked', label: '躓いている', icon: 'ti ti-alert-circle' },
-	{ value: 'review', label: '見てほしい', icon: 'ti ti-eye' },
-	{ value: 'doneDay', label: '今日の完了', icon: 'ti ti-check' },
-	{ value: 'doneAll', label: '全体の完了', icon: 'ti ti-checks' },
-	{ value: 'movie', label: '映画', icon: 'ti ti-movie' },
-	{ value: 'game', label: 'ゲーム', icon: 'ti ti-device-gamepad-2' },
+	{ value: 'strength', get label() { return i18n.ts._hata._hatady._tags.strength; }, icon: 'ti ti-star' },
+	{ value: 'weak', get label() { return i18n.ts._hata._hatady._tags.weak; }, icon: 'ti ti-flag' },
+	{ value: 'interest', get label() { return i18n.ts._hata._hatady._tags.interest; }, icon: 'ti ti-bulb' },
+	{ value: 'effort', get label() { return i18n.ts._hata._hatady._recordTags.effort; }, icon: 'ti ti-flame' },
+	{ value: 'recommend', get label() { return i18n.ts._hata._hatady._bookDetail.recommend; }, icon: 'ti ti-thumb-up' },
+	{ value: 'progress', get label() { return i18n.ts._hata._hatady._recordTags.progress; }, icon: 'ti ti-pencil' },
+	{ value: 'smooth', get label() { return i18n.ts._hata._hatady._recordTags.smooth; }, icon: 'ti ti-circle-check' },
+	{ value: 'blocked', get label() { return i18n.ts._hata._hatady._recordTags.blocked; }, icon: 'ti ti-alert-circle' },
+	{ value: 'review', get label() { return i18n.ts._hata._hatady._recordTags.review; }, icon: 'ti ti-eye' },
+	{ value: 'doneDay', get label() { return i18n.ts._hata._hatady._recordTags.doneDay; }, icon: 'ti ti-check' },
+	{ value: 'doneAll', get label() { return i18n.ts._hata._hatady._recordTags.doneAll; }, icon: 'ti ti-checks' },
+	{ value: 'movie', get label() { return i18n.ts._hata._hatady._tags.movie; }, icon: 'ti ti-movie' },
+	{ value: 'game', get label() { return i18n.ts._hata._hatady._tags.game; }, icon: 'ti ti-device-gamepad-2' },
 ] as const;
 
 export function hatadyDuration(seconds: number | null | undefined): string {
@@ -51,8 +53,8 @@ export function hatadyDuration(seconds: number | null | undefined): string {
 		minutes = Math.floor((value % 3600) / 60),
 		rest = value % 60;
 	return (
-		`${hours ? `${hours}時間` : ''}${minutes ? `${minutes}分` : ''}${rest ? `${Number(rest.toFixed(3))}秒` : ''}` ||
-		'0分'
+		`${hours ? i18n.tsx._hata._hatady._duration.hours({ count: String(hours) }) : ''}${minutes ? i18n.tsx._hata._hatady._duration.minutes({ count: String(minutes) }) : ''}${rest ? i18n.tsx._hata._hatady._duration.seconds({ count: String(Number(rest.toFixed(3))) }) : ''}` ||
+		i18n.tsx._hata._hatady._duration.minutes({ count: '0' })
 	);
 }
 

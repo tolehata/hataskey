@@ -4,17 +4,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div>
+<div :class="$style.root">
 	<div :class="$style.banner">
 		<i class="ti ti-user-edit"></i>
 	</div>
 	<div class="_spacer" style="--MI_SPACER-min: 20px; --MI_SPACER-max: 32px;">
-		<form class="_gaps_m" autocomplete="new-password" @submit.prevent="onSubmit">
-			<MkInput v-if="instance.disableRegistration" v-model="invitationCode" type="text" :spellcheck="false" required data-cy-signup-invitation-code>
+		<Transition :enterActiveClass="$style.stepEnter" :enterFromClass="$style.stepFrom">
+		<form v-show="step === 'input'" class="_gaps_m" autocomplete="new-password" @submit.prevent="reviewInput">
+			<h2 ref="inputHeading" tabindex="-1" :class="$style.title">{{ flow.inputTitle }}</h2>
+			<MkInput v-if="instance.disableRegistration" v-model="invitationCode" :disabled="submitting" type="text" :spellcheck="false" required data-cy-signup-invitation-code>
 				<template #label>{{ i18n.ts.invitationCode }}</template>
 				<template #prefix><i class="ti ti-key"></i></template>
 			</MkInput>
-			<MkInput v-model="username" type="text" pattern="^[a-zA-Z0-9_]{1,20}$" :spellcheck="false" autocomplete="username" required data-cy-signup-username @update:modelValue="onChangeUsername">
+			<MkInput v-model="username" :disabled="submitting" type="text" pattern="^[a-zA-Z0-9_]{1,20}$" :spellcheck="false" autocomplete="username" required data-cy-signup-username @update:modelValue="onChangeUsername">
 				<template #label>{{ i18n.ts.username }} <div v-tooltip:dialog="i18n.ts.usernameInfo" class="_button _help"><i class="ti ti-help-circle"></i></div></template>
 				<template #prefix>@</template>
 				<template #suffix>@{{ host }}</template>
@@ -29,7 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span v-else-if="usernameState === 'max-range'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.tooLong }}</span>
 				</template>
 			</MkInput>
-			<MkInput v-if="instance.emailRequiredForSignup" v-model="email" :debounce="true" type="email" :spellcheck="false" required data-cy-signup-email @update:modelValue="onChangeEmail">
+			<MkInput v-if="instance.emailRequiredForSignup" v-model="email" :disabled="submitting" :debounce="true" type="email" :spellcheck="false" required data-cy-signup-email @update:modelValue="onChangeEmail">
 				<template #label>{{ i18n.ts.emailAddress }} <div v-tooltip:dialog="i18n.ts._signup.emailAddressInfo" class="_button _help"><i class="ti ti-help-circle"></i></div></template>
 				<template #prefix><i class="ti ti-mail"></i></template>
 				<template #caption>
@@ -45,7 +47,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span v-else-if="emailState === 'error'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.error }}</span>
 				</template>
 			</MkInput>
-			<MkInput v-model="password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" required data-cy-signup-password @update:modelValue="onChangePassword" @keydown="checkCapsLock" @focus="checkCapsLock" @click="checkCapsLock">
+			<MkInput v-model="password" :disabled="submitting" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" required data-cy-signup-password @update:modelValue="onChangePassword" @keydown="checkCapsLock" @focus="checkCapsLock" @click="checkCapsLock">
 				<template #label>{{ i18n.ts.password }}</template>
 				<template #prefix><i class="ti ti-lock"></i></template>
 				<template #suffix>
@@ -53,12 +55,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button v-if="password" type="button" :class="$style.passwordToggleBtn" @click="togglePassword"><i :class="showPassword ? 'ti ti-eye-off' : 'ti ti-eye'"></i></button>
 				</template>
 				<template #caption>
+					<div>{{ flow.passwordLengthDescription }}</div>
 					<span v-if="passwordStrength == 'low'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.weakPassword }}</span>
 					<span v-if="passwordStrength == 'medium'" style="color: var(--MI_THEME-warn)"><i class="ti ti-check ti-fw"></i> {{ i18n.ts.normalPassword }}</span>
 					<span v-if="passwordStrength == 'high'" style="color: var(--MI_THEME-success)"><i class="ti ti-check ti-fw"></i> {{ i18n.ts.strongPassword }}</span>
 				</template>
 			</MkInput>
-			<MkInput v-model="retypedPassword" :type="showPassword2 ? 'text' : 'password'" autocomplete="new-password" required data-cy-signup-password-retype @update:modelValue="onChangePasswordRetype" @keydown="checkCapsLock" @focus="checkCapsLock" @click="checkCapsLock">
+			<MkInput v-model="retypedPassword" :disabled="submitting" :type="showPassword2 ? 'text' : 'password'" autocomplete="new-password" required data-cy-signup-password-retype @update:modelValue="onChangePasswordRetype" @keydown="checkCapsLock" @focus="checkCapsLock" @click="checkCapsLock">
 				<template #label>{{ i18n.ts.password }} ({{ i18n.ts.retype }})</template>
 				<template #prefix><i class="ti ti-lock"></i></template>
 				<template #suffix>
@@ -76,21 +79,39 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkCaptcha v-if="instance.enableTurnstile" ref="turnstile" v-model="turnstileResponse" :class="$style.captcha" provider="turnstile" :sitekey="instance.turnstileSiteKey"/>
 			<MkCaptcha v-if="instance.enableTestcaptcha" ref="testcaptcha" v-model="testcaptchaResponse" :class="$style.captcha" provider="testcaptcha" :sitekey="null"/>
 			<div class="_buttonsCenter">
-				<MkButton inline rounded @click="goBack"><i class="ti ti-arrow-left"></i> {{ i18n.ts.goBack }}</MkButton>
+				<MkButton inline rounded :disabled="submitting" @click="goBack"><i class="ti ti-arrow-left"></i> {{ i18n.ts.goBack }}</MkButton>
 				<MkButton type="submit" :disabled="shouldDisableSubmitting" inline gradate rounded data-cy-signup-submit style="margin: 0 auto;">
 					<template v-if="submitting">
 						<MkLoading :em="true" :colored="false"/>
 					</template>
-					<template v-else>{{ i18n.ts.start }}</template>
+					<template v-else>{{ flow.confirmInput }}</template>
 				</MkButton>
 			</div>
 		</form>
+		</Transition>
+		<Transition :enterActiveClass="$style.stepEnter" :enterFromClass="$style.stepFrom">
+		<section v-if="step === 'review'" class="_gaps_m" :class="$style.review">
+			<h2 ref="reviewHeading" tabindex="-1" :class="$style.title">{{ flow.reviewTitle }}</h2>
+			<p>{{ flow.reviewDescription }}</p>
+			<dl :class="$style.reviewList">
+				<template v-if="instance.disableRegistration"><dt>{{ i18n.ts.invitationCode }}</dt><dd>{{ invitationCode }}</dd></template>
+				<dt>{{ i18n.ts.username }}</dt><dd>@{{ username }}@{{ host }}</dd>
+				<template v-if="instance.emailRequiredForSignup"><dt>{{ i18n.ts.emailAddress }}</dt><dd>{{ email }}</dd></template>
+				<dt>{{ i18n.ts.password }}</dt><dd>{{ flow.passwordSet }}</dd>
+			</dl>
+			<div class="_buttonsCenter">
+				<MkButton inline rounded :disabled="submitting" @click="step = 'input'">{{ flow.backToInput }}</MkButton>
+				<MkButton inline rounded gradate :disabled="shouldDisableSubmitting" data-cy-signup-confirm @click="onSubmit"><MkLoading v-if="submitting" :em="true"/><template v-else>{{ i18n.ts.start }}</template></MkButton>
+			</div>
+		</section>
+		</Transition>
 	</div>
 </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, shallowRef, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
+import { focusRegistrationElement } from '@/utility/registration-consent.js';
 import { toUnicode } from 'punycode.js';
 import * as Misskey from 'cherrypick-js';
 import * as config from '@@/js/config.js';
@@ -106,8 +127,10 @@ import { login } from '@/accounts.js';
 
 const props = withDefaults(defineProps<{
 	autoSet?: boolean;
+	agreementsAccepted?: boolean;
 }>(), {
 	autoSet: false,
+	agreementsAccepted: false,
 });
 
 const emit = defineEmits<{
@@ -115,6 +138,37 @@ const emit = defineEmits<{
 	(ev: 'signupEmailPending'): void;
 	(ev: 'back'): void;
 }>();
+
+const flow = i18n.ts._hata._registrationApplications._flow;
+const step = ref<'input' | 'review'>('input');
+const inputHeading = ref<HTMLElement>();
+const reviewHeading = ref<HTMLElement>();
+watch(step, (target) => {
+	void nextTick(() => {
+		if (target === step.value) focusRegistrationElement(target === 'input' ? inputHeading.value : reviewHeading.value, { scrollToTop: true });
+	});
+});
+let disposed = false;
+let modeVersion = 0;
+watch(() => [instance.registrationClosed, instance.disableRegistration, instance.emailRequiredForSignup], () => {
+	modeVersion++;
+	step.value = 'input';
+	usernameAbortController.value?.abort();
+	emailAbortController.value?.abort();
+	if (!instance.registrationClosed) {
+		onChangeUsername();
+		if (instance.emailRequiredForSignup) onChangeEmail();
+	}
+}, { flush: 'sync' });
+watch(() => props.agreementsAccepted, (agreed) => { if (!agreed) step.value = 'input'; }, { flush: 'sync' });
+
+function reviewInput() {
+	if (step.value === 'input' && !shouldDisableSubmitting.value) {
+		showPassword.value = false;
+		showPassword2.value = false;
+		step.value = 'review';
+	}
+}
 
 const host = toUnicode(config.host);
 
@@ -139,20 +193,21 @@ const mCaptchaResponse = ref<string | null>(null);
 const reCaptchaResponse = ref<string | null>(null);
 const turnstileResponse = ref<string | null>(null);
 const testcaptchaResponse = ref<string | null>(null);
-const usernameAbortController = ref<null | AbortController>(null);
-const emailAbortController = ref<null | AbortController>(null);
+const usernameAbortController = shallowRef<null | AbortController>(null);
+const emailAbortController = shallowRef<null | AbortController>(null);
 
 const shouldDisableSubmitting = computed((): boolean => {
-	return instance.registrationClosed || submitting.value ||
+	return !props.agreementsAccepted || instance.registrationClosed || submitting.value ||
 		instance.enableHcaptcha && !hCaptchaResponse.value ||
 		instance.enableMcaptcha && !mCaptchaResponse.value ||
 		instance.enableRecaptcha && !reCaptchaResponse.value ||
 		instance.enableTurnstile && !turnstileResponse.value ||
 		instance.enableTestcaptcha && !testcaptchaResponse.value ||
-		instance.emailRequiredForSignup && emailState.value !== 'ok' ||
-		instance.disableRegistration && invitationCode.value === '' ||
+		instance.emailRequiredForSignup && (emailState.value !== 'ok' || email.value.trim().length > 256 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) ||
+		instance.disableRegistration && invitationCode.value.trim() === '' ||
 		usernameState.value !== 'ok' ||
-		passwordRetypeState.value !== 'match';
+		passwordRetypeState.value !== 'match' || password.value !== retypedPassword.value ||
+		password.value.length < 8 || password.value.length > 64 || !/^[a-zA-Z0-9_]{1,20}$/.test(username.value);
 });
 
 const isCapsLock = ref(false);
@@ -184,6 +239,9 @@ function getPasswordStrength(source: string): number {
 }
 
 function onChangeUsername(): void {
+	usernameAbortController.value?.abort();
+	usernameAbortController.value = null;
+	if (disposed || instance.registrationClosed) return;
 	if (username.value === '') {
 		usernameState.value = null;
 		return;
@@ -202,38 +260,44 @@ function onChangeUsername(): void {
 		}
 	}
 
-	if (usernameAbortController.value != null) {
-		usernameAbortController.value.abort();
-	}
 	usernameState.value = 'wait';
-	usernameAbortController.value = new AbortController();
+	const controller = new AbortController();
+	const checkedUsername = username.value;
+	const version = modeVersion;
+	usernameAbortController.value = controller;
+	const isCurrent = () => !disposed && !controller.signal.aborted && usernameAbortController.value === controller && username.value === checkedUsername && version === modeVersion && !instance.registrationClosed;
 
 	misskeyApi('username/available', {
-		username: username.value,
-	}, undefined, usernameAbortController.value.signal).then(result => {
-		usernameState.value = result.available ? 'ok' : 'unavailable';
+		username: checkedUsername,
+	}, undefined, controller.signal).then(result => {
+		if (isCurrent()) usernameState.value = result.available ? 'ok' : 'unavailable';
 	}).catch((err) => {
-		if (err.name !== 'AbortError') {
+		if (isCurrent() && err.name !== 'AbortError') {
 			usernameState.value = 'error';
 		}
 	});
 }
 
 function onChangeEmail(): void {
+	emailAbortController.value?.abort();
+	emailAbortController.value = null;
+	if (disposed || instance.registrationClosed) return;
 	if (email.value === '') {
 		emailState.value = null;
 		return;
 	}
 
-	if (emailAbortController.value != null) {
-		emailAbortController.value.abort();
-	}
 	emailState.value = 'wait';
-	emailAbortController.value = new AbortController();
+	const controller = new AbortController();
+	const checkedEmail = email.value;
+	const version = modeVersion;
+	emailAbortController.value = controller;
+	const isCurrent = () => !disposed && !controller.signal.aborted && emailAbortController.value === controller && email.value === checkedEmail && version === modeVersion && !instance.registrationClosed;
 
 	misskeyApi('email-address/available', {
-		emailAddress: email.value,
-	}, undefined, emailAbortController.value.signal).then(result => {
+		emailAddress: checkedEmail,
+	}, undefined, controller.signal).then(result => {
+		if (!isCurrent()) return;
 		emailState.value = result.available ? 'ok' :
 			result.reason === 'used' ? 'unavailable:used' :
 			result.reason === 'format' ? 'unavailable:format' :
@@ -243,11 +307,13 @@ function onChangeEmail(): void {
 			result.reason === 'smtp' ? 'unavailable:smtp' :
 			'unavailable';
 	}).catch((err) => {
-		if (err.name !== 'AbortError') {
+		if (isCurrent() && err.name !== 'AbortError') {
 			emailState.value = 'error';
 		}
 	});
 }
+
+watch([password, retypedPassword], onChangePasswordRetype, { flush: 'sync' });
 
 function onChangePassword(): void {
 	if (password.value === '') {
@@ -269,20 +335,38 @@ function onChangePasswordRetype(): void {
 }
 
 function goBack() {
-	submitting.value = false;
+	if (submitting.value) return;
+	emit('back');
+}
+
+function resetCaptcha() {
+	hCaptchaResponse.value = null;
+	mCaptchaResponse.value = null;
+	reCaptchaResponse.value = null;
+	turnstileResponse.value = null;
+	testcaptchaResponse.value = null;
 	hcaptcha.value?.reset?.();
 	mcaptcha.value?.reset?.();
 	recaptcha.value?.reset?.();
 	turnstile.value?.reset?.();
 	testcaptcha.value?.reset?.();
+}
 
-	emit('back');
+function clearSecrets() {
+	password.value = '';
+	retypedPassword.value = '';
+	invitationCode.value = '';
+	showPassword.value = false;
+	showPassword2.value = false;
+	resetCaptcha();
 }
 
 async function onSubmit(): Promise<void> {
-	if (instance.registrationClosed) return;
-	if (submitting.value) return;
+	if (step.value !== 'review' || shouldDisableSubmitting.value) return;
 	submitting.value = true;
+	const version = modeVersion;
+	const submittedEmail = email.value;
+	const requiresEmail = instance.emailRequiredForSignup;
 
 	const signupPayload: Misskey.entities.SignupRequest = {
 		username: username.value,
@@ -302,22 +386,26 @@ async function onSubmit(): Promise<void> {
 			'Content-Type': 'application/json',
 		},
 		body: JSON.stringify(signupPayload),
-	}).catch(() => {
-		onSignupApiError();
-		return null;
-	});
+	}).catch(() => null);
+
+	if (disposed || version !== modeVersion || instance.registrationClosed) {
+		submitting.value = false;
+		clearSecrets();
+		return;
+	}
 
 	if (res && res.ok) {
-		if (res.status === 204 || instance.emailRequiredForSignup) {
+		clearSecrets();
+		if (res.status === 204 || requiresEmail) {
 			os.alert({
 				type: 'success',
 				title: i18n.ts._signup.almostThere,
-				text: i18n.tsx._signup.emailSent({ email: email.value }),
+				text: i18n.tsx._signup.emailSent({ email: submittedEmail }),
 			});
 			emit('signupEmailPending');
 		} else {
 			const resJson = (await res.json()) as Misskey.entities.SignupResponse;
-			if (_DEV_) console.log(resJson);
+			if (disposed || version !== modeVersion) return;
 
 			emit('signup', resJson);
 
@@ -333,12 +421,10 @@ async function onSubmit(): Promise<void> {
 }
 
 function onSignupApiError() {
+	if (disposed) return;
 	submitting.value = false;
-	hcaptcha.value?.reset?.();
-	mcaptcha.value?.reset?.();
-	recaptcha.value?.reset?.();
-	turnstile.value?.reset?.();
-	testcaptcha.value?.reset?.();
+	resetCaptcha();
+	step.value = 'input';
 
 	os.alert({
 		type: 'error',
@@ -364,12 +450,66 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+	disposed = true;
+	usernameAbortController.value?.abort();
+	emailAbortController.value?.abort();
+	clearSecrets();
 	window.removeEventListener('keydown', checkCapsLock);
 	window.removeEventListener('keyup', checkCapsLock);
 });
 </script>
 
 <style lang="scss" module>
+.root {
+	background: var(--MI_THEME-panel);
+	border-radius: var(--MI-radius);
+	overflow: hidden;
+}
+
+.title {
+	margin: 0;
+	font-size: 1.3em;
+}
+
+.review {
+	line-height: 1.7;
+}
+
+.reviewList {
+	margin: 0;
+	display: grid;
+	gap: 8px;
+
+	dt {
+		font-weight: bold;
+	}
+
+	dd {
+		margin: 0 0 12px;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+}
+
+.stepEnter {
+	transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.stepFrom {
+	opacity: 0;
+	transform: translateY(8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.stepEnter {
+		transition: none;
+	}
+
+	.stepFrom {
+		transform: none;
+	}
+}
+
 .banner {
 	padding: 16px;
 	text-align: center;

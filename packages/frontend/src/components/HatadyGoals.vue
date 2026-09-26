@@ -123,7 +123,7 @@ async function load() {
 		goals.value = await misskeyApi('hata/hatady/goals', {});
 		error.value = '';
 	} catch {
-		error.value = '目標を読み込めませんでした';
+		error.value = copy.loadFailed;
 	} finally {
 		loading.value = false;
 	}

@@ -11,13 +11,11 @@ vi.mock('@/i.js', () => ({ $i: { id: 'viewer' } }));
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 vi.mock('@/utility/hatady-ui.js', () => ({ hatadyNotify: fixture.notify, hatadyDuration: () => '30分' }));
 vi.mock('@/utility/hatady.js', () => ({ hyTagLabel: (tag: string) => tag }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: {
-	reportAbuse: '通報', yes: 'はい', no: 'いいえ',
-	_hata: { _hatady: {
-		_home: { activityStudy: '勉強・読書', activityPrivate: '自分のみ' },
-		_media: { status: {}, session: { types: { movie_viewing: '映画', game_play: 'ゲーム' } }, detail: { showSpoilerSession: 'ネタバレを含む記録' } },
-	} },
-} } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/components/HatadyReactions.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/MkMediaList.vue', () => ({ default: { render: () => null } }));
 import { confirmHatadyRecordDeletion } from '@/utility/hatady-record-delete.js';

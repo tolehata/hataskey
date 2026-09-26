@@ -24,6 +24,10 @@ function mount() {
 		setup(props) {
 			const integrated = useHataskeyTimelineNewNotes(() => props.source, () => enabled.value && counts[props.source].value > 0 ? {
 				text: `${props.source}: ${counts[props.source].value} new notes`, icon: 'ti ti-arrow-up', show: () => show(props.source),
+				...(props.source === 'external' ? {
+					avatars: [{ id: 'note-1', url: 'https://example.com/avatar.png' }],
+					emojiUrls: { wave: 'https://example.com/wave.png' },
+				} : {}),
 			} : null);
 			return () => h('div', { 'data-source': props.source, 'data-integrated': integrated.value });
 		},
@@ -64,6 +68,8 @@ describe('Hataskey navbar new notes', () => {
 		await nextTick();
 		await nextTick();
 		expect(current.root.querySelector('button')?.textContent).toBe('external: 7 new notes');
+		expect(current.context.notice.value?.avatars).toEqual([{ id: 'note-1', url: 'https://example.com/avatar.png' }]);
+		expect(current.context.notice.value?.emojiUrls).toEqual({ wave: 'https://example.com/wave.png' });
 		current.counts.home.value = 20;
 		await nextTick();
 		expect(current.root.querySelector('button')?.textContent).toBe('external: 7 new notes');
@@ -74,6 +80,7 @@ describe('Hataskey navbar new notes', () => {
 		await nextTick();
 		await nextTick();
 		expect(current.root.querySelector('button')?.textContent).toBe('home: 20 new notes');
+		expect(current.context.notice.value?.avatars).toBeUndefined();
 	});
 
 	it('hides off-route and in Deck without discarding the original queued notes', async () => {

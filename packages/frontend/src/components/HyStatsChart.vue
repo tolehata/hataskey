@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 <figure :class="$style.root">
 	<figcaption>{{ title }}</figcaption>
 	<svg viewBox="0 0 380 210" role="img" :aria-label="title">
-		<desc>{{ rows.map((r) => `${r.label} ${format(r.value)}`).join('、') }}</desc>
+		<desc>{{ describeRows() }}</desc>
 		<g v-for="i in 3" :key="i">
 			<line x1="42" :y1="170 - (i - 1) * 70" x2="370" :y2="170 - (i - 1) * 70"/>
 			<text x="35" :y="174 - (i - 1) * 70" text-anchor="end">{{ Math.round((ceiling * (i - 1)) / 2) }}</text>
@@ -26,9 +26,9 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 			<text v-if="r.value == null" :x="42 + step * (index + 0.5)" y="165" text-anchor="middle">—</text>
 		</g>
 	</svg>
-	<small>{{ unit === 'seconds' ? (factor === 3600 ? '時間' : factor === 60 ? '分' : '秒') : unit }}</small>
+	<small>{{ unit === 'seconds' ? (factor === 3600 ? copy.hoursUnit : factor === 60 ? copy.minutesUnit : copy.secondsUnit) : unit }}</small>
 	<details>
-		<summary>数値を見る</summary>
+		<summary>{{ copy.viewNumbers }}</summary>
 		<table>
 			<caption>{{ title }}</caption>
 			<tbody>
@@ -44,6 +44,9 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 <script setup lang="ts">
 import { computed } from 'vue';
 import { hatadyDuration } from '@/utility/hatady-ui.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
+const copy = i18n.ts._hata._hatady._controls;
 const props = withDefaults(
 	defineProps<{ title: string; rows: { label: string; short?: string; value: number | null }[]; unit?: string }>(),
 	{ unit: 'seconds' },
@@ -59,7 +62,12 @@ const max = computed(() => Math.max(1, ...props.rows.map((r) => r.value || 0))),
 	every = computed(() => (props.rows.length > 12 ? 6 : props.rows.length > 7 ? 2 : 1));
 
 function format(value: number | null) {
-	return value == null ? '時間未入力' : props.unit === 'seconds' ? hatadyDuration(value) : `${value}${props.unit}`;
+	return value == null ? copy.durationMissing : props.unit === 'seconds' ? hatadyDuration(value) : `${value}${props.unit}`;
+}
+
+function describeRows(): string {
+	const descriptions = props.rows.map((row) => `${row.label} ${format(row.value)}`);
+	return versatileLang.startsWith('ja') ? descriptions.join('、') : new Intl.ListFormat(versatileLang, { style: 'short', type: 'conjunction' }).format(descriptions);
 }
 </script>
 <style module>

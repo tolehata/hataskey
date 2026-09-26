@@ -3,26 +3,26 @@ SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
-<HyDialog ref="dialog" title="通報" back :busy="busy" :inert="prompt" @back="requestClose" @close="requestClose" @closed="emit('closed')">
-	<div :class="$style.person"><i class="ti ti-flag" aria-hidden="true"></i><strong>{{ user.name || user.username }}さんの内容</strong></div>
+<HyDialog ref="dialog" :title="copy.title" back :busy="busy" :inert="prompt" @back="requestClose" @close="requestClose" @closed="emit('closed')">
+	<div :class="$style.person"><i class="ti ti-flag" aria-hidden="true"></i><strong>{{ i18n.tsx._hata._hatady._report.personContent({ name: user.name || user.username }) }}</strong></div>
 	<blockquote v-if="excerpt" :class="$style.excerpt">{{ excerpt }}</blockquote>
 	<form :id="formId" class="hy-form" @submit.prevent="send">
 		<label class="hy-field">
-			<span>通報の理由・詳細</span>
+			<span>{{ copy.reason }}</span>
 			<span :class="$style.inputBox">
-				<textarea v-model="reason" class="hy-input" rows="5" :maxlength="maxReasonLength" :disabled="busy || sent" required placeholder="問題だと感じた点や、確認してほしいことを書いてください。"></textarea>
+				<textarea v-model="reason" class="hy-input" rows="5" :maxlength="maxReasonLength" :disabled="busy || sent" required :placeholder="copy.reasonExample"></textarea>
 				<small :class="$style.counter">{{ reason.length }} / {{ maxReasonLength }}</small>
 			</span>
 		</label>
 		<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
 	</form>
 	<template #actions>
-		<button v-if="!sent" type="button" class="hy-secondary" :disabled="busy" @click="requestClose">戻る</button>
-		<button v-if="sent" type="button" class="hy-primary" :disabled="busy" @click="closeSentReport">端末の下書きを削除して閉じる</button>
-		<button v-else type="submit" :form="formId" class="hy-primary" :disabled="busy || !reason.trim() || reason.length > maxReasonLength"><i class="ti ti-flag" aria-hidden="true"></i>通報する</button>
+		<button v-if="!sent" type="button" class="hy-secondary" :disabled="busy" @click="requestClose">{{ i18n.ts._hata._hatady._controls.back }}</button>
+		<button v-if="sent" type="button" class="hy-primary" :disabled="busy" @click="closeSentReport">{{ copy.closeSent }}</button>
+		<button v-else type="submit" :form="formId" class="hy-primary" :disabled="busy || !reason.trim() || reason.length > maxReasonLength"><i class="ti ti-flag" aria-hidden="true"></i>{{ copy.submit }}</button>
 	</template>
 </HyDialog>
-<HatadyDraftPrompt v-if="prompt" title="書きかけの通報をどうする？" description="理由の下書きを端末に残して、あとで続きを書けます。" :error="draftError" @save="leave(true)" @discard="leave(false)" @return="prompt = false"/>
+<HatadyDraftPrompt v-if="prompt" :title="copy.draftQuestion" :description="copy.draftDescription" :error="draftError" @save="leave(true)" @discard="leave(false)" @return="prompt = false"/>
 </template>
 
 <script setup lang="ts">
@@ -33,6 +33,9 @@ import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
+import { i18n } from '@/i18n.js';
+
+const copy = i18n.ts._hata._hatady._report;
 
 const props = defineProps<{ user: Misskey.entities.UserLite; initialComment?: string }>();
 const emit = defineEmits<{ (event: 'closed'): void }>();
@@ -73,7 +76,7 @@ function requestClose() {
 
 function closeSentReport(): boolean {
 	if (!draft.clearDraft()) {
-		error.value = '通報を送信しましたが、端末の下書きを削除できませんでした';
+		error.value = copy.sentDraftCleanupFailed;
 		return false;
 	}
 	error.value = '';
@@ -83,11 +86,11 @@ function closeSentReport(): boolean {
 
 function leave(save: boolean) {
 	if (!(save ? draft.saveDraft() : draft.clearDraft())) {
-		draftError.value = '端末の下書きを更新できませんでした。入力内容は残っています';
+		draftError.value = copy.draftUpdateFailed;
 		return;
 	}
 	prompt.value = false;
-	if (save) hatadyNotify('下書きを保存しました');
+	if (save) hatadyNotify(copy.draftSaved);
 	dialog.value?.close();
 }
 
@@ -101,10 +104,10 @@ async function send() {
 			comment: context.value ? `${context.value}\n\n${reason.value}` : reason.value,
 		});
 		sent.value = true;
-		if (closeSentReport()) hatadyNotify('通報を送信しました');
-		else hatadyNotify('通報を送信しましたが、端末の下書きを削除できませんでした');
+		if (closeSentReport()) hatadyNotify(copy.sent);
+		else hatadyNotify(copy.sentDraftCleanupFailed);
 	} catch {
-		error.value = '通報を送信できませんでした。入力内容は残っています';
+		error.value = copy.sendFailed;
 	} finally {
 		busy.value = false;
 	}

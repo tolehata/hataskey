@@ -10,7 +10,7 @@ import { parse } from '@vue/compiler-sfc';
 import * as ts from 'typescript';
 import { ref } from 'vue';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { createHataskMoodReminderPatch, isHataskMoodReminderTimeZone } from '@/utility/hatask-mood-reminder.js';
+import { createHataskMoodReminderPatch, formatHataskTimeZone, getHataskMoodReminderTimeZone, isHataskMoodReminderTimeZone } from '@/utility/hatask-mood-reminder.js';
 
 function deviceTimeZone(timeZone: string): void {
 	const options = Intl.DateTimeFormat().resolvedOptions();
@@ -40,14 +40,31 @@ describe('Hatask mood reminder preferences', () => {
 		}
 	});
 
-	test('別の端末で時刻を変更した場合は新しい地域を記録し、渡された配列を変更しない', () => {
-		deviceTimeZone('Europe/London');
+	test('保存済みの地域は別の端末(UTCを返すプライバシー保護ブラウザなど)で時刻を変えても変えず、渡された配列を変更しない', () => {
+		for (const device of ['Europe/London', 'UTC']) {
+			deviceTimeZone(device);
+			const current = Object.freeze({ moodRemindTimeZone: 'Asia/Tokyo', moodRemindTimes: ['朝 8:00'] });
+			const times = Object.freeze(['夜 20:00']);
+			const next = createHataskMoodReminderPatch(current, { moodRemindTimes: times });
+			expect(next).toEqual({ moodRemindTimes: ['夜 20:00'] });
+			expect(next.moodRemindTimes).not.toBe(times);
+			expect(current.moodRemindTimes).toEqual(['朝 8:00']);
+			expect(createHataskMoodReminderPatch(current, { moodRemind: false })).toEqual({ moodRemind: false });
+			vi.restoreAllMocks();
+		}
+	});
+
+	test('地域は明示的に選んだ場合だけ変更し、不正な地域は保存しない', () => {
+		deviceTimeZone('Asia/Tokyo');
 		const current = Object.freeze({ moodRemindTimeZone: 'Asia/Tokyo', moodRemindTimes: ['朝 8:00'] });
-		const times = Object.freeze(['夜 20:00']);
-		const next = createHataskMoodReminderPatch(current, { moodRemindTimes: times });
-		expect(next).toEqual({ moodRemindTimeZone: 'Europe/London', moodRemindTimes: ['夜 20:00'] });
-		expect(next.moodRemindTimes).not.toBe(times);
-		expect(current.moodRemindTimes).toEqual(['朝 8:00']);
+		expect(createHataskMoodReminderPatch(current, { moodRemindTimeZone: 'America/New_York' })).toEqual({ moodRemindTimeZone: 'America/New_York' });
+		expect(createHataskMoodReminderPatch(current, { moodRemindTimeZone: '+09:00' })).toEqual({});
+	});
+
+	test('表示用の地域は保存値、未保存ならサーバーの既定地域を返す', () => {
+		expect(getHataskMoodReminderTimeZone({ moodRemindTimeZone: 'Europe/London' })).toBe('Europe/London');
+		for (const moodRemindTimeZone of [undefined, '', 'Invalid/Zone']) expect(getHataskMoodReminderTimeZone({ moodRemindTimeZone })).toBe('Asia/Tokyo');
+		expect(formatHataskTimeZone('Asia/Tokyo', 'en-US')).toBe('Asia/Tokyo (GMT+9)');
 	});
 
 	test('テーマなど他の設定変更では既存の地域も未設定の地域も変えない', () => {
@@ -82,9 +99,9 @@ function pageScript(filename: string): ts.SourceFile {
 const journalPage = pageScript('src/pages/hatask.vue');
 const settingsPage = pageScript('src/pages/HataskSettings.vue');
 
-function saveFixture(surface: 'journal' | 'settings', saved: Record<string, unknown> = { moodRemind: false, theme: 'koke' }) {
-	const page = surface === 'journal' ? journalPage : settingsPage;
-	const name = surface === 'journal' ? 'saveJournalReminder' : 'saveSettings';
+function saveFixture(saved: Record<string, unknown> = { moodRemind: false, theme: 'koke' }) {
+	const page = settingsPage;
+	const name = 'saveSettings';
 	const declaration = page.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name);
 	if (!declaration) throw new Error(`Missing save handler: ${name}`);
 	const settings = ref({ ...saved });
@@ -111,10 +128,10 @@ function saveFixture(surface: 'journal' | 'settings', saved: Record<string, unkn
 	return { save, settings, saving, loaded, loadedKeys, write, emit, error, alert };
 }
 
-describe.each(['journal', 'settings'] as const)('%s reminder save integration', surface => {
+describe('settings reminder save integration', () => {
 	test('サーバーで保存が完了するまで変更を確定せず、保存後に時刻と地域を反映する', async () => {
 		deviceTimeZone('America/New_York');
-		const state = saveFixture(surface);
+		const state = saveFixture();
 		let finish!: () => void;
 		state.write.mockImplementation(() => new Promise<void>(resolveValue => { finish = resolveValue; }));
 		const saving = state.save({ moodRemind: true });
@@ -127,24 +144,23 @@ describe.each(['journal', 'settings'] as const)('%s reminder save integration', 
 		await saving;
 		expect(state.settings.value).toEqual({ moodRemind: true, theme: 'koke', moodRemindTimes: ['昼 12:00', '寝る前 23:00'], moodRemindTimeZone: 'America/New_York' });
 		expect(state.saving.value).toBe(false);
-		if (surface === 'settings') expect(state.emit).toHaveBeenCalledWith('changed', state.settings.value);
+		expect(state.emit).toHaveBeenCalledWith('changed', state.settings.value);
 	});
 
 	test('保存失敗時は有効状態・時刻・地域と他の設定を保持する', async () => {
 		deviceTimeZone('Europe/London');
 		const before = { moodRemind: true, moodRemindTimes: ['夜 20:00'], moodRemindTimeZone: 'Asia/Tokyo', theme: 'suri' };
-		const state = saveFixture(surface, before);
+		const state = saveFixture(before);
 		state.write.mockRejectedValue(new Error('Network failure'));
 		await state.save({ moodRemind: false });
 		expect(state.settings.value).toEqual(before);
 		expect(state.saving.value).toBe(false);
 		expect(state.emit).not.toHaveBeenCalled();
-		if (surface === 'settings') expect(state.error.value).toBe('save failed');
-		else expect(state.alert).toHaveBeenCalledWith({ type: 'error', text: 'save failed' });
+		expect(state.error.value).toBe('save failed');
 	});
 
 	test('設定を取得できていない場合は保存しない', async () => {
-		const state = saveFixture(surface);
+		const state = saveFixture();
 		state.loaded.value = false;
 		state.loadedKeys.clear();
 		await state.save({ moodRemind: true });
@@ -165,6 +181,14 @@ function clientNotificationDestinations(page: ts.SourceFile): string[] {
 	visit(page);
 	return destinations;
 }
+
+test('きもち画面は独自のリマインド保存を持たず、Hatask設定のきもち記録を開く', () => {
+	const names = journalPage.statements.filter(ts.isFunctionDeclaration).map(node => node.name?.text);
+	expect(names).not.toContain('saveJournalReminder');
+	const template = readFileSync(resolve(process.cwd(), 'src/pages/hatask.vue'), 'utf8');
+	expect(template).toContain(`@reminders="openHataskSettings('moodReminder')"`);
+	expect(template).not.toContain('#reminders');
+});
 
 test('クライアントからは予定通知だけを作成し、気持ち通知を二重送信しない', () => {
 	expect(clientNotificationDestinations(journalPage)).toEqual(['/hatask?notice=calendar']);

@@ -85,7 +85,7 @@ export interface HatadyMediaSession {
 	[key: string]: unknown;
 }
 
-export type HatadyActivityType = 'study' | 'exercise' | 'work' | HatadyMediaSessionKind;
+export type HatadyActivityType = 'study' | 'exercise' | 'work' | 'cooking' | HatadyMediaSessionKind;
 
 export interface HatadyActivity {
 	id: string;
@@ -241,11 +241,11 @@ export function normalizeHatadyActivityPage(value: unknown): HatadyActivityPage 
 		const activity = item as Partial<HatadyActivity>;
 		if (typeof activity.id !== 'string' || typeof activity.occurredAt !== 'string') return false;
 		if (
-			!['study', 'exercise', 'work', 'movie_viewing', 'game_play', 'game_match', 'game_roguelike', 'game_pve'].includes(
+			!['study', 'exercise', 'work', 'cooking', 'movie_viewing', 'game_play', 'game_match', 'game_roguelike', 'game_pve'].includes(
 				String(activity.type),
 			)
 		) return false;
-		return ['study', 'exercise', 'work'].includes(activity.type as string)
+		return ['study', 'exercise', 'work', 'cooking'].includes(activity.type as string)
 			? !!activity.study && typeof activity.study === 'object'
 			: !!activity.media?.session;
 	});
@@ -480,7 +480,7 @@ export function mediaStatTotals(
  * 壊れた値・未知の値・順序の揺れを吸収する。⚠️保存が無い(null)ときだけ「全部表示」に倒す。
  * ⚠️空配列は「何も表示しない」という利用者の選択なので、全部表示に読み替えてはいけない。
  */
-export const HATADY_LOG_KINDS = ['study', 'movie', 'game', 'exercise', 'work'] as const;
+export const HATADY_LOG_KINDS = ['study', 'movie', 'game', 'exercise', 'work', 'cooking'] as const;
 export type HatadyLogKind = (typeof HATADY_LOG_KINDS)[number];
 
 export function normalizeHatadyLogKinds(raw: unknown): HatadyLogKind[] {

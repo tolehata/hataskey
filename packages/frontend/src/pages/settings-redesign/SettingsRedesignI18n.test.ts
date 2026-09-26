@@ -72,7 +72,7 @@ describe('settings redesign translations', () => {
 		// ⚠️旧設定から一覧へ戻る導線の文言を足したので217へ。
 		// ⚠️無操作のときに出す検索の案内文を足したので218へ。
 		// ⚠️「いまの値をすぐ変える」の節ごと mobile.changeCurrentValues を外したので217へ。
-		expect(ja.size).toBe(217);
+		expect(ja.size).toBe(218);
 		assertSameLocaleShape(ja, en);
 		assertSameLocaleShape(ja, zh);
 		expect(ja.get('search.relatedHeading')).toBe('こちらをお探しですか？');
@@ -95,6 +95,7 @@ describe('settings redesign translations', () => {
 		expect(ja.get('actions.logoutAll')).toBe('すべての端末からログアウト');
 		expect(ja.get('immediate.title')).toBe('すぐ反映される設定');
 		expect(ja.get('catalog.categories.hataskeyUi')).toBe('Hataskey UI');
+		expect(ja.get('immediate.uiSImmediate')).toBe('変更はすぐに保存・反映されます。');
 		expect(ja.get('catalog.fallback.hiddenReactions.label')).toBe('非表示リアクション');
 		expect(ja.get('catalog.fallback.hiddenReactions.description')).toBe('非表示にするリアクションの管理');
 		for (const key of ['driveCleaner', 'themeInstall', 'themeManage', 'statusbar', 'pluginInstall', 'apps', 'webhookEdit', 'webhookNew', 'customCss', 'accountStats', 'externalAccount', 'hataCustom', 'hiddenReactions']) {

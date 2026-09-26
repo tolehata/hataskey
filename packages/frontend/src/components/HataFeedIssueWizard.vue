@@ -22,12 +22,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:inert="prompt"
 	@closed="emit('closed')"
 >
-	<template #header>新規イシュー</template>
+	<template #header>{{ i18n.ts._hata._hatafeed._home.newIssue }}</template>
 
 	<div class="_spacer" style="--MI_SPACER-min: 20px; --MI_SPACER-max: 28px;">
-		<div v-if="hasDraft" class="hf-draft-offer"><span>端末に保存した下書きがあります</span><button type="button" @click="resumeDraft"><i class="ti ti-pencil-plus" aria-hidden="true"></i>続きから編集</button></div>
+		<div v-if="hasDraft" class="hf-draft-offer"><span>{{ copy.draftAvailable }}</span><button type="button" @click="resumeDraft"><i class="ti ti-pencil-plus" aria-hidden="true"></i>{{ copy.resumeDraft }}</button></div>
 		<!-- Step1: カテゴリ -->
-		<ol class="hf-stepper"><li v-for="(label, index) in ['種類', '内容', '確認']" :key="label" :aria-current="step === index + 1 ? 'step' : undefined"><b>{{ index + 1 }}</b>{{ label }}</li></ol>
+		<ol class="hf-stepper"><li v-for="(label, index) in [copy.stepType, copy.stepDetails, copy.stepConfirm]" :key="label" :aria-current="step === index + 1 ? 'step' : undefined"><b>{{ index + 1 }}</b>{{ label }}</li></ol>
 		<div v-if="step === 1" :class="$style.categories">
 			<button
 				v-for="c in availableCategoryKeys"
@@ -55,18 +55,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template #caption>{{ descCaption }}</template>
 			</MkTextarea>
 			<fieldset :class="$style.environment">
-				<legend>使用環境 <small>任意</small></legend>
-				<MkInput v-model="device" placeholder="例: iPhone、Pixel、Windows PC">
-					<template #label>使用端末</template>
+				<legend>{{ copy.environment }} <small>{{ copy.optional }}</small></legend>
+				<MkInput v-model="device" :placeholder="copy.deviceExample">
+					<template #label>{{ copy.device }}</template>
 				</MkInput>
-				<MkInput v-model="osVersion" placeholder="例: iOS・Androidのバージョン、Windows 11">
-					<template #label>OS・バージョン</template>
+				<MkInput v-model="osVersion" :placeholder="copy.osVersionExample">
+					<template #label>{{ copy.osVersion }}</template>
 				</MkInput>
-				<MkInput v-model="browser" placeholder="例: Safari、Chrome、ホーム画面から起動">
-					<template #label>ブラウザ・開き方</template>
+				<MkInput v-model="browser" :placeholder="copy.browserExample">
+					<template #label>{{ copy.browser }}</template>
 				</MkInput>
 			</fieldset>
-			<p v-if="descriptionTooLong" class="hy-error" role="alert">詳しい説明と使用環境を合わせて8,192文字以内にしてください。</p>
+			<p v-if="descriptionTooLong" class="hy-error" role="alert">{{ copy.environmentDescriptionLimit }}</p>
 			<div>
 				<div :class="$style.fieldLabel">{{ copy.attachments }}</div>
 				<div :class="$style.fileGrid">
@@ -105,9 +105,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div><b>{{ copy.categorySummary }}</b> {{ categoryLabel[category] }}</div>
 				<div><b>{{ copy.titleSummary }}</b> {{ title }}</div>
 				<div v-if="projectName"><b>{{ copy.projectSummary }}</b> {{ projectName }}</div>
-				<div v-for="field in environmentFields" :key="field.label"><b>{{ field.label }}:</b> {{ field.value }}</div>
+				<div v-for="field in environmentFields" :key="field.label"><b>{{ field.displayLabel }}:</b> {{ field.value }}</div>
 			</div>
-			<p v-if="descriptionTooLong" class="hy-error" role="alert">詳しい説明と使用環境を合わせて8,192文字以内にしてください。</p>
+			<p v-if="descriptionTooLong" class="hy-error" role="alert">{{ copy.environmentDescriptionLimit }}</p>
 
 			<div :class="$style.navRow">
 				<MkButton rounded primary gradate :disabled="submitting || descriptionTooLong" @click="submit"><i class="ti ti-send"></i> {{ copy.send }}</MkButton>
@@ -152,9 +152,9 @@ const device = ref('');
 const osVersion = ref('');
 const browser = ref('');
 const environmentFields = computed(() => [
-	{ label: '使用端末', value: device.value.trim() },
-	{ label: 'OS・バージョン', value: osVersion.value.trim() },
-	{ label: 'ブラウザ・開き方', value: browser.value.trim() },
+	{ label: '使用端末', displayLabel: copy.device, value: device.value.trim() },
+	{ label: 'OS・バージョン', displayLabel: copy.osVersion, value: osVersion.value.trim() },
+	{ label: 'ブラウザ・開き方', displayLabel: copy.browser, value: browser.value.trim() },
 ].filter(field => field.value));
 // Keep environment details in the existing issue body so detail views and exports retain them.
 const submittedDescription = computed(() => environmentFields.value.length
@@ -250,7 +250,7 @@ async function submit() {
 			fileIds: files.value.map(f => f.id),
 			code: (codeEnabled.value && code.value.trim().length > 0) ? code.value : null,
 		});
-		hataFeedNotify('イシューを作成しました');
+		hataFeedNotify(copy.created);
 		finishSubmission();
 		emit('done', issue);
 		dialog.value?.close();

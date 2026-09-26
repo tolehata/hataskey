@@ -45,7 +45,7 @@ function routeFixture(tab?: string, notice?: string, legacyEye = false) {
 describe('Hatask EYEタブの削除', () => {
 	test('旧EYEのURLは初回表示もクエリ変更もホームに戻す', async () => {
 		const current = routeFixture('eye');
-		expect(current.ids).toEqual(['home', 'cal', 'todo', 'mood', 'meal', 'garden', 'support', 'ranking']);
+		expect(current.ids).toEqual(['home', 'cal', 'todo', 'mood', 'meal', 'recipe', 'garden', 'support', 'ranking']);
 		expect(current.activeTab.value).toBe('home');
 		current.route.value.props.set('tab', 'garden');
 		await nextTick();

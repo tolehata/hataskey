@@ -6,7 +6,7 @@
 import * as Misskey from 'cherrypick-js';
 import { url } from '@@/js/config.js';
 import { shouldCollapsed } from '@@/js/collapsed.js';
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent, nextTick } from 'vue';
 import { claimAchievement } from './achievements.js';
 import type { Ref, ShallowRef } from 'vue';
 import type { MenuItem } from '@/types/menu.js';
@@ -49,10 +49,13 @@ export async function getNoteClipMenu(props: {
 	const menu: MenuItem[] = [...clips.map(clip => ({
 		text: getClipName(clip),
 		action: () => {
-			claimAchievement('noteClipped1');
 			os.promiseDialog(
 				misskeyApi('clips/add-note', { clipId: clip.id, noteId: appearNote.id }),
-				null,
+				() => {
+					claimAchievement('noteClipped1');
+					os.toast(i18n.ts._hata._navbarNotice.clipAdded, 'clipped', false, clip.name);
+					clipsCache.set(clips.map(c => c.id === clip.id ? { ...c, notesCount: (c.notesCount ?? 0) + 1 } : c));
+				},
 				async (err) => {
 					if (err.id === '734806c4-542c-463a-9311-15c512803965') {
 						const confirm = await os.confirm({
@@ -85,18 +88,7 @@ export async function getNoteClipMenu(props: {
 						});
 					}
 				},
-			).then(() => {
-				clipsCache.set(clips.map(c => {
-					if (c.id === clip.id) {
-						return {
-							...c,
-							notesCount: (c.notesCount ?? 0) + 1,
-						};
-					} else {
-						return c;
-					}
-				}));
-			});
+			).catch(() => {});
 		},
 	})), ...(clips.length > 0 ? [{ type: 'divider' as const }] : []), {
 		icon: 'ti ti-plus',
@@ -127,8 +119,10 @@ export async function getNoteClipMenu(props: {
 
 			clipsCache.delete();
 
-			claimAchievement('noteClipped1');
-			os.apiWithDialog('clips/add-note', { clipId: clip.id, noteId: appearNote.id });
+			await os.promiseDialog(misskeyApi('clips/add-note', { clipId: clip.id, noteId: appearNote.id }), () => {
+				claimAchievement('noteClipped1');
+				os.toast(i18n.ts._hata._navbarNotice.clipAdded, 'clipped', false, clip.name);
+			});
 		},
 	}];
 
@@ -205,6 +199,7 @@ export function getNoteMenu(props: {
 				noteId: appearNote.id,
 			}).then(() => {
 				globalEvents.emit('noteDeleted', appearNote.id);
+				os.toast(i18n.ts._hata._navbarNotice.noteDeleted, 'deleted');
 			});
 
 			if (Date.now() - new Date(appearNote.createdAt).getTime() < 1000 * 60 && appearNote.userId === $i.id) {
@@ -217,17 +212,22 @@ export function getNoteMenu(props: {
 		os.confirm({
 			type: 'warning',
 			text: i18n.ts.deleteAndEditConfirm,
-		}).then(({ canceled }) => {
+		}).then(async ({ canceled }) => {
 			if (canceled) return;
 			if ($i == null) return;
 
-			misskeyApi('notes/delete', {
-				noteId: appearNote.id,
-			}).then(() => {
-				globalEvents.emit('noteDeleted', appearNote.id);
-			});
+			try {
+				await misskeyApi('notes/delete', { noteId: appearNote.id });
+			} catch (error) {
+				await os.alert({ type: 'error', text: error instanceof Error ? error.message : i18n.ts.error });
+				return;
+			}
+			globalEvents.emit('noteDeleted', appearNote.id);
 
-			os.post({ initialNote: appearNote, renote: appearNote.renote, reply: appearNote.reply, channel: appearNote.channel });
+			void os.post({ initialNote: appearNote, renote: appearNote.renote, reply: appearNote.reply, channel: appearNote.channel });
+			// UI3 がホームの投稿欄へ移動する場合も、移動先の通知領域で成功を表示する。
+			await nextTick();
+			os.toast(i18n.ts._hata._navbarNotice.noteDeleted, 'deleted');
 
 			if (Date.now() - new Date(appearNote.createdAt).getTime() < 1000 * 60 && appearNote.userId === $i.id) {
 				claimAchievement('noteDeletedWithin1min');

@@ -45,6 +45,7 @@
 				<dl class="detail-fields"><div v-for="(field, index) in detail.fields" :key="index"><dt>{{ field.label }}</dt><dd>{{ field.value }}</dd></div></dl>
 				<details class="record-identifier"><summary>記録ID</summary><code>{{ selected.id }}</code></details>
 				<div class="review-actions"><h3>確認状態</h3><p v-if="selected.stale" class="review-note">前回の確認後に内容が変わっています。</p><div class="review-state-controls" role="group" aria-label="この記録の確認状態"><button v-for="item in statuses" :key="item.id" type="button" :data-set-state="item.id" :aria-pressed="selected.state === item.id" :disabled="saving" @click="setState(item.id)"><i :class="`ti ${item.icon}`" aria-hidden="true"></i>{{ item.label }}</button></div><p v-if="selected.reviewer && selected.reviewedAt" class="review-note">{{ userName(selected.reviewer) }} · {{ new Date(selected.reviewedAt).toLocaleString() }}</p></div>
+				<RecordModerationActions :target="{ product: 'hatask', targetType: 'record', targetId: selected.id }" :busy="saving" :mode="mode" @completed="onModerated"/>
 			</template>
 			<div v-else class="review-state"><h2 :id="`${uid}-detail`" ref="detailHeading" tabindex="-1">記録を表示できません</h2><button class="review-button" type="button" @click="openRecord(selectedId)">もう一度読み込む</button></div>
 			<p v-if="detailError" role="alert" class="review-note">{{ detailError }}</p><p v-if="notice" role="status" class="review-note">{{ notice }}</p>
@@ -62,6 +63,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 import * as os from '@/os.js';
 import MkAvatar from '@/components/global/MkAvatar.vue';
+import RecordModerationActions from '@/components/RecordModerationActions.vue';
 
 type Page = Endpoints['admin/hatask/records/list']['res'];
 type Detail = Endpoints['admin/hatask/records/show']['res'];
@@ -158,6 +160,11 @@ async function selectOwner() {
 }
 
 function resetFilters() { query.value = ''; kind.value = state.value = visibility.value = 'all'; owner.value = null; dateFrom.value = dateTo.value = ''; }
+
+async function onModerated() {
+	selectedId.value = ''; detail.value = null; detailOpen.value = false;
+	await loadList();
+}
 
 async function setState(value: State) {
 	if (!selected.value || saving.value || !valid($i?.id)) return;

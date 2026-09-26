@@ -22,13 +22,14 @@
 
 <script setup lang="ts">
 import { useId } from 'vue';
+import { i18n } from '@/i18n.js';
 defineProps<{ modelValue: 'public' | 'followers' | 'private'; label?: string }>();
 const emit = defineEmits<{ (event: 'update:modelValue', value: 'public' | 'followers' | 'private'): void }>();
 const id = useId();
 const choices = [
-	{ value: 'public', label: '公開', icon: 'ti ti-world' },
-	{ value: 'followers', label: 'フォロワーのみ', icon: 'ti ti-users' },
-	{ value: 'private', label: '自分のみ', icon: 'ti ti-lock' },
+	{ value: 'public', label: i18n.ts._hata._hatady._controls.visibilityPublic, icon: 'ti ti-world' },
+	{ value: 'followers', label: i18n.ts._hata._hatady._controls.visibilityFollowers, icon: 'ti ti-users' },
+	{ value: 'private', label: i18n.ts._hata._hatady._controls.visibilityPrivate, icon: 'ti ti-lock' },
 ] as const;
 </script>
 

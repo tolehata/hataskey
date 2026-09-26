@@ -10,6 +10,7 @@ import { HATA_SIDE_NATIVE_WIDGET_REGISTRY, HATA_SIDE_WIDGET_REGISTRY } from './h
 import {
 	HATA_SIDE_STUDIO_CHANGE_EVENT,
 	HATA_SIDE_STUDIO_FORMAT_VERSION,
+	HATA_SIDE_STUDIO_UI_S_STORAGE_KEY,
 	applyHataSideStudioStore,
 	copyCollapsedToExpanded,
 	copyExpandedToCollapsed,
@@ -22,6 +23,7 @@ import {
 	findHataSideNodeParentGroup,
 	getActiveHataSideStudioMenuIds,
 	getAvailableHataSideStudioMoreItems,
+	getHataSideStudioStorageKey,
 	getHataSideNodeContainerColumns,
 	getHataSideStudioGroupDisplayName,
 	getHataSideStudioMenuDisplayLabel,
@@ -33,10 +35,12 @@ import {
 	isHataSideStudioStorageString,
 	mergeHataSideGroups,
 	sanitizeHataSideStudioStore,
+	startHataSideStudioSync,
+	stopHataSideStudioSync,
 } from './hata-side-studio.js';
 
 const storage = vi.hoisted(() => ({
-	getItem: vi.fn(() => null as string | null),
+	getItem: vi.fn((_key: string) => null as string | null),
 	setItem: vi.fn(),
 	removeItem: vi.fn(),
 }));
@@ -157,7 +161,7 @@ describe('HataSideStudio', () => {
 		expect(beforeLanguageSwitch).not.toContain('时间线');
 	});
 
-	test('初期状態は拡大グループと縮小専用の縦一列ボタンを別々に持つ', () => {
+	test('初期状態は拡大の各カテゴリを二列にし、縮小専用の縦一列ボタンを別々に持つ', () => {
 		const profile = createDefaultProfile(source);
 		expect(HATA_SIDE_STUDIO_FORMAT_VERSION).toBe(9);
 		expect(profile.postButton).toEqual({
@@ -170,13 +174,40 @@ describe('HataSideStudio', () => {
 			gradientEasing: 'linear',
 		});
 		expect(profile.expanded.width).toBe('normal');
+		expect(profile.expanded.columns).toBe(1);
 		expect(profile.expanded.nodes.every(node => node.type === 'group')).toBe(true);
+		expect(profile.expanded.nodes.every(node => node.type !== 'group' || node.columns === 2)).toBe(true);
 		expect(profile.expanded.nodes.every(node => node.type !== 'group' || node.foreground === 'var(--MI_THEME-fg)')).toBe(true);
 		expect(profile.collapsed.buttons.map(button => button.menuId)).toEqual(['timeline', 'notifications', 'externalNotifications', 'hatask']);
 		expect(profile.collapsed.buttons.every(button => button.showLabel === false && button.rotation === 0)).toBe(true);
 		expect(profile.collapsed.buttons.every(button => button.border === 'var(--MI_THEME-divider)')).toBe(true);
 		expect(profile.collapsed.buttons.every(button => button.borderVisible === false)).toBe(true);
 		expect(profile.collapsed.buttons.some(button => button.menuId === 'more')).toBe(false);
+	});
+
+	test('新規グループと初期化・リセット後の全カテゴリは二列になり、外側は一列を保つ', () => {
+		expect(createGroup('追加カテゴリ').columns).toBe(2);
+		for (const stored of [null, '{broken']) {
+			storage.getItem.mockReturnValue(stored);
+			ensureHataSideStudioInitialized(source);
+			const profile = hataSideStudioStore.value.profiles[0];
+			expect(profile.expanded.columns).toBe(1);
+			expect(profile.expanded.nodes.length).toBeGreaterThan(0);
+			expect(profile.expanded.nodes.every(node => node.type === 'group' && node.columns === 2)).toBe(true);
+		}
+	});
+
+	test('保存済みカテゴリの一列・二列・三列設定を読み込み時に維持する', () => {
+		const profiles = ([1, 2, 3] as const).map(columns => {
+			const profile = createDefaultProfile(source, `${columns}列`);
+			for (const node of profile.expanded.nodes) {
+				if (node.type === 'group') node.columns = columns;
+			}
+			return profile;
+		});
+		const restored = sanitizeHataSideStudioStore({ version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: profiles[0].id, profiles }, source);
+		expect(restored.profiles.map(profile => profile.expanded.columns)).toEqual([1, 1, 1]);
+		expect(restored.profiles.map(profile => profile.expanded.nodes.map(node => node.type === 'group' ? node.columns : null))).toEqual([[1, 1], [2, 2], [3, 3]]);
 	});
 
 	test('v8の全プロファイルへ外部通知を1件だけ補い、配置と装飾を保って再実行しても変化させない', () => {
@@ -419,12 +450,16 @@ describe('HataSideStudio', () => {
 
 	test('縮小から拡大へコピーするとボタンをグループへまとめ、既存の全幅ウィジェットを保持する', () => {
 		const profile = createDefaultProfile(source);
+		profile.collapsed.buttons[0].size = 'large';
 		const widget = createWidget('clock');
 		profile.expanded.nodes.push(widget);
 		const copied = copyCollapsedToExpanded(profile);
 		expect(copied.expanded.nodes[0].type).toBe('group');
 		expect(copied.expanded.nodes.some(node => node.id === widget.id)).toBe(true);
 		const copiedGroup = copied.expanded.nodes[0];
+		expect(copied.expanded.columns).toBe(1);
+		expect(copiedGroup.type === 'group' && copiedGroup.columns).toBe(2);
+		expect(copiedGroup.type === 'group' && copiedGroup.children.every(child => child.size === 'normal')).toBe(true);
 		expect(copiedGroup.type === 'group' && copiedGroup.children.every(child => child.type !== 'button' || child.borderVisible === true)).toBe(true);
 	});
 
@@ -563,6 +598,93 @@ describe('HataSideStudio', () => {
 		window.dispatchEvent(new StorageEvent('storage', { key: 'hataSideStudio', newValue: remote }));
 		expect(hataSideStudioStore.value.activeProfileId).toBe(remoteProfile.id);
 		expect(hataSideStudioStore.value.profiles[0].name).toBe('別ウィンドウ');
+	});
+
+	test('UI S は初回のみ旧構成全体を複製し、以後の保存と通知を分離する', () => {
+		const values = new Map<string, string>();
+		storage.getItem.mockImplementation(key => values.get(key) ?? null);
+		storage.setItem.mockImplementation((key, value) => { values.set(key, value); });
+		const initial = createDefaultProfile(source, '初期構成');
+		initial.expanded.width = 'wide';
+		initial.expanded.nodes.push(createWidget('clock'));
+		values.set('hataSideStudio', JSON.stringify({ version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: initial.id, profiles: [initial] }));
+		ensureHataSideStudioInitialized(source);
+		const cloned = JSON.parse(values.get(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY)!);
+		expect(cloned.profiles[0]).toMatchObject({ name: '初期構成', expanded: { width: 'wide' } });
+		expect(cloned.profiles[0].expanded.nodes.some((node: { type: string }) => node.type === 'widget')).toBe(true);
+
+		values.set('ui', 'simple');
+		const changedLegacy = createDefaultProfile(source, '旧UI変更');
+		applyHataSideStudioStore({ version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: changedLegacy.id, profiles: [changedLegacy] });
+		expect(JSON.parse(values.get(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY)!).profiles[0].name).toBe('初期構成');
+		values.set('ui', 'hataskey3');
+		expect(getHataSideStudioStorageKey()).toBe('hataSideStudio');
+		expect(hataSideStudioStore.value.profiles[0].name).toBe('旧UI変更');
+		const events: CustomEvent[] = [];
+		const listener = (event: Event) => events.push(event as CustomEvent);
+		window.addEventListener(HATA_SIDE_STUDIO_CHANGE_EVENT, listener);
+		const changedUiS = createDefaultProfile(source, 'UI S変更');
+		applyHataSideStudioStore({ version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: changedUiS.id, profiles: [changedUiS] }, HATA_SIDE_STUDIO_UI_S_STORAGE_KEY);
+		window.removeEventListener(HATA_SIDE_STUDIO_CHANGE_EVENT, listener);
+		expect(events.at(-1)?.detail.storageKey).toBe(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY);
+		expect(JSON.parse(values.get('hataSideStudio')!).profiles[0].name).toBe('旧UI変更');
+		window.dispatchEvent(new StorageEvent('storage', { key: 'hataSideStudio', newValue: values.get('hataSideStudio') }));
+		expect(hataSideStudioStore.value.profiles[0].name).toBe('旧UI変更');
+	});
+
+	test('モジュール再読込でUIを選び、旧構成がない場合はsidebar sourceでUI Sを初期化する', async () => {
+		const values = new Map<string, string>([['ui', 'hataskey3']]);
+		storage.getItem.mockImplementation(key => values.get(key) ?? null);
+		storage.setItem.mockImplementation((key, value) => { values.set(key, value); });
+		stopHataSideStudioSync();
+		try {
+			vi.resetModules();
+			const uiS = await import('./hata-side-studio.js');
+			expect(uiS.getHataSideStudioStorageKey()).toBe(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY);
+			expect(values.has(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY)).toBe(false);
+			const laterLegacy = createDefaultProfile(source, '別タブで後から編集');
+			values.set('hataSideStudio', JSON.stringify({ version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: laterLegacy.id, profiles: [laterLegacy] }));
+			uiS.ensureHataSideStudioInitialized(source);
+			expect(uiS.getActiveHataSideStudioMenuIds().has('hatask')).toBe(true);
+			expect(uiS.hataSideStudioStore.value.profiles[0].name).not.toBe('別タブで後から編集');
+			expect(JSON.parse(values.get(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY)!).profiles[0].expanded.nodes.length).toBeGreaterThan(0);
+			values.set('ui', 'simple');
+			expect(uiS.getHataSideStudioStorageKey()).toBe(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY);
+			uiS.stopHataSideStudioSync();
+			vi.resetModules();
+			const legacy = await import('./hata-side-studio.js');
+			expect(legacy.getHataSideStudioStorageKey()).toBe('hataSideStudio');
+			legacy.stopHataSideStudioSync();
+		} finally {
+			startHataSideStudioSync();
+		}
+	});
+
+	test('旧UIで先に編集しても、再読込したUI Sは初回アクセス時の構成を使う', async () => {
+		const values = new Map<string, string>();
+		storage.getItem.mockImplementation(key => values.get(key) ?? null);
+		storage.setItem.mockImplementation((key, value) => { values.set(key, value); });
+		const initial = createDefaultProfile(source, '複製元');
+		values.set('hataSideStudio', JSON.stringify({ version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: initial.id, profiles: [initial] }));
+		values.set('ui', 'simple');
+		stopHataSideStudioSync();
+		try {
+			vi.resetModules();
+			const legacy = await import('./hata-side-studio.js');
+			expect(JSON.parse(values.get(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY)!).profiles[0].name).toBe('複製元');
+			const edited = createDefaultProfile(source, '編集後');
+			legacy.applyHataSideStudioStore({ version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: edited.id, profiles: [edited] });
+			values.set('ui', 'hataskey3');
+			expect(legacy.getHataSideStudioStorageKey()).toBe('hataSideStudio');
+			legacy.stopHataSideStudioSync();
+			vi.resetModules();
+			const uiS = await import('./hata-side-studio.js');
+			expect(uiS.getHataSideStudioStorageKey()).toBe(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY);
+			expect(uiS.hataSideStudioStore.value.profiles[0].name).toBe('複製元');
+			uiS.stopHataSideStudioSync();
+		} finally {
+			startHataSideStudioSync();
+		}
 	});
 
 	test('もっと項目catalogは固定項目を拒否し、Studio削除後に候補へ自動復帰する', () => {

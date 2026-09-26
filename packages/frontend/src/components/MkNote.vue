@@ -8,7 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	v-if="!hardMuted && muted === false && !hideAsBot"
 	ref="rootEl"
 	v-hotkey="keymap"
-	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender && utageState === 'none' && !noteGlassActive, [$style.utageActive]: utageState !== 'none' && utageOutsideFrame && !utageFrameSuppressed }]"
+	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender && utageState === 'none' && !noteGlassActive, [$style.utageActive]: utageState !== 'none' && utageOutsideFrame }]"
 	:data-utage-state="utageState !== 'none' ? utageState : null"
 	tabindex="0"
 >
@@ -65,12 +65,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="$style.collapsedRenoteTargetAvatar" :user="appearNote.user" link preview/>
 		<Mfm :text="getNoteSummary(appearNote)" :plain="true" :nowrap="true" :author="appearNote.user" :nyaize="'respect'" :class="[$style.collapsedRenoteTargetText, { [$style.showReplyTargetNoteInSemiTransparent]: prefer.s.showReplyTargetNoteInSemiTransparent }]" @click="renoteCollapsed ? renoteCollapsed = false : replyCollapsed ? replyCollapsed = false : ''"/>
 	</div>
-	<article v-else ref="utageArticle" :class="$style.article" :data-utage-square="(!utageOutsideFrame && utageState !== 'none' && !utageFrameSuppressed) ? utageState : null" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
+	<article v-else ref="utageArticle" :class="$style.article" :data-utage-square="(!utageOutsideFrame && utageState !== 'none') ? utageState : null" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
 		<!-- 旗鯖fork: C7 宴チュートリアル (自分の宴ノート初回のみ) -->
 		<MkTip v-if="showUtageTip" k="note.utage" style="margin-bottom: 8px;">
 			{{ utageCopy.tipBefore }}<b style="color: var(--MI_THEME-success);">{{ utageCopy.tipSuccess }}</b>{{ utageCopy.tipMiddle }}<b style="color: var(--MI_THEME-error);">{{ utageCopy.tipFailure }}</b>{{ utageCopy.tipAfter }}
 		</MkTip>
-		<div :class="[$style.bubbleBody, { [$style.utageFlashing]: utageState === 'flashing' && utageOutsideFrame && !utageFrameSuppressed, [$style.utageFailed]: utageState === 'failed' && utageOutsideFrame && !utageFrameSuppressed, [$style.utageSuccess]: utageState === 'success' && utageOutsideFrame && !utageFrameSuppressed }]">
+		<div ref="utageBubble" :class="[$style.bubbleBody, { [$style.utageFlashing]: utageState === 'flashing' && utageOutsideFrame, [$style.utageReviving]: utageState === 'reviving' && utageOutsideFrame, [$style.utageFailed]: utageState === 'failed' && utageOutsideFrame, [$style.utageSuccess]: utageState === 'success' && utageOutsideFrame }]">
 		<!-- 旗鯖fork: C7 宴 結果バッジ (吹き出し右下隅) -->
 		<div v-if="utageState === 'failed'" :class="[$style.utageBadge, $style.utageBadgeFailed]">{{ utageCopy.failed }}</div>
 		<div v-else-if="utageState === 'success'" :class="[$style.utageBadge, $style.utageBadgeSuccess]">{{ utageCopy.success }}</div>
@@ -256,6 +256,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkA :to="`/notes/${appearNote.id}/reactions`" :class="[$style.reactionOmitted]">{{ i18n.ts.more }}</MkA>
 				</template>
 			</MkReactionsViewer>
+			<MkUtageStatus v-if="utageState !== 'none' && $appearNote.utageRevival" :note="$appearNote"/>
 			<footer :class="$style.footer">
 				<template v-if="prefer.s.showReplyButtonInNoteFooter">
 					<button v-if="!note.isHidden" v-tooltip="i18n.ts.reply" :class="$style.footerButton" class="_button" @click.stop="reply()">
@@ -392,6 +393,8 @@ import { i18n } from '@/i18n.js';
 import { getAbuseNoteMenu, getCopyNoteLinkMenu, getNoteClipMenu, getNoteMenu, getRenoteMenu, getRenoteOnly, getQuoteMenu } from '@/utility/get-note-menu.js';
 import { noteEvents, useNoteCapture } from '@/composables/use-note-capture.js';
 import { useUtageFailureMotion } from '@/composables/use-utage-failure-motion.js';
+import { useUtageRevivalMotion } from '@/composables/use-utage-revival-motion.js';
+import MkUtageStatus from '@/components/MkUtageStatus.vue';
 import { deepClone } from '@/utility/clone.js';
 import { useTooltip } from '@/composables/use-tooltip.js';
 import { claimAchievement } from '@/utility/achievements.js';
@@ -456,12 +459,6 @@ const inLocalTimeline = inject<Ref<boolean> | null>('inLocalTimeline', null);
 // 宴枠(outline)を吹き出しON時は外側に、OFF時は内側(inset)に描くため。未提供時(=吹き出し文脈外)は内側にする。
 const noteBubbleEnabled = inject<Ref<boolean> | null>('noteBubbleEnabled', null);
 const utageOutsideFrame = computed(() => noteBubbleEnabled?.value ?? false);
-// 旗鯖fork(HataSNSCordUI): MkNote がさらに外側の吹き出し(.noteBubble等)にネストされる文脈では、
-// 内側で枠を描くと外枠との間に隙間ができ「枠が内側でノート内容に被さる」ように見える。
-// ホスト側がこのキーで true を provide すると、内側の枠描画(outline/inset/背景の色付け)を止め、
-// 代わりに data-utage-state 属性だけを出す。ホストはそれを :has() 等で拾い、自分の外枠に描く。
-const utageFrameExternal = inject<Ref<boolean> | null>('utageFrameExternal', null);
-const utageFrameSuppressed = computed(() => utageFrameExternal?.value ?? false);
 // 旗鯖fork: 背景ぼかし(glass)有効時は skipRender(content-visibility:auto)を付けない。
 // glass = 背景ぼかし(noteTimelineGlassBg) または グラスUIベータ(glassUiLocal)。
 const noteTimelineGlassBg = inject<Ref<boolean> | null>('noteTimelineGlassBg', null);
@@ -506,7 +503,7 @@ const menuButton = useTemplateRef('menuButton');
 // 旗鯖fork: C7 宴(うたげ)明滅機能
 // 本文に「宴」「うたげ」「utage」を含むローカルノートをLTLに投稿すると、
 // 投稿から15分間ノート全体が明滅する。15分逃げ切れば「成功」、
-// 途中で他者の反応(リアクション/リプライ/リノート)が来たら「失敗...」。
+// 途中で他者の反応が来たら失敗し、抽選で復活チャンスが始まる。
 // 判定はサーバー(utage_session)が行い、フロントは $appearNote.utageStatus を購読して
 // 描画するだけ。これによりリロード・別端末でも状態が一貫する(従来のフロント完結実装で
 // 起きていた「成功後の反応をリロードで失敗扱いしてしまう」現象を解消)。
@@ -534,26 +531,35 @@ const showUtageTip = computed(() => {
 // 投稿からの経過ms (6時間制約の判定用)
 const utageCreatedAt = new Date(appearNote.createdAt).getTime();
 
-// 宴の状態: 'none' | 'flashing' | 'failed' | 'success'
 // サーバーの判定結果($appearNote.utageStatus)をそのまま反映する。
-// running=明滅, succeeded=成功, failed=失敗。宴セッションが無い(undefined)= none。
-const utageState = computed<'none' | 'flashing' | 'failed' | 'success'>(() => {
+// running=明滅, reviving=復活挑戦, succeeded=成功, failed=失敗。セッションが無ければnone。
+const utageState = computed<'none' | 'flashing' | 'reviving' | 'failed' | 'success'>(() => {
 	if (!isUtageTarget.value) return 'none';
 	if ((Date.now() - utageCreatedAt) >= UTAGE_EXPIRE_MS) return 'none'; // 6時間超 → 平常
 	switch ($appearNote.utageStatus) {
 		case 'succeeded': return 'success';
 		case 'failed': return 'failed';
 		case 'running': return 'flashing';
+		case 'reviving': return 'reviving';
 		default: return 'none';
 	}
 });
 
+const utageBubble = useTemplateRef('utageBubble');
+const utageArticle = useTemplateRef('utageArticle');
 useUtageFailureMotion({
 	root: rootEl,
-	article: useTemplateRef('utageArticle'),
+	article: utageArticle,
 	state: utageState,
 	animationEnabled: prefer.r.animation,
 	failedText: utageCopy.failed,
+});
+
+useUtageRevivalMotion({
+	root: rootEl,
+	frame: computed(() => utageOutsideFrame.value ? utageBubble.value : utageArticle.value),
+	state: utageState,
+	animationEnabled: prefer.r.animation,
 });
 
 onMounted(() => {
@@ -1447,6 +1453,12 @@ function emitUpdReaction(emoji: string, delta: number) {
 	background: color-mix(in srgb, var(--MI_THEME-success) 8%, transparent);
 }
 
+.utageReviving {
+	border-radius: 16px;
+	outline: 2px solid color-mix(in srgb, var(--MI_THEME-warn) 60%, transparent);
+	outline-offset: 2px;
+}
+
 /* 旗鯖fork(#1): 吹き出しOFF(デッキUI等、四隅が四角のノート)用の宴枠。
    .article(=ノート本体の四角い箱)に inset の box-shadow で枠を描く。
    inset なので隣のノートや他要素にはみ出さず、四角い枠なので四角ノートと形が一致する。
@@ -1461,6 +1473,9 @@ function emitUpdReaction(emoji: string, delta: number) {
 .article[data-utage-square='success'] {
 	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-success) 75%, transparent);
 	background: color-mix(in srgb, var(--MI_THEME-success) 8%, transparent) !important;
+}
+.article[data-utage-square='reviving'] {
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-warn) 60%, transparent);
 }
 .article[data-utage-square='flashing'] {
 	animation: utageFlashInset 2.4s ease-in-out infinite;
@@ -1905,11 +1920,11 @@ function emitUpdReaction(emoji: string, delta: number) {
      一律で `--htk-glass-card-opacity` が反映される。
      ダーク/ライトで accent tint 濃度を出し分け (18%/8%)。 -->
 <style lang="scss">
-/* 旗鯖fork: Hatady(.hatady-scope 配下)は独自の暖色クラフト紙テーマを持ち、フィードカードや
-   会話ルートを <article> で描画する。このグローバルなガラス規則が効くとクリーム面が暗いガラスに
-   化けて色合いが崩れるため、:not(:where(.hatady-scope *)) で Hatady 内の <article> を除外する
-   (:where で詳細度は据え置き、既存の非 Hatady ノートのカスケードには影響しない)。 */
-html.hataGlassUi article:not(:where(.hatady-scope *)) {
+/* 旗鯖fork: Hatady(.hatady-scope 配下)と Hatask(.htk-root 配下)は独自テーマを持ち、
+   <article> を描画する。このグローバルなガラス規則が効くと独自の背景色が崩れるため、
+   :not(:where(.hatady-scope *, .htk-root *)) で両者の <article> を除外する
+   (:where で詳細度は据え置き、既存の本体ノートのカスケードには影響しない)。 */
+html.hataGlassUi article:not(:where(.hatady-scope *, .htk-root *)) {
 	border-radius: 20px;
 	background: color-mix(in srgb,
 		color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel))
@@ -1921,7 +1936,7 @@ html.hataGlassUi article:not(:where(.hatady-scope *)) {
 	-webkit-backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
 	backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
 }
-html[data-color-scheme=light].hataGlassUi article:not(:where(.hatady-scope *)) {
+html[data-color-scheme=light].hataGlassUi article:not(:where(.hatady-scope *, .htk-root *)) {
 	background: color-mix(in srgb,
 		color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel))
 		var(--htk-glass-card-opacity, 55%),

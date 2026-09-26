@@ -30,6 +30,11 @@ vi.mock('@/i18n.js', () => {
 		statusWontfix: 'Declined',
 		statusUnknown: 'Unclear',
 		statusClosed: 'Closed',
+		emojiImageUpdate: 'image update',
+		emojiWithdraw: 'withdrawal',
+		emojiDecisionApproved: 'approved',
+		emojiDecisionHeld: 'put on hold',
+		emojiDecisionRejected: 'rejected',
 	};
 	const templates = {
 		issuePosted: 'Issue "{title}" was posted.',
@@ -47,6 +52,10 @@ vi.mock('@/i18n.js', () => {
 		emojiRejectedWithReason: 'Emoji {emoji} was rejected: {reason}',
 		emojiRejectedWithName: 'Emoji {emoji} was rejected.',
 		emojiRejectedByActor: '{name} rejected emoji {emoji}.',
+		emojiChangeReceived: 'Received an emoji {kind} request for {emoji}.',
+		emojiChangeDecided: 'The {kind} request for emoji {emoji} was {status}.',
+		emojiChangeDecidedWithReason: 'The {kind} request for emoji {emoji} was {status}. Reason: {reason}',
+		emojiChangeStaffDecided: 'The {kind} request for emoji {emoji} was {status}.',
 	};
 	return {
 		i18n: {
@@ -141,5 +150,16 @@ describe('hataFeedNotificationDisplayBody', () => {
 		const unknown = '将来追加された本文「詳細」';
 		expect(hataFeedNotificationDisplayBody(unknown)).toBe(unknown);
 		expect(hataFeedNotificationDisplayBody('「題名」のイシューが投稿されました。', 'ja-JP')).toBe('「題名」のイシューが投稿されました。');
+	});
+
+	test.each([
+		['絵文字「:seal:」の画像更新申請が届きました。', 'Received an emoji image update request for :seal:.'],
+		['絵文字「:seal:」の取り下げ申請が届きました。', 'Received an emoji withdrawal request for :seal:.'],
+		['絵文字「:seal:」の画像更新申請が承認されました。', 'The image update request for emoji :seal: was approved.'],
+		['絵文字「:seal:」の取り下げ申請が保留されました。', 'The withdrawal request for emoji :seal: was put on hold.'],
+		['絵文字「:seal:」の画像更新申請を却下しました。', 'The image update request for emoji :seal: was rejected.'],
+		['絵文字「:seal:」の取り下げ申請が却下されました。（理由: 一行目\n二行目）', 'The withdrawal request for emoji :seal: was rejected. Reason: 一行目\n二行目'],
+	])('変更申請の定型部分だけ翻訳し、絵文字名と理由を保持する: %s', (source, expected) => {
+		expect(hataFeedNotificationDisplayBody(source)).toBe(expected);
 	});
 });

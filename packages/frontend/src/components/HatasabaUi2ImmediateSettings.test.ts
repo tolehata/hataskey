@@ -22,7 +22,6 @@ vi.mock('@/preferences.js', () => ({ prefer: { model: () => fixture.branding } }
 vi.mock('@/utility/hatasaba-device-prefs.js', () => ({ foldableLayoutMode: fixture.foldable, setFoldableLayoutMode: fixture.setFoldable }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: {
 	_customSettings: { _ui: {
-		hataSnsCordUiSettings: 'HataSNSCordUI の設定', hataSnsCordUiDescriptionPrefix: '', hataSnsCordUiSync: '', hataSnsCordUiDescriptionSuffix: '',
 		foldableSection: '折りたたみ端末向けレイアウト', foldableDescription: '', foldableModeAuto: '自動', foldableModeOn: '常に使う', foldableModeOff: '使わない', foldableAutoCaption: '', foldableDeviceOnly: '',
 		brandingSection: 'オリジナルアイコンブランディング', useHatakyu: 'Hataskeyオリジナルのアイコンを使う', useHatakyuDescription: '',
 	} },
@@ -41,8 +40,6 @@ describe('HatasabaUi2ImmediateSettings', () => {
 		window.document.body.append(container);
 		app.mount(container);
 
-		expect(container.querySelector('[data-hatacording-settings]')).toBeNull();
-		expect(container.textContent).not.toContain('HataSNSCordUI');
 		expect(container.textContent).not.toContain('関連する既存設定');
 		expect(container.querySelector('.settingsBrand')?.textContent).toBe('Hataskey UI');
 		expect(container.textContent).toContain('この端末のみ・すぐ反映');

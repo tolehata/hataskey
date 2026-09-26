@@ -5,7 +5,7 @@
 
 import type { HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';
 
-export const HATASK_AKATSUKI_SHORTCUTS = ['cal', 'todo', 'mood', 'meal', 'garden', 'support', 'ranking'] as const;
+export const HATASK_AKATSUKI_SHORTCUTS = ['cal', 'todo', 'mood', 'meal', 'recipe', 'garden', 'support', 'ranking'] as const;
 export type HataskAkatsukiShortcut = typeof HATASK_AKATSUKI_SHORTCUTS[number];
 const tabs: readonly HataskAkatsukiTab[] = ['home', ...HATASK_AKATSUKI_SHORTCUTS, 'hataskapps', 'apps'];
 

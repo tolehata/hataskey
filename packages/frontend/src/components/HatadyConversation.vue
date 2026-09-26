@@ -28,13 +28,13 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 			<button
 				v-if="activity.isMine"
 				class="hy-icon-button"
-				aria-label="記録を編集"
-				title="記録を編集"
+				:aria-label="i18n.ts._hata._hatady._wizardComposer.editRecord"
+				:title="i18n.ts._hata._hatady._wizardComposer.editRecord"
 				@click="editRecord"
 			>
 				<i class="ti ti-pencil"></i>
 			</button>
-			<button v-if="activity.isMine" class="hy-icon-button" aria-label="記録を削除" title="記録を削除" :disabled="sending" @click="deleteRecord">
+			<button v-if="activity.isMine" class="hy-icon-button" :aria-label="i18n.ts._hata._recordModeration.deleteRecord" :title="i18n.ts._hata._recordModeration.deleteRecord" :disabled="sending" @click="deleteRecord">
 				<i class="ti ti-trash"></i>
 			</button>
 			<button v-else class="hy-icon-button" :aria-label="i18n.ts.reportAbuse" @click="reportRecord">
@@ -44,7 +44,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 		<div v-if="work || record?.book || record?.mediaWork" :class="$style.workLink">
 			<button class="hy-secondary" @click="openWork">
 				<i class="ti ti-books"></i>
-				作品の詳細へ
+				{{ conversationCopy.workDetails }}
 			</button>
 		</div>
 		<section :class="$style.replies">
@@ -61,7 +61,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 						<time>{{ fmtWhen(c.createdAt) }}</time>
 					</div>
 					<details v-if="c.spoiler">
-						<summary>ネタバレを含む内容</summary>
+						<summary>{{ conversationCopy.spoilerContent }}</summary>
 						<Mfm :text="c.text"/>
 					</details>
 					<Mfm v-else :text="c.text"/>
@@ -94,7 +94,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				</div>
 			</article>
 			<button v-if="hasMore" class="hy-secondary" :disabled="loadingMore" @click="loadComments(true)">
-				続きを表示
+				{{ conversationCopy.showMore }}
 			</button>
 		</section>
 	</template>
@@ -105,11 +105,11 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				<i class="ti ti-arrow-back-up"></i>
 				<span v-if="replyTo">
 					<MkUserName v-if="replyTo.user" :user="replyTo.user"/>
-					<span v-else>選択した返信</span>
+					<span v-else>{{ conversationCopy.selectedReply }}</span>
 					{{ copy.replyingTo }}
 				</span>
-				<span v-else>{{ record.user?.name || record.user?.username || 'この記録' }}への返信</span>
-				<button v-if="replyTo" type="button" class="hy-icon-button" aria-label="返信先を解除" @click="replyTo = null">
+				<span v-else>{{ i18n.tsx._hata._hatady._conversationView.replyToRecord({ name: record.user?.name || record.user?.username || conversationCopy.thisRecord }) }}</span>
+				<button v-if="replyTo" type="button" class="hy-icon-button" :aria-label="conversationCopy.clearReplyTarget" @click="replyTo = null">
 					<i class="ti ti-x"></i>
 				</button>
 			</div>
@@ -126,8 +126,8 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					<button
 						type="button"
 						class="hy-icon-button"
-						aria-label="返信に絵文字を挿入"
-						title="絵文字"
+						:aria-label="conversationCopy.insertEmoji"
+						:title="conversationCopy.emoji"
 						@click="insertEmoji"
 					>
 						<i class="ti ti-mood-plus"></i>
@@ -135,8 +135,8 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					<button
 						type="button"
 						class="hy-icon-button"
-						aria-label="プレビュー"
-						title="プレビュー"
+						:aria-label="conversationCopy.preview"
+						:title="conversationCopy.preview"
 						:aria-pressed="preview"
 						@click="preview = !preview"
 					>
@@ -158,7 +158,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 </HyDialog>
 <HatadyDraftPrompt
 	v-if="closePrompt"
-	title="書きかけの返信をどうする？"
+	:title="conversationCopy.draftQuestion"
 	:error="error"
 	@save="leave(true)"
 	@discard="leave(false)"
@@ -185,6 +185,7 @@ const emit = defineEmits<{ (e: 'changed'): void; (e: 'deleted', activity: Hatady
 const api = misskeyApi as unknown as (endpoint: string, payload: Record<string, unknown>) => Promise<any>;
 const copy = i18n.ts._hata._hatady._conversation,
 	copyx = i18n.tsx._hata._hatady._conversation;
+const conversationCopy = i18n.ts._hata._hatady._conversationView;
 const dialog = ref<any>(),
 	input = ref<HTMLTextAreaElement>(),
 	record = ref<any>(props.initialLog || null),
@@ -257,7 +258,7 @@ async function loadComments(append = false) {
 		const target = comments.value.find((c) => c.id === replyTo.value?.id);
 		if (target) replyTo.value = target;
 	} catch {
-		error.value = '返信を読み込めませんでした';
+		error.value = conversationCopy.repliesLoadFailed;
 	} finally {
 		loadingMore.value = false;
 	}
@@ -273,7 +274,7 @@ async function reload() {
 		} else record.value = await api('hata/hatady/logs/show', { logId: props.logId });
 		await loadComments();
 	} catch {
-		error.value = '記録を読み込めませんでした';
+		error.value = conversationCopy.recordLoadFailed;
 	} finally {
 		loading.value = false;
 	}
@@ -322,13 +323,13 @@ async function send() {
 		comments.value.push(result);
 		draft.value = '';
 		replyTo.value = null;
-		if (!drafts.clearDraft({ resume: true })) hatadyNotify('返信しましたが、端末の下書きを削除できませんでした');
-		else hatadyNotify('返信しました');
+		if (!drafts.clearDraft({ resume: true })) hatadyNotify(conversationCopy.sentDraftCleanupFailed);
+		else hatadyNotify(conversationCopy.sent);
 		emit('changed');
 		await nextTick();
 		input.value?.focus();
 	} catch {
-		error.value = '返信できませんでした。入力は残っています。';
+		error.value = conversationCopy.sendFailed;
 	} finally {
 		sending.value = false;
 	}
@@ -344,11 +345,11 @@ function requestClose(next?: () => void) {
 
 function leave(save: boolean) {
 	if (!(save ? drafts.saveDraft() : drafts.clearDraft({ resume: !closing }))) {
-		error.value = '下書きを保存・削除できませんでした';
+		error.value = conversationCopy.draftChangeFailed;
 		return;
 	}
 	closePrompt.value = false;
-	if (save) hatadyNotify('下書きを保存しました');
+	if (save) hatadyNotify(i18n.ts._hata._hatady._formWizard.draftSaved);
 	else if (!closing) {
 		draft.value = '';
 		replyTo.value = null;
@@ -368,7 +369,7 @@ async function deleteComment(c: any) {
 		await loadComments();
 		emit('changed');
 	} catch {
-		hatadyNotify('返信を削除できませんでした');
+		hatadyNotify(conversationCopy.deleteFailed);
 	}
 }
 

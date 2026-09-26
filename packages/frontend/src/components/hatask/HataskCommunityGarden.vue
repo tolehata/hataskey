@@ -61,6 +61,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<g aria-hidden="true" transform="translate(119 453) rotate(-6)"><path d="M13 8v30m56-30v30" stroke="#65513b" stroke-width="5"/><rect width="84" height="26" rx="4" fill="#c7a579" stroke="#f6dbac" stroke-width="1"/><path d="M7 5h69M4 21h73" stroke="#866b4e" opacity=".25"/><text x="42" y="18" text-anchor="middle" fill="#463623" font-size="13" font-weight="700" font-family="system-ui,sans-serif" letter-spacing="1">Hatask</text></g>
 
 		</svg>
+		<HataskGardenWeather v-if="season" :season="season" :animations="animations !== false && prefer.r.animation.value"/>
 	</div>
 	<div :class="$style.activity"><slot/></div>
 </div>
@@ -71,6 +72,8 @@ import { computed, ref, useId, watch } from 'vue';
 import type { HataskFlowerView } from './hatask-flower-view.js';
 import { prefer } from '@/preferences.js';
 import { hataskEmojiSources } from '@/utility/hatask-emoji.js';
+import HataskGardenWeather from './HataskGardenWeather.vue';
+import type { HataskFlowerSeason } from '@/utility/hatask-flower-v2.js';
 
 const props = defineProps<{
 	flowers: readonly HataskFlowerView[];
@@ -78,6 +81,8 @@ const props = defineProps<{
 	label: string;
 	theme: string;
 	mode: 'light' | 'dark';
+	season?: HataskFlowerSeason;
+	animations?: boolean;
 }>();
 const instanceId = `hatask-garden-${useId()}`;
 const titleId = `${instanceId}-title`;

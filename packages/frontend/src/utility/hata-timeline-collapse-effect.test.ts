@@ -220,6 +220,56 @@ describe('Hataskey UIのタイムライン崩壊演出', () => {
 		expect(motion.listenerCount()).toBe(0);
 	});
 
+	test('UI Sの標準ノートとデッキ枠は可視の外側だけを動かし、隠れたドロワーを除外して復元する', async () => {
+		vi.useFakeTimers();
+		setReducedMotion(false);
+		const root = makeRoot();
+		const header = window.document.createElement('header');
+		header.setAttribute('data-hata-collapse-part', '');
+		const list = window.document.createElement('div');
+		list.setAttribute('data-hata-collapse-items', '');
+		const note = window.document.createElement('div');
+		note.setAttribute('data-scroll-anchor', '');
+		list.append(note);
+		const deck = window.document.createElement('div');
+		deck.setAttribute('data-hata-collapse-items', '');
+		const frame = window.document.createElement('div');
+		frame.setAttribute('data-deck-frame', 'frame-1');
+		const framedNote = window.document.createElement('div');
+		framedNote.setAttribute('data-scroll-anchor', '');
+		frame.append(framedNote);
+		deck.append(frame);
+		const drawer = window.document.createElement('div');
+		drawer.setAttribute('data-hata-collapse-part', '');
+		drawer.style.display = 'none';
+		root.append(header, list, deck, drawer);
+		setRect(header, rect(10));
+		setRect(note, rect(120));
+		setRect(frame, rect(300));
+		setRect(framedNote, rect(340));
+		setRect(drawer, rect(0));
+		const headerAnimation = setAnimation(header);
+		const noteAnimation = setAnimation(note);
+		const frameAnimation = setAnimation(frame);
+		const framedNoteAnimation = setAnimation(framedNote);
+		const drawerAnimation = setAnimation(drawer);
+		const effect = createHataTimelineCollapseEffect({ root: () => root, animationEnabled: () => true });
+
+		expect(effect.play()).toBe(true);
+		expect(headerAnimation.animate).toHaveBeenCalledOnce();
+		expect(noteAnimation.animate).toHaveBeenCalledOnce();
+		expect(frameAnimation.animate).toHaveBeenCalledOnce();
+		expect(framedNoteAnimation.animate).not.toHaveBeenCalled();
+		expect(drawerAnimation.animate).not.toHaveBeenCalled();
+		expect(effect.play()).toBe(false);
+		await vi.advanceTimersByTimeAsync(HATA_TIMELINE_COLLAPSE_DURATION_MS);
+		expect(headerAnimation.cancel).toHaveBeenCalledOnce();
+		expect(noteAnimation.cancel).toHaveBeenCalledOnce();
+		expect(frameAnimation.cancel).toHaveBeenCalledOnce();
+		expect(root.hasAttribute('data-hata-timeline-collapse-active')).toBe(false);
+		effect.destroy();
+	});
+
 	test('simple UIがbroadcastの購読解除と設定変更時の中止まで結線する', () => {
 		const simple = fs.readFileSync(path.join(process.cwd(), 'src/ui/simple.vue'), 'utf8');
 		const streamingTypes = fs.readFileSync(path.join(process.cwd(), '../cherrypick-js/src/streaming.types.ts'), 'utf8');

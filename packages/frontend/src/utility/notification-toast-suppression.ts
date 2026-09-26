@@ -12,7 +12,7 @@ const activeTokens = new Set<symbol>();
 
 /**
  * 既に描画済みのトーストも画面切替と同時に消せるようにする反応値。
- * 永続設定ではなく、HataSNSCordUIが表示されている間だけtrueになる。
+ * 永続設定ではなく、Hataskey UI 3 のタイムラインが表示されている間だけtrueになる。
  */
 export const notificationToastsSuppressed = shallowRef(false);
 

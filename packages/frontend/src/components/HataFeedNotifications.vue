@@ -23,7 +23,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@closed="emit('closed')"
 >
 	<div
-		data-hatacording-hatafeed-notifications
 		class="_popup _shadow hatady-scope hatafeed-scope"
 		:data-hatady-theme="hataFeedTheme"
 		:class="$style.panel" :data-type="type"
@@ -32,11 +31,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.header">
 			<span :class="$style.title"><i class="ti ti-bell"></i> {{ copy.title }}</span>
 			<button type="button" class="hf-icon" :aria-label="copy.markRead" :title="copy.markRead" :disabled="!unreadCount || markingAll" @click="markAllRead"><i class="ti ti-checks" aria-hidden="true"></i></button>
-			<button ref="filterButton" type="button" class="hf-icon" :aria-label="filter ? `通知の種類：${notifTypeLabel[filter] ?? filter}` : '通知を絞り込む'" title="通知を絞り込む" :data-active="!!filter" :aria-expanded="filterOpen" :aria-controls="filterId" @click="filterOpen = !filterOpen"><i class="ti ti-filter" aria-hidden="true"></i></button>
-			<button type="button" class="hf-icon" :class="$style.closeBtn" aria-label="通知を閉じる" @click="modal?.close()"><i class="ti ti-x" aria-hidden="true"></i></button>
+			<button ref="filterButton" type="button" class="hf-icon" :aria-label="filter ? copyx.filterCurrent({ type: notifTypeLabel[filter] ?? filter }) : copy.filter" :title="copy.filter" :data-active="!!filter" :aria-expanded="filterOpen" :aria-controls="filterId" @click="filterOpen = !filterOpen"><i class="ti ti-filter" aria-hidden="true"></i></button>
+			<button type="button" class="hf-icon" :class="$style.closeBtn" :aria-label="copy.close" @click="modal?.close()"><i class="ti ti-x" aria-hidden="true"></i></button>
 		</div>
-		<label v-if="filterOpen" :id="filterId" :class="$style.bar"><span>通知の種類</span><select :value="filter ?? ''" @change="chooseFilter"><option value="">{{ copy.all }}</option><option v-for="(label, value) in notifTypeLabel" :key="value" :value="value">{{ label }}</option></select></label>
-		<p v-if="error" :class="$style.state" role="alert">{{ error }}<button type="button" class="hy-secondary" @click="reload">再読み込み</button></p>
+		<label v-if="filterOpen" :id="filterId" :class="$style.bar"><span>{{ copy.filterType }}</span><select :value="filter ?? ''" @change="chooseFilter"><option value="">{{ copy.all }}</option><option v-for="(label, value) in notifTypeLabel" :key="value" :value="value">{{ label }}</option></select></label>
+		<p v-if="error" :class="$style.state" role="alert">{{ error }}<button type="button" class="hy-secondary" @click="reload">{{ copy.reload }}</button></p>
 
 		<div v-if="loading" :class="$style.state">{{ copy.loading }}</div>
 		<div v-else-if="items.length === 0" :class="$style.state">
@@ -92,9 +91,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<div v-if="page > 0 || hasNext" :class="$style.pager">
-			<button :class="$style.pagerBtn" :disabled="loading || page === 0" aria-label="前のページ" @click="prevPage"><i class="ti ti-chevron-left"></i></button>
+			<button :class="$style.pagerBtn" :disabled="loading || page === 0" :aria-label="copy.previousPage" @click="prevPage"><i class="ti ti-chevron-left"></i></button>
 			<span :class="$style.pagerPage">{{ page + 1 }}</span>
-			<button :class="$style.pagerBtn" :disabled="loading || !hasNext" aria-label="次のページ" @click="nextPage"><i class="ti ti-chevron-right"></i></button>
+			<button :class="$style.pagerBtn" :disabled="loading || !hasNext" :aria-label="copy.nextPage" @click="nextPage"><i class="ti ti-chevron-right"></i></button>
 		</div>
 	</div>
 </MkModal>
@@ -104,12 +103,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, useId, useTemplateRef, onMounted, onUnmounted } from 'vue';
 import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
 import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
+import { openHataFeedEmojiNotification } from '@/utility/hatafeed-emoji-notification.js';
 import '@/components/hatafeed-ui.css';
-import type { HataFeedEmojiRequest, HataFeedNotif } from '@/utility/hatafeed.js';
+import type { HataFeedNotif } from '@/utility/hatafeed.js';
 import MkModal from '@/components/MkModal.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
 import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
-import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import { markHataFeedNotificationsRead, hataFeedUnreadCount, notifIcon, notifTypeLabel, groupHataFeedNotifications, groupSummary, notificationDisplayMessage } from '@/utility/hatafeed.js';
@@ -175,7 +174,7 @@ async function fetchPage(targetPage: number, untilId: string | undefined) {
 			await markHataFeedNotificationsRead();
 			emit('read', hataFeedUnreadCount.value);
 		}
-	} catch { if (request === generation) error.value = '通知を読み込めませんでした'; } finally { if (request === generation) loading.value = false; }
+	} catch { if (request === generation) error.value = copy.loadError; } finally { if (request === generation) loading.value = false; }
 }
 
 async function reload() { await fetchPage(0, undefined); }
@@ -211,9 +210,9 @@ async function markAllRead() {
 		hataFeedUnreadCount.value = 0;
 		items.value = items.value.map(n => ({ ...n, isRead: true }));
 		emit('read', 0);
-		hataFeedNotify('すべて既読にしました');
+		hataFeedNotify(copy.markedAllRead);
 	} catch {
-		error.value = '既読にできませんでした';
+		error.value = copy.markReadFailed;
 	} finally {
 		markingAll.value = false;
 	}
@@ -235,22 +234,6 @@ async function markRead(n: HataFeedNotif) {
 	}
 }
 
-// 旗鯖fork(#38): 絵文字申請通知は処理状況を確認してから開く。
-async function handleEmojiRequestNotif(requestId: string) {
-	try {
-		const list = await misskeyApi('hata/feedback/emoji-requests', { id: requestId, limit: 1 }) as unknown as HataFeedEmojiRequest[];
-		const r = list[0];
-		if (!r) { os.alert({ type: 'info', title: copy.requestNotFoundTitle, text: copy.requestNotFoundText }); return; }
-		if (r.status === 'pending') {
-			os.alert({ type: 'info', title: copy.requestPendingTitle, text: copyx.requestPendingText({ name: r.name }) });
-			return;
-		}
-		os.alert({ type: 'info', title: copy.requestProcessedTitle, text: copyx.requestProcessedText({ name: r.name }) });
-	} catch {
-		os.alert({ type: 'error', title: copy.errorTitle, text: copy.requestStatusFailed });
-	}
-}
-
 async function onClick(n: HataFeedNotif) {
 	try {
 		await markRead(n);
@@ -261,8 +244,8 @@ async function onClick(n: HataFeedNotif) {
 	if (typeof feedbackId === 'string') {
 		router.push('/hatafeed/:issueId', { params: { issueId: feedbackId } });
 		modal.value?.close();
-	} else if (n.emojiRequestId) {
-		handleEmojiRequestNotif(n.emojiRequestId);
+	} else if (n.emojiRequestId || n.emojiChangeRequestId) {
+		await openHataFeedEmojiNotification(n);
 	}
 }
 

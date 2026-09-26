@@ -14,7 +14,7 @@ describe('HataSideStudio UI integration', () => {
 		const simple = read('ui/simple.vue');
 		expect(studio).toContain("activeProfile.postButton.icon = 'paw'");
 		expect(studio).toContain('class="ti ti-paw"');
-		expect(studio).toContain('<GradientEditor :modelValue="activeProfile.postButton"/>');
+		expect(studio).toContain('<GradientEditor v-if="!isUiS" :modelValue="activeProfile.postButton"/>');
 		expect(studio).toContain(':style="postButtonStyle(activeProfile.postButton)"');
 		expect(simple.match(/:style="studioPostButtonStyle"/g)).toHaveLength(2);
 		expect(simple.match(/:class="studioPostButtonIcon"/g)).toHaveLength(2);
@@ -103,7 +103,7 @@ describe('HataSideStudio UI integration', () => {
 
 	test('その場で調整はグラデーション、詳細設定、グループ編集を実際の操作へ接続する', () => {
 		const studio = read('pages/hata-side-studio.vue');
-		expect(studio).toContain('<GradientEditor :modelValue="selected"/>');
+		expect(studio).toContain('<GradientEditor v-if="!isUiS" :modelValue="selected"/>');
 		expect(studio).toContain('const GradientEditor = defineComponent');
 		expect(studio).toContain("h(GradientEditor, { modelValue: props.modelValue })");
 		expect(studio).toContain("h('span', copy.secondColor)");
@@ -202,11 +202,8 @@ describe('HataSideStudio UI integration', () => {
 
 	test('Hataskey UIデッキで内側の戻るボタンを隠し、Studioの窓と保存操作を前面で保つ', () => {
 		const studio = read('pages/hata-side-studio.vue');
-		const hatady = read('pages/hatady.vue');
-		for (const source of [studio, hatady]) {
-			expect(source).toContain("miLocalStorage.getItem('ui') === 'simple' && prefer.r['simpleUi.deckMode'].value === true");
-			expect(source).toContain('v-if="!isHatasabaDeckUi"');
-		}
+		expect(studio).toContain("miLocalStorage.getItem('ui') === 'simple' && prefer.r['simpleUi.deckMode'].value === true");
+		expect(studio).toContain('v-if="!isHatasabaDeckUi"');
 		expect(studio).toContain('ref="studioDialogControl"');
 		expect(studio).toContain('studioDialogControl.value?.focus');
 		expect(studio).toContain('{{ hasChanges ? copy.save : copy.saved }}');
@@ -273,9 +270,9 @@ describe('HataSideStudio UI integration', () => {
 		expect(simple).toContain('$style.hssMobileRoot');
 		expect(simple).toContain('submitStudioMobileSearch');
 		expect(simple).toContain('copy.openHataSideStudio');
-		expect(hatask).toContain("label:'HataSideStudio'");
+		expect(hatask).toMatch(/label:\s*'HataSideStudio'/);
 		expect(hatask).toContain("routeRouter.push('/hata-side-studio')");
-		expect(hatask).toContain('label:copy.appWhatsNew');
+		expect(hatask).toMatch(/label:\s*copy\.appWhatsNew/);
 		expect(hatask).toContain("import('@/components/MkHataWhatsNew.vue')");
 		expect(studio).not.toContain('端末内で編集');
 		expect(studio).toContain('copy.exportImportSettings');

@@ -1,10 +1,15 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-const fixture = vi.hoisted(() => ({ api: vi.fn(), closes: 0, mounts: 0 }));
+const fixture = vi.hoisted(() => ({ api: vi.fn(), push: vi.fn(), closes: 0, mounts: 0 }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
+vi.mock('@/router.js', () => ({ useRouter: () => ({ push: fixture.push }) }));
 // The browser locale loader fetches at module initialization; these control-flow tests need no network.
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatady: { _media: { status: {} } } } } } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/components/HyDialog.vue', async () => {
 	const { defineComponent, h } = await import('vue');
 	return { default: defineComponent({ props: { bare: Boolean, back: Boolean, title: String }, emits: ['close', 'back', 'closed'], setup(props, { slots, emit, expose }) {
@@ -43,10 +48,26 @@ async function clickText(target: HTMLElement, text: string) {
 
 async function action(target: HTMLElement, name: string) { const button = target.querySelector<HTMLButtonElement>(`[data-action="${name}"]`); expect(button, name).toBeTruthy(); button!.click(); await settle(); }
 
-beforeEach(() => { fixture.closes = 0; fixture.mounts = 0; fixture.api.mockReset(); fixture.api.mockImplementation(async (_endpoint: string, payload: any) => [{ id: `${payload.kind}-work`, title: `${payload.kind} の作品`, kind: payload.kind }]); });
+beforeEach(() => { fixture.closes = 0; fixture.mounts = 0; fixture.push.mockReset(); fixture.api.mockReset(); fixture.api.mockImplementation(async (_endpoint: string, payload: any) => [{ id: `${payload.kind}-work`, title: `${payload.kind} の作品`, kind: payload.kind }]); });
 afterEach(() => { cleanups.splice(0).forEach(fn => fn()); });
 
 describe('one persistent activity entry dialog', () => {
+	test('料理の確認で戻る・キャンセルは選択画面を保ち、確定だけ遷移する', async () => {
+		const { target, host, closed } = mountChooser();
+		await clickText(target, '料理');
+		expect(target.textContent).toContain('Hatadyを離れてHataskのレシピ画面へ移動');
+		expect(fixture.push).not.toHaveBeenCalled();
+		await action(target, 'dialog-back');
+		expect(target.querySelector('[data-dialog]')).toBe(host);
+		expect(target.textContent).toContain('今日は、何をした？');
+		await clickText(target, '料理');
+		await clickText(target, 'キャンセル');
+		expect(fixture.push).not.toHaveBeenCalled();
+		await clickText(target, '料理');
+		await clickText(target, 'Hataskで記録する');
+		expect(fixture.push).toHaveBeenCalledExactlyOnceWith('/hatask?tab=recipe&from=hatady&action=cooking');
+		expect(closed).toHaveBeenCalledOnce();
+	});
 	test.each([['勉強・読書', 'study'], ['運動', 'exercise'], ['作業', 'work']])('%s opens its embedded composer without replacing the outer modal', async (label, kind) => {
 		const { target, host, done, closed } = mountChooser();
 		await clickText(target, label);

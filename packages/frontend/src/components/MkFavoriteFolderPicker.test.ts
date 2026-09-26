@@ -10,7 +10,7 @@ import MkFavoriteFolderPicker from './MkFavoriteFolderPicker.vue';
 import MkFavoriteFolderEditor from './MkFavoriteFolderEditor.vue';
 import { $i } from '@/i.js';
 import { favoriteFoldersState } from '@/utility/favorite-folders.js';
-import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
+import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
 
 const api = vi.hoisted(() => vi.fn());
@@ -20,7 +20,7 @@ vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: api }));
 vi.mock('@/utility/achievements.js', () => ({ claimAchievement: achievement }));
 vi.mock('@/os.js', () => ({ popup: vi.fn() }));
 vi.mock('@/i.js', async () => ({ $i: (await import('vue')).reactive({ id: 'owner', token: 'token' }) }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { save: '保存', cancel: 'キャンセル', retry: '再試行', create: '作成', delete: '削除', unfavorite: '解除', _hata: { _favoriteFolders: {
+vi.mock('@/i18n.js', () => ({ i18n: { ts: { save: '保存', cancel: 'キャンセル', retry: '再試行', create: '作成', delete: '削除', unfavorite: '解除', _hata: { _navbarNotice: { favoriteAdded: 'お気に入りに追加しました' }, _favoriteFolders: {
 	chooseDestination: '保存先', moveNote: '移動', unfiled: '未分類', newFolder: '新規フォルダ', folderName: '名前', folderColor: '色', accountChanged: 'account changed', loadingFailed: 'load failed', saveFailed: 'save failed', selectedFolderMissing: 'missing', limitReached: 'limit', childrenNotAllowed: 'permission', maxDepth: 'depth', duplicateName: 'duplicate', invalidName: 'invalid', invalidMove: 'move', editFolder: '編集', moveFolder: '移動', deleteFolder: '削除', createChild: '子作成', colorRose: 'rose', colorAmber: 'amber', colorGreen: 'green', colorBlue: 'blue', colorViolet: 'violet', colorSlate: 'slate',
 } } }, tsx: { _hata: { _favoriteFolders: { deleteFolderDescription: ({ notes }: { notes: number }) => `move ${notes} notes`, noteAddedToFolder: ({ name }: { name: string }) => `お気に入りの${name}にノートを追加しました。` } } } } }));
 vi.mock('@/components/MkModalWindow.vue', async () => {
@@ -94,7 +94,7 @@ describe('favorite folder dialogs', () => {
 		expect(done).toHaveBeenCalledWith(true);
 		expect(achievement).toHaveBeenCalledTimes(1);
 		expect(context.items.value).toHaveLength(1);
-		expect(context.items.value[0]).toMatchObject({ message: 'お気に入りのReadにノートを追加しました。', favoriteSaved: true });
+		expect(context.items.value[0]).toMatchObject({ navbarNotice: { kind: 'noteAction', action: 'favorite', message: 'お気に入りに追加しました', target: 'Read' } });
 	});
 
 	test('waits for the dialog to close after success and announces the selected child path once', async () => {
@@ -108,9 +108,50 @@ describe('favorite folder dialogs', () => {
 		expect(context.items.value).toHaveLength(0);
 		modal.finishClose?.(); await settle();
 		expect(context.items.value).toHaveLength(1);
-		expect(context.items.value[0]).toMatchObject({ source: 'status', message: 'お気に入りのRead / 小説にノートを追加しました。', favoriteSaved: true });
+		expect(context.items.value[0]).toMatchObject({ source: 'status', navbarNotice: { kind: 'noteAction', action: 'favorite', message: 'お気に入りに追加しました', target: 'Read / 小説' } });
 		modal.finishClose?.(); await settle();
 		expect(context.items.value).toHaveLength(1);
+	});
+
+	test('without injection, successful save announces once through the registered page context after close', async () => {
+		const { container, context, done } = await mount();
+		cleanup.push(registerNotificationPageContext(context, () => true));
+		const enqueue = vi.spyOn(context, 'enqueueNavbarNotice');
+		container.querySelectorAll<HTMLButtonElement>('[role="radio"]')[1].click();
+		modal.deferClose = true;
+		button(container, '保存').click(); await settle();
+		expect(done).toHaveBeenCalledWith(true);
+		expect(enqueue).not.toHaveBeenCalled();
+		modal.finishClose?.(); await settle();
+		expect(enqueue).toHaveBeenCalledExactlyOnceWith({ kind: 'noteAction', action: 'favorite', message: 'お気に入りに追加しました', target: 'Read' });
+		expect(context.items.value).toHaveLength(1);
+		modal.finishClose?.(); await settle();
+		expect(enqueue).toHaveBeenCalledTimes(1);
+	});
+
+	test('without injection, a failed save sends no favorite notice', async () => {
+		const failed = await mount();
+		cleanup.push(registerNotificationPageContext(failed.context, () => true));
+		const enqueue = vi.spyOn(failed.context, 'enqueueNavbarNotice');
+		api.mockImplementation(async endpoint => {
+			if (endpoint.endsWith('/list')) return result();
+			throw new Error('save failed');
+		});
+		button(failed.container, '保存').click(); await settle();
+		expect(failed.done).not.toHaveBeenCalled();
+		expect(enqueue).not.toHaveBeenCalled();
+		expect(failed.context.items.value).toHaveLength(0);
+	});
+
+	test('without injection, cancellation sends no favorite notice', async () => {
+		const { container, context, done } = await mount();
+		cleanup.push(registerNotificationPageContext(context, () => true));
+		const enqueue = vi.spyOn(context, 'enqueueNavbarNotice');
+		container.querySelectorAll<HTMLButtonElement>('[role="radio"]')[1].click();
+		button(container, 'キャンセル').click(); await settle();
+		expect(done).toHaveBeenCalledWith(false);
+		expect(enqueue).not.toHaveBeenCalled();
+		expect(context.items.value).toHaveLength(0);
 	});
 
 	test('announces unfiled only on save, never on selection or cancellation', async () => {
@@ -119,7 +160,7 @@ describe('favorite folder dialogs', () => {
 		expect(first.context.items.value).toHaveLength(0);
 		const second = await mount(false, 'create', true);
 		button(second.container, '保存').click(); await settle();
-		expect(second.context.items.value[0]).toMatchObject({ message: 'お気に入りの未分類にノートを追加しました。', favoriteSaved: true });
+		expect(second.context.items.value[0]).toMatchObject({ navbarNotice: { kind: 'noteAction', action: 'favorite', target: '未分類' } });
 	});
 
 	test.each(['move', 'remove'] as const)('does not announce a new favorite after %s', async mode => {

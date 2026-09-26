@@ -7,8 +7,20 @@ import { compileScript, parse } from '@vue/compiler-sfc';
 import { describe, expect, test } from 'vitest';
 import destinationsSource from './settings-destinations.ts?raw';
 import shellSource from './index.vue?raw';
+import { sectionLandingItem } from './settings-section-landing.js';
 
 describe('settings redesign navigation contract', () => {
+	test('Hataskeyカテゴリだけ現在のUIで初期タブを選び、明示タブと検索の遷移は変更しない', () => {
+		const section = { id: 'hataskey-ui', items: [{ id: 'hataskey-ui' }, { id: 'hataskey-ui-s' }] };
+		expect(sectionLandingItem(section, 'hataskey3')?.id).toBe('hataskey-ui-s');
+		expect(sectionLandingItem(section, 'simple')?.id).toBe('hataskey-ui');
+		expect(sectionLandingItem(section, 'deck')?.id).toBe('hataskey-ui');
+		expect(sectionLandingItem({ id: 'other', items: [{ id: 'first' }, { id: 'second' }] }, 'hataskey3')?.id).toBe('first');
+		expect(shellSource).toContain('const item = sectionLandingItem(section, ui);');
+		expect(shellSource).toContain('v-for="item in activeNavSection.items"');
+		expect(shellSource).toContain('@click.prevent="goToSetting(item)"');
+		expect(shellSource).toContain('if (await goToSetting(target)) closeSearch({ reason: \'select\' });');
+	});
 	test('shell SFC parses and compiles, including each navigation section only once', () => {
 		const parsed = parse(shellSource, { filename: 'settings-redesign/index.vue' });
 		expect(parsed.errors).toEqual([]);

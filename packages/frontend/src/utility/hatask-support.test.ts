@@ -2,16 +2,26 @@
  * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { describe, expect, test } from 'vitest';
-import { SUPPORT_POLICIES, formatSupportSnapshot, supportBenefitHeading, supportDisclosureHeights, supportHttpsUrl, supportSnapshotCondition, supportTextWidthBudget } from './hatask-support.js';
+import { describe, expect, test, vi } from 'vitest';
+import { SUPPORT_POLICIES, formatSupportSnapshot, supportBenefitHeading, supportDisclosureHeights, supportHttpsUrl, supportPolicyDisplay, supportSnapshotCondition, supportTextWidthBudget } from './hatask-support.js';
 import type { SupportSnapshot } from './hatask-support.js';
+
+vi.mock('@/i18n.js', async () => ({ i18n: (await import('./hatask-test-i18n.js')).createTestHataskI18n() }));
+vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 
 const snapshot = (value: SupportSnapshot['value'], extra: Partial<SupportSnapshot> = {}): SupportSnapshot => ({ value, available: true, unlimited: false, condition: null, rateMultiplier: null, ...extra });
 
 describe('Hatask support display projections', () => {
 	test('metadata covers every approved benefit without storing production limits', () => {
-		expect(SUPPORT_POLICIES.map(item => item.key)).toEqual(['driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'favoriteFolderLimit', 'canCreateFavoriteSubfolders', 'avatarDecorationLimit', 'hatadyBookLimit', 'canUseHatadySync', 'canUseMascot', 'mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters', 'canUseHatacordingUi', 'hatacordingUiRateLimit', 'canBypassHatacordingUiRateLimit', 'rateLimitFactor']);
+		expect(SUPPORT_POLICIES.map(item => item.key)).toEqual(['driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'favoriteFolderLimit', 'canCreateFavoriteSubfolders', 'avatarDecorationLimit', 'hatadyBookLimit', 'canUseHatadySync', 'canUseMascot', 'mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters', 'rateLimitFactor']);
 		expect(SUPPORT_POLICIES.every(item => !('value' in item) && !('roleId' in item))).toBe(true);
+	});
+	test('localizes only the canonical defaults and retains administrator copy', () => {
+		const policy = SUPPORT_POLICIES.find(item => item.key === 'favoriteFolderLimit');
+		expect(policy).toBeDefined();
+		if (!policy) throw new Error('Missing favoriteFolderLimit support policy');
+		expect(supportPolicyDisplay(policy.key, policy.name, policy.description)).toEqual({ title: policy.name, description: policy.description });
+		expect(supportPolicyDisplay(policy.key, 'Custom title', 'Custom description')).toEqual({ title: 'Custom title', description: 'Custom description' });
 	});
 	test.each([
 		['driveCapacityMb', snapshot(100), '100 MB'], ['driveCapacityMb', snapshot(5120), '5 GB'],
@@ -21,9 +31,6 @@ describe('Hatask support display projections', () => {
 		['canUseHatadySync', snapshot(true), '同期できます'], ['canUseHatadySync', snapshot(false), '同期できません'],
 		['hatadyBookLimit', snapshot(1000), '1,000 冊'], ['mascotMaxExpressions', snapshot(20), '20 表情 / キャラクター'],
 		['mascotMaxPhrases', snapshot(50), '50 件 / キャラクター'], ['mascotMaxCharacters', snapshot(0), '0 体'],
-		['hatacordingUiRateLimit', snapshot(1000), '1,000 回 / 1時間'],
-		['canBypassHatacordingUiRateLimit', snapshot(false), '専用枠を適用'],
-		['hatacordingUiRateLimit', snapshot(500, { unlimited: true }), '専用の1時間枠を免除'],
 		['rateLimitFactor', snapshot(0, { unlimited: true }), '一般APIの制限を免除'],
 		['rateLimitFactor', snapshot(0.5, { rateMultiplier: 4 }), '回数上限 4倍相当'],
 		['rateLimitFactor', snapshot(2, { rateMultiplier: 1 }), '標準の制限'],
@@ -32,7 +39,7 @@ describe('Hatask support display projections', () => {
 		expect(formatSupportSnapshot(key as string, value as SupportSnapshot)).toBe(expected);
 	});
 	test('invalid or missing values never become an available or unlimited claim', () => {
-		for (const value of [null, 0, -1, 1001, 1.2, NaN, Infinity]) expect(formatSupportSnapshot('hatacordingUiRateLimit', snapshot(value))).toBe('未設定');
+		for (const value of [null, NaN, Infinity]) expect(formatSupportSnapshot('mascotMaxCharacters', snapshot(value))).toBe('未設定');
 		expect(formatSupportSnapshot('canUseMascot', snapshot(1))).toBe('未設定');
 		expect(formatSupportSnapshot('driveCapacityMb', snapshot(true))).toBe('未設定');
 		expect(formatSupportSnapshot('driveCapacityMb', null)).toBe('未設定');
@@ -40,7 +47,6 @@ describe('Hatask support display projections', () => {
 	});
 	test('disabled dependencies remain visible alongside counts and bypass projections', () => {
 		expect(supportSnapshotCondition(snapshot(20, { condition: 'mascotUnavailable', available: false }))).toBe('マスコット機能は利用できません');
-		expect(supportSnapshotCondition(snapshot(1000, { condition: 'snsUiUnavailable', available: false, unlimited: true }))).toBe('HataSNSCordUIは利用できません');
 		expect(supportSnapshotCondition(null)).toBeNull();
 	});
 	test.each([

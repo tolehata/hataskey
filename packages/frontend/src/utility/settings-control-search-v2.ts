@@ -28,7 +28,7 @@ export type SettingsPersistenceV2 = 'device' | 'profile' | 'account';
 export type SettingsSaveModeV2 = 'immediate' | 'buffered' | 'reload';
 export type SettingsAvailabilityV2 = 'all' | 'desktop' | 'mobile';
 export type SettingsOwnerV2 = 'core' | 'cherrypick' | 'hatasaba';
-export type SettingsApplicableUiValueV2 = 'all' | 'default' | 'deck' | 'simple' | 'simple-deck' | 'hatacording';
+export type SettingsApplicableUiValueV2 = 'all' | 'default' | 'deck' | 'simple' | 'simple-deck';
 export type SettingsApplicableUiV2 = SettingsApplicableUiValueV2 | readonly SettingsApplicableUiValueV2[];
 
 export type SettingsStorageRefV2 =

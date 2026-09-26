@@ -1,38 +1,38 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<HyDialog ref="dialog" title="連続記録" @close="dialog?.close()" @closed="emit('closed')">
+<HyDialog ref="dialog" :title="copy.title" @close="dialog?.close()" @closed="emit('closed')">
 	<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
-	<p v-if="loading" class="hy-empty">読み込み中</p>
+	<p v-if="loading" class="hy-empty">{{ copy.loading }}</p>
 	<template v-else>
 		<section :class="$style.hero">
 			<div>
 				<small>
 					<i class="ti ti-flame"></i>
-					今の連続記録
+					{{ copy.currentStreak }}
 				</small>
 				<strong>
 					{{ data.current }}
-					<small>日</small>
+					<small>{{ data.current === 1 ? copy.daySingular : copy.dayUnit }}</small>
 				</strong>
 			</div>
 			<div>
-				<small>自己ベスト</small>
+				<small>{{ copy.personalBest }}</small>
 				<strong>
 					{{ data.best }}
-					<small>日</small>
+					<small>{{ data.best === 1 ? copy.daySingular : copy.dayUnit }}</small>
 				</strong>
 			</div>
 			<div :class="$style.next">
-				<span>{{ next ? `次の節目 ${next}日` : '365日の節目を達成' }}</span>
-				<b>{{ next ? `あと${next - data.current}日` : '達成' }}</b>
+				<span>{{ next ? i18n.tsx._hata._hatady._streaks.nextMilestone({ days: String(next) }) : copy.completed365 }}</span>
+				<b>{{ next ? i18n.tsx._hata._hatady._streaks.daysRemaining({ days: String(next - data.current) }) : copy.achieved }}</b>
 				<progress
 					:max="next || 365"
 					:value="Math.min(data.current, next || 365)"
-					aria-label="次の節目への進み具合"
+					:aria-label="copy.milestoneProgress"
 				></progress>
 			</div>
 		</section>
-		<section :class="$style.milestones" aria-label="連続記録の節目">
+		<section :class="$style.milestones" :aria-label="copy.streakMilestones">
 			<ol>
 				<li
 					v-for="m in nearby"
@@ -43,14 +43,14 @@
 					<i :class="data.current >= m ? 'ti ti-check' : m === next ? 'ti ti-flag' : 'ti ti-point'"></i>
 					<strong>
 						{{ m }}
-						<small>日</small>
+						<small>{{ copy.dayUnit }}</small>
 					</strong>
-					<small>{{ data.current >= m ? '達成' : m === next ? '次の節目' : 'これから' }}</small>
+					<small>{{ data.current >= m ? copy.achieved : m === next ? copy.next : copy.upcoming }}</small>
 				</li>
 			</ol>
 			<details>
 				<summary>
-					すべての節目
+					{{ copy.allMilestones }}
 					<i class="ti ti-chevron-down"></i>
 				</summary>
 				<ol>
@@ -58,22 +58,22 @@
 						<i :class="data.current >= m ? 'ti ti-check' : 'ti ti-point'"></i>
 						<strong>
 							{{ m }}
-							<small>日</small>
+							<small>{{ copy.dayUnit }}</small>
 						</strong>
 					</li>
 				</ol>
 			</details>
 		</section>
 		<section :class="$style.history">
-			<h3>月ごとの歩み</h3>
+			<h3>{{ copy.monthlyProgress }}</h3>
 			<details v-for="m in months" :key="m.key">
 				<summary>
 					<span :class="$style.monthHead">
 						<strong>{{ m.label }}</strong>
 						<span>
 							<b>{{ m.recorded.length }}</b>
-							日記録
-							<small>最長{{ m.longest }}日</small>
+							{{ copy.recordedDaysUnit }}
+							<small>{{ i18n.tsx._hata._hatady._streaks.longest({ days: String(m.longest) }) }}</small>
 							<i class="ti ti-chevron-down"></i>
 						</span>
 					</span>
@@ -81,7 +81,7 @@
 						:class="$style.timeline"
 						:style="{ '--days': m.count }"
 						role="img"
-						:aria-label="`${m.label} 記録した日 ${m.recorded.map((d) => Number(d.slice(8))).join('、')}`"
+						:aria-label="i18n.tsx._hata._hatady._streaks.recordedDayList({ month: m.label, days: m.recorded.map((d) => Number(d.slice(8))).join(copy.dayListSeparator) })"
 					>
 						<i
 							v-for="d in m.count"
@@ -90,37 +90,37 @@
 						></i>
 					</span>
 					<span :class="$style.axis">
-						<span>1日</span>
-						<span>15日</span>
-						<span>{{ m.count }}日</span>
+						<span>{{ i18n.tsx._hata._hatady._streaks.dayCount({ days: "1" }) }}</span>
+						<span>{{ i18n.tsx._hata._hatady._streaks.dayCount({ days: "15" }) }}</span>
+						<span>{{ i18n.tsx._hata._hatady._streaks.dayCount({ days: String(m.count) }) }}</span>
 					</span>
 				</summary>
 				<button v-for="p in m.periods" :key="p.start" :class="$style.period" @click="openPeriod(p)">
 					<span>
 						{{ range(p) }}
-						<small v-if="p === data.periods[0] && data.current">継続中</small>
-						<small v-else-if="p.days === data.best && p.days > 1">自己ベスト</small>
+						<small v-if="p === data.periods[0] && data.current">{{ copy.ongoing }}</small>
+						<small v-else-if="p.days === data.best && p.days > 1">{{ copy.personalBest }}</small>
 					</span>
 					<span :class="$style.bar"><i :style="{ width: (p.days / Math.max(1, data.best)) * 100 + '%' }"></i></span>
 					<b>
 						{{ p.days }}
-						<small>日</small>
+						<small>{{ p.days === 1 ? copy.daySingular : copy.dayUnit }}</small>
 					</b>
 					<i class="ti ti-arrow-right"></i>
 				</button>
 			</details>
-			<p v-if="!months.length" class="hy-empty">最初の記録から、始まります。</p>
+			<p v-if="!months.length" class="hy-empty">{{ copy.empty }}</p>
 		</section>
 	</template>
 </HyDialog>
 <HyDialog
 	v-if="selected"
 	ref="periodDialog"
-	:title="range(selected) + 'の記録'"
+	:title="i18n.tsx._hata._hatady._streaks.periodRecords({ range: range(selected) })"
 	@close="periodDialog?.close()"
 	@closed="closePeriod"
 >
-	<p v-if="periodLoading" class="hy-empty">読み込み中</p>
+	<p v-if="periodLoading" class="hy-empty">{{ copy.loading }}</p>
 	<p v-if="periodError" class="hy-error" role="alert">{{ periodError }}</p>
 	<HatadyActivityCard
 		v-for="a in periodRows"
@@ -146,6 +146,9 @@ import { hatadyTzOffset } from '@/utility/hatady-prefs.js';
 import { requireHatadyActivityPage } from '@/utility/hatady-media.js';
 import { collectActivityPages, localDateKey } from '@/utility/hatady-home.js';
 import * as os from '@/os.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
+const copy = i18n.ts._hata._hatady._streaks;
 const emit = defineEmits<{ (e: 'closed'): void }>();
 const dialog = ref<any>(),
 	periodDialog = ref<any>(),
@@ -187,7 +190,7 @@ const months = computed(() =>
 		return {
 			key,
 			count,
-			label: key.replace('-', '年') + '月',
+			label: monthLabel(key),
 			recorded: days.value.filter((d) => d.startsWith(key)),
 			periods,
 			longest: Math.max(
@@ -201,8 +204,12 @@ const months = computed(() =>
 	}),
 );
 
+function monthLabel(key: string): string {
+	return versatileLang.startsWith('ja') ? key.replace('-', '年') + '月' : new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'long' }).format(new Date(`${key}-01T12:00:00`));
+}
+
 function range(p: Period) {
-	const short = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`;
+	const short = (d: string) => versatileLang.startsWith('ja') ? `${Number(d.slice(5, 7))}/${Number(d.slice(8))}` : new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric' }).format(new Date(`${d}T12:00:00`));
 	return p.start === p.end ? short(p.start) : `${short(p.start)} — ${short(p.end)}`;
 }
 
@@ -232,7 +239,7 @@ async function openPeriod(p: Period, preserveRows = false) {
 		);
 		if (request === periodSeq) periodRows.value = result;
 	} catch {
-		if (request === periodSeq) periodError.value = '記録を読み込めませんでした';
+		if (request === periodSeq) periodError.value = copy.recordsLoadFailed;
 	} finally {
 		if (request === periodSeq) periodLoading.value = false;
 	}
@@ -309,7 +316,7 @@ async function loadStreaks() {
 		const result = await misskeyApi<typeof data.value>('hata/hatady/streaks', { tzOffset: hatadyTzOffset() });
 		if (request === streakSeq) data.value = result;
 	} catch {
-		if (request === streakSeq) error.value = '連続記録を読み込めませんでした';
+		if (request === streakSeq) error.value = copy.loadFailed;
 	} finally {
 		if (request === streakSeq) loading.value = false;
 	}

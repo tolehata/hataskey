@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <article ref="root" :class="$style.card" :data-integrated="integrated" :data-toast-id="item.id" :data-navbar-notice="item.source === 'status' && !!item.navbarNotice" :data-blur="prefer.r.useBlurEffect.value" @pointerenter="onPointerEnter" @pointerleave="hovered = false" @pointercancel="hovered = false" @focusin="onFocusIn" @focusout="onFocusOut">
-	<MkHataskeyNavbarNotice v-if="item.source === 'status' && item.navbarNotice" :notice="item.navbarNotice"/>
+	<MkHataskeyNavbarNotice v-if="item.source === 'status' && item.navbarNotice" :notice="item.navbarNotice" :motion="motion"/>
 	<div v-else-if="item.source === 'status'" :class="$style.status">
 		<template v-if="item.favoriteSaved">
 			<MkFavoriteSavedAnimation :motion="motion"/>
@@ -11,23 +11,25 @@
 			<MkAvatar :class="$style.welcomeAvatar" :user="item.welcomeUser" forceOpacity isToastAvatar/>
 			<Mfm :class="$style.welcomeMessage" :text="item.message" :plain="true"/>
 		</template>
-		<template v-else><i class="ti ti-circle-check" aria-hidden="true"></i>{{ item.message }}</template>
+		<template v-else><MkHataskeyNoticeIcon icon="ti ti-circle-check" :animations="motion"/>{{ item.message }}</template>
 	</div>
 	<MkExternalNotificationToast v-else-if="item.source === 'external'" :notification="item.notification" :sourceHost="item.host" embedded @close="emit('close')"/>
 	<MkNotification v-else :notification="item.notification" :contentVisibilityAuto="false" toast/>
 	<button class="_button" :class="$style.close" :aria-label="i18n.ts.close" @click="emit('close')"><i class="ti ti-x" aria-hidden="true"></i></button>
-	<MkNotificationToastRing v-if="!integrated" :target="root" :elapsed="item.elapsed" :integrated="false" :motion="motion"/>
+	<MkNotificationToastRing v-if="!integrated" :target="root" :elapsed="item.elapsed" :duration="getToastDuration(item)" :integrated="false" :motion="motion"/>
 </article>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import type { HataskeyToast } from '@/utility/hataskey-notification-toast.js';
+import { getToastDuration } from '@/utility/hataskey-notification-toast.js';
 import MkNotification from '@/components/MkNotification.vue';
 import MkExternalNotificationToast from '@/components/MkExternalNotificationToast.vue';
 import MkNotificationToastRing from '@/components/MkNotificationToastRing.vue';
 import MkFavoriteSavedAnimation from '@/components/MkFavoriteSavedAnimation.vue';
 import MkHataskeyNavbarNotice from '@/components/MkHataskeyNavbarNotice.vue';
+import MkHataskeyNoticeIcon from '@/components/MkHataskeyNoticeIcon.vue';
 import { prefer } from '@/preferences.js';
 import { i18n } from '@/i18n.js';
 
@@ -94,6 +96,7 @@ onUnmounted(() => {
 	}
 	&[data-integrated='true'] { background: transparent; box-shadow: none; border-radius: 0; }
 	&[data-navbar-notice='true'] { container: hataskey-notice / inline-size; padding-inline: 48px; }
+	&[data-navbar-notice='true']:has([data-navbar-notice-kind='noteAction']) { padding: 10px 48px 10px 12px; }
 }
 .close {
 	position: absolute;

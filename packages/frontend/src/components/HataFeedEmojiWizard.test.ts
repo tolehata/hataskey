@@ -8,7 +8,11 @@ vi.mock('@/utility/hatasaba-device-prefs.js', async () => ({ hataFeedTheme: (awa
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
 vi.mock('@/utility/drive.js', () => ({ chooseDriveFile: fixture.choose }));
 vi.mock('@/os.js', () => ({ toast: vi.fn(), confirm: async () => ({ canceled: false }) }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatafeed: { _emojiWizard: new Proxy({}, { get: (_, key) => String(key) }) } } } } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/components/MkWindow.vue', () => ({ default: defineComponent({ props: ['autoHeight', 'initialHeight'], template: '<section><slot name="header"/><slot/></section>' }) }));
 vi.mock('@/components/MkButton.vue', () => ({ default: defineComponent({ template: '<button><slot/></button>' }) }));
 vi.mock('@/components/MkInput.vue', () => ({ default: defineComponent({ props: ['modelValue'], emits: ['update:modelValue'], template: '<label><slot name="label"/><input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)"/></label>' }) }));
@@ -34,7 +38,7 @@ async function mount() {
 	const target = window.document.createElement('div'); window.document.body.append(target);
 	const app = createApp({ render: () => h(HataFeedEmojiWizard) }); app.mount(target);
 	cleanups.push(() => { app.unmount(); target.remove(); });
-	await vi.waitFor(() => expect([...target.querySelectorAll('button')].some(button => button.textContent?.includes('fromRemoteEmoji') && !button.disabled)).toBe(true));
+	await vi.waitFor(() => expect([...target.querySelectorAll('button')].some(button => button.textContent?.includes('リモートの絵文字から探す') && !button.disabled)).toBe(true));
 
 	return target;
 }
@@ -48,7 +52,7 @@ const visibleNames = (target: HTMLElement) => [...target.querySelectorAll('butto
 
 describe('HataFeed emoji application', () => {
 	test('remote browsing replaces a short page instead of accumulating a vertical list', async () => {
-		const target = await mount(); await click(target, 'fromRemoteEmoji');
+		const target = await mount(); await click(target, 'リモートの絵文字から探す');
 		await vi.waitFor(() => expect(visibleNames(target)).toEqual(emojis.slice(0, 6).map(item => item.name)));
 		await click(target, '次のページ');
 		await vi.waitFor(() => expect(visibleNames(target)).toEqual(emojis.slice(6, 12).map(item => item.name)));
@@ -59,7 +63,7 @@ describe('HataFeed emoji application', () => {
 		expect(target.querySelector<HTMLButtonElement>('[aria-label="次のページ"]')?.disabled).toBe(true);
 	});
 	test('paging keeps the submitted search until the user starts a new search', async () => {
-		const target = await mount(); await click(target, 'fromRemoteEmoji');
+		const target = await mount(); await click(target, 'リモートの絵文字から探す');
 		await vi.waitFor(() => expect(visibleNames(target)).toHaveLength(6));
 		const input = target.querySelector('input')!; input.value = 'new search'; input.dispatchEvent(new Event('input', { bubbles: true })); await nextTick();
 		await click(target, '次のページ');
@@ -67,13 +71,13 @@ describe('HataFeed emoji application', () => {
 		expect(fixture.api).toHaveBeenLastCalledWith('hata/feedback/remote-emojis', expect.objectContaining({ query: null, untilId: '6' }));
 	});
 	test('the own-image detail form keeps both scope flags and submits the edited values', async () => {
-		const target = await mount(); await click(target, 'fromOwnImage');
+		const target = await mount(); await click(target, '自分の画像から');
 		await vi.waitFor(() => expect(target.querySelector('input')?.value).toBe('wakaba'));
 		const inputs = target.querySelectorAll<HTMLInputElement>('input');
 		inputs[1].value = 'CC0'; inputs[1].dispatchEvent(new Event('input', { bubbles: true }));
 		const flags = target.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
 		flags[0].checked = true; flags[0].dispatchEvent(new Event('change', { bubbles: true })); await nextTick();
-		await click(target, 'submitAndContinue');
+		await click(target, '申請して次を追加');
 		await vi.waitFor(() => expect(fixture.api).toHaveBeenCalledWith('hata/feedback/emoji-requests/create', expect.objectContaining({ name: 'wakaba', license: 'CC0', localOnly: true, isSensitive: false, fileId: 'image-one' })));
 	});
 });

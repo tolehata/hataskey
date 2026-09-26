@@ -6,6 +6,7 @@
 import { computed, ref, shallowRef } from 'vue';
 import { getLtlEmojiVotePhase, LTL_EMOJI_VOTE_DECLINED_MS, LTL_EMOJI_VOTE_EXIT_MS } from './ltl-emoji-vote-types.js';
 import type { LtlEmojiVoteEffect, LtlEmojiVoteResponse, LtlEmojiVoteRound } from './ltl-emoji-vote-types.js';
+import { i18n } from '@/i18n.js';
 
 type Dependencies = {
 	accountId: string | null;
@@ -190,7 +191,7 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 		if (needsVoteVerification) {
 			needsVoteVerification = false;
 			submitting.value = false;
-			voteError.value = round.value?.choice ? null : '投票を送信できませんでした もう一度選んでください';
+			voteError.value = round.value?.choice ? null : i18n.ts._hata._ltlEmojiVote.voteFailed;
 		}
 		syncTimers();
 		return true;
@@ -307,7 +308,7 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 				if (requestIsCurrent(request)) {
 					// The write may have succeeded despite a lost reply; check before allowing another try.
 					needsVoteVerification = true;
-					voteError.value = '投票を確認できませんでした 再確認しています';
+					voteError.value = i18n.ts._hata._ltlEmojiVote.verifyingVote;
 					queueRefresh();
 				}
 			} finally {

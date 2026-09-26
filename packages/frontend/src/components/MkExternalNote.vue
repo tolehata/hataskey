@@ -283,7 +283,7 @@ function syncReactionEmojiUrls(next: Record<string, string> | null | undefined) 
 }
 
 // 親タイムラインが外部サーバーの noteUpdated を受け取った場合も、
-// コンポーネント内の操作用状態へ同期する。既存の外部TLとHataSNSCordUIで共用する。
+// コンポーネント内の操作用状態へ同期する。
 watch(() => appearNote.value.reactions, (next) => {
 	for (const key of Object.keys(reactions)) delete reactions[key];
 	Object.assign(reactions, next ?? {});
@@ -868,7 +868,7 @@ function showNoteMenu(ev: MouseEvent) {
 }
 
 /* hataskeyUi prop から明示された時だけ、外部ノートを Hataskey UI のカード契約へ寄せる。
-   visualMode の既定値は legacy のため、default UI と HataSNSCordUI の直置き表示には影響しない。 */
+   visualMode の既定値は legacy のため、default UI の直置き表示には影響しない。 */
 .root[data-external-note-ui='hataskey'][data-external-note-mode] {
 	box-sizing: border-box;
 	width: auto;

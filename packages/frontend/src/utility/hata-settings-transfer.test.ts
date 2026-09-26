@@ -11,10 +11,9 @@ const api = vi.fn();
 const settingsTransferLocale = vi.hoisted(() => ({
 	ts: {
 		categories: {
-			generalLabel: '旗鯖全体', generalDescription: '投稿フォーム、演出、フォント、プロフィールの表示設定',
+			generalLabel: 'Hataskey全体', generalDescription: '投稿フォーム、演出、フォント、プロフィールの表示設定',
 			hatasabaUiLabel: 'Hataskey UI 2', hatasabaUiDescription: 'ナビ、デッキ、見た目と端末ごとの操作設定',
 			hataSideStudioLabel: 'HataSideStudio', hataSideStudioDescription: 'プロファイル、拡大・縮小の配置、色、グループとウィジェット設定',
-			hatacordingUiLabel: 'HataSNSCordUI', hatacordingUiDescription: 'メニュー、右ペイン、ウィジェットと端末ごとの表示設定',
 			hataskLabel: 'Hatask', hataskDescription: 'テーマやホーム表示などの設定（ToDo・記録は含みません）',
 			hatadyLabel: 'Hatady', hatadyDescription: 'テーマ（学習記録・本棚は含みません）',
 			hatafeedLabel: 'HataFeed', hatafeedDescription: 'HataFeedの表示設定（イシュー・申請内容は含みません）',
@@ -99,7 +98,7 @@ describe('旗鯖独自設定の入出力', () => {
 
 	test('カテゴリ表示は共通localeを使い、地震津波は日本語固定を維持する', () => {
 		expect(HATA_SETTINGS_CATEGORIES.find(category => category.id === 'general')).toMatchObject({
-			label: '旗鯖全体',
+			label: 'Hataskey全体',
 			description: '投稿フォーム、演出、フォント、プロフィールの表示設定',
 		});
 		expect(HATA_SETTINGS_CATEGORIES.find(category => category.id === 'earthquake')).toMatchObject({
@@ -159,49 +158,6 @@ describe('旗鯖独自設定の入出力', () => {
 		expect(text).not.toContain('external.token');
 		expect(text).not.toContain('SECRET');
 		expect(text).not.toContain('account');
-	});
-
-	test('HataSNSCordUIの現行v7設定を書き出して同じアカウントへ読み戻す', async () => {
-		const settings = JSON.stringify({
-			version: 7,
-			enabled: true,
-			colorMode: 'dark',
-			uiScale: 'small',
-			timelineRealtime: false,
-			showRateLimitNumber: false,
-			showCharacterCounter: true,
-			tutorialCompleted: true,
-			composerShortcuts: ['poll', 'emoji'],
-			menu: { 'timeline:home': { pinned: true, hidden: false, order: 0 } },
-			subpaneTabs: [{ id: 'widgets', title: 'ウィジェット', kind: 'widgets', widgets: [] }],
-		});
-		local.set('hatacordingUi:user-a', settings);
-
-		const file = await createHataSettingsTransfer(['hatacordingUi']);
-		expect(file.categories.hatacordingUi?.device?.hatacordingUi).toBe(settings);
-		expect(JSON.stringify(file)).not.toContain('hatacordingUi:user-a');
-
-		local.delete('hatacordingUi:user-a');
-		const result = await applyHataSettingsTransfer(file, ['hatacordingUi']);
-		expect(local.get('hatacordingUi:user-a')).toBe(settings);
-		expect(result.applied).toBe(1);
-	});
-
-	test('HataSNSCordUIの未知の将来形式は安全にスキップする', async () => {
-		const future = JSON.stringify({ version: 8, enabled: true, menu: {}, subpaneTabs: [] });
-		const file = parseHataSettingsTransfer(JSON.stringify({
-			format: HATA_SETTINGS_TRANSFER_FORMAT,
-			formatVersion: HATA_SETTINGS_TRANSFER_VERSION,
-			serverVersion: '2026.7.0-hata.99.0',
-			exportedAt: '2026-08-09T00:00:00.000Z',
-			categories: { hatacordingUi: { device: { hatacordingUi: future } } },
-		})).file;
-
-		const result = await applyHataSettingsTransfer(file, ['hatacordingUi']);
-		expect(result.applied).toBe(0);
-		expect(result.skipped).toEqual(expect.arrayContaining([
-			expect.objectContaining({ category: 'hatacordingUi', reason: '値の形式が合いません' }),
-		]));
 	});
 
 	test('端末設定を先に適用し、型の合わない項目だけをスキップする', async () => {
@@ -327,6 +283,26 @@ describe('旗鯖独自設定の入出力', () => {
 		const result = await applyHataSettingsTransfer(file, ['hataSideStudio']);
 		expect(JSON.parse(local.get('hataSideStudio') ?? '{}').profiles[0].name).toBe('持ち込み');
 		expect(result.applied).toBe(1);
+	});
+
+	test('新形式は両UIの構成を書き出して復元し、旧形式は既存UI Sを保持する', async () => {
+		const legacy = JSON.stringify({ version: 9, activeProfileId: 'old', profiles: [{ id: 'old', name: '旧UI' }] });
+		const uiS = JSON.stringify({ version: 9, activeProfileId: 'new', profiles: [{ id: 'new', name: 'UI S' }] });
+		local.set('hataSideStudio', legacy);
+		const beforeFirstUiS = await createHataSettingsTransfer(['hataSideStudio']);
+		expect(beforeFirstUiS.categories.hataSideStudio?.device?.hataSideStudioUiS).toBe(legacy);
+		local.set('hataSideStudioUiS', uiS);
+		const exported = await createHataSettingsTransfer(['hataSideStudio']);
+		expect(exported.categories.hataSideStudio?.device).toMatchObject({ hataSideStudio: legacy, hataSideStudioUiS: uiS });
+		local.set('hataSideStudioUiS', uiS);
+		const oldFile = parseHataSettingsTransfer(JSON.stringify({
+			format: HATA_SETTINGS_TRANSFER_FORMAT, formatVersion: 1,
+			categories: { hatasabaUi: { device: { hataSideStudio: legacy } } },
+		})).file;
+		await applyHataSettingsTransfer(oldFile, ['hataSideStudio']);
+		expect(local.get('hataSideStudioUiS')).toBe(uiS);
+		await applyHataSettingsTransfer(exported, ['hataSideStudio']);
+		expect(JSON.parse(local.get('hataSideStudioUiS')!).profiles[0].name).toBe('UI S');
 	});
 
 	test('新しいHatask設定の未知項目は捨て、既存項目を残して既知項目だけを上書きする', async () => {

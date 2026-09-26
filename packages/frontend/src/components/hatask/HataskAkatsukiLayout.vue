@@ -19,9 +19,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:aria-busy="enabled ? model.loading : undefined"
 	@keydown.esc="closeTransient"
 >
-	<aside v-if="enabled" class="hak-rail" aria-label="Hatask ナビゲーション">
+	<aside v-if="enabled" class="hak-rail" :aria-label="copy.railNav">
 		<div class="hak-rail-head">
-			<button class="hak-rail-menu hak-icon" type="button" :aria-expanded="!railCollapsed" aria-label="メニューを開閉" @click="railExpanded = railCollapsed">
+			<button class="hak-rail-menu hak-icon" type="button" :aria-expanded="!railCollapsed" :aria-label="copy.toggleMenu" @click="railExpanded = railCollapsed">
 				<i class="ti ti-menu-2" aria-hidden="true"></i>
 			</button>
 			<div class="hak-rail-brand hak-brand">Hatask</div>
@@ -30,144 +30,151 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<i :class="tab.icon" aria-hidden="true"></i><span class="hak-rail-label">{{ tab.label }}</span>
 		</button>
 		<div class="hak-rail-space"></div>
-		<button class="hak-rail-tab" type="button" aria-label="Hatask を閉じる" :title="railCollapsed ? 'Hatask を閉じる' : undefined" @click="dispatch({ type: 'exit' })">
-			<i class="ti ti-logout-2" aria-hidden="true"></i><span class="hak-rail-label">Hatask を閉じる</span>
+		<button class="hak-rail-tab" type="button" :aria-label="copy.exit" :title="railCollapsed ? copy.exit : undefined" @click="dispatch({ type: 'exit' })">
+			<i class="ti ti-logout-2" aria-hidden="true"></i><span class="hak-rail-label">{{ copy.exit }}</span>
 		</button>
 	</aside>
 	<div ref="scrollEl" class="hak-scroll" :data-scroll-more="scrollMore" @scroll.passive="onScroll">
 		<header v-if="enabled" class="hak-desktop-top">
-			<form class="hak-desktop-case" role="search" @submit.prevent="submitSearch">
-				<span class="hak-date hak-round">{{ dateLabel }}</span>
-				<span class="hak-dow">{{ weekdayLabel }}</span>
-				<label class="hak-desktop-search"><i class="ti ti-search" aria-hidden="true"></i><input ref="desktopSearchEl" v-model="searchQuery" type="search" placeholder="Hatask を検索" aria-label="Hatask を検索" :aria-controls="searchOpen ? searchResultsId : undefined"></label>
-				<time v-if="model.showClock !== false" class="hak-clock hak-num">{{ clockLabel }}</time>
-				<button class="hak-icon" type="button" aria-label="Hatask 設定" @click="emit('settings')"><i class="ti ti-settings" aria-hidden="true"></i></button>
-			</form>
+			<div ref="desktopNotificationOutlineEl" class="hak-desktop-bar" :data-notification="notificationActive">
+				<div class="hak-desktop-surface">
+					<div ref="desktopNotificationTargetEl" class="hak-notification-viewport" :style="{ height: `${!isMobile && ownsNotificationSurface ? notificationToasts?.height.value ?? 0 : 0}px` }"></div>
+					<form class="hak-desktop-case" role="search" @submit.prevent="submitSearch">
+						<span class="hak-date hak-round">{{ dateLabel }}</span>
+						<span class="hak-dow">{{ weekdayLabel }}</span>
+						<label class="hak-desktop-search"><i class="ti ti-search" aria-hidden="true"></i><input ref="desktopSearchEl" v-model="searchQuery" type="search" :placeholder="copy.searchHatask" :aria-label="copy.searchHatask" :aria-controls="searchOpen ? searchResultsId : undefined"></label>
+						<time v-if="model.showClock !== false" class="hak-clock hak-num">{{ clockLabel }}</time>
+						<button class="hak-icon" type="button" :aria-label="copy.settings" @click="emit('settings')"><i class="ti ti-settings" aria-hidden="true"></i></button>
+					</form>
+				</div>
+			</div>
 		</header>
 		<header v-if="enabled" class="hak-mobile-head" :data-notification-pinned="notificationPinned">
-			<div ref="notificationOutlineEl" class="hak-mobile-case hak-mobile-bar" :data-notification="notificationActive">
-				<div ref="notificationTargetEl" class="hak-notification-viewport" :style="{ height: `${ownsNotificationSurface ? notificationToasts?.height.value ?? 0 : 0}px` }"></div>
-				<form class="hak-mobile-case" role="search" @submit.prevent="submitSearch">
-					<span class="hak-mobile-brand hak-brand">Hatask</span>
-					<label class="hak-mobile-search" :aria-hidden="!searching"><i class="ti ti-search" aria-hidden="true"></i><input ref="mobileSearchEl" v-model="searchQuery" type="search" placeholder="Hatask を検索" aria-label="Hatask を検索" :aria-controls="searchOpen ? searchResultsId : undefined" :disabled="!searching"></label>
-					<button ref="searchToggleEl" class="hak-icon hak-search-toggle" type="button" :aria-expanded="searching" :aria-label="searching ? '検索を閉じる' : '検索'" @click="toggleSearch"><i :class="searching ? 'ti ti-x' : 'ti ti-search'" aria-hidden="true"></i></button>
-					<button class="hak-icon hak-mobile-gear" type="button" aria-label="Hatask 設定" :tabindex="searching ? -1 : undefined" :aria-hidden="searching" @click="emit('settings')"><i class="ti ti-settings" aria-hidden="true"></i></button>
-				</form>
+			<div ref="notificationOutlineEl" class="hak-mobile-bar" :data-notification="notificationActive">
+				<div class="hak-mobile-case hak-mobile-surface">
+					<div ref="notificationTargetEl" class="hak-notification-viewport" :style="{ height: `${isMobile && ownsNotificationSurface ? notificationToasts?.height.value ?? 0 : 0}px` }"></div>
+					<form class="hak-mobile-case" role="search" @submit.prevent="submitSearch">
+						<span class="hak-mobile-brand hak-brand">Hatask</span>
+						<label class="hak-mobile-search" :aria-hidden="!searching"><i class="ti ti-search" aria-hidden="true"></i><input ref="mobileSearchEl" v-model="searchQuery" type="search" :placeholder="copy.searchHatask" :aria-label="copy.searchHatask" :aria-controls="searchOpen ? searchResultsId : undefined" :disabled="!searching"></label>
+						<button ref="searchToggleEl" class="hak-icon hak-search-toggle" type="button" :aria-expanded="searching" :aria-label="searching ? copy.closeSearch : copy.search" @click="toggleSearch"><i :class="searching ? 'ti ti-x' : 'ti ti-search'" aria-hidden="true"></i></button>
+						<button class="hak-icon hak-mobile-gear" type="button" :aria-label="copy.settings" :tabindex="searching ? -1 : undefined" :aria-hidden="searching" @click="emit('settings')"><i class="ti ti-settings" aria-hidden="true"></i></button>
+					</form>
+				</div>
 			</div>
 		</header>
 		<div v-if="enabled" class="hak-search-disclosure" :data-open="!!searchOpen" :inert="!searchOpen" :aria-hidden="!searchOpen">
 			<div class="hak-search-disclosure-clip">
-				<section :id="searchResultsId" class="hak-search-results" aria-label="Hatask の検索結果" :style="{ maxHeight: `${Math.max(120, rootHeight * .5)}px` }">
-					<div class="hak-search-results-head"><h2>検索結果</h2><button type="button" class="hak-icon" aria-label="検索結果を閉じる" @click="closeSearchResults"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+				<section :id="searchResultsId" class="hak-search-results" :aria-label="copy.searchResultsAria" :style="{ maxHeight: `${Math.max(120, rootHeight * .5)}px` }">
+					<div class="hak-search-results-head"><h2>{{ copy.searchResults }}</h2><button type="button" class="hak-icon" :aria-label="copy.closeSearchResults" @click="closeSearchResults"><i class="ti ti-x" aria-hidden="true"></i></button></div>
 					<slot name="search-results"></slot>
 				</section>
 			</div>
 		</div>
 		<div ref="bodyEl" class="hak-body">
 			<div ref="centerEl" class="hak-center" :role="enabled ? 'main' : undefined">
-				<section v-if="enabled" v-show="activeTab === 'home'" class="hak-home" aria-label="ホーム">
+				<section v-if="enabled" v-show="activeTab === 'home'" class="hak-home" :aria-label="copy.home">
 					<div class="hak-home-summary">
-						<div class="hak-mobile-date"><span class="hak-date hak-round">{{ dateLabel }}</span><span class="hak-dow">{{ weekdayLabel }}</span><span v-if="model.dayCountLabel" class="hak-day-count hak-num">{{ model.dayCountLabel }}</span><button v-if="activeTab === 'home'" type="button" class="hak-icon" data-home-display-options="mobile" aria-label="表示を選ぶ" title="表示を選ぶ" :aria-expanded="manualHome === 'favorites' && favoritesEditing" :disabled="!favoritesReady || favoritesSaving || (manualHome === 'favorites' && favoritesEditing)" @click="manualHome = 'favorites'; if (!favoritesEditing) editFavorites()"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i></button></div>
-						<p>{{ model.loading ? '記録を読み込んでいます' : model.summary || 'きょうの予定と記録を、ここから' }}</p>
+						<div class="hak-mobile-date"><span class="hak-date hak-round">{{ dateLabel }}</span><span class="hak-dow">{{ weekdayLabel }}</span><span v-if="model.dayCountLabel" class="hak-day-count hak-num">{{ model.dayCountLabel }}</span><button v-if="activeTab === 'home'" type="button" class="hak-icon" data-home-display-options="mobile" :aria-label="copy.chooseDisplay" :title="copy.chooseDisplay" :aria-expanded="manualHome === 'favorites' && favoritesEditing" :disabled="!favoritesReady || favoritesSaving || (manualHome === 'favorites' && favoritesEditing)" @click="manualHome = 'favorites'; if (!favoritesEditing) editFavorites()"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i></button></div>
+						<p>{{ model.loading ? copy.loadingRecords : model.summary || copy.heroFallback }}</p>
 					</div>
-					<section class="hak-focus" aria-label="いま使いたいもの" @pointerenter="homeHovered = true" @pointerleave="homeHovered = false" @focusin="homeFocused = true" @focusout="onHomeFocusOut">
+					<section class="hak-focus" :aria-label="copy.focusArea" @pointerenter="homeHovered = true" @pointerleave="homeHovered = false" @focusin="homeFocused = true" @focusout="onHomeFocusOut">
 						<div class="hak-focus-toolbar">
-							<div class="hak-focus-options" role="group" aria-label="ホームに表示する内容">
-								<button type="button" class="hak-focus-option" data-home-select="favorites" aria-label="お気に入り" title="お気に入り" :aria-pressed="manualHome === 'favorites'" @click="selectHome('favorites')">
-									<i class="ti ti-star" aria-hidden="true"></i><span v-if="manualHome === 'favorites'">お気に入り</span>
+							<div class="hak-focus-options" role="group" :aria-label="copy.homeDisplay">
+								<button type="button" class="hak-focus-option" data-home-select="favorites" :aria-label="copy.favorites" :title="copy.favorites" :aria-pressed="manualHome === 'favorites'" @click="selectHome('favorites')">
+									<i class="ti ti-star" aria-hidden="true"></i><span v-if="manualHome === 'favorites'">{{ copy.favorites }}</span>
 								</button>
-								<button type="button" class="hak-focus-option" aria-label="おすすめ" title="おすすめ" :aria-pressed="manualHome === null" @click="selectHome(null)">
-									<i class="ti ti-sparkles" aria-hidden="true"></i><span v-if="manualHome === null">おすすめ</span>
+								<button type="button" class="hak-focus-option" :aria-label="copy.recommended" :title="copy.recommended" :aria-pressed="manualHome === null" @click="selectHome(null)">
+									<i class="ti ti-sparkles" aria-hidden="true"></i><span v-if="manualHome === null">{{ copy.recommended }}</span>
 								</button>
 								<button v-for="section in homeSections" :key="section.id" type="button" class="hak-focus-option" :data-home-select="section.id" :aria-label="section.count ? `${section.label} ${section.count}` : section.label" :title="section.label" :aria-pressed="manualHome === section.id" @click="selectHome(section.id)">
 									<i :class="section.icon" aria-hidden="true"></i>
 									<template v-if="manualHome === section.id"><span>{{ section.label }}</span><span v-if="section.count" class="hak-focus-count hak-num">{{ section.count }}</span></template>
 								</button>
 							</div>
-							<button v-if="activeTab === 'home'" type="button" class="hak-icon" data-home-display-options="desktop" aria-label="表示を選ぶ" title="表示を選ぶ" :aria-expanded="manualHome === 'favorites' && favoritesEditing" :disabled="!favoritesReady || favoritesSaving || (manualHome === 'favorites' && favoritesEditing)" @click="manualHome = 'favorites'; if (!favoritesEditing) editFavorites()"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i></button>
+							<button v-if="activeTab === 'home'" type="button" class="hak-icon" data-home-display-options="desktop" :aria-label="copy.chooseDisplay" :title="copy.chooseDisplay" :aria-expanded="manualHome === 'favorites' && favoritesEditing" :disabled="!favoritesReady || favoritesSaving || (manualHome === 'favorites' && favoritesEditing)" @click="manualHome = 'favorites'; if (!favoritesEditing) editFavorites()"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i></button>
 						</div>
 						<template v-if="manualHome === 'favorites'">
 							<form v-if="favoritesEditing" class="hak-favorites-editor" :aria-busy="favoritesSaving" @submit.prevent="saveFavorites">
 								<fieldset :disabled="!favoritesReady || favoritesSaving">
-									<legend class="hak-round">お気に入りに表示する内容</legend>
-									<p class="hak-empty">1つか2つ選べます。すべて外すと、おすすめに戻ります。</p>
+									<legend class="hak-round">{{ copy.favoriteDisplay }}</legend>
+									<p class="hak-empty">{{ copy.favoriteHelp }}</p>
 									<div class="hak-favorites-choices">
 										<label v-for="choice in HATASK_AKATSUKI_FAVORITES" :key="choice.id"><input type="checkbox" :value="choice.id" :checked="favoriteDraft.includes(choice.id)" :disabled="favoriteDraft.length >= 2 && !favoriteDraft.includes(choice.id)" @change="toggleFavorite(choice.id)"><i :class="choice.icon" aria-hidden="true"></i>{{ choice.label }}</label>
 									</div>
 								</fieldset>
-								<p v-if="!favoritesReady" class="hak-empty" role="status">{{ model.loading ? '設定を読み込んでいます' : '設定を読み込めませんでした。Hataskを開き直してください。' }}</p>
+								<p v-if="!favoritesReady" class="hak-empty" role="status">{{ model.loading ? copy.settingsLoading : copy.settingsFailed }}</p>
 								<p v-if="favoritesError" class="hak-empty" role="alert">{{ favoritesError }}</p>
-								<div class="hak-actions"><button type="submit" class="hak-action-button" data-primary="true" :disabled="!favoritesReady || favoritesSaving || !favoritesChanged">{{ favoritesSaving ? '保存中…' : '保存' }}</button><button type="button" class="hak-action-button" :disabled="favoritesSaving" @click="cancelFavorites">キャンセル</button></div>
+								<div class="hak-actions"><button type="submit" class="hak-action-button" data-primary="true" :disabled="!favoritesReady || favoritesSaving || !favoritesChanged">{{ favoritesSaving ? copy.saving : copy.save }}</button><button type="button" class="hak-action-button" :disabled="favoritesSaving" @click="cancelFavorites">{{ copy.cancel }}</button></div>
 							</form>
 						</template>
 						<div class="hak-home-panes" :data-two-panes="manualHome === 'favorites' && homePanes.length === 2">
 							<div v-for="pane in homePanes" :key="pane.id" class="hak-focus-panel" :data-home-panel="pane.id">
 								<header v-if="pane.id !== 'intro'" class="hak-focus-head"><h2 class="hak-round"><i :class="pane.icon" aria-hidden="true"></i>{{ pane.label }}</h2><span>{{ pane.reason }}</span></header>
-								<p v-if="model.loading && pane.id !== 'intro'" class="hak-empty" role="status">記録を読み込んでいます</p>
+								<p v-if="model.loading && pane.id !== 'intro'" class="hak-empty" role="status">{{ copy.loadingRecords }}</p>
 								<template v-else>
 									<div v-if="pane.id === 'intro'" class="hak-intro-feature">
-										<div class="hak-intro-copy"><p class="hak-intro-kicker">はじめてのHataskeyに</p><h2 class="hak-intro-brand">HataIntro</h2><p class="hak-intro-description">ノートの読み方から、投稿や設定まで<br>図と一緒に、ひとつずつ</p></div>
-										<button type="button" class="hak-intro-open" data-home-intro aria-label="HataIntro はじめてガイドを開く" @click="dispatch({ type: 'open-app', id: 'intro' })"><i class="ti ti-book" aria-hidden="true"></i><span>はじめてガイドを開く</span><i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+										<div class="hak-intro-copy"><p class="hak-intro-kicker">{{ copy.introReason }}</p><h2 class="hak-intro-brand">HataIntro</h2><p class="hak-intro-description">{{ copy.introLedeFirst }}<br>{{ copy.introLedeSecond }}</p></div>
+										<button type="button" class="hak-intro-open" data-home-intro :aria-label="copy.introOpenAria" @click="dispatch({ type: 'open-app', id: 'intro' })"><i class="ti ti-book" aria-hidden="true"></i><span>{{ copy.introOpen }}</span><i class="ti ti-arrow-right" aria-hidden="true"></i></button>
 										<i class="ti ti-book hak-intro-mark" aria-hidden="true"></i>
 									</div>
 									<div v-else-if="pane.id === 'calendar'" class="hak-focus-calendar">
-										<p v-if="model.showEvents === false" class="hak-empty">ホームの予定表示はオフになっています</p>
+										<p v-if="model.showEvents === false" class="hak-empty">{{ copy.eventsHidden }}</p>
 										<div v-if="model.showEvents !== false" class="hak-next">
-											<p v-if="model.scheduleUnavailable && !model.loading" role="status">予定を読み込めませんでした</p>
+											<p v-if="model.scheduleUnavailable && !model.loading" role="status">{{ copy.eventsLoadFailed }}</p>
 											<template v-if="model.next && !model.loading">
-												<h1 class="hak-round"><span class="hak-next-lead">つぎは、</span><span class="hak-next-title">{{ model.next.title }}</span></h1>
+												<h1 class="hak-round"><span class="hak-next-lead">{{ copy.nextLead }}</span><span class="hak-next-title">{{ model.next.title }}</span></h1>
 												<p>{{ model.next.meta || model.next.timeLabel }}<template v-if="model.next.detail"><br>{{ model.next.detail }}</template></p>
 												<div class="hak-actions">
 													<template v-if="model.next.buttons?.length">
 														<button v-for="(button, index) in model.next.buttons" :key="index" class="hak-action-button" :data-primary="button.primary" type="button" :disabled="button.disabled" @click="dispatch(button.action)"><i v-if="button.icon" :class="button.icon" aria-hidden="true"></i>{{ button.label }}</button>
 													</template>
-													<button v-else class="hak-action-button" data-primary="true" type="button" @click="openEvent(model.next)"><i class="ti ti-calendar-event" aria-hidden="true"></i>予定を開く</button>
+													<button v-else class="hak-action-button" data-primary="true" type="button" @click="openEvent(model.next)"><i class="ti ti-calendar-event" aria-hidden="true"></i>{{ copy.openEvent }}</button>
 												</div>
 											</template>
-											<template v-else-if="!model.loading && !model.scheduleUnavailable"><h1 class="hak-round"><span class="hak-next-lead">つぎの予定は、</span><span class="hak-next-title">まだありません</span></h1><div class="hak-actions"><button class="hak-action-button" data-primary="true" type="button" :disabled="model.readOnly" @click="dispatch({ type: 'create-event' })"><i class="ti ti-plus" aria-hidden="true"></i>予定を追加</button></div></template>
+											<template v-else-if="!model.loading && !model.scheduleUnavailable"><h1 class="hak-round"><span class="hak-next-lead">{{ copy.noNextLead }}</span><span class="hak-next-title">{{ copy.noNext }}</span></h1><div class="hak-actions"><button class="hak-action-button" data-primary="true" type="button" :disabled="model.readOnly" @click="dispatch({ type: 'create-event' })"><i class="ti ti-plus" aria-hidden="true"></i>{{ copy.addEvent }}</button></div></template>
 										</div>
-										<details v-if="model.showEvents !== false && !model.scheduleUnavailable" class="hak-schedule-details"><summary>きょうの時間帯別の予定</summary>
-											<div class="hak-timeline" role="group" aria-label="きょうの時間帯別の予定">
+										<details v-if="model.showEvents !== false && !model.scheduleUnavailable" class="hak-schedule-details"><summary>{{ copy.todayTimeline }}</summary>
+											<div class="hak-timeline" role="group" :aria-label="copy.todayTimeline">
 												<div v-if="activeTimelineEntry" class="hak-timeline-label" :style="{ '--hak-label-left': `${activeTimelineEntry.left}%`, '--hak-label-width': `${100 - activeTimelineEntry.left}%` }"><strong class="hak-num">{{ activeTimelineEntry.event.timeLabel }}</strong><span>{{ activeTimelineEntry.event.title }}</span></div>
 												<span class="hak-time-axis" aria-hidden="true"></span>
 												<span v-for="tick in timelineTicks" :key="tick.minute" class="hak-time-tick hak-num" :data-major="tick.major" :style="{ left: `${tick.left}%` }" aria-hidden="true">{{ tick.label }}</span>
 												<button v-for="entry in timelineEntries" :key="entry.event.id" class="hak-time-block" :data-main="entry.event.id === model.next?.id" :style="{ left: `${entry.left}%`, width: `${entry.width}%` }" type="button" :aria-label="`${entry.event.timeLabel} ${entry.event.title}`" :title="`${entry.event.timeLabel} ${entry.event.title}`" @click="openEvent(entry.event)"><span></span></button>
-												<span v-if="nowPosition !== null" class="hak-time-now" :style="{ left: `${nowPosition}%` }" role="img" :aria-label="`現在 ${clockLabel}`"></span>
+												<span v-if="nowPosition !== null" class="hak-time-now" :style="{ left: `${nowPosition}%` }" role="img" :aria-label="i18n.tsx._hata._hatask._akatsuki.currentTime({ time: clockLabel })"></span>
 											</div>
 										</details>
-										<section v-if="model.showEvents !== false && !model.scheduleUnavailable" class="hak-later" aria-label="このあと">
-											<h2 class="hak-section-heading hak-round">このあと</h2>
+										<section v-if="model.showEvents !== false && !model.scheduleUnavailable" class="hak-later" :aria-label="copy.later">
+											<h2 class="hak-section-heading hak-round">{{ copy.later }}</h2>
 											<button v-for="entry in model.later ?? []" :key="entry.id" class="hak-later-row" type="button" :disabled="model.loading" @click="openEvent(entry)"><span class="hak-later-time hak-num">{{ entry.timeLabel }}</span><span class="hak-dot" :data-muted="entry.muted" aria-hidden="true"></span><span class="hak-later-title">{{ entry.title }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
-											<p v-if="!model.loading && !model.later?.length" class="hak-empty">このあとの予定はありません</p>
+											<p v-if="!model.loading && !model.later?.length" class="hak-empty">{{ copy.noUpcoming }}</p>
 										</section>
 									</div>
 									<div v-else-if="pane.id === 'tools'" class="hak-tools">
 										<button v-for="app in model.apps ?? []" :key="app.id" class="hak-tool" type="button" :data-home-tool="app.id" @click="dispatch({ type: 'open-app', id: app.id })"><i :class="app.icon" aria-hidden="true"></i><span>{{ app.label }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
-										<p v-if="!model.apps?.length" class="hak-empty">Hatask Appから使いたいツールを開けます</p>
+										<p v-if="!model.apps?.length" class="hak-empty">{{ copy.appEmpty }}</p>
 									</div>
 									<div v-else-if="pane.id === 'todo'">
-										<p v-if="model.scheduleUnavailable" class="hak-empty" role="status">ToDoを読み込めませんでした</p>
-										<p v-else-if="!model.todos?.length" class="hak-empty">未完了のToDoはありません</p>
-										<button v-for="todo in model.todos ?? []" :key="todo.id" type="button" class="hak-todo-row" :aria-label="`${todo.title}：完了にする`" :aria-pressed="!!todo.completed" :disabled="todo.readOnly" @click="dispatch({ type: 'toggle-todo', id: todo.id, value: true })"><span class="hak-todo-box" :data-checked="todo.completed"><i v-if="todo.completed" class="ti ti-check" aria-hidden="true"></i></span><span class="hak-todo-copy"><strong>{{ todo.title }}</strong><small>{{ todo.meta }}</small></span></button>
-										<div class="hak-actions"><button type="button" class="hak-action-button" data-primary="true" :disabled="model.readOnly || model.scheduleUnavailable" @click="dispatch({ type: 'create-todo' })"><i class="ti ti-plus" aria-hidden="true"></i>ToDoを追加</button><button type="button" class="hak-action-button" @click="navigate('todo')">一覧を開く</button></div>
+										<p v-if="model.scheduleUnavailable" class="hak-empty" role="status">{{ copy.todoLoadFailed }}</p>
+										<p v-else-if="!model.todos?.length" class="hak-empty">{{ copy.noTodo }}</p>
+										<button v-for="todo in model.todos ?? []" :key="todo.id" type="button" class="hak-todo-row" :aria-label="i18n.tsx._hata._hatask._akatsuki.todoComplete({ title: todo.title })" :aria-pressed="!!todo.completed" :disabled="todo.readOnly" @click="dispatch({ type: 'toggle-todo', id: todo.id, value: true })"><span class="hak-todo-box" :data-checked="todo.completed"><i v-if="todo.completed" class="ti ti-check" aria-hidden="true"></i></span><span class="hak-todo-copy"><strong>{{ todo.title }}</strong><small>{{ todo.meta }}</small></span></button>
+										<div class="hak-actions"><button type="button" class="hak-action-button" data-primary="true" :disabled="model.readOnly || model.scheduleUnavailable" @click="dispatch({ type: 'create-todo' })"><i class="ti ti-plus" aria-hidden="true"></i>{{ copy.addTodo }}</button><button type="button" class="hak-action-button" @click="navigate('todo')">{{ copy.openList }}</button></div>
 									</div>
 									<div v-else-if="pane.id === 'feedback'">
 										<slot name="home-feedback"></slot>
-										<div class="hak-actions"><button type="button" class="hak-action-button" @click="dispatch({ type: 'open-app', id: 'feed' })">HataFeedを開く<i class="ti ti-arrow-right" aria-hidden="true"></i></button></div>
+										<div class="hak-actions"><button type="button" class="hak-action-button" @click="dispatch({ type: 'open-app', id: 'feed' })">{{ copy.openFeed }}<i class="ti ti-arrow-right" aria-hidden="true"></i></button></div>
 									</div>
 									<div v-else-if="pane.id === 'meal'">
-										<p v-if="!model.meals?.length" class="hak-empty">ホームのごはん表示はオフになっています</p>
-										<button v-for="(meal, index) in model.meals ?? []" :key="meal.id" class="hak-rich-row" type="button" :disabled="meal.unavailable" @click="dispatch({ type: 'record-meal', id: meal.id })"><i :class="['ti', ['ti-sunrise', 'ti-sun', 'ti-moon'][index] ?? 'ti-soup']" aria-hidden="true"></i><span class="hak-rich-main"><strong>{{ meal.label }}ごはん</strong><small>{{ meal.text }}</small></span><span v-if="!meal.unavailable" class="hak-rich-status" :data-pending="!meal.recorded">{{ meal.recorded ? '記録済み' : '記録する' }}</span></button>
-										<div class="hak-actions"><button type="button" class="hak-action-button" @click="navigate('meal')">ごはんの記録を開く<i class="ti ti-arrow-right" aria-hidden="true"></i></button></div>
+										<p v-if="!model.meals?.length" class="hak-empty">{{ copy.mealsHidden }}</p>
+										<button v-for="(meal, index) in model.meals ?? []" :key="meal.id" class="hak-rich-row" type="button" :disabled="meal.unavailable" @click="dispatch({ type: 'record-meal', id: meal.id })"><i :class="['ti', ['ti-sunrise', 'ti-sun', 'ti-moon'][index] ?? 'ti-soup']" aria-hidden="true"></i><span class="hak-rich-main"><strong>{{ i18n.tsx._hata._hatask._akatsuki.mealName({ slot: meal.label }) }}</strong><small>{{ meal.text }}</small></span><span v-if="!meal.unavailable" class="hak-rich-status" :data-pending="!meal.recorded">{{ meal.recorded ? copy.recorded : copy.recordMeal }}</span></button>
+										<div class="hak-actions"><button type="button" class="hak-action-button" @click="navigate('meal')">{{ copy.openMeals }}<i class="ti ti-arrow-right" aria-hidden="true"></i></button></div>
 									</div>
 									<div v-else-if="pane.id === 'flower'">
 										<button v-if="model.flower" class="hak-side-row hak-flower-row" type="button" @click="navigate('garden')"><span v-if="model.flower.emoji" class="hak-flower-emoji">{{ model.flower.emoji }}</span><i v-else class="ti ti-flower" aria-hidden="true"></i><span class="hak-side-row-main"><strong>{{ model.flower.name }}</strong><small><template v-if="flowerProgress !== null">{{ flowerProgress }}%<template v-if="model.flower.detail"> ・ </template></template>{{ model.flower.detail }}</small></span></button>
-										<p v-else class="hak-empty" role="status">おはなを表示できません</p>
+										<p v-else class="hak-empty" role="status">{{ copy.flowerUnavailable }}</p>
 									</div>
 								</template>
 							</div>
 						</div>
-						<div v-if="!model.loading && manualHome !== 'favorites'" class="hak-suggestions" aria-label="ほかにも">
+						<div v-if="!model.loading && manualHome !== 'favorites'" class="hak-suggestions" :aria-label="copy.moreSections">
 							<button v-for="section in homeSuggestions" :key="section.id" class="hak-suggestion" type="button" :data-home-suggestion="section.id" @click="selectHome(section.id)"><i :class="section.icon" aria-hidden="true"></i><span><small>{{ section.reason }}</small><strong>{{ section.summary }}</strong></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
 						</div>
 					</section>
@@ -179,35 +186,35 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- Stable ancestors preserve drafts across both tab and theme changes. -->
 				<div v-show="!enabled || activeTab !== 'home'" class="hak-tab-content"><slot/></div>
 			</div>
-			<aside v-if="enabled" class="hak-side" aria-label="きろく">
+			<aside v-if="enabled" class="hak-side" :aria-label="copy.records">
 				<section class="hak-side-case hak-record-case">
-					<h2 class="hak-side-heading hak-round">きろく</h2>
-					<p v-if="model.loading" class="hak-empty">記録を読み込んでいます</p>
-					<div v-else-if="model.week?.length" class="hak-week" aria-label="今週のきもち"><button v-for="day in model.week" :key="day.id" class="hak-week-day" type="button" :data-today="day.today" :data-pending="day.pending" :aria-label="`${day.label} ${day.description}`" @click="navigate('mood')"><span>{{ day.label }}</span><span v-if="day.emoji" class="hak-week-emoji">{{ day.emoji }}</span><i v-else :class="day.icon || 'ti ti-point'" aria-hidden="true"></i></button></div>
+					<h2 class="hak-side-heading hak-round">{{ copy.records }}</h2>
+					<p v-if="model.loading" class="hak-empty">{{ copy.loadingRecords }}</p>
+					<div v-else-if="model.week?.length" class="hak-week" :aria-label="copy.weekMood"><button v-for="day in model.week" :key="day.id" class="hak-week-day" type="button" :data-today="day.today" :data-pending="day.pending" :aria-label="`${day.label} ${day.description}`" @click="navigate('mood')"><span>{{ day.label }}</span><span v-if="day.emoji" class="hak-week-emoji">{{ day.emoji }}</span><i v-else :class="day.icon || 'ti ti-point'" aria-hidden="true"></i></button></div>
 				</section>
 				<template v-if="!model.loading">
 					<button v-if="model.flower" class="hak-side-row hak-flower-row hak-side-case" type="button" @click="navigate('garden')"><span v-if="model.flower.emoji" class="hak-flower-emoji">{{ model.flower.emoji }}</span><i v-else class="ti ti-flower" aria-hidden="true"></i><span class="hak-side-row-main"><strong>{{ model.flower.name }}</strong><small><template v-if="flowerProgress !== null">{{ flowerProgress }}%<template v-if="model.flower.detail"> ・ </template></template>{{ model.flower.detail }}</small></span></button>
-					<div v-if="model.mealSummary" class="hak-side-row hak-meal-row hak-side-case"><i class="ti ti-soup" aria-hidden="true"></i><span class="hak-side-row-main">{{ mealSummary }}</span><button class="hak-small-button" type="button" @click="dispatch({ type: 'record-meal' })">記録</button></div>
+					<div v-if="model.mealSummary" class="hak-side-row hak-meal-row hak-side-case"><i class="ti ti-soup" aria-hidden="true"></i><span class="hak-side-row-main">{{ mealSummary }}</span><button class="hak-small-button" type="button" @click="dispatch({ type: 'record-meal' })">{{ copy.recordButton }}</button></div>
 					<div v-if="model.streakLabel" class="hak-side-row hak-streak hak-side-case"><i class="ti ti-flame" aria-hidden="true"></i><span class="hak-side-row-main">{{ model.streakLabel }}</span><span v-if="model.rankLabel" class="hak-rank hak-num">{{ model.rankLabel }}</span></div>
 					<div v-if="model.eye" class="hak-side-eye hak-round hak-side-case">{{ model.eye.text }}<small v-if="model.eye.number !== undefined" class="hak-num"> — EYE {{ model.eye.number }}</small></div>
-					<section v-if="model.todos?.length" class="hak-todo-block hak-side-case"><h3 class="hak-todo-title hak-round">ToDo</h3><button v-for="todo in model.todos" :key="todo.id" class="hak-todo-row" type="button" :aria-pressed="!!todo.completed" :aria-label="`${todo.title}：${todo.completed ? '未完了に戻す' : '完了にする'}`" :disabled="todo.readOnly" @click="dispatch({ type: 'toggle-todo', id: todo.id, value: !todo.completed })"><span class="hak-todo-box" :data-checked="todo.completed"><i v-if="todo.completed" class="ti ti-check" aria-hidden="true"></i></span><span class="hak-todo-copy"><strong :data-completed="todo.completed">{{ todo.title }}</strong><small v-if="todo.meta">{{ todo.meta }}</small></span></button></section>
+					<section v-if="model.todos?.length" class="hak-todo-block hak-side-case"><h3 class="hak-todo-title hak-round">ToDo</h3><button v-for="todo in model.todos" :key="todo.id" class="hak-todo-row" type="button" :aria-pressed="!!todo.completed" :aria-label="todo.completed ? i18n.tsx._hata._hatask._akatsuki.todoRestore({ title: todo.title }) : i18n.tsx._hata._hatask._akatsuki.todoComplete({ title: todo.title })" :disabled="todo.readOnly" @click="dispatch({ type: 'toggle-todo', id: todo.id, value: !todo.completed })"><span class="hak-todo-box" :data-checked="todo.completed"><i v-if="todo.completed" class="ti ti-check" aria-hidden="true"></i></span><span class="hak-todo-copy"><strong :data-completed="todo.completed">{{ todo.title }}</strong><small v-if="todo.meta">{{ todo.meta }}</small></span></button></section>
 				</template>
 			</aside>
-			<nav v-if="enabled && activeTab === 'home' && missingMobileAppTabs.length" class="hak-app-return hak-desktop-case" aria-label="下部ナビから外したアプリ">
+			<nav v-if="enabled && activeTab === 'home' && missingMobileAppTabs.length" class="hak-app-return hak-desktop-case" :aria-label="copy.removedTabs">
 				<button v-for="tab in missingMobileAppTabs" :key="tab.id" class="hak-small-button" type="button" :data-app-return="tab.id" @click="navigate(tab.id)">{{ tab.label }}</button>
 			</nav>
 		</div>
 	</div>
-	<button v-if="enabled" class="hak-fab-scrim" :tabindex="fabOpen ? 0 : -1" :aria-hidden="!fabOpen" type="button" aria-label="記録メニューを閉じる" @click="closeFab()"></button>
-	<div v-if="enabled" ref="fabSheetEl" class="hak-fab-sheet" :inert="!fabOpen" :aria-hidden="!fabOpen" role="group" aria-label="記録する">
-		<div class="hak-sheet-head hak-round"><span>記録する</span><button type="button" @click="closeFab()">閉じる</button></div>
-		<button v-for="choice in recordActions" :key="choice.action.type" class="hak-sheet-action" type="button" :disabled="model.loading" @click="record(choice.action)"><i :class="choice.icon" aria-hidden="true"></i><span class="hak-sheet-copy"><strong>{{ choice.label }}</strong><small>{{ choice.action.type === 'water-flower' ? (flowerProgress !== null ? `育成 ${flowerProgress}%` : '育成の記録') : choice.description }}</small></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+	<button v-if="enabled" class="hak-fab-scrim" :tabindex="fabOpen ? 0 : -1" :aria-hidden="!fabOpen" type="button" :aria-label="copy.closeRecordMenu" @click="closeFab()"></button>
+	<div v-if="enabled" ref="fabSheetEl" class="hak-fab-sheet" :inert="!fabOpen" :aria-hidden="!fabOpen" role="group" :aria-label="copy.recordMeal">
+		<div class="hak-sheet-head hak-round"><span>{{ copy.recordMeal }}</span><button type="button" @click="closeFab()">{{ copy.close }}</button></div>
+		<button v-for="choice in recordActions" :key="choice.action.type" class="hak-sheet-action" type="button" :disabled="model.loading" @click="record(choice.action)"><i :class="choice.icon" aria-hidden="true"></i><span class="hak-sheet-copy"><strong>{{ choice.label }}</strong><small>{{ choice.action.type === 'water-flower' ? (flowerProgress !== null ? i18n.tsx._hata._hatask._akatsuki.flowerProgress({ percent: String(flowerProgress) }) : copy.growthRecord) : choice.description }}</small></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
 	</div>
-	<nav v-if="enabled" ref="bottomEl" class="hak-bottom" aria-label="Hatask 下部ナビゲーション" @focusin="restoreNav">
-		<button class="hak-exit" type="button" aria-label="Hatask を閉じる" @click="dispatch({ type: 'exit' })"><i class="ti ti-logout-2" aria-hidden="true"></i></button>
+	<nav v-if="enabled" ref="bottomEl" class="hak-bottom" :aria-label="copy.bottomNav" @focusin="restoreNav">
+		<button class="hak-exit" type="button" :aria-label="copy.exit" @click="dispatch({ type: 'exit' })"><i class="ti ti-logout-2" aria-hidden="true"></i></button>
 		<div class="hak-bottom-case">
 			<button v-for="tab in mobileTabs" :key="tab.id" class="hak-mobile-tab" type="button" :aria-label="tab.label" :aria-current="isMobileTabActive(tab.id) ? 'page' : undefined" :tabindex="navHidden ? -1 : undefined" :aria-hidden="navHidden" @click="navigate(tab.id)"><i :class="tab.icon" aria-hidden="true"></i></button>
-			<button ref="fabEl" class="hak-fab" type="button" :aria-label="fabOpen ? '記録メニューを閉じる' : '記録する'" :aria-expanded="fabOpen" @click="toggleFab"><i class="ti ti-plus" aria-hidden="true"></i></button>
+			<button ref="fabEl" class="hak-fab" type="button" :aria-label="fabOpen ? copy.closeRecordMenu : copy.recordMeal" :aria-expanded="fabOpen" @click="toggleFab"><i class="ti ti-plus" aria-hidden="true"></i></button>
 		</div>
 	</nav>
 </section>
@@ -220,7 +227,11 @@ import { normalizeHataskAkatsukiMobileTabs } from '@/utility/hatask-akatsuki-nav
 import { HATASK_AKATSUKI_FAVORITES, normalizeHataskAkatsukiFavorites } from '@/utility/hatask-akatsuki-favorites.js';
 import { getHataskDaylightStyle } from '@/utility/hatask-daylight.js';
 import { globalEvents } from '@/events.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import { hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
+
+const copy = i18n.ts._hata._hatask._akatsuki;
 
 const props = withDefaults(defineProps<HataskAkatsukiLayoutProps>(), { mode: 'light', animations: true, favoritesReady: true, favoritesSaving: false, favoritesError: '' });
 const emit = defineEmits<{
@@ -250,12 +261,14 @@ const pageVisible = ref(false);
 const notificationToasts = props.preview ? null : inject(hataskeyNotificationToastsKey, null);
 const notificationTargetEl = shallowRef<HTMLElement | null>(null);
 const notificationOutlineEl = shallowRef<HTMLElement | null>(null);
+const desktopNotificationTargetEl = shallowRef<HTMLElement | null>(null);
+const desktopNotificationOutlineEl = shallowRef<HTMLElement | null>(null);
 const notificationPinned = ref(false);
 let notificationCollapseTimer: number | undefined;
 const notificationSurface = {
-	active: computed(() => props.enabled && pageActive.value && pageVisible.value && isMobile.value),
-	target: notificationTargetEl,
-	outline: notificationOutlineEl,
+	active: computed(() => props.enabled && pageActive.value && pageVisible.value),
+	target: computed(() => isMobile.value ? notificationTargetEl.value : desktopNotificationTargetEl.value),
+	outline: computed(() => isMobile.value ? notificationOutlineEl.value : desktopNotificationOutlineEl.value),
 	animations: computed(() => props.animations),
 };
 const releaseNotificationSurface = notificationToasts?.registerSurface(notificationSurface);
@@ -272,10 +285,10 @@ const homeFocused = ref(false);
 const heldIntro = ref<HataskAkatsukiHomeSection>();
 const homeSections = computed<HataskAkatsukiHomeSection[]>(() => {
 	const sections: HataskAkatsukiHomeSection[] = props.model.home?.sections ?? [
-		...(props.model.showEvents !== false ? [{ id: 'calendar' as const, label: '予定', icon: 'ti ti-calendar-event', summary: '', reason: 'このあとの予定', priority: 1 }] : []),
-		{ id: 'todo', label: 'ToDo', icon: 'ti ti-checkbox', summary: '', reason: '次に進めたいこと', priority: 0 },
-		...(props.model.meals?.length ? [{ id: 'meal' as const, label: 'ごはん', icon: 'ti ti-soup', summary: '', reason: 'きょうの食事', priority: 0 }] : []),
-		{ id: 'tools', label: 'ツール', icon: 'ti ti-apps', summary: '', reason: '使いたいツールを、ここから', priority: 0 },
+		...(props.model.showEvents !== false ? [{ id: 'calendar' as const, label: copy.events, icon: 'ti ti-calendar-event', summary: '', reason: copy.eventsLater, priority: 1 }] : []),
+		{ id: 'todo', label: 'ToDo', icon: 'ti ti-checkbox', summary: '', reason: copy.nextTodo, priority: 0 },
+		...(props.model.meals?.length ? [{ id: 'meal' as const, label: copy.meals, icon: 'ti ti-soup', summary: '', reason: copy.todayMeals, priority: 0 }] : []),
+		{ id: 'tools', label: copy.tools, icon: 'ti ti-apps', summary: '', reason: copy.toolsIntro, priority: 0 },
 	];
 	const visible = isMobile.value ? sections : sections.filter(section => section.id !== 'tools');
 	return heldIntro.value && (homeHovered.value || homeFocused.value) && !visible.some(section => section.id === 'intro')
@@ -370,24 +383,25 @@ watch([isMobile, () => props.searchOpen], ([mobile, opened]) => {
 	if (mobile && opened) searching.value = true;
 });
 const hideAside = computed(() => {
-	if (props.activeTab === 'ranking' || props.activeTab === 'support' || props.activeTab === 'review') return true;
+	if (props.activeTab === 'ranking' || props.activeTab === 'support' || props.activeTab === 'review' || props.activeTab === 'recipe') return true;
 	if (isMobile.value) return props.activeTab !== 'home';
 	if (rootHeight.value > rootWidth.value && props.activeTab !== 'home') return true;
 	return (props.activeTab === 'apps' || props.activeTab === 'hataskapps') && bodyWidth.value <= 780;
 });
 const tabs: { id: HataskAkatsukiTab; label: string; icon: string }[] = [
-	{ id: 'home', label: 'ホーム', icon: 'ti ti-home' },
-	{ id: 'cal', label: 'カレンダー', icon: 'ti ti-calendar-event' },
+	{ id: 'home', label: copy.home, icon: 'ti ti-home' },
+	{ id: 'cal', label: copy.calendarTab, icon: 'ti ti-calendar-event' },
 	{ id: 'todo', label: 'ToDo', icon: 'ti ti-checkbox' },
-	{ id: 'mood', label: 'きもち', icon: 'ti ti-mood-smile' },
-	{ id: 'meal', label: 'ごはん', icon: 'ti ti-soup' },
-	{ id: 'garden', label: 'おはな', icon: 'ti ti-flower' },
-	{ id: 'support', label: '支援情報', icon: 'ti ti-heart-handshake' },
-	{ id: 'ranking', label: 'ランキング', icon: 'ti ti-trophy' },
+	{ id: 'mood', label: copy.moodTab, icon: 'ti ti-mood-smile' },
+	{ id: 'meal', label: copy.meals, icon: 'ti ti-soup' },
+	{ id: 'recipe', label: copy.recipeTab, icon: 'ti ti-chef-hat' },
+	{ id: 'garden', label: copy.flowerTab, icon: 'ti ti-flower' },
+	{ id: 'support', label: copy.supportTab, icon: 'ti ti-heart-handshake' },
+	{ id: 'ranking', label: copy.rankingTab, icon: 'ti ti-trophy' },
 	{ id: 'hataskapps', label: 'Hatask App', icon: 'ti ti-layout-grid' },
 	{ id: 'apps', label: 'Hataskey App', icon: 'ti ti-app-window' },
 ];
-const reviewTab = { id: 'review' as const, label: '記録確認', icon: 'ti ti-shield-search' };
+const reviewTab = { id: 'review' as const, label: copy.reviewTab, icon: 'ti ti-shield-search' };
 const desktopTabs = computed(() => props.model.canModerate ? [...tabs, reviewTab] : tabs);
 const mobileTabs = computed(() => {
 	const ids = normalizeHataskAkatsukiMobileTabs(props.model.mobileTabs);
@@ -398,15 +412,16 @@ const missingMobileAppTabs = computed(() => isMobile.value
 	? tabs.filter(tab => (tab.id === 'hataskapps' || tab.id === 'apps') && !mobileTabs.value.some(selected => selected.id === tab.id))
 	: []);
 const recordActions: { label: string; description?: string; icon: string; action: HataskAkatsukiAction }[] = [
-	{ label: '予定を追加', description: 'カレンダーに 1 件', icon: 'ti ti-calendar-plus', action: { type: 'create-event' } },
-	{ label: 'ToDo を書く', description: '今日のタスク', icon: 'ti ti-checkbox', action: { type: 'create-todo' } },
-	{ label: 'きもちを記録', description: 'いまの気分', icon: 'ti ti-mood-smile', action: { type: 'record-mood' } },
-	{ label: 'ごはんを記録', description: '朝・昼・夜', icon: 'ti ti-soup', action: { type: 'record-meal' } },
-	{ label: 'おはなの様子を見る', icon: 'ti ti-flower', action: { type: 'water-flower' } },
+	{ label: copy.addEvent, description: copy.quickCalendar, icon: 'ti ti-calendar-plus', action: { type: 'create-event' } },
+	{ label: copy.quickTodo, description: copy.quickTodoDesc, icon: 'ti ti-checkbox', action: { type: 'create-todo' } },
+	{ label: copy.quickMood, description: copy.quickMoodDesc, icon: 'ti ti-mood-smile', action: { type: 'record-mood' } },
+	{ label: copy.quickMeal, description: copy.quickMealDesc, icon: 'ti ti-soup', action: { type: 'record-meal' } },
+	{ label: copy.quickCooking, description: copy.quickCookingDesc, icon: 'ti ti-tools-kitchen-2', action: { type: 'record-cooking' } },
+	{ label: copy.quickFlower, icon: 'ti ti-flower', action: { type: 'water-flower' } },
 ];
-const dateLabel = computed(() => props.model.dateLabel ?? (props.now ? new Intl.DateTimeFormat('ja-JP', { month: 'long', day: 'numeric' }).format(props.now) : ''));
-const weekdayLabel = computed(() => props.model.weekdayLabel ?? (props.now ? new Intl.DateTimeFormat('ja-JP', { weekday: 'long' }).format(props.now) : ''));
-const clockLabel = computed(() => props.model.clockLabel ?? (props.now ? new Intl.DateTimeFormat('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false }).format(props.now) : ''));
+const dateLabel = computed(() => props.model.dateLabel ?? (props.now ? new Intl.DateTimeFormat(versatileLang, { month: 'long', day: 'numeric' }).format(props.now) : ''));
+const weekdayLabel = computed(() => props.model.weekdayLabel ?? (props.now ? new Intl.DateTimeFormat(versatileLang, { weekday: 'long' }).format(props.now) : ''));
+const clockLabel = computed(() => props.model.clockLabel ?? (props.now ? new Intl.DateTimeFormat(versatileLang, { hour: '2-digit', minute: '2-digit', hour12: false }).format(props.now) : ''));
 const flowerProgress = computed(() => typeof props.model.flower?.progress === 'number' && Number.isFinite(props.model.flower.progress) ? Math.round(Math.max(0, Math.min(100, props.model.flower.progress))) : null);
 const timedEvents = computed(() => props.model.loading ? [] : (props.model.timeline ?? []).filter(event => typeof event.startMinute === 'number' && Number.isFinite(event.startMinute) && event.startMinute >= 0 && event.startMinute < 1440));
 const timelineRange = computed(() => ({
@@ -591,6 +606,7 @@ async function connect() {
 	if (bodyEl.value) resizeObserver.observe(bodyEl.value);
 	if (scrollEl.value) resizeObserver.observe(scrollEl.value);
 	if (notificationOutlineEl.value) resizeObserver.observe(notificationOutlineEl.value);
+	if (desktopNotificationOutlineEl.value) resizeObserver.observe(desktopNotificationOutlineEl.value);
 	// FontFaceSet is absent in some embedded browsers and DOM test environments.
 	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 	void window.document.fonts?.ready.then(updateScrollContinuation);
@@ -667,6 +683,8 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 	--fill: color-mix(in srgb, var(--accent) 8%, var(--surface));
 	--fill-2: color-mix(in srgb, var(--accent) 15%, var(--surface));
 	--card-radius: 24px;
+	--case-radius: 999px;
+	--control-radius: 999px;
 	--card-border: var(--border);
 	--card-shadow: var(--shadow);
 	position: relative;
@@ -741,8 +759,11 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 [data-rail-collapsed='true'] .hak-rail-head { justify-content: center; margin-bottom: 6px; }
 [data-rail-collapsed='true'] .hak-rail-tab { justify-content: center; padding-inline: 0 !important; }
 .hak-scroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; scroll-padding: 100px 12px 24px; box-shadow: 0 28px 56px -34px rgba(90, 50, 70, .6); }
-.hak-desktop-top { position: sticky; top: 0; z-index: 20; padding: 14px 22px 12px; }
-.hak-desktop-case { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 10px 0 22px; border: var(--border); border-radius: 999px; background: var(--masthead); box-shadow: 0 16px 32px -24px rgba(0, 0, 0, .45), var(--shadow); }
+.hak-desktop-top { position: sticky; top: 0; z-index: 20; box-sizing: border-box; height: 82px; padding: 14px 22px 12px; }
+.htk-akatsuki-layout .hak-desktop-bar { position: relative; isolation: isolate; width: 100%; min-width: 0; border-radius: min(var(--case-radius, 28px), 28px); --hata-toast-fg: var(--fg); --hata-toast-muted: var(--fg-2); --MI_THEME-accent: var(--accent-ink); --MI_THEME-panel: var(--masthead); --MI_THEME-fg: var(--fg); --MI_THEME-fgMuted: var(--fg-2); --MI_THEME-divider: var(--rule); --MI_THEME-buttonHoverBg: var(--fill-2); }
+.htk-akatsuki-layout .hak-desktop-surface { position: relative; display: flex; flex-direction: column; min-width: 0; width: 100%; overflow: hidden; border: var(--border); border-radius: inherit; background: var(--masthead); box-shadow: 0 16px 32px -24px rgba(0, 0, 0, .45), var(--shadow); }
+.hak-desktop-case { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 0 10px 0 21px; }
+.htk-akatsuki-layout .hak-desktop-bar .hak-desktop-surface > form.hak-desktop-case { flex: none; width: 100%; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .hak-date { font-size: 19px; font-weight: 700; white-space: nowrap; }
 .hak-dow { color: var(--fg-2); font-size: 13px; white-space: nowrap; }
 .hak-desktop-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; min-height: 38px; margin: 0 6px; padding: 0 14px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 7%, transparent); color: var(--fg-2); }
@@ -918,7 +939,7 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 	.hak-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container hatask-akatsuki (max-width: 750px) {
-	.hak-desktop-case { gap: 8px; padding-left: 16px; }
+	.hak-desktop-case { gap: 8px; padding-left: 15px; }
 	.hak-desktop-case .hak-dow { display: none; }
 	.hak-side { width: 244px; padding-inline: 18px; }
 }
@@ -927,7 +948,9 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 	.hak-rail, .hak-desktop-top { display: none; }
 	.hak-search-results { margin-inline: 12px; padding-inline: 14px; }
 	.hak-scroll { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); scroll-padding: 20px 12px calc(112px + env(safe-area-inset-bottom, 0px)); }
-	.hak-mobile-head { display: block; padding: 12px 12px 10px; }
+	// Reserve only the resting navbar height, as in Hataskey's top bar.
+	// Notifications expand over the page without shifting its content.
+	.hak-mobile-head { display: block; height: 74px; flex: none; padding: 12px 12px 10px; position: relative; z-index: 30; }
 	.hak-mobile-case { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 8px 0 16px; border: var(--border); border-radius: 999px; background: var(--masthead); box-shadow: 0 14px 28px -20px rgba(0, 0, 0, .4), var(--shadow); transition: padding .26s cubic-bezier(.2, 0, 0, 1); }
 	.hak-mobile-brand { max-width: 120px; overflow: hidden; font-size: 19px; white-space: nowrap; transition: max-width .26s cubic-bezier(.2, 0, 0, 1), opacity .16s; }
 	.htk-akatsuki-layout .hak-search-toggle { margin-left: auto; }
@@ -1035,14 +1058,23 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 	.htk-akatsuki-layout [data-home-display-options='desktop'] { display: grid; width: 44px; height: 44px; border: var(--button-border); border-radius: var(--control-radius, 999px); color: var(--fg); background: var(--masthead); }
 }
 .htk-akatsuki-layout .hak-mobile-bar {
-	position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 0;
-	min-width: 0; max-width: 100%; padding: 0; overflow: hidden;
+	position: relative; isolation: isolate; border-radius: min(var(--case-radius, 24px), 24px);
+	min-width: 0; max-width: 100%;
 	--hata-toast-fg: var(--fg); --hata-toast-muted: var(--fg-2);
 	--MI_THEME-accent: var(--accent-ink); --MI_THEME-panel: var(--masthead); --MI_THEME-fg: var(--fg);
 	--MI_THEME-fgMuted: var(--fg-2); --MI_THEME-divider: var(--rule); --MI_THEME-buttonHoverBg: var(--fill-2);
 }
-.htk-akatsuki-layout .hak-mobile-bar > form.hak-mobile-case { min-height: 50px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.hak-notification-viewport { position: relative; width: 100%; min-width: 0; overflow: hidden; transition: height .35s cubic-bezier(.22, 1, .36, 1); }
+// Keep the corners fixed while the notification grows, and clip only the content.
+.htk-akatsuki-layout .hak-mobile-surface {
+	position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 0;
+	min-width: 0; max-width: 100%; padding: 0; border-radius: inherit; overflow: hidden;
+	transition: background .3s, box-shadow .3s;
+}
+.hak-desktop-bar > :deep(svg[data-integrated='true']), .hak-mobile-bar > :deep(svg[data-integrated='true']) {
+	overflow: visible; z-index: -1; stroke-width: 40; stroke-linecap: round; filter: blur(14px); opacity: .55;
+}
+.htk-akatsuki-layout .hak-mobile-surface > form.hak-mobile-case { order: 1; flex: none; min-height: 50px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.hak-notification-viewport { order: 0; position: relative; flex: none; width: 100%; min-width: 0; overflow: hidden; transition: height .35s cubic-bezier(.22, 1, .36, 1); }
 @container hatask-akatsuki (max-width: 599px) {
 	.hak-mobile-head[data-notification-pinned='true'] { position: sticky; top: 0; z-index: 30; }
 }

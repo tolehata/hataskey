@@ -6,6 +6,8 @@ import MkModal from './MkModal.vue';
 import HatadyDraftPrompt from './HatadyDraftPrompt.vue';
 import { focusTrap } from '@/utility/focus-trap.js';
 
+vi.mock('@/i18n.js', async () => ({ i18n: (await import('@/utility/hatask-test-i18n.js')).createTestHataskI18n() }));
+
 const fixtures = vi.hoisted(() => ({ zIndex: 100, viewportInset: 0 }));
 vi.mock('@/os.js', () => ({ claimZIndex: () => ++fixtures.zIndex }));
 vi.mock('@/preferences.js', () => ({ prefer: { s: { animation: false, useBlurEffectForModal: false } } }));

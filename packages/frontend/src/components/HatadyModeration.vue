@@ -1,59 +1,59 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<section ref="root" :class="$style.root" aria-label="管理者・モデレーター向けの内容確認">
+<section ref="root" :class="$style.root" :aria-label="copy.adminReview">
 	<template v-if="access">
 		<div :class="$style.heading">
-			<div><span :class="$style.eyebrow"><i class="ti ti-shield" aria-hidden="true"></i>管理者・モデレーター</span><h1>内容の確認</h1><p>公開範囲を問わず、投稿とリアクションをまとめて確認。</p></div>
-			<div :class="$style.counts" aria-label="全内容の確認状態" data-hy-page-controls>
+			<div><span :class="$style.eyebrow"><i class="ti ti-shield" aria-hidden="true"></i>{{ copy.admins }}</span><h1>{{ copy.reviewTitle }}</h1><p>{{ copy.intro }}</p></div>
+			<div :class="$style.counts" :aria-label="copy.allStatus" data-hy-page-controls>
 				<button v-for="option in moderationStatuses" :key="option.value" type="button" :aria-pressed="filters.status === option.value" @click="filters.status = filters.status === option.value ? 'all' : option.value">
 					<i :class="option.icon" aria-hidden="true"></i><span>{{ option.label }}</span><strong>{{ counts[option.value] }}</strong>
 				</button>
 			</div>
 		</div>
 		<div :class="$style.toolbar" data-hy-page-controls>
-			<HyCapsule :modelValue="filters.category" :options="moderationCategories" :class="$style.types" label="確認する内容の種類" @update:modelValue="setCategory"/>
-			<label :class="$style.search"><i class="ti ti-search" aria-hidden="true"></i><input v-model="filters.query" type="search" maxlength="200" placeholder="検索内容を入力..." aria-label="本文・名前・作品名を検索" @keydown.enter.prevent="load()"/></label>
-			<button type="button" :class="$style.filterToggle" :aria-expanded="filtersOpen" :aria-controls="filtersId" @click="filtersOpen = !filtersOpen"><i class="ti ti-filter" aria-hidden="true"></i>絞り込み</button>
-			<button type="button" :class="$style.sort" @click="filters.sort = filters.sort === 'desc' ? 'asc' : 'desc'"><i :class="filters.sort === 'desc' ? 'ti ti-arrow-down' : 'ti ti-arrow-up'" aria-hidden="true"></i>{{ filters.sort === 'desc' ? '新しい順' : '古い順' }}</button>
+			<HyCapsule :modelValue="filters.category" :options="moderationCategories" :class="$style.types" :label="copy.categoryFilter" @update:modelValue="setCategory"/>
+			<label :class="$style.search"><i class="ti ti-search" aria-hidden="true"></i><input v-model="filters.query" type="search" maxlength="200" :placeholder="copy.searchPlaceholder" :aria-label="copy.searchLabel" @keydown.enter.prevent="load()"/></label>
+			<button type="button" :class="$style.filterToggle" :aria-expanded="filtersOpen" :aria-controls="filtersId" @click="filtersOpen = !filtersOpen"><i class="ti ti-filter" aria-hidden="true"></i>{{ copy.filters }}</button>
+			<button type="button" :class="$style.sort" @click="filters.sort = filters.sort === 'desc' ? 'asc' : 'desc'"><i :class="filters.sort === 'desc' ? 'ti ti-arrow-down' : 'ti ti-arrow-up'" aria-hidden="true"></i>{{ filters.sort === 'desc' ? copy.newest : copy.oldest }}</button>
 		</div>
 		<div v-show="filtersOpen" :id="filtersId" :class="$style.filters" data-hy-page-controls>
-			<label><span>公開範囲</span><select v-model="filters.visibility" class="hy-input"><option value="all">すべて</option><option v-for="(scope, value) in moderationVisibilities" :key="value" :value="value">{{ scope.label }}</option></select></label>
-			<label><span>活動</span><select v-model="filters.activity" class="hy-input"><option value="all">すべて</option><option v-for="activity in moderationActivities" :key="activity.value" :value="activity.value">{{ activity.label }}</option></select></label>
-			<div :class="$style.dates"><label>開始日<input v-model="filters.from" class="hy-input" type="date"/></label><label>終了日<input v-model="filters.to" class="hy-input" type="date"/></label></div>
+			<label><span>{{ copy.visibility }}</span><select v-model="filters.visibility" class="hy-input"><option value="all">{{ i18n.ts._hata._hatady._media.all }}</option><option v-for="(scope, value) in moderationVisibilities" :key="value" :value="value">{{ scope.label }}</option></select></label>
+			<label><span>{{ copy.activity }}</span><select v-model="filters.activity" class="hy-input"><option value="all">{{ i18n.ts._hata._hatady._media.all }}</option><option v-for="activity in moderationActivities" :key="activity.value" :value="activity.value">{{ activity.label }}</option></select></label>
+			<div :class="$style.dates"><label>{{ copy.startDate }}<input v-model="filters.from" class="hy-input" type="date"/></label><label>{{ copy.endDate }}<input v-model="filters.to" class="hy-input" type="date"/></label></div>
 		</div>
 		<div :class="$style.workspace">
-			<section :class="$style.listPanel" aria-label="投稿一覧" :aria-busy="loading">
-				<div :class="$style.listHead"><span role="status">{{ loading ? '読み込み中' : `${total}件` }}</span><button type="button" :class="$style.reset" @click="reset">すべて表示</button></div>
-				<div v-if="dateError" :class="$style.empty" role="alert"><i class="ti ti-calendar" aria-hidden="true"></i><strong>日付の範囲を確かめてください</strong><span>開始日は終了日以前を選んでください。</span></div>
-				<div v-else-if="loading" :class="$style.empty" role="status">読み込んでいます</div>
-				<div v-else-if="error" :class="$style.empty"><p class="hy-error" role="alert">{{ error }}</p><button type="button" class="hy-secondary" @click="load()">もう一度読み込む</button></div>
-				<div v-else-if="!items.length" :class="$style.empty"><i class="ti ti-search" aria-hidden="true"></i><strong>一致する内容がありません</strong><span>種類や確認状態を変えて探せます。</span><button type="button" class="hy-secondary" @click="reset">絞り込みを解除</button></div>
+			<section :class="$style.listPanel" :aria-label="copy.postList" :aria-busy="loading">
+				<div :class="$style.listHead"><span role="status">{{ loading ? copy.loadingShort : i18n.tsx._hata._hatady._moderationView.totalCount({ count: total }) }}</span><button type="button" :class="$style.reset" @click="reset">{{ copy.showAll }}</button></div>
+				<div v-if="dateError" :class="$style.empty" role="alert"><i class="ti ti-calendar" aria-hidden="true"></i><strong>{{ copy.dateRangeError }}</strong><span>{{ copy.dateRangeHint }}</span></div>
+				<div v-else-if="loading" :class="$style.empty" role="status">{{ copy.loading }}</div>
+				<div v-else-if="error" :class="$style.empty"><p class="hy-error" role="alert">{{ error }}</p><button type="button" class="hy-secondary" @click="load()">{{ copy.retry }}</button></div>
+				<div v-else-if="!items.length" :class="$style.empty"><i class="ti ti-search" aria-hidden="true"></i><strong>{{ copy.noMatches }}</strong><span>{{ copy.noMatchesHint }}</span><button type="button" class="hy-secondary" @click="reset">{{ copy.clearFilters }}</button></div>
 				<div v-else :class="$style.list">
 					<button v-for="item in items" :key="item.key" type="button" :class="$style.row" :data-key="item.key" :data-selected="selected?.key === item.key" :aria-pressed="selected?.key === item.key" @click="openDetail(item, $event)">
 						<span :class="$style.typeMark"><MkReactionIcon v-if="item.emoji" :reaction="item.emoji" :class="$style.emoji"/><i v-else :class="moderationCategory(item.category).icon" aria-hidden="true"></i></span>
 						<span :class="$style.rowContent">
-							<span :class="$style.meta"><b>{{ item.actor.name || item.actor.username }}</b><span>{{ moderationCategory(item.category).label }}</span><time :datetime="item.createdAt">{{ moderationDate(item.createdAt) }}</time><span :aria-label="`公開範囲：${moderationVisibilities[item.visibility].label}`"><i :class="moderationVisibilities[item.visibility].icon" aria-hidden="true"></i>{{ moderationVisibilities[item.visibility].label }}</span></span>
-							<strong :class="$style.rowTitle">{{ item.title }}</strong><span :class="$style.excerpt">{{ item.body || '本文なし' }}</span>
+							<span :class="$style.meta"><b>{{ item.actor.name || item.actor.username }}</b><span>{{ moderationCategory(item.category).label }}</span><time :datetime="item.createdAt">{{ moderationDate(item.createdAt) }}</time><span :aria-label="i18n.tsx._hata._hatady._moderationView.visibilityLabel({ scope: moderationVisibilities[item.visibility].label })"><i :class="moderationVisibilities[item.visibility].icon" aria-hidden="true"></i>{{ moderationVisibilities[item.visibility].label }}</span></span>
+							<strong :class="$style.rowTitle">{{ item.title }}</strong><span :class="$style.excerpt">{{ item.body || copy.noBody }}</span>
 						</span>
 						<span :class="$style.rowEnd"><span :class="$style.status" :data-status="item.review.state"><i :class="moderationStatus(item.review.state).icon" aria-hidden="true"></i>{{ moderationStatus(item.review.state).label }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i></span>
 					</button>
 				</div>
-				<nav v-if="page || nextCursor" :class="$style.pagination" aria-label="一覧のページ">
-					<button type="button" class="hy-secondary" :disabled="loading || page === 0" @click="movePage(-1)"><i class="ti ti-arrow-left" aria-hidden="true"></i>前へ</button><span>{{ page + 1 }}</span><button type="button" class="hy-secondary" :disabled="loading || !nextCursor" @click="movePage(1)">次へ<i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+				<nav v-if="page || nextCursor" :class="$style.pagination" :aria-label="copy.listPages">
+					<button type="button" class="hy-secondary" :disabled="loading || page === 0" @click="movePage(-1)"><i class="ti ti-arrow-left" aria-hidden="true"></i>{{ copy.previous }}</button><span>{{ page + 1 }}</span><button type="button" class="hy-secondary" :disabled="loading || !nextCursor" @click="movePage(1)">{{ copy.next }}<i class="ti ti-arrow-right" aria-hidden="true"></i></button>
 				</nav>
 			</section>
-			<aside ref="detailPane" :class="$style.detail" aria-label="選択した内容の詳細" :aria-busy="detailLoading" :inert="modalOpen">
-				<div v-if="detailLoading" :class="$style.empty" role="status">内容を読み込んでいます</div>
-				<div v-else-if="detailError" :class="$style.empty"><p class="hy-error" role="alert">{{ detailError }}</p><button type="button" class="hy-secondary" @click="retryDetail">もう一度読み込む</button></div>
-				<HatadyModerationDetail v-else-if="detail && !modalOpen" ref="desktopDetail" v-model:note="note" :detail="detail" :busy="saving" :error="saveError" @select="openRelated" @save="save"/>
-				<div v-else-if="!modalOpen" :class="$style.empty">内容を選ぶと、詳細を確認できます。</div>
+			<aside ref="detailPane" :class="$style.detail" :aria-label="copy.selectedDetail" :aria-busy="detailLoading" :inert="modalOpen">
+				<div v-if="detailLoading" :class="$style.empty" role="status">{{ copy.loadingDetail }}</div>
+				<div v-else-if="detailError" :class="$style.empty"><p class="hy-error" role="alert">{{ detailError }}</p><button type="button" class="hy-secondary" @click="retryDetail">{{ copy.retry }}</button></div>
+				<HatadyModerationDetail v-else-if="detail && !modalOpen" ref="desktopDetail" v-model:note="note" :detail="detail" :busy="saving" :error="saveError" @select="openRelated" @save="save" @moderated="load()"/>
+				<div v-else-if="!modalOpen" :class="$style.empty">{{ copy.selectHint }}</div>
 			</aside>
 		</div>
 		<Teleport to="body">
-			<HyDialog v-if="modalOpen" ref="dialog" title="内容の確認" centerTitle scrollHint :busy="saving" @close="dialog?.close()" @closed="closeDetail">
-				<div v-if="detailLoading" :class="$style.empty" role="status">内容を読み込んでいます</div>
-				<div v-else-if="detailError" :class="$style.empty"><p class="hy-error" role="alert">{{ detailError }}</p><button type="button" class="hy-secondary" @click="retryDetail">もう一度読み込む</button></div>
-				<HatadyModerationDetail v-else-if="detail" ref="modalDetail" v-model:note="note" :detail="detail" :busy="saving" :error="saveError" @select="openRelated" @save="save"/>
+			<HyDialog v-if="modalOpen" ref="dialog" :title="copy.reviewTitle" centerTitle scrollHint :busy="saving" @close="dialog?.close()" @closed="closeDetail">
+				<div v-if="detailLoading" :class="$style.empty" role="status">{{ copy.loadingDetail }}</div>
+				<div v-else-if="detailError" :class="$style.empty"><p class="hy-error" role="alert">{{ detailError }}</p><button type="button" class="hy-secondary" @click="retryDetail">{{ copy.retry }}</button></div>
+					<HatadyModerationDetail v-else-if="detail" ref="modalDetail" v-model:note="note" :detail="detail" :busy="saving" :error="saveError" @select="openRelated" @save="save" @moderated="load()"/>
 			</HyDialog>
 		</Teleport>
 	</template>
@@ -69,6 +69,8 @@ import HyDialog from '@/components/HyDialog.vue';
 import HatadyModerationDetail from '@/components/HatadyModerationDetail.vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
+const copy = i18n.ts._hata._hatady._moderationView;
 
 const access = computed(() => $i && ($i.isAdmin || $i.isModerator) ? $i.id : null);
 const { filters, items, counts, total, loading, error, selected, detail, detailLoading, detailError, note, saveError, saving, page, nextCursor, dateError, select, load, save, reset, movePage } = useHatadyModeration(access);

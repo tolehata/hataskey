@@ -1426,9 +1426,9 @@ async function post(ev?: MouseEvent) {
 			deleteDraft();
 			emit('posted');
 
-			if (replyTargetNote.value) os.toast(i18n.ts.replied, 'reply');
+			if (props.updateMode) os.toast(i18n.ts.noteEdited, 'edited');
+			else if (replyTargetNote.value) os.toast(i18n.ts.replied, 'reply');
 			else if (renoteTargetNote.value) os.toast(i18n.ts.quoted, 'quote');
-			else if (props.updateMode) os.toast(i18n.ts.noteEdited, 'edited');
 
 			if (postData.text && postData.text !== '') {
 				const hashtags_ = parseMfmCached(postData.text).map(x => x.type === 'hashtag' && x.props.hashtag).filter(x => x) as string[];

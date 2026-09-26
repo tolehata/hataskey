@@ -23,7 +23,11 @@ vi.mock('@/os.js', () => ({ popup: (_component: unknown, props: NonNullable<type
 	fixture.pending = { props, events }; return { dispose: vi.fn() };
 } }));
 vi.mock('@/components/HataFeedDraftPrompt.vue', () => ({ default: { template: '<div/>' } }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatafeed: { _issueWizard: new Proxy({}, { get: (_, key) => String(key) }) } } } } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/components/MkWindow.vue', () => ({ default: defineComponent({
 	props: ['beforeClose'], emits: ['closed'],
 	setup(props, { slots, emit, expose }) {
@@ -74,21 +78,21 @@ async function enter(target: HTMLElement, name: string, value: string) {
 }
 
 async function details() {
-	const target = await mount(); await click(target, '不具合'); await enter(target, 'title', '表示が崩れる'); return target;
+	const target = await mount(); await click(target, '不具合'); await enter(target, 'タイトル', '表示が崩れる'); return target;
 }
 
 describe('HataFeed issue environment', () => {
 	test('optional empty fields leave the existing description unchanged', async () => {
 		const target = await details(); await enter(target, 'description', '既存の説明\n');
-		await click(target, 'next'); await click(target, 'send');
+		await click(target, '次へ'); await click(target, '送信');
 		await vi.waitFor(() => expect(fixture.api).toHaveBeenCalledExactlyOnceWith('hata/feedback/issues/create', expect.objectContaining({ description: '既存の説明\n', title: '表示が崩れる', category: 'bug', projectId: null })));
 	});
 	test('reviews and submits the manually entered device, OS and browser with the issue', async () => {
 		const target = await details(); await enter(target, 'description', 'タブを開くと崩れる');
 		await enter(target, '使用端末', ' iPhone '); await enter(target, 'OS・バージョン', 'iOS テスト版'); await enter(target, 'ブラウザ・開き方', 'ホーム画面から起動');
-		await click(target, 'next');
+		await click(target, '次へ');
 		expect(target.textContent).toContain('iPhone'); expect(target.textContent).toContain('iOS テスト版'); expect(target.textContent).toContain('ホーム画面から起動');
-		await click(target, 'send');
+		await click(target, '送信');
 		await vi.waitFor(() => expect(fixture.api).toHaveBeenCalledExactlyOnceWith('hata/feedback/issues/create', expect.objectContaining({ description: 'タブを開くと崩れる\n\n【使用環境】\n使用端末: iPhone\nOS・バージョン: iOS テスト版\nブラウザ・開き方: ホーム画面から起動' })));
 	});
 	test('saving a draft with only environment details retains them for explicit resumption', async () => {
@@ -104,15 +108,15 @@ describe('HataFeed issue environment', () => {
 	test('older drafts without environment fields remain usable', async () => {
 		fixture.records.set(storageKey, JSON.stringify({ [draftKey]: { version: 1, updatedAt: Date.now(), data: { step: 2, category: 'bug', title: '以前の下書き', description: '内容', files: [], code: '', codeEnabled: false, priority: 'normal' } } }));
 		const target = await mount(); await click(target, '続きから編集');
-		expect(field(target, 'title').value).toBe('以前の下書き'); expect(field(target, '使用端末').value).toBe(''); expect(field(target, 'OS・バージョン').value).toBe('');
-		await click(target, 'next'); await click(target, 'send');
+		expect(field(target, 'タイトル').value).toBe('以前の下書き'); expect(field(target, '使用端末').value).toBe(''); expect(field(target, 'OS・バージョン').value).toBe('');
+		await click(target, '次へ'); await click(target, '送信');
 		await vi.waitFor(() => expect(fixture.api).toHaveBeenCalledExactlyOnceWith('hata/feedback/issues/create', expect.objectContaining({ description: '内容' })));
 	});
 	test('the combined description limit prevents submitting an oversized environment section', async () => {
 		const target = await details(); await enter(target, 'description', '文'.repeat(8180)); await enter(target, '使用端末', 'iPhone');
 		expect(target.querySelector('[role="alert"]')?.textContent).toContain('8,192');
-		await click(target, 'next'); expect(target.querySelector('textarea')).not.toBeNull(); expect(fixture.api).not.toHaveBeenCalled();
+		await click(target, '次へ'); expect(target.querySelector('textarea')).not.toBeNull(); expect(fixture.api).not.toHaveBeenCalled();
 		await enter(target, 'description', '短い説明'); expect(target.querySelector('[role="alert"]')).toBeNull();
-		await click(target, 'next'); await click(target, 'send'); await vi.waitFor(() => expect(fixture.api).toHaveBeenCalledTimes(1));
+		await click(target, '次へ'); await click(target, '送信'); await vi.waitFor(() => expect(fixture.api).toHaveBeenCalledTimes(1));
 	});
 });

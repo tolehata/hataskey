@@ -5,7 +5,7 @@
  * Hataskのお花を、ページやアプリが前面にあるかに関係なく実経過時間で育てる。
  */
 
-import { misskeyApi } from '@/utility/misskey-api.js';
+import { getHataskFlowerState } from '@/utility/hatask-flower-v2.js';
 
 export const HATASK_FLOWER_GROWTH_EVENT = 'hatask-flower:growth';
 export const HATASK_FLOWER_MINUTES_MIN = 480;
@@ -15,7 +15,6 @@ export const HATASK_RARE_FLOWER_MINUTES_MAX = 5760;
 /** 既存の花に targetMinutes がない場合に使う互換値。 */
 export const HATASK_FLOWER_TOTAL_MINUTES = 1200;
 
-const SCOPE = ['client', 'hatask'];
 const SYNC_INTERVAL_MS = 60_000;
 const MINUTE_MS = 60_000;
 
@@ -32,7 +31,6 @@ export type HataskGrowingFlower = {
 };
 
 let started = false;
-let seededFlower: HataskGrowingFlower | null = null;
 let syncInFlight = false;
 
 function safeText(value: unknown, fallback: string): string {
@@ -88,10 +86,6 @@ export function createHataskGrowingFlower(
 		targetMinutes,
 		lastGrowthAt: now,
 	};
-}
-
-function isNoSuchRegistryKey(error: unknown): boolean {
-	return error != null && typeof error === 'object' && 'code' in error && error.code === 'NO_SUCH_KEY';
 }
 
 export function normalizeHataskGrowingFlower(value: unknown, now = Date.now()): HataskGrowingFlower | null {
@@ -150,7 +144,6 @@ export function sameFlower(a: HataskGrowingFlower, b: HataskGrowingFlower): bool
 }
 
 function publishGrowth(flower: HataskGrowingFlower): void {
-	seededFlower = flower;
 	window.dispatchEvent(new CustomEvent<HataskGrowingFlower>(HATASK_FLOWER_GROWTH_EVENT, { detail: flower }));
 }
 
@@ -158,26 +151,10 @@ async function flushGrowth(): Promise<void> {
 	if (syncInFlight) return;
 	syncInFlight = true;
 	try {
-		let stored: unknown;
-		let missing = false;
-		try {
-			stored = await misskeyApi('i/registry/get', { key: 'flower', scope: SCOPE });
-		} catch (error) {
-			if (!isNoSuchRegistryKey(error)) return;
-			missing = true;
-			stored = seededFlower;
-		}
-
-		const current = normalizeHataskGrowingFlower(stored);
-		if (current == null) return;
-		const next = advanceHataskFlowerGrowth(current);
-		if (next == null) return;
-		if (missing || !sameFlower(current, next) || !(stored as Record<string, unknown>)?.lastGrowthAt) {
-			await misskeyApi('i/registry/set', { key: 'flower', value: next, scope: SCOPE });
-		}
-		publishGrowth(next);
+		const state = await getHataskFlowerState();
+		publishGrowth(state.flower);
 	} catch (error) {
-		// レジストリの時刻は進めないため、一時的な失敗分は次回接続時に実経過から復元できる。
+		// The server preserves elapsed growth and wallet state across disconnections.
 		console.warn('Failed to sync Hatask flower growth:', error);
 	} finally {
 		syncInFlight = false;
@@ -189,8 +166,7 @@ function syncAfterResume(): void {
 }
 
 /** Hatask初回表示時の花を、レジストリ未作成利用者向けの安全な初期値として渡す。 */
-export function seedHataskFlowerGrowth(value: unknown): void {
-	seededFlower = normalizeHataskGrowingFlower(value);
+export function seedHataskFlowerGrowth(_value: unknown): void {
 	void flushGrowth();
 }
 

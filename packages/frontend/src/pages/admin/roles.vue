@@ -196,41 +196,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkSwitch>
 					</MkFolder>
 
-					<!-- 旗鯖fork: HataSNSCordUIの利用可否とサブペイン上限 -->
-					<MkFolder v-if="matchQuery([roleCopy.hatacordingAccessName, 'canUseHatacordingUi'])">
-						<template #label>{{ roleCopy.hatacordingAccessName }}</template>
-						<template #suffix>{{ policies.canUseHatacordingUi ? i18n.ts.yes : i18n.ts.no }}</template>
-						<MkSwitch v-model="policies.canUseHatacordingUi">
-							<template #label>{{ roleCopy.hatacordingAccessToggle }}</template>
-							<template #caption>{{ roleCopy.hatacordingAccessBaseCaption }}</template>
-						</MkSwitch>
-					</MkFolder>
-
-					<MkFolder v-if="matchQuery([roleCopy.hatacordingTabsName, 'hatacordingUiSubpaneMaxTabs'])">
-						<template #label>{{ roleCopy.hatacordingTabsName }}</template>
-						<template #suffix>{{ policies.hatacordingUiSubpaneMaxTabs }}</template>
-						<MkInput v-model="policies.hatacordingUiSubpaneMaxTabs" type="number" :min="1" :max="5">
-							<template #caption>{{ roleCopy.hatacordingTabsBaseCaption }}</template>
-						</MkInput>
-					</MkFolder>
-
-					<MkFolder v-if="matchQuery([roleCopy.hatacordingRateLimitName, 'hatacordingUiRateLimit'])">
-						<template #label>{{ roleCopy.hatacordingRateLimitName }}</template>
-						<template #suffix>{{ policies.hatacordingUiRateLimit }}</template>
-						<MkInput v-model="policies.hatacordingUiRateLimit" type="number" :min="1" :max="1000">
-							<template #caption>{{ roleCopy.hatacordingRateLimitBaseCaption }}</template>
-						</MkInput>
-					</MkFolder>
-
-					<MkFolder v-if="matchQuery([roleCopy.hatacordingRateLimitBypassName, 'canBypassHatacordingUiRateLimit'])">
-						<template #label>{{ roleCopy.hatacordingRateLimitBypassName }}</template>
-						<template #suffix>{{ policies.canBypassHatacordingUiRateLimit ? i18n.ts.yes : i18n.ts.no }}</template>
-						<MkSwitch v-model="policies.canBypassHatacordingUiRateLimit">
-							<template #label>{{ roleCopy.hatacordingRateLimitBypassToggle }}</template>
-							<template #caption>{{ roleCopy.hatacordingRateLimitBypassBaseCaption }}</template>
-						</MkSwitch>
-					</MkFolder>
-
 					<!-- 旗鯖fork(Hatady): 端末間データ共有(同期)の可否。既定は有効。 -->
 					<MkFolder v-if="matchQuery([roleCopy.hatadySyncName, 'canUseHatadySync'])">
 						<template #label>{{ roleCopy.hatadySyncName }}</template>
@@ -577,8 +542,6 @@ const policies = reactive({
 	...deepClone(instance.policies),
 	favoriteFolderLimit: instance.policies.favoriteFolderLimit ?? 2,
 	canCreateFavoriteSubfolders: instance.policies.canCreateFavoriteSubfolders ?? false,
-	// cherrypick-js の生成物を更新する前の開発コンテナでも、既定値を保って管理画面を表示する。
-	canBypassHatacordingUiRateLimit: (instance.policies as { canBypassHatacordingUiRateLimit?: boolean }).canBypassHatacordingUiRateLimit ?? false,
 });
 
 const avatarDecorationLimit = computed({
@@ -598,8 +561,6 @@ function matchQuery(keywords: string[]): boolean {
 }
 
 async function updateBaseRole() {
-	policies.hatacordingUiSubpaneMaxTabs = Math.max(1, Math.min(5, Number(policies.hatacordingUiSubpaneMaxTabs) || 3));
-	policies.hatacordingUiRateLimit = Math.max(1, Math.min(1000, Math.floor(Number(policies.hatacordingUiRateLimit) || 500)));
 	await os.apiWithDialog('admin/roles/update-default-policies', {
 		policies,
 	});

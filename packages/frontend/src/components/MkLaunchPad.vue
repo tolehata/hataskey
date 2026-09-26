@@ -72,6 +72,10 @@ HataSideStudio導入後は、Studioから追加できるnavbarItemDef項目に�
 拡大/縮小のどちら側に置かれていても重複表示しない。Studio対象外の項目は上記の従来判定を維持する。
 */
 const hiddenFromLaunchPad = computed(() => {
+	if (miLocalStorage.getItem('ui') === 'hataskey3') {
+		const shownInStudio = getActiveHataSideStudioMenuIds(hataSideStudioStore.value);
+		return Object.keys(navbarItemDef).filter(id => shownInStudio.has(normalizeHataSideStudioMenuId(id)));
+	}
 	if (miLocalStorage.getItem('ui') !== 'simple') return menu;
 	const sidebar = prefer.s['simpleUi.sidebar'] as { id: string; visible?: boolean }[] | undefined;
 	const shownInSidebar = new Set((sidebar ?? []).filter(t => t.visible !== false).map(t => t.id));

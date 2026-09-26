@@ -5,6 +5,7 @@
 
 import type { HataskAkatsukiEvent, HataskAkatsukiHomeSection, HataskAkatsukiModel } from '@/components/hatask/hatask-akatsuki-types.js';
 import type { HataskAkatsukiUsage } from '@/utility/hatask-akatsuki-usage.js';
+import { i18n } from '@/i18n.js';
 import { normalizeHataskAkatsukiMobileTabs } from '@/utility/hatask-akatsuki-navigation.js';
 import { normalizeHataskAkatsukiFavorites } from '@/utility/hatask-akatsuki-favorites.js';
 import { akatsukiUsageScore } from '@/utility/hatask-akatsuki-usage.js';
@@ -49,6 +50,7 @@ function minute(value?: string): number | undefined {
 /** A read-only projection: never normalize or write the account's source collections here. */
 export function buildHataskAkatsukiModel(source: HataskAkatsukiSource): { model: HataskAkatsukiModel; counts: { calendar: number; todo: number; meal: number; feedback: number } } {
 	const { now, known, settings } = source;
+	const copy = i18n.ts._hata._hatask._akatsuki;
 	const today = akatsukiDateKey(now);
 	const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 	weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() - (settings.weekStart === 'sun' ? 0 : 1) + 7) % 7));
@@ -63,25 +65,25 @@ export function buildHataskAkatsukiModel(source: HataskAkatsukiSource): { model:
 	const todos = source.todos.filter(todo => !todo.archivedAt);
 	const remainingTodos = todos.filter(todo => !todo.done).sort((a, b) => `${a.due || '9999'}${a.time || '23:59'}`.localeCompare(`${b.due || '9999'}${b.time || '23:59'}`));
 	const todayMeals = source.meals.filter(meal => meal.date === today);
-	const mealSlots = [{ id: 'breakfast', label: '朝' }, { id: 'lunch', label: '昼' }, { id: 'dinner', label: '夜' }];
+	const mealSlots = [{ id: 'breakfast', label: copy.breakfast }, { id: 'lunch', label: copy.lunch }, { id: 'dinner', label: copy.dinner }];
 	const mealRows = mealSlots.map(slot => {
 		const entry = todayMeals.filter(meal => meal.slot === slot.id).sort((a, b) => (a.time || '').localeCompare(b.time || '')).at(-1);
-		return { ...slot, recorded: Boolean(entry), unavailable: !known.meals, text: !known.meals ? '記録を読み込めません' : entry ? entry.note || (entry.level === 'none' ? '食事なしを記録' : entry.level === 'little' ? '少し食べた' : '記録済み') : 'まだ記録がありません' };
+		return { ...slot, recorded: Boolean(entry), unavailable: !known.meals, text: !known.meals ? copy.recordLoadFailed : entry ? entry.note || (entry.level === 'none' ? copy.noMeal : entry.level === 'little' ? copy.ateLittle : copy.recorded) : copy.notRecorded };
 	});
 	const missingMeals = mealRows.filter(meal => !meal.recorded);
-	const mealSummary = !known.meals ? 'ごはんの記録を読み込めません' : missingMeals.length ? `${missingMeals.map(meal => meal.label).join('・')}ごはんが未記録` : '朝・昼・夜のごはんを記録済み';
+	const mealSummary = !known.meals ? copy.mealLoadFailed : missingMeals.length ? i18n.tsx._hata._hatask._akatsuki.mealPending({ slots: missingMeals.map(meal => meal.label).join('・') }) : copy.mealsAllRecorded;
 	const md = new Intl.DateTimeFormat(source.locale, { month: 'long', day: 'numeric' });
 	const weekday = new Intl.DateTimeFormat(source.locale, { weekday: 'long' });
 	const shortWeekday = new Intl.DateTimeFormat(source.locale, { weekday: 'short' });
 	const eventModel = (event: EventRow): HataskAkatsukiEvent => ({
 		id: event.id,
 		title: event.title,
-		timeLabel: `${event.date === today ? '' : event.date + ' '}${event.allDay ? '終日' : event.timeStart || '時刻未定'}`,
-		meta: `${event.date === today ? '今日' : event.date}${event.dateEnd && event.dateEnd !== event.date ? ` – ${event.dateEnd}` : ''} ・ ${event.allDay ? '終日' : [event.timeStart, event.timeEnd].filter(Boolean).join(' – ') || '時刻未定'}`,
+		timeLabel: `${event.date === today ? '' : event.date + ' '}${event.allDay ? copy.allDay : event.timeStart || copy.timeUnknown}`,
+		meta: `${event.date === today ? copy.today : event.date}${event.dateEnd && event.dateEnd !== event.date ? ` – ${event.dateEnd}` : ''} ・ ${event.allDay ? copy.allDay : [event.timeStart, event.timeEnd].filter(Boolean).join(' – ') || copy.timeUnknown}`,
 		startMinute: event.allDay ? undefined : event.date < today ? 0 : minute(event.timeStart),
 		endMinute: event.allDay ? undefined : event.dateEnd && event.dateEnd > today ? 1440 : minute(event.timeEnd),
 		action: { type: 'open-event', id: event.id },
-		buttons: [{ label: '予定を開く', icon: 'ti ti-calendar-event', primary: true, action: { type: 'open-event', id: event.id } }],
+		buttons: [{ label: copy.openEvent, icon: 'ti ti-calendar-event', primary: true, action: { type: 'open-event', id: event.id } }],
 	});
 	const time = now.getHours() * 60 + now.getMinutes();
 	const upcoming = events.filter(event => {
@@ -106,34 +108,34 @@ export function buildHataskAkatsukiModel(source: HataskAkatsukiSource): { model:
 	const currentMeal = time >= 5 * 60 && time < 11 * 60 ? 'breakfast' : time >= 11 * 60 && time < 17 * 60 ? 'lunch' : time >= 17 * 60 ? 'dinner' : undefined;
 	const mealDue = known.meals && mealRows.find(meal => meal.id === currentMeal && !meal.recorded);
 	const sections: HataskAkatsukiHomeSection[] = [
-		{ id: 'tools', label: 'ツール', icon: 'ti ti-apps', summary: hasUsage ? apps[0]?.label ?? 'ツールを開く' : '使いたいツールを、ここから', reason: hasUsage ? 'よく使うツール' : 'ここから始める', priority: 40 + (hasUsage ? 12 : 0) },
+		{ id: 'tools', label: copy.tools, icon: 'ti ti-apps', summary: hasUsage ? apps[0]?.label ?? copy.openTools : copy.toolsIntro, reason: hasUsage ? copy.frequentTools : copy.startHere, priority: 40 + (hasUsage ? 12 : 0) },
 	];
 	const joinedAt = typeof source.accountCreatedAt === 'string' ? Date.parse(source.accountCreatedAt) : NaN;
 	const accountAge = now.getTime() - joinedAt;
 	if (Number.isFinite(accountAge) && accountAge >= 0 && accountAge <= 14 * 24 * 60 * 60 * 1000) sections.push({
-		id: 'intro', label: 'HataIntro', icon: 'ti ti-book', summary: '画面の見方・投稿・設定を、図と一緒に',
-		reason: 'はじめてのHataskeyに', priority: 200,
+		id: 'intro', label: 'HataIntro', icon: 'ti ti-book', summary: copy.introSummary,
+		reason: copy.introReason, priority: 200,
 	});
 	if (settings.showEvents !== false) sections.push({
-		id: 'calendar', label: '予定', icon: 'ti ti-calendar-event', count: known.planner ? todayEvents.length : undefined,
-		summary: known.planner ? nextEvent?.title ?? 'このあとの予定はありません' : '予定を読み込めませんでした',
-		reason: nearEvent ? 'まもなく・進行中の予定' : 'このあとの予定',
+		id: 'calendar', label: copy.events, icon: 'ti ti-calendar-event', count: known.planner ? todayEvents.length : undefined,
+		summary: known.planner ? nextEvent?.title ?? copy.noUpcoming : copy.eventsLoadFailed,
+		reason: nearEvent ? copy.eventsNear : copy.eventsLater,
 		priority: known.planner && upcoming.length ? (nearEvent ? 120 : upcoming[0].date <= today ? 60 : 30) + boost('cal') : 0,
 	});
 	sections.push({
 		id: 'todo', label: 'ToDo', icon: 'ti ti-checkbox', count: known.planner ? remainingTodos.length : undefined,
-		summary: known.planner ? remainingTodos[0]?.text ?? '未完了のToDoはありません' : 'ToDoを読み込めませんでした',
-		reason: overdueTodos.length ? '締切を迎えたToDo' : dueToday.length ? '今日のToDo' : '次に進めたいこと',
+		summary: known.planner ? remainingTodos[0]?.text ?? copy.noTodo : copy.todoLoadFailed,
+		reason: overdueTodos.length ? copy.overdueTodo : dueToday.length ? copy.todayTodo : copy.nextTodo,
 		priority: known.planner && remainingTodos.length ? (overdueTodos.length ? 95 : dueToday.length ? 65 : 40) + boost('todo') : 0,
 	});
 	if (source.feedback?.allowed && settings.showFeedbackNotif !== false) sections.push({
 		id: 'feedback', label: 'HataFeed', icon: 'ti ti-message-report', count: source.feedback.known ? source.feedbackUnread : undefined,
-		summary: source.feedback.known ? source.feedbackUnread ? `未読の通知が ${source.feedbackUnread} 件あります` : '未読の通知はありません' : '通知を読み込めませんでした',
-		reason: '届いているお知らせ', priority: source.feedback.known && source.feedbackUnread > 0 ? 85 + boost('feed') : 0,
+		summary: source.feedback.known ? source.feedbackUnread ? i18n.tsx._hata._hatask._akatsuki.notificationsUnread({ count: String(source.feedbackUnread) }) : copy.noUnread : copy.notificationsLoadFailed,
+		reason: copy.notificationsReason, priority: source.feedback.known && source.feedbackUnread > 0 ? 85 + boost('feed') : 0,
 	});
 	if (settings.showMealSection !== false) sections.push({
-		id: 'meal', label: 'ごはん', icon: 'ti ti-soup', summary: mealSummary,
-		reason: mealDue ? `${mealDue.label}ごはんの記録` : 'きょうの食事を振り返る',
+		id: 'meal', label: copy.meals, icon: 'ti ti-soup', summary: mealSummary,
+		reason: mealDue ? i18n.tsx._hata._hatask._akatsuki.mealRecordReason({ slot: mealDue.label }) : copy.mealsReflect,
 		priority: mealDue ? 75 + boost('meal') : 0,
 	});
 	const recommended = [...sections].sort((a, b) => b.priority - a.priority)[0].id;
@@ -149,29 +151,29 @@ export function buildHataskAkatsukiModel(source: HataskAkatsukiSource): { model:
 		showClock: settings.showClock !== false,
 		showEvents: settings.showEvents !== false,
 		scheduleUnavailable: !known.planner,
-		dayCountLabel: `ログイン ${source.loginDays} 日`,
-		summary: source.loading ? '記録を読み込んでいます' : `${known.planner ? `予定 ${todayEvents.length} 件、ToDo 残り ${remainingTodos.length} 件` : '予定・ToDoの記録を読み込めません'}${settings.showMealSummary !== false ? ` · ${mealSummary}` : ''}`,
+		dayCountLabel: i18n.tsx._hata._hatask._akatsuki.loginDays({ count: String(source.loginDays) }),
+		summary: source.loading ? copy.loadingRecords : `${known.planner ? i18n.tsx._hata._hatask._akatsuki.dailySummary({ events: String(todayEvents.length), todos: String(remainingTodos.length) }) : copy.plannerUnavailable}${settings.showMealSummary !== false ? ` · ${mealSummary}` : ''}`,
 		next: known.planner && settings.showEvents !== false && nextEvent ? eventModel(nextEvent) : null,
 		later: known.planner && settings.showEvents !== false ? upcoming.filter(event => event !== nextEvent).slice(0, 3).map(eventModel) : [],
 		timeline: known.planner && settings.showEvents !== false ? todayEvents.map(eventModel) : [],
 		stats: [
-			{ id: 'events', label: '今週の予定', value: known.planner ? events.filter(event => event.date <= keys[6] && (event.dateEnd || event.date) >= keys[0]).length : '—', unit: '件', tab: 'cal' },
-			{ id: 'todo', label: 'ToDo 完了', value: known.planner ? todos.filter(todo => todo.done).length : '—', unit: known.planner ? `/ ${todos.length}` : '', tab: 'todo' },
-			{ id: 'mood', label: 'きもち記録', value: known.moods ? new Set(source.moods.filter(mood => keys.includes(mood.date)).map(mood => mood.date)).size : '—', unit: '日', tab: 'mood' },
-			{ id: 'meal', label: 'ごはん記録', value: known.meals ? source.meals.filter(meal => keys.includes(meal.date)).length : '—', unit: '食', tab: 'meal' },
+			{ id: 'events', label: copy.weekEvents, value: known.planner ? events.filter(event => event.date <= keys[6] && (event.dateEnd || event.date) >= keys[0]).length : '—', unit: copy.eventUnit, tab: 'cal' },
+			{ id: 'todo', label: copy.todoCompleted, value: known.planner ? todos.filter(todo => todo.done).length : '—', unit: known.planner ? `/ ${todos.length}` : '', tab: 'todo' },
+			{ id: 'mood', label: copy.moodRecords, value: known.moods ? new Set(source.moods.filter(mood => keys.includes(mood.date)).map(mood => mood.date)).size : '—', unit: copy.dayUnit, tab: 'mood' },
+			{ id: 'meal', label: copy.mealRecords, value: known.meals ? source.meals.filter(meal => keys.includes(meal.date)).length : '—', unit: copy.mealUnit, tab: 'meal' },
 		],
 		week: settings.showMoodSummary === false ? [] : weekDates.map(day => {
 			const date = akatsukiDateKey(day);
 			const last = source.moods.filter(mood => mood.date === date).sort((a, b) => (a.time || '').localeCompare(b.time || '')).at(-1);
-			return { id: date, label: shortWeekday.format(day), today: date === today, pending: !known.moods || !last, icon: known.moods && last ? moodIcons[last.level - 1] : undefined, description: `${md.format(day)} ${!known.moods ? '読み込めません' : last ? `きもち ${last.level}` : '未記録'}` };
+			return { id: date, label: shortWeekday.format(day), today: date === today, pending: !known.moods || !last, icon: known.moods && last ? moodIcons[last.level - 1] : undefined, description: `${md.format(day)} ${!known.moods ? copy.moodUnavailable : last ? i18n.tsx._hata._hatask._akatsuki.moodLevel({ level: String(last.level) }) : copy.moodNotRecorded}` };
 		}),
 		meals: settings.showMealSection === false ? [] : mealRows,
 		mealSummary: settings.showMealSummary === false ? undefined : mealSummary,
-		flower: settings.showFlower === false || !known.flower ? null : { name: source.flower.name, emoji: source.flower.emoji, progress: source.flower.progress, detail: source.flower.progress >= 100 ? '開花しました' : `開花まで ${source.flower.remaining}` },
-		streakLabel: `ログイン累計 ${source.loginDays} 日`,
+		flower: settings.showFlower === false || !known.flower ? null : { name: source.flower.name, emoji: source.flower.emoji, progress: source.flower.progress, detail: source.flower.progress >= 100 ? copy.flowerBloomed : i18n.tsx._hata._hatask._akatsuki.flowerUntilBloom({ remaining: source.flower.remaining }) },
+		streakLabel: i18n.tsx._hata._hatask._akatsuki.loginTotal({ count: String(source.loginDays) }),
 		rankLabel: source.loginRanking > 0 ? `#${source.loginRanking}` : undefined,
 		eye: { text: source.eyePhrase },
-		todos: known.planner ? remainingTodos.slice(0, 3).map(todo => ({ id: todo.id, title: todo.text, meta: todo.due ? `${todo.due === today ? '今日' : todo.due}${todo.time ? ` ${todo.time}` : ''}` : '期限なし', completed: false, readOnly: source.readOnly })) : [],
+		todos: known.planner ? remainingTodos.slice(0, 3).map(todo => ({ id: todo.id, title: todo.text, meta: todo.due ? `${todo.due === today ? copy.today : todo.due}${todo.time ? ` ${todo.time}` : ''}` : copy.noDue, completed: false, readOnly: source.readOnly })) : [],
 	};
 	return { model, counts: { calendar: known.planner ? todayEvents.length : 0, todo: known.planner ? remainingTodos.length : 0, meal: known.meals ? todayMeals.length : 0, feedback: source.feedbackUnread } };
 }

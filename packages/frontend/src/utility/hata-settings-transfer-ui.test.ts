@@ -18,7 +18,7 @@ const japanese = load(source('../../locales/ja-JP.yml')) as {
 const transferCopy = japanese._hata._settingsTransfer._window;
 
 describe('旗鯖独自設定の入出力UI', () => {
-	test('旗鯖全体タブから入出力モーダルを開ける', () => {
+	test('Hataskey全体タブから入出力モーダルを開ける', () => {
 		const page = source('src/pages/settings/hata-custom.vue');
 		expect(page).toContain('const copy = i18n.ts._hata._customSettings;');
 		expect(page).toContain('const generalCopy = copy._general;');

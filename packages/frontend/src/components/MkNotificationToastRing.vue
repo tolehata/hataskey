@@ -11,10 +11,10 @@
 import { computed, onUnmounted, shallowRef, watch } from 'vue';
 import { NOTIFICATION_TOAST_DURATION, notificationOutlinePaths } from '@/utility/hataskey-notification-toast.js';
 
-const props = defineProps<{ target: HTMLElement | null; elapsed: number; integrated: boolean; motion: boolean }>();
+const props = withDefaults(defineProps<{ target: HTMLElement | null; elapsed: number; integrated: boolean; motion: boolean; duration?: number }>(), { duration: NOTIFICATION_TOAST_DURATION });
 const size = shallowRef({ width: 1, height: 1, radius: 24 });
 const paths = computed(() => notificationOutlinePaths(size.value.width, size.value.height, size.value.radius, props.integrated));
-const progress = computed(() => (props.motion ? props.elapsed : Math.floor(props.elapsed / 1000) * 1000) / NOTIFICATION_TOAST_DURATION);
+const progress = computed(() => (props.motion ? props.elapsed : Math.floor(props.elapsed / 1000) * 1000) / props.duration);
 const observer = new ResizeObserver(() => measure());
 
 function measure() {

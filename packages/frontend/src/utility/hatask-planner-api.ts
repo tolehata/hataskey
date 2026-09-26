@@ -61,7 +61,7 @@ function asPlannerSnapshot(value: unknown): HataskPlannerApiSnapshot {
  * Adapter for the atomic planner endpoints. The migration utility stays API
  * agnostic; this layer coalesces its three parallel reads into one snapshot.
  */
-export function createHataskPlannerApiStoragePort(api: ApiCaller): HataskPlannerStoragePort & {
+export function createHataskPlannerApiStoragePort(api: ApiCaller, onFlowerRewards?: (rewards: Record<string, { granted: boolean; why?: string; left?: number }>) => void): HataskPlannerStoragePort & {
 	refresh(): Promise<HataskPlannerApiSnapshot>;
 	readTemplates(): Promise<HataskPlannerTemplateSnapshot>;
 	writeTemplates(value: unknown, expectedRevision: HataskPlannerRevision): Promise<{ revision: string | null }>;
@@ -91,8 +91,9 @@ export function createHataskPlannerApiStoragePort(api: ApiCaller): HataskPlanner
 					collection: key,
 					expectedRevision: expectedRevision ?? null,
 					value,
-				}) as { revision?: string };
+				}) as { revision?: string; flowerRewards?: Record<string, { granted: boolean; why?: string; left?: number }> };
 				invalidate();
+				if (result.flowerRewards) onFlowerRewards?.(result.flowerRewards);
 				return { revision: result.revision ?? null };
 			}
 			if (key === HATASK_PLANNER_SHADOW_KEY) {
@@ -129,14 +130,15 @@ export function createHataskPlannerApiStoragePort(api: ApiCaller): HataskPlanner
 		},
 		async writeBatch({ scope, writes }) {
 			if (scope.join('/') !== 'client/hatask') throw new TypeError('Unexpected Hatask planner scope');
-			await api('hatask/planner/commit-batch', {
+			const result = await api('hatask/planner/commit-batch', {
 				changes: writes.map(write => ({
 					collection: write.key,
 					expectedRevision: write.expectedRevision ?? null,
 					value: write.value,
 				})),
-			});
+			}) as { collections?: { todos?: { flowerRewards?: Record<string, { granted: boolean; why?: string; left?: number }> } } };
 			invalidate();
+			if (result.collections?.todos?.flowerRewards) onFlowerRewards?.(result.collections.todos.flowerRewards);
 		},
 		isMissingError(error) {
 			return (error as { code?: string } | null)?.code === 'NO_SUCH_KEY';

@@ -175,6 +175,9 @@ globalThis.addEventListener('notificationclick', (ev: ServiceWorkerGlobalScopeEv
 							case 'app':
 							case 'hataFeed':
 							case 'hataskFlowerReady':
+							case 'hataskFlowerBloomed':
+							case 'hataskZukanUpdated':
+							case 'hataskFestivalBloomed':
 							case 'earthquake':
 							case 'addedToPrivateChannel':
 							case 'removedFromPrivateChannel':

@@ -119,7 +119,7 @@ const emit = defineEmits<{
 const injectedPageMetadata = inject(DI.pageMetadata, ref(null));
 const pageMetadata = computed(() => props.overridePageMetadata ?? injectedPageMetadata.value);
 
-// HataSNSCordUIの中央・サブペインでは外側のペインがタイトルを持つ。
+// 外側のペインがタイトルを持つ埋め込み表示では、
 // タイトルだけを省略し、ページ固有のタブと操作ボタンはそのまま温存する。
 const hideTitle = computed(() => inject('shouldOmitHeaderTitle', false) || props.hideTitle);
 const thin_ = props.thin || inject('shouldHeaderThin', false);

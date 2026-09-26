@@ -34,6 +34,7 @@ import { pleaseLogin } from '@/utility/please-login.js';
 import { showMovedDialog } from '@/utility/show-moved-dialog.js';
 import { getHTMLElementOrNull } from '@/utility/get-dom-node-or-null.js';
 import { focusParent } from '@/utility/focus.js';
+import { enqueuePageStatusToast } from '@/utility/hataskey-notification-toast.js';
 
 export const openingWindowsCount = ref(0);
 
@@ -273,11 +274,13 @@ export function pageWindow(path: string, options?: { fullscreen?: boolean; initi
 	});
 }
 
-export function toast(message: string, icon?: string, welcome?: boolean) {
+export function toast(message: string, icon?: string, welcome?: boolean, target?: string) {
+	if (!welcome && enqueuePageStatusToast(message, icon, target)) return;
 	const { dispose } = popup(MkToast, {
 		message,
 		icon,
 		welcome,
+		target,
 	}, {
 		closed: () => dispose(),
 	});

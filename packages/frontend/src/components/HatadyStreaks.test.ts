@@ -9,7 +9,11 @@ vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
 vi.mock('@/os.js', () => ({ popup: fixture.popup }));
 vi.mock('@/utility/hatady-prefs.js', () => ({ hatadyTzOffset: () => 540 }));
 vi.mock('@/utility/hatady-ui.js', () => ({ hatadySeconds: () => 0 }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: {} } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/components/HatadyConversation.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/HyDialog.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');

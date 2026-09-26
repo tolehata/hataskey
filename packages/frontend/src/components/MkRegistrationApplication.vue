@@ -6,17 +6,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div>
+<div ref="rootElement" :class="$style.root">
 	<div :class="$style.banner">
 		<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="showingId" :size="64" style="margin: 0 auto;"/><i v-else class="ti ti-file-description"></i>
 	</div>
 	<div class="_spacer" style="--MI_SPACER-min: 20px; --MI_SPACER-max: 32px;">
 		<MkInfo v-if="!applicationsEnabled" warn>{{ i18n.ts._hata._registrationApplications.registrationModeChanged }}</MkInfo>
-		<form v-else class="_gaps_m" @submit.prevent="onSubmit">
+		<MkRegistrationRules v-show="applicationsEnabled && step === 'agreements'" :application="true" @update:agreed="onAgreementChange" @done="onRulesDone" @cancel="emit('back')"/>
+		<Transition :enterActiveClass="$style.stepEnter" :enterFromClass="$style.stepFrom">
+		<form v-show="applicationsEnabled && step === 'input'" class="_gaps_m" @submit.prevent="reviewInput">
+			<h2 ref="inputHeading" tabindex="-1" :class="$style.title">{{ flow.inputTitle }}</h2>
 
 			<!-- 戻るリンク -->
-			<button type="button" :class="$style.backLink" @click="emit('back')">
-				<i class="ti ti-arrow-left"></i> {{ copy.back }}
+			<button type="button" :class="$style.backLink" :disabled="submitting" @click="step = 'agreements'">
+				<i class="ti ti-arrow-left"></i> {{ flow.backToAgreements }}
 			</button>
 
 			<!-- 1. 登録したい理由 -->
@@ -55,11 +58,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:placeholder="copy.contactsPlaceholder"
 					:aria-describedby="`${contactsId}-hint`"
 				></textarea>
-				<div :id="`${contactsId}-hint`" :class="$style.fieldHint">{{ hasAdminRelationship ? copy.contactsRequiredHint : copy.contactsHint }}</div>
+				<div :id="`${contactsId}-hint`" :class="[$style.fieldHint, $style.multilineHint]">{{ hasAdminRelationship ? copy.contactsRequiredHint : copy.contactsHint }}</div>
 			</div>
 
 			<!-- 2. ユーザーID -->
-			<MkInput v-model="username" type="text" pattern="^[a-zA-Z0-9_]{1,20}$" :spellcheck="false" autocomplete="username" required @update:modelValue="onChangeUsername">
+			<MkInput v-model="username" :disabled="submitting" type="text" pattern="^[a-zA-Z0-9_]{1,20}$" :spellcheck="false" autocomplete="username" required @update:modelValue="onChangeUsername">
 				<template #label>{{ copy.usernameLabel }} <span :class="$style.required">{{ copy.required }}</span></template>
 				<template #prefix>@</template>
 				<template #caption>
@@ -73,17 +76,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkInput>
 
 			<!-- 3. パスワード -->
-			<MkInput v-model="password" type="password" autocomplete="new-password" required @update:modelValue="onChangePassword">
+			<MkInput v-model="password" :disabled="submitting" type="password" autocomplete="new-password" required @update:modelValue="onChangePassword">
 				<template #label>{{ i18n.ts.password }} <span :class="$style.required">{{ copy.required }}</span></template>
 				<template #prefix><i class="ti ti-lock"></i></template>
 				<template #caption>
+					<div>{{ flow.passwordLengthDescription }}</div>
 					<span v-if="passwordStrength === 'low'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.weakPassword }}</span>
 					<span v-if="passwordStrength === 'medium'" style="color: var(--MI_THEME-warn)"><i class="ti ti-check ti-fw"></i> {{ i18n.ts.normalPassword }}</span>
 					<span v-if="passwordStrength === 'high'" style="color: var(--MI_THEME-success)"><i class="ti ti-check ti-fw"></i> {{ i18n.ts.strongPassword }}</span>
 				</template>
 			</MkInput>
 
-			<MkInput v-model="retypedPassword" type="password" autocomplete="new-password" required @update:modelValue="onChangePasswordRetype">
+			<MkInput v-model="retypedPassword" :disabled="submitting" type="password" autocomplete="new-password" required @update:modelValue="onChangePasswordRetype">
 				<template #label>{{ i18n.ts.password }} ({{ i18n.ts.retype }}) <span :class="$style.required">{{ copy.required }}</span></template>
 				<template #prefix><i class="ti ti-lock"></i></template>
 				<template #caption>
@@ -93,7 +97,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkInput>
 
 			<!-- 4. メールアドレス -->
-			<MkInput v-model="email" type="email" required @update:modelValue="onEmailChange">
+			<MkInput v-model="email" :disabled="submitting" type="email" required @update:modelValue="onEmailChange">
 				<template #label>{{ copy.emailLabel }} <span :class="$style.required">{{ copy.required }}</span></template>
 				<template #prefix><i class="ti ti-mail"></i></template>
 				<template #caption>
@@ -104,97 +108,53 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 					<span style="color: var(--MI_THEME-fg); opacity: 0.8;">
 						<i class="ti ti-info-circle ti-fw"></i>
-						{{ copy.emailDescription }}
+						<span :class="$style.multilineHint">{{ copy.emailDescription }}</span>
 					</span>
 				</template>
 			</MkInput>
 
 			<!-- 5. CAPTCHA（MkSignupDialog.form.vue と完全同一パターン） -->
-			<MkCaptcha v-if="instance.enableHcaptcha" ref="hcaptcha" v-model="hCaptchaResponse" :class="$style.captcha" provider="hcaptcha" :sitekey="instance.hcaptchaSiteKey"/>
-			<MkCaptcha v-if="instance.enableMcaptcha" ref="mcaptcha" v-model="mCaptchaResponse" :class="$style.captcha" provider="mcaptcha" :sitekey="instance.mcaptchaSiteKey" :instanceUrl="instance.mcaptchaInstanceUrl"/>
-			<MkCaptcha v-if="instance.enableRecaptcha" ref="recaptcha" v-model="reCaptchaResponse" :class="$style.captcha" provider="recaptcha" :sitekey="instance.recaptchaSiteKey"/>
-			<MkCaptcha v-if="instance.enableTurnstile" ref="turnstile" v-model="turnstileResponse" :class="$style.captcha" provider="turnstile" :sitekey="instance.turnstileSiteKey"/>
-			<MkCaptcha v-if="instance.enableTestcaptcha" ref="testcaptcha" v-model="testcaptchaResponse" :class="$style.captcha" provider="testcaptcha" :sitekey="null"/>
-
-			<!-- 6. 同意事項 -->
-			<div v-if="serverRules.length > 0 || tosUrl || privacyPolicyUrl" class="_gaps_s">
-				<div :class="$style.label">{{ copy.agreements }}</div>
-
-				<div v-if="serverRules.length > 0" :class="$style.rulesBox">
-					<div :class="$style.rulesTitle">{{ copy.serverRules }}</div>
-					<ol :class="$style.rulesList">
-						<!-- Server rules use the same administrator-authored markup as MkSignupDialog.rules. -->
-						<!-- eslint-disable-next-line vue/no-v-html -->
-						<li v-for="(rule, index) in serverRules" :key="index" v-html="rule"></li>
-					</ol>
-				</div>
-
-				<label v-if="serverRules.length > 0" :class="$style.checkboxLabel">
-					<input v-model="agreeRules" type="checkbox" :class="$style.checkbox"/>
-					{{ copy.agreeRules }}
-				</label>
-				<label v-if="tosUrl" :class="$style.checkboxLabel">
-					<input v-model="agreeTos" type="checkbox" :class="$style.checkbox"/>
-					<a :href="tosUrl" target="_blank" rel="noopener noreferrer">{{ copy.terms }}</a>{{ copy.agreeDocumentSuffix }}
-				</label>
-				<label v-if="privacyPolicyUrl" :class="$style.checkboxLabel">
-					<input v-model="agreePrivacy" type="checkbox" :class="$style.checkbox"/>
-					<a :href="privacyPolicyUrl" target="_blank" rel="noopener noreferrer">{{ copy.privacyPolicy }}</a>{{ copy.agreeDocumentSuffix }}
-				</label>
-			</div>
-
-			<!-- 旗鯖fork: プライバシー情報の取り扱い説明 (送信前の最終確認) -->
-			<div :class="$style.privacyNotice">
-				<div :class="$style.privacyNoticeHeader">
-					<i class="ti ti-info-circle"></i>
-					<span>{{ copy.privacyHandling }}</span>
-				</div>
-				<div :class="$style.privacyNoticeBody">
-					<div :class="$style.privacyNoticeSection">
-						<div :class="$style.privacyNoticeSectionTitle"><i class="ti ti-shield-lock"></i><span>{{ copy.contactsHandling }}</span></div>
-						<p>{{ copy.contactsDeletion }}</p>
-					</div>
-					<div :class="$style.privacyNoticeSection">
-						<div :class="$style.privacyNoticeSectionTitle">
-							<i class="ti ti-check" :class="$style.privacyIconApproved"></i>
-							<span>{{ copy.ifApproved }}</span>
-						</div>
-						<p>{{ copy.approvedEmailUse }}</p>
-					</div>
-
-					<div :class="$style.privacyNoticeSection">
-						<div :class="$style.privacyNoticeSectionTitle">
-							<i class="ti ti-x" :class="$style.privacyIconRejected"></i>
-							<span>{{ copy.ifRejected }}</span>
-						</div>
-						<ul>
-							<li>{{ copy.rejectedCredentialsDeletedBefore }}<strong>ID</strong>{{ copy.rejectedCredentialsDeletedMiddle }}<strong>{{ i18n.ts.password }}</strong>{{ copy.rejectedCredentialsDeletedAfter }}</li>
-							<li><strong>{{ copy.emailLabel }}</strong>{{ copy.rejectedEmailRetention }}</li>
-							<li>{{ copy.noRejectionEmail }}</li>
-						</ul>
-					</div>
-
-					<div :class="$style.privacyNoticeWarning">
-						<i class="ti ti-info-circle"></i>
-						<span>{{ copy.emailReuseWarning }}</span>
-					</div>
-				</div>
-			</div>
+			<MkCaptcha v-if="inputVisited && instance.enableHcaptcha" ref="hcaptcha" v-model="hCaptchaResponse" :class="$style.captcha" provider="hcaptcha" :sitekey="instance.hcaptchaSiteKey"/>
+			<MkCaptcha v-if="inputVisited && instance.enableMcaptcha" ref="mcaptcha" v-model="mCaptchaResponse" :class="$style.captcha" provider="mcaptcha" :sitekey="instance.mcaptchaSiteKey" :instanceUrl="instance.mcaptchaInstanceUrl"/>
+			<MkCaptcha v-if="inputVisited && instance.enableRecaptcha" ref="recaptcha" v-model="reCaptchaResponse" :class="$style.captcha" provider="recaptcha" :sitekey="instance.recaptchaSiteKey"/>
+			<MkCaptcha v-if="inputVisited && instance.enableTurnstile" ref="turnstile" v-model="turnstileResponse" :class="$style.captcha" provider="turnstile" :sitekey="instance.turnstileSiteKey"/>
+			<MkCaptcha v-if="inputVisited && instance.enableTestcaptcha" ref="testcaptcha" v-model="testcaptchaResponse" :class="$style.captcha" provider="testcaptcha" :sitekey="null"/>
 
 			<!-- 送信ボタン -->
 			<MkButton type="submit" :disabled="shouldDisableSubmitting" large gradate rounded style="margin: 0 auto;">
 				<template v-if="submitting">
 					<MkLoading :em="true" :colored="false"/>
 				</template>
-				<template v-else><i class="ti ti-send"></i> {{ copy.submit }}</template>
+				<template v-else><i class="ti ti-send"></i> {{ flow.confirmInput }}</template>
 			</MkButton>
 		</form>
+		</Transition>
+		<Transition :enterActiveClass="$style.stepEnter" :enterFromClass="$style.stepFrom">
+		<section v-if="applicationsEnabled && step === 'review'" class="_gaps_m" :class="$style.review">
+			<h2 ref="reviewHeading" tabindex="-1" :class="$style.title">{{ flow.reviewTitle }}</h2>
+			<p>{{ flow.reviewDescription }}</p>
+			<dl :class="$style.reviewList">
+				<dt>{{ copy.adminRelationshipLabel }}</dt><dd>{{ hasAdminRelationship ? i18n.ts.yes : i18n.ts.no }}</dd>
+				<template v-if="!hasAdminRelationship"><dt>{{ copy.reasonLabel }}</dt><dd>{{ reason.trim() }}</dd></template>
+				<template v-if="additionalContacts.trim()"><dt>{{ copy.contactsLabel }}</dt><dd>{{ additionalContacts.trim() }}</dd></template>
+				<dt>{{ copy.usernameLabel }}</dt><dd>@{{ username }}</dd>
+				<dt>{{ copy.emailLabel }}</dt><dd>{{ email.trim() }}</dd>
+				<dt>{{ i18n.ts.password }}</dt><dd>{{ flow.passwordSet }}</dd>
+			</dl>
+			<div class="_buttonsCenter">
+				<MkButton rounded :disabled="submitting" @click="step = 'input'">{{ flow.backToInput }}</MkButton>
+				<MkButton rounded primary :disabled="shouldDisableSubmitting" @click="onSubmit"><MkLoading v-if="submitting" :em="true"/><template v-else>{{ copy.submit }}</template></MkButton>
+			</div>
+		</section>
+		</Transition>
 	</div>
 </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onBeforeUnmount, useId, watch } from 'vue';
+import { ref, shallowRef, computed, nextTick, onBeforeUnmount, useId, watch } from 'vue';
+import { focusRegistrationElement } from '@/utility/registration-consent.js';
+import MkRegistrationRules from '@/components/MkRegistrationRules.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
 import MkInfo from '@/components/MkInfo.vue';
@@ -208,20 +168,38 @@ import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { i18n } from '@/i18n.js';
 
 const copy = i18n.ts._hata._registrationApplications._application;
-const modeUnavailable = ref(false);
-const applicationsEnabled = computed(() => !instance.registrationClosed && instance.disableRegistration === true && !modeUnavailable.value);
-const serverRules = computed(() => instance.serverRules ?? []);
+const flow = i18n.ts._hata._registrationApplications._flow;
+const step = ref<'agreements' | 'input' | 'review'>('agreements');
+const rootElement = ref<HTMLElement>();
+const inputHeading = ref<HTMLElement>();
+const reviewHeading = ref<HTMLElement>();
+const inputVisited = ref(false);
+watch(step, (target) => {
+	if (target === 'input') inputVisited.value = true;
+}, { flush: 'sync' });
+watch(step, (target) => {
+	void nextTick(() => {
+		if (target !== step.value) return;
+		focusRegistrationElement(target === 'input' ? inputHeading.value : target === 'review' ? reviewHeading.value : rootElement.value?.querySelector<HTMLElement>('button[aria-controls]'), { scrollToTop: true });
+	});
+}, { flush: 'post' });
+const agreementsAccepted = ref(false);
 
-function policyUrl(value: string | null | undefined): string | undefined {
-	if (!value?.trim()) return undefined;
-	try {
-		const url = new URL(value, window.location.origin);
-		return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined;
-	} catch { return undefined; }
+function onAgreementChange(agreed: boolean) {
+	agreementsAccepted.value = agreed;
+	if (!agreed) step.value = 'agreements';
 }
 
-const tosUrl = computed(() => policyUrl(instance.tosUrl));
-const privacyPolicyUrl = computed(() => policyUrl(instance.privacyPolicyUrl));
+function onRulesDone() {
+	if (applicationsEnabled.value && agreementsAccepted.value) step.value = 'input';
+}
+
+function reviewInput() {
+	if (step.value === 'input' && !shouldDisableSubmitting.value) step.value = 'review';
+}
+
+const modeUnavailable = ref(false);
+const applicationsEnabled = computed(() => !instance.registrationClosed && instance.disableRegistration === true && !modeUnavailable.value);
 let disposed = false;
 let modeVersion = 0;
 
@@ -247,9 +225,6 @@ const username = ref('');
 const password = ref('');
 const retypedPassword = ref('');
 const email = ref('');
-const agreeRules = ref(false);
-const agreeTos = ref(false);
-const agreePrivacy = ref(false);
 const submitting = ref(false);
 
 // --- CAPTCHA レスポンス ---
@@ -261,18 +236,19 @@ const testcaptchaResponse = ref<string | null>(null);
 
 // --- ユーザー名チェック ---
 const usernameState = ref<null | 'wait' | 'ok' | 'unavailable' | 'error' | 'invalid-format'>(null);
-const usernameAbortController = ref<null | AbortController>(null);
+const usernameAbortController = shallowRef<null | AbortController>(null);
 
 watch(() => [instance.disableRegistration, instance.registrationClosed], () => { modeUnavailable.value = false; });
 watch(applicationsEnabled, () => {
 	modeVersion++;
 	usernameAbortController.value?.abort();
-	if (!applicationsEnabled.value) additionalContacts.value = '';
+	if (applicationsEnabled.value) {
+		onChangeUsername();
+	} else {
+		additionalContacts.value = '';
+	}
 }, { flush: 'sync' });
-watch(() => JSON.stringify(serverRules.value), () => { agreeRules.value = false; }, { flush: 'sync' });
-watch(tosUrl, () => { agreeTos.value = false; }, { flush: 'sync' });
-watch(privacyPolicyUrl, () => { agreePrivacy.value = false; }, { flush: 'sync' });
-onBeforeUnmount(() => { disposed = true; usernameAbortController.value?.abort(); additionalContacts.value = ''; });
+onBeforeUnmount(() => { disposed = true; usernameAbortController.value?.abort(); clearSecrets(); });
 
 // 旗鯖fork: メアド重複検出フラグ (送信時にサーバーから EMAIL_ALREADY_EXISTS が返った時に true)
 // メアドが変更されたら false にリセットする
@@ -296,11 +272,10 @@ const shouldDisableSubmitting = computed((): boolean => {
 		additionalContacts.value.length > 1024 ||
 		usernameState.value !== 'ok' ||
 		passwordRetypeState.value !== 'match' ||
-		password.value.length < 8 ||
-		!email.value.includes('@') ||
-		(serverRules.value.length > 0 && !agreeRules.value) ||
-		(Boolean(tosUrl.value) && !agreeTos.value) ||
-		(Boolean(privacyPolicyUrl.value) && !agreePrivacy.value) ||
+		password.value.length < 8 || password.value.length > 64 ||
+		password.value !== retypedPassword.value || !/^[a-zA-Z0-9_]{1,20}$/.test(username.value) ||
+		email.value.trim().length > 256 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()) ||
+		!agreementsAccepted.value ||
 		(instance.enableHcaptcha && !hCaptchaResponse.value) ||
 		(instance.enableMcaptcha && !mCaptchaResponse.value) ||
 		(instance.enableRecaptcha && !reCaptchaResponse.value) ||
@@ -349,6 +324,15 @@ function onChangeUsername(): void {
 	});
 }
 
+watch([password, retypedPassword], onChangePasswordRetype, { flush: 'sync' });
+
+function clearSecrets() {
+	password.value = '';
+	retypedPassword.value = '';
+	additionalContacts.value = '';
+	resetCaptcha();
+}
+
 function onChangePassword(): void {
 	if (password.value === '') {
 		passwordStrength.value = '';
@@ -382,7 +366,7 @@ function resetCaptcha() {
 }
 
 async function onSubmit(): Promise<void> {
-	if (submitting.value || shouldDisableSubmitting.value) return;
+	if (step.value !== 'review' || submitting.value || shouldDisableSubmitting.value) return;
 	submitting.value = true;
 	const version = modeVersion;
 
@@ -401,12 +385,13 @@ async function onSubmit(): Promise<void> {
 			'testcaptcha-response': testcaptchaResponse.value,
 		}, null);
 
-		additionalContacts.value = '';
+		clearSecrets();
 		if (!disposed && applicationsEnabled.value && version === modeVersion) emit('complete');
 	} catch (err: any) {
 		if (disposed) return;
 		submitting.value = false;
 		resetCaptcha();
+		step.value = agreementsAccepted.value ? 'input' : 'agreements';
 
 		const code = err?.code;
 		if (code === 'REGISTRATION_APPLICATIONS_DISABLED') {
@@ -445,6 +430,57 @@ async function onSubmit(): Promise<void> {
 </script>
 
 <style lang="scss" module>
+.multilineHint { white-space: pre-line; }
+.root {
+	background: var(--MI_THEME-panel);
+	border-radius: var(--MI-radius);
+	overflow: hidden;
+}
+
+.title {
+	margin: 0;
+	font-size: 1.3em;
+}
+
+.review {
+	line-height: 1.7;
+}
+
+.reviewList {
+	margin: 0;
+	display: grid;
+	gap: 8px;
+
+	dt {
+		font-weight: bold;
+	}
+
+	dd {
+		margin: 0 0 12px;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+}
+
+.stepEnter {
+	transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.stepFrom {
+	opacity: 0;
+	transform: translateY(8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.stepEnter {
+		transition: none;
+	}
+
+	.stepFrom {
+		transform: none;
+	}
+}
+
 .banner {
 	padding: 16px;
 	text-align: center;
@@ -497,7 +533,7 @@ async function onSubmit(): Promise<void> {
 	width: 100%;
 	padding: 10px 12px;
 	border: 1px solid var(--MI_THEME-divider);
-	border-radius: 6px;
+	border-radius: 16px;
 	background: var(--MI_THEME-panel);
 	color: var(--MI_THEME-fg);
 	font-size: 1em;
@@ -537,120 +573,5 @@ async function onSubmit(): Promise<void> {
 	}
 }
 
-.rulesBox {
-	background: var(--MI_THEME-bg);
-	border: 1px solid var(--MI_THEME-divider);
-	border-radius: 8px;
-	padding: 16px;
-}
-
-.rulesTitle {
-	font-weight: bold;
-	font-size: 0.95em;
-	margin-bottom: 8px;
-}
-
-.rulesList {
-	margin: 0;
-	padding-left: 24px;
-	line-height: 1.7;
-	font-size: 0.9em;
-}
-
-.checkbox {
-	width: 18px;
-	height: 18px;
-	accent-color: var(--MI_THEME-accent);
-}
-
-/* 旗鯖fork: プライバシー情報の取り扱い説明ボックス (送信前の最終確認) */
-.privacyNotice {
-	background: var(--MI_THEME-panel);
-	border: 1px solid var(--MI_THEME-divider);
-	border-radius: var(--MI-radius);
-	overflow: hidden;
-}
-
-.privacyNoticeHeader {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 12px 16px;
-	background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent);
-	color: var(--MI_THEME-accent);
-	font-weight: bold;
-	font-size: 0.95em;
-	border-bottom: 1px solid var(--MI_THEME-divider);
-
-	> i {
-		font-size: 1.1em;
-	}
-}
-
-.privacyNoticeBody {
-	padding: 16px;
-	display: flex;
-	flex-direction: column;
-	gap: 14px;
-	font-size: 0.9em;
-	line-height: 1.7;
-}
-
-.privacyNoticeSection {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-
-.privacyNoticeSectionTitle {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	font-weight: 500;
-}
-
-.privacyIconApproved {
-	color: var(--MI_THEME-success);
-}
-
-.privacyIconRejected {
-	color: var(--MI_THEME-error);
-}
-
-.privacyNoticeSection p {
-	margin: 0;
-	padding-left: 22px;
-}
-
-.privacyNoticeSection ul {
-	margin: 0;
-	padding-left: 22px;
-	list-style-position: inside;
-}
-
-.privacyNoticeSection ul li {
-	margin-bottom: 4px;
-}
-
-.privacyNoticeSection strong {
-	color: var(--MI_THEME-accent);
-	font-weight: 600;
-}
-
-.privacyNoticeWarning {
-	display: flex;
-	gap: 8px;
-	padding: 10px 12px;
-	background: color-mix(in srgb, var(--MI_THEME-warn) 12%, transparent);
-	border: 1px solid color-mix(in srgb, var(--MI_THEME-warn) 30%, transparent);
-	border-radius: 6px;
-	color: var(--MI_THEME-warn);
-	font-size: 0.85em;
-	line-height: 1.5;
-
-	> i {
-		flex-shrink: 0;
-		margin-top: 2px;
-	}
-}
+.checkbox { width: 18px; height: 18px; accent-color: var(--MI_THEME-accent); }
 </style>

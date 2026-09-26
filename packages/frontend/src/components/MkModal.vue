@@ -13,9 +13,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 		[$style.transition_send_enterActive]: transitionName === 'send',
 	})"
 	:leaveActiveClass="normalizeClass({
+		[dissolveStyles.leaveActive]: motionPreset === 'dissolve' && transitionName === 'modal',
 		[$style.transition_modalDrawer_leaveActive]: transitionName === 'modal-drawer',
 		[$style.transition_modalPopup_leaveActive]: transitionName === 'modal-popup',
-		[$style.transition_modal_leaveActive]: transitionName === 'modal',
+		[$style.transition_modal_leaveActive]: transitionName === 'modal' && motionPreset !== 'dissolve',
 		[$style.transition_send_leaveActive]: transitionName === 'send',
 	})"
 	:enterFromClass="normalizeClass({
@@ -25,16 +26,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 		[$style.transition_send_enterFrom]: transitionName === 'send',
 	})"
 	:leaveToClass="normalizeClass({
+		[dissolveStyles.leaveTo]: motionPreset === 'dissolve' && transitionName === 'modal',
 		[$style.transition_modalDrawer_leaveTo]: transitionName === 'modal-drawer',
 		[$style.transition_modalPopup_leaveTo]: transitionName === 'modal-popup',
-		[$style.transition_modal_leaveTo]: transitionName === 'modal',
+		[$style.transition_modal_leaveTo]: transitionName === 'modal' && motionPreset !== 'dissolve',
 		[$style.transition_send_leaveTo]: transitionName === 'send',
 	})"
 	:duration="transitionDuration" appear @afterLeave="onClosed" @enter="emit('opening')" @afterEnter="onOpened"
 >
 	<div v-show="manualShowing != null ? manualShowing : showing" ref="modalRootEl" v-hotkey.global="keymap" tabindex="-1" :class="[$style.root, { [$style.drawer]: type === 'drawer', [$style.dialog]: type === 'dialog', [$style.popup]: type === 'popup', [$style.postFormMotion]: motionPreset === 'postform' }]" :style="{ zIndex, pointerEvents: (manualShowing != null ? manualShowing : showing) ? 'auto' : 'none', '--transformOrigin': transformOrigin }">
-		<div data-cy-bg :data-cy-transparent="isEnableBgTransparent" class="_modalBg" :class="[$style.bg, { [$style.bgTransparent]: isEnableBgTransparent, [$style.bgWithoutBlur]: disableBgBlur, [$style.removeModalBgColorForBlur]: prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]" :style="{ zIndex }" @click="onBgClick" @mousedown="onBgClick" @contextmenu.prevent.stop="() => {}"></div>
-		<div ref="content" :class="[$style.content, { [$style.fixed]: fixed }]" :style="{ zIndex }" @click.self="onBgClick">
+		<div data-modal-backdrop data-cy-bg :data-cy-transparent="isEnableBgTransparent" class="_modalBg" :class="[$style.bg, { [$style.bgTransparent]: isEnableBgTransparent, [$style.bgWithoutBlur]: disableBgBlur, [$style.removeModalBgColorForBlur]: prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]" :style="{ zIndex }" @click="onBgClick" @mousedown="onBgClick" @contextmenu.prevent.stop="() => {}"></div>
+		<div ref="content" data-modal-content :class="[$style.content, { [$style.fixed]: fixed }]" :style="{ zIndex }" @click.self="onBgClick">
 			<slot :max-height="maxHeight" :type="type"></slot>
 		</div>
 	</div>
@@ -52,6 +54,7 @@ import { focusParent } from '@/utility/focus.js';
 import { prefer } from '@/preferences.js';
 import { DI } from '@/di.js';
 import { getViewportTopInset } from '@/utility/viewport-inset.js';
+import dissolveStyles from './modal-dissolve.module.css';
 
 function getFixedContainer(el: Element | null): Element | null {
 	if (el == null || el.tagName === 'BODY') return null;
@@ -77,7 +80,7 @@ const props = withDefaults(defineProps<{
 	disableBgBlur?: boolean;
 	hasInteractionWithOtherFocusTrappedEls?: boolean;
 	returnFocusTo?: HTMLElement | null;
-	motionPreset?: 'postform';
+	motionPreset?: 'postform' | 'dissolve' | 'none';
 }>(), {
 	manualShowing: null,
 	anchorElement: null,
@@ -124,7 +127,7 @@ const type = computed<ModalTypes>(() => {
 });
 const isEnableBgTransparent = computed(() => props.transparentBg && (type.value === 'popup'));
 const transitionName = computed((() =>
-	prefer.s.animation
+	prefer.s.animation && props.motionPreset !== 'none'
 		? useSendAnime.value
 			? 'send'
 			: type.value === 'drawer'
@@ -135,7 +138,9 @@ const transitionName = computed((() =>
 		: ''
 ));
 const transitionDuration = computed((() =>
-	props.motionPreset === 'postform' && transitionName.value === 'modal-popup'
+	props.motionPreset === 'dissolve' && transitionName.value === 'modal'
+		? { enter: 200, leave: 650 }
+		: props.motionPreset === 'postform' && transitionName.value === 'modal-popup'
 		? 260
 		: props.motionPreset === 'postform' && transitionName.value === 'modal-drawer'
 			? 300

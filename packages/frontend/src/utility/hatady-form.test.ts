@@ -1,9 +1,13 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { describe, expect, test, vi } from 'vitest';
-import { commitFormLists, formField, formTimestamp, formValidation, localDateTime, restoreLegacyTime, saveBookNotes } from './hatady-form.js';
+import { commitFormLists, formField, formServerError, formTimestamp, formValidation, localDateTime, restoreLegacyTime, saveBookNotes } from './hatady-form.js';
 import { initialSessionDetails, sessionDetailPages, sessionDetailsPayload } from './hatady-session-form.js';
 import { HATADY_STAT_FIELDS, MEDIA_SESSION_DETAIL_KEYS } from './hatady-media.js';
 import type { HatadyMediaSession, HatadyMediaSessionKind } from './hatady-media.js';
+
+vi.mock('@/i18n.js', async () => ({
+	i18n: (await import('@/utility/hatask-test-i18n.js')).createTestHataskI18n(),
+}));
 
 describe('Hatady form value migration', () => {
 	test('old drafts keep their category tag, arrays and seconds instead of reducing them to minutes', () => {
@@ -97,5 +101,25 @@ describe('every media recording category retains its existing details', () => {
 		expect(saved.weaponStats).toEqual([]);
 		const stored = { weaponStats: [{ weapon: '', kills: 4, deaths: 0, future: 'retained' }] };
 		expect(sessionDetailsPayload('game', 'game_match', values, stored).weaponStats).toEqual([{ weapon: '', kills: 4, deaths: 0, assists: null, specials: null, rescues: null, future: 'retained' }]);
+	});
+});
+
+describe('Hatady save errors name the field', () => {
+	const pages = [
+		{ id: 'basics', title: '', fields: [formField('title', '学んだこと', { required: true }), formField('body', '内容・感想', { maxlength: 4096 })] },
+		{ id: 'time', title: '', fields: [formField('durationSeconds', '運動時間', { type: 'duration', required: true })] },
+		{ id: 'sharing', title: '', fields: [formField('date', '記録日', { type: 'date', required: true })] },
+	];
+	test('a required duration of zero is treated as missing', () => {
+		expect(formValidation(pages[1].fields[0], { durationSeconds: 0 })).toBe('運動時間を入力してください');
+		expect(formValidation(pages[1].fields[0], { durationSeconds: 60 })).toBeNull();
+	});
+	test('API validation errors are mapped to the matching field and page', () => {
+		const values = { title: '', body: 'x'.repeat(5000), date: '2026-09-23' };
+		expect(formServerError({ code: 'INVALID_PARAM', info: { param: '#/required', reason: 'must have required property \'title\'' } }, pages, values)).toMatchObject({ page: { id: 'basics' }, message: '学んだことを入力してください' });
+		expect(formServerError({ code: 'INVALID_PARAM', info: { param: '#/properties/body/maxLength', reason: 'must NOT have more than 4096 characters' } }, pages, values)?.message).toBe('内容・感想は4096文字以内で入力してください');
+		expect(formServerError({ code: 'INVALID_PARAM', info: { param: '#/properties/studiedAt/type', reason: 'must be string' } }, pages, values)).toMatchObject({ page: { id: 'sharing' }, message: '記録日を確認してください' });
+		expect(formServerError({ code: 'INTERNAL_ERROR' }, pages, values)).toBeNull();
+		expect(formServerError({ code: 'INVALID_PARAM', info: { param: '#/properties/unknown/type' } }, pages, values)).toBeNull();
 	});
 });

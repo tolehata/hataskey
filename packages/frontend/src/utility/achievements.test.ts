@@ -41,22 +41,15 @@ describe('HataSideStudio tutorial achievement propagation', () => {
 	});
 });
 
-describe('HataSNSCordUI tutorial achievement propagation', () => {
+// HataSNSCordUI は廃止したが、獲得済みの実績を表示できるよう定義と文言は残す。
+describe('retired HataSNSCordUI tutorial achievement', () => {
 	const hatacordingAchievementId = 'hatacordingUiTutorial';
-	const hatacordingPage = read('packages/frontend/src/pages/hatacording-ui.vue');
-	const hatacordingCopy = read('packages/frontend/src/utility/hatacording-copy.ts');
 
 	test('registers the achievement in both allowlists and its badge catalog', () => {
 		expect(frontendAchievements.match(new RegExp(`'${hatacordingAchievementId}'`, 'g'))).toHaveLength(2);
 		expect(backendUserProfile.match(new RegExp(`'${hatacordingAchievementId}'`, 'g'))).toHaveLength(1);
 		expect(frontendAchievements).toMatch(/'hatacordingUiTutorial':[\s\S]*?img: '\/fluent-emoji\/1f4bb\.png'/);
 		expect(existsSync(resolve(repositoryRoot, 'fluent-emojis/dist/1f4bb.png'))).toBe(true);
-	});
-
-	test('requires the first-run tutorial to finish and claims the centralized achievement ID', () => {
-		expect(hatacordingPage).toContain('tutorialOpen.value = !prefs.value.tutorialCompleted');
-		expect(hatacordingPage).toMatch(/function finishFirstTutorial\(\)[\s\S]*?prefs\.value\.tutorialCompleted = true[\s\S]*?claimAchievement\(HATACORDING_TUTORIAL_ACHIEVEMENT_ID\)/);
-		expect(hatacordingCopy).toContain(`HATACORDING_TUTORIAL_ACHIEVEMENT_ID = '${hatacordingAchievementId}'`);
 	});
 
 	test('provides the requested Japanese copy and an English translation', () => {

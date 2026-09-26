@@ -5,7 +5,6 @@
 
 import { describe, expect, test } from 'vitest';
 import notificationsPageSource from '@/pages/notifications.vue?raw';
-import hatacordingUiSource from '@/pages/hatacording-ui.vue?raw';
 import hatasabaDeckSource from '@/ui/_common_/hatasaba-deck.vue?raw';
 import notificationsColumnSource from '@/ui/deck/notifications-column.vue?raw';
 import widgetNotificationsSource from '@/widgets/WidgetNotifications.vue?raw';
@@ -26,10 +25,5 @@ describe('notification bot filter integration', () => {
 		expect(notificationsColumnSource).toContain('excludeBots: excludeBots');
 		expect(hatasabaDeckSource).toContain('excludeBots: tab.excludeBots === true');
 		expect(hatasabaDeckSource).toContain('excludeBots: res.excludeBots');
-	});
-
-	test('HataSNSCordUIの通知サブペインは通常通知画面の全機能を埋め込む', () => {
-		expect(hatacordingUiSource).toContain('const FullNotificationsPage = defineAsyncComponent(() => import(\'@/pages/notifications.vue\'))');
-		expect(hatacordingUiSource).toContain('activeRightTab.kind === \'notifications\'');
 	});
 });

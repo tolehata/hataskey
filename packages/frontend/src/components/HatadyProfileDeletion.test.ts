@@ -12,10 +12,12 @@ vi.mock('@/utility/hatady-ui.js', () => ({
 vi.mock('@/utility/hatady-prefs.js', async () => ({
 	hatadyTheme: (await import('vue')).ref('paper'), hatadyTzOffset: () => 540,
 }));
-vi.mock('@/i18n.js', () => ({ i18n: {
-	ts: { _hata: { _hatady: { _profile: { title: 'プロフィール', loading: '読込中', notFound: '読込できません', noPosts: '記録はありません' } } } },
-	tsx: { _hata: { _hatady: { _profile: {} } } },
-} }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	i18n.locale._hata._hatady._profile.notFound = '読込できません';
+	return { i18n };
+});
 vi.mock('@/components/HyDialog.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
 	return { default: defineComponent({

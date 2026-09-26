@@ -100,7 +100,7 @@ describe('Hatask flower growth', () => {
 		expect(growth).toContain('now - flower.lastGrowthAt');
 		expect(growth).not.toContain('activeCarryMs');
 		expect(growth).not.toContain('wasVisible');
-		expect(widget).toContain('window.addEventListener(HATASK_FLOWER_GROWTH_EVENT, onFlowerGrowth)');
+		expect(widget).toContain('window.addEventListener(HATASK_FLOWER_STATE_EVENT, onState)');
 		expect(studioWidget).toContain('window.addEventListener(HATASK_FLOWER_GROWTH_EVENT, onFlowerGrowth)');
 	});
 

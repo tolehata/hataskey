@@ -2,13 +2,13 @@
 <template>
 <HyTutorial
 	:kind="kind" :pages="getHatadyTutorialPages(kind)"
-	:title="kind === 'update' ? 'Welcome to Hatady V2' : 'Hatadyの使い方'"
-	finishLabel="Hatadyをはじめる" :completeOnDismiss="kind === 'initial'"
+	:title="kind === 'update' ? copy.titleUpdate : copy.titleInitial"
+	:finishLabel="copy.finish" :completeOnDismiss="kind === 'initial'"
 	:anchorElement="anchorElement" :cancelSignal="cancelSignal"
 	@done="emit('done')" @closing="onClosing" @closed="emit('closed')"
 >
 	<template #headerAction>
-		<button type="button" class="hy-icon-button" aria-label="配色を選ぶ" :disabled="savingTheme" @click="chooseTheme"><i class="ti ti-palette" aria-hidden="true"></i></button>
+		<button type="button" class="hy-icon-button" :aria-label="copy.chooseTheme" :disabled="savingTheme" @click="chooseTheme"><i class="ti ti-palette" aria-hidden="true"></i></button>
 	</template>
 	<template #example="{ page }"><HatadyTutorialExample :kind="kind" :page="page.id"/></template>
 </HyTutorial>
@@ -23,6 +23,9 @@ import { getHatadyTutorialPages } from '@/utility/hatady-tutorial-content.js';
 import { hatadyTheme, saveHatadyDisplay } from '@/utility/hatady-prefs.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
 import * as os from '@/os.js';
+import { i18n } from '@/i18n.js';
+
+const copy = i18n.ts._hata._hatady._tutorial;
 
 withDefaults(defineProps<{ kind?: HatadyTutorialKind; anchorElement?: HTMLElement | null; cancelSignal?: AbortSignal }>(), { kind: 'initial', anchorElement: null });
 const emit = defineEmits<{ done: []; closed: [] }>();
@@ -35,11 +38,11 @@ onUnmounted(onClosing);
 
 async function chooseTheme(event: MouseEvent): Promise<void> {
 	const options: { value: HatadyTheme; label: string }[] = [
-		{ value: 'light', label: 'ライト' },
-		{ value: 'dark', label: 'ダーク' },
-		{ value: 'paper', label: 'ペーパー' },
-		{ value: 'espresso', label: 'エスプレッソ' },
-		{ value: 'hataskey', label: 'Hataskeyに合わせる' },
+		{ value: 'light', label: copy.themeLight },
+		{ value: 'dark', label: copy.themeDark },
+		{ value: 'paper', label: copy.themePaper },
+		{ value: 'espresso', label: copy.themeEspresso },
+		{ value: 'hataskey', label: copy.themeHataskey },
 	];
 	await os.popupMenu(
 		options.map((option) => ({
@@ -51,7 +54,7 @@ async function chooseTheme(event: MouseEvent): Promise<void> {
 				try {
 					await saveHatadyDisplay(option.value);
 				} catch {
-					hatadyNotify('配色を保存できませんでした');
+					hatadyNotify(copy.themeSaveFailed);
 				} finally {
 					savingTheme.value = false;
 				}

@@ -61,7 +61,8 @@
 .hatafeed-scope .hf-icon[data-active='true'] { color: var(--hy-accent); background: var(--hy-soft); }
 .hatafeed-scope .hf-form { display: grid; gap: 18px; padding: 24px; text-align: center; }
 .hatafeed-scope[data-hatafeed-window] { text-align: center; }
-.hatafeed-scope[data-hatafeed-window] :is(input, textarea) { text-align: center; }
+/* UI は中央揃えのまま、入力した文字は読み書きしやすいよう行頭に揃える。 */
+.hatafeed-scope[data-hatafeed-window] :is(input, textarea) { text-align: start; }
 .hatafeed-scope .hf-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding-top: 16px; border-top: 1px solid var(--hy-border); }
 .hatafeed-scope .hf-empty { padding: 24px 12px; color: var(--hy-muted); text-align: center; }
 .hatafeed-scope .hf-draft-offer { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 12px; min-height: 54px; margin-bottom: 18px; padding: 10px 14px; border-radius: 16px; background: var(--hy-bg); font-size: 13px; line-height: 1.6; }

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-export type HataskAkatsukiTab = 'home' | 'cal' | 'todo' | 'mood' | 'meal' | 'garden' | 'support' | 'ranking' | 'hataskapps' | 'apps' | 'review';
+export type HataskAkatsukiTab = 'home' | 'cal' | 'todo' | 'mood' | 'meal' | 'recipe' | 'garden' | 'support' | 'ranking' | 'hataskapps' | 'apps' | 'review';
 
 export type HataskAkatsukiHomeSectionId = 'tools' | 'intro' | 'calendar' | 'todo' | 'feedback' | 'meal';
 export type HataskAkatsukiFavoriteId = 'calendar' | 'todo' | 'meal' | 'flower';
@@ -19,7 +19,7 @@ export interface HataskAkatsukiHomeSection {
 
 /** The layout emits intentions only; the page owns permission checks and persistence. */
 export interface HataskAkatsukiAction {
-	type: 'exit' | 'open-event' | 'create-event' | 'create-todo' | 'record-mood' | 'record-meal' | 'water-flower' | 'toggle-todo' | 'open-app' | 'snooze-event';
+	type: 'exit' | 'open-event' | 'create-event' | 'create-todo' | 'record-mood' | 'record-meal' | 'record-cooking' | 'water-flower' | 'toggle-todo' | 'open-app' | 'snooze-event';
 	id?: string;
 	value?: string | number | boolean;
 }

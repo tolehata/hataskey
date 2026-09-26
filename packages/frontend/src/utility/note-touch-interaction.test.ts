@@ -75,14 +75,6 @@ describe('iPhoneのノート操作をタッチ補助UIが奪わない', () => {
 		expect(onShow).toHaveBeenCalledOnce();
 	});
 
-	test('HataSNSCordUIはノート内ボタンより先にクリックを捕捉しない', () => {
-		const page = source('src/pages/hatacording-ui.vue');
-
-		expect(page).toContain('@click="onEmbeddedNoteClick($event, entry.note!)"');
-		expect(page).not.toContain('@click.capture="onEmbeddedNoteClick');
-		expect(page).toContain('@touchcancel.passive="onMobileEdgeTouchCancel"');
-	});
-
 	test('通常・詳細・サブノートの操作ボタンはiOSのタップ操作を優先する', () => {
 		for (const component of ['MkNote.vue', 'MkNoteDetailed.vue', 'MkSubNoteContent.vue']) {
 			const componentSource = source(`src/components/${component}`);

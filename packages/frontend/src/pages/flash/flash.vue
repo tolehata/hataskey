@@ -227,6 +227,13 @@ async function run() {
 		out: (value) => {
 			// nop
 		},
+		err: (err) => {
+			os.alert({
+				type: 'error',
+				title: 'AiScript Error',
+				text: String(err),
+			});
+		},
 		log: (type, params) => {
 			// nop
 		},
@@ -240,17 +247,18 @@ async function run() {
 	} catch (err) {
 		os.alert({
 			type: 'error',
-			text: 'Syntax error :(',
+			title: 'Syntax Error',
+			text: String(err),
 		});
 		return;
 	}
 	try {
 		await interpreter.exec(ast);
-	} catch (err: any) {
+	} catch (err) {
 		os.alert({
 			type: 'error',
-			title: 'AiScript Error',
-			text: err.message,
+			title: 'AiScript Internal Error',
+			text: String(err),
 		});
 	}
 }

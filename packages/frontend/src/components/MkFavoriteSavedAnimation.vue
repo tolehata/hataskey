@@ -36,13 +36,14 @@ defineProps<{ motion: boolean }>();
 	background: var(--MI_THEME-panel);
 	color: var(--hata-toast-fg, var(--MI_THEME-fg));
 	opacity: 0;
-	transform: translate(17px, 22px) scale(.65);
+	transform: translate(17px, 17px) scale(.65);
 }
 
 // The filled foreground conceals the note as it enters the folder.
 .folder {
 	position: absolute;
-	top: 11px;
+	// Center the folder in the 44px canvas to align with the message.
+	top: 6px;
 	left: 17px;
 	z-index: 2;
 	width: 34px;
@@ -111,11 +112,11 @@ defineProps<{ motion: boolean }>();
 	}
 	66% {
 		opacity: 1;
-		transform: translate(17px, 22px) scale(.65);
+		transform: translate(17px, 17px) scale(.65);
 	}
 	76%, 100% {
 		opacity: 0;
-		transform: translate(17px, 22px) scale(.65);
+		transform: translate(17px, 17px) scale(.65);
 	}
 }
 

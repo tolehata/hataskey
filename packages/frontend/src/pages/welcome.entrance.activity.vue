@@ -6,9 +6,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div v-show="panels.length > 0" ref="root" :class="$style.root" data-welcome-activity>
 	<div ref="track" :class="$style.track" :data-mobile="mobile" @scroll.passive="syncPanel" @scrollend="onScrollEnd" @pointerdown="onManualScroll" @wheel.passive="onManualScroll">
-		<section v-if="notesEnabled" v-show="notesAvailable" :class="[$style.panel, $style.notes]" data-activity-panel="notes" :data-activity-visible="notesAvailable && (!mobile || activePanel === 'notes')" :inert="mobile && activePanel !== 'notes'" :aria-hidden="mobile && activePanel !== 'notes' ? true : undefined" :aria-label="labels.notes">
-			<WelcomeServerNotes :language="language" @availability="notesAvailable = $event" @resize="emit('resize')"/>
-		</section>
 		<section v-if="statsEnabled && activity" :class="$style.panel" data-activity-panel="active" :data-activity-visible="!mobile || activePanel === 'active'" :inert="mobile && activePanel !== 'active'" :aria-hidden="mobile && activePanel !== 'active' ? true : undefined" :aria-label="labels.active">
 			<h3 :class="$style.heading"><i class="ti ti-activity" aria-hidden="true"></i>{{ labels.active }}</h3>
 			<dl :class="$style.readouts">
@@ -36,7 +33,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import WelcomeServerNotes from './welcome.entrance.notes.vue';
 import { instance } from '@/instance.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { parseServerMembers, summarizeServerActivity } from '@/utility/welcome-server-activity.js';
@@ -44,25 +40,23 @@ import { parseServerMembers, summarizeServerActivity } from '@/utility/welcome-s
 const props = defineProps<{ language: 'ja' | 'en' }>();
 defineOptions({ name: 'WelcomeServerActivity' });
 const emit = defineEmits<{ (ev: 'resize'): void }>();
-type Panel = 'notes' | 'active' | 'members';
+type Panel = 'active' | 'members';
 const root = ref<HTMLElement>();
 const track = ref<HTMLElement>();
 const mobile = ref(false);
-const activePanel = ref<Panel>('notes');
+const activePanel = ref<Panel>('active');
 const interacted = ref(false);
-const notesAvailable = ref(false);
 const activity = ref<ReturnType<typeof summarizeServerActivity>>(null);
 const members = ref<number | null>(null);
-const notesEnabled = computed(() => instance.policies.ltlAvailable === true && instance.clientOptions.showTimelineForVisitor !== false);
 const statsEnabled = computed(() => instance.clientOptions.showActivitiesForVisitor !== false);
 const panels = computed<Panel[]>(() => {
-	const order: Panel[] = mobile.value ? ['active', 'notes', 'members'] : ['notes', 'active', 'members'];
-	return order.filter(panel => panel === 'notes' ? notesEnabled.value && notesAvailable.value : statsEnabled.value && (panel === 'active' ? activity.value !== null : members.value !== null));
+	if (!statsEnabled.value) return [];
+	return (['active', 'members'] as const).filter(panel => panel === 'active' ? activity.value !== null : members.value !== null);
 });
 const activeIndex = computed(() => Math.max(0, panels.value.indexOf(activePanel.value)));
 const labels = computed(() => props.language === 'ja' ? {
-	notes: 'サーバーの投稿', active: 'アクティブ人数', members: 'サーバー人数',
-} : { notes: 'Server notes', active: 'Active users', members: 'Members' });
+	active: 'アクティブ人数', members: 'サーバー人数',
+} : { active: 'Active users', members: 'Members' });
 
 function format(value: number, maximumFractionDigits = 0) {
 	return new Intl.NumberFormat(props.language === 'ja' ? 'ja-JP' : 'en-US', { maximumFractionDigits }).format(value);
@@ -152,7 +146,7 @@ function measure() {
 }
 
 watch(panels, async (available) => {
-	if (!interacted.value || !available.includes(activePanel.value)) activePanel.value = available.includes('notes') ? 'notes' : available[0] ?? 'notes';
+	if (!interacted.value || !available.includes(activePanel.value)) activePanel.value = available[0] ?? 'active';
 	await nextTick();
 	if (disposed) return;
 	alignPanel();
@@ -216,13 +210,6 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); });
 	}
 }
 
-.notes {
-	flex-grow: 1.4;
-}
-.root .notes :global(.hero-server-notes) { width: 100%; margin: 0; animation: none; }
-.root .notes[data-activity-visible="true"] :global(.hero-server-notes) { animation: contentArrive .64s var(--activity-ease) 45ms backwards; }
-.root .notes:focus-within :global(.hero-server-notes), .root .notes:active :global(.hero-server-notes) { animation: none; }
-
 .heading {
 	display: flex;
 	align-items: center;
@@ -273,7 +260,6 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); });
 		// The incoming panel must stay under the finger, not drift horizontally.
 		&[data-activity-panel] { --activity-delay: 0ms; --activity-x: 0px; --activity-y: 12px; }
 	}
-	.track > [data-activity-panel="active"] { order: -1; }
 	.pager { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 12px; width: min(320px, 100%); margin: 10px auto 0; }
 	.pageButton {
 		display: grid;
@@ -312,7 +298,6 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); });
 		animation: none;
 		> *, .heading > i { animation: none; }
 	}
-	.root .notes[data-activity-visible="true"] :global(.hero-server-notes) { animation: none; }
 	.dot, .pageButton { transition: none; }
 }
 </style>

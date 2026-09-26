@@ -2,7 +2,7 @@
 <template>
 <HyDialog
 	ref="dialog"
-	:title="goal ? '目標を編集' : '次の目標'"
+	:title="goal ? copy.editGoal : copy.nextGoal"
 	:busy="busy"
 	:inert="prompt"
 	@close="requestClose"
@@ -10,33 +10,33 @@
 >
 	<form class="hy-form" @submit.prevent="save">
 		<label class="hy-field">
-			<span>目標</span>
-			<input v-model="form.title" class="hy-input" maxlength="256" placeholder="今月は本を1冊読み終える" required/>
+			<span>{{ copy.goal }}</span>
+			<input v-model="form.title" class="hy-input" maxlength="256" :placeholder="copy.goalPlaceholder" required/>
 		</label>
 		<label class="hy-field">
 			<span>
-				ひとこと
-				<small>任意</small>
+				{{ copy.note }}
+				<small>{{ copy.optional }}</small>
 			</span>
 			<textarea v-model="form.description" class="hy-input" maxlength="2048" rows="3"></textarea>
 		</label>
 		<div class="hy-field">
-			<span>期間</span>
-			<HyCapsule v-model="form.termType" :options="terms" label="目標の期間"/>
+			<span>{{ copy.period }}</span>
+			<HyCapsule v-model="form.termType" :options="terms" :label="copy.goalPeriod"/>
 		</div>
 		<label class="hy-field">
 			<span>
-				期限
-				<small>任意</small>
+				{{ copy.deadline }}
+				<small>{{ copy.optional }}</small>
 			</span>
 			<input v-model="form.targetDate" class="hy-input" type="date"/>
 		</label>
 		<div class="hy-field">
-			<span>達成の目安</span>
-			<HyCapsule v-model="form.metricType" :options="metrics" label="達成の目安"/>
+			<span>{{ copy.metric }}</span>
+			<HyCapsule v-model="form.metricType" :options="metrics" :label="copy.metric"/>
 		</div>
 		<label v-if="form.metricType" class="hy-field">
-			<span>目標 {{ unit }}</span>
+			<span>{{ copy.target }} {{ unit }}</span>
 			<input
 				v-model.number="form.metricTarget"
 				class="hy-input"
@@ -47,20 +47,20 @@
 				required
 			/>
 		</label>
-		<p v-if="form.metricType" class="hy-muted">勉強・読書の記録から進み具合を表示します</p>
+		<p v-if="form.metricType" class="hy-muted">{{ copy.progressHint }}</p>
 		<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
 	</form>
 	<template #actions>
-		<button class="hy-secondary" :disabled="busy" @click="requestClose">閉じる</button>
+		<button class="hy-secondary" :disabled="busy" @click="requestClose">{{ copy.close }}</button>
 		<button class="hy-primary" :disabled="busy || !valid" @click="save">
-			{{ goal ? '保存する' : '目標を作る' }}
+			{{ goal ? copy.save : copy.createGoal }}
 		</button>
 	</template>
 </HyDialog>
 <HatadyDraftPrompt
 	v-if="prompt"
-	title="目標の編集をどうする？"
-	description="途中の目標を、端末に下書きとして残せます。"
+	:title="copy.draftQuestion"
+	:description="copy.draftDescription"
 	:error="draftError"
 	@save="leave(true)"
 	@discard="leave(false)"
@@ -76,6 +76,8 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
 import { localDateKey } from '@/utility/hatady-home.js';
+import { i18n } from '@/i18n.js';
+const copy = i18n.ts._hata._hatady._goalEditor;
 const props = defineProps<{ goal?: any }>();
 const emit = defineEmits<{ (e: 'closed'): void; (e: 'done'): void }>();
 const dialog = ref<any>(),
@@ -92,16 +94,16 @@ const form = reactive({
 	metricTarget: props.goal?.metricTarget ?? null,
 });
 const terms = [
-	{ value: 'short', label: '短期', icon: 'ti ti-bolt' },
-	{ value: 'long', label: '長期', icon: 'ti ti-mountain' },
+	{ value: 'short', label: copy.shortTerm, icon: 'ti ti-bolt' },
+	{ value: 'long', label: copy.longTerm, icon: 'ti ti-mountain' },
 ];
 const metrics = [
-	{ value: '', label: '自分で達成', icon: 'ti ti-check' },
-	{ value: 'minutes', label: '時間', icon: 'ti ti-clock' },
-	{ value: 'logs', label: '記録数', icon: 'ti ti-notebook' },
-	{ value: 'books', label: '読了数', icon: 'ti ti-books' },
+	{ value: '', label: copy.manual, icon: 'ti ti-check' },
+	{ value: 'minutes', label: copy.time, icon: 'ti ti-clock' },
+	{ value: 'logs', label: copy.logCount, icon: 'ti ti-notebook' },
+	{ value: 'books', label: copy.bookCount, icon: 'ti ti-books' },
 ];
-const unit = computed(() => (form.metricType === 'minutes' ? '分' : form.metricType === 'logs' ? '件' : '冊'));
+const unit = computed(() => (form.metricType === 'minutes' ? copy.minuteUnit : form.metricType === 'logs' ? copy.recordUnit : copy.bookUnit));
 const valid = computed(
 	() => form.title.trim() && (!form.metricType || (Number.isInteger(form.metricTarget) && form.metricTarget > 0)),
 );
@@ -123,11 +125,11 @@ function requestClose() {
 
 function leave(save: boolean) {
 	if (!(save ? draft.saveDraft() : draft.clearDraft())) {
-		draftError.value = '端末の下書きを更新できませんでした';
+		draftError.value = copy.draftUpdateFailed;
 		return;
 	}
 	prompt.value = false;
-	if (save) hatadyNotify('下書きを保存しました');
+	if (save) hatadyNotify(copy.draftSaved);
 	dialog.value?.close();
 }
 
@@ -148,12 +150,12 @@ async function save() {
 			props.goal ? 'hata/hatady/goals/update' : 'hata/hatady/goals/create',
 			props.goal ? { goalId: props.goal.id, ...payload } : payload,
 		);
-		if (!draft.clearDraft()) hatadyNotify('目標を保存しましたが、端末の下書きを削除できませんでした');
-		else hatadyNotify('目標を保存しました');
+		if (!draft.clearDraft()) hatadyNotify(copy.savedDraftDeleteFailed);
+		else hatadyNotify(copy.saved);
 		emit('done');
 		dialog.value?.close();
 	} catch {
-		error.value = '目標を保存できませんでした';
+		error.value = copy.saveFailed;
 	} finally {
 		busy.value = false;
 	}

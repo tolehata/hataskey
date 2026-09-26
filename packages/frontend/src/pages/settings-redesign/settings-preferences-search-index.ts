@@ -31,8 +31,6 @@ const settingsInventoryKeySet = new Set<string>(settingsInventoryKeys);
 // existing route. This mapping records current placement, not a relation
 // fallback.
 const CURRENT_DESTINATION_BY_SOURCE_FILE: Readonly<Record<string, string>> = {
-	'src/components/HatacordingUiSettings.vue': 'hatasnscord-settings',
-	'src/pages/settings-redesign/HataSNSCordSettingsSurface.vue': 'hatasnscord-settings',
 	'src/pages/settings/accounts.vue': 'account-switch',
 	'src/pages/settings/avatar-decoration.vue': 'account-avatar',
 	'src/pages/settings/cherrypick.vue': 'cherrypick-settings',
@@ -50,8 +48,6 @@ const CURRENT_DESTINATION_BY_SOURCE_FILE: Readonly<Record<string, string>> = {
 // An isolated source row must move to an adjacent meaningful setting, never
 // just reopen the destination that already contains it.
 const RELATION_DESTINATION_BY_SOURCE_FILE: Readonly<Record<string, string>> = {
-	'src/components/HatacordingUiSettings.vue': 'hataskey-ui',
-	'src/pages/settings-redesign/HataSNSCordSettingsSurface.vue': 'hataskey-ui',
 	'src/pages/settings/accounts.vue': 'account-profiles',
 	'src/pages/settings/avatar-decoration.vue': 'account-profile',
 	'src/pages/settings/cherrypick.vue': 'cherrypick-display',
@@ -70,6 +66,7 @@ const RELATION_DESTINATION_BY_SOURCE_FILE: Readonly<Record<string, string>> = {
 // destination is needed even for a category that currently has one row.
 // Strong same-feature/section evidence still wins before this fallback.
 const RELATED_DESTINATION_BY_PREFERENCE_DESTINATION: Readonly<Record<string, string>> = {
+	'hataskey-ui-s': 'hataskey-ui',
 	'display-general': 'display-preferences',
 	'display-preferences': 'display-general',
 	'timeline-note-display': 'timeline-group',
@@ -103,7 +100,6 @@ const CATEGORY_BY_DESTINATION_SECTION: Readonly<Record<string, string>> = {
 	connections: 'account',
 	'misskey-ui': 'misskey-ui',
 	misc: 'misskey-ui',
-	'hatasnscord-ui': 'hatasnscord-ui',
 };
 
 type PreferenceInventoryItem = {
@@ -195,13 +191,15 @@ function representativeLegacyControl(
 function fallbackMetadata(key: string): Pick<SettingsControlCatalogItemV2,
 	'persistence' | 'saveMode' | 'availability' | 'owner' | 'applicableUi' | 'metadataEvidence'
 > {
-	const deviceLocal = key === 'lang' || key === 'useBoldFont' || key === 'useSystemFont';
+	const deviceLocal = key === 'lang' || key === 'useBoldFont' || key === 'useSystemFont' || key.startsWith('hataskeyUi3Rss');
 	const navbarNotice = key === 'emojiAdditionNotice' || key === 'hourlyTimeNotice';
+	// 旗鯖fork: Hataskey UI 3 の投稿欄だけに効く設定。
+	const hataskeyUi3 = key.startsWith('hataskeyUi3');
 	return {
 		persistence: deviceLocal ? 'device' : 'profile',
 		saveMode: 'immediate',
 		availability: 'all',
-		owner: navbarNotice ? 'hatasaba' : key.startsWith('searchEngine') || key === 'additionalUnicodeEmojiIndexes' || key === 'externalNavigationWarning' || key === 'trustedDomains' ? 'cherrypick' : 'core',
+		owner: navbarNotice || hataskeyUi3 ? 'hatasaba' : key.startsWith('searchEngine') || key === 'additionalUnicodeEmojiIndexes' || key === 'externalNavigationWarning' || key === 'trustedDomains' ? 'cherrypick' : 'core',
 		applicableUi: navbarNotice ? 'simple' : 'all',
 		metadataEvidence: {
 			persistence: deviceLocal ? `redesigned preference inventory: device value ${key}` : `redesigned preference inventory: preference value ${key}`,
@@ -267,6 +265,10 @@ function materializePreferenceControl(
 		...(description ? { description } : {}),
 		aliases: [...new Set([
 			entry.key,
+			...(entry.key.startsWith('hataskeyUi3Rss') ? ['RSS', 'フィード', 'リーダー', 'feed', 'reader', '訂閱來源'] : []),
+			...(entry.destinationId === 'hataskey-ui-s' ? [
+				...(entry.key.startsWith('hataskeyUi3Rss') ? [] : ['投稿フォーム']), 'Hataskey UI S', 'UI3',
+			] : []),
 			...(legacy?.aliases ?? []),
 			...(legacy?.label != null ? [legacy.label] : []),
 		])],
@@ -335,7 +337,7 @@ export function settingsDestinationCatalogItemsV2(): SettingsDestinationCatalogI
 		seen.add(destination.id);
 		const sectionId = sectionForDestination.get(destination.id);
 		const categoryId = destination.categoryId ?? (sectionId == null ? undefined : CATEGORY_BY_DESTINATION_SECTION[sectionId]);
-		const owner = categoryId === 'cherrypick' ? 'cherrypick' : destination.brand != null || sectionId === 'hataskey-tools' || sectionId === 'hatasnscord-ui' ? 'hatasaba' : 'core';
+		const owner = categoryId === 'cherrypick' ? 'cherrypick' : destination.brand != null || sectionId === 'hataskey-tools' ? 'hatasaba' : 'core';
 		if (typeof destination.label !== 'string' || destination.label.trim() === '') throw new Error(`[settings-destinations] destination label is missing: ${destination.id}`);
 		return {
 			destinationId: destination.id,

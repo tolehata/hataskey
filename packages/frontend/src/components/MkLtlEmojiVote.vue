@@ -10,29 +10,29 @@
 	:data-navbar="navbar"
 	:aria-hidden="phase === 'leaving' ? true : undefined"
 	:inert="phase === 'leaving'"
-	aria-label="LTLで絵文字投票"
+	:aria-label="copy.title"
 	tabindex="-1"
 >
 	<div :class="$style.clip">
 		<div :class="$style.card">
-			<button v-if="contentPhase === 'voting' || isResult" :class="$style.dismiss" class="_button" type="button" data-emoji-vote-dismiss :aria-label="isResult ? '結果を閉じる' : '投票を辞退する'" :disabled="!active || submitting || phase === 'leaving'" @click.stop="dismiss">
+			<button v-if="contentPhase === 'voting' || isResult" :class="$style.dismiss" class="_button" type="button" data-emoji-vote-dismiss :aria-label="isResult ? copy.closeResults : copy.declineVote" :disabled="!active || submitting || phase === 'leaving'" @click.stop="dismiss">
 				<i class="ti ti-x" aria-hidden="true"></i>
 			</button>
 			<div :class="$style.head">
 				<i class="ti ti-mood-smile" aria-hidden="true"></i>
-				<span>LTLで絵文字投票</span>
-				<span v-if="contentPhase !== 'declined'" :class="$style.counter" :aria-label="isResult ? `残り${remaining}秒` : undefined">
+				<span>{{ copy.title }}</span>
+				<span v-if="contentPhase !== 'declined'" :class="$style.counter" :aria-label="isResult ? i18n.tsx._hata._ltlEmojiVote.secondsRemaining({ seconds: String(remaining) }) : undefined">
 					<i v-if="isResult" class="ti ti-clock" aria-hidden="true"></i>
-					<span>{{ isResult ? `${remaining}秒` : phase === 'tallying' ? '投票締切' : `締切まで ${remaining}秒` }}</span>
+					<span>{{ isResult ? i18n.tsx._hata._ltlEmojiVote.seconds({ seconds: String(remaining) }) : phase === 'tallying' ? copy.voteClosed : i18n.tsx._hata._ltlEmojiVote.untilClose({ seconds: String(remaining) }) }}</span>
 				</span>
 			</div>
 			<div ref="bodyViewport" :class="$style.bodyViewport" :style="bodyHeight === null ? undefined : { height: `${bodyHeight}px` }">
 				<Transition :css="motion" :mode="motion ? 'out-in' : undefined" :enterActiveClass="$style.contentEnterActive" :leaveActiveClass="$style.contentLeaveActive" :enterFromClass="$style.contentHidden" :leaveToClass="$style.contentHidden" @beforeLeave="holdBodyHeight" @enter="measureBodyHeight" @afterEnter="releaseBodyHeight" @enterCancelled="releaseBodyHeight">
 					<div :key="contentPhase === 'declined' ? 'declined' : 'round'" :class="$style.body" :data-vote-content="contentPhase">
 						<template v-if="contentPhase === 'voting'">
-							<h2 :class="$style.title">どの絵文字にする？</h2>
-							<p :class="$style.subtitle">{{ !canVote ? 'ログインして参加できます' : submitting ? '投票しています...' : 'ひとつだけ、選んでね。' }}</p>
-							<div :class="$style.choices" role="group" aria-label="カスタム絵文字を1回選択" :aria-busy="submitting">
+							<h2 :class="$style.title">{{ copy.whichEmoji }}</h2>
+							<p :class="$style.subtitle">{{ !canVote ? copy.loginToJoin : submitting ? copy.submitting : copy.chooseOne }}</p>
+							<div :class="$style.choices" role="group" :aria-label="copy.chooseCustomEmoji" :aria-busy="submitting">
 								<button
 									v-for="emoji in round.candidates"
 									:key="emoji.id"
@@ -40,7 +40,7 @@
 									class="_button"
 									type="button"
 									:disabled="submitting || !canVote"
-									:aria-label="`:${emoji.name}: に投票する`"
+									:aria-label="i18n.tsx._hata._ltlEmojiVote.voteFor({ emoji: `:${emoji.name}:` })"
 									:title="`:${emoji.name}:`"
 									@click.stop="vote(emoji.id)"
 								>
@@ -56,26 +56,26 @@
 								<i v-else class="ti ti-check"></i>
 							</span>
 							<div :class="$style.stateCopy">
-								<h2>{{ contentPhase === 'rain' ? 'この絵文字に決めた！' : '他のユーザーの投票を待っています...' }}</h2>
-								<p>あなたの投票は受け付けました</p>
+								<h2>{{ contentPhase === 'rain' ? copy.chosen : copy.waitingForOthers }}</h2>
+								<p>{{ copy.voteAccepted }}</p>
 								<span :class="$style.waitDots" aria-hidden="true"><i></i><i></i><i></i></span>
 							</div>
 						</div>
 						<div v-else-if="contentPhase === 'tallying'" :class="$style.state">
 							<span :class="$style.symbol" aria-hidden="true"><i class="ti ti-hourglass"></i></span>
 							<div :class="$style.stateCopy">
-								<h2>集計しています...</h2>
-								<p>もうすぐ結果が出ます。</p>
+								<h2>{{ copy.tallying }}</h2>
+								<p>{{ copy.resultsSoon }}</p>
 								<span :class="$style.waitDots" aria-hidden="true"><i></i><i></i><i></i></span>
 							</div>
 						</div>
 						<div v-else-if="contentPhase === 'declined'" :class="$style.state">
 							<span :class="$style.symbol" aria-hidden="true"><i class="ti ti-check"></i></span>
-							<div :class="$style.stateCopy"><h2>辞退しました</h2></div>
+							<div :class="$style.stateCopy"><h2>{{ copy.declined }}</h2></div>
 						</div>
 						<template v-else-if="isResult">
-							<h2 :class="$style.title">集計が完了しました</h2>
-							<ol :class="$style.rankings" role="list" aria-label="絵文字投票の結果">
+							<h2 :class="$style.title">{{ copy.resultsReady }}</h2>
+							<ol :class="$style.rankings" role="list" :aria-label="copy.resultsLabel">
 								<li v-for="entry in round.rankings" :key="entry.emoji.id" :class="$style.ranking" :data-rank="entry.rank ?? 'none'" :value="entry.rank ?? undefined">
 									<span :class="$style.place">
 										<i v-if="entry.rank === 1" class="ti ti-trophy" aria-hidden="true"></i>
@@ -84,11 +84,11 @@
 									<span :class="$style.rankImage" :data-winner="entry.rank === 1"><MkCustomEmoji :name="entry.emoji.name" :url="entry.emoji.url" :host="null"/></span>
 									<span :class="$style.rankDetail">
 										<span :class="$style.rankName" :title="`:${entry.emoji.name}:`">:{{ entry.emoji.name }}:</span>
-										<span :class="$style.rankCount">{{ entry.count }}票</span>
+										<span :class="$style.rankCount">{{ i18n.tsx._hata._ltlEmojiVote.votes({ count: String(entry.count) }) }}</span>
 									</span>
 								</li>
 							</ol>
-							<p :class="$style.caption">{{ round.total > 0 ? `${round.total}人が参加しました` : '今回は投票がありませんでした' }}</p>
+							<p :class="$style.caption">{{ round.total > 0 ? i18n.tsx._hata._ltlEmojiVote.participants({ count: String(round.total) }) : copy.noVotes }}</p>
 						</template>
 					</div>
 				</Transition>
@@ -114,6 +114,7 @@ import { LTL_EMOJI_VOTE_EXIT_MS, LTL_EMOJI_VOTE_RAIN_MS } from '@/utility/ltl-em
 import { makeLtlEmojiRain, playLtlEmojiConfetti } from '@/utility/ltl-emoji-vote-effects.js';
 import { prefer } from '@/preferences.js';
 import { useGlobalEvent } from '@/events.js';
+import { i18n } from '@/i18n.js';
 
 const props = withDefaults(defineProps<{
 	round: LtlEmojiVoteRound;
@@ -130,6 +131,7 @@ const props = withDefaults(defineProps<{
 	declined?: boolean;
 }>(), { submitting: false, voteError: null, canVote: true, navbar: false, declined: false });
 const emit = defineEmits<{ vote: [emojiId: string]; dismiss: [] }>();
+const copy = i18n.ts._hata._ltlEmojiVote;
 const cardRoot = useTemplateRef<HTMLElement>('cardRoot');
 const bodyViewport = useTemplateRef<HTMLElement>('bodyViewport');
 const bodyHeight = ref<number | null>(null);
@@ -210,19 +212,19 @@ useGlobalEvent('themeChanging', updateThemeTextColors);
 watch(() => props.navbar, updateThemeTextColors, { flush: 'post' });
 
 function rankLabel(entry: LtlEmojiVoteRanking) {
-	return entry.rank === null ? '順位なし' : `${entry.tied ? '同率' : ''}${entry.rank}位`;
+	return entry.rank === null ? copy.unranked : entry.tied ? i18n.tsx._hata._ltlEmojiVote.tiedRank({ rank: String(entry.rank) }) : i18n.tsx._hata._ltlEmojiVote.rank({ rank: String(entry.rank) });
 }
 
 const announcement = computed(() => {
 	switch (props.phase) {
-		case 'voting': return `絵文字投票が始まりました。${props.round.candidates.length}個からひとつ選んでください。`;
+		case 'voting': return i18n.tsx._hata._ltlEmojiVote.announcementStarted({ count: String(props.round.candidates.length) });
 		case 'rain':
-		case 'waiting': return 'あなたの投票は受け付けました。他のユーザーの投票を待っています。';
-		case 'tallying': return '集計しています。';
-		case 'declined': return '辞退しました';
+		case 'waiting': return copy.announcementAccepted;
+		case 'tallying': return copy.announcementTallying;
+		case 'declined': return copy.declined;
 		case 'result': return props.round.total > 0
-			? `集計が完了しました。${props.round.rankings.map(entry => `${rankLabel(entry)}、:${entry.emoji.name}:、${entry.count}票`).join('。')}`
-			: '集計が完了しました。今回は投票がありませんでした。';
+			? i18n.tsx._hata._ltlEmojiVote.announcementResults({ results: props.round.rankings.map(entry => i18n.tsx._hata._ltlEmojiVote.announcementEntry({ rank: rankLabel(entry), emoji: `:${entry.emoji.name}:`, votes: i18n.tsx._hata._ltlEmojiVote.votes({ count: String(entry.count) }) })).join(copy.announcementSeparator) })
+			: copy.announcementNoVotes;
 		default: return '';
 	}
 });

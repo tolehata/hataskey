@@ -1,17 +1,29 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <section v-if="destination != null" class="root" :data-settings-destination-id="destination.id" :data-motion-enabled="motionEnabled ? 'true' : 'false'">
-	<header class="heading">
+	<header class="heading" :class="{ sHero: destination.id === 'hataskey-ui-s' }">
 		<!-- 旗鯖fork: カテゴリを移ると文章が左右に滑って入れ替わる。
 		     ⚠️key に行き先のidを与えないと差し替わらない。 -->
 		<Transition name="settings-heading" :css="motionEnabled" mode="out-in">
 			<div :key="destination.id" class="headingText">
-				<p class="eyebrow">{{ destination.categoryId === 'cherrypick' ? 'CherryPick' : destination.label }}</p>
-				<h2>{{ group.title }}</h2>
-				<p>{{ group.description }}</p>
+				<div v-if="destination.id === 'hataskey-ui-s'" class="sHeroLayout">
+					<div class="sHeroCopy">
+						<span class="sBadge" :class="{ sBadgeInactive: ui !== 'hataskey3' }">{{ ui === 'hataskey3' ? i18n.ts.inUse : i18n.ts._hata._uiSetup.beta }}</span>
+						<h2><span class="settingsBrand">{{ group.title }}</span></h2>
+						<p>{{ group.description }}</p>
+						<p class="sImmediate">{{ i18n.ts._hata._settingsRedesign.immediate.uiSImmediate }}</p>
+					</div>
+					<button type="button" class="sReset" @click="resetUi3ComposerPreferences"><i class="ti ti-restore" aria-hidden="true"></i>{{ i18n.ts.resetToDefaultValue }}</button>
+				</div>
+				<template v-else>
+					<p class="eyebrow">{{ destination.categoryId === 'cherrypick' ? 'CherryPick' : destination.label }}</p>
+					<h2>{{ group.title }}</h2>
+					<p>{{ group.description }}</p>
+				</template>
 			</div>
 		</Transition>
 	</header>
+	<HataskeyUiSRssSettings v-if="destination.id === 'hataskey-ui-s'"/>
 
 	<section v-if="destination.id === 'display-general'" class="auxiliary" role="list" :aria-label="group.title">
 		<article class="control" role="listitem" :data-settings-search-id="searchIdFor('lang')">
@@ -70,6 +82,7 @@
 					<span class="captionLine"><b>{{ i18n.ts._settings.ifOn }}:</b> {{ i18n.ts._chat.send }}: Enter / {{ i18n.ts._chat.newline }}: Shift + Enter</span>
 					<span class="captionLine"><b>{{ i18n.ts._settings.ifOff }}:</b> {{ i18n.ts._chat.send }}: Ctrl + Enter / {{ i18n.ts._chat.newline }}: Enter</span>
 				</template>
+				<template v-else-if="control.key === 'showFixedPostForm' && ui === 'hataskey3'" #caption><span class="captionLine">{{ i18n.ts._hata._customSettings._general.ui3ComposerUsePosition }}</span></template>
 				<template v-else-if="control.caption.length" #caption><span v-for="caption in control.caption" :key="caption" class="captionLine">{{ caption }}</span></template>
 			</MkSwitch>
 			<MkSelect v-else-if="control.kind === 'select'" :modelValue="String(read(control.key) ?? '')" :items="selectItems(control)" :disabled="isDisabled(control)" @update:modelValue="write(control.key, $event)">
@@ -129,6 +142,9 @@ import { canonicalSearchIdForPreferenceKey, controlsForPreferenceDestination, pa
 import { emojiIndexLangs, createSettingsPreferenceModels } from './settings-preferences-models.js';
 import type { PreferenceContainerKey, PreferenceControl } from './settings-preferences-catalog.js';
 import type { DataSaverKey } from './settings-preferences-models.js';
+import { HK3_COMPOSER_SHORTCUT_NONE, hk3ComposerToolLabel } from '@/components/hataskey3/hk3-composer-tools.js';
+import HataskeyUiSRssSettings from './HataskeyUiSRssSettings.vue';
+import type { Hk3ComposerToolId } from '@/components/hataskey3/hk3-composer-tools.js';
 import MkButton from '@/components/MkButton.vue';
 import MkInfo from '@/components/MkInfo.vue';
 import MkInput from '@/components/MkInput.vue';
@@ -141,14 +157,16 @@ import { i18n } from '@/i18n.js';
 import { $i } from '@/i.js';
 import { instance } from '@/instance.js';
 import { prefer } from '@/preferences.js';
+import { getInitialPrefValue } from '@/preferences/manager.js';
 import { store } from '@/store.js';
+import * as os from '@/os.js';
 
 const props = defineProps<{ destinationId: string }>();
 const models = createSettingsPreferenceModels();
 const destination = computed(() => parsePreferenceDestination(props.destinationId));
 const group = computed(() => destination.value == null ? { title: i18n.ts.preferences, description: i18n.ts.preferences } : preferenceGroups[destination.value.id]);
 const visibleControls = computed(() => destination.value == null ? [] : controlsForPreferenceDestination(destination.value.id));
-const visibleMountedControls = computed(() => visibleControls.value.filter(isControlMounted));
+const visibleMountedControls = computed(() => visibleControls.value.filter(control => !control.key.startsWith('hataskeyUi3Rss') && isControlMounted(control)));
 const dataSaverKeys: readonly DataSaverKey[] = ['media', 'avatar', 'disableUrlPreview', 'urlPreviewThumbnail', 'code'];
 const languageItems = langs.map(item => ({ label: item[1], value: item[0] }));
 const searchEngineItems = ['Google', 'Bing', 'Yahoo', 'Baidu', 'NAVER', 'Daum', 'DuckDuckGo'].map(value => ({ label: value, value: value.toLowerCase() })).concat([{ label: i18n.ts.other, value: 'other' }]);
@@ -161,6 +179,21 @@ function read(key: PreferenceContainerKey): unknown { return models.controls[key
 
 function write(key: PreferenceContainerKey, value: unknown): void { models.controls[key].value = value; }
 
+const ui3ComposerResetKeys = [
+	'hataskeyUi3ComposerShortcut1', 'hataskeyUi3ComposerShortcut2',
+	'hataskeyUi3ComposerEmojiPosition', 'hataskeyUi3ComposerPosition',
+] as const;
+
+async function resetUi3ComposerPreferences(): Promise<void> {
+	const { canceled } = await os.confirm({
+		type: 'warning',
+		title: i18n.ts.resetToDefaultValue,
+		text: `${group.value.title}: ${i18n.ts.areYouSure}`,
+	});
+	if (canceled) return;
+	for (const key of ui3ComposerResetKeys) write(key, getInitialPrefValue(key));
+}
+
 function noop(): void { /* the forced-on control intentionally has no setter */ }
 
 function writeDeviceKind(value: unknown): void { models.overridedDeviceKind.value = value === '' ? null : value; }
@@ -172,6 +205,9 @@ function auxiliaryLabel(key: string): string { return auxiliaryForKey(key).label
 function auxiliaryCaption(key: string): readonly string[] { return auxiliaryForKey(key).caption; }
 
 function optionLabel(key: PreferenceContainerKey, value: string): string {
+	if (key === 'hataskeyUi3ComposerShortcut1' || key === 'hataskeyUi3ComposerShortcut2') return value === HK3_COMPOSER_SHORTCUT_NONE ? i18n.ts._hata._customSettings._general.ui3ComposerShortcutNone : hk3ComposerToolLabel(value as Hk3ComposerToolId);
+	if (key === 'hataskeyUi3ComposerEmojiPosition') return value === 'beforeVisibility' ? i18n.ts._hata._customSettings._general.ui3ComposerEmojiBeforeVisibility : i18n.ts._hata._customSettings._general.ui3ComposerEmojiAfterShortcuts;
+	if (key === 'hataskeyUi3ComposerPosition') return value === 'top' ? i18n.ts._hata._customSettings._general.ui3ComposerPositionTop : i18n.ts._hata._customSettings._general.ui3ComposerPositionBottom;
 	if (key === 'contextMenu') return ({ app: i18n.ts._contextMenu.app, appWithShift: i18n.ts._contextMenu.appWithShift, native: i18n.ts._contextMenu.native }[value as 'app' | 'appWithShift' | 'native']);
 	if (key === 'instanceTicker') return ({ none: i18n.ts._instanceTicker.none, remote: i18n.ts._instanceTicker.remote, always: i18n.ts._instanceTicker.always }[value as 'none' | 'remote' | 'always']);
 	if (key === 'showingAnimatedImages') return i18n.ts._showingAnimatedImages[value as 'always' | 'interaction' | 'inactive'];
@@ -192,6 +228,7 @@ function rangeTextConverter(key: PreferenceContainerKey) { return key === 'polli
 
 function isDisabled(control: PreferenceControl): boolean {
 	const key = control.key;
+	if (key === 'showFixedPostForm') return ui === 'hataskey3';
 	if (key === 'pollingInterval') return models.realtimeMode.value;
 	if (key === 'enableMarkByDate') return Boolean(read('enableAbsoluteTime'));
 	if (key === 'enableQuickAddMfmFunction' || key === 'animatedMfm') return !read('advancedMfm');
@@ -221,6 +258,17 @@ function emojiLanguageName(language: typeof emojiIndexLangs[number]): string { r
 .root { display: grid; gap: 16px; min-width: 0; line-break: strict; word-break: normal; overflow-wrap: break-word; text-wrap: pretty; }
 .heading, .toolbox { border: 1px solid color-mix(in srgb, var(--MI_THEME-divider) 76%, transparent); border-radius: 16px; background: var(--MI_THEME-panel); box-shadow: 0 1px 0 color-mix(in srgb, var(--MI_THEME-bg) 18%, transparent); }
 .heading { padding: 20px; }.heading h2 { margin: 0; font-size: 1.35rem; line-height: 1.35; }.heading p { margin: 8px 0 0; color: var(--MI_THEME-fgTransparentWeak); }
+.sHero { padding: clamp(20px, 6%, 32px); border-radius: 24px; background: var(--MI_THEME-panel); box-shadow: 0 2px 10px color-mix(in srgb, var(--MI_THEME-shadow) 5%, transparent); container-type: inline-size; }
+.sHeroLayout { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 20px 24px; min-width: 0; }
+.sHeroCopy { flex: 1 1 250px; min-width: 0; }
+.sHero h2 { margin: 12px 0 0; color: var(--MI_THEME-accent); font-size: clamp(1.8rem, 8cqi, 2.25rem); line-height: 1.18; }
+.sHero h2 .settingsBrand { white-space: normal; overflow-wrap: anywhere; }
+.sHero p { max-width: 60ch; line-height: 1.6; }
+.sHero .sImmediate { margin-top: 12px; color: var(--MI_THEME-accent); font-size: .8rem; font-weight: 700; }
+.sBadge { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 12px; border-radius: 999px; background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); font-size: .72rem; font-weight: 800; }
+.sBadgeInactive { background: color-mix(in srgb, var(--MI_THEME-fg) 8%, var(--MI_THEME-panel)); color: var(--MI_THEME-fgTransparentWeak); }
+.sReset { display: inline-flex; flex: 0 1 auto; align-items: center; justify-content: center; gap: 7px; max-width: 100%; min-height: 44px; padding: 9px 18px; border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 42%, var(--MI_THEME-divider)); border-radius: 999px; background: transparent; color: var(--MI_THEME-accent); font: inherit; font-weight: 700; cursor: pointer; }
+.sReset:hover, .sReset:focus-visible { background: var(--MI_THEME-accentedBg); }
 /* 旗鯖fork: 見出しの入れ替え。⚠️mode="out-in" なので、出ていく側と入る側は重ならない。 */
 .settings-heading-enter-active, .settings-heading-leave-active { transition: opacity .22s ease, transform .26s cubic-bezier(.2, .9, .2, 1); }
 .settings-heading-enter-from { opacity: 0; transform: translateX(14px); }

@@ -1,30 +1,30 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <header ref="root" :class="$style.header" :data-motion="prefer.r.animation.value" :data-preview="!!preview">
-	<button type="button" :class="$style.brand" aria-label="HataFeed ホーム" @click="emit('navigate', 'home')">HataFeed</button>
+	<button type="button" :class="$style.brand" :aria-label="headerCopy.brandHome" @click="emit('navigate', 'home')">HataFeed</button>
 	<nav :class="$style.nav" aria-label="HataFeed">
-		<button type="button" :class="$style.exit" aria-label="HataFeed から退出" title="HataFeed から退出" @click="closeCreate(); emit('exit')"><i class="ti ti-logout-2" aria-hidden="true"></i></button>
+		<button type="button" :class="$style.exit" :aria-label="headerCopy.exit" :title="headerCopy.exit" @click="closeCreate(); emit('exit')"><i class="ti ti-logout-2" aria-hidden="true"></i></button>
 		<div ref="outline" :class="$style.capsule" :data-notification="ownsSurface && context.items.value.length > 0">
 			<div :class="$style.surface">
-				<HyCapsule :class="$style.tabs" :modelValue="tab" :options="tabs" label="HataFeed のページ" @update:modelValue="emit('navigate', $event as HataFeedTab)"/>
+				<HyCapsule :class="$style.tabs" :modelValue="tab" :options="tabs" :label="headerCopy.pages" @update:modelValue="emit('navigate', $event as HataFeedTab)"/>
 				<div ref="target" :class="$style.notice" :style="{ height: `${ownsSurface && context.items.value.length ? context.height.value : 0}px` }"></div>
 			</div>
 		</div>
 	</nav>
 	<div :class="$style.tools">
 		<div ref="createDock" :class="$style.create" @keydown.esc.stop.prevent="closeCreate(true)">
-			<button ref="createButton" type="button" class="hf-icon" :class="$style.add" :aria-label="createOpen ? '報告・申請を閉じる' : '報告・申請'" title="報告・申請" :aria-expanded="createOpen" :aria-controls="menuId" aria-haspopup="menu" :data-open="createOpen" @click="toggleCreate" @keydown.down.prevent="openCreate"><i class="ti ti-plus" aria-hidden="true"></i></button>
-			<button ref="projectButton" type="button" :class="$style.project" :data-icon-only="projectIconOnly" :aria-label="`プロジェクトを切り替え：${projectName}`" :title="projectName" @click="closeCreate(); emit('project', $event)"><i class="ti ti-flag-2" aria-hidden="true"></i><span v-if="!projectIconOnly">{{ projectName }}</span><span ref="projectMeasure" :class="$style.projectMeasure" aria-hidden="true">{{ projectName }}</span></button>
+			<button ref="createButton" type="button" class="hf-icon" :class="$style.add" :aria-label="createOpen ? headerCopy.createMenuClose : headerCopy.createMenu" :title="headerCopy.createMenu" :aria-expanded="createOpen" :aria-controls="menuId" aria-haspopup="menu" :data-open="createOpen" @click="toggleCreate" @keydown.down.prevent="openCreate"><i class="ti ti-plus" aria-hidden="true"></i></button>
+			<button ref="projectButton" type="button" :class="$style.project" :data-icon-only="projectIconOnly" :aria-label="i18n.tsx._hata._hatafeed._header.switchProject({ name: projectName })" :title="projectName" @click="closeCreate(); emit('project', $event)"><i class="ti ti-flag-2" aria-hidden="true"></i><span v-if="!projectIconOnly">{{ projectName }}</span><span ref="projectMeasure" :class="$style.projectMeasure" aria-hidden="true">{{ projectName }}</span></button>
 			<Transition :css="prefer.r.animation.value" :name="prefer.r.animation.value ? 'hf-create' : undefined">
-				<div v-if="createOpen" :id="menuId" ref="createMenu" :class="$style.createMenu" role="menu" aria-label="報告・申請" @keydown.down.prevent="moveMenu(1)" @keydown.up.prevent="moveMenu(-1)">
-					<button type="button" role="menuitem" @click="selectCreate('emoji')"><i class="ti ti-mood-plus" aria-hidden="true"></i>絵文字申請</button>
-					<button type="button" role="menuitem" @click="selectCreate('issue')"><i class="ti ti-pencil-plus" aria-hidden="true"></i>新規イシュー</button>
+				<div v-if="createOpen" :id="menuId" ref="createMenu" :class="$style.createMenu" role="menu" :aria-label="headerCopy.createMenu" @keydown.down.prevent="moveMenu(1)" @keydown.up.prevent="moveMenu(-1)">
+					<button type="button" role="menuitem" @click="selectCreate('emoji')"><i class="ti ti-mood-plus" aria-hidden="true"></i>{{ copy.emojiRequest }}</button>
+					<button type="button" role="menuitem" @click="selectCreate('issue')"><i class="ti ti-pencil-plus" aria-hidden="true"></i>{{ copy.newIssue }}</button>
 				</div>
 			</Transition>
 		</div>
-		<button type="button" class="hf-icon" :class="$style.bell" aria-label="通知" title="通知" @click="emit('notifications', $event)"><i class="ti ti-bell" aria-hidden="true"></i><span v-if="unread" :class="$style.badge">{{ unread > 99 ? '99+' : unread }}</span></button>
-		<button type="button" class="hf-icon" :class="$style.refresh" :data-refreshing="refreshing" :disabled="refreshing" :aria-busy="refreshing" aria-label="更新" title="更新" @click="emit('refresh')"><i class="ti ti-refresh" aria-hidden="true"></i></button>
-		<button type="button" class="hf-icon" aria-label="設定" title="設定" @click="emit('settings', $event)"><i class="ti ti-settings" aria-hidden="true"></i></button>
+		<button type="button" class="hf-icon" :class="$style.bell" :aria-label="copy.notifications" :title="copy.notifications" @click="emit('notifications', $event)"><i class="ti ti-bell" aria-hidden="true"></i><span v-if="unread" :class="$style.badge">{{ unread > 99 ? '99+' : unread }}</span></button>
+		<button type="button" class="hf-icon" :class="$style.refresh" :data-refreshing="refreshing" :disabled="refreshing" :aria-busy="refreshing" :aria-label="copy.refresh" :title="copy.refresh" @click="emit('refresh')"><i class="ti ti-refresh" aria-hidden="true"></i></button>
+		<button type="button" class="hf-icon" :aria-label="headerCopy.settings" :title="headerCopy.settings" @click="emit('settings', $event)"><i class="ti ti-settings" aria-hidden="true"></i></button>
 	</div>
 </header>
 <MkHataskeyNotificationToasts v-if="!preview && !inherited" :context="context"/>
@@ -38,7 +38,10 @@ import MkHataskeyNotificationToasts from '@/components/MkHataskeyNotificationToa
 import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { hataFeedDraftPromptOpen, registerHataFeedNoticeHost } from '@/utility/hatafeed-ui.js';
 import { prefer } from '@/preferences.js';
+import { i18n } from '@/i18n.js';
 
+const copy = i18n.ts._hata._hatafeed._home;
+const headerCopy = i18n.ts._hata._hatafeed._header;
 const props = defineProps<{ tab: HataFeedTab; projectName: string; staff: boolean; unread: number; refreshing?: boolean; preview?: boolean }>();
 const emit = defineEmits<{ navigate: [tab: HataFeedTab]; create: [kind: 'emoji' | 'issue']; project: [event: MouseEvent]; notifications: [event: MouseEvent]; refresh: []; settings: [event: MouseEvent]; exit: [] }>();
 const root = ref<HTMLElement>();
@@ -95,11 +98,11 @@ const unregisterSurface = preview ? () => {} : context.registerSurface(surface);
 const unregisterReceiver = preview ? () => {} : registerNotificationPageContext(context, () => ownsSurface.value);
 const unregisterNotices = preview ? () => {} : registerHataFeedNoticeHost({ active: () => ownsSurface.value, notify: message => context.enqueueStatus(message) });
 const tabs = computed(() => [
-	{ value: 'home', label: 'ホーム', icon: 'ti ti-home' },
-	{ value: 'issues', label: 'イシュー', icon: 'ti ti-clipboard-list' },
-	{ value: 'roadmap', label: 'ロードマップ', icon: 'ti ti-route' },
-	...(props.staff ? [{ value: 'emoji', label: '申請管理', icon: 'ti ti-mood-plus' }] : []),
-	{ value: 'beta', label: 'ベータ', icon: 'ti ti-flask' },
+	{ value: 'home', label: headerCopy.home, icon: 'ti ti-home' },
+	{ value: 'issues', label: copy.issues, icon: 'ti ti-clipboard-list' },
+	{ value: 'roadmap', label: copy.roadmap, icon: 'ti ti-route' },
+	...(props.staff ? [{ value: 'emoji', label: copy.requestManagement, icon: 'ti ti-mood-plus' }] : []),
+	{ value: 'beta', label: copy.beta, icon: 'ti ti-flask' },
 ]);
 let observer: IntersectionObserver | undefined;
 onMounted(() => {

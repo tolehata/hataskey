@@ -118,7 +118,29 @@ export function hataFeedNotificationDisplayBody(body: string, lang = versatileLa
 	match = body.match(/^(.+)が絵文字「(:[^」]+:)」の申請をリジェクトしました。$/su);
 	if (match) return copyx.emojiRejectedByActor({ name: match[1], emoji: match[2] });
 
+	match = body.match(/^絵文字「(:[^」]+:)」の(画像更新|取り下げ)申請が届きました。$/su);
+	if (match) return copyx.emojiChangeReceived({ emoji: match[1], kind: localizedEmojiChangeKind(match[2]) });
+
+	match = body.match(/^絵文字「(:[^」]+:)」の(画像更新|取り下げ)申請が(承認|保留|却下)されました。（理由: ([\s\S]+)）$/u);
+	if (match) return copyx.emojiChangeDecidedWithReason({ emoji: match[1], kind: localizedEmojiChangeKind(match[2]), status: localizedEmojiChangeStatus(match[3]), reason: match[4] });
+
+	match = body.match(/^絵文字「(:[^」]+:)」の(画像更新|取り下げ)申請が(承認|保留|却下)されました。$/u);
+	if (match) return copyx.emojiChangeDecided({ emoji: match[1], kind: localizedEmojiChangeKind(match[2]), status: localizedEmojiChangeStatus(match[3]) });
+
+	match = body.match(/^絵文字「(:[^」]+:)」の(画像更新|取り下げ)申請を(承認|保留|却下)しました。$/u);
+	if (match) return copyx.emojiChangeStaffDecided({ emoji: match[1], kind: localizedEmojiChangeKind(match[2]), status: localizedEmojiChangeStatus(match[3]) });
+
 	return body;
+}
+
+function localizedEmojiChangeKind(kind: string): string {
+	const copy = i18n.ts._hata._hatafeed._notificationGroup;
+	return kind === '画像更新' ? copy.emojiImageUpdate : copy.emojiWithdraw;
+}
+
+function localizedEmojiChangeStatus(status: string): string {
+	const copy = i18n.ts._hata._hatafeed._notificationGroup;
+	return status === '承認' ? copy.emojiDecisionApproved : status === '保留' ? copy.emojiDecisionHeld : copy.emojiDecisionRejected;
 }
 
 /**

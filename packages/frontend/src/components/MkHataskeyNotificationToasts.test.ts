@@ -67,13 +67,13 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
-function mount(mobile = false, navbar = true, withNewNotes = false, preloaded = false) {
+function mount(mobile = false, navbar = true, withNewNotes = false, preloaded = false, nativeAvailable = true) {
 	const visible = ref(navbar);
 	const newNotes = createHataskeyTimelineNewNotes(() => 'home');
 	const owner = Symbol('home');
 	const showNewNotes = vi.fn(() => newNotes.update(owner, undefined, null));
 	const updateNewNotes = (count: number) => newNotes.update(owner, 'home', { text: `${count}個の新しいノートがあります`, icon: 'ti ti-arrow-up', show: showNewNotes });
-	const context = createHataskeyNotificationToasts(computed(() => mobile), computed(() => visible.value || newNotes.notice.value != null));
+	const context = createHataskeyNotificationToasts(computed(() => mobile), computed(() => visible.value || newNotes.notice.value != null), computed(() => nativeAvailable));
 	if (preloaded) context.enqueue(note('preloaded'), 'local', 0);
 	const bar = window.document.createElement('nav');
 	const target = window.document.createElement('div');
@@ -163,6 +163,24 @@ describe('Hataskey notification host', () => {
 		await nextTick();
 		expect(context.items.value).toEqual([]);
 		expect(context.integrated.value).toBe(false);
+	});
+	it('keeps a leaving note action in the hidden navbar host until its motion completes', async () => {
+		prefer.r.animation.value = true;
+		const { context, target, visible } = mount(false, false);
+		context.enqueueNavbarNotice({ kind: 'noteAction', action: 'delete', message: 'ノートを削除しました' }, 0);
+		await nextTick();
+		expect(visible.value).toBe(false);
+		const card = target.querySelector('article');
+		expect(card?.getAttribute('data-integrated')).toBe('true');
+		context.dismiss(context.items.value[0].id);
+		await nextTick();
+		expect(context.integrated.value).toBe(false);
+		expect(target.querySelector('article')).toBe(card);
+		expect(target.querySelector('[data-integrated="true"]')).not.toBeNull();
+		expect([...window.document.body.querySelectorAll('article')].filter(item => !target.contains(item))).toHaveLength(0);
+		vi.advanceTimersByTime(350);
+		await nextTick();
+		expect(target.querySelector('article')).toBeNull();
 	});
 	it.each([true, false])('renders a favorite save once in the navbar as plain text and expires it (mobile=%s)', async (mobile) => {
 		const { context, target } = mount(mobile);
@@ -271,7 +289,129 @@ describe('Hataskey notification host', () => {
 		await nextTick();
 		expect(root.textContent).toContain('表示メッセージ');
 	});
-	it('keeps ordinary toast messages out of the navbar queue', async () => {
+	it('keeps welcome in the shared queue even before its navbar target mounts', async () => {
+		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
+		const root = window.document.createElement('div');
+		window.document.body.append(root);
+		const closed = vi.fn();
+		app = createApp({
+			setup() {
+				provide(hataskeyNotificationToastsKey, context);
+				return () => h(MkToast, { message: 'おかえりなさい :wave:', welcome: true, onClosed: closed });
+			},
+		});
+		app.mount(root);
+		await nextTick();
+		expect(closed).toHaveBeenCalledTimes(1);
+		expect(root.textContent).toBe('');
+		expect(context.items.value).toHaveLength(1);
+		expect(context.items.value[0]).toMatchObject({ source: 'status', message: 'おかえりなさい :wave:', welcomeUser: { id: 'self' } });
+	});
+	it.each([true, false])('routes an ordinary toast into one navbar status, then closes or expires it (mobile=%s)', async (mobile) => {
+		const { context, target } = mount(mobile, false);
+		const root = window.document.createElement('div');
+		window.document.body.append(root);
+		const closed = vi.fn();
+		const popupApp = createApp({
+			setup() {
+				provide(hataskeyNotificationToastsKey, context);
+				return () => h(MkToast, { message: '<b>料理として記録しました</b> :wave:', icon: 'ti ti-tools-kitchen-2', onClosed: closed });
+			},
+		});
+		try {
+			popupApp.mount(root);
+			await nextTick();
+			expect(closed).toHaveBeenCalledTimes(1);
+			expect(root.textContent).toBe('');
+			expect(context.items.value).toHaveLength(1);
+			expect(context.navbarNotice.value).toMatchObject({ kind: 'status', message: '<b>料理として記録しました</b> :wave:' });
+			expect(target.querySelectorAll('article')).toHaveLength(1);
+			expect(target.querySelector('[data-navbar-notice-kind="status"]')?.textContent).toContain('<b>料理として記録しました</b> :wave:');
+			expect(target.querySelector('.ti-tools-kitchen-2')).not.toBeNull();
+			expect(target.querySelector('b, [data-test-mfm]')).toBeNull();
+			expect(context.integrated.value).toBe(true);
+			frameCallback?.(4999);
+			await nextTick();
+			expect(context.items.value).toHaveLength(1);
+			if (mobile) {
+				frameCallback?.(5000);
+				await nextTick();
+				expect(context.items.value).toEqual([]);
+			} else {
+				(target.querySelector('button[aria-label="閉じる"]') as HTMLButtonElement).click();
+				await nextTick();
+				expect(context.items.value).toEqual([]);
+			}
+		} finally {
+			popupApp.unmount();
+			root.remove();
+		}
+	});
+	it('routes a clip toast with its target into the three-second note action notice', async () => {
+		const { context, target } = mount();
+		const root = window.document.createElement('div');
+		window.document.body.append(root);
+		const popupApp = createApp({ setup() {
+			provide(hataskeyNotificationToastsKey, context);
+			return () => h(MkToast, { message: 'クリップに追加しました', icon: 'clipped', target: 'あとで読む' });
+		} });
+		try {
+			popupApp.mount(root);
+			await nextTick();
+			expect(context.navbarNotice.value).toEqual({ kind: 'noteAction', action: 'clip', message: 'クリップに追加しました', target: 'あとで読む' });
+			expect(target.querySelector('[data-note-action-animation][data-action="clip"]')).not.toBeNull();
+			expect(target.textContent).toContain('あとで読む');
+			frameCallback?.(2999); await nextTick();
+			expect(context.items.value).toHaveLength(1);
+			frameCallback?.(3000); await nextTick();
+			expect(context.items.value).toHaveLength(0);
+		} finally { popupApp.unmount(); root.remove(); }
+	});
+	it.each(['posted', 'reply', 'renote', 'copied'])('keeps the %s icon alias in navbar status', async (icon) => {
+		const { context, target } = mount();
+		context.enqueueNavbarNotice({ kind: 'status', message: '保存しました', icon });
+		await nextTick();
+		const iconClass = { posted: 'ti-check', reply: 'ti-arrow-back-up', renote: 'ti-repeat', copied: 'ti-copy' }[icon as 'posted' | 'reply' | 'renote' | 'copied'];
+		expect(target.querySelector(`[data-navbar-notice-kind="status"] .${iconClass}`)).not.toBeNull();
+	});
+	it('prefers the active page navbar over an injected shell navbar', async () => {
+		const { context: shell } = mount();
+		const page = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
+		const pageBar = window.document.createElement('nav');
+		const pageTarget = window.document.createElement('div');
+		pageBar.append(pageTarget);
+		window.document.body.append(pageBar);
+		page.target.value = pageTarget;
+		page.outline.value = pageBar;
+		const release = registerNotificationPageContext(page, () => true);
+		const root = window.document.createElement('div');
+		window.document.body.append(root);
+		const pageApp = createApp({ render: () => h(MkHataskeyNotificationToasts, { context: page }) });
+		const popupApp = createApp({
+			setup() {
+				provide(hataskeyNotificationToastsKey, shell);
+				return () => h(MkToast, { message: 'タイマーを保存しました', icon: 'scheduled' });
+			},
+		});
+		try {
+			pageApp.mount(root);
+			const popupRoot = window.document.createElement('div');
+			root.append(popupRoot);
+			popupApp.mount(popupRoot);
+			await nextTick();
+			expect(shell.items.value).toEqual([]);
+			expect(page.items.value).toHaveLength(1);
+			expect(pageTarget.querySelector('[data-navbar-notice-kind="status"]')?.textContent).toContain('タイマーを保存しました');
+			expect(pageTarget.querySelector('.ti-calendar-time')).not.toBeNull();
+		} finally {
+			popupApp.unmount();
+			pageApp.unmount();
+			release();
+			root.remove();
+			pageBar.remove();
+		}
+	});
+	it('keeps the ordinary popup when no navbar target exists', async () => {
 		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
 		const root = window.document.createElement('div');
 		window.document.body.append(root);
@@ -287,6 +427,57 @@ describe('Hataskey notification host', () => {
 		await nextTick();
 		expect(root.textContent).toContain('コピーしました');
 		expect(context.items.value).toHaveLength(0);
+	});
+	it('falls back to the popup when the desktop navbar is unavailable despite a mounted target', async () => {
+		const { context, target } = mount(false, false, false, false, false);
+		const root = window.document.createElement('div');
+		window.document.body.append(root);
+		const popupApp = createApp({
+			setup() {
+				provide(hataskeyNotificationToastsKey, context);
+				return () => h(MkToast, { message: 'レシピを保存しました', icon: 'ti ti-check' });
+			},
+		});
+		try {
+			popupApp.mount(root);
+			await nextTick();
+			expect(context.canIntegrateStatus.value).toBe(false);
+			expect(root.textContent).toContain('レシピを保存しました');
+			expect(context.items.value).toEqual([]);
+			expect(target.querySelector('article')).toBeNull();
+		} finally {
+			popupApp.unmount();
+			root.remove();
+		}
+	});
+	it('uses an active page surface even when the native navbar is unavailable', async () => {
+		const { context } = mount(false, false, false, false, false);
+		const pageBar = window.document.createElement('nav');
+		const pageTarget = window.document.createElement('div');
+		pageBar.append(pageTarget);
+		window.document.body.append(pageBar);
+		const release = context.registerSurface({ active: ref(true), target: ref(pageTarget), outline: ref(pageBar), animations: ref(false) });
+		const root = window.document.createElement('div');
+		window.document.body.append(root);
+		const popupApp = createApp({
+			setup() {
+				provide(hataskeyNotificationToastsKey, context);
+				return () => h(MkToast, { message: '料理として記録しました', icon: 'ti ti-tools-kitchen-2' });
+			},
+		});
+		try {
+			popupApp.mount(root);
+			await nextTick();
+			expect(context.canIntegrateStatus.value).toBe(true);
+			expect(root.textContent).toBe('');
+			expect(context.items.value).toHaveLength(1);
+			expect(pageTarget.querySelector('[data-navbar-notice-kind="status"]')?.textContent).toContain('料理として記録しました');
+		} finally {
+			popupApp.unmount();
+			release();
+			root.remove();
+			pageBar.remove();
+		}
 	});
 	it('delivers external events only to the active page renderer and restores the native receiver on release', async () => {
 		const { context: native } = mount();

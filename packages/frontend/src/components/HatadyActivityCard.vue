@@ -39,7 +39,7 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 		<details v-if="study.details?.spoiler" :class="$style.spoiler">
 			<summary>
 				<i class="ti ti-eye-off"></i>
-				ネタバレを含む記録
+				{{ activityCopy.spoilerRecord }}
 			</summary>
 			<p v-if="study.body" :class="$style.note">{{ study.body }}</p>
 			<MkMediaList v-if="study.files?.length" :mediaList="study.files" :user="activity.user"/>
@@ -112,7 +112,7 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 			:myReaction="sourceRecord.myReaction ?? null"
 		/>
 		<div :class="$style.actions">
-			<button type="button" class="hy-icon-button" :aria-label="'記録と返信を開く'" @click="openRecord">
+			<button type="button" class="hy-icon-button" :aria-label="activityCopy.openReplies" @click="openRecord">
 				<i class="ti ti-message-circle-2"></i>
 				<span>{{ sourceRecord.commentsCount ?? 0 }}</span>
 			</button>
@@ -120,14 +120,14 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 				v-if="activity.isMine"
 				type="button"
 				class="hy-icon-button"
-				aria-label="記録を編集"
-				title="記録を編集"
+				:aria-label="i18n.ts._hata._hatady._wizardComposer.editRecord"
+				:title="i18n.ts._hata._hatady._wizardComposer.editRecord"
 				:disabled="deleting"
 				@click="emit('edit', activity)"
 			>
 				<i class="ti ti-pencil"></i>
 			</button>
-			<button v-if="activity.isMine" type="button" class="hy-icon-button" aria-label="記録を削除" title="記録を削除" :disabled="deleting" :aria-busy="deleting" @click="deleteRecord">
+			<button v-if="activity.isMine" type="button" class="hy-icon-button" :aria-label="i18n.ts._hata._recordModeration.deleteRecord" :title="i18n.ts._hata._recordModeration.deleteRecord" :disabled="deleting" :aria-busy="deleting" @click="deleteRecord">
 				<i class="ti ti-trash" aria-hidden="true"></i>
 			</button>
 			<button
@@ -152,7 +152,7 @@ import { versatileLang } from '@/utility/intl-const.js';
 import MkMediaList from '@/components/MkMediaList.vue';
 import HatadyReactions from '@/components/HatadyReactions.vue';
 import { hyTagLabel } from '@/utility/hatady.js';
-import { hatadyDuration as secondsLabel } from '@/utility/hatady-ui.js';
+import { HATADY_RECORD_TAGS, hatadyDuration as secondsLabel } from '@/utility/hatady-ui.js';
 import { HATADY_STAT_FIELDS, hatadyMediaCopy, mediaSessionDisplayFacts } from '@/utility/hatady-media.js';
 import { confirmHatadyRecordDeletion } from '@/utility/hatady-record-delete.js';
 
@@ -183,6 +183,7 @@ async function deleteRecord(): Promise<void> {
 }
 
 const homeCopy = i18n.ts._hata._hatady._home;
+const activityCopy = i18n.ts._hata._hatady._activityCard;
 const homeLabels = homeCopy as unknown as Record<string, string>;
 const mediaCopy = hatadyMediaCopy();
 const timeFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -191,30 +192,34 @@ const raw = computed<any>(() => activity.value);
 const study = computed<any>(() => activity.value.study ?? null);
 const media = computed(() => activity.value.media ?? null);
 const kindIcon = computed(() =>
-	activity.value.type === 'exercise'
-		? 'ti-run'
-		: activity.value.type === 'work'
-			? 'ti-briefcase'
-			: activity.value.type === 'study'
-				? 'ti-book'
-				: activity.value.type === 'movie_viewing'
-					? 'ti-movie'
-					: activity.value.type === 'game_match'
-						? 'ti-swords'
-						: activity.value.type === 'game_roguelike'
-							? 'ti-route-square'
-							: activity.value.type === 'game_pve'
-								? 'ti-users'
-								: 'ti-device-gamepad-2',
+	activity.value.type === 'cooking'
+		? 'ti-tools-kitchen-2'
+		: activity.value.type === 'exercise'
+			? 'ti-run'
+			: activity.value.type === 'work'
+				? 'ti-briefcase'
+				: activity.value.type === 'study'
+					? 'ti-book'
+					: activity.value.type === 'movie_viewing'
+						? 'ti-movie'
+						: activity.value.type === 'game_match'
+							? 'ti-swords'
+							: activity.value.type === 'game_roguelike'
+								? 'ti-route-square'
+								: activity.value.type === 'game_pve'
+									? 'ti-users'
+									: 'ti-device-gamepad-2',
 );
 const kindLabel = computed(() =>
-	activity.value.type === 'exercise'
-		? '運動'
-		: activity.value.type === 'work'
-			? '作業'
-			: activity.value.type === 'study'
-				? homeCopy.activityStudy
-				: String(mediaCopy.session.types[activity.value.type] ?? activity.value.type),
+	activity.value.type === 'cooking'
+		? i18n.ts._hata._hatady._activityKinds.cooking
+		: activity.value.type === 'exercise'
+			? i18n.ts._hata._hatady._activityKinds.exercise
+			: activity.value.type === 'work'
+				? i18n.ts._hata._hatady._activityKinds.work
+				: activity.value.type === 'study'
+					? homeCopy.activityStudy
+					: String(mediaCopy.session.types[activity.value.type] ?? activity.value.type),
 );
 const whenLabel = computed(
 	() =>
@@ -282,22 +287,9 @@ const durationSeconds = computed<number | null>(() =>
 			? null
 			: sourceRecord.value.durationMinutes * 60,
 );
-const tagLabels: Record<string, string> = {
-	strength: '得意',
-	weak: '苦手',
-	interest: '興味',
-	effort: 'がんばった',
-	recommend: 'おすすめ',
-	progress: '進捗',
-	smooth: '順調',
-	blocked: '躓いている',
-	review: '見てほしい',
-	doneDay: '今日の完了',
-	doneAll: '全体の完了',
-};
 
 function tagLabel(tag: string) {
-	return tagLabels[tag] || hyTagLabel(tag);
+	return HATADY_RECORD_TAGS.find(item => item.value === tag)?.label || hyTagLabel(tag);
 }
 
 function tagIcon(tag: string) {
@@ -366,18 +358,18 @@ const ActivityLogDetail = defineComponent({
 	setup(p) {
 		return () => {
 			const labels: Record<string, string> = {
-				place: '場所',
-				nextStep: '次にやること',
-				note: '補足',
-				startedAt: '開始時刻',
-				calories: '消費カロリー',
-				pages: '読んだページ',
-				progress: '進み具合',
+				place: i18n.ts._hata._hatady._wizardComposer.place,
+				nextStep: i18n.ts._hata._hatady._wizardComposer.nextStep,
+				note: i18n.ts._hata._hatady._wizardComposer.note,
+				startedAt: i18n.ts._hata._hatady._composer.startLabel,
+				calories: activityCopy.calories,
+				pages: i18n.ts._hata._hatady._bookWizard.pageRead,
+				progress: activityCopy.progress,
 			};
 			const rows = Object.entries(p.record.details || {}).filter(
 				([key, value]) => key !== 'spoiler' && value != null && value !== '',
 			);
-			if (p.record.pageStart != null) rows.unshift(['ページ', `${p.record.pageStart} — ${p.record.pageEnd ?? p.record.pageStart}`]);
+			if (p.record.pageStart != null) rows.unshift([i18n.ts._hata._hatady._bookDetail.page, `${p.record.pageStart} — ${p.record.pageEnd ?? p.record.pageStart}`]);
 			return rows.length
 				? h(
 					'dl',

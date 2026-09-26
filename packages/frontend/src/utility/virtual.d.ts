@@ -98,7 +98,7 @@ type XSettingsControlSearchDescriptorV2 = {
 	saveMode: 'immediate' | 'buffered' | 'reload';
 	availability: 'all' | 'desktop' | 'mobile';
 	owner: 'core' | 'cherrypick' | 'hatasaba';
-	applicableUi: 'all' | 'default' | 'deck' | 'simple' | 'simple-deck' | 'hatacording' | ReadonlyArray<'all' | 'default' | 'deck' | 'simple' | 'simple-deck' | 'hatacording'>;
+	applicableUi: 'all' | 'default' | 'deck' | 'simple' | 'simple-deck' | ReadonlyArray<'all' | 'default' | 'deck' | 'simple' | 'simple-deck'>;
 	storageRefs?: Array<
 		| { kind: 'pref'; key: string }
 		| { kind: 'pizzax'; store: 'base' | 'deck'; key: string; scope: 'device' | 'account' | 'deviceAccount' }

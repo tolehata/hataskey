@@ -16,7 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- 旗鯖fork: 再設計では左ペインがカテゴリの正本なので、見た目としては出さない。
 		     ⚠️ただしDOMからは消さないこと。再設計シェルはこのボタンを探して .click() する
 		     ことでカテゴリを切り替えている（index.vue の activateHataCustomCategory）。
-		     消すと「フォント」を押しても既定の「旗鯖全体」から動かなくなる。 -->
+		     消すと「フォント」を押しても既定の「Hataskey全体」から動かなくなる。 -->
 		<div :class="[$style.catTabs, embeddedInSettingsShell && $style.catTabsOffscreen]">
 			<button v-for="cat in categories" :key="cat.id" :class="[$style.catTab, activeCat === cat.id && $style.catTabOn]" :tabindex="embeddedInSettingsShell ? -1 : undefined" @click="activeCat = cat.id">
 				<!-- Hataskey fork: 地震ビューアだけは既存の Tabler アイコンを維持する(ゲーム/地震機能へハタキュを持ち込まない方針のため明示除外)。
@@ -27,7 +27,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</button>
 		</div>
 
-		<!-- ===== 旗鯖全体 ===== -->
+		<!-- ===== Hataskey全体 ===== -->
 		<template v-if="activeCat === 'general'">
 			<FormSection first>
 				<template #label>{{ generalCopy.transferTitle }}</template>
@@ -175,8 +175,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						:class="[$style.fontCard, fontId === 'system' && $style.fontCardOn]"
 						@click="onFontChange('system')"
 					>
-						<div :class="$style.fontSample">{{ fontCopy.samplePrimary }}</div>
-						<div :class="$style.fontSampleSub">{{ fontCopy.sampleSecondary }}</div>
+						<div :class="$style.fontSample" :style="{ fontFamily: systemFontStack }">{{ fontCopy.samplePrimary }}</div>
+						<div :class="$style.fontSampleSub" :style="{ fontFamily: systemFontStack }">{{ fontCopy.sampleSecondary }}</div>
 						<div :class="$style.fontName">{{ fontCopy.systemFont }}</div>
 						<div :class="$style.fontMeta">
 							<span :class="$style.fontLicense">{{ fontCopy.useOsFont }}</span>
@@ -220,7 +220,7 @@ SPDX-License-Identifier: AGPL-3.0-only
              設定入口は Hataskey UI 2 タブに一本化する。preferences のキーは変更していないため既存設定は保持される。 -->
 
 		<!-- ===== UI =====
-             旗鯖fork: Hataskey UI 2 と HataSNSCordUI の端末設定を一つのタブに集約。 -->
+             旗鯖fork: Hataskey UI 2 の端末設定をまとめたタブ。 -->
 		<template v-if="activeCat === 'glassUi'">
 			<FormSection first>
 				<template #label>{{ uiCopy.hatasabaUi2Settings }}</template>
@@ -231,13 +231,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button class="_buttonPrimary" style="padding:10px 20px;font-weight:bold;" @click="openHatasabaUi2EditWindow">
 					<i class="ti ti-sparkles"></i> {{ uiCopy.openHatasabaUi2Settings }}
 				</button>
-			</FormSection>
-			<FormSection>
-				<template #label>{{ uiCopy.hataSnsCordUiSettings }}</template>
-				<div style="font-size:.85em;opacity:.7;margin-bottom:14px;line-height:1.6;">
-					{{ uiCopy.hataSnsCordUiDescriptionPrefix }}<b>{{ uiCopy.hataSnsCordUiSync }}</b>{{ uiCopy.hataSnsCordUiDescriptionSuffix }}
-				</div>
-				<HatacordingUiSettings :accountId="$i.id"/>
 			</FormSection>
 			<!-- 旗鯖fork: 横開き折りたたみ端末向けレイアウト。
              ⚠️端末ローカル設定(プロファイル非同期)。折りたたみ端末と通常のスマホで
@@ -380,7 +373,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- ===== その他 (旧アクセシビリティ) ===== -->
 		<!-- 旗鯖fork: タブ再編で、旧アクセシビリティタブの項目はほぼ全て ビジュアル / Hataskey UI 2 /
-             旗鯖全体 タブに分散移動した。ここには「他タブに分類しづらい」ものだけを残す。
+             Hataskey全体 タブに分散移動した。ここには「他タブに分類しづらい」ものだけを残す。
              現状は天気エフェクトのみ。preferences のキー自体は変更していないので、
              既存ユーザーの設定値は移動後もそのまま保持される (マイグレ不要)。 -->
 		<template v-if="activeCat === 'accessibility'">
@@ -422,7 +415,6 @@ import FormSection from '@/components/form/section.vue';
 import FormLink from '@/components/form/link.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
 import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
-import HatacordingUiSettings from '@/components/HatacordingUiSettings.vue';
 import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
 import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { i18n } from '@/i18n.js';
@@ -438,13 +430,13 @@ import { getHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-rea
 // 旗鯖fork: deckIgnoreWidth / setDeckIgnoreWidth は Hataskey UI 設定モーダル側で消費するのみ。
 // 旗鯖fork(Hataskey UI 2): 端末ローカルの glassUi 系を hata-custom.vue から使うため import。
 import { glassUiLocal, setGlassUiLocal, glassUiBubbleLocal, setGlassUiBubbleLocal, hideMutedReactionsLocal, setHideMutedReactionsLocal, foldableLayoutMode, setFoldableLayoutMode } from '@/utility/hatasaba-device-prefs.js';
-import { HATA_FONT_PRESETS, applyHataFont } from '@/scripts/hata-font-manager.js';
+import { HATA_FONT_PRESETS, DEFAULT_HATA_FONT_ID, SYSTEM_HATA_FONT_STACK, applyHataFont, resolveHataFontId } from '@/scripts/hata-font-manager.js';
 import { isDirectUploadCustomFontFile, isSupportedCustomFontFile } from '@/utility/hata-font-file.js';
 import { chooseDriveFile, uploadFile } from '@/utility/drive.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 // 旗鯖fork: applySidebarIconOverride も同上 (サイドバー編集はモーダル側で完結)。
 const router = useRouter();
-const $i = ensureSignin();
+ensureSignin();
 /**
  * 旗鯖fork: 再設計の設定画面の中に描かれているか。
  * ⚠️再設計シェルだけが settingsSearchV2ContextKey を provide する。
@@ -492,7 +484,11 @@ watch(activeCat, (v) => {
 });
 
 // ===== フォント設定 =====
-const fontId = prefer.model('hataFont.id');
+const savedFontId = prefer.model('hataFont.id');
+const fontId = computed({
+	get: () => resolveHataFontId(savedFontId.value),
+	set: (id: HataFontId) => { savedFontId.value = id; },
+});
 const customFontUrl = prefer.model('hataFont.customUrl');
 const customFontName = prefer.model('hataFont.customName');
 const customFontConsent = prefer.model('hataFont.customFontConsent');
@@ -500,12 +496,14 @@ const customFontUploading = ref(false);
 const customFontUploadProgress = ref<number | null>(null);
 
 const fontPresets = HATA_FONT_PRESETS;
+const systemFontStack = SYSTEM_HATA_FONT_STACK;
 const fontsPreloaded = ref(false);
 
-// プリセットの保存ID・既存labelは互換性のため維持し、表示だけ共通localeで解決する。
+// プリセットの表示名を現在のロケールで解決する。
 function fontPresetLabel(preset: (typeof HATA_FONT_PRESETS)[number]): string {
 	const labels: Partial<Record<HataFontId, string>> = {
-		'zen-kaku': fontCopy.presetZenKaku,
+		'line-seed-jp': fontCopy.presetLineSeedJp,
+		'zen-kaku-antique': fontCopy.presetZenKaku,
 		'm-plus-1p': fontCopy.presetMPlus,
 		'dotgothic16': fontCopy.presetDotGothic,
 		'train-one': fontCopy.presetTrainOne,
@@ -623,13 +621,13 @@ async function openDrivePicker() {
 }
 
 function resetToDefault() {
-	fontId.value = 'zen-kaku';
+	fontId.value = DEFAULT_HATA_FONT_ID;
 	customFontUrl.value = '';
 	customFontName.value = '';
 	applyHataFont();
 }
 
-// ===== 旗鯖全体 =====
+// ===== Hataskey全体 =====
 // 旗鯖fork: 投稿フォームのハッシュタグ/お絵かきボタン表示トグルは
 // preferences/def.ts 側で prefer キーとして定義されており、MkPostForm も
 // `prefer.s.showHashtagButtonInPostForm` / `prefer.s.showDrawingButtonInPostForm`

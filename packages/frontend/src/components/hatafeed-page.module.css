@@ -30,6 +30,11 @@
 .stat { display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; min-height: 44px; border: 0; background: transparent; color: var(--hy-accent); cursor: pointer; }
 .stat b { font-size: 27px; font-weight: 400; }
 .stat span { color: var(--hy-muted); font-size: 12px; }
+.stat { border-radius: 14px; }
+.stat:hover { background: var(--hy-soft); }
+/* 絞り込み中の状態を一目で分かるようにする。もう一度押すと解除。 */
+.stat[aria-pressed='true'] { background: var(--hy-soft); box-shadow: inset 0 0 0 2px var(--hy-accent); }
+.stat[aria-pressed='true'] span { color: var(--hy-accent); font-weight: 700; }
 .listPanel { overflow: clip; }
 .listHead { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px 10px; }
 .listHead h2 small { padding: 4px 8px; border-radius: 999px; background: var(--hy-soft); color: var(--hy-muted); font-size: 11px; font-weight: 400; }
@@ -42,6 +47,7 @@
 .segment { display: flex; padding: 3px; background: var(--hy-bg); border-radius: 999px; }
 .segment button, .dropdowns button, .eaFilter { min-height: 40px; border: 0; padding: 8px 12px; border-radius: 999px; background: transparent; color: inherit; font-size: 12px; cursor: pointer; }
 .segment button[aria-pressed='true'], .eaFilter[aria-pressed='true'] { color: var(--hy-accent); background: var(--hy-surface); }
+.segment button[aria-pressed='true'] { font-weight: 700; box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
 .dropdowns { display: flex; flex-wrap: wrap; gap: 8px; }
 .dropdowns button { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .issueRow { display: flex; align-items: center; gap: 18px; width: 100%; padding: 20px; border: 0; border-top: 1px solid var(--hy-border); background: transparent; color: inherit; text-align: left; cursor: pointer; }
@@ -60,6 +66,10 @@
 .pagerSize { margin-left: auto; }
 .pagerSelect { padding: 10px; border: 1px solid var(--hy-border); border-radius: 12px; background: var(--hy-surface); color: inherit; }
 .emojiAdmin { padding: 20px; }
+.emojiAdmin > :global(section.hf-form) { padding-top: 0; }
+.eaKindTabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; width: fit-content; max-width: 100%; margin: 0 auto 8px; padding: 3px; border-radius: 999px; background: var(--hy-bg); }
+.eaKindTab { min-width: 0; min-height: 44px; padding: 8px 16px; border: 0; border-radius: 999px; background: transparent; color: inherit; font-size: 12px; line-height: 1.4; text-align: center; cursor: pointer; white-space: normal; }
+.eaKindTab[aria-pressed='true'] { background: var(--hy-surface); color: var(--hy-accent); font-weight: 700; box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
 .eaTop { display: flex; flex-direction: column; align-items: center; gap: 16px; padding-bottom: 16px; }
 .eaFilters { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 3px; border-radius: 999px; background: var(--hy-bg); }
 .eaTopActions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }

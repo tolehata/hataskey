@@ -25,69 +25,69 @@
 			<div class="about-kinds">
 				<span>
 					<i class="ti ti-book"></i>
-					勉強・読書
+					{{ exampleCopy.study }}
 				</span>
 				<span>
 					<i class="ti ti-movie"></i>
-					映画
+					{{ exampleCopy.movie }}
 				</span>
 				<span>
 					<i class="ti ti-device-gamepad-2"></i>
-					ゲーム
+					{{ exampleCopy.game }}
 				</span>
 				<span>
 					<i class="ti ti-run"></i>
-					運動
+					{{ exampleCopy.exercise }}
 				</span>
 				<span>
 					<i class="ti ti-briefcase"></i>
-					作業
+					{{ exampleCopy.work }}
 				</span>
 			</div>
 			<div class="demo-card">
-				<h4>日々の積み重ね</h4>
+				<h4>{{ exampleCopy.dailyProgress }}</h4>
 				<div class="week-top">
-					<span>この1週間</span>
+					<span>{{ exampleCopy.thisWeek }}</span>
 					<strong>
 						13
-						<small>記録</small>
+						<small>{{ exampleCopy.records }}</small>
 					</strong>
 				</div>
 				<div class="week-strip">
 					<span>
-						金
+						{{ exampleCopy.friday }}
 						<strong>4</strong>
-						<small>1件</small>
+						<small>{{ exampleCopy.oneItem }}</small>
 					</span>
 					<span>
-						土
+						{{ exampleCopy.saturday }}
 						<strong>5</strong>
-						<small>0件</small>
+						<small>{{ exampleCopy.zeroItems }}</small>
 					</span>
 					<span>
-						日
+						{{ exampleCopy.sunday }}
 						<strong>6</strong>
-						<small>1件</small>
+						<small>{{ exampleCopy.oneItem }}</small>
 					</span>
 					<span>
-						月
+						{{ exampleCopy.monday }}
 						<strong>7</strong>
-						<small>3件</small>
+						<small>{{ exampleCopy.threeItems }}</small>
 					</span>
 					<span>
-						火
+						{{ exampleCopy.tuesday }}
 						<strong>8</strong>
-						<small>3件</small>
+						<small>{{ exampleCopy.threeItems }}</small>
 					</span>
 					<span>
-						水
+						{{ exampleCopy.wednesday }}
 						<strong>9</strong>
-						<small>3件</small>
+						<small>{{ exampleCopy.threeItems }}</small>
 					</span>
 					<span>
-						木
+						{{ exampleCopy.thursday }}
 						<strong>10</strong>
-						<small>2件</small>
+						<small>{{ exampleCopy.twoItems }}</small>
 					</span>
 				</div>
 			</div>
@@ -114,10 +114,10 @@
 			</div>
 			<div class="demo-card">
 				<div class="screen-head">
-					<strong>今日は、何をした？</strong>
+					<strong>{{ exampleCopy.whatToday }}</strong>
 					<span class="callout">
 						<i class="ti ti-plus"></i>
-						記録する
+						{{ exampleCopy.recordAction }}
 					</span>
 				</div>
 				<div class="kind-list">
@@ -125,38 +125,38 @@
 						<span>
 							<i class="ti ti-book"></i>
 						</span>
-						勉強・読書
+						{{ exampleCopy.study }}
 					</div>
 					<div class="kind-choice">
 						<span>
 							<i class="ti ti-movie"></i>
 						</span>
-						映画
+						{{ exampleCopy.movie }}
 					</div>
 					<div class="kind-choice">
 						<span>
 							<i class="ti ti-device-gamepad-2"></i>
 						</span>
-						ゲーム
+						{{ exampleCopy.game }}
 					</div>
 					<div class="kind-choice">
 						<span>
 							<i class="ti ti-run"></i>
 						</span>
-						運動
+						{{ exampleCopy.exercise }}
 					</div>
 					<div class="kind-choice">
 						<span>
 							<i class="ti ti-briefcase"></i>
 						</span>
-						作業
+						{{ exampleCopy.work }}
 					</div>
 				</div>
 			</div>
 		</div>
 		<div v-else-if="page === 'draft'" class="screen">
 			<div class="screen-head">
-				<strong>今日の記録</strong>
+				<strong>{{ exampleCopy.todaysRecords }}</strong>
 				<div class="screen-nav">
 					<span>
 						<i class="ti ti-home"></i>
@@ -174,24 +174,24 @@
 			</div>
 			<div class="demo-card">
 				<div class="flow-line">
-					<span>種類</span>
+					<span>{{ exampleCopy.type }}</span>
 					<i></i>
-					<span class="active">内容</span>
+					<span class="active">{{ exampleCopy.content }}</span>
 					<i></i>
-					<span>確認</span>
+					<span>{{ exampleCopy.review }}</span>
 				</div>
 				<span class="demo-label">
-					内容・感想
-					<small>任意</small>
+					{{ exampleCopy.thoughts }}
+					<small>{{ exampleCopy.optional }}</small>
 				</span>
 				<div class="demo-field">
-					気になった一節をノートに。
+					{{ exampleCopy.sampleNoteOne }}
 					<br/>
-					次は隣の章へ。
+					{{ exampleCopy.sampleNoteTwo }}
 				</div>
 				<div class="demo-actions">
 					<span class="callout">
-						次へ
+						{{ exampleCopy.next }}
 						<i class="ti ti-arrow-right"></i>
 					</span>
 				</div>
@@ -199,14 +199,14 @@
 			<div class="draft-note">
 				<i class="ti ti-bookmark"></i>
 				<span>
-					<strong>今日はここまででも、大丈夫。</strong>
-					端末に下書きを保存して閉じられます。
+					<strong>{{ exampleCopy.pauseTitle }}</strong>
+					{{ exampleCopy.pauseHint }}
 				</span>
 			</div>
 		</div>
 		<div v-else-if="page === 'visibility'" class="screen">
 			<div class="screen-head">
-				<strong>記録の公開範囲</strong>
+				<strong>{{ exampleCopy.visibilityTitle }}</strong>
 				<div class="screen-nav">
 					<span>
 						<i class="ti ti-home"></i>
@@ -231,52 +231,52 @@
 				</span>
 				<span class="active">
 					<i class="ti ti-lock"></i>
-					自分のみ
+					{{ exampleCopy.private }}
 				</span>
 			</div>
 			<div class="demo-card demo-entry">
 				<div class="demo-person">
-					<span class="avatar">は</span>
-					<span>はる</span>
-					<small>9月10日</small>
+					<span class="avatar">{{ exampleCopy.avatarH }}</span>
+					<span>{{ exampleCopy.haru }}</span>
+					<small>{{ exampleCopy.sep10 }}</small>
 					<i class="ti ti-lock"></i>
 				</div>
 				<div class="entry-context">
-					<span>勉強・読書</span>
+					<span>{{ exampleCopy.study }}</span>
 					<div class="tag-row">
 						<span>
 							<i class="ti ti-sparkles"></i>
-							興味
+							{{ exampleCopy.interest }}
 						</span>
 						<span>
 							<i class="ti ti-thumb-up"></i>
-							おすすめ
+							{{ exampleCopy.recommended }}
 						</span>
 					</div>
 				</div>
 				<h4>
 					<i class="ti ti-book"></i>
-					夜を編む庭
+					{{ exampleCopy.gardenBook }}
 				</h4>
 				<p>
-					気になった一節をノートに。
+					{{ exampleCopy.sampleNoteOne }}
 					<br/>
-					次は隣の章へ。
+					{{ exampleCopy.sampleNoteTwo }}
 				</p>
 				<div class="record-meta">
-					ファンタジー
+					{{ exampleCopy.fantasy }}
 					<i class="ti ti-clock"></i>
-					30分
+					{{ exampleCopy.thirtyMinutes }}
 				</div>
 			</div>
 			<div class="share-caption">
 				<i class="ti ti-lock"></i>
-				公開範囲は、アイコンで確かめられます。
+				{{ exampleCopy.visibilityHint }}
 			</div>
 		</div>
 		<div v-else-if="page === 'collection'" class="screen">
 			<div class="screen-head">
-				<strong>コレクション</strong>
+				<strong>{{ exampleCopy.collection }}</strong>
 				<div class="screen-nav">
 					<span>
 						<i class="ti ti-home"></i>
@@ -295,7 +295,7 @@
 			<div class="shelf-tabs">
 				<span class="active">
 					<i class="ti ti-books"></i>
-					本棚
+					{{ exampleCopy.bookshelf }}
 				</span>
 				<span>
 					<i class="ti ti-movie"></i>
@@ -309,7 +309,7 @@
 			</div>
 			<div class="mini-search">
 				<i class="ti ti-search"></i>
-				タイトルやジャンルで探す
+				{{ exampleCopy.searchTitleGenre }}
 			</div>
 			<div class="shelf">
 				<div class="shelf-item">
@@ -319,10 +319,10 @@
 							<br/>
 							BOOKS
 						</small>
-						<strong>夜を編む庭</strong>
+						<strong>{{ exampleCopy.gardenBook }}</strong>
 					</div>
-					<strong>夜を編む庭</strong>
-					<small>読んでいる</small>
+					<strong>{{ exampleCopy.gardenBook }}</strong>
+					<small>{{ exampleCopy.reading }}</small>
 				</div>
 				<div class="shelf-item">
 					<div class="cover" data-art="1">
@@ -331,10 +331,10 @@
 							<br/>
 							BOOKS
 						</small>
-						<strong>月の郵便室</strong>
+						<strong>{{ exampleCopy.moonBook }}</strong>
 					</div>
-					<strong>月の郵便室</strong>
-					<small>読みたい</small>
+					<strong>{{ exampleCopy.moonBook }}</strong>
+					<small>{{ exampleCopy.wantToRead }}</small>
 				</div>
 				<div class="shelf-item">
 					<div class="cover" data-art="2">
@@ -343,26 +343,26 @@
 							<br/>
 							BOOKS
 						</small>
-						<strong>余白のつくり方</strong>
+						<strong>{{ exampleCopy.spacesBook }}</strong>
 					</div>
-					<strong>余白のつくり方</strong>
-					<small>読みたい</small>
+					<strong>{{ exampleCopy.spacesBook }}</strong>
+					<small>{{ exampleCopy.wantToRead }}</small>
 				</div>
 			</div>
 			<div class="collection-note">
 				<span>
 					<i class="ti ti-notebook"></i>
-					夜を編む庭の記録
+					{{ exampleCopy.gardenRecords }}
 				</span>
 				<strong>
-					3件
+					{{ exampleCopy.threeItems }}
 					<i class="ti ti-chevron-right"></i>
 				</strong>
 			</div>
 		</div>
 		<div v-else-if="page === 'following'" class="screen">
 			<div class="screen-head">
-				<strong>日々の記録</strong>
+				<strong>{{ exampleCopy.dailyRecords }}</strong>
 				<div class="screen-nav">
 					<span>
 						<i class="ti ti-home"></i>
@@ -387,27 +387,27 @@
 				</span>
 				<span class="active">
 					<i class="ti ti-user-check"></i>
-					フォロー中
+					{{ exampleCopy.following }}
 				</span>
 			</div>
 			<div class="demo-card demo-entry">
 				<div class="demo-person">
-					<span class="avatar">そ</span>
-					<span>そら</span>
-					<small>9月10日</small>
+					<span class="avatar">{{ exampleCopy.avatarS }}</span>
+					<span>{{ exampleCopy.sora }}</span>
+					<small>{{ exampleCopy.sep10 }}</small>
 					<i class="ti ti-world"></i>
 				</div>
 				<div class="entry-context">
-					<span>勉強・読書</span>
+					<span>{{ exampleCopy.study }}</span>
 				</div>
 				<h4>
 					<i class="ti ti-book"></i>
-					月の郵便室
+					{{ exampleCopy.moonBook }}
 				</h4>
 				<p>
-					やさしい言葉に出会えた。
+					{{ exampleCopy.sampleReplyOne }}
 					<br/>
-					また少しずつ、読み進めよう。
+					{{ exampleCopy.sampleReplyTwo }}
 				</p>
 				<div class="entry-bottom">
 					<span class="reaction">
@@ -421,7 +421,7 @@
 		</div>
 		<div v-else-if="page === 'reflection'" class="screen">
 			<div class="screen-head">
-				<strong>プロフィール</strong>
+				<strong>{{ exampleCopy.profile }}</strong>
 				<div class="screen-nav">
 					<span>
 						<i class="ti ti-home"></i>
@@ -438,81 +438,81 @@
 				</div>
 			</div>
 			<div class="profile-top">
-				<span class="avatar">は</span>
+				<span class="avatar">{{ exampleCopy.avatarH }}</span>
 				<span>
-					<strong>はる</strong>
-					<small>読んだり、つくったり。少しずつ。</small>
+					<strong>{{ exampleCopy.haru }}</strong>
+					<small>{{ exampleCopy.profileBioLong }}</small>
 				</span>
 				<i class="ti ti-palette"></i>
 			</div>
 			<div class="demo-card">
 				<div class="week-top">
-					<span>この1週間</span>
+					<span>{{ exampleCopy.thisWeek }}</span>
 					<strong>
 						13
-						<small>記録</small>
+						<small>{{ exampleCopy.records }}</small>
 					</strong>
 				</div>
 				<div class="week-strip">
 					<span>
-						金
+						{{ exampleCopy.friday }}
 						<strong>4</strong>
-						<small>1件</small>
+						<small>{{ exampleCopy.oneItem }}</small>
 					</span>
 					<span>
-						土
+						{{ exampleCopy.saturday }}
 						<strong>5</strong>
-						<small>0件</small>
+						<small>{{ exampleCopy.zeroItems }}</small>
 					</span>
 					<span>
-						日
+						{{ exampleCopy.sunday }}
 						<strong>6</strong>
-						<small>1件</small>
+						<small>{{ exampleCopy.oneItem }}</small>
 					</span>
 					<span>
-						月
+						{{ exampleCopy.monday }}
 						<strong>7</strong>
-						<small>3件</small>
+						<small>{{ exampleCopy.threeItems }}</small>
 					</span>
 					<span>
-						火
+						{{ exampleCopy.tuesday }}
 						<strong>8</strong>
-						<small>3件</small>
+						<small>{{ exampleCopy.threeItems }}</small>
 					</span>
 					<span>
-						水
+						{{ exampleCopy.wednesday }}
 						<strong>9</strong>
-						<small>3件</small>
+						<small>{{ exampleCopy.threeItems }}</small>
 					</span>
 					<span>
-						木
+						{{ exampleCopy.thursday }}
 						<strong>10</strong>
-						<small>2件</small>
+						<small>{{ exampleCopy.twoItems }}</small>
 					</span>
 				</div>
 				<div class="progress-summary">
 					<span>
 						<strong>25</strong>
-						<small>これまでの記録</small>
+						<small>{{ exampleCopy.allRecords }}</small>
 					</span>
 					<span>
-						<strong>15時間</strong>
-						<small>積み重ねた時間</small>
+						<strong>{{ exampleCopy.fifteenHours }}</strong>
+						<small>{{ exampleCopy.timeSpent }}</small>
 					</span>
 				</div>
 			</div>
 			<div class="stat-links">
 				<span>
 					<i class="ti ti-chart-bar"></i>
-					統計
+					{{ exampleCopy.stats }}
 				</span>
 				<span>
 					<i class="ti ti-calendar"></i>
-					カレンダー
+					{{ exampleCopy.calendar }}
 				</span>
 				<span>
 					<i class="ti ti-target"></i>
-					目標
+					{{ exampleCopy.goals }}
 				</span>
 			</div>
 		</div>
@@ -530,7 +530,7 @@
 			<div class="screen-nav update-nav">
 				<span class="active">
 					<i class="ti ti-home"></i>
-					ホーム
+					{{ exampleCopy.home }}
 				</span>
 				<span>
 					<i class="ti ti-notebook"></i>
@@ -545,9 +545,9 @@
 			<div class="update-bento">
 				<section class="update-tile update-feature">
 					<div>
-						<small>次に読みたい</small>
-						<h4>月の郵便室</h4>
-						<small>ファンタジーへの興味から</small>
+						<small>{{ exampleCopy.wantNext }}</small>
+						<h4>{{ exampleCopy.moonBook }}</h4>
+						<small>{{ exampleCopy.fromFantasyInterest }}</small>
 					</div>
 					<div class="cover" data-art="1">
 						<small>
@@ -555,42 +555,42 @@
 							<br/>
 							BOOKS
 						</small>
-						<strong>月の郵便室</strong>
+						<strong>{{ exampleCopy.moonBook }}</strong>
 					</div>
 				</section>
 				<section class="update-tile">
 					<strong>
 						<i class="ti ti-notebook"></i>
-						最近30日
+						{{ exampleCopy.last30Days }}
 					</strong>
 					<span class="update-value">
 						14
-						<small>記録</small>
+						<small>{{ exampleCopy.records }}</small>
 					</span>
-					<small>8時間11分</small>
+					<small>{{ exampleCopy.eightHours }}</small>
 				</section>
 				<section class="update-tile">
 					<strong>
 						<i class="ti ti-books"></i>
-						コレクション
+						{{ exampleCopy.collection }}
 					</strong>
 					<span class="update-value">
 						4
-						<small>作品</small>
+						<small>{{ exampleCopy.works }}</small>
 					</span>
-					<small>自分のコレクションへ</small>
+					<small>{{ exampleCopy.toMyCollection }}</small>
 				</section>
 			</div>
 		</div>
 		<div v-else-if="page === 'record'" class="screen">
 			<div class="update-heading">
-				<strong>今日の記録</strong>
+				<strong>{{ exampleCopy.todaysRecords }}</strong>
 				<i class="ti ti-x"></i>
 			</div>
 			<div class="update-wizard-progress">
 				<span>
 					<i class="ti ti-book"></i>
-					勉強・読書
+					{{ exampleCopy.study }}
 				</span>
 				<small>3 / 8</small>
 			</div>
@@ -598,27 +598,27 @@
 				<i></i>
 			</div>
 			<div class="demo-card">
-				<h4 class="update-form-title">ひとこと、残そう</h4>
+				<h4 class="update-form-title">{{ exampleCopy.leaveThought }}</h4>
 				<span class="demo-label">
-					内容・感想
-					<small>任意</small>
+					{{ exampleCopy.thoughts }}
+					<small>{{ exampleCopy.optional }}</small>
 				</span>
 				<div class="demo-field">
-					気になった一節をノートに。
+					{{ exampleCopy.sampleNoteOne }}
 					<br/>
-					次は隣の章へ。
+					{{ exampleCopy.sampleNoteTwo }}
 				</div>
 				<div class="update-spoiler">
 					<i></i>
-					ネタバレを含む
+					{{ exampleCopy.containsSpoiler }}
 				</div>
 				<div class="update-form-actions">
 					<span>
 						<i class="ti ti-arrow-left"></i>
-						戻る
+						{{ exampleCopy.back }}
 					</span>
 					<span class="callout">
-						次へ
+						{{ exampleCopy.next }}
 						<i class="ti ti-arrow-right"></i>
 					</span>
 				</div>
@@ -626,15 +626,15 @@
 			<div class="draft-note">
 				<i class="ti ti-bookmark"></i>
 				<span>
-					閉じるときに、
+					{{ exampleCopy.whenClosing }}
 					<br/>
-					端末に下書きを保存できます。
+					{{ exampleCopy.saveDraftHint }}
 				</span>
 			</div>
 		</div>
 		<div v-else-if="page === 'records'" class="screen">
 			<div class="update-heading">
-				<strong>日々の記録</strong>
+				<strong>{{ exampleCopy.dailyRecords }}</strong>
 				<span class="update-create">
 					<i class="ti ti-plus"></i>
 				</span>
@@ -645,7 +645,7 @@
 				</span>
 				<span class="active">
 					<i class="ti ti-notebook"></i>
-					記録
+					{{ exampleCopy.records }}
 				</span>
 				<span>
 					<i class="ti ti-books"></i>
@@ -657,7 +657,7 @@
 			<div class="scope-tabs">
 				<span class="active">
 					<i class="ti ti-user"></i>
-					自分の記録
+					{{ exampleCopy.myRecords }}
 				</span>
 				<span>
 					<i class="ti ti-users"></i>
@@ -673,7 +673,7 @@
 					</span>
 					<span class="active">
 						<i class="ti ti-book"></i>
-						勉強・読書
+						{{ exampleCopy.study }}
 					</span>
 					<span>
 						<i class="ti ti-movie"></i>
@@ -693,48 +693,48 @@
 				</span>
 			</div>
 			<div class="update-date">
-				<span>9月1日 〜 9月30日</span>
+				<span>{{ exampleCopy.sepRange }}</span>
 				<i class="ti ti-x"></i>
 			</div>
 			<div class="demo-card demo-entry">
 				<div class="demo-person">
-					<span class="avatar">は</span>
-					<span>はる</span>
-					<small>9月10日</small>
+					<span class="avatar">{{ exampleCopy.avatarH }}</span>
+					<span>{{ exampleCopy.haru }}</span>
+					<small>{{ exampleCopy.sep10 }}</small>
 					<i class="ti ti-world"></i>
 				</div>
 				<div class="entry-context">
-					<span>勉強・読書</span>
+					<span>{{ exampleCopy.study }}</span>
 					<div class="tag-row">
 						<span>
 							<i class="ti ti-sparkles"></i>
-							興味
+							{{ exampleCopy.interest }}
 						</span>
 						<span>
 							<i class="ti ti-thumb-up"></i>
-							おすすめ
+							{{ exampleCopy.recommended }}
 						</span>
 					</div>
 				</div>
 				<h4>
 					<i class="ti ti-book"></i>
-					夜を編む庭
+					{{ exampleCopy.gardenBook }}
 				</h4>
 				<p>
-					気になった一節をノートに。
+					{{ exampleCopy.sampleNoteOne }}
 					<br/>
-					次は隣の章へ。
+					{{ exampleCopy.sampleNoteTwo }}
 				</p>
 				<div class="record-meta">
-					ファンタジー
+					{{ exampleCopy.fantasy }}
 					<i class="ti ti-clock"></i>
-					30分
+					{{ exampleCopy.thirtyMinutes }}
 				</div>
 			</div>
 		</div>
 		<div v-else-if="page === 'collection'" class="screen">
 			<div class="update-heading">
-				<strong>コレクション</strong>
+				<strong>{{ exampleCopy.collection }}</strong>
 				<span class="update-create">
 					<i class="ti ti-plus"></i>
 				</span>
@@ -748,7 +748,7 @@
 				</span>
 				<span class="active">
 					<i class="ti ti-books"></i>
-					コレクション
+					{{ exampleCopy.collection }}
 				</span>
 				<span>
 					<i class="ti ti-user"></i>
@@ -757,7 +757,7 @@
 			<div class="shelf-tabs">
 				<span class="active">
 					<i class="ti ti-books"></i>
-					本棚
+					{{ exampleCopy.bookshelf }}
 				</span>
 				<span>
 					<i class="ti ti-movie"></i>
@@ -776,39 +776,39 @@
 						<br/>
 						BOOKS
 					</small>
-					<strong>夜を編む庭</strong>
+					<strong>{{ exampleCopy.gardenBook }}</strong>
 				</div>
 				<div>
-					<small>ファンタジー</small>
+					<small>{{ exampleCopy.fantasy }}</small>
 					<h4 class="update-work-title">
-						夜を編む庭
+						{{ exampleCopy.gardenBook }}
 						<i class="ti ti-pencil"></i>
 					</h4>
-					<small>青葉 なぎ</small>
+					<small>{{ exampleCopy.nagi }}</small>
 					<br/>
-					<span class="update-status">読書中</span>
+					<span class="update-status">{{ exampleCopy.readingStatus }}</span>
 				</div>
 			</div>
 			<div class="demo-card">
 				<span class="demo-label">
-					この作品の記録
-					<small>3件</small>
+					{{ exampleCopy.workRecords }}
+					<small>{{ exampleCopy.threeItems }}</small>
 				</span>
 				<div class="update-record-row">
-					<span>9月10日</span>
-					<p>気になった一節をノートに。</p>
+					<span>{{ exampleCopy.sep10 }}</span>
+					<p>{{ exampleCopy.sampleNoteOne }}</p>
 					<i class="ti ti-chevron-right"></i>
 				</div>
 				<div class="update-record-row">
-					<span>9月8日</span>
-					<p>少しずつ、続きを読んだ。</p>
+					<span>{{ exampleCopy.sep8 }}</span>
+					<p>{{ exampleCopy.sampleEarlierNote }}</p>
 					<i class="ti ti-chevron-right"></i>
 				</div>
 			</div>
 		</div>
 		<div v-else-if="page === 'profile'" class="screen">
 			<div class="update-heading">
-				<strong>プロフィール</strong>
+				<strong>{{ exampleCopy.profile }}</strong>
 				<span class="update-create">
 					<i class="ti ti-plus"></i>
 				</span>
@@ -825,87 +825,87 @@
 				</span>
 				<span class="active">
 					<i class="ti ti-user"></i>
-					プロフィール
+					{{ exampleCopy.profile }}
 				</span>
 			</div>
 			<div class="update-profile-edit">
 				<i class="ti ti-palette"></i>
-				デザインを編集
+				{{ exampleCopy.editDesign }}
 			</div>
 			<div class="update-profile">
 				<section class="update-tile update-identity">
 					<div class="update-profile-cover">
 					</div>
-					<span class="avatar">は</span>
-					<strong>はる</strong>
+					<span class="avatar">{{ exampleCopy.avatarH }}</span>
+					<strong>{{ exampleCopy.haru }}</strong>
 					<p>
-						読んだり、つくったり。
+						{{ exampleCopy.profileBioPart1 }}
 						<br/>
-						少しずつ。
+						{{ exampleCopy.profileBioPart2 }}
 					</p>
 				</section>
 				<section class="update-tile">
 					<strong>
 						<i class="ti ti-sparkles"></i>
-						ジャンルとタグ
+						{{ exampleCopy.genresTags }}
 					</strong>
-					<small>勉強・読書</small>
-					<p>ファンタジー</p>
-					<span class="update-status">興味</span>
+					<small>{{ exampleCopy.study }}</small>
+					<p>{{ exampleCopy.fantasy }}</p>
+					<span class="update-status">{{ exampleCopy.interest }}</span>
 				</section>
 				<section class="update-tile update-stats">
 					<div class="week-top">
-						<span>この1週間</span>
+						<span>{{ exampleCopy.thisWeek }}</span>
 						<strong>
 							13
-							<small>記録</small>
+							<small>{{ exampleCopy.records }}</small>
 						</strong>
 					</div>
 					<div class="week-strip">
 						<span>
-							金
+							{{ exampleCopy.friday }}
 							<strong>4</strong>
-							<small>1件</small>
+							<small>{{ exampleCopy.oneItem }}</small>
 						</span>
 						<span>
-							土
+							{{ exampleCopy.saturday }}
 							<strong>5</strong>
-							<small>0件</small>
+							<small>{{ exampleCopy.zeroItems }}</small>
 						</span>
 						<span>
-							日
+							{{ exampleCopy.sunday }}
 							<strong>6</strong>
-							<small>1件</small>
+							<small>{{ exampleCopy.oneItem }}</small>
 						</span>
 						<span>
-							月
+							{{ exampleCopy.monday }}
 							<strong>7</strong>
-							<small>3件</small>
+							<small>{{ exampleCopy.threeItems }}</small>
 						</span>
 						<span>
-							火
+							{{ exampleCopy.tuesday }}
 							<strong>8</strong>
-							<small>3件</small>
+							<small>{{ exampleCopy.threeItems }}</small>
 						</span>
 						<span>
-							水
+							{{ exampleCopy.wednesday }}
 							<strong>9</strong>
-							<small>3件</small>
+							<small>{{ exampleCopy.threeItems }}</small>
 						</span>
 						<span>
-							木
+							{{ exampleCopy.thursday }}
 							<strong>10</strong>
-							<small>2件</small>
+							<small>{{ exampleCopy.twoItems }}</small>
 						</span>
 					</div>
 					<div class="progress-summary">
 						<span>
 							<strong>25</strong>
-							<small>これまでの記録</small>
+							<small>{{ exampleCopy.allRecords }}</small>
 						</span>
 						<span>
-							<strong>15時間</strong>
-							<small>積み重ねた時間</small>
+							<strong>{{ exampleCopy.fifteenHours }}</strong>
+							<small>{{ exampleCopy.timeSpent }}</small>
 						</span>
 					</div>
 				</section>
@@ -917,11 +917,13 @@
 
 <script setup lang="ts">
 import type { HatadyTutorialKind } from '@/utility/hatady-tutorial-content.js';
+import { i18n } from '@/i18n.js';
 
 defineProps<{
 	kind: HatadyTutorialKind;
 	page: string;
 }>();
+const exampleCopy = i18n.ts._hata._hatady._tutorialExample;
 </script>
 
 <style lang="scss" scoped>

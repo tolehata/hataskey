@@ -79,9 +79,12 @@ export type Keys = (
 	'hataPostDelayEnabled' | // 旗鯖fork(ベータ): 投稿前カウントダウンを使うか(端末ローカル)
 	'hataPostDelaySeconds' | // 旗鯖fork(ベータ): 投稿前カウントダウンの秒数(3・5・10秒)
 	'hataSideStudio' | // 旗鯖fork: HataSideStudio の端末ローカルなプロファイルと拡大/縮小レイアウト
+	'hataSideStudioUiS' | // 旗鯖fork: UI S 専用のHataSideStudio構成（初回のみ旧UIから複製）
 	'hataSideStudioTutorialDone' | // 旗鯖fork: HataSideStudio の初回チュートリアルを完了またはスキップ済みか(端末ローカル)
-	`hatacordingUi:${string}` | // 旗鯖fork: HataSNSCordUI の有効化・メニュー・サブペイン設定(端末・アカウントごと)
-	`hatacordingActivityCache:${string}` | // 旗鯖fork: HataSNSCordUI の通知・地震津波履歴キャッシュ(端末・アカウントごと、期限・件数制限あり)
+	'hataskeyUi3Tab' | // 旗鯖fork: Hataskey UI 3 で最後に開いたタイムラインのタブ(端末ローカル)
+	'hataskeyUi3Live' | // 旗鯖fork: Hataskey UI 3 のLIVE表示(新着を即時にタイムラインへ差し込む)を使うか(端末ローカル)
+	'hataskeyUi3DeckMode' | // 旗鯖fork: Hataskey UI 3 でデッキ表示を使うか(端末ローカル)
+	'hataskeyUi3PaneTab' | // 旗鯖fork: Hataskey UI 3 の右ペインで開いているタブ(ウィジェット/Hatask)(端末ローカル)
 	`hataNotificationFilterPolicyNoticeShown:${string}` | // 旗鯖fork: 通知フィルタ方針変更の案内を表示済みか(端末・アカウントごと)
 	`hatalyzeNoticeAcceptedV1:${string}` | // Hataskey fork: HATAlyzeの初回注意書きを確認済みか(端末・アカウントごと)
 	`hatalyzeNoticeSyncedV1:${string}` | // Hataskey fork: HATAlyze注意書き確認をアカウントのRegistryへ同期済みか

@@ -8,11 +8,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<template #empty><MkResult type="empty" :text="i18n.ts.noNotes"/></template>
 
 	<template #default="{ items: notes }">
-		<div :class="[$style.root, { [$style.noGap]: noGap, '_gaps': !noGap }]">
+		<div ref="listEl" :class="[$style.root, { [$style.noGap]: noGap, '_gaps': !noGap }]">
 			<template v-for="(note, i) in notes" :key="note.id">
 				<div
 					v-if="i > 0 && isSeparatorNeeded(paginator.items.value[i - 1].createdAt, note.createdAt)"
 					:data-scroll-anchor="note.id"
+					:data-note-removal-id="note.id"
 					:class="{ '_gaps': !noGap }"
 				>
 					<div :class="[$style.date, { [$style.noGap]: noGap }]">
@@ -25,13 +26,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<MkAd :preferForms="['horizontal', 'horizontal-big']"/>
 					</div>
 				</div>
-				<div v-else-if="note._shouldInsertAd_" :class="{ '_gaps': !noGap }" :data-scroll-anchor="note.id">
+				<div v-else-if="note._shouldInsertAd_" :class="{ '_gaps': !noGap }" :data-scroll-anchor="note.id" :data-note-removal-id="note.id">
 					<MkNote :class="$style.note" :note="note" :withHardMute="true" :notification="notification" :forceShowReplyTargetNote="forceShowReplyTargetNote"/>
 					<div :class="$style.ad">
 						<MkAd :preferForms="['horizontal', 'horizontal-big']"/>
 					</div>
 				</div>
-				<MkNote v-else :class="$style.note" :note="note" :withHardMute="true" :data-scroll-anchor="note.id" :notification="notification" :forceShowReplyTargetNote="forceShowReplyTargetNote"/>
+				<MkNote v-else :class="$style.note" :note="note" :withHardMute="true" :data-scroll-anchor="note.id" :data-note-removal-id="note.id" :notification="notification" :forceShowReplyTargetNote="forceShowReplyTargetNote"/>
 			</template>
 		</div>
 	</template>
@@ -39,7 +40,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup generic="T extends IPaginator<Misskey.entities.Note>">
-import { onMounted } from 'vue';
+import { onMounted, shallowRef } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import type { IPaginator } from '@/utility/paginator.js';
 import MkNote from '@/components/MkNote.vue';
@@ -47,6 +48,7 @@ import MkPagination from '@/components/MkPagination.vue';
 import { i18n } from '@/i18n.js';
 import { globalEvents, useGlobalEvent } from '@/events.js';
 import { isSeparatorNeeded, getSeparatorInfo } from '@/utility/timeline-date-separate.js';
+import { useNoteRemoval } from '@/composables/use-note-removal.js';
 
 const props = withDefaults(defineProps<{
 	paginator: T;
@@ -70,11 +72,14 @@ const props = withDefaults(defineProps<{
 	forceShowReplyTargetNote: false,
 });
 
-useGlobalEvent('noteDeleted', (noteId) => {
-	props.paginator.removeItem(noteId);
+const listEl = shallowRef<HTMLElement | null>(null);
+const removal = useNoteRemoval(() => listEl.value);
+useGlobalEvent('noteDeleted', noteId => {
+	removal.remove(noteId, () => props.paginator.removeItem(noteId));
 });
 
 function reload() {
+	removal.cancelAll();
 	return props.paginator.reload();
 }
 

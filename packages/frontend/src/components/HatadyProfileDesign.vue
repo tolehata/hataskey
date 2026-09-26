@@ -3,7 +3,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <HyDialog
 	ref="dialog"
-	title="プロフィールを整える"
+	:title="copy.title"
 	:inert="closePrompt"
 	wide
 	:busy="saving"
@@ -11,10 +11,10 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 	@closed="emit('closed')"
 >
 	<div :class="$style.workspace" :data-pane="pane" :data-large="large">
-		<HyCapsule v-model="pane" :options="panes" label="編集とプレビュー"/>
+		<HyCapsule v-model="pane" :options="panes" :label="copy.panes"/>
 		<div v-show="pane === 'edit' || large" :class="$style.controls">
 			<fieldset class="hy-field">
-				<legend>カラー</legend>
+				<legend>{{ copy.palette }}</legend>
 				<div :class="$style.choices">
 					<button
 						v-for="c in palettes"
@@ -28,7 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				</div>
 			</fieldset>
 			<fieldset class="hy-field">
-				<legend>並べ方</legend>
+				<legend>{{ copy.layout }}</legend>
 				<div :class="$style.choices">
 					<button
 						v-for="l in layouts"
@@ -46,7 +46,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				</div>
 			</fieldset>
 			<fieldset class="hy-field">
-				<legend>表示するもの</legend>
+				<legend>{{ copy.visibleSections }}</legend>
 				<div v-for="(key, index) in draft.order" :key="key" :class="$style.order">
 					<label>
 						<input type="checkbox" :checked="!draft.hidden.includes(key)" @change="toggle(key)"/>
@@ -56,7 +56,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					<button
 						class="hy-icon-button"
 						:disabled="index === 0"
-						:aria-label="`${sections[key]?.label}を上へ`"
+						:aria-label="i18n.tsx._hata._hatady._profileDesign.moveUp({ label: sections[key]?.label ?? key })"
 						@click="move(Number(index), -1)"
 					>
 						<i class="ti ti-arrow-up"></i>
@@ -64,7 +64,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					<button
 						class="hy-icon-button"
 						:disabled="index === draft.order.length - 1"
-						:aria-label="`${sections[key]?.label}を下へ`"
+						:aria-label="i18n.tsx._hata._hatady._profileDesign.moveDown({ label: sections[key]?.label ?? key })"
 						@click="move(Number(index), 1)"
 					>
 						<i class="ti ti-arrow-down"></i>
@@ -72,31 +72,31 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				</div>
 			</fieldset>
 			<fieldset class="hy-field">
-				<legend>カードの形</legend>
-				<HyCapsule v-model="draft.corners" :options="corners" label="カードの形"/>
+				<legend>{{ copy.corners }}</legend>
+				<HyCapsule v-model="draft.corners" :options="corners" :label="copy.corners"/>
 			</fieldset>
 			<fieldset class="hy-field">
-				<legend>余白</legend>
-				<HyCapsule v-model="draft.spacing" :options="spacing" label="余白"/>
+				<legend>{{ copy.spacing }}</legend>
+				<HyCapsule v-model="draft.spacing" :options="spacing" :label="copy.spacing"/>
 			</fieldset>
 		</div>
-		<section v-show="pane === 'preview' || large" :class="$style.preview" aria-label="プロフィールのプレビュー" inert>
+		<section v-show="pane === 'preview' || large" :class="$style.preview" :aria-label="copy.previewAria" inert>
 			<HatadyProfilePreview inline :previewData="profile" :previewDesign="draft"/>
 		</section>
 	</div>
 	<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
 	<template #actions>
-		<button class="hy-secondary" :disabled="saving" @click="requestClose">閉じる</button>
+		<button class="hy-secondary" :disabled="saving" @click="requestClose">{{ i18n.ts.close }}</button>
 		<button class="hy-primary" :disabled="saving" @click="save">
 			<i class="ti ti-check"></i>
-			保存する
+			{{ copy.save }}
 		</button>
 	</template>
 </HyDialog>
 <HatadyDraftPrompt
 	v-if="closePrompt"
-	title="デザインの編集をどうする？"
-	description="編集途中のデザインを、端末に下書きとして残せます。"
+	:title="copy.draftQuestion"
+	:description="copy.draftDescription"
 	:error="error"
 	:busy="saving"
 	@save="leave(true)"
@@ -112,6 +112,9 @@ import HyCapsule from '@/components/HyCapsule.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
+import { i18n } from '@/i18n.js';
+const copy = i18n.ts._hata._hatady._profileDesign;
+const profileCopy = i18n.ts._hata._hatady._profileView;
 const HatadyProfilePreview = defineAsyncComponent(() => import('@/components/HatadyProfile.vue'));
 const props = defineProps<{ design?: Record<string, any>; profile: any }>();
 const emit = defineEmits<{ (e: 'saved', value: Record<string, any>): void; (e: 'closed'): void }>();
@@ -122,11 +125,11 @@ const dialog = ref<any>(),
 	large = ref(false),
 	closePrompt = ref(false);
 const sections: Record<string, { label: string; icon: string }> = {
-	stats: { label: '積み重ね', icon: 'ti-calendar' },
-	traits: { label: 'ジャンルとタグ', icon: 'ti-sparkles' },
-	shelf: { label: 'コレクション', icon: 'ti-books' },
-	recent: { label: '最近の記録', icon: 'ti-notebook' },
-	work: { label: '作業の記録', icon: 'ti-briefcase' },
+	stats: { label: profileCopy.statsSection, icon: 'ti-calendar' },
+	traits: { label: profileCopy.traitsSection, icon: 'ti-sparkles' },
+	shelf: { label: i18n.ts._hata._hatady._media.collection, icon: 'ti-books' },
+	recent: { label: profileCopy.recentSection, icon: 'ti-notebook' },
+	work: { label: profileCopy.workSection, icon: 'ti-briefcase' },
 };
 
 function normalize(value: any) {
@@ -155,27 +158,27 @@ const drafts = useHataFormDraft({
 	isMeaningful: () => true,
 });
 const palettes = [
-	{ value: 'theme', label: 'テーマ', color: 'var(--hy-accent)' },
-	{ value: 'leaf', label: '若葉', color: '#326946' },
-	{ value: 'violet', label: 'すみれ', color: '#665285' },
-	{ value: 'clay', label: '土色', color: '#844d39' },
+	{ value: 'theme', label: copy.paletteTheme, color: 'var(--hy-accent)' },
+	{ value: 'leaf', label: copy.paletteLeaf, color: '#326946' },
+	{ value: 'violet', label: copy.paletteViolet, color: '#665285' },
+	{ value: 'clay', label: copy.paletteClay, color: '#844d39' },
 ];
 const layouts = [
-	{ value: 'bento', label: 'バランス' },
-	{ value: 'journal', label: '日記' },
-	{ value: 'gallery', label: '本棚' },
+	{ value: 'bento', label: copy.layoutBalanced },
+	{ value: 'journal', label: copy.layoutJournal },
+	{ value: 'gallery', label: copy.layoutBookshelf },
 ];
 const panes = [
-	{ value: 'edit', label: '編集', icon: 'ti ti-palette' },
-	{ value: 'preview', label: 'プレビュー', icon: 'ti ti-eye' },
+	{ value: 'edit', label: copy.edit, icon: 'ti ti-palette' },
+	{ value: 'preview', label: copy.preview, icon: 'ti ti-eye' },
 ];
 const corners = [
-	{ value: 'soft', label: 'まるく', icon: 'ti ti-square-rounded' },
-	{ value: 'neat', label: 'すっきり', icon: 'ti ti-square' },
+	{ value: 'soft', label: copy.cornerSoft, icon: 'ti ti-square-rounded' },
+	{ value: 'neat', label: copy.cornerNeat, icon: 'ti ti-square' },
 ];
 const spacing = [
-	{ value: 'relaxed', label: 'ゆったり', icon: 'ti ti-spacing-vertical' },
-	{ value: 'compact', label: 'コンパクト', icon: 'ti ti-layout-rows' },
+	{ value: 'relaxed', label: copy.spacingRelaxed, icon: 'ti ti-spacing-vertical' },
+	{ value: 'compact', label: copy.spacingCompact, icon: 'ti ti-layout-rows' },
 ];
 
 function toggle(key: string) {
@@ -199,12 +202,12 @@ function requestClose() {
 function leave(save: boolean) {
 	const ok = save ? drafts.saveDraft() : drafts.clearDraft();
 	if (!ok) {
-		error.value = '下書きを保存・削除できませんでした';
+		error.value = copy.draftFailed;
 		return;
 	}
 	closePrompt.value = false;
 	dialog.value?.close();
-	if (save) hatadyNotify('下書きを保存しました');
+	if (save) hatadyNotify(copy.draftSaved);
 }
 
 async function save() {
@@ -213,12 +216,12 @@ async function save() {
 	error.value = '';
 	try {
 		await (misskeyApi as any)('hata/hatady/profile/update', { design: draft.value });
-		if (!drafts.clearDraft()) hatadyNotify('デザインを保存しましたが、端末の下書きを削除できませんでした');
-		else hatadyNotify('プロフィールのデザインを保存しました');
+		if (!drafts.clearDraft()) hatadyNotify(copy.savedDraftCleanupFailed);
+		else hatadyNotify(copy.saved);
 		emit('saved', draft.value);
 		dialog.value?.close();
 	} catch {
-		error.value = '保存できませんでした。編集内容は残っています。';
+		error.value = copy.saveFailed;
 	} finally {
 		saving.value = false;
 	}

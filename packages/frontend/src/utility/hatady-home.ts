@@ -26,7 +26,7 @@ export type HatadyHomePreview = {
 };
 export function activityKind(activity: HatadyActivity): HatadyLogKind {
 	return activity.study
-		? (activity.study.kind ?? (activity.type === 'exercise' || activity.type === 'work' ? activity.type : 'study'))
+		? (activity.study.kind ?? (activity.type === 'exercise' || activity.type === 'work' || activity.type === 'cooking' ? activity.type : 'study'))
 		: activity.type === 'movie_viewing'
 			? 'movie'
 			: 'game';
@@ -93,7 +93,8 @@ export function summarizeHome(activities: HatadyActivity[], now = new Date(), ha
 		)
 		.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
 	const week = recent.filter((row) => Date.parse(row.occurredAt) >= period.week);
-	const ranked = HATADY_LOG_KINDS.map((kind) => {
+	// 料理は Hatask のレシピから記録され、ホームの注目パネルにはまだ専用の見せ方が無いため順位付けに入れない。
+	const ranked = HATADY_LOG_KINDS.filter((kind) => kind !== 'cooking').map((kind) => {
 		const rows = recent.filter((row) => activityKind(row) === kind),
 			weekCount = week.filter((row) => activityKind(row) === kind).length;
 		return {

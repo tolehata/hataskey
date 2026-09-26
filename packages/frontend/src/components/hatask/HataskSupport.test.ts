@@ -30,8 +30,8 @@ function response(isSupporter = false) {
 		settings: { platform: '支援サイト', url: 'https://support.example.test/', manageUrl: 'https://support.example.test/manage', intro: 'サーバーの運営を、支援というかたちで応援できます。\n支援先と特典をご確認のうえ、無理のない範囲でご検討ください', bannerTitle: 'ご支援ありがとうございます！', bannerMessage: 'みなさんのご支援が、\nサーバーの運営を支えています。\nいつもこの場所を大切にしてくださり、\nありがとうございます', bannerVisible: true },
 		benefits: SUPPORT_POLICIES.map(policy => {
 			const parentUnavailable = ['mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters'].includes(policy.key);
-			const baseline = snapshot(policy.type === 'boolean' ? policy.key === 'canUseHatacordingUi' : policy.key === 'favoriteFolderLimit' ? 2 : 100, parentUnavailable ? { available: false, condition: 'mascotUnavailable' } : {});
-			const offered = snapshot(policy.type === 'boolean' ? policy.key !== 'canBypassHatacordingUiRateLimit' : policy.key === 'driveCapacityMb' ? 5120 : policy.key === 'favoriteFolderLimit' ? 5 : 1000);
+			const baseline = snapshot(policy.type === 'boolean' ? policy.key === 'canUseMascot' : policy.key === 'favoriteFolderLimit' ? 2 : 100, parentUnavailable ? { available: false, condition: 'mascotUnavailable' } : {});
+			const offered = snapshot(policy.type === 'boolean' ? policy.key !== 'canUseHatadySync' : policy.key === 'driveCapacityMb' ? 5120 : policy.key === 'favoriteFolderLimit' ? 5 : 1000);
 			return { key: policy.key, title: policy.name as string, description: policy.description as string, showBaseline: true, baseline: baseline as SupportSnapshot | null, offered: offered as SupportSnapshot | null, current: isSupporter ? offered : baseline, reflected: isSupporter };
 		}),
 	};
@@ -90,7 +90,7 @@ function card(container: HTMLElement, key: string): HTMLElement {
 	return found;
 }
 
-function expectSingleSnsAvailability(element: HTMLElement): void {
+function expectSingleAvailability(element: HTMLElement): void {
 	expect(element.querySelectorAll('[data-baseline-value]')).toHaveLength(1);
 	expect(element.querySelector('[data-baseline-value]')?.textContent).toBe('利用できます');
 	expect(element.querySelector('[data-offered-value]')).toBeNull();
@@ -104,7 +104,7 @@ describe('Hatask support view', () => {
 		await flush();
 		expect(container.querySelector('[data-hatask-support]')?.getAttribute('data-theme')).toBe(props.theme);
 		expect(container.querySelector('[data-hatask-support]')?.getAttribute('data-mode')).toBe(props.mode);
-		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(16);
+		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(13);
 		expect(container.querySelectorAll('[data-avatar]')).toHaveLength(2);
 		expect(container.querySelector('[data-user-name]')?.textContent).toBe('実ユーザー one');
 		expect(container.querySelector('[data-section="supporters"] a')?.getAttribute('href')).toBe('/@one');
@@ -114,7 +114,7 @@ describe('Hatask support view', () => {
 		expect(container.querySelector('[data-section="thanks-banner"] img') != null).toBe(props.theme === 'hatakyu');
 		expect(container.querySelector('[data-section="support-destination"]')).not.toBeNull();
 		expect(container.querySelector('[data-section="active-benefits"]')).toBeNull();
-		expectSingleSnsAvailability(card(container, 'canUseHatacordingUi'));
+		expectSingleAvailability(card(container, 'canUseMascot'));
 	});
 	test('default heading breaks and requested paragraph newlines survive the port', async () => {
 		const { container } = mount();
@@ -143,7 +143,7 @@ describe('Hatask support view', () => {
 		expect(favoriteSubfolders.getAttribute('data-value-source')).toBe('offered');
 		expect(favoriteSubfolders.querySelector('[data-baseline-value]')?.textContent).toBe('作成できません');
 		expect(favoriteSubfolders.querySelector('[style*="--value-em"]')?.textContent).toBe('作成できます');
-		for (const key of ['mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters', 'canBypassHatacordingUiRateLimit']) expect(card(container, key).getAttribute('data-value-source')).toBe('offered');
+		for (const key of ['mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters', 'canUseHatadySync']) expect(card(container, key).getAttribute('data-value-source')).toBe('offered');
 		expect(card(container, 'mascotMaxPhrases').textContent).toContain('マスコット機能は利用できません');
 	});
 	test.each([360, 495, 1000])('identical availability appears once at container width %i', async containerWidth => {
@@ -154,15 +154,15 @@ describe('Hatask support view', () => {
 			button(container, '支援特典をもっとみる').click();
 			await flush();
 		}
-		const sns = card(container, 'canUseHatacordingUi');
-		expect(sns.hasAttribute('inert')).toBe(false);
-		expectSingleSnsAvailability(sns);
+		const mascot = card(container, 'canUseMascot');
+		expect(mascot.hasAttribute('inert')).toBe(false);
+		expectSingleAvailability(mascot);
 		// Positive control: the old duplicate comparison must fail this same assertion.
-		const duplicate = sns.cloneNode(true) as HTMLElement;
+		const duplicate = mascot.cloneNode(true) as HTMLElement;
 		const comparison = window.document.createElement('dl');
-		comparison.innerHTML = '<dt>支援特典</dt><dd data-offered-value="canUseHatacordingUi">利用できます</dd>';
+		comparison.innerHTML = '<dt>支援特典</dt><dd data-offered-value="canUseMascot">利用できます</dd>';
 		duplicate.append(comparison);
-		expect(() => expectSingleSnsAvailability(duplicate)).toThrow();
+		expect(() => expectSingleAvailability(duplicate)).toThrow();
 	});
 	test('equal numeric benefits keep the usable baseline and omit the redundant comparison', async () => {
 		const value = response();
@@ -179,7 +179,7 @@ describe('Hatask support view', () => {
 		{ name: 'missing offer', offered: null },
 		{ name: 'different raw limit with the same rounded text', offered: snapshot(100.001) },
 		{ name: 'different availability', offered: snapshot(100, { available: false }) },
-		{ name: 'different condition', offered: snapshot(100, { condition: 'snsUiUnavailable' }) },
+		{ name: 'different condition', offered: snapshot(100, { condition: 'mascotUnavailable' }) },
 		{ name: 'different exemption', offered: snapshot(100, { unlimited: true }) },
 		{ name: 'different rate multiplier', offered: snapshot(100, { rateMultiplier: 2 }) },
 	])('$name is not mistaken for an identical comparison', async ({ offered }) => {
@@ -213,9 +213,9 @@ describe('Hatask support view', () => {
 		expect(container.querySelector('[data-section="cancel-guidance"]')?.textContent).toContain('Hatask内では停止手続きはできません');
 		expect(container.querySelector('[data-section="support-status"] p')?.textContent).toBe('サーバー管理者が、\nあなたからの支援を確認しました。\n現在ご利用いただける支援特典を、\n下にまとめています');
 		expect(card(container, 'driveCapacityMb').getAttribute('data-value-source')).toBe('current');
-		expect(card(container, 'canUseHatacordingUi').querySelector('[data-offered-value]')?.textContent).toBe('利用できます');
-		expect(card(container, 'canBypassHatacordingUiRateLimit').textContent).toContain('設定が反映されています');
-		expect(card(container, 'canBypassHatacordingUiRateLimit').textContent).not.toContain('利用できます');
+		expect(card(container, 'canUseMascot').querySelector('[data-offered-value]')?.textContent).toBe('利用できます');
+		expect(card(container, 'canUseHatadySync').textContent).toContain('設定が反映されています');
+		expect(card(container, 'canUseHatadySync').textContent).not.toContain('同期できます');
 	});
 	test('independent registration does not claim unreflected effective policies are active', async () => {
 		const value = response();
@@ -351,7 +351,7 @@ describe('Hatask support view', () => {
 		expect(container.querySelector('[data-section="unconfigured-support"]')).toBeNull();
 		button(container, '再試行').click();
 		await flush();
-		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(16);
+		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(13);
 	});
 	test('unmount cancels stale data adoption and disconnects layout observation', async () => {
 		let resolveRequest!: (value: ReturnType<typeof response>) => void;

@@ -2,7 +2,7 @@
 <template>
 <HyDialog
 	ref="dialog"
-	:title="subject ? '分野を編集' : '分野を追加'"
+	:title="subject ? copy.edit : copy.add"
 	:busy="busy"
 	:inert="prompt"
 	@close="requestClose"
@@ -10,11 +10,11 @@
 >
 	<form class="hy-form" @submit.prevent="save">
 		<label class="hy-field">
-			<span>分野の名前</span>
-			<input v-model="name" class="hy-input" maxlength="128" placeholder="デザイン、数学、英語" required/>
+			<span>{{ copy.name }}</span>
+			<input v-model="name" class="hy-input" maxlength="128" :placeholder="copy.nameExample" required/>
 		</label>
 		<div class="hy-field">
-			<span>色</span>
+			<span>{{ copy.color }}</span>
 			<div :class="$style.colors">
 				<button
 					v-for="c in colors"
@@ -31,23 +31,23 @@
 			<input
 				type="color"
 				:value="color || '#517f4f'"
-				aria-label="分野の色を指定"
+				:aria-label="copy.chooseColor"
 				@input="color = ($event.target as HTMLInputElement).value"
 			/>
-			<button type="button" class="hy-secondary" @click="color = null">自動の色に戻す</button>
+			<button type="button" class="hy-secondary" @click="color = null">{{ copy.resetColor }}</button>
 		</div>
-		<p v-if="subject && name !== subject.name" class="hy-muted">この分野の記録は、新しい名前へ引き継がれます</p>
+		<p v-if="subject && name !== subject.name" class="hy-muted">{{ copy.renameTransfer }}</p>
 		<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
 	</form>
 	<template #actions>
-		<button class="hy-secondary" :disabled="busy" @click="requestClose">閉じる</button>
-		<button class="hy-primary" :disabled="busy || !name.trim()" @click="save">保存する</button>
+		<button class="hy-secondary" :disabled="busy" @click="requestClose">{{ i18n.ts.close }}</button>
+		<button class="hy-primary" :disabled="busy || !name.trim()" @click="save">{{ copy.save }}</button>
 	</template>
 </HyDialog>
 <HatadyDraftPrompt
 	v-if="prompt"
-	title="分野の編集をどうする？"
-	description="途中の名前と色を、端末に下書きとして残せます。"
+	:title="copy.draftQuestion"
+	:description="copy.draftDescription"
 	:error="draftError"
 	@save="leave(true)"
 	@discard="leave(false)"
@@ -63,6 +63,8 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
 import { loadHySubjects, hySubjects } from '@/utility/hatady-subjects.js';
+import { i18n } from '@/i18n.js';
+const copy = i18n.ts._hata._hatady._subjects;
 const props = defineProps<{ subject?: HySubjectRow }>();
 const emit = defineEmits<{ (e: 'closed'): void; (e: 'done'): void }>();
 const dialog = ref<any>(),
@@ -105,11 +107,11 @@ function requestClose() {
 
 function leave(save: boolean) {
 	if (!(save ? draft.saveDraft() : draft.clearDraft())) {
-		draftError.value = '端末の下書きを更新できませんでした';
+		draftError.value = copy.draftFailed;
 		return;
 	}
 	prompt.value = false;
-	if (save) hatadyNotify('下書きを保存しました');
+	if (save) hatadyNotify(copy.draftSaved);
 	dialog.value?.close();
 }
 
@@ -117,7 +119,7 @@ async function save() {
 	const n = name.value.trim();
 	if (!n || busy.value) return;
 	if (n !== props.subject?.name && hySubjects.value.some((s) => s.name === n)) {
-		error.value = '同じ名前の分野があります';
+		error.value = copy.duplicateName;
 		return;
 	}
 	busy.value = true;
@@ -128,13 +130,13 @@ async function save() {
 			color: color.value,
 			originalName: props.subject?.name,
 		});
-		if (!draft.clearDraft()) hatadyNotify('分野を保存しましたが、端末の下書きを削除できませんでした');
-		else hatadyNotify('分野を保存しました');
+		if (!draft.clearDraft()) hatadyNotify(copy.savedDraftCleanupFailed);
+		else hatadyNotify(copy.saved);
 		await loadHySubjects();
 		emit('done');
 		dialog.value?.close();
 	} catch {
-		error.value = '分野を保存できませんでした';
+		error.value = copy.saveFailed;
 	} finally {
 		busy.value = false;
 	}

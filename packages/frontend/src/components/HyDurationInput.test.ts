@@ -3,6 +3,8 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { createApp, h, nextTick, ref } from 'vue';
 import HyDurationInput from './HyDurationInput.vue';
 
+vi.mock('@/i18n.js', async () => ({ i18n: (await import('@/utility/hatask-test-i18n.js')).createTestHataskI18n() }));
+
 const cleanups: Array<() => void> = [];
 afterEach(() => { cleanups.splice(0).forEach(cleanup => cleanup()); });
 

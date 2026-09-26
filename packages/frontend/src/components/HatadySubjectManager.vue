@@ -29,7 +29,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</span>
 						</div>
 					</div>
-					<button :class="[$style.iconBtn, false && $style.iconBtnOn]" :title="'分野を編集'" @click="openEditor(s)">
+					<button :class="[$style.iconBtn, false && $style.iconBtnOn]" :title="i18n.ts._hata._hatady._subjects.edit" @click="openEditor(s)">
 						<i class="ti ti-pencil"></i>
 					</button>
 					<button
@@ -113,11 +113,11 @@ async function removeSubject(s: HySubjectRow) {
 	try {
 		await deleteHySubject(s.name, reassignTo);
 		if (reassignTo != null) {
-			hatadyNotify('分野を更新しました');
+			hatadyNotify(i18n.ts._hata._hatady._subjects.updated);
 		}
 		emit('changed');
 	} catch {
-		hatadyNotify('分野を更新できませんでした');
+		hatadyNotify(i18n.ts._hata._hatady._subjects.updateFailed);
 	} finally {
 		busy.value = false;
 	}

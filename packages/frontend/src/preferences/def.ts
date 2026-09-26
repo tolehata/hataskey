@@ -768,6 +768,33 @@ export const PREF_DEF = definePreferences({
         showDrawingButtonInPostForm: {
 		default: true,
 	},
+	// 旗鯖fork: Hataskey UI 3 の投稿欄に置く、よく使う機能のショートカット2枠('none' の枠は＋ボタン)。
+	hataskeyUi3ComposerShortcut1: {
+		default: 'none' as string,
+	},
+	hataskeyUi3ComposerShortcut2: {
+		default: 'none' as string,
+	},
+	// 旗鯖fork: Hataskey UI 3 の投稿欄で絵文字ボタンを置く位置(ショートカットのすぐ右/公開範囲のすぐ左)。
+	hataskeyUi3ComposerEmojiPosition: {
+		default: 'afterShortcuts' as 'afterShortcuts' | 'beforeVisibility',
+	},
+	// 旗鯖fork: Hataskey UI 3 のタイムライン内投稿欄の位置。
+	hataskeyUi3ComposerPosition: {
+		default: 'bottom' as 'top' | 'bottom',
+	},
+	// UI S RSS is account-independent and separate from deck RSS. Optional
+	// preference cloud backup follows the existing preference manager policy.
+	hataskeyUi3RssEnabled: { default: false },
+	hataskeyUi3RssFeeds: { default: [] as { id: string; url: string; name?: string; color?: string }[] },
+	hataskeyUi3RssAutoSwitch: { default: true },
+	hataskeyUi3RssReadSeconds: { default: 6 as 6 | 10 | 15 | 30 },
+	hataskeyUi3RssReadMode: { default: 'full' as 'full' | 'summary' },
+	// 旗鯖fork: ショートカットを初めて選んだときの「設定で変更できます」案内を表示済みか(アカウントごとに1回)。
+	hataskeyUi3ShortcutGuideShown: {
+		default: false,
+		accountDependent: true,
+	},
         useSimpleTL: {
         default: false,
 	},
@@ -1165,7 +1192,7 @@ export const PREF_DEF = definePreferences({
 
 	// ======== フォント設定 ========
 	'hataFont.id': {
-		default: 'zen-kaku' as 'zen-kaku' | 'm-plus-1p' | 'dotgothic16' | 'train-one' | 'ibm-plex-sans-jp' | 'custom' | 'system',
+		default: 'line-seed-jp' as 'line-seed-jp' | 'zen-kaku' | 'zen-kaku-antique' | 'm-plus-1p' | 'dotgothic16' | 'train-one' | 'ibm-plex-sans-jp' | 'custom' | 'system',
 	},
 	'hataFont.customUrl': {
 		default: '' as string,

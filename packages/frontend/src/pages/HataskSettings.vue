@@ -118,10 +118,30 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<!-- きもち記録 -->
-			<div :class="$style.card">
+			<div ref="moodReminderCard" :class="[$style.card, moodReminderHighlight && $style.cardHighlight]">
 				<div :class="$style.label">{{ copy.moodLog }}</div>
-					<div :class="$style.row"><span>{{ copy.reminderNotification }}</span><button type="button" :class="[$style.sw, settings.moodRemind && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="copy.reminderNotification" :aria-checked="settings.moodRemind" @click="toggle('moodRemind')"></button></div>
-				<div :class="$style.desc">{{ copy.moodReminderDescription }}</div>
+				<div :class="$style.row"><span>{{ copy.moodReminderToggle }}</span><button ref="moodReminderSwitch" type="button" :class="[$style.sw, settings.moodRemind && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="copy.moodReminderToggle" :aria-checked="!!settings.moodRemind" @click="toggle('moodRemind')"></button></div>
+				<div :class="[$style.desc, $style.lines]">{{ copy.moodReminderDescription }}</div>
+				<template v-if="settings.moodRemind">
+					<div :class="$style.subLabel">{{ copy.moodReminderTimes }}</div>
+					<div :class="$style.chips" role="group" :aria-label="copy.moodReminderTimes">
+						<button v-for="time in HATASK_MOOD_REMINDER_TIMES" :key="time" type="button" :class="[$style.chip, moodRemindTimes.includes(time) && $style.chipOn]" :aria-pressed="moodRemindTimes.includes(time)" :disabled="settingsSaving" @click="toggleMoodRemindTime(time)">{{ moodRemindTimeLabel(time) }}</button>
+					</div>
+					<div v-if="moodRemindTimes.length === 0" :class="$style.warn" role="status"><i class="ti ti-alert-triangle" aria-hidden="true"></i>{{ copy.moodReminderNoTimes }}</div>
+					<div :class="$style.row"><span>{{ copy.moodReminderTimeZone }}</span><span :class="$style.value">{{ formatHataskTimeZone(moodRemindTimeZone) }}</span></div>
+					<div :class="$style.desc">{{ copy.moodReminderTimeZoneDescription }}</div>
+					<template v-if="deviceTimeZone !== moodRemindTimeZone">
+						<div :class="[$style.desc, $style.lines]">{{ tx.moodReminderTimeZoneMismatch({ zone: formatHataskTimeZone(deviceTimeZone) }) }}</div>
+						<div :class="$style.safetyActions">
+							<MkButton rounded small :disabled="settingsSaving" @click="saveSettings({ moodRemindTimeZone: deviceTimeZone })"><i class="ti ti-world" aria-hidden="true"></i> {{ copy.moodReminderUseDeviceTimeZone }}</MkButton>
+						</div>
+					</template>
+					<div v-if="appNotificationsOff" :class="$style.warn" role="status">
+						<i class="ti ti-bell-off" aria-hidden="true"></i>
+						<div :class="$style.lines">{{ copy.moodReminderAppNotificationsOff }}<br><MkA to="/settings/notifications" :class="$style.link">{{ copy.openNotificationSettings }}</MkA></div>
+					</div>
+					<div :class="[$style.desc, $style.lines]">{{ tx.moodReminderDelivery({ name: serverName }) }}</div>
+				</template>
 			</div>
 
 			<!-- データ同期 -->
@@ -213,7 +233,10 @@ import { createHataskPlannerIntegrity, HATASK_PLANNER_SCOPE, migrateHataskPlanne
 import type { HataskPlannerCollectionKey, HataskPlannerEvent, HataskPlannerRawData, HataskPlannerTemplate } from '@/utility/hatask-planner-storage.js';
 import { normalizeHataskPlannerTemplates } from '@/utility/hatask-planner-templates.js';
 import { isHataskAkatsukiRequiredTab, moveHataskAkatsukiMobileTab, normalizeHataskAkatsukiMobileTabs, replaceHataskAkatsukiMobileTab } from '@/utility/hatask-akatsuki-navigation.js';
-import { createHataskMoodReminderPatch } from '@/utility/hatask-mood-reminder.js';
+import { createHataskMoodReminderPatch, formatHataskTimeZone, getHataskDeviceTimeZone, getHataskMoodReminderTimeZone, HATASK_MOOD_REMINDER_TIMES } from '@/utility/hatask-mood-reminder.js';
+import { $i } from '@/i.js';
+import { instance } from '@/instance.js';
+import { host } from '@@/js/config.js';
 import { store } from '@/store.js';
 import HataskThemePreview from '@/components/hatask/HataskThemePreview.vue';
 import type { HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';
@@ -277,6 +300,7 @@ const navigationChoices: { id: HataskAkatsukiTab; label: string; shortLabel: str
 	{ id: 'todo', label: 'ToDo', shortLabel: 'ToDo', icon: 'ti ti-checkbox' },
 	{ id: 'mood', label: 'きもち', shortLabel: 'きもち', icon: 'ti ti-mood-smile' },
 	{ id: 'meal', label: 'ごはん', shortLabel: 'ごはん', icon: 'ti ti-soup' },
+	{ id: 'recipe', label: 'レシピ', shortLabel: 'レシピ', icon: 'ti ti-chef-hat' },
 	{ id: 'garden', label: 'おはな', shortLabel: 'おはな', icon: 'ti ti-flower' },
 	{ id: 'support', label: '支援情報', shortLabel: '支援情報', icon: 'ti ti-heart-handshake' },
 	{ id: 'ranking', label: 'ランキング', shortLabel: 'ランキング', icon: 'ti ti-trophy' },
@@ -388,6 +412,7 @@ onMounted(async () => {
 		loadSettings(),
 		loadPlannerSnapshot().catch(() => null),
 	]);
+	void revealFocusedSetting();
 	if(plannerSnapshot){
 		const dates=plannerCollectionEntries(plannerSnapshot).map(([,collection])=>collection.latestBackupAt).filter((date):date is string=>typeof date==='string').sort();
 		plannerLastBackup.value=dates.length?new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(dates[dates.length-1])):'';
@@ -546,6 +571,28 @@ async function saveSettings(patch: Record<string, unknown>): Promise<void> {
 }
 
 function toggle(key:string) { void saveSettings({ [key]: !settings.value[key] }); }
+
+// 保存済みの時刻選択。未保存の旧設定はサーバーと同じ既定(昼・寝る前)として表示する。
+const moodRemindTimes = computed<string[]>(() => settings.value.moodRemindTimes === undefined
+	? ['昼 12:00', '寝る前 23:00']
+	: Array.isArray(settings.value.moodRemindTimes) ? settings.value.moodRemindTimes : []);
+const moodRemindTimeZone = computed(() => getHataskMoodReminderTimeZone(settings.value));
+const deviceTimeZone = getHataskDeviceTimeZone();
+const serverName = instance.name ?? host;
+// 受信設定で「連携アプリからの通知」を切ると、サーバーはリマインドを作らない。
+const appNotificationsOff = computed(() => ($i?.notificationRecieveConfig as Record<string, { type?: string } | undefined> | undefined)?.app?.type === 'never');
+const moodRemindTimeLabels: Record<string, string> = {
+	'朝 8:00': i18n.ts._hata._hatask._main.moodReminderMorning,
+	'昼 12:00': i18n.ts._hata._hatask._main.moodReminderNoon,
+	'夜 20:00': i18n.ts._hata._hatask._main.moodReminderEvening,
+	'寝る前 23:00': i18n.ts._hata._hatask._main.moodReminderBedtime,
+};
+function moodRemindTimeLabel(time: string): string { return moodRemindTimeLabels[time] ?? time; }
+function toggleMoodRemindTime(time: string): void {
+	const times = moodRemindTimes.value;
+	// 表示順を保ったまま保存する。
+	void saveSettings({ moodRemindTimes: HATASK_MOOD_REMINDER_TIMES.filter(t => t === time ? !times.includes(t) : times.includes(t)) });
+}
 function onWeekStart(ev:Event) {
 	const select = ev.target as HTMLSelectElement;
 	const value = select.value;
@@ -573,8 +620,40 @@ async function sendTestNotification() {
 	catch { os.toast(copy.testNotificationFailed); }
 }
 
-/** 旗鯖fork: true なら窓の枠を持たず、設定画面の右ペインの中身として描く。 */
-defineProps<{ embedded?: boolean }>();
+const props = defineProps<{
+	/** 旗鯖fork: true なら窓の枠を持たず、設定画面の右ペインの中身として描く。 */
+	embedded?: boolean;
+	/** 開いた直後に表示・強調する設定項目(きもち画面のリマインドボタンから)。 */
+	focus?: 'moodReminder';
+}>();
+
+const moodReminderCard = shallowRef<HTMLElement>();
+const moodReminderSwitch = shallowRef<HTMLButtonElement>();
+const moodReminderHighlight = ref(false);
+
+function userScrollableAncestor(el: HTMLElement): HTMLElement | null {
+	for (let node = el.parentElement; node; node = node.parentElement) {
+		const { overflowY } = getComputedStyle(node);
+		if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) return node;
+	}
+	return null;
+}
+
+async function revealFocusedSetting(): Promise<void> {
+	if (props.focus !== 'moodReminder' || !settingsLoaded.value) return;
+	await nextTick();
+	const card = moodReminderCard.value;
+	const scroller = card ? userScrollableAncestor(card) : null;
+	if (card && scroller) {
+		// scrollIntoView は overflow:hidden の窓枠まで動かし、上下の操作部(閉じるボタン等)が
+		// 画面外に取り残されるため、利用者がスクロールできる本文だけを動かす。
+		const top = card.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 12;
+		scroller.scrollTo({ top: Math.max(0, top), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+	}
+	moodReminderSwitch.value?.focus({ preventScroll: true });
+	moodReminderHighlight.value = true;
+	window.setTimeout(() => { moodReminderHighlight.value = false; }, 1600);
+}
 </script>
 
 <style lang="scss" module>
@@ -583,7 +662,8 @@ defineProps<{ embedded?: boolean }>();
 .settingsError { margin:0; padding:12px 14px; border:1px solid var(--MI_THEME-divider); border-radius:12px; color:var(--MI_THEME-fg); background:var(--MI_THEME-panel); font-size:.85rem; line-height:1.6; }
 .root[aria-busy='true'] button:disabled, .root[aria-busy='true'] select:disabled { cursor:wait; opacity:.5; }
 .loading { padding:40px 0; display:flex; justify-content:center; }
-.card { background: var(--MI_THEME-panel); border:1px solid var(--MI_THEME-divider); border-radius:14px; padding:14px 16px; }
+.card { background: var(--MI_THEME-panel); border:1px solid var(--MI_THEME-divider); border-radius:14px; padding:14px 16px; scroll-margin-top:12px; transition:border-color .3s, box-shadow .3s; }
+.cardHighlight { border-color:var(--MI_THEME-accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--MI_THEME-accent) 25%, transparent); }
 .label { font-size:.95rem; font-weight:700; margin-bottom:10px; }
 .desc { font-size:.8rem; opacity:.65; line-height:1.6; margin-top:4px; }
 .note { font-size:.8rem; opacity:.6; text-align:center; padding:4px 0 2px; }
@@ -591,6 +671,18 @@ defineProps<{ embedded?: boolean }>();
 .hiddenInput { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 .backupMeta { display:flex; align-items:flex-start; justify-content:center; gap:6px; margin-top:10px; color:var(--MI_THEME-fg); font-size:.78rem; line-height:1.55; text-align:center; overflow-wrap:anywhere; }
 .row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; font-size:.9rem; }
+.value { font-size:.82rem; opacity:.8; text-align:right; overflow-wrap:anywhere; }
+.subLabel { font-size:.85rem; font-weight:600; margin-top:12px; }
+.chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.chip { min-height:44px; padding:8px 14px; border:1px solid var(--MI_THEME-divider); border-radius:999px; background:var(--MI_THEME-bg); color:var(--MI_THEME-fg); font:inherit; font-size:.82rem; cursor:pointer; }
+.chip:disabled { opacity:.5; cursor:default; }
+.chip:focus-visible { outline:3px solid var(--MI_THEME-accent); outline-offset:2px; }
+.chipOn { background:var(--MI_THEME-accent); border-color:var(--MI_THEME-accent); color:var(--MI_THEME-fgOnAccent); }
+.warn { display:flex; align-items:flex-start; gap:6px; margin-top:8px; padding:8px 10px; border-radius:8px; background:var(--MI_THEME-infoWarnBg); color:var(--MI_THEME-infoWarnFg); font-size:.8rem; line-height:1.55; }
+.warn > i { margin-top:3px; }
+.link { color:var(--MI_THEME-link); }
+/* 文言中の改行(\n)を段落の区切りとして表示する。 */
+.lines { white-space:pre-line; }
 .sel { background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); border:1px solid var(--MI_THEME-divider); border-radius:8px; padding:6px 10px; font-family:inherit; }
 .bgPicker { display:flex; gap:14px; flex-wrap:wrap; }
 .bgOpt { width:48px; height:48px; border-radius:12px; cursor:pointer; border:2px solid transparent; transition:border-color .15s, transform .15s; }

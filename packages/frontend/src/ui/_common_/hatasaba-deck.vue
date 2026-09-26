@@ -20,9 +20,9 @@
 -->
 
 <template>
-<div :class="[$style.deckWrap, toolbarPos === 'right' ? $style.deckWrapRight : toolbarPos === 'bottom' ? $style.deckWrapBottom : $style.deckWrapTop]" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'" :data-animation="prefer.s.animation ? 'true' : 'false'">
+<div :data-hk3="props.hk3 ? 'true' : undefined" :class="[$style.deckWrap, toolbarPos === 'right' ? $style.deckWrapRight : toolbarPos === 'bottom' ? $style.deckWrapBottom : $style.deckWrapTop]" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'" :data-animation="prefer.s.animation ? 'true' : 'false'">
 	<!-- 折り畳み式ツールバー (上部メニューモード時は、開いている時だけ表示) -->
-	<div v-if="!topNavMode || toolbarOpen" :class="$style.toolbarBar">
+	<div v-if="!topNavMode || toolbarOpen" :data-hata-collapse-part="props.hk3 ? '' : undefined" :class="$style.toolbarBar">
 		<button v-if="!topNavMode" :class="[$style.toolbarToggle, { [$style.toolbarToggleOn]: toolbarOpen }]" v-tooltip="toolbarOpen ? copy.hideToolbar : copy.showToolbar" @click="toolbarOpen = !toolbarOpen">
 			<i :class="toolbarOpen ? 'ti ti-chevron-up' : 'ti ti-adjustments-horizontal'"></i>
 		</button>
@@ -182,6 +182,13 @@
 </template>
 
 <script lang="ts" setup>
+// 旗鯖fork: Hataskey UI 3 のデッキ表示では、見た目と投稿欄を UI3 に揃える。
+const props = withDefaults(defineProps<{
+	hk3?: boolean;
+}>(), {
+	hk3: false,
+});
+
 import { computed, ref, shallowReactive, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent, type Component } from 'vue';
 import * as os from '@/os.js';
 import { mainRouter } from '@/router.js';
@@ -195,6 +202,8 @@ import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
 import MkStreamingNotificationsTimeline from '@/components/MkStreamingNotificationsTimeline.vue';
 import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
 import MkPostForm from '@/components/MkPostForm.vue';
+import Hk3Composer from '@/components/hataskey3/Hk3Composer.vue';
+import Hk3DeckTimeline from '@/components/hataskey3/Hk3DeckTimeline.vue';
 import HatasabaDeckClock from '@/ui/_common_/hatasaba-deck-clock.vue';
 import { tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
 import { hasConfiguredNotificationFilter, migrateNotificationFilterSnapshot, resolveNotificationFilter } from '@/utility/notification-filter.js';
@@ -679,15 +688,17 @@ const NOTE_SRC: Partial<Record<ColumnType, string>> = {
 	home: 'home', local: 'local', social: 'social', global: 'global', mentions: 'mentions', directs: 'directs',
 };
 function resolveColumn(tab: DeckTab): Component {
-	if (tab.type in NOTE_SRC) return MkStreamingNotesTimeline;
-	if (tab.type === 'list' && tab.sourceId) return MkStreamingNotesTimeline;
-	if (tab.type === 'antenna' && tab.sourceId) return MkStreamingNotesTimeline;
-	if (tab.type === 'channel' && tab.sourceId) return MkStreamingNotesTimeline;
+	// Hataskey UI 3 では、標準表示と同じ UI3 のノートで並べる(取得元と引数は共通)。
+	const notesTimeline = props.hk3 ? Hk3DeckTimeline : MkStreamingNotesTimeline;
+	if (tab.type in NOTE_SRC) return notesTimeline;
+	if (tab.type === 'list' && tab.sourceId) return notesTimeline;
+	if (tab.type === 'antenna' && tab.sourceId) return notesTimeline;
+	if (tab.type === 'channel' && tab.sourceId) return notesTimeline;
 	if ((tab.type === 'ohtl' || tab.type === 'oltl') && externalReady.value) return MkExternalTimeline;
 	if (tab.type === 'externalNotifications' && externalReady.value) return WidgetExternalNotifications;
 	if (tab.type === 'trending') return MkTrendingTimeline;
 	if (tab.type === 'notifications') return MkStreamingNotificationsTimeline;
-	if (tab.type === 'postForm') return MkPostForm;
+	if (tab.type === 'postForm') return props.hk3 ? Hk3Composer : MkPostForm;
 	if (tab.type === 'widgets') return XWidgets;
 	if (tab.type === 'earthquake') return MkEarthquakeColumn;
 	// 旗鯖fork(新デッキ): クリップ (sourceId=clipId 必須) / お気に入り
@@ -710,7 +721,7 @@ function buildColumnProps(tab: DeckTab): Record<string, unknown> {
 		excludeBots: tab.excludeBots === true,
 		showFilterPolicyNotice: hasConfiguredNotificationFilter(tab.excludeTypes, tab.notificationFilterKnownTypes),
 	};
-	if (tab.type === 'postForm') return { fixed: true, autofocus: false };
+	if (tab.type === 'postForm') return props.hk3 ? { menuPlacement: 'down' } : { fixed: true, autofocus: false };
 	// デッキのウィジェットは操作ボタン行を省き、三点メニュー / タブ右クリックから編集する。
 	if (tab.type === 'widgets') return { deckEmbedded: true };
 	if (tab.type === 'earthquake') return {};
@@ -1933,4 +1944,97 @@ function openProfileMenu(ev: MouseEvent) {
 }
 .dragGhostIcon { color: var(--ghostColor, var(--MI_THEME-accent)); }
 
+/* ===== Hataskey UI 3 のデッキ: 角のない面を区切り線で並べ、UI3 の色に揃える ===== */
+.deckWrap[data-hk3] {
+	background: var(--hk3-bg);
+	color: var(--hk3-text);
+
+	.deck { padding: 10px; }
+	.layoutRow, .layoutStack { gap: 10px; }
+	.layoutGrid2, .layoutGrid3 { gap: 10px; grid-auto-rows: calc(50% - 5px); }
+
+	.frameRoot {
+		border: 2px solid var(--hk3-divider);
+		border-radius: 0;
+		background: var(--hk3-bg);
+		box-shadow: none;
+	}
+	.frameColored { border-color: var(--deckColBorder, var(--hk3-divider)); }
+	.frameDragOver { box-shadow: 0 0 0 2px var(--hk3-accent); }
+
+	.tabBar {
+		gap: 0;
+		padding: 0;
+		background: var(--hk3-surface);
+		border-bottom: 2px solid var(--deckColBorder, var(--hk3-divider));
+	}
+	.tabs { gap: 0; }
+	.tab {
+		min-height: 40px;
+		padding: 0 14px;
+		border: 0;
+		border-right: 1px solid var(--hk3-divider);
+		border-radius: 0;
+		color: var(--hk3-text);
+		opacity: .65;
+		&:hover { background: var(--hk3-accent-100); opacity: .9; }
+	}
+	.tabActive {
+		opacity: 1;
+		background: var(--hk3-bg);
+		box-shadow: inset 0 -3px 0 var(--hk3-accent);
+	}
+	.tabIcon { color: var(--hk3-accent); }
+	.frameHeadBtn, .frameMenuBtn, .frameTabsBtn {
+		width: 40px;
+		height: 40px;
+		border-radius: 0;
+		border-left: 1px solid var(--hk3-divider);
+		color: var(--hk3-text);
+		&:hover { background: var(--hk3-accent-100); }
+	}
+
+	.toolbarBar { padding: 8px 10px 0; }
+	.toolbarToggle, .iconBtn, .profileBtn, .layoutPill, .layoutBtn {
+		border-radius: 0;
+		border-color: var(--hk3-divider);
+		background: var(--hk3-bg);
+		color: var(--hk3-text);
+	}
+	.toolbarToggleOn, .iconBtnOn, .layoutBtnOn { background: var(--hk3-accent); color: var(--hk3-bg); border-color: var(--hk3-accent); }
+	.clock { color: var(--hk3-accent); }
+
+	/* カラム内のノートも UI3 と同じく、角のない行を区切り線で並べる */
+	.tabPane {
+		background: var(--hk3-bg);
+
+		:global(._panel), :global(._gaps) > :global(*), :global([data-scroll-anchor]) { border-radius: 0 !important; }
+		:global(._gaps) { gap: 0 !important; }
+		:global([data-scroll-anchor]) {
+			margin: 0 !important;
+			border-bottom: 1px solid var(--hk3-divider);
+			background: var(--hk3-bg) !important;
+			box-shadow: none !important;
+		}
+		/* Hataskey UI の吹き出しカードを外し、行そのものをノートにする */
+		:global([data-scroll-anchor] > article) { padding: 0 !important; border-radius: 0 !important; }
+		:global([data-scroll-anchor] > article > ._selectable) {
+			padding: 12px 14px !important;
+			border: 0 !important;
+			border-radius: 0 !important;
+			background: transparent !important;
+			box-shadow: none !important;
+			transition: background 160ms ease;
+		}
+		:global([data-scroll-anchor]:hover > article > ._selectable) { background: var(--hk3-surface) !important; }
+		:global(button) { border-radius: 0; }
+	}
+	/* UI3 の投稿欄は自然な高さのまま上に置き、下へ開くメニュー(田・公開範囲)が切れないよう枠内でスクロールさせる */
+	.tabPanePostForm {
+		overflow: auto;
+		background: var(--hk3-bg);
+		> :global(div) { height: auto; padding: 10px 10px 14px; border-top: 0; }
+		:global(textarea) { flex: none; }
+	}
+}
 </style>

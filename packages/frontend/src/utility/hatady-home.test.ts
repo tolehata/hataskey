@@ -1,7 +1,11 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { describe, expect, test, vi } from 'vitest';
 import type { HatadyActivity } from './hatady-media.js';
-vi.mock('@/i18n.js', () => ({ i18n: { ts: {}, tsx: {} } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 import {
 	activityData,
 	collectActivityPages,

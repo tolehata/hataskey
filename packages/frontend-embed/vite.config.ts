@@ -107,6 +107,7 @@ export function getConfig(): UserConfig {
 			alias: {
 				'@/': __dirname + '/src/',
 				'@@/': __dirname + '/../frontend-shared/',
+				'/client-assets/fonts/': __dirname + '/../frontend/assets/fonts/',
 				'/client-assets/': __dirname + '/assets/',
 				'/static-assets/': __dirname + '/../backend/assets/'
 			},

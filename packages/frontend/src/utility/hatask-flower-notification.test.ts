@@ -26,22 +26,32 @@ const data = {
 	body: { id: 'flower-notice', type: 'hataskFlowerReady', header: 'Hataskのお花', body: '満開です', icon: null, link: '/hatask?tab=garden' },
 };
 
+const notificationCopy = {
+	hataskFlowerReady: 'flowerReady',
+	hataskFlowerBloomed: 'flowerBloomed',
+	hataskZukanUpdated: 'zukanUpdated',
+	hataskFestivalBloomed: 'festivalBloomed',
+} as const;
+
+type FlowerNotificationType = keyof typeof notificationCopy;
+
 describe('Hatask flower push notification', () => {
-	test.each(['ja-JP', 'en-US', 'zh-CN'])('%sの本文を持つ標準プッシュ通知を組み立てる', async lang => {
+	test.each(['ja-JP', 'en-US', 'zh-CN'].flatMap(lang => (Object.keys(notificationCopy) as FlowerNotificationType[]).map(type => [lang, type] as const)))('%sの%s通知を組み立てる', async (lang, type) => {
 		const showNotification = vi.fn().mockResolvedValue(undefined);
 		const locale = locales[lang];
+		const flowerData = { ...data, body: { ...data.body, type } };
 		const module = loadSwModule('scripts/create-notification.ts', {
 			'@/scripts/twemoji-base.js': {}, '@/scripts/operations.js': {}, '@/scripts/get-account-from-id.js': {},
 			'@/scripts/hata-custom-notification-copy.js': {}, '@/scripts/get-user-name.js': {},
 			'@/scripts/lang.js': { swLang: { i18n: { ts: locale } } },
 		}, { registration: { showNotification } });
-		await module.createNotification(data);
-		expect(showNotification).toHaveBeenCalledExactlyOnceWith(locale._notification._types.hataskFlowerReady, expect.objectContaining({
-			body: locale._hata._customNotifications.flowerReady, data,
+		await module.createNotification(flowerData);
+		expect(showNotification).toHaveBeenCalledExactlyOnceWith(locale._notification._types[type], expect.objectContaining({
+			body: locale._hata._customNotifications[notificationCopy[type]], data: flowerData,
 		}));
 	});
 
-	test('通知クリックで対象アカウントの「おはな」を開く', async () => {
+	test.each(Object.keys(notificationCopy) as FlowerNotificationType[])('%sの通知クリックで対象アカウントの「おはな」を開く', async type => {
 		const listeners = new Map<string, (event: unknown) => void>();
 		const client = { focus: vi.fn() };
 		const operations = { openClient: vi.fn().mockResolvedValue(client), sendMarkAllAsRead: vi.fn() };
@@ -52,7 +62,7 @@ describe('Hatask flower push notification', () => {
 		let completion: Promise<void> | undefined;
 		const close = vi.fn();
 		listeners.get('notificationclick')!({
-			action: '', notification: { data, close },
+			action: '', notification: { data: { ...data, body: { ...data.body, type } }, close },
 			waitUntil: (promise: Promise<void>) => { completion = promise; },
 		});
 		await completion;

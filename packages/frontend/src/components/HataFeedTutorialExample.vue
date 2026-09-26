@@ -9,8 +9,8 @@
 					<span class="add" :data-open="page === 'create' && !draftOpen"><i class="ti ti-plus"></i></span>
 					<span class="project"><i class="ti ti-flag-2"></i><span>Hataskey</span></span>
 					<div v-if="page === 'create' && !draftOpen" class="createMenu">
-						<div class="row"><i class="ti ti-mood-plus"></i>絵文字申請</div>
-						<div class="row"><i class="ti ti-pencil-plus"></i>新規イシュー</div>
+						<div class="row"><i class="ti ti-mood-plus"></i>{{ exampleCopy.emojiRequest }}</div>
+						<div class="row"><i class="ti ti-pencil-plus"></i>{{ exampleCopy.newIssue }}</div>
 					</div>
 				</div>
 				<i class="ti ti-bell"></i><i class="ti ti-refresh"></i><i class="ti ti-settings"></i>
@@ -24,57 +24,57 @@
 				</svg>
 				<div class="navSurface">
 					<div class="tabs">
-						<span :data-active="page === 'home'"><i class="ti ti-home"></i><small v-if="page === 'home'">ホーム</small></span>
-						<span :data-active="page === 'issues' || page === 'create'"><i class="ti ti-clipboard-list"></i><small v-if="page === 'issues' || page === 'create'">イシュー</small></span>
-						<span :data-active="page === 'roadmap'"><i class="ti ti-route"></i><small v-if="page === 'roadmap'">ロードマップ</small></span>
-						<span v-if="isStaff" :data-active="page === 'admin'"><i class="ti ti-mood-cog"></i><small v-if="page === 'admin'">申請管理</small></span>
+						<span :data-active="page === 'home'"><i class="ti ti-home"></i><small v-if="page === 'home'">{{ exampleCopy.home }}</small></span>
+						<span :data-active="page === 'issues' || page === 'create'"><i class="ti ti-clipboard-list"></i><small v-if="page === 'issues' || page === 'create'">{{ exampleCopy.issues }}</small></span>
+						<span :data-active="page === 'roadmap'"><i class="ti ti-route"></i><small v-if="page === 'roadmap'">{{ exampleCopy.roadmap }}</small></span>
+						<span v-if="isStaff" :data-active="page === 'admin'"><i class="ti ti-mood-cog"></i><small v-if="page === 'admin'">{{ exampleCopy.requestManagement }}</small></span>
 						<span><i class="ti ti-flask"></i></span>
 					</div>
 					<div class="notice" :data-open="page === 'notifications' && noticeOpen" :data-leaving="noticeLeaving">
-						<div class="noticeMessage"><i class="ti ti-circle-check"></i>更新しました<i class="ti ti-x noticeClose"></i></div>
+						<div class="noticeMessage"><i class="ti ti-circle-check"></i>{{ exampleCopy.updated }}<i class="ti ti-x noticeClose"></i></div>
 					</div>
 				</div>
 			</div>
 		</div>
 		<template v-if="page === 'home'">
 			<div class="cards">
-				<section class="card"><h4><i class="ti ti-route"></i>近々の修正・改善予定</h4><p>カレンダーの予定を見やすく</p><small>対応中</small><p>イシュー検索の改善</p><small>対応予定</small></section>
-				<section class="card"><h4><i class="ti ti-mood-smile"></i>あなたの絵文字申請</h4><div class="row"><span class="emoji">🌱</span><span>:wakaba:<small class="line">未処理</small></span></div><div class="row"><span class="emoji">☕</span><span>:otsukaresama:<small class="line">承認済み</small></span></div></section>
+				<section class="card"><h4><i class="ti ti-route"></i>{{ exampleCopy.upcomingPlans }}</h4><p>{{ exampleCopy.calendarImprovement }}</p><small>{{ exampleCopy.inProgress }}</small><p>{{ exampleCopy.issueSearchImprovement }}</p><small>{{ exampleCopy.planned }}</small></section>
+				<section class="card"><h4><i class="ti ti-mood-smile"></i>{{ exampleCopy.yourEmojiRequests }}</h4><div class="row"><span class="emoji">🌱</span><span>:wakaba:<small class="line">{{ exampleCopy.pending }}</small></span></div><div class="row"><span class="emoji">☕</span><span>:otsukaresama:<small class="line">{{ exampleCopy.approved }}</small></span></div></section>
 			</div>
-			<section class="card"><h4>イシュー <small>一覧を見る →</small></h4><div class="row"><i class="ti ti-circle-dashed"></i><span>予定が重なって表示される<small class="line">不具合 · 対応中</small></span></div><div class="row"><i class="ti ti-circle-dot"></i><span>本棚の絞り込み条件を覚えてほしい<small class="line">機能要望 · 受付中</small></span></div></section>
+			<section class="card"><h4>{{ exampleCopy.issues }} <small>{{ exampleCopy.viewList }}</small></h4><div class="row"><i class="ti ti-circle-dashed"></i><span>{{ exampleCopy.overlapIssue }}<small class="line">{{ exampleCopy.bugInProgress }}</small></span></div><div class="row"><i class="ti ti-circle-dot"></i><span>{{ exampleCopy.rememberBookFilters }}<small class="line">{{ exampleCopy.featureOpen }}</small></span></div></section>
 		</template>
 		<template v-else-if="page === 'create'">
 			<div class="editorScene">
-				<section class="card centered"><h4>新規イシュー</h4><div class="steps">① 種類 · ② 内容 · ③ 確認</div><div class="cards choices"><span><i class="ti ti-bug"></i>不具合</span><span><i class="ti ti-bulb"></i>機能要望</span><span><i class="ti ti-help-circle"></i>未解決</span><span><i class="ti ti-message-circle"></i>その他</span></div></section>
+				<section class="card centered"><h4>{{ exampleCopy.newIssue }}</h4><div class="steps">{{ exampleCopy.issueSteps }}</div><div class="cards choices"><span><i class="ti ti-bug"></i>{{ exampleCopy.bug }}</span><span><i class="ti ti-bulb"></i>{{ exampleCopy.featureRequest }}</span><span><i class="ti ti-help-circle"></i>{{ exampleCopy.unresolved }}</span><span><i class="ti ti-message-circle"></i>{{ exampleCopy.other }}</span></div></section>
 				<div v-if="draftOpen" class="draftBackdrop">
 					<section class="card centered draftPrompt">
-						<h4>入力した内容をどうする？</h4><p>編集中の内容は、このウィンドウに残っています</p>
-						<div class="draftActions"><span class="action primary">端末に下書きを保存して閉じる</span><span class="action">保存せず閉じる</span><span class="action">編集に戻る</span></div>
+						<h4>{{ exampleCopy.draftQuestion }}</h4><p>{{ exampleCopy.draftHint }}</p>
+						<div class="draftActions"><span class="action primary">{{ exampleCopy.saveDraft }}</span><span class="action">{{ exampleCopy.discardDraft }}</span><span class="action">{{ exampleCopy.returnToEdit }}</span></div>
 					</section>
 				</div>
 			</div>
 		</template>
 		<template v-else-if="page === 'issues'">
-			<section class="card"><h4>イシュー</h4><div class="search"><i class="ti ti-search"></i>カレンダー<i class="ti ti-arrow-right searchSubmit"></i></div><div class="chips"><span>受付中</span><span>カテゴリ⌄</span><span>ステータス⌄</span></div><div class="row"><i class="ti ti-circle-dashed"></i><span>予定が重なって表示される<small class="line">不具合 · 対応中</small></span></div></section>
-			<section class="card"><small><i class="ti ti-arrow-left"></i> イシュー</small><h4>予定が重なって表示される</h4><p>小さなウィンドウで予定が重なります</p><div class="row"><i class="ti ti-message-circle"></i><span>私の端末でも同じ状態でした</span></div></section>
+			<section class="card"><h4>{{ exampleCopy.issues }}</h4><div class="search"><i class="ti ti-search"></i>{{ exampleCopy.calendar }}<i class="ti ti-arrow-right searchSubmit"></i></div><div class="chips"><span>{{ exampleCopy.open }}</span><span>{{ exampleCopy.category }}</span><span>{{ exampleCopy.status }}</span></div><div class="row"><i class="ti ti-circle-dashed"></i><span>{{ exampleCopy.overlapIssue }}<small class="line">{{ exampleCopy.bugInProgress }}</small></span></div></section>
+			<section class="card"><small><i class="ti ti-arrow-left"></i> {{ exampleCopy.issues }}</small><h4>{{ exampleCopy.overlapIssue }}</h4><p>{{ exampleCopy.overlapDetail }}</p><div class="row"><i class="ti ti-message-circle"></i><span>{{ exampleCopy.overlapComment }}</span></div></section>
 		</template>
 		<template v-else-if="page === 'emoji'">
-			<section class="card centered"><h4>絵文字を申請</h4><div class="steps">① 画像 ·  ② 申請内容</div><div class="cards choices"><span><i class="ti ti-photo"></i>自分の画像から</span><span><i class="ti ti-world"></i>リモート絵文字から</span></div><div class="row"><span class="emoji large">🌱</span><div class="fields"><small>絵文字名</small><span>wakaba</span><small>ライセンス</small><span>自作・再配布可</span></div></div></section>
-			<section class="card"><h4>あなたの絵文字申請</h4><div class="row"><span class="emoji">🌱</span><span>:wakaba: <small>承認済み</small><small class="line">利用条件を確認しました</small></span></div></section>
+			<section class="card centered"><h4>{{ exampleCopy.requestEmoji }}</h4><div class="steps">{{ exampleCopy.emojiSteps }}</div><div class="cards choices"><span><i class="ti ti-photo"></i>{{ exampleCopy.ownImage }}</span><span><i class="ti ti-world"></i>{{ exampleCopy.remoteEmoji }}</span></div><div class="row"><span class="emoji large">🌱</span><div class="fields"><small>{{ exampleCopy.emojiName }}</small><span>wakaba</span><small>{{ exampleCopy.license }}</small><span>{{ exampleCopy.selfMadeLicense }}</span></div></div></section>
+			<section class="card"><h4>{{ exampleCopy.yourEmojiRequests }}</h4><div class="row"><span class="emoji">🌱</span><span>:wakaba: <small>{{ exampleCopy.approved }}</small><small class="line">{{ exampleCopy.licenseChecked }}</small></span></div></section>
 		</template>
 		<template v-else-if="page === 'roadmap'">
-			<section class="card"><h4><i class="ti ti-route"></i>ロードマップ</h4><div class="row"><i class="ti ti-circle-dashed"></i><span>カレンダーの予定を見やすく<small class="line">対応中</small></span></div><div class="row"><i class="ti ti-calendar-clock"></i><span>イシュー検索の改善<small class="line">対応予定</small></span></div></section>
-			<section class="card"><h4><i class="ti ti-flask"></i>ベータ機能</h4><p>C/C++ プレイグラウンド</p><p>投稿前カウントダウン</p></section>
+			<section class="card"><h4><i class="ti ti-route"></i>{{ exampleCopy.roadmap }}</h4><div class="row"><i class="ti ti-circle-dashed"></i><span>{{ exampleCopy.calendarImprovement }}<small class="line">{{ exampleCopy.inProgress }}</small></span></div><div class="row"><i class="ti ti-calendar-clock"></i><span>{{ exampleCopy.issueSearchImprovement }}<small class="line">{{ exampleCopy.planned }}</small></span></div></section>
+			<section class="card"><h4><i class="ti ti-flask"></i>{{ exampleCopy.betaFeatures }}</h4><p>{{ exampleCopy.cppPlayground }}</p><p>{{ exampleCopy.postCountdown }}</p></section>
 		</template>
 		<template v-else-if="page === 'notifications'">
-			<section class="card"><h4><i class="ti ti-bell"></i>通知 <span class="notificationTools"><i class="ti ti-checks"></i><i class="ti ti-filter"></i><i class="ti ti-x"></i></span></h4><div class="row"><i class="ti ti-message-circle"></i><span>イシューにコメントが届きました<small class="line">確認できました</small></span></div><div class="row"><i class="ti ti-mood-smile"></i><span>絵文字が承認されました<small class="line">:wakaba:</small></span></div></section>
+			<section class="card"><h4><i class="ti ti-bell"></i>{{ exampleCopy.notifications }} <span class="notificationTools"><i class="ti ti-checks"></i><i class="ti ti-filter"></i><i class="ti ti-x"></i></span></h4><div class="row"><i class="ti ti-message-circle"></i><span>{{ exampleCopy.commentReceived }}<small class="line">{{ exampleCopy.confirmed }}</small></span></div><div class="row"><i class="ti ti-mood-smile"></i><span>{{ exampleCopy.emojiApproved }}<small class="line">:wakaba:</small></span></div></section>
 		</template>
 		<template v-else-if="page === 'admin'">
-			<section class="card"><h4>絵文字の申請管理</h4><div class="chips"><span>未処理</span><span>保留中</span><span>承認済み</span></div><div class="row"><span class="emoji">🌱</span><span>:wakaba:<small class="line">未処理</small></span><span class="tag">確認</span></div></section>
-			<section class="card centered"><h4>絵文字の申請を確認</h4><span class="emoji large">🌱</span><p>wakaba</p><small>ライセンス：自作・再配布可</small><div class="chips"><span>保留</span><span>リジェクト</span><span class="primary">承認して次へ</span></div></section>
+			<section class="card"><h4>{{ exampleCopy.emojiManagement }}</h4><div class="chips"><span>{{ exampleCopy.pending }}</span><span>{{ exampleCopy.held }}</span><span>{{ exampleCopy.approved }}</span></div><div class="row"><span class="emoji">🌱</span><span>:wakaba:<small class="line">{{ exampleCopy.pending }}</small></span><span class="tag">{{ exampleCopy.review }}</span></div></section>
+			<section class="card centered"><h4>{{ exampleCopy.reviewEmoji }}</h4><span class="emoji large">🌱</span><p>wakaba</p><small>{{ exampleCopy.licenseSample }}</small><div class="chips"><span>{{ exampleCopy.hold }}</span><span>{{ exampleCopy.reject }}</span><span class="primary">{{ exampleCopy.approveNext }}</span></div></section>
 		</template>
 		<template v-else-if="page === 'settings'">
-			<section class="card centered"><h4><i class="ti ti-settings"></i>HataFeed の設定</h4><p>テーマ</p><div class="themes"><span>ライト</span><span>ダーク</span><span>ペーパー</span><span>エスプレッソ</span></div><p>プロジェクト</p><div class="projectChoice"><i class="ti ti-flag-2"></i><span>Hataskey</span></div><div v-if="kind === 'update'" class="chips"><span>エクスポート</span><span>プロジェクトを編集</span></div><small v-if="kind === 'update'">権限がある場合に表示</small><h4 class="sectionTitle">チュートリアル</h4><span class="action"><i class="ti ti-book"></i>HataFeedの使い方</span><span class="action"><i class="ti ti-sparkles"></i>新しくなったHataFeed</span></section>
+			<section class="card centered"><h4><i class="ti ti-settings"></i>{{ exampleCopy.settings }}</h4><p>{{ exampleCopy.theme }}</p><div class="themes"><span>{{ exampleCopy.light }}</span><span>{{ exampleCopy.dark }}</span><span>{{ exampleCopy.paper }}</span><span>{{ exampleCopy.espresso }}</span></div><p>{{ exampleCopy.project }}</p><div class="projectChoice"><i class="ti ti-flag-2"></i><span>Hataskey</span></div><div v-if="kind === 'update'" class="chips"><span>{{ exampleCopy.export }}</span><span>{{ exampleCopy.editProject }}</span></div><small v-if="kind === 'update'">{{ exampleCopy.permissionOnly }}</small><h4 class="sectionTitle">{{ exampleCopy.tutorial }}</h4><span class="action"><i class="ti ti-book"></i>{{ exampleCopy.howToUse }}</span><span class="action"><i class="ti ti-sparkles"></i>{{ exampleCopy.whatIsNew }}</span></section>
 		</template>
 	</div>
 </div>
@@ -85,7 +85,9 @@ import { computed, onMounted, onUnmounted, ref, shallowRef, useTemplateRef, watc
 import type { HataFeedTutorialKind } from '@/utility/hatafeed-tutorial-content.js';
 import { NOTIFICATION_TOAST_DURATION, notificationOutlinePaths } from '@/utility/hataskey-notification-toast.js';
 import { prefer } from '@/preferences.js';
+import { i18n } from '@/i18n.js';
 
+const exampleCopy = i18n.ts._hata._hatafeed._tutorialExample;
 const props = defineProps<{ page: string; kind: HataFeedTutorialKind; isStaff: boolean }>();
 const capsule = useTemplateRef('capsule');
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');

@@ -13,10 +13,13 @@ vi.mock('@/components/HatadyMediaWorkDetail.vue', () => ({ default: { render: ()
 vi.mock('@/components/HatadyConversation.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 vi.mock('@/utility/hatady-prefs.js', async () => ({ hatadyTheme: (await import('vue')).ref('light') }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatady: { _search: {
-	title: '横断検索', placeholder: '記録を探す', clear: '検索をクリア', scope: '検索対象', scopeAll: 'すべて',
-	loading: '検索中', noResults: '該当なし', logs: '記録', books: '本', bookMemos: 'メモ', bookmarks: 'しおり', untitled: '無題',
-} } } } } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	i18n.locale._hata._hatady._search.loading = '検索中';
+	i18n.locale._hata._hatady._search.noResults = '該当なし';
+	return { i18n };
+});
 vi.mock('@/components/HyDialog.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
 	return { default: defineComponent({

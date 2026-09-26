@@ -208,10 +208,6 @@ export const ROUTE_DEF = [{
 		name: 'hatafeed-settings',
 		component: page(() => import('@/pages/settings-redesign/HataFeedSettingsSurface.vue')),
 	}, {
-		path: '/hatasnscord-ui',
-		name: 'hatasnscord-ui-settings',
-		component: page(() => import('@/pages/settings-redesign/HataSNSCordSettingsSurface.vue')),
-	}, {
 		path: '/external-account',
 		name: 'external-account',
 		component: page(() => import('@/pages/settings/external-account.vue')),
@@ -737,6 +733,11 @@ export const ROUTE_DEF = [{
 	query: {
 		tab: 'tab',
 		notice: 'notice',
+		from: 'from',
+		action: 'action',
+		// Hataskey UI 3 の右ペインから、選んだ気分・食事の枠を記録欄で選択済みにして開く。
+		mood: 'mood',
+		meal: 'meal',
 	},
 	component: page(() => import('@/pages/hatask.vue')),
 	loginRequired: true,
@@ -761,9 +762,9 @@ export const ROUTE_DEF = [{
 	component: page(() => import('@/pages/hatafeed-beta.vue')),
 	loginRequired: true,
 }, {
+	// 旗鯖fork: 廃止した HataSNSCordUI の旧入口。ブックマーク等から来ても行き止まりにしない。
 	path: '/hatafeed/hatacording-ui',
-	component: page(() => import('@/pages/hatacording-ui.vue')),
-	loginRequired: true,
+	redirect: '/',
 }, {
 	path: '/playground/cpp',
 	component: page(() => import('@/pages/cpp-playground.vue')),
@@ -783,6 +784,7 @@ export const ROUTE_DEF = [{
 }, {
 	path: '/hatafeed',
 	component: page(() => import('@/pages/hatafeed.vue')),
+	query: { emojiRequestId: 'emojiRequestId', emojiChangeRequestId: 'emojiChangeRequestId' },
 	loginRequired: true,
 }, {
 	// 旗鯖fork: Hatady(学習・読書記録ツール)。

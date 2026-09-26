@@ -52,19 +52,6 @@ const extensionTargets = [
 		applicableUi: 'all',
 	},
 	{
-		filePath: 'src/components/HatacordingUiSettings.vue',
-		routeOverride: '/settings/hatasnscord-ui',
-	},
-	{
-		filePath: 'src/pages/settings-redesign/HataSNSCordSettingsSurface.vue',
-		routeOverride: '/settings/hatasnscord-ui',
-		persistence: 'device',
-		saveMode: 'immediate',
-		availability: 'all',
-		owner: 'hatasaba',
-		applicableUi: 'hatacording',
-	},
-	{
 		// The popup is now a thin window wrapper. The shared body carries every
 		// meaningful setting control and is also used by the permanent surface.
 		filePath: 'src/components/HatasabaUi2SettingsBody.vue',
@@ -223,7 +210,7 @@ async function buildRealCatalogFromVirtualModule() {
 		targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 		mainVirtualModule: 'search-index-v2:settings-real-catalog',
 		routerDefinitionPath: 'src/router.definition.ts',
-		expectedControlCount: 527,
+		expectedControlCount: 519,
 	});
 	const load = typeof plugin.load === 'function' ? plugin.load : undefined;
 	if (load == null) throw new Error('settings V2 plugin did not expose virtual loader');
@@ -596,12 +583,12 @@ describe('settings control search index V2', () => {
 		// Measured target closure: 49 settings SFCs plus 12 extension targets.
 		// Keep the raw population separate from the smaller catalog-descriptor
 		// count so new visible buttons cannot disappear behind an old total.
-		expect(inventory.files).toHaveLength(61);
-		expect(inventory.items).toHaveLength(689);
+		expect(inventory.files).toHaveLength(59);
+		expect(inventory.items).toHaveLength(684);
 		expect(Object.fromEntries(classifications.map(classification => [classification, inventory.items.filter(item => item.classification === classification).length]))).toEqual({
-			'user-facing-setting': 452,
+			'user-facing-setting': 445,
 			'navigation-action': 150,
-			'save-cancel': 24,
+			'save-cancel': 26,
 			'disabled-display-only': 17,
 			'runtime-collection': 45,
 			destructive: 1,
@@ -611,7 +598,7 @@ describe('settings control search index V2', () => {
 			'src/components/HatasabaUi2ImmediateSettings.vue': { 'user-facing-setting': 2, 'navigation-action': 0, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/HataFeedDisplaySettings.vue': { 'user-facing-setting': 3, 'navigation-action': 4, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/HatadyDisplaySettings.vue': { 'user-facing-setting': 1, 'navigation-action': 7, 'save-cancel': 2, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
-			'src/components/MkUISetup.vue': { 'user-facing-setting': 4, 'navigation-action': 2, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
+			'src/components/MkUISetup.vue': { 'user-facing-setting': 4, 'navigation-action': 1, 'save-cancel': 2, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/pages/HataskSettings.vue': { 'user-facing-setting': 11, 'navigation-action': 8, 'save-cancel': 1, 'disabled-display-only': 1, 'runtime-collection': 1, destructive: 0 },
 			'src/pages/MkMascotSettings.vue': { 'user-facing-setting': 77, 'navigation-action': 16, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 12, destructive: 0 },
 			'src/pages/settings/hata-custom.vue': { 'user-facing-setting': 29, 'navigation-action': 13, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 1, destructive: 0 },
@@ -622,7 +609,7 @@ describe('settings control search index V2', () => {
 		expect(inventory.items.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		// Carousel arrows and dots remain in the raw inventory even when a
 		// static theme group owns their search destination.
-		expect(resolved).toHaveLength(689);
+		expect(resolved).toHaveLength(684);
 		expect(resolved.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		const descriptorIds = new Set(controls.descriptors.filter(descriptor => descriptor.searchable).map(descriptor => descriptor.stableId));
 		expect(resolved.filter(item => item.descriptorStableId != null).every(item => descriptorIds.has(item.descriptorStableId!))).toBe(true);
@@ -640,8 +627,8 @@ describe('settings control search index V2', () => {
 		expect(find('src/pages/settings/hata-custom.vue', 'activeCat=cat.id')).toMatchObject({ classification: 'navigation-action' });
 		expect(find('src/pages/HataskSettings.vue', "toggle('autoTheme')")).toMatchObject({ classification: 'user-facing-setting' });
 		expect(find('src/pages/HataskSettings.vue', "view='theme'")).toMatchObject({ classification: 'navigation-action' });
-		expect(find('src/components/MkUISetup.vue', "select('simple')")).toMatchObject({ classification: 'user-facing-setting' });
-		expect(find('src/components/MkUISetup.vue', 'showOthers=!showOthers')).toMatchObject({ classification: 'navigation-action' });
+		expect(find('src/components/MkUISetup.vue', "choose('simple')")).toMatchObject({ classification: 'user-facing-setting' });
+		expect(find('src/components/MkUISetup.vue', 'backFromConfirm')).toMatchObject({ classification: 'navigation-action' });
 		expect(find('src/pages/MkMascotSettings.vue', "toggleDisplay('tellNotifications')")).toMatchObject({ classification: 'user-facing-setting' });
 		expect(find('src/pages/MkMascotSettings.vue', 'selectPreviewPhrase(pi)')).toMatchObject({ classification: 'navigation-action' });
 		expect(find('src/pages/MkMascotSettings.vue', 'chooseBirthdayImage')).toMatchObject({ classification: 'user-facing-setting' });
@@ -742,12 +729,23 @@ describe('settings control search index V2', () => {
 		expect(storageTargets('reactionAcceptance').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		expect(storageTargets('realtimeMode').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		const audit = collectSettingsStorageKeyAuditV2(input);
-		expect(audit.counts).toEqual({ preference: 275, pizzax: 105, local: 95 });
+		expect(audit.counts).toEqual({ preference: 285, pizzax: 105, local: 98 });
+		expect(audit.items.find(item => item.kind === 'local' && item.key === 'hataSideStudioUiS')).toMatchObject({
+			disposition: 'runtime', descriptorStableIds: [],
+		});
+		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'hataskeyUi3ComposerPosition')).toMatchObject({
+			disposition: 'catalog-control', descriptorStableIds: ['settings.control.preference.hataskeyui3composerposition'],
+		});
+		for (const key of ['hataskeyUi3RssEnabled', 'hataskeyUi3RssFeeds', 'hataskeyUi3RssAutoSwitch', 'hataskeyUi3RssReadSeconds', 'hataskeyUi3RssReadMode']) {
+			expect(audit.items.find(item => item.kind === 'preference' && item.key === key)).toMatchObject({
+				disposition: 'catalog-control', descriptorStableIds: [`settings.control.preference.${key.toLowerCase()}`],
+			});
+		}
 		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'notificationExcludeBots')).toMatchObject({
 			disposition: 'runtime', descriptorStableIds: [], reason: expect.stringContaining('[src/pages/notifications.vue]'),
 		});
 		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'enableCondensedLine')).toMatchObject({ disposition: 'deprecated', descriptorStableIds: [] });
-		expect(audit.items).toHaveLength(475);
+		expect(audit.items).toHaveLength(488);
 		expect(audit.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(audit.items.every(item => item.descriptorStableIds.length > 0
 			? item.disposition === 'catalog-control' || item.disposition === 'catalog-group'
@@ -755,12 +753,12 @@ describe('settings control search index V2', () => {
 		const dispositionCounts = Object.fromEntries([...new Set(audit.items.map(item => `${item.kind}:${item.disposition}`))]
 			.map(identity => [identity, audit.items.filter(item => `${item.kind}:${item.disposition}` === identity).length]));
 		expect(dispositionCounts).toEqual({
-			'preference:catalog-control': 213, 'preference:catalog-group': 5, 'preference:runtime': 22,
+			'preference:catalog-control': 222, 'preference:catalog-group': 5, 'preference:runtime': 23,
 			'preference:migration': 6, 'preference:deprecated': 17, 'preference:internal': 12,
 			'pizzax:catalog-control': 8, 'pizzax:catalog-group': 1, 'pizzax:runtime': 9,
 			'pizzax:migration': 3, 'pizzax:cache': 2, 'pizzax:deprecated': 78, 'pizzax:internal': 4,
-			'local:catalog-control': 14, 'local:catalog-group': 1, 'local:runtime': 4, 'local:migration': 21,
-			'local:cache': 30, 'local:deprecated': 6, 'local:internal': 19,
+			'local:catalog-control': 13, 'local:catalog-group': 1, 'local:runtime': 9, 'local:migration': 21,
+			'local:cache': 29, 'local:deprecated': 6, 'local:internal': 19,
 		});
 		expect(audit.items.filter(item => item.kind === 'pizzax' && item.disposition === 'catalog-control')
 			.map(item => item.key).sort()).toEqual([
@@ -815,7 +813,7 @@ describe('settings control search index V2', () => {
 	test('実Vite入力でもstorage key XOR監査を実行し、runtime evidence変更を再生成対象にする', async () => {
 		const inventory = await collectRealSettingsInventory();
 		const audit = await collectSettingsStorageKeyAuditFromRepositoryV2(process.cwd(), inventory.files, inventory.descriptors);
-		expect(audit.counts).toEqual({ preference: 275, pizzax: 105, local: 95 });
+		expect(audit.counts).toEqual({ preference: 285, pizzax: 105, local: 98 });
 		for (const key of ['emojiAdditionNotice', 'hourlyTimeNotice']) {
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key)).toMatchObject({
 				disposition: 'catalog-control',
@@ -1029,18 +1027,14 @@ describe('settings control search index V2', () => {
 	});
 
 	test('target metadataはdirect routeとpopupの既存到達経路をdescriptorへ渡す', async () => {
-		const [routerSource, inlineSource, ui2Source, earthquakeSource] = await Promise.all([
+		const [routerSource, ui2Source, earthquakeSource] = await Promise.all([
 			fs.readFile('src/router.definition.ts', 'utf8'),
-			fs.readFile('src/components/HatacordingUiSettings.vue', 'utf8'),
-		fs.readFile('src/components/HatasabaUi2SettingsBody.vue', 'utf8'),
+			fs.readFile('src/components/HatasabaUi2SettingsBody.vue', 'utf8'),
 			fs.readFile('src/components/MkEarthquakeSettings.vue', 'utf8'),
 		]);
 		const currentRoutes = readSettingsRoutesV2(routerSource);
-		const inline = collectSettingsControlDescriptorsV2('src/components/HatacordingUiSettings.vue', inlineSource, currentRoutes, targetMetadata('src/components/HatacordingUiSettings.vue'));
 		const ui2 = collectSettingsControlDescriptorsV2('src/components/HatasabaUi2SettingsBody.vue', ui2Source, currentRoutes, targetMetadata('src/components/HatasabaUi2SettingsBody.vue'));
 		const earthquake = collectSettingsControlDescriptorsV2('src/components/MkEarthquakeSettings.vue', earthquakeSource, currentRoutes, targetMetadata('src/components/MkEarthquakeSettings.vue'));
-		expect(inline).toHaveLength(7);
-		expect(inline.every(entry => entry.route === '/settings/hatasnscord-ui' && entry.activation == null)).toBe(true);
 		expect(ui2).toHaveLength(11);
 		// `editor.copy` is a statically-audited i18n proxy. Individual controls
 		// with a safe copy path stay searchable; only the runtime value and v-for
@@ -1063,9 +1057,6 @@ describe('settings control search index V2', () => {
 		// popup activation is retained instead of collapsing it into a group.
 		expect(earthquake.filter(entry => entry.searchable)).toHaveLength(6);
 		expect(earthquake.filter(entry => entry.intentionallyExcluded && entry.exclusionReason === 'ポップアップ内で条件により常時 DOM に存在しない')).toHaveLength(0);
-		expect(toSettingsControlCatalogItemsV2(inline, { _hata: { _hatacordingUi: { _settings: {
-			realtimeUpdate: 'リアルタイム更新', reuseSubpaneTab: 'サブペインを再利用', showRateLimitNumber: '残り回数', showCharacterCounter: '文字数', showShimmerAnimation: 'きらめき',
-		} } } })[0].activation).toBeUndefined();
 	});
 
 	test('Hatask暁の動的なテーマドットとタブ枠は検索項目へ昇格させない', async () => {
@@ -1219,9 +1210,9 @@ describe('settings control search index V2', () => {
 			return collectFileMarkers(absoluteFile, legacyAssigner.processFile(absoluteFile, source).code);
 		}))).flat();
 		expect(settingsFiles).toHaveLength(49);
-		expect(inventory.files).toHaveLength(61);
+		expect(inventory.files).toHaveLength(59);
 		expect(legacy).toHaveLength(280);
-		validateSettingsControlDescriptorsV2(inventory.descriptors, 527);
+		validateSettingsControlDescriptorsV2(inventory.descriptors, 519);
 		expect(inventory.descriptors.filter(entry => entry.activation?.kind === 'popup' && entry.route === '/settings/hata-custom').length).toBeGreaterThan(15);
 		expect(inventory.results.reduce((count, result) => count + (result.injected.code.match(/data-settings-search-id=/gu)?.length ?? 0), 0)).toBeGreaterThan(0);
 		expect(inventory.results.flatMap(result => parseSfc(result.injected.code).errors)).toHaveLength(0);
@@ -1257,12 +1248,12 @@ describe('settings control search index V2', () => {
 		await expect(load!.call({}, '\0search-index-v2:missing')).rejects.toThrow('target matched no SFC');
 	});
 
-	test('新しい仮想モジュールは61 source SFC・527項目とactivationを配信する', async () => {
+	test('新しい仮想モジュールは59 source SFC・519項目とactivationを配信する', async () => {
 		const plugin = pluginCreateSettingsSearchIndexV2({
 			targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 			mainVirtualModule: 'search-index-v2:settings',
 			routerDefinitionPath: 'src/router.definition.ts',
-			expectedControlCount: 527,
+			expectedControlCount: 519,
 			modulesToHmrOnUpdate: ['src/pages/settings-redesign/index.vue'],
 		});
 		const load = typeof plugin.load === 'function' ? plugin.load : undefined;
@@ -1273,8 +1264,7 @@ describe('settings control search index V2', () => {
 		const inventoryJson = (generated as string).match(/^export const settingsControlSearchIndexV2 = ([\s\S]+);\n$/u)?.[1];
 		expect(inventoryJson).toBeDefined();
 		const inventory = JSON.parse(inventoryJson!) as Array<{ sourceFile: string; route: string; activation?: { kind: string; popup?: string } }>;
-		expect(inventory).toHaveLength(527);
-		expect(inventory.filter(entry => entry.sourceFile === 'src/components/HatacordingUiSettings.vue' && entry.route === '/settings/hatasnscord-ui' && entry.activation == null)).toHaveLength(7);
+		expect(inventory).toHaveLength(519);
 		// Safe `editor.copy` controls stay individual; only the three dynamic
 		// runtime/value areas become semantic groups.
 		expect(inventory.filter(entry => entry.sourceFile === 'src/components/HatasabaUi2SettingsBody.vue' && entry.activation?.popup === 'hatasaba-ui2')).toHaveLength(15);
@@ -1301,7 +1291,7 @@ describe('settings control search index V2', () => {
 		].map(pair => pair.join('\u0000')));
 		expect(catalog.descriptors.some(source => source.owner === 'hatasaba' && source.related.length > 0)).toBe(true);
 		expect(sharedVisiblePairs.some(({ source, target }) => forbiddenSharedPairs.has(`${source.label}\u0000${target.label}`))).toBe(false);
-		const brandOnlyVisible = sharedVisiblePairs.filter(({ source, target }) => /^(?:CherryPick|Misskey|Hataskey|Hatasaba|UI|HataSNSCord)$/iu.test(source.label.trim()) || /^(?:CherryPick|Misskey|Hataskey|Hatasaba|UI|HataSNSCord)$/iu.test(target.label.trim()));
+		const brandOnlyVisible = sharedVisiblePairs.filter(({ source, target }) => /^(?:CherryPick|Misskey|Hataskey|Hatasaba|UI)$/iu.test(source.label.trim()) || /^(?:CherryPick|Misskey|Hataskey|Hatasaba|UI)$/iu.test(target.label.trim()));
 		const longLabelVisible = sharedVisiblePairs.filter(({ source, target }) => source.label.length > 80 || target.label.length > 80);
 		const externalNotificationTimeline = catalog.descriptors.filter(source => /外部通知.*(?:popup|ポップアップ)/iu.test(source.label)).flatMap(source => source.related.map(relation => ({ source, target: catalog.byStableId.get(relation.stableId)! }))).filter(({ target }) => /外部.*(?:タイムライン|TL)/iu.test(target.label));
 		expect(brandOnlyVisible).toHaveLength(0);
@@ -1331,7 +1321,7 @@ describe('settings control search index V2', () => {
 		}));
 		const productionLabelExpectations = [
 			{ sourceFile: 'src/pages/settings/email.vue', sourceLine: 16, labelI18nKey: 'i18n.ts.emailAddress' },
-			{ sourceFile: 'src/pages/settings/hata-custom.vue', sourceLine: 248, labelI18nKey: 'i18n.ts._hata._customSettings._ui.foldableSection' },
+			{ sourceFile: 'src/pages/settings/hata-custom.vue', sourceLine: 241, labelI18nKey: 'i18n.ts._hata._customSettings._ui.foldableSection' },
 			{ sourceFile: 'src/pages/settings/emoji-palette.vue', sourceLine: 25, labelI18nKey: 'i18n.ts._emojiPalette.palettes' },
 			{ sourceFile: 'src/pages/settings/drive.vue', sourceLine: 105, labelI18nKey: 'i18n.ts.watermark' },
 			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 239, labelI18nKey: 'i18n.ts._hata._mascotSettings.minimum' },
@@ -1454,15 +1444,24 @@ describe('settings control search index V2', () => {
 		const canonicalPreferenceIds = productionCatalog.descriptors
 			.filter(descriptor => descriptor.sourceFile === 'src/pages/settings-redesign/settings-preferences-catalog.ts' && descriptor.route === '/settings/preferences')
 			.map(descriptor => descriptor.stableId);
-		expect(canonicalPreferenceIds).toHaveLength(121);
-		expect(new Set(canonicalPreferenceIds).size).toBe(121);
+		expect(canonicalPreferenceIds).toHaveLength(130);
+		expect(new Set(canonicalPreferenceIds).size).toBe(130);
 		const aliasValues = new Set(stableIdAliases.values());
 		expect(aliasValues.size).toBe(118);
-		// These four canonical descriptors have no legacy searchable stable ID,
-		// while the redesigned catalog still materializes all 121 canonical descriptors.
+		// These canonical descriptors have no legacy searchable stable ID,
+		// while the redesigned catalog still materializes all 130 canonical descriptors.
 		const missingCanonicalIds = canonicalPreferenceIds.filter(id => !aliasValues.has(id)).sort();
 		expect(missingCanonicalIds).toEqual([
 			generatedPreferenceSearchId('emojiAdditionNotice'),
+			generatedPreferenceSearchId('hataskeyUi3ComposerEmojiPosition'),
+			generatedPreferenceSearchId('hataskeyUi3ComposerPosition'),
+			generatedPreferenceSearchId('hataskeyUi3ComposerShortcut1'),
+			generatedPreferenceSearchId('hataskeyUi3ComposerShortcut2'),
+			generatedPreferenceSearchId('hataskeyUi3RssEnabled'),
+			generatedPreferenceSearchId('hataskeyUi3RssFeeds'),
+			generatedPreferenceSearchId('hataskeyUi3RssAutoSwitch'),
+			generatedPreferenceSearchId('hataskeyUi3RssReadSeconds'),
+			generatedPreferenceSearchId('hataskeyUi3RssReadMode'),
 			generatedPreferenceSearchId('hourlyTimeNotice'),
 			generatedPreferenceSearchId('smoothTransitionAnimations'),
 			generatedPreferenceSearchId('testNotification'),
@@ -1493,25 +1492,7 @@ describe('settings control search index V2', () => {
 		}
 		expect(relationSuspects).toHaveLength(0);
 		expect(labelAuditIssues).toHaveLength(0);
-		expect(descriptors).toHaveLength(527);
-		const hataSnsCordGroup = productionCatalog.byStableId.get('settings.group.hatasnscord-settings');
-		expect(hataSnsCordGroup).toMatchObject({
-			stableId: 'settings.group.hatasnscord-settings',
-			source: 'control',
-			sourceFile: 'src/pages/settings-redesign/HataSNSCordSettingsSurface.vue',
-			route: '/settings/hatasnscord-ui',
-			categoryId: 'hatasnscord-ui',
-			destinationId: 'hatasnscord-settings',
-		});
-		expect(hataSnsCordGroup?.activation).toBeUndefined();
-		expect(productionCatalog.byStableId.has('settings.group.hatasaba-ui2-immediate-hatacording')).toBe(false);
-		const hatacordingProductionDescriptors = productionCatalog.descriptors.filter(descriptor => descriptor.sourceFile === 'src/components/HatacordingUiSettings.vue');
-		expect(hatacordingProductionDescriptors).toHaveLength(5);
-		for (const descriptor of hatacordingProductionDescriptors) {
-			expect(descriptor.route).toBe('/settings/hatasnscord-ui');
-			expect(descriptor.activation).toBeUndefined();
-			expect(descriptor.destinationId).toBe('hatasnscord-settings');
-		}
+		expect(descriptors).toHaveLength(519);
 		expect(legacy).toHaveLength(280);
 		expect(catalog.byLegacyId.size).toBe(280);
 		expect(controls).toHaveLength(descriptors.filter((descriptor: { searchable: boolean }) => descriptor.searchable).length);
@@ -1555,11 +1536,10 @@ describe('settings control search index V2', () => {
 			{ queries: ['パスキー'], stableId: 'settings.security.item-57xehf', source: 'legacy', categoryId: 'account' },
 			{ queries: ['pasuki'], stableId: 'settings.control.usepasswordlesslogin-kpujua', source: 'control', sourceFile: 'src/pages/settings/2fa.vue', categoryId: 'account' },
 			{ queries: ['2FA'], stableId: 'settings.group.security-key-runtime-settings', source: 'control', sourceFile: 'src/pages/settings/2fa.vue', categoryId: 'account' },
-			{ queries: ['旗鯖全体', 'その他'], stableId: 'settings.group.src-pages-settings-hata-custom-vue-28qg9w', source: 'control', sourceFile: 'src/pages/settings/hata-custom.vue', categoryId: 'hata-tools', activation: { kind: 'hata-custom-category', category: 'general', focusKind: 'group' } },
+			{ queries: ['Hataskey全体', '旗鯖全体', 'その他'], stableId: 'settings.group.src-pages-settings-hata-custom-vue-28qg9w', source: 'control', sourceFile: 'src/pages/settings/hata-custom.vue', categoryId: 'hata-tools', activation: { kind: 'hata-custom-category', category: 'general', focusKind: 'group' } },
 			// The former generic UI tab must focus the permanent, mounted surface;
 			// the legacy popup launcher descriptor remains only for hash compatibility.
 			{ queries: ['UI', 'Hataskey UI'], stableId: 'settings.group.hatasaba-ui2-immediate', source: 'control', sourceFile: 'src/components/HatasabaUi2ImmediateSettings.vue', categoryId: 'hataskey-ui', activation: { kind: 'hata-custom-category', category: 'glassUi', focusKind: 'group' } },
-			{ queries: ['Hatacording', 'HataSNSCord', 'HataSNSCordUI'], stableId: 'settings.group.hatasnscord-settings', source: 'control', sourceFile: 'src/pages/settings-redesign/HataSNSCordSettingsSurface.vue', categoryId: 'hatasnscord-ui' },
 			{ queries: ['折りたたみ', 'foldable'], stableId: 'settings.group.hatasaba-ui2-immediate-foldable', source: 'control', sourceFile: 'src/components/HatasabaUi2ImmediateSettings.vue', categoryId: 'hataskey-ui', activation: { kind: 'hata-custom-category', category: 'glassUi', focusKind: 'group' } },
 			{ queries: ['ビジュアル'], stableId: 'settings.group.src-pages-settings-hata-custom-vue-iqryzw', source: 'control', sourceFile: 'src/pages/settings/hata-custom.vue', categoryId: 'display-notes', activation: { kind: 'hata-custom-category', category: 'visual', focusKind: 'group' } },
 		] as const;

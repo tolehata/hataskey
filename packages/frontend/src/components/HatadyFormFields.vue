@@ -9,7 +9,7 @@
 			<h4>{{ field.label }}</h4><HyWeaponStatsTable v-model:rows="values.weaponStats" v-model:fields="values.statFields" :weaponSuggestions="field.suggestions ?? []" :copy="weaponCopy"/>
 		</template>
 		<fieldset v-else-if="field.type === 'choice' || field.type === 'tags'" :class="$style.fieldset">
-			<legend>{{ field.label }}<small v-if="!field.required">任意</small></legend>
+			<legend>{{ field.label }}<small v-if="!field.required">{{ copy.optional }}</small></legend>
 			<div :class="field.type === 'choice' ? $style.choices : $style.tags">
 				<label v-for="option in fieldOptions(field)" :key="option.value" :class="$style.choice">
 					<input v-if="field.type === 'choice'" v-model="values[field.key]" type="radio" :name="`${id}-${field.key}`" :value="option.value" :disabled="field.disabled">
@@ -19,21 +19,21 @@
 			</div>
 		</fieldset>
 		<label v-else-if="field.type === 'checkbox'" :class="$style.check"><input v-model="values[field.key]" :name="field.key" type="checkbox"><i class="ti ti-check" aria-hidden="true"></i><span>{{ field.label }}</span></label>
-		<fieldset v-else-if="field.type === 'color'" :class="$style.fieldset"><legend>{{ field.label }}</legend><div :class="$style.swatches"><button v-for="(colors, index) in HY_COVER_SETS" :key="index" type="button" :aria-label="`表紙の色 ${index + 1}`" :aria-pressed="values[field.key] === index" :class="$style.swatch" :style="{ '--cover': colors[1] }" @click="values[field.key] = values[field.key] === index ? null : index"><i v-if="values[field.key] === index" class="ti ti-check" aria-hidden="true"></i></button></div></fieldset>
+		<fieldset v-else-if="field.type === 'color'" :class="$style.fieldset"><legend>{{ field.label }}</legend><div :class="$style.swatches"><button v-for="(colors, index) in HY_COVER_SETS" :key="index" type="button" :aria-label="i18n.tsx._hata._hatady._formFields.coverColorNumber({ count: index + 1 })" :aria-pressed="values[field.key] === index" :class="$style.swatch" :style="{ '--cover': colors[1] }" @click="values[field.key] = values[field.key] === index ? null : index"><i v-if="values[field.key] === index" class="ti ti-check" aria-hidden="true"></i></button></div></fieldset>
 		<template v-else-if="field.type === 'bookmarks' || field.type === 'memos'">
-			<div v-if="!values[field.key]?.length" :class="$style.empty"><i class="ti ti-bookmark"></i><span>{{ field.type === 'bookmarks' ? 'また読みたいページに、しおりを。' : '心に残ったページを、ひとこと。' }}</span></div>
+			<div v-if="!values[field.key]?.length" :class="$style.empty"><i class="ti ti-bookmark"></i><span>{{ field.type === 'bookmarks' ? copy.emptyBookmarks : copy.emptyMemos }}</span></div>
 			<section v-for="(note, index) in values[field.key]" :key="note.id || note.clientId" :class="$style.note">
-				<header><h4>{{ field.label }} {{ Number(index) + 1 }}</h4><button type="button" class="hy-icon-button" :aria-label="`${field.label} ${Number(index) + 1}を削除`" @click="values[field.key].splice(Number(index), 1)"><i class="ti ti-trash"></i></button></header>
-				<label class="hy-field"><span>ページ</span><input v-model.number="note.page" :required="field.type === 'bookmarks'" :name="`${field.key}-${index}-page`" class="hy-input" type="number" inputmode="numeric" min="0" max="100000" step="1"></label>
-				<label v-if="field.type === 'bookmarks'" class="hy-field"><span>しおりの名前</span><input v-model="note.name" :name="`${field.key}-${index}-name`" class="hy-input" maxlength="128"></label>
-				<label v-if="field.type === 'bookmarks'" class="hy-field"><span>しおりの色</span><select v-model="note.color" :name="`${field.key}-${index}-color`" class="hy-input"><option v-for="color in bookmarkColors(note.color)" :key="color.key" :value="color.key">{{ color.label }}</option></select></label>
-				<label class="hy-field"><span>メモ</span><textarea v-if="field.type === 'bookmarks'" v-model="note.memo" :name="`${field.key}-${index}-memo`" class="hy-input" rows="3" maxlength="2048"></textarea><textarea v-else v-model="note.text" required :name="`${field.key}-${index}-text`" class="hy-input" rows="3" maxlength="4096"></textarea></label>
+				<header><h4>{{ field.label }} {{ Number(index) + 1 }}</h4><button type="button" class="hy-icon-button" :aria-label="i18n.tsx._hata._hatady._formFields.removeItem({ label: field.label, count: Number(index) + 1 })" @click="values[field.key].splice(Number(index), 1)"><i class="ti ti-trash"></i></button></header>
+				<label class="hy-field"><span>{{ i18n.ts._hata._hatady._bookDetail.page }}</span><input v-model.number="note.page" :required="field.type === 'bookmarks'" :name="`${field.key}-${index}-page`" class="hy-input" type="number" inputmode="numeric" min="0" max="100000" step="1"></label>
+				<label v-if="field.type === 'bookmarks'" class="hy-field"><span>{{ copy.bookmarkName }}</span><input v-model="note.name" :name="`${field.key}-${index}-name`" class="hy-input" maxlength="128"></label>
+				<label v-if="field.type === 'bookmarks'" class="hy-field"><span>{{ copy.bookmarkColor }}</span><select v-model="note.color" :name="`${field.key}-${index}-color`" class="hy-input"><option v-for="color in bookmarkColors(note.color)" :key="color.key" :value="color.key">{{ color.label }}</option></select></label>
+				<label class="hy-field"><span>{{ i18n.ts._hata._hatady._bookDetail.bmMemo }}</span><textarea v-if="field.type === 'bookmarks'" v-model="note.memo" :name="`${field.key}-${index}-memo`" class="hy-input" rows="3" maxlength="2048"></textarea><textarea v-else v-model="note.text" required :name="`${field.key}-${index}-text`" class="hy-input" rows="3" maxlength="4096"></textarea></label>
 			</section>
-			<button type="button" class="hy-secondary" @click="addNote(field)"><i class="ti ti-plus"></i>{{ field.label }}を追加</button>
+			<button type="button" class="hy-secondary" @click="addNote(field)"><i class="ti ti-plus"></i>{{ i18n.tsx._hata._hatady._formFields.addItem({ label: field.label }) }}</button>
 		</template>
 		<template v-else>
-			<label :for="`${id}-${field.key}`" :class="$style.label">{{ field.label }}<small>{{ field.required ? '必須' : '任意' }}</small></label>
-			<HyTagInput v-if="field.type === 'list'" v-model="values[field.key]" v-model:pending="values.__listDrafts[field.key]" :maxLength="field.maxlength ?? 512" :inputId="`${id}-${field.key}`" :inputLabel="field.label" :inputName="field.key" :suggestions="field.suggestions ?? []" :ordered="field.ordered" addLabel="追加" removeLabel="削除" :placeholder="field.placeholder ?? ''"/>
+			<label :for="`${id}-${field.key}`" :class="$style.label">{{ field.label }}<small>{{ field.required ? copy.required : copy.optional }}</small></label>
+			<HyTagInput v-if="field.type === 'list'" v-model="values[field.key]" v-model:pending="values.__listDrafts[field.key]" :maxLength="field.maxlength ?? 512" :inputId="`${id}-${field.key}`" :inputLabel="field.label" :inputName="field.key" :suggestions="field.suggestions ?? []" :ordered="field.ordered" :addLabel="i18n.ts._hata._hatady._media.add" :removeLabel="i18n.ts._hata._hatady._media.delete" :placeholder="field.placeholder ?? ''"/>
 			<textarea v-else-if="field.type === 'textarea'" :id="`${id}-${field.key}`" v-model="values[field.key]" :name="field.key" :required="field.required" :disabled="field.disabled" class="hy-input" rows="4" :maxlength="field.maxlength ?? 4096" :placeholder="field.placeholder"></textarea>
 			<select v-else-if="field.type === 'select'" :id="`${id}-${field.key}`" v-model="values[field.key]" :name="field.key" :required="field.required" :disabled="field.disabled" class="hy-input"><option v-for="option in fieldOptions(field)" :key="option.value" :value="option.value">{{ option.label }}</option></select>
 			<input v-else :id="`${id}-${field.key}`" v-model="values[field.key]" :name="field.key" :required="field.required" :disabled="field.disabled" class="hy-input" :type="field.type || 'text'" :inputmode="field.type === 'number' ? 'numeric' : undefined" :min="field.min" :max="field.max" :step="field.step ?? (field.type === 'time' || field.type === 'datetime-local' ? '0.001' : undefined)" :maxlength="field.maxlength" :placeholder="field.placeholder" :list="field.suggestions?.length ? `${id}-${field.key}-suggest` : undefined">
@@ -54,19 +54,21 @@ import HyVisibility from '@/components/HyVisibility.vue';
 import HyDurationInput from '@/components/HyDurationInput.vue';
 import HyTagInput from '@/components/HyTagInput.vue';
 import HyWeaponStatsTable from '@/components/HyWeaponStatsTable.vue';
+import { i18n } from '@/i18n.js';
+const copy = i18n.ts._hata._hatady._formFields;
 const values = defineModel<HatadyFormValues>({ required: true });
 defineProps<{ fields: HatadyFormField[] }>();
 const id = useId();
-const weaponCopy = { statFieldsLabel: '記録する成績', fieldLabels: { kills: 'キル', deaths: 'デス', assists: 'アシスト', specials: 'スペシャル', rescues: '救助' }, weaponLabel: '武器', weaponPlaceholder: '武器の名前', addRow: '武器を追加', removeRow: 'この武器を削除', totalLabel: '合計', pickAtLeastOne: '記録する成績を選んでください' };
+const weaponCopy = i18n.ts._hata._hatady._formFields.weaponStats;
 
 function fieldOptions(field: HatadyFormField) {
 	const options = [...(field.options ?? [])], selected = Array.isArray(values.value[field.key]) ? values.value[field.key] : [values.value[field.key]];
-	for (const value of selected) if (value != null && !(field.type === 'tags' && HATADY_RECORD_TAGS.some(tag => tag.value === value)) && !options.some(option => option.value === String(value))) options.push({ value: String(value), label: String(value) || '未設定' });
+	for (const value of selected) if (value != null && !(field.type === 'tags' && HATADY_RECORD_TAGS.some(tag => tag.value === value)) && !options.some(option => option.value === String(value))) options.push({ value: String(value), label: String(value) || i18n.ts._hata._hatady._workWizard.unset });
 	return options;
 }
 
 function bookmarkColors(selected: string) {
-	const options = [{ key: 'red', label: '赤' }, { key: 'orange', label: '橙' }, { key: 'yellow', label: '黄' }, { key: 'green', label: '緑' }, { key: 'blue', label: '青' }, { key: 'purple', label: '紫' }, { key: 'pink', label: '桃' }];
+	const options = [{ key: 'red', label: copy.red }, { key: 'orange', label: copy.orange }, { key: 'yellow', label: copy.yellow }, { key: 'green', label: copy.green }, { key: 'blue', label: copy.blue }, { key: 'purple', label: copy.purple }, { key: 'pink', label: copy.pink }];
 	if (selected && !options.some(option => option.key === selected)) options.push({ key: selected, label: selected });
 	return options;
 }

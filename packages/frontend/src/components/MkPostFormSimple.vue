@@ -242,6 +242,7 @@ function waitForSubmitMotion(duration: number): Promise<void> {
 	if (!prefer.s.animation || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
 	return new Promise(resolve => window.setTimeout(resolve, duration));
 }
+
 const text = ref(props.initialText ?? '');
 const files = shallowRef(props.initialFiles ?? ([] as Misskey.entities.DriveFile[]));
 const poll = ref<PollEditorModelValue | null>(null);
@@ -1266,9 +1267,9 @@ async function post(ev?: MouseEvent) {
 			deleteDraft();
 			emit('posted');
 
-			if (replyTargetNote.value) os.toast(i18n.ts.replied, 'reply');
+			if (props.updateMode) os.toast(i18n.ts.noteEdited, 'edited');
+			else if (replyTargetNote.value) os.toast(i18n.ts.replied, 'reply');
 			else if (renoteTargetNote.value) os.toast(i18n.ts.quoted, 'quote');
-			else if (props.updateMode) os.toast(i18n.ts.noteEdited, 'edited');
 
 			if (postData.text && postData.text !== '') {
 				const hashtags_ = parseMfmCached(postData.text).map(x => x.type === 'hashtag' && x.props.hashtag).filter(x => x) as string[];

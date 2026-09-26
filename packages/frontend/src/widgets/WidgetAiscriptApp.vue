@@ -75,6 +75,13 @@ async function run() {
 		out: (value) => {
 			// nop
 		},
+		err: (err) => {
+			os.alert({
+				type: 'error',
+				title: 'AiScript Error',
+				text: String(err),
+			});
+		},
 		log: (type, params) => {
 			// nop
 		},
@@ -85,6 +92,11 @@ async function run() {
 		ast = parser.parse(widgetProps.script);
 	} catch (err) {
 		isSyntaxError.value = true;
+		os.alert({
+			type: 'error',
+			title: 'Syntax Error',
+			text: String(err),
+		});
 		return;
 	}
 	try {
@@ -92,8 +104,8 @@ async function run() {
 	} catch (err) {
 		os.alert({
 			type: 'error',
-			title: 'AiScript Error',
-			text: err instanceof Error ? err.message : String(err),
+			title: 'AiScript Internal Error',
+			text: String(err),
 		});
 	}
 }

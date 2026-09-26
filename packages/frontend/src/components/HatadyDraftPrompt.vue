@@ -8,21 +8,23 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 	<template #actions>
 		<div :class="$style.actions">
 			<button type="button" class="hy-primary" :disabled="busy" @click="emit('save')">
-				端末に下書きを保存して閉じる
+				{{ copy.draftSaveClose }}
 			</button>
 			<button type="button" class="hy-secondary" :disabled="busy" @click="emit('discard')">
-				下書きを破棄して閉じる
+				{{ copy.draftDiscardClose }}
 			</button>
-			<button type="button" class="hy-secondary" :disabled="busy" @click="emit('return')">編集に戻る</button>
+			<button type="button" class="hy-secondary" :disabled="busy" @click="emit('return')">{{ copy.draftReturn }}</button>
 		</div>
 	</template>
 </HyDialog>
 </template>
 <script setup lang="ts">
 import HyDialog from '@/components/HyDialog.vue';
+import { i18n } from '@/i18n.js';
+const copy = i18n.ts._hata._hatady._controls;
 withDefaults(defineProps<{ title?: string; description?: string; busy?: boolean; error?: string }>(), {
-	title: '途中の編集をどうする？',
-	description: '次に続けられるよう、端末に下書きを残せます。',
+	title: i18n.ts._hata._hatady._controls.draftTitle,
+	description: i18n.ts._hata._hatady._controls.draftDescription,
 	busy: false,
 	error: '',
 });

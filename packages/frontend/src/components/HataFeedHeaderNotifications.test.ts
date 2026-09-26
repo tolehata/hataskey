@@ -12,7 +12,11 @@ vi.mock('@/preferences.js', async () => {
 	return { prefer: { r: { animation: ref(false), useBlurEffect: ref(false), 'external.disableNotificationToast': ref(false) }, s: { animation: false } } };
 });
 vi.mock('@/os.js', () => ({ toast: vi.fn() }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { close: '閉じる', notifications: '通知' } } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/components/MkNotification.vue', () => ({ default: { props: ['notification'], template: '<p>{{ notification.id }}</p>' } }));
 vi.mock('@/components/MkExternalNotificationToast.vue', () => ({ default: { props: ['notification'], template: '<p>{{ notification.id }}</p>' } }));
 

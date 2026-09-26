@@ -45,6 +45,51 @@ async function fixture() {
 
 const excludesBots = (preferences: PreferencesManager) => preferences.s['deck.profiles'][0].columns[0].excludeBots;
 
+describe('RSS preference persistence with real storage manager', () => {
+	const rss = {
+		hataskeyUi3RssEnabled: true,
+		hataskeyUi3RssFeeds: [{ id: 'rss-test', url: 'https://example.test/feed.xml', name: 'Test feed', color: '#34a1c9' }],
+		hataskeyUi3RssAutoSwitch: false,
+		hataskeyUi3RssReadSeconds: 15 as const,
+		hataskeyUi3RssReadMode: 'summary' as const,
+	};
+
+	async function saveRss(preferences: PreferencesManager) {
+		await preferences.commit('hataskeyUi3RssEnabled', rss.hataskeyUi3RssEnabled);
+		await preferences.commit('hataskeyUi3RssFeeds', copy(rss.hataskeyUi3RssFeeds));
+		await preferences.commit('hataskeyUi3RssAutoSwitch', rss.hataskeyUi3RssAutoSwitch);
+		await preferences.commit('hataskeyUi3RssReadSeconds', rss.hataskeyUi3RssReadSeconds);
+		await preferences.commit('hataskeyUi3RssReadMode', rss.hataskeyUi3RssReadMode);
+	}
+
+	test('all five RSS preferences survive a new instance and auto-switch defaults to true', async () => {
+		const f = await fixture();
+		const preferences = f.boot();
+		await preferences.cloudReady;
+		expect(preferences.s.hataskeyUi3RssAutoSwitch).toBe(true);
+		await saveRss(preferences);
+
+		const reload = f.boot();
+		await reload.cloudReady;
+		expect(reload.s).toMatchObject(rss);
+	});
+
+	test('an old tab saving another setting preserves all five RSS preferences', async () => {
+		const f = await fixture();
+		const preferences = f.boot();
+		const oldTab = f.boot();
+		await Promise.all([preferences.cloudReady, oldTab.cloudReady]);
+		await saveRss(preferences);
+		const animation = !oldTab.s.animation;
+		await oldTab.commit('animation', animation);
+
+		const reload = f.boot();
+		await reload.cloudReady;
+		expect(reload.s).toMatchObject(rss);
+		expect(reload.s.animation).toBe(animation);
+	});
+});
+
 function setExcluded(preferences: PreferencesManager, value: boolean) {
 	const profiles = copy(preferences.s['deck.profiles']);
 	profiles[0].columns[0].excludeBots = value;

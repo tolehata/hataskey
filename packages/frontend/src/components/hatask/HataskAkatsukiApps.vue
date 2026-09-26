@@ -10,9 +10,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <section ref="rootEl" :class="$style.root" :data-kind="kind" :data-motion="motionAllowed" :aria-label="appTitle">
-	<div ref="featureEl" :class="$style.feature" :data-paused="paused" role="region" aria-roledescription="カルーセル" :aria-label="`${appTitle} 特集`" @pointerenter="hoverPaused = true" @pointerleave="hoverPaused = false" @focusin="focusPaused = true" @focusout="onFocusOut">
+	<div ref="featureEl" :class="$style.feature" :data-paused="paused" role="region" :aria-roledescription="copy.carousel" :aria-label="i18n.tsx._hata._hatask._akatsukiApps.featureLabel({ app: appTitle })" @pointerenter="hoverPaused = true" @pointerleave="hoverPaused = false" @focusin="focusPaused = true" @focusout="onFocusOut">
 		<div :class="$style.track" data-feature-track :style="{ transform: `translateX(-${activeIndex * 100}%)` }">
-			<div v-for="(slide, index) in features" :key="slide.id" :class="$style.slide" :data-tone="slide.tone" :data-feature-id="slide.id" :inert="index !== activeIndex" :aria-hidden="index !== activeIndex" role="group" aria-roledescription="スライド" :aria-label="`${index + 1} / ${features.length}`">
+			<div v-for="(slide, index) in features" :key="slide.id" :class="$style.slide" :data-tone="slide.tone" :data-feature-id="slide.id" :inert="index !== activeIndex" :aria-hidden="index !== activeIndex" role="group" :aria-roledescription="copy.slide" :aria-label="`${index + 1} / ${features.length}`">
 				<component :is="slide.icon" :class="$style.featureMark" :strokeWidth="2" aria-hidden="true"/>
 				<div :class="$style.featureBody">
 					<div :class="$style.featureKicker">{{ slide.kicker }}</div>
@@ -22,17 +22,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</div>
 		<div :class="$style.controls" data-feature-controls :data-tone="features[activeIndex]?.tone">
-			<button type="button" :class="$style.carouselButton" data-carousel-action="prev" aria-label="前の特集へ" @click="move(-1)"><ChevronLeft :strokeWidth="2" aria-hidden="true"/></button>
-			<button type="button" :class="$style.carouselButton" data-carousel-action="next" aria-label="次の特集へ" @click="move(1)"><ChevronRight :strokeWidth="2" aria-hidden="true"/></button>
-			<button type="button" :class="$style.carouselButton" data-carousel-action="pause" :aria-label="paused ? '特集の自動送りを再生' : '特集の自動送りを一時停止'" :aria-pressed="paused" :disabled="!motionAllowed" @click="togglePause"><Play v-if="paused" :strokeWidth="2" aria-hidden="true"/><Pause v-else :strokeWidth="2" aria-hidden="true"/></button>
-			<span :class="$style.dots"><button v-for="(_, dotIndex) in features" :key="dotIndex" type="button" :class="$style.dotTarget" data-carousel-action="dot" :data-dot-index="dotIndex" :aria-label="`${dotIndex + 1}枚目の特集へ`" :aria-pressed="activeIndex === dotIndex" @click="selectSlide(dotIndex)"><span :class="$style.dot"/></button></span>
+			<button type="button" :class="$style.carouselButton" data-carousel-action="prev" :aria-label="copy.previousFeature" @click="move(-1)"><ChevronLeft :strokeWidth="2" aria-hidden="true"/></button>
+			<button type="button" :class="$style.carouselButton" data-carousel-action="next" :aria-label="copy.nextFeature" @click="move(1)"><ChevronRight :strokeWidth="2" aria-hidden="true"/></button>
+			<button type="button" :class="$style.carouselButton" data-carousel-action="pause" :aria-label="paused ? copy.resumeFeatures : copy.pauseFeatures" :aria-pressed="paused" :disabled="!motionAllowed" @click="togglePause"><Play v-if="paused" :strokeWidth="2" aria-hidden="true"/><Pause v-else :strokeWidth="2" aria-hidden="true"/></button>
+			<span :class="$style.dots"><button v-for="(_, dotIndex) in features" :key="dotIndex" type="button" :class="$style.dotTarget" data-carousel-action="dot" :data-dot-index="dotIndex" :aria-label="i18n.tsx._hata._hatask._akatsukiApps.goToFeature({ number: String(dotIndex + 1) })" :aria-pressed="activeIndex === dotIndex" @click="selectSlide(dotIndex)"><span :class="$style.dot"/></button></span>
 		</div>
 	</div>
 
 	<div :class="$style.mobileList" data-app-layout="mobile">
 		<h2 :class="[$style.mobileTitle, $style.brand]">{{ appTitle }}</h2>
 		<article v-for="app in mobileApps" :key="app.id" :class="$style.mobileCard" :data-app-id="app.id">
-			<div :class="$style.mobileCardHead"><component :is="app.icon" :strokeWidth="2" aria-hidden="true"/><span :class="app.brand ? [$style.appName, $style.brand] : $style.appName">{{ app.label }}</span><span v-if="countsKnown !== false && app.count && count(app.count) > 0" :class="$style.countBadge" data-count-badge>{{ count(app.count) }}</span><button type="button" :class="$style.appOpen" :aria-label="`${app.label}を開く`" @click="emit('open', app.id)"><ChevronRight :strokeWidth="2" aria-hidden="true"/></button></div>
+			<div :class="$style.mobileCardHead"><component :is="app.icon" :strokeWidth="2" aria-hidden="true"/><span :class="app.brand ? [$style.appName, $style.brand] : $style.appName">{{ app.label }}</span><span v-if="countsKnown !== false && app.count && count(app.count) > 0" :class="$style.countBadge" data-count-badge>{{ count(app.count) }}</span><span v-if="app.isNew" :class="$style.countBadge" data-new-badge>NEW</span><button type="button" :class="$style.appOpen" :aria-label="i18n.tsx._hata._hatask._akatsukiApps.openApp({ app: app.label })" @click="emit('open', app.id)"><ChevronRight :strokeWidth="2" aria-hidden="true"/></button></div>
 			<p :class="$style.mobileDescription">{{ app.description }}</p>
 		</article>
 	</div>
@@ -43,8 +43,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<h3 v-if="group.label" :class="$style.category"><component :is="group.icon" :strokeWidth="2" aria-hidden="true"/>{{ group.label }}</h3>
 			<article v-for="app in group.apps" :key="app.id" :class="$style.desktopRow" :data-app-id="app.id">
 				<component :is="app.icon" :strokeWidth="2" aria-hidden="true"/>
-				<div :class="$style.desktopCopy"><div :class="$style.nameLine"><strong :class="app.brand ? $style.brand : undefined">{{ app.label }}</strong><span v-if="countsKnown !== false && app.count && count(app.count) > 0" :class="$style.countBadge" data-count-badge>{{ count(app.count) }}</span></div><p>{{ app.description }}</p></div>
-				<button type="button" :class="$style.appOpen" :aria-label="`${app.label}を開く`" @click="emit('open', app.id)"><ChevronRight :strokeWidth="2" aria-hidden="true"/></button>
+				<div :class="$style.desktopCopy"><div :class="$style.nameLine"><strong :class="app.brand ? $style.brand : undefined">{{ app.label }}</strong><span v-if="countsKnown !== false && app.count && count(app.count) > 0" :class="$style.countBadge" data-count-badge>{{ count(app.count) }}</span><span v-if="app.isNew" :class="$style.countBadge" data-new-badge>NEW</span></div><p>{{ app.description }}</p></div>
+				<button type="button" :class="$style.appOpen" :aria-label="i18n.tsx._hata._hatask._akatsukiApps.openApp({ app: app.label })" @click="emit('open', app.id)"><ChevronRight :strokeWidth="2" aria-hidden="true"/></button>
 			</article>
 		</section>
 	</div>
@@ -53,11 +53,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script setup lang="ts">
 import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue';
-import { Activity, BookOpen, BookOpenCheck, CalendarDays, ChevronLeft, ChevronRight, Contact, Flag, Flower2, Gamepad2, MessageSquareWarning, Newspaper, Paintbrush, Palette, PanelLeft, Pause, Play, ScanFace, SlidersHorizontal, Smile, Soup, SquareCheckBig, Trophy, Wrench } from '@lucide/vue';
+import { Activity, BookOpen, BookOpenCheck, CalendarDays, ChefHat, ChevronLeft, ChevronRight, Contact, Flag, Flower2, Gamepad2, MessageSquareWarning, Newspaper, Paintbrush, Palette, PanelLeft, Pause, Play, ScanFace, SlidersHorizontal, Smile, Soup, SquareCheckBig, Trophy, Wrench } from '@lucide/vue';
 import type { Component } from 'vue';
+import { i18n } from '@/i18n.js';
 
 type CountKey = 'calendar' | 'todo' | 'meal' | 'feedback';
-type AppItem = { id: string; label: string; icon: Component; description: string; brand?: boolean; count?: CountKey };
+type AppItem = { id: string; label: string; icon: Component; description: string; brand?: boolean; count?: CountKey; isNew?: boolean };
 type Feature = { id: string; label: string; icon: Component; kicker: string; lines: [string, string]; tone: 'accent' | 'ink' | 'accent2'; brand?: boolean };
 
 const props = withDefaults(defineProps<{
@@ -69,6 +70,7 @@ const props = withDefaults(defineProps<{
 	canUseMascot: boolean;
 }>(), { countsKnown: true });
 const emit = defineEmits<{ open: [id: string] }>();
+const copy = i18n.ts._hata._hatask._akatsukiApps;
 const appTitle = computed(() => props.kind === 'hatask' ? 'Hatask App' : 'Hataskey App');
 
 function count(key: CountKey): number {
@@ -77,54 +79,55 @@ function count(key: CountKey): number {
 }
 
 const hataskApps: readonly AppItem[] = [
-	{ id: 'cal', label: 'カレンダー', icon: CalendarDays, count: 'calendar', description: '予定と出欠の管理。月表示から一日を開き、日付と時間を指定して登録できます。公開予定や参加する予定も確認できます' },
-	{ id: 'todo', label: 'ToDo', icon: SquareCheckBig, brand: true, count: 'todo', description: '今日のタスクと締切の管理。並べ替えや完了のチェックができ、フォルダーや優先度で整理できます' },
-	{ id: 'mood', label: 'きもち', icon: Smile, description: 'いまの気分とひとことを残す記録。日付や週ごとの並びで振り返れて、記録のリマインドも設定できます' },
-	{ id: 'meal', label: 'ごはん', icon: Soup, count: 'meal', description: '朝・昼・夜・間食の記録。そのときの様子をひとこと添えて、あとから日付や時間を指定して残せます' },
-	{ id: 'garden', label: 'おはな', icon: Flower2, description: '時間とともに育つ花。育ち具合と開花までの時間を確認し、咲いた花を収穫して名前を付けられます' },
-	{ id: 'ranking', label: 'ランキング', icon: Trophy, description: 'お花・宴の成功・宴の阻止・ログイン日数の順位。今月・今週・今日の記録を見られ、参加するかは自分で選べます' },
-	{ id: 'settings', label: '見た目', icon: Palette, description: 'テーマ・明暗・動きなど、Hataskの見え方と使い方をまとめて調整できます' },
+	{ id: 'cal', label: copy.appCal, icon: CalendarDays, count: 'calendar', description: copy.appCalDescription },
+	{ id: 'todo', label: 'ToDo', icon: SquareCheckBig, brand: true, count: 'todo', description: copy.appTodoDescription },
+	{ id: 'mood', label: copy.appMood, icon: Smile, description: copy.appMoodDescription },
+	{ id: 'meal', label: copy.appMeal, icon: Soup, count: 'meal', description: copy.appMealDescription },
+	{ id: 'recipe', label: copy.appRecipe, icon: ChefHat, isNew: true, description: copy.appRecipeDescription },
+	{ id: 'garden', label: copy.appGarden, icon: Flower2, description: copy.appGardenDescription },
+	{ id: 'ranking', label: copy.appRanking, icon: Trophy, description: copy.appRankingDescription },
+	{ id: 'settings', label: copy.appAppearance, icon: Palette, description: copy.appAppearanceDescription },
 ];
 const toolApps: readonly AppItem[] = [
-	{ id: 'feed', label: 'HataFeed', icon: MessageSquareWarning, brand: true, count: 'feedback', description: 'Hataskeyへの要望・不具合報告を送り、返信や対応状況を追えるフィードバック窓口。絵文字申請やベータ機能の入口もここにあります' },
-	{ id: 'hatady', label: 'Hatady', icon: BookOpen, brand: true, description: '映画・ゲーム・学びの記録を、ひとつの活動タイムラインで振り返れます。本棚や作品の一覧、ノート、目標もまとめて管理できます' },
-	{ id: 'card', label: 'HataCardMaker', icon: Contact, brand: true, description: '自分のプロフィールを使った自己紹介カード。アクセントや透明度などを整えて、画像として書き出せます' },
-	{ id: 'analyze', label: 'HATAlyze（感情分析）', icon: ScanFace, brand: true, description: '自分の投稿から感情の傾向や言葉の特徴を分析。結果を見比べて振り返れます。利用できる範囲はアカウントの権限に従います' },
-	{ id: 'studio', label: 'HataSideStudio', icon: PanelLeft, brand: true, description: 'サイドメニューのグループ・ボタン・ウィジェットを組み替え、自分の使い方に合う配置を作れます' },
-	{ id: 'earthquake', label: '地震・津波情報', icon: Activity, description: '気象庁が発表した地震・津波情報を地図と一覧で確認。震度や津波警報の通知も設定できます（緊急地震速報は扱いません）' },
-	{ id: 'mascot', label: 'マスコット', icon: Smile, description: 'ハタキュなどのマスコットの表示やセリフを設定します。利用できるアカウントでは、同意後に設定を開けます' },
-	{ id: 'games', label: 'ゲーム', icon: Gamepad2, description: '積み上げゲーム・絵文字たたき・絵文字シュートなど、Hataskeyのミニゲームをまとめた入口' },
-	{ id: 'intro', label: 'HataIntro', icon: BookOpenCheck, brand: true, description: '画面の見方や操作手順を、図と一緒にひとつずつ確認できるはじめてガイド' },
-	{ id: 'drawing', label: 'Hatadint', icon: Paintbrush, brand: true, description: 'ペンや色、レイヤーを選んで絵を描き、ドライブへの保存や投稿への添付ができます' },
-	{ id: 'whatsnew', label: '今回の更新内容', icon: Newspaper, description: '今回の更新で加わった機能や変更点を確認できます' },
-	{ id: 'hatasettings', label: 'Hataskey設定', icon: Flag, description: 'Hataskey独自の機能や表示に関する設定を開きます' },
+	{ id: 'feed', label: 'HataFeed', icon: MessageSquareWarning, brand: true, count: 'feedback', description: copy.appFeedDescription },
+	{ id: 'hatady', label: 'Hatady', icon: BookOpen, brand: true, description: copy.appHatadyDescription },
+	{ id: 'card', label: 'HataCardMaker', icon: Contact, brand: true, description: copy.appCardDescription },
+	{ id: 'analyze', label: copy.appAnalyze, icon: ScanFace, brand: true, description: copy.appAnalyzeDescription },
+	{ id: 'studio', label: 'HataSideStudio', icon: PanelLeft, brand: true, description: copy.appStudioDescription },
+	{ id: 'earthquake', label: copy.appEarthquake, icon: Activity, description: copy.appEarthquakeDescription },
+	{ id: 'mascot', label: copy.appMascot, icon: Smile, description: copy.appMascotDescription },
+	{ id: 'games', label: copy.appGames, icon: Gamepad2, description: copy.appGamesDescription },
+	{ id: 'intro', label: 'HataIntro', icon: BookOpenCheck, brand: true, description: copy.appIntroDescription },
+	{ id: 'drawing', label: 'Hatadint', icon: Paintbrush, brand: true, description: copy.appDrawingDescription },
+	{ id: 'whatsnew', label: copy.appWhatsNew, icon: Newspaper, description: copy.appWhatsNewDescription },
+	{ id: 'hatasettings', label: copy.appHataskeySettings, icon: Flag, description: copy.appHataskeySettingsDescription },
 ];
 const availableTools = computed(() => toolApps.filter(app => (app.id !== 'feed' || props.canAccessHataFeed) && (app.id !== 'mascot' || props.canUseMascot)));
 const mobileApps = computed(() => props.kind === 'hatask' ? hataskApps : availableTools.value);
 const groupSpecs = [
-	{ id: 'tools', label: 'ツール', icon: Wrench, apps: ['card', 'analyze', 'drawing'] },
-	{ id: 'records', label: '記録と共有', icon: MessageSquareWarning, apps: ['feed', 'hatady'] },
-	{ id: 'information', label: '防災・情報', icon: Activity, apps: ['earthquake'] },
-	{ id: 'play', label: 'あそび', icon: Gamepad2, apps: ['mascot', 'games'] },
-	{ id: 'settings', label: '設定と案内', icon: SlidersHorizontal, apps: ['studio', 'intro', 'whatsnew', 'hatasettings'] },
+	{ id: 'tools', label: copy.groupTools, icon: Wrench, apps: ['card', 'analyze', 'drawing'] },
+	{ id: 'records', label: copy.groupRecords, icon: MessageSquareWarning, apps: ['feed', 'hatady'] },
+	{ id: 'information', label: copy.groupInformation, icon: Activity, apps: ['earthquake'] },
+	{ id: 'play', label: copy.groupPlay, icon: Gamepad2, apps: ['mascot', 'games'] },
+	{ id: 'settings', label: copy.groupSettings, icon: SlidersHorizontal, apps: ['studio', 'intro', 'whatsnew', 'hatasettings'] },
 ];
 const groups = computed(() => props.kind === 'hatask'
 	? [{ id: 'hatask', label: '', icon: null, apps: hataskApps }]
 	: groupSpecs.map(group => ({ ...group, apps: group.apps.flatMap(id => availableTools.value.filter(app => app.id === id)) })).filter(group => group.apps.length > 0));
 const features = computed<Feature[]>(() => props.kind === 'hatask' ? [
-	{ id: 'todo', label: 'ToDo', icon: SquareCheckBig, kicker: 'きょう', lines: props.countsKnown !== false && count('todo') > 0 ? [`残り ${count('todo')} 件を、`, '先に片づける。'] : ['きょうのタスクを、', 'ひとつ書きとめる。'], tone: 'accent', brand: true },
-	{ id: 'garden', label: 'おはな', icon: Flower2, kicker: 'そろそろ', lines: ['花の育ちぐあいを、', 'そっと見に行く。'], tone: 'ink' },
-	{ id: 'mood', label: 'きもち', icon: Smile, kicker: 'ふりかえり', lines: ['いまの気分を、', 'ひとこと残そう。'], tone: 'accent2' },
-	{ id: 'cal', label: 'カレンダー', icon: CalendarDays, kicker: '予定', lines: ['この先の予定を、', 'ひと目で見渡す。'], tone: 'accent' },
-	{ id: 'meal', label: 'ごはん', icon: Soup, kicker: '日々', lines: ['きょう食べたものを、', 'ひとこと添えて。'], tone: 'ink' },
-	{ id: 'settings', label: '見た目', icon: Palette, kicker: '自分らしく', lines: ['色も、明るさも、', '心地よい見た目に。'], tone: 'accent2' },
+	{ id: 'todo', label: 'ToDo', icon: SquareCheckBig, kicker: copy.featureTodoKicker, lines: props.countsKnown !== false && count('todo') > 0 ? [i18n.tsx._hata._hatask._akatsukiApps.featureTodoCountLine({ count: String(count('todo')) }), copy.featureTodoCountNext] : [copy.featureTodoEmptyLine, copy.featureTodoEmptyNext], tone: 'accent', brand: true },
+	{ id: 'garden', label: copy.appGarden, icon: Flower2, kicker: copy.featureGardenKicker, lines: [copy.featureGardenLine, copy.featureGardenNext], tone: 'ink' },
+	{ id: 'mood', label: copy.appMood, icon: Smile, kicker: copy.featureMoodKicker, lines: [copy.featureMoodLine, copy.featureMoodNext], tone: 'accent2' },
+	{ id: 'cal', label: copy.appCal, icon: CalendarDays, kicker: copy.featureCalKicker, lines: [copy.featureCalLine, copy.featureCalNext], tone: 'accent' },
+	{ id: 'meal', label: copy.appMeal, icon: Soup, kicker: copy.featureMealKicker, lines: [copy.featureMealLine, copy.featureMealNext], tone: 'ink' },
+	{ id: 'settings', label: copy.appAppearance, icon: Palette, kicker: copy.featureAppearanceKicker, lines: [copy.featureAppearanceLine, copy.featureAppearanceNext], tone: 'accent2' },
 ] : [
-	{ id: 'analyze', label: 'HATAlyze（感情分析）', icon: ScanFace, kicker: '特集', lines: ['自分の言葉から、', '気分の波を読む。'], tone: 'accent', brand: true },
-	{ id: 'hatady', label: 'Hatady', icon: BookOpen, kicker: '定番', lines: ['映画もゲームも、', '学びもひとつに。'], tone: 'ink', brand: true },
-	{ id: 'card', label: 'HataCardMaker', icon: Contact, kicker: 'つくる', lines: ['自分の一枚を、', 'カードにする。'], tone: 'accent2', brand: true },
-	{ id: 'drawing', label: 'Hatadint', icon: Paintbrush, kicker: '描く', lines: ['浮かんだイメージを、', '一枚の絵に。'], tone: 'accent', brand: true },
-	{ id: 'studio', label: 'HataSideStudio', icon: PanelLeft, kicker: '整える', lines: ['いつもの道具を、', '使いやすい場所へ。'], tone: 'ink', brand: true },
-	{ id: 'intro', label: 'HataIntro', icon: BookOpenCheck, kicker: 'はじめる', lines: ['はじめての操作を、', '図と一緒にたどる。'], tone: 'accent2', brand: true },
+	{ id: 'analyze', label: copy.appAnalyze, icon: ScanFace, kicker: copy.featureAnalyzeKicker, lines: [copy.featureAnalyzeLine, copy.featureAnalyzeNext], tone: 'accent', brand: true },
+	{ id: 'hatady', label: 'Hatady', icon: BookOpen, kicker: copy.featureHatadyKicker, lines: [copy.featureHatadyLine, copy.featureHatadyNext], tone: 'ink', brand: true },
+	{ id: 'card', label: 'HataCardMaker', icon: Contact, kicker: copy.featureCardKicker, lines: [copy.featureCardLine, copy.featureCardNext], tone: 'accent2', brand: true },
+	{ id: 'drawing', label: 'Hatadint', icon: Paintbrush, kicker: copy.featureDrawingKicker, lines: [copy.featureDrawingLine, copy.featureDrawingNext], tone: 'accent', brand: true },
+	{ id: 'studio', label: 'HataSideStudio', icon: PanelLeft, kicker: copy.featureStudioKicker, lines: [copy.featureStudioLine, copy.featureStudioNext], tone: 'ink', brand: true },
+	{ id: 'intro', label: 'HataIntro', icon: BookOpenCheck, kicker: copy.featureIntroKicker, lines: [copy.featureIntroLine, copy.featureIntroNext], tone: 'accent2', brand: true },
 ]);
 
 const rootEl = ref<HTMLElement | null>(null);

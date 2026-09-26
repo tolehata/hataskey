@@ -4,7 +4,7 @@
  *
  * HataSideStudio の端末ローカル設定。
  * サイドメニューは端末の幅・入力方法に強く依存するため prefer へは保存せず、
- * miLocalStorage の1キーだけで完結させる。サーバー・連合へは送信しない。
+ * UIごとの miLocalStorage キーで完結させる。サーバー・連合へは送信しない。
  */
 
 import { ref } from 'vue';
@@ -38,6 +38,7 @@ export { getHataSideWidgetDisplayLabel };
 export const HATA_SIDE_STUDIO_FORMAT_VERSION = 9;
 export const HATA_SIDE_STUDIO_DEFAULT_PROFILE_LIMIT = 3;
 export const HATA_SIDE_STUDIO_STORAGE_KEY = 'hataSideStudio';
+export const HATA_SIDE_STUDIO_UI_S_STORAGE_KEY = 'hataSideStudioUiS';
 export const HATA_SIDE_STUDIO_CHANGE_EVENT = 'hata-side-studio:change';
 export const HATA_SIDE_STUDIO_BROADCAST_CHANNEL = 'hata-side-studio';
 
@@ -269,6 +270,11 @@ export function getHataSideStudioMenuDisplayLabel(menuId: string, storedLabel?: 
 	return utilityCopy().menuLabels[normalizedId] ?? fallback;
 }
 
+/** キャッシュクリアのラベルを狭いセルでも1行に収めるための文字幅係数。 */
+export function getHataSideStudioCacheLabelSize(label: string): string {
+	return `${Math.min(10.5, 94 / Math.max(1, Array.from(label).length)).toFixed(3)}cqi`;
+}
+
 /** 既定のグループ名だけを表示時に翻訳する。利用者が編集した名前はそのまま返す。 */
 export function getHataSideStudioGroupDisplayName(name: string): string {
 	const entry = Object.entries(HATA_SIDE_STUDIO_GROUP_STORAGE_NAMES).find(([, storedName]) => storedName === name);
@@ -391,7 +397,7 @@ export function createGroup(name: string = HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAME
 		id: uid('group'),
 		name,
 		showName: true,
-		columns: 1,
+		columns: 2,
 		masonry: false,
 		background: 'transparent',
 		border: 'var(--MI_THEME-divider)',
@@ -760,8 +766,8 @@ export function sanitizeHataSideStudioStore(value: unknown, source: readonly Sid
 	return { version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: profiles.some(profile => profile.id === requestedActive) ? requestedActive : profiles[0].id, profiles };
 }
 
-function readStore(): HataSideStudioStore {
-	const raw = miLocalStorage.getItem(HATA_SIDE_STUDIO_STORAGE_KEY);
+function readStore(key: typeof HATA_SIDE_STUDIO_STORAGE_KEY | typeof HATA_SIDE_STUDIO_UI_S_STORAGE_KEY): HataSideStudioStore {
+	const raw = miLocalStorage.getItem(key);
 	if (raw == null) return createDefaultStore();
 	try {
 		return sanitizeHataSideStudioStore(JSON.parse(raw));
@@ -770,11 +776,47 @@ function readStore(): HataSideStudioStore {
 	}
 }
 
-export const hataSideStudioStore = ref<HataSideStudioStore>(readStore());
+// 実行中のUIは別タブのUI切替に影響されないよう、モジュールの初期化時に固定する。
+const initialStorageKey = miLocalStorage.getItem('ui') === 'hataskey3'
+	? HATA_SIDE_STUDIO_UI_S_STORAGE_KEY : HATA_SIDE_STUDIO_STORAGE_KEY;
+// 旧データがある場合は初回アクセス時にUI Sの初期値を固定する。旧データがない
+// 場合は sidebar source を受け取る ensure まで待つ。
+const initialLegacyRaw = miLocalStorage.getItem(HATA_SIDE_STUDIO_STORAGE_KEY);
+const legacyInitialStore = readStore(HATA_SIDE_STUDIO_STORAGE_KEY);
+if (initialLegacyRaw != null && miLocalStorage.getItem(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY) == null) {
+	miLocalStorage.setItem(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY, JSON.stringify(legacyInitialStore));
+}
+const legacyStore = ref<HataSideStudioStore>(legacyInitialStore);
+const uiSStore = ref<HataSideStudioStore>(readStore(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY));
+
+export function getHataSideStudioStorageKey(): typeof HATA_SIDE_STUDIO_STORAGE_KEY | typeof HATA_SIDE_STUDIO_UI_S_STORAGE_KEY {
+	return initialStorageKey;
+}
+
+function storeForKey(key: ReturnType<typeof getHataSideStudioStorageKey>) {
+	return key === HATA_SIDE_STUDIO_UI_S_STORAGE_KEY ? uiSStore : legacyStore;
+}
+
+export const hataSideStudioStore = storeForKey(initialStorageKey);
+
+function ensureUiSSeed(source?: readonly SidebarSourceItem[]): void {
+	if (miLocalStorage.getItem(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY) != null) return;
+	let initial: HataSideStudioStore;
+	if (initialStorageKey === HATA_SIDE_STUDIO_UI_S_STORAGE_KEY && initialLegacyRaw == null) {
+		initial = source != null ? createDefaultStore(source) : legacyInitialStore;
+	} else if (miLocalStorage.getItem(HATA_SIDE_STUDIO_STORAGE_KEY) != null) {
+		initial = readStore(HATA_SIDE_STUDIO_STORAGE_KEY);
+	} else {
+		initial = source != null ? createDefaultStore(source) : legacyInitialStore;
+	}
+	uiSStore.value = initial;
+	miLocalStorage.setItem(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY, JSON.stringify(initial));
+}
 
 type HataSideStudioSyncDetail = {
 	sourceId: string;
 	serialized: string;
+	storageKey?: ReturnType<typeof getHataSideStudioStorageKey>;
 };
 
 const syncSourceId = uid('sync');
@@ -785,11 +827,12 @@ function isSyncDetail(value: unknown): value is HataSideStudioSyncDetail {
 	return isRecord(value) && typeof value.sourceId === 'string' && typeof value.serialized === 'string';
 }
 
-function applySerializedHataSideStudioStore(serialized: string, sourceId = ''): void {
+function applySerializedHataSideStudioStore(serialized: string, sourceId = '', key: ReturnType<typeof getHataSideStudioStorageKey> = HATA_SIDE_STUDIO_STORAGE_KEY): void {
 	if (sourceId === syncSourceId || !isHataSideStudioStorageString(serialized)) return;
 	try {
 		const next = sanitizeHataSideStudioStore(JSON.parse(serialized));
-		if (JSON.stringify(hataSideStudioStore.value) !== JSON.stringify(next)) hataSideStudioStore.value = next;
+		const target = storeForKey(key);
+		if (JSON.stringify(target.value) !== JSON.stringify(next)) target.value = next;
 	} catch {
 		// 他ウィンドウから壊れた値が来ても、現在表示中の正常な設定は維持する。
 	}
@@ -797,15 +840,15 @@ function applySerializedHataSideStudioStore(serialized: string, sourceId = ''): 
 
 function onHataSideStudioCustomEvent(event: Event): void {
 	const detail = (event as CustomEvent<unknown>).detail;
-	if (isSyncDetail(detail)) applySerializedHataSideStudioStore(detail.serialized, detail.sourceId);
+	if (isSyncDetail(detail)) applySerializedHataSideStudioStore(detail.serialized, detail.sourceId, detail.storageKey);
 }
 
 function onHataSideStudioStorage(event: StorageEvent): void {
-	if (event.key === HATA_SIDE_STUDIO_STORAGE_KEY && event.newValue != null) applySerializedHataSideStudioStore(event.newValue);
+	if ((event.key === HATA_SIDE_STUDIO_STORAGE_KEY || event.key === HATA_SIDE_STUDIO_UI_S_STORAGE_KEY) && event.newValue != null) applySerializedHataSideStudioStore(event.newValue, '', event.key);
 }
 
 function onHataSideStudioBroadcast(event: MessageEvent<unknown>): void {
-	if (isSyncDetail(event.data)) applySerializedHataSideStudioStore(event.data.serialized, event.data.sourceId);
+	if (isSyncDetail(event.data)) applySerializedHataSideStudioStore(event.data.serialized, event.data.sourceId, event.data.storageKey);
 }
 
 export function startHataSideStudioSync(): void {
@@ -836,9 +879,9 @@ export function stopHataSideStudioSync(): void {
 	}
 }
 
-function notifyHataSideStudioChange(serialized: string): void {
+function notifyHataSideStudioChange(serialized: string, storageKey: ReturnType<typeof getHataSideStudioStorageKey>): void {
 	if (typeof window === 'undefined') return;
-	const detail: HataSideStudioSyncDetail = { sourceId: syncSourceId, serialized };
+	const detail: HataSideStudioSyncDetail = { sourceId: syncSourceId, serialized, storageKey };
 	try {
 		window.dispatchEvent(new CustomEvent<HataSideStudioSyncDetail>(HATA_SIDE_STUDIO_CHANGE_EVENT, { detail }));
 		syncChannel?.postMessage(detail);
@@ -848,7 +891,9 @@ function notifyHataSideStudioChange(serialized: string): void {
 }
 
 export function ensureHataSideStudioInitialized(source: readonly SidebarSourceItem[]): void {
-	const raw = miLocalStorage.getItem(HATA_SIDE_STUDIO_STORAGE_KEY);
+	ensureUiSSeed(source);
+	const key = getHataSideStudioStorageKey();
+	const raw = miLocalStorage.getItem(key);
 	if (raw == null) {
 		applyHataSideStudioStore(createDefaultStore(source));
 		return;
@@ -856,10 +901,10 @@ export function ensureHataSideStudioInitialized(source: readonly SidebarSourceIt
 	try {
 		const migrated = sanitizeHataSideStudioStore(JSON.parse(raw), source);
 		const serialized = JSON.stringify(migrated);
-		hataSideStudioStore.value = migrated;
+		storeForKey(key).value = migrated;
 		if (serialized !== raw) {
-			miLocalStorage.setItem(HATA_SIDE_STUDIO_STORAGE_KEY, serialized);
-			notifyHataSideStudioChange(serialized);
+			miLocalStorage.setItem(key, serialized);
+			notifyHataSideStudioChange(serialized, key);
 		}
 		return;
 	} catch {
@@ -868,12 +913,13 @@ export function ensureHataSideStudioInitialized(source: readonly SidebarSourceIt
 	applyHataSideStudioStore(createDefaultStore(source));
 }
 
-export function applyHataSideStudioStore(value: HataSideStudioStore): void {
+export function applyHataSideStudioStore(value: HataSideStudioStore, key = getHataSideStudioStorageKey()): void {
+	ensureUiSSeed();
 	const next = sanitizeHataSideStudioStore(value);
 	const serialized = JSON.stringify(next);
-	hataSideStudioStore.value = next;
-	miLocalStorage.setItem(HATA_SIDE_STUDIO_STORAGE_KEY, serialized);
-	notifyHataSideStudioChange(serialized);
+	storeForKey(key).value = next;
+	miLocalStorage.setItem(key, serialized);
+	notifyHataSideStudioChange(serialized, key);
 }
 
 startHataSideStudioSync();

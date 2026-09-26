@@ -6,7 +6,11 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { misskeyApi } from '@/utility/misskey-api.js';
 
-vi.mock('@/i18n.js', () => ({ i18n: { ts: {}, tsx: {} } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn() }));
 vi.mock('@/utility/hatady-prefs.js', () => ({ hatadyTzOffset: () => -540 }));
 

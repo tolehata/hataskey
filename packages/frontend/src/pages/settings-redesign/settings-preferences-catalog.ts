@@ -8,6 +8,7 @@
 import { destinationForId, settingsDestinationSections } from './settings-destinations.js';
 import type { SettingsDestination } from './settings-destinations.js';
 import { i18n } from '@/i18n.js';
+import { HK3_COMPOSER_EMOJI_POSITIONS, HK3_COMPOSER_SHORTCUT_OPTIONS } from '@/components/hataskey3/hk3-composer-tools.js';
 
 const preferencesRoute = '/settings/preferences';
 
@@ -19,7 +20,7 @@ function manifestDestination(id: string): SettingsDestination {
 
 /** Manifest ids only; no preferences-* aliases are allowed here. */
 export const preferenceDestinationIds = [
-	'display-general', 'display-preferences', 'timeline-note-display', 'timeline-post-form', 'timeline-group',
+	'hataskey-ui-s', 'display-general', 'display-preferences', 'timeline-note-display', 'timeline-post-form', 'timeline-group',
 	'notifications-preferences', 'timeline-chat', 'cherrypick-display', 'cherrypick-search', 'misskey-general',
 	'misskey-accessibility', 'misskey-performance', 'misskey-data-saver', 'cherrypick-external-navigation',
 	'misskey-other',
@@ -52,6 +53,8 @@ export const preferenceContainerKeys = [
 	'showUnreadNotificationsCount', 'showingAnimatedImages', 'smoothTransitionAnimations', 'squareAvatars', 'useBlurEffect',
 	'useBlurEffectForModal', 'useGroupedNotifications', 'useNativeUiForVideoAudioPlayer', 'useReactionPickerForContextMenu',
 	'useStickyIcons', 'welcomeBackToast',
+	'hataskeyUi3ComposerShortcut1', 'hataskeyUi3ComposerShortcut2', 'hataskeyUi3ComposerEmojiPosition', 'hataskeyUi3ComposerPosition',
+	'hataskeyUi3RssEnabled', 'hataskeyUi3RssFeeds', 'hataskeyUi3RssAutoSwitch', 'hataskeyUi3RssReadSeconds', 'hataskeyUi3RssReadMode',
 ] as const;
 export type PreferenceContainerKey = typeof preferenceContainerKeys[number];
 
@@ -103,6 +106,12 @@ const placements: Readonly<Record<PreferenceContainerKey, Placement>> = {
 	hemisphere: { destinationId: 'misskey-other' }, hideAvatarsInNote: { destinationId: 'cherrypick-display' },
 	highlightSensitiveMedia: { destinationId: 'display-preferences' }, imageNewTab: { destinationId: 'misskey-other' },
 	infoButtonForNoteActionsEnabled: { destinationId: 'cherrypick-display' }, instanceTicker: { destinationId: 'display-preferences' },
+	hataskeyUi3ComposerShortcut1: { destinationId: 'hataskey-ui-s' }, hataskeyUi3ComposerShortcut2: { destinationId: 'hataskey-ui-s' },
+	hataskeyUi3ComposerEmojiPosition: { destinationId: 'hataskey-ui-s' },
+	hataskeyUi3ComposerPosition: { destinationId: 'hataskey-ui-s' },
+	hataskeyUi3RssEnabled: { destinationId: 'hataskey-ui-s' }, hataskeyUi3RssFeeds: { destinationId: 'hataskey-ui-s' },
+	hataskeyUi3RssAutoSwitch: { destinationId: 'hataskey-ui-s' }, hataskeyUi3RssReadSeconds: { destinationId: 'hataskey-ui-s' },
+	hataskeyUi3RssReadMode: { destinationId: 'hataskey-ui-s' },
 	keepCw: { destinationId: 'timeline-post-form' }, keepScreenOn: { destinationId: 'misskey-accessibility' },
 	limitWidthOfReaction: { destinationId: 'timeline-note-display' }, loadRawImages: { destinationId: 'timeline-note-display' },
 	ltlEmojiVoteEnabled: { destinationId: 'timeline-group' },
@@ -139,8 +148,8 @@ const placements: Readonly<Record<PreferenceContainerKey, Placement>> = {
 const rangeSpec: Readonly<Partial<Record<PreferenceContainerKey, { min: number; max: number }>>> = {
 	pollingInterval: { min: 1, max: 3 }, fontSize: { min: 1, max: 19 }, numberOfPageCache: { min: 1, max: 10 },
 };
-const radioKeys = new Set<PreferenceContainerKey>(['emojiStyle', 'notificationPosition', 'notificationStackAxis', 'reactionsDisplaySize', 'mediaListWithOneImageAppearance', 'hemisphere']);
-const selectKeys = new Set<PreferenceContainerKey>(['forceRenoteVisibilitySelection', 'defaultNoteVisibility', 'instanceTicker', 'menuStyle', 'contextMenu', 'newNoteReceivedNotificationBehavior', 'nsfw', 'nsfwOpenBehavior', 'requireRefreshBehavior', 'serverDisconnectedBehavior', 'showingAnimatedImages']);
+const radioKeys = new Set<PreferenceContainerKey>(['emojiStyle', 'notificationPosition', 'notificationStackAxis', 'reactionsDisplaySize', 'mediaListWithOneImageAppearance', 'hemisphere', 'hataskeyUi3ComposerEmojiPosition', 'hataskeyUi3ComposerPosition']);
+const selectKeys = new Set<PreferenceContainerKey>(['forceRenoteVisibilitySelection', 'defaultNoteVisibility', 'instanceTicker', 'menuStyle', 'contextMenu', 'newNoteReceivedNotificationBehavior', 'nsfw', 'nsfwOpenBehavior', 'requireRefreshBehavior', 'serverDisconnectedBehavior', 'showingAnimatedImages', 'hataskeyUi3ComposerShortcut1', 'hataskeyUi3ComposerShortcut2', 'hataskeyUi3RssReadSeconds', 'hataskeyUi3RssReadMode']);
 const optionValues: Readonly<Partial<Record<PreferenceContainerKey, readonly string[]>>> = {
 	emojiStyle: ['native', 'fluentEmoji', 'twemoji'], forceRenoteVisibilitySelection: ['none', 'public', 'home', 'followers'],
 	defaultNoteVisibility: ['public', 'home', 'followers', 'specified'], instanceTicker: ['none', 'remote', 'always'],
@@ -150,6 +159,11 @@ const optionValues: Readonly<Partial<Record<PreferenceContainerKey, readonly str
 	requireRefreshBehavior: ['dialog', 'quiet'], serverDisconnectedBehavior: ['reload', 'dialog', 'quiet', 'none'],
 	showingAnimatedImages: ['always', 'interaction', 'inactive'], reactionsDisplaySize: ['small', 'medium', 'large'],
 	mediaListWithOneImageAppearance: ['expand', '16_9', '1_1', '2_3'], hemisphere: ['N', 'S'],
+	hataskeyUi3ComposerShortcut1: HK3_COMPOSER_SHORTCUT_OPTIONS, hataskeyUi3ComposerShortcut2: HK3_COMPOSER_SHORTCUT_OPTIONS,
+	hataskeyUi3ComposerEmojiPosition: HK3_COMPOSER_EMOJI_POSITIONS,
+	hataskeyUi3ComposerPosition: ['top', 'bottom'],
+	hataskeyUi3RssReadSeconds: ['6', '10', '15', '30'],
+	hataskeyUi3RssReadMode: ['full', 'summary'],
 };
 const cherryKeys = new Set<PreferenceContainerKey>([
 	'fontSize', 'setFederationAvatarShape', 'showUnreadNotificationsCount', 'filesGridLayoutInUserPage', 'showFixedPostFormInReplies',
@@ -204,6 +218,15 @@ const labelValues: Readonly<Record<PreferenceContainerKey, string>> = {
 	imageNewTab: i18n.ts.openImageInNewTab,
 	infoButtonForNoteActionsEnabled: i18n.ts.infoButtonForNoteActions,
 	instanceTicker: i18n.ts.instanceTicker,
+	hataskeyUi3ComposerShortcut1: i18n.ts._hata._customSettings._general.ui3ComposerShortcut1,
+	hataskeyUi3ComposerShortcut2: i18n.ts._hata._customSettings._general.ui3ComposerShortcut2,
+	hataskeyUi3ComposerEmojiPosition: i18n.ts._hata._customSettings._general.ui3ComposerEmojiPosition,
+	hataskeyUi3ComposerPosition: i18n.ts._hata._customSettings._general.ui3ComposerPosition,
+	hataskeyUi3RssEnabled: i18n.ts._hata._hataskeyUi3._rss.enabled,
+	hataskeyUi3RssFeeds: i18n.ts._hata._hataskeyUi3._rss.feeds,
+	hataskeyUi3RssAutoSwitch: i18n.ts._hata._hataskeyUi3._rss.autoSwitch,
+	hataskeyUi3RssReadSeconds: i18n.ts._hata._hataskeyUi3._rss.readSeconds,
+	hataskeyUi3RssReadMode: i18n.ts._hata._hataskeyUi3._rss.readMode,
 	keepCw: i18n.ts.keepCw,
 	keepScreenOn: i18n.ts.keepScreenOn,
 	limitWidthOfReaction: i18n.ts.limitWidthOfReaction,
@@ -271,6 +294,8 @@ const captionValues: Readonly<Partial<Record<PreferenceContainerKey, readonly st
 	emojiAdditionNotice: [i18n.ts._hata._navbarNotice.emojiSettingDescription, i18n.ts._hata._navbarNotice.deliveryDescription],
 	hourlyTimeNotice: [i18n.ts._hata._navbarNotice.timeSettingDescription, i18n.ts._hata._navbarNotice.deliveryDescription],
 	ltlEmojiVoteEnabled: [i18n.ts._hata._customSettings._general.showLtlEmojiVoteDescription],
+	hataskeyUi3ComposerShortcut1: [i18n.ts._hata._customSettings._general.ui3ComposerShortcutCaption],
+	hataskeyUi3ComposerShortcut2: [i18n.ts._hata._customSettings._general.ui3ComposerShortcutCaption],
 	hemisphere: [i18n.ts._hemisphere.caption],
 	notificationPosition: [i18n.ts._hata._notificationToast.placement, i18n.ts._hata._notificationToast.otherUi],
 	notificationStackAxis: [i18n.ts._hata._notificationToast.sequence, i18n.ts._hata._notificationToast.otherUi],
@@ -390,7 +415,7 @@ export function searchIdForPreferenceKey(key: string, descriptors: readonly { st
 
 function sectionForDestination(item: SettingsDestination): { title: string; description: string } {
 	const section = settingsDestinationSections.find(candidate => candidate.items.some(child => child.id === item.id));
-	return { title: item.label, description: section?.description ?? item.label };
+	return { title: item.label, description: item.description ?? section?.description ?? item.label };
 }
 
 /** Header copy comes from settings-destinations.ts/i18n, never Japanese literals. */

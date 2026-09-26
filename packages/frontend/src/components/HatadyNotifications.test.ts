@@ -5,12 +5,11 @@ import { createApp, h, nextTick } from 'vue';
 const fixtures = vi.hoisted(() => ({ api: vi.fn() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixtures.api }));
 vi.mock('@/os.js', () => ({ confirm: vi.fn() }));
-vi.mock('@/i18n.js', () => ({ i18n: {
-	ts: { _hata: { _hatady: { _notifications: {
-		title: '通知', filterAll: 'すべて', filterReaction: 'リアクション', filterComment: 'コメント', filterFollow: 'フォロー', filterMilestone: '継続・達成', markAllRead: 'すべて既読', empty: '通知はありません',
-	} } } },
-	tsx: { _hata: { _hatady: { _notifications: {} } } },
-} }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	const i18n = createTestHataskI18n();
+	return { i18n };
+});
 vi.mock('@/utility/hatady-prefs.js', async () => {
 	const { ref } = await import('vue');
 	return { hatadyTheme: ref('dark') };

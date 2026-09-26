@@ -17,7 +17,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatadyNotice, hatadyNotify } from '@/utility/hatady-ui.js';
 import { createHataskeyNotificationToasts, getNotificationPageContext, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { hataFeedNotify, registerHataFeedNoticeHost } from '@/utility/hatafeed-ui.js';
-import { HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
+import { getHataWhatsNewStories, HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
 
 vi.mock('@/i18n.js', async () => {
 	const { I18n } = await import('@@/js/i18n.js');
@@ -42,13 +42,19 @@ vi.mock('@/components/MkHataskeyNotificationToasts.vue', () => ({ default: { set
 vi.mock('@/components/MkModal.vue', async () => {
 	const { defineComponent: createComponent, h: render, onMounted } = await import('vue');
 	return { default: createComponent({
+		props: { motionPreset: String },
 		emits: ['closed', 'close', 'esc', 'click', 'opened'],
-		setup(_, { slots, emit, expose }) {
+		setup(props, { slots, emit, expose }) {
 			// eslint-disable-next-line id-denylist -- Existing MkModal public method.
-			expose({ close() { emit('close'); emit('closed'); } });
+			expose({ close() {
+				modalCloseCalls++;
+				emit('close');
+				if (deferModalClose) modalFinishClose = () => emit('closed');
+				else emit('closed');
+			} });
 			modalOpened = () => emit('opened');
 			onMounted(() => { if (autoOpen) modalOpened(); });
-			return () => render('div', { 'data-modal': true, onKeydown: (event: KeyboardEvent) => { if (event.key === 'Escape') emit('esc'); } }, slots.default?.());
+			return () => render('div', { 'data-modal': true, 'data-motion-preset': props.motionPreset, onClick: (event: MouseEvent) => { if (event.target === event.currentTarget) emit('click'); }, onKeydown: (event: KeyboardEvent) => { if (event.key === 'Escape') emit('esc'); } }, slots.default?.());
 		},
 	}) };
 });
@@ -58,15 +64,20 @@ let bodyHeight: number, width: number, hidden: boolean;
 let resizeCallbacks: Set<() => void>;
 let motions: Array<{ element: HTMLElement; frames: Keyframe[]; options: KeyframeAnimationOptions; cancel: () => void; finish: () => void; done: boolean }>;
 let motionListeners: Set<() => void>;
+let animateDescriptor: PropertyDescriptor | undefined;
 let reduced: boolean;
 let cleanups: Array<() => void>;
 let errors: string[];
 let autoOpen: boolean;
 let modalOpened: () => void;
+let modalFinishClose: () => void;
+let modalCloseCalls: number;
+let deferModalClose: boolean;
 let closed: ReturnType<typeof vi.fn>;
 
-const approvedIds = ['favorite-folders', 'favorite-preservation', 'favorite-deck', 'favorite-saved', 'hatady-images', 'hatady-collection', 'hatady-delete', 'hatady-followup', 'mood-reminder', 'hatady-refresh', 'timeline-permissions', 'external-connection', 'navbar-emoji', 'navbar-time', 'registration-closed', 'registration-review', 'utage-visibility', 'utage-edits'];
-const approvedPreviews = ['favorites', 'favorite-deck', 'record-images', 'record-search', 'mood-reminder', 'timeline', 'registration', 'utage'];
+const approvedIds = ['ui-s-layout', 'ui-s-hatask', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'upstream-update', 'script-errors'];
+const approvedPreviews = ['note-actions', 'emoji-changes'];
+const previewCopy: Record<string, string> = { 'note-actions': 'クリップに追加しました', 'emoji-changes': '絵文字の変更申請' };
 
 async function flush() { for (let i = 0; i < 10; i++) await nextTick(); }
 
@@ -93,6 +104,7 @@ async function next() { requiredElement<HTMLButtonElement>('[aria-label="次へ"
 beforeEach(() => {
 	bodyHeight = 600; width = 870; hidden = false; reduced = false; errors = []; cleanups = [];
 	autoOpen = true;
+	deferModalClose = false; modalCloseCalls = 0; modalFinishClose = () => {};
 	closed = vi.fn();
 	resizeCallbacks = new Set(); motionListeners = new Set(); motions = [];
 	vi.clearAllMocks();
@@ -106,16 +118,19 @@ beforeEach(() => {
 	vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(780);
 	vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(1100);
 	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, 0, width, 350));
-	vi.spyOn(HTMLElement.prototype, 'animate').mockImplementation(function (this: HTMLElement, frames, options) {
+	animateDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'animate');
+	Object.defineProperty(HTMLElement.prototype, 'animate', { configurable: true, writable: true, value: function (this: HTMLElement, frames: Keyframe[] | PropertyIndexedKeyframes | null, options?: number | KeyframeAnimationOptions) {
 		let resolve: () => void;
 		const finished = new Promise<void>(done => { resolve = done; });
 		const item = { element: this, frames: frames as Keyframe[], options: options as KeyframeAnimationOptions, done: false, cancel: () => { item.done = true; resolve(); }, finish: () => { item.done = true; resolve(); } };
 		motions.push(item); return { finished, cancel: item.cancel } as unknown as Animation;
-	});
+	} });
 	host = window.document.createElement('div'); window.document.body.append(host);
 });
 afterEach(async () => {
 	app?.unmount(); app = undefined; await flush(); host.remove(); cleanups.forEach(cleanup => cleanup());
+	if (animateDescriptor) Object.defineProperty(HTMLElement.prototype, 'animate', animateDescriptor);
+	else Reflect.deleteProperty(HTMLElement.prototype, 'animate');
 	expect(errors).toEqual([]);
 	expect(resizeCallbacks.size).toBe(0);
 	expect(motionListeners.size).toBe(0);
@@ -226,17 +241,18 @@ describe('production update introduction', () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
-		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.7.2)');
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.8)');
 		expect(host.querySelector('header')?.textContent).not.toContain('HATASKEY RELEASE');
-		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('favorite-folders');
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('ui-s-layout');
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		store.r.darkMode.value = true; await flush();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-mode')).toBe('dark');
 		hatadyNotify('実際の画面への通知');
 		const notice = hatadyNotice.value;
 		const seen: string[] = [], previews: string[] = [];
-		const total = height < 470 ? 18 : 9;
-		const expectedPages = height < 470 ? approvedIds.map(id => [id]) : HATA_WHATS_NEW.groups.map(group => group.cards.map(card => card.id));
+		const stories = getHataWhatsNewStories(height);
+		const total = stories.length;
+		const expectedPages = stories.map(story => story.cards.map(card => card.id));
 		for (let pageNumber = 1; pageNumber <= total; pageNumber++) {
 			expect(requiredElement('[data-story]').getAttribute('data-story')).toBe('updates');
 			expect(host.querySelector('footer')?.textContent).toContain(`${pageNumber} / ${total}`);
@@ -248,9 +264,28 @@ describe('production update introduction', () => {
 				const copy = HATA_WHATS_NEW.groups.flatMap(group => group.cards).find(item => item.id === id);
 				expect(card.querySelector('h3')?.textContent).toBe(copy?.title);
 				expect([...card.querySelectorAll('li')].map(point => point.textContent)).toEqual(copy?.points);
+				const link = card.querySelector('a');
+				if (copy?.link) {
+					expect(link?.getAttribute('href')).toBe(copy.link.url);
+					expect(link?.textContent).toBe(copy.link.label);
+					expect(link?.getAttribute('target')).toBe('_blank');
+					expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+				} else expect(link).toBeNull();
 			}
+			const feature = host.querySelector<HTMLElement>('[data-feature-mock]');
+			const storyFeature = stories[pageNumber - 1].feature;
+			if (storyFeature) {
+				expect(requiredElement('[data-story]').getAttribute('data-feature')).toBe(storyFeature);
+				expect(feature).not.toBeNull();
+				expect(feature?.textContent).toContain(({ 'ui-s': 'Hatask', recipes: 'Hatady 料理記録', flowers: 'しずく' })[storyFeature]);
+				expect(feature?.getAttribute('aria-hidden')).toBe('true');
+				expect(feature?.hasAttribute('inert')).toBe(true);
+				expect(feature?.querySelector('button, input, select, textarea, a[href], [tabindex]')).toBeNull();
+			} else expect(feature).toBeNull();
 			for (const preview of host.querySelectorAll<HTMLElement>('[data-preview-root]')) {
-				previews.push(preview.getAttribute('data-preview') ?? '');
+				const kind = preview.getAttribute('data-preview') ?? '';
+				previews.push(kind);
+				expect(preview.textContent).toContain(previewCopy[kind]);
 				expect(preview.getAttribute('aria-hidden')).toBe('true');
 				expect(preview.hasAttribute('inert')).toBe(true);
 				expect(preview.querySelector('button, input, select, textarea, a[href], [tabindex]')).toBeNull();
@@ -258,7 +293,7 @@ describe('production update introduction', () => {
 			expect(host.querySelector('[data-theme-choice], [data-hy-entrance], [data-hatafeed-home-panel], [data-hataintro-canvas]')).toBeNull();
 			expect(hatadyNotice.value).toBe(notice);
 			expect(getNotificationPageContext()).toBe(context);
-			if (pageNumber < total) await next();
+			if (pageNumber < total) { requiredElement<HTMLElement>('[role="region"]').scrollTop = 72; await next(); expect(requiredElement<HTMLElement>('[role="region"]').scrollTop).toBe(0); }
 		}
 		expect(seen).toEqual(approvedIds);
 		expect(previews).toEqual(approvedPreviews);
@@ -278,20 +313,21 @@ describe('production update introduction', () => {
 		if (!group) throw new Error(`Missing update group for ${id}`);
 		bodyHeight = 380; width = 390;
 		await mount();
-		for (let index = 0; index < approvedIds.indexOf(id); index++) await next();
-		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe(id);
+		const compact = getHataWhatsNewStories(380);
+		for (let index = 0; index < compact.findIndex(story => story.cards.some(card => card.id === id)); index++) await next();
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe(group.feature ? group.cards[0].id : id);
 		for (const height of [600, 469, 470, 380]) {
 			bodyHeight = height; resizeCallbacks.forEach(callback => callback()); await flush();
 			expect(host.querySelector(`[data-change-id="${id}"]`)).not.toBeNull();
-			expect(host.querySelectorAll('[data-change-id]')).toHaveLength(height < 470 ? 1 : group.cards.length);
-			if (height < 470) expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe(id);
-			expect(host.querySelector('footer')?.textContent).toContain(height < 470 ? '/ 18' : '/ 9');
+			expect(host.querySelectorAll('[data-change-id]')).toHaveLength(group.feature || height >= 470 ? 2 : 1);
+			if (height < 470) expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe(group.feature ? group.cards[0].id : id);
+			expect(host.querySelector('footer')?.textContent).toContain(`/ ${getHataWhatsNewStories(height).length}`);
 		}
 	});
 	test('finishing the notice emits closed once and leaves persistence to the caller', async () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
-		for (let pageNumber = 1; pageNumber < 9; pageNumber++) await next();
+		for (let pageNumber = 1; pageNumber < getHataWhatsNewStories(bodyHeight).length; pageNumber++) await next();
 		expect(closed).not.toHaveBeenCalled();
 		const finish = requiredElement<HTMLButtonElement>('footer > button:last-child');
 		expect(finish.textContent).toContain('わかった');
@@ -302,6 +338,40 @@ describe('production update introduction', () => {
 		requiredElement('[data-modal]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flush();
 		expect(closed).toHaveBeenCalledTimes(1);
 		expect(save).not.toHaveBeenCalled();
+	});
+	test.each(['finish', 'close button', 'Escape', 'outside click'])('%s retains the story through the dissolve until the modal reports closed', async method => {
+		prefer.r.animation.value = true;
+		deferModalClose = true;
+		await mount(); await finishMotion();
+		if (method === 'finish') {
+			while (host.querySelector('[aria-label="次へ"]')) { await next(); await finishMotion(); }
+			requiredElement<HTMLButtonElement>('footer > button:last-child').click();
+		} else if (method === 'close button') {
+			requiredElement<HTMLButtonElement>('[aria-label="更新案内を閉じる"]').click();
+		} else if (method === 'Escape') {
+			requiredElement('[data-modal]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+		} else {
+			requiredElement('[data-modal]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		}
+		await flush();
+		expect(requiredElement('[data-modal]').getAttribute('data-motion-preset')).toBe('dissolve');
+		expect(requiredElement('[data-story]')).toBeTruthy();
+		expect(requiredElement('[data-release-opening-shell]').hasAttribute('inert')).toBe(true);
+		expect(requiredElement('[data-release-opening-shell]').getAttribute('aria-hidden')).toBe('true');
+		expect(closed).not.toHaveBeenCalled();
+		requiredElement<HTMLButtonElement>('[aria-label="更新案内を閉じる"]').click();
+		requiredElement('[data-modal]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+		requiredElement('[data-modal]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+		expect(modalCloseCalls).toBe(1);
+		modalFinishClose(); await flush();
+		expect(host.querySelector('[data-story]')).toBeNull();
+		expect(closed).toHaveBeenCalledTimes(1);
+	});
+	test.each(['preference', 'reduced', 'hidden'])('%s disables modal motion for the update notice', async setting => {
+		prefer.r.animation.value = setting !== 'preference'; reduced = setting === 'reduced'; hidden = setting === 'hidden';
+		await mount();
+		expect(requiredElement('[data-modal]').getAttribute('data-motion-preset')).toBe('none');
 	});
 	test('back/forward labels stay accessible while visible buttons are icons, and motion stops on close', async () => {
 		prefer.r.animation.value = true;
@@ -395,7 +465,7 @@ describe('production update introduction', () => {
 			const result = { narrowHidden: false, shortHidden: false, narrowSingle: false, shortSingle: false };
 			compiled.rawResult?.root.walkAtRules('container', container => {
 				const query = container.params.replaceAll(/\s/g, '');
-				if (query !== 'release(max-width:620px)' && query !== 'release-body(max-height:560px)') return;
+				if (query !== 'release(max-width:620px)' && query !== 'release-body(max-height:620px)') return;
 				container.walkRules(rule => {
 					if (compiled.modules?.updatePreview && rule.selector.includes(`.${compiled.modules.updatePreview}`)) {
 						rule.walkDecls('display', declaration => {

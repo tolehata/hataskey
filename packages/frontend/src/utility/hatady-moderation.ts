@@ -4,11 +4,13 @@ import type { Ref } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
 
 export type ModerationStatus = 'unreviewed' | 'flagged' | 'reviewed';
 export type ModerationCategory = 'collection' | 'record' | 'comment' | 'reaction';
 export type ModerationTarget = 'book' | 'log' | 'comment' | 'reaction' | 'mediaWork' | 'mediaSession' | 'mediaComment' | 'mediaReaction';
-export type ModerationActivity = 'study' | 'movie' | 'game' | 'exercise' | 'work';
+export type ModerationActivity = 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking';
 export type ModerationVisibility = 'public' | 'followers' | 'private';
 export interface ModerationEntry {
 	fileIds?: string[];
@@ -75,28 +77,29 @@ export interface ModerationApi {
 }
 
 export const moderationCategories = [
-	{ value: 'all', label: 'すべて', icon: 'ti ti-layout-grid' },
-	{ value: 'collection', label: 'コレクション', icon: 'ti ti-books' },
-	{ value: 'record', label: '記録', icon: 'ti ti-notebook' },
-	{ value: 'comment', label: 'コメント', icon: 'ti ti-message-circle' },
-	{ value: 'reaction', label: 'リアクション', icon: 'ti ti-mood-plus' },
+	{ value: 'all', get label() { return i18n.ts._hata._hatady._media.all; }, icon: 'ti ti-layout-grid' },
+	{ value: 'collection', get label() { return i18n.ts._hata._hatady._media.collection; }, icon: 'ti ti-books' },
+	{ value: 'record', get label() { return i18n.ts._hata._hatady._home.logs; }, icon: 'ti ti-notebook' },
+	{ value: 'comment', get label() { return i18n.ts._hata._hatady._notifications.filterComment; }, icon: 'ti ti-message-circle' },
+	{ value: 'reaction', get label() { return i18n.ts._hata._hatady._notifications.filterReaction; }, icon: 'ti ti-mood-plus' },
 ] as const;
 export const moderationStatuses = [
-	{ value: 'unreviewed', label: '未確認', icon: 'ti ti-eye' },
-	{ value: 'flagged', label: '要確認', icon: 'ti ti-flag' },
-	{ value: 'reviewed', label: '確認済み', icon: 'ti ti-circle-check' },
+	{ value: 'unreviewed', get label() { return i18n.ts._hata._hatady._moderationView.unreviewed; }, icon: 'ti ti-eye' },
+	{ value: 'flagged', get label() { return i18n.ts._hata._hatady._moderationView.flagged; }, icon: 'ti ti-flag' },
+	{ value: 'reviewed', get label() { return i18n.ts._hata._hatady._moderationView.reviewed; }, icon: 'ti ti-circle-check' },
 ] as const;
 export const moderationActivities = [
-	{ value: 'study', label: '勉強・読書' },
-	{ value: 'movie', label: '映画' },
-	{ value: 'game', label: 'ゲーム' },
-	{ value: 'exercise', label: '運動' },
-	{ value: 'work', label: '作業' },
+	{ value: 'study', get label() { return i18n.ts._hata._hatady._activityKinds.study; } },
+	{ value: 'movie', get label() { return i18n.ts._hata._hatady._profile.movie; } },
+	{ value: 'game', get label() { return i18n.ts._hata._hatady._profile.game; } },
+	{ value: 'exercise', get label() { return i18n.ts._hata._hatady._activityKinds.exercise; } },
+	{ value: 'work', get label() { return i18n.ts._hata._hatady._activityKinds.work; } },
+	{ value: 'cooking', get label() { return i18n.ts._hata._hatady._activityKinds.cooking; } },
 ] as const;
 export const moderationVisibilities = {
-	public: { label: '公開', icon: 'ti ti-world' },
-	followers: { label: 'フォロワーのみ', icon: 'ti ti-users' },
-	private: { label: '自分のみ', icon: 'ti ti-lock' },
+	public: { get label() { return i18n.ts._hata._hatady._home.activityPublic; }, icon: 'ti ti-world' },
+	followers: { get label() { return i18n.ts._hata._hatady._moderationView.followersOnly; }, icon: 'ti ti-users' },
+	private: { get label() { return i18n.ts._hata._hatady._home.activityPrivate; }, icon: 'ti ti-lock' },
 } as const;
 
 export function moderationCategory(category: ModerationCategory) {
@@ -109,7 +112,7 @@ export function moderationStatus(status: ModerationStatus) {
 
 export function moderationDate(value: string): string {
 	const date = new Date(value);
-	return Number.isNaN(date.getTime()) ? value : date.toLocaleString('ja-JP', {
+	return Number.isNaN(date.getTime()) ? value : date.toLocaleString(versatileLang, {
 		year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
 	});
 }
@@ -183,7 +186,7 @@ export function useHatadyModeration(access: Readonly<Ref<string | null>>, api: M
 			selected.value = result.item;
 		} catch (cause) {
 			if (!valid(owner) || generation !== detailGeneration) return;
-			detailError.value = errorCode(cause) === 'NO_SUCH_TARGET' ? 'この内容は削除されています' : '内容を読み込めませんでした';
+			detailError.value = errorCode(cause) === 'NO_SUCH_TARGET' ? i18n.ts._hata._hatady._moderationView.deletedContent : i18n.ts._hata._hatady._moderationView.detailLoadFailed;
 		} finally {
 			if (valid(owner) && generation === detailGeneration) detailLoading.value = false;
 		}
@@ -214,7 +217,7 @@ export function useHatadyModeration(access: Readonly<Ref<string | null>>, api: M
 				else { selected.value = null; detail.value = null; }
 			}
 		} catch {
-			if (valid(owner) && generation === listGeneration) error.value = '一覧を読み込めませんでした';
+			if (valid(owner) && generation === listGeneration) error.value = i18n.ts._hata._hatady._moderationView.listLoadFailed;
 		} finally {
 			if (valid(owner) && generation === listGeneration) loading.value = false;
 		}
@@ -260,7 +263,7 @@ export function useHatadyModeration(access: Readonly<Ref<string | null>>, api: M
 		const ownerGeneration = accessGeneration;
 		if (!valid(owner) || !current || saving.value) return;
 		const item = current.item, submittedNote = note.value;
-		if (Array.from(submittedNote).length > 1000) { saveErrors.set(item.key, '確認メモは1000文字以内で入力してください'); return; }
+		if (Array.from(submittedNote).length > 1000) { saveErrors.set(item.key, i18n.ts._hata._hatady._moderationView.memoTooLong); return; }
 		savingKey.value = item.key;
 		saveErrors.delete(item.key);
 		try {
@@ -276,16 +279,16 @@ export function useHatadyModeration(access: Readonly<Ref<string | null>>, api: M
 				selected.value = result.item;
 			}
 			items.value = items.value.map(row => row.key === item.key ? result.item : row);
-			hatadyNotify('確認状態とメモを保存しました');
+			hatadyNotify(i18n.ts._hata._hatady._moderationView.saved);
 			void load(true);
 		} catch (cause) {
 			if (!valid(owner) || ownerGeneration !== accessGeneration) return;
 			if (!drafts.has(item.key)) drafts.set(item.key, submittedNote);
 			if (errorCode(cause) === 'REVIEW_CONFLICT') {
-				saveErrors.set(item.key, '内容または確認状態が更新されています。最新の内容を確かめて、もう一度保存してください。入力メモは残っています');
+				saveErrors.set(item.key, i18n.ts._hata._hatady._moderationView.reviewConflict);
 				if (selected.value?.key === item.key) await select(item, true);
 			} else {
-				saveErrors.set(item.key, errorCode(cause) === 'NO_SUCH_TARGET' ? 'この内容は削除されています。入力メモは残っています' : '保存できませんでした。入力メモは残っています');
+				saveErrors.set(item.key, errorCode(cause) === 'NO_SUCH_TARGET' ? i18n.ts._hata._hatady._moderationView.deletedWithMemo : i18n.ts._hata._hatady._moderationView.saveFailed);
 			}
 		} finally {
 			if (valid(owner) && ownerGeneration === accessGeneration) savingKey.value = null;

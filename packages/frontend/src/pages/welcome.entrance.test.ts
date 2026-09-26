@@ -6,8 +6,9 @@
 import { createApp, defineComponent, h, nextTick, reactive } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { instance as productionInstance } from '@/instance.js';
+import { useWelcomePublicNotes } from '@/utility/welcome-public-notes.js';
 import WelcomeFederation from './welcome.entrance.federation.vue';
-import WelcomeServerNotes from './welcome.entrance.notes.vue';
+import WelcomeNoteStream from './welcome.entrance.note-stream.vue';
 import WelcomeEntrance from './welcome.entrance.hataskey.vue';
 import type { Component } from 'vue';
 import type { entities } from 'cherrypick-js';
@@ -15,6 +16,7 @@ import type { entities } from 'cherrypick-js';
 type MockMeta = {
 	registrationClosed?: boolean;
 	name: string | null;
+	description: string | null;
 	iconUrl: string | null;
 	backgroundImageUrl: string | null;
 	repositoryUrl: string | null;
@@ -45,7 +47,7 @@ vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api, misskeyApiGe
 vi.mock('@/instance.js', async () => {
 	const { reactive: makeReactive } = await import('vue');
 	return { instance: makeReactive<MockMeta>({
-		name: '実サーバー', iconUrl: null, backgroundImageUrl: null, repositoryUrl: null,
+		name: '実サーバー', description: null, iconUrl: null, backgroundImageUrl: null, repositoryUrl: null,
 		impressumUrl: null, tosUrl: null, privacyPolicyUrl: null,
 		federation: 'all', policies: { ltlAvailable: true }, clientOptions: { showTimelineForVisitor: true },
 	}) };
@@ -150,6 +152,51 @@ test('完全停止中は上下の登録ボタンを無効化し、日英表示�
 	}
 });
 
+describe('ヒーローのサーバー紹介', () => {
+	function mountEntrance() {
+		const container = window.document.createElement('div');
+		const app = createApp(WelcomeEntrance);
+		app.config.warnHandler = () => {};
+		app.mount(container);
+		const unmount = () => {
+			if (!cleanup.delete(unmount)) return;
+			app.unmount();
+		};
+		cleanup.add(unmount);
+		return container;
+	}
+
+	test('管理画面のサーバー紹介は、許可したHTMLだけを描画してスクリプトを実行しない', () => {
+		instance.description = '  <img src=x onerror="window.__welcomeXss=1"><script>window.__welcomeXss=1</script><b onclick="window.__welcomeXss=1">太字</b>\n2行目 &amp; <a href="javascript:window.__welcomeXss=1">危険</a> <a href="https://example.com/">規約</a>  ';
+		const container = mountEntrance();
+		const copy = container.querySelector('.hero-copy');
+		const description = copy?.querySelector('[data-server-description]');
+		if (!description) throw new Error('the configured description must replace the fallback copy');
+		// 陽性対照: 許可したタグとリンクは実際に要素として描画される。
+		expect(description.querySelector('b')?.textContent).toBe('太字');
+		expect(description.querySelector('a[href="https://example.com/"]')?.getAttribute('rel')).toBe('noopener noreferrer nofollow');
+		expect(description.textContent).toBe('太字\n2行目 & 危険 規約');
+		expect(description.querySelector('img, script, [onclick]')).toBeNull();
+		expect(Array.from(description.querySelectorAll('a[href]'), link => link.getAttribute('href'))).toEqual(['https://example.com/']);
+		expect((window as unknown as { __welcomeXss?: number }).__welcomeXss).toBeUndefined();
+		expect(copy?.querySelector('.hero-copy-lead')).toBeNull();
+	});
+
+	test('表示できる文字が残らないHTMLなら従来の紹介文を表示する', () => {
+		instance.description = '<script>window.__welcomeXss=1</script><br>';
+		const container = mountEntrance();
+		expect(container.querySelector('[data-server-description]')).toBeNull();
+		expect(container.querySelector('.hero-copy-lead')).not.toBeNull();
+	});
+
+	test.each([null, '', '  \n  '])('サーバー紹介が%sなら従来の紹介文を表示する', value => {
+		instance.description = value;
+		const container = mountEntrance();
+		expect(container.querySelector('[data-server-description]')).toBeNull();
+		expect(container.querySelector('.hero-copy-lead')?.textContent).toBe('カプセル型のタブ、ブラウザ型のデッキ、タイムラインと並べて使える独自機能。');
+	});
+});
+
 function userFixture(overrides: Partial<entities.UserLite> = {}): entities.UserLite {
 	return {
 		id: 'user-1', name: '投稿者', username: 'visitor', host: null,
@@ -217,6 +264,7 @@ beforeEach(() => {
 	mocks.api.mockReset().mockResolvedValue([]);
 	mocks.get.mockReset().mockResolvedValue([]);
 	instance.name = '実サーバー';
+	instance.description = null;
 	instance.iconUrl = null;
 	instance.backgroundImageUrl = null;
 	instance.repositoryUrl = null;
@@ -232,35 +280,44 @@ afterEach(() => {
 	for (const unmount of cleanup) unmount();
 });
 
+// The public-note stream is shared by the four post columns. This harness
+// provides the same feed state as the entrance page and renders one stream.
+const PublicNoteStreamHarness = defineComponent({
+	props: { language: { type: String as () => 'ja' | 'en', required: true } },
+	setup(props) {
+		useWelcomePublicNotes();
+		return () => h(WelcomeNoteStream, { feedKey: 'latest', title: props.language === 'en' ? 'Latest' : '最新の投稿', icon: 'ti ti-home', server: true, language: props.language });
+	},
+});
+
 describe('ログイン前の実投稿プレビュー', () => {
  test('読み込み状態を表示し、明示的なゲスト資格で取得した実投稿とリアクションへ置き換える', async () => {
   const pending = deferred<entities.Note[]>();
   mocks.api.mockReturnValueOnce(pending.promise);
-  const onResize = vi.fn();
-  const item = mount(WelcomeServerNotes, { language: 'ja', onResize });
+  const item = mount(PublicNoteStreamHarness, { language: 'ja' });
   expect(item.container.querySelector('[data-status="loading"]')).not.toBeNull();
   expect(mocks.api).toHaveBeenCalledWith('notes/local-timeline', { limit: 100, withRenotes: false }, null, expect.any(AbortSignal));
   pending.resolve([noteFixture({ reactions: { '🌼': 3 }, reactionCount: 3 })]);
   await flush();
-  expect(item.container.querySelector('.welcome-notes-heading h3')?.textContent).toBe('サーバーの投稿公開');
+  expect(item.container.querySelector('.welcome-notes-heading h3')?.textContent).toBe('最新の投稿公開');
   expect(item.container.querySelector('.welcome-note-body p')?.textContent).toBe('公開された実投稿');
   expect(item.container.querySelector('.welcome-reaction')?.textContent).toBe('🌼3');
-  expect(onResize).toHaveBeenCalled();
   expect(mocks.api.mock.calls.every(call => call[2] === null)).toBe(true);
  });
 
  test.each([[false, true], [true, false], [false, false]])('LTL=%s / ゲスト表示=%s では取得も表示もしない', async (ltl, show) => {
   instance.policies.ltlAvailable = ltl;
   instance.clientOptions.showTimelineForVisitor = show;
-  const item = mount(WelcomeServerNotes, { language: 'ja' });
+  const item = mount(PublicNoteStreamHarness, { language: 'ja' });
   await flush();
   expect(mocks.api).not.toHaveBeenCalled();
-  expect(item.container.querySelector('.hero-server-notes')).toBeNull();
+  expect(item.container.querySelector('[data-status="disabled"]')).not.toBeNull();
+  expect(item.container.querySelector('.public-note')).toBeNull();
  });
 
  test('実投稿を2コピーし、複製を読み上げ・操作から除外する', async () => {
   mocks.api.mockResolvedValueOnce([noteFixture(), noteFixture({ id: 'note2' })]);
-  const item = mount(WelcomeServerNotes, { language: 'en' });
+  const item = mount(PublicNoteStreamHarness, { language: 'en' });
   await flush();
   const groups = item.container.querySelectorAll<HTMLElement>('.welcome-notes-group');
   expect(groups).toHaveLength(2);
@@ -268,7 +325,7 @@ describe('ログイン前の実投稿プレビュー', () => {
   expect(groups[0].inert).toBe(false);
   expect(groups[1].getAttribute('aria-hidden')).toBe('true');
   expect(groups[1].inert).toBe(true);
-  expect(item.container.querySelector('.welcome-notes-window')?.getAttribute('aria-label')).toBe('Server notes');
+  expect(item.container.querySelector('.welcome-notes-window')?.getAttribute('aria-label')).toBe('Latest');
   expect(item.container.querySelector('.public-note-avatar img')?.getAttribute('src')).toBe('https://server.test/avatar.png');
   expect(item.container.querySelector('time')?.getAttribute('datetime')).toBe('2026-08-31T00:00:00.000Z');
   expect(item.container.querySelector('.welcome-note-meta a')?.getAttribute('href')).toBe('https://server.test/notes/note1');
@@ -283,7 +340,7 @@ describe('ログイン前の実投稿プレビュー', () => {
    noteFixture({ id: 'cw', cw: '<img src=x onerror=alert(1)>', text: '隠すべき本文' }),
    noteFixture({ id: 'emptycw', cw: '', text: '空CWの内部本文' }),
   ]);
-  const item = mount(WelcomeServerNotes, { language: 'ja' });
+  const item = mount(PublicNoteStreamHarness, { language: 'ja' });
   await flush();
   const warnings = item.container.querySelectorAll<HTMLDetailsElement>('.public-note-warning');
   expect(warnings[0].textContent).toBe('<img src=x onerror=alert(1)>');
@@ -299,11 +356,11 @@ describe('ログイン前の実投稿プレビュー', () => {
 
  test('取得失敗・空応答を架空投稿で補完せず、局所的な状態を表示する', async () => {
   mocks.api.mockRejectedValueOnce(new Error('unavailable'));
-  const failed = mount(WelcomeServerNotes, { language: 'ja' });
+  const failed = mount(PublicNoteStreamHarness, { language: 'ja' });
   await flush();
   expect(failed.container.querySelector('[data-status="error"]')).not.toBeNull();
   expect(failed.container.querySelector('.public-note')).toBeNull();
-  const empty = mount(WelcomeServerNotes, { language: 'ja' });
+  const empty = mount(PublicNoteStreamHarness, { language: 'ja' });
   await flush();
   expect(empty.container.querySelector('[data-status="empty"]')).not.toBeNull();
   expect(empty.container.querySelector('.public-note')).toBeNull();
@@ -313,12 +370,12 @@ describe('ログイン前の実投稿プレビュー', () => {
   const stale = deferred<entities.Note[]>(), fresh = deferred<entities.Note[]>();
   let latestCalls = 0;
   mocks.api.mockImplementation((endpoint, params) => endpoint === 'notes/local-timeline' && !params.withFiles ? (++latestCalls === 1 ? stale.promise : fresh.promise) : Promise.resolve([]));
-  const item = mount(WelcomeServerNotes, { language: 'ja' });
+  const item = mount(PublicNoteStreamHarness, { language: 'ja' });
   const signal = mocks.api.mock.calls[0][3];
   instance.clientOptions.showTimelineForVisitor = false;
   await flush();
   expect(signal.aborted).toBe(true);
-  expect(item.container.querySelector('.hero-server-notes')).toBeNull();
+  expect(item.container.querySelector('[data-status="disabled"]')).not.toBeNull();
   instance.clientOptions.showTimelineForVisitor = true;
   await flush();
   expect(latestCalls).toBe(2);
@@ -329,28 +386,27 @@ describe('ログイン前の実投稿プレビュー', () => {
   expect(item.container.querySelector('.welcome-note-body p')?.textContent).toBe('新しい応答');
  });
 
- test('アンマウント後はabortしてresizeをemitしない', async () => {
+ test('アンマウント後はabortし、遅れて届いた投稿を描画しない', async () => {
   const pending = deferred<entities.Note[]>();
   mocks.api.mockReturnValueOnce(pending.promise);
-  const onResize = vi.fn();
-  const item = mount(WelcomeServerNotes, { language: 'ja', onResize });
+  const item = mount(PublicNoteStreamHarness, { language: 'ja' });
   const signal = mocks.api.mock.calls[0][3];
   item.unmount();
   expect(signal.aborted).toBe(true);
   pending.resolve([noteFixture()]);
   await flush();
-  expect(onResize).not.toHaveBeenCalled();
+  expect(item.container.querySelector('.public-note')).toBeNull();
  });
 
  test('言語propの更新だけでは再取得せず見出しを更新する', async () => {
   mocks.api.mockResolvedValueOnce([noteFixture()]);
   const props = reactive({ language: 'ja' as 'ja' | 'en' });
-  const item = mount(WelcomeServerNotes, props);
+  const item = mount(PublicNoteStreamHarness, props);
   await flush();
   const calls = mocks.api.mock.calls.length;
   props.language = 'en';
   await flush();
-  expect(item.container.querySelector('.welcome-notes-heading h3')?.textContent).toBe('Server notesPublic');
+  expect(item.container.querySelector('.welcome-notes-heading h3')?.textContent).toBe('LatestPublic');
   expect(mocks.api).toHaveBeenCalledTimes(calls);
  });
 });

@@ -1,13 +1,37 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { computed, ref } from 'vue';
 import { describe, expect, it } from 'vitest';
-import { createHataskeyNotificationToasts, notificationOutlinePaths } from './hataskey-notification-toast.js';
+import { createHataskeyNotificationToasts, enqueuePageStatusToast, getToastDuration, notificationOutlinePaths, registerNotificationPageContext } from './hataskey-notification-toast.js';
 import { splitNotificationText } from './notification-text.js';
 import type { entities } from 'cherrypick-js';
 
 const notification = (id: string): entities.Notification => ({ id, type: 'test', createdAt: '2026-09-07T00:00:00Z' });
 
 describe('Hataskey notification queue', () => {
+	it('delivers action feedback immediately and replaces it with the newest action', () => {
+		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
+		queue.target.value = window.document.createElement('div');
+		const release = registerNotificationPageContext(queue, () => true);
+		try {
+			expect(enqueuePageStatusToast('Deleted', 'deleted')).toBe(true);
+			expect(queue.navbarNotice.value).toMatchObject({ kind: 'noteAction', action: 'delete', message: 'Deleted' });
+			expect(enqueuePageStatusToast('Edited', 'edited')).toBe(true);
+			expect(queue.items.value).toHaveLength(1);
+			expect(queue.navbarNotice.value).toMatchObject({ action: 'edit', message: 'Edited' });
+		} finally {
+			release();
+		}
+	});
+	it('keeps the regular toast fallback when no notification surface is visible', () => {
+		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
+		const release = registerNotificationPageContext(queue, () => true);
+		try {
+			expect(enqueuePageStatusToast('Deleted', 'deleted')).toBe(false);
+			expect(queue.items.value).toHaveLength(0);
+		} finally {
+			release();
+		}
+	});
 	it('chooses the latest visible mobile surface and restores the previous owner on release', () => {
 		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
 		const first = { active: ref(true), target: ref(window.document.createElement('div')), outline: ref(window.document.createElement('header')), animations: ref(true) };
@@ -69,6 +93,39 @@ describe('Hataskey notification queue', () => {
 });
 
 describe('HataFeed navbar notices', () => {
+	it('expires note actions after three seconds while ordinary notices retain five seconds', () => {
+		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
+		queue.enqueueNavbarNotice({ kind: 'noteAction', action: 'clip', message: 'クリップに追加しました', target: 'あとで読む' }, 0);
+		expect(getToastDuration(queue.items.value[0])).toBe(3000);
+		queue.tick(2999, new Set());
+		expect(queue.items.value).toHaveLength(1);
+		queue.tick(3000, new Set());
+		expect(queue.items.value).toHaveLength(0);
+		queue.enqueueNavbarNotice({ kind: 'status', message: '保存しました' }, 4000);
+		expect(getToastDuration(queue.items.value[0])).toBe(5000);
+		queue.tick(8999, new Set());
+		expect(queue.items.value).toHaveLength(1);
+		queue.tick(9000, new Set());
+		expect(queue.items.value).toHaveLength(0);
+	});
+	it('distinguishes a hidden native navbar from a temporarily folded available one', () => {
+		const available = ref(false);
+		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => false), computed(() => available.value));
+		expect(queue.canIntegrateStatus.value).toBe(false);
+		available.value = true;
+		expect(queue.canIntegrateStatus.value).toBe(true);
+		expect(queue.integrated.value).toBe(false);
+	});
+	it('keeps ordinary status copy in the shared navbar item and expires it', () => {
+		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
+		queue.enqueueNavbarNotice({ kind: 'status', message: '料理として記録しました', icon: 'ti ti-tools-kitchen-2' }, 100);
+		expect(queue.navbarNotice.value).toEqual({ kind: 'status', message: '料理として記録しました', icon: 'ti ti-tools-kitchen-2' });
+		expect(queue.items.value).toHaveLength(1);
+		expect(queue.items.value[0]).toMatchObject({ source: 'status', message: '料理として記録しました' });
+		expect(queue.integrated.value).toBe(true);
+		queue.tick(5100, new Set());
+		expect(queue.items.value).toEqual([]);
+	});
 	it('shares standard events and local status in the latest slot and pauses during a draft prompt', () => {
 		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
 		const paused = ref(false);

@@ -5,11 +5,17 @@
 
 import { computed, inject, onActivated, onDeactivated, onUnmounted, ref, shallowRef, toValue, watchEffect } from 'vue';
 import type { InjectionKey, MaybeRefOrGetter } from 'vue';
+import type * as Misskey from 'cherrypick-js';
 
 export type HataskeyTimelineNewNotes = {
 	text: string;
 	icon: string;
 	show: () => void | Promise<void>;
+	/** 新着ノートの投稿者。既存の文言だけを使う consumer は省略できる。 */
+	avatars?: ReadonlyArray<{ id: string; url: string }>;
+	/** バナー文言に含まれるカスタム絵文字の解決用。 */
+	emojiUrls?: Record<string, string>;
+	author?: Misskey.entities.UserLite | null;
 };
 
 export function createHataskeyTimelineNewNotes(activeKey: MaybeRefOrGetter<string | null>) {

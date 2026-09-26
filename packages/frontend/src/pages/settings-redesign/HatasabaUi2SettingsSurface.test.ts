@@ -38,7 +38,6 @@ const bodySource = source('src/components/HatasabaUi2SettingsBody.vue');
 const surfaceSource = source('src/pages/settings-redesign/HatasabaUi2SettingsSurface.vue');
 const previewSource = source('src/components/MkHatasabaUi2PreviewWindow.vue');
 const immediateSource = source('src/components/HatasabaUi2ImmediateSettings.vue');
-const hatacordingUiSettingsSource = source('src/components/HatacordingUiSettings.vue');
 
 function bodyEditorFixture() {
 	const action = vi.fn();
@@ -302,8 +301,6 @@ describe('Hataskey UI editor shared draft contract', () => {
 	});
 
 	test('permanent immediate companion preserves the existing device and profile persistence contracts outside the buffered footer', () => {
-		expect(immediateSource).not.toContain('HatacordingUiSettings');
-		expect(immediateSource).not.toContain('hataSnsCordUiSettings');
 		expect(immediateSource).toContain('prefer.model(\'hataBranding.useHatakyu\')');
 		expect(immediateSource).toContain('set: (value: HataFoldableMode) => setFoldableLayoutMode(value)');
 		expect(immediateSource).toContain('redesignCopy.immediate.deviceImmediate');
@@ -313,6 +310,5 @@ describe('Hataskey UI editor shared draft contract', () => {
 		expect(immediateSource).toContain('min-block-size: 44px');
 		expect(immediateSource).toContain('@container (max-width: 520px) { .intro, .group { border-radius: 22px; padding: 16px; }');
 		expect(immediateSource).not.toContain('@container (max-width: 520px) { .intro, .group { border-radius: 18px;');
-		expect(hatacordingUiSettingsSource).toContain('writeHatacordingUiPreferences(accountId.value, next);');
 	});
 });

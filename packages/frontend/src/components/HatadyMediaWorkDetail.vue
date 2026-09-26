@@ -9,7 +9,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 	scrollHint
 	:inert="closePrompt"
 	:busy="deleting"
-	:title="work?.kind === 'work' ? '作業の詳細' : '作品の詳細'"
+	:title="work?.kind === 'work' ? detailCopy.workDetail : detailCopy.mediaDetail"
 	@close="requestClose"
 	@closed="emit('closed')"
 >
@@ -35,7 +35,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 									work.kind === 'movie' ? 'ti-movie' : work.kind === 'work' ? 'ti-briefcase' : 'ti-device-gamepad-2',
 								]"
 							></i>
-							{{ work.kind === 'movie' ? copy.movies : work.kind === 'work' ? '作業' : copy.games }}
+							{{ work.kind === 'movie' ? copy.movies : work.kind === 'work' ? detailCopy.work : copy.games }}
 						</span>
 						<span :class="$style.statusChip">{{ statusLabel(work.status) }}</span>
 						<span :class="$style.statusChip">
@@ -58,7 +58,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 							<button type="button" class="hy-icon-button" :disabled="deleting" :aria-label="copy.edit" :title="copy.edit" @click="openEdit">
 								<i class="ti ti-pencil" aria-hidden="true"></i>
 							</button>
-							<button type="button" class="hy-icon-button" :disabled="deleting || commentBusy" :aria-label="work.kind === 'work' ? '作業を削除' : '作品を削除'" :title="work.kind === 'work' ? '作業を削除' : '作品を削除'" @click="deleteWork">
+							<button type="button" class="hy-icon-button" :disabled="deleting || commentBusy" :aria-label="work.kind === 'work' ? detailCopy.deleteWork : detailCopy.deleteMedia" :title="work.kind === 'work' ? detailCopy.deleteWork : detailCopy.deleteMedia" @click="deleteWork">
 								<i class="ti ti-trash" aria-hidden="true"></i>
 							</button>
 						</div>
@@ -124,7 +124,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 			<div :class="$style.primaryActions">
 				<button v-if="isMine" :class="$style.actionPrimary" @click="openSessionForm()">
 					<i class="ti ti-plus"></i>
-					{{ work.kind === 'movie' ? label('addViewing') : work.kind === 'work' ? '作業を記録' : label('addPlay') }}
+					{{ work.kind === 'movie' ? label('addViewing') : work.kind === 'work' ? detailCopy.recordWork : label('addPlay') }}
 				</button>
 				<button v-if="work.kind === 'movie'" :class="$style.actionBtn" @click="scheduleMediaViewing(work)">
 					<i class="ti ti-calendar-event"></i>
@@ -136,21 +136,21 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 				<p :class="$style.detailText">{{ workDetails.description }}</p>
 			</section>
 			<section v-if="workDetails.nextStep" :class="$style.section">
-				<h3>次にやること</h3>
+				<h3>{{ detailCopy.nextStep }}</h3>
 				<p :class="$style.detailText">{{ workDetails.nextStep }}</p>
 			</section>
 			<section v-if="workDetails.memo" :class="$style.section">
 				<h3>
 					<i class="ti ti-lock"></i>
-					自分だけのメモ
+					{{ detailCopy.privateMemo }}
 				</h3>
 				<p :class="$style.detailText">{{ workDetails.memo }}</p>
 			</section>
 			<section v-if="work.kind === 'work'" :class="$style.section">
-				<h3>作業の積み重ね</h3>
+				<h3>{{ detailCopy.workProgress }}</h3>
 				<div :class="$style.metricGrid">
-					<div>{{ workLogs.length }} 記録</div>
-					<div>{{ new Set(workLogs.map((l: any) => new Date(l.studiedAt).toLocaleDateString())).size }} 日</div>
+					<div>{{ i18n.tsx._hata._hatady._mediaWorkDetail.recordCount({ count: String(workLogs.length) }) }}</div>
+					<div>{{ i18n.tsx._hata._hatady._mediaWorkDetail.dayCount({ count: String(new Set(workLogs.map((l: any) => new Date(l.studiedAt).toLocaleDateString())).size) }) }}</div>
 					<div>{{ projectTime }}</div>
 				</div>
 				<HatadyActivityCard
@@ -346,7 +346,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 								@menu="() => openSessionConversation(session.id)"
 							/>
 							<details :class="$style.spoilerDetails">
-								<summary>記録の詳細</summary>
+								<summary>{{ detailCopy.recordDetails }}</summary>
 								<details v-if="session.noteSpoiler">
 									<summary>{{ label('showSpoilerSession') }}</summary>
 									<SessionPrivateContent :session="session"/>
@@ -394,7 +394,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 					<div v-if="replyTo" :class="$style.replying">
 						<i class="ti ti-arrow-back-up"></i>
 						{{ label('replying') }}
-						<button type="button" class="hy-icon-button" aria-label="返信先を解除" @click="replyTo = null">
+						<button type="button" class="hy-icon-button" :aria-label="detailCopy.clearReplyTarget" @click="replyTo = null">
 							<i class="ti ti-x"></i>
 						</button>
 					</div>
@@ -408,13 +408,13 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 							@keydown="commentKeydown"
 						></textarea>
 						<div>
-							<button type="button" class="hy-icon-button" aria-label="絵文字を挿入" @click="insertCommentEmoji">
+							<button type="button" class="hy-icon-button" :aria-label="detailCopy.insertEmoji" @click="insertCommentEmoji">
 								<i class="ti ti-mood-plus"></i>
 							</button>
 							<button
 								type="button"
 								class="hy-icon-button"
-								aria-label="プレビュー"
+								:aria-label="detailCopy.preview"
 								:aria-pressed="commentPreview"
 								@click="commentPreview = !commentPreview"
 							>
@@ -458,7 +458,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 								<time>{{ fmtWhen(comment.createdAt) }}</time>
 							</div>
 							<details v-if="comment.spoiler">
-								<summary>ネタバレを含む返信</summary>
+								<summary>{{ detailCopy.spoilerReply }}</summary>
 								<Mfm :text="comment.text"/>
 							</details>
 							<Mfm v-else :text="comment.text"/>
@@ -510,7 +510,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 </HyDialog>
 <HatadyDraftPrompt
 	v-if="closePrompt"
-	title="書きかけの返信をどうする？"
+	:title="detailCopy.draftQuestion"
 	:error="draftError"
 	@save="leave(true)"
 	@discard="leave(false)"
@@ -578,6 +578,7 @@ const dialog = useTemplateRef('dialog');
 const reactionAdd = useTemplateRef('reactionAdd');
 const theme = hatadyTheme;
 const copy = hatadyMediaCopy();
+const detailCopy = i18n.ts._hata._hatady._mediaWorkDetail;
 const styles = useCssModule();
 const mediaApi = misskeyApi as unknown as (endpoint: string, payload: Record<string, unknown>) => Promise<any>;
 const dateFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -594,7 +595,7 @@ const workDetails = computed<any>(() => work.value?.details || {});
 const projectTime = computed(() =>
 	workLogs.value.some((l) => hatadySeconds(l) != null)
 		? hatadyDuration(workLogs.value.reduce((sum, l) => sum + (hatadySeconds(l) || 0), 0))
-		: '時間の入力なし',
+		: detailCopy.noDuration,
 );
 const kind = computed<HatadyMediaKind>(() => work.value?.kind ?? props.kind ?? 'movie');
 const isMine = ref(false);
@@ -638,12 +639,12 @@ function requestClose() {
 
 function leave(save: boolean) {
 	if (!(save ? replyDraft.saveDraft() : replyDraft.clearDraft())) {
-		draftError.value = '下書きを保存・削除できませんでした';
+		draftError.value = detailCopy.draftFailed;
 		return;
 	}
 	closePrompt.value = false;
 	dialog.value?.close();
-	if (save) hatadyNotify('下書きを保存しました');
+	if (save) hatadyNotify(detailCopy.draftSaved);
 }
 
 function commentKeydown(e: KeyboardEvent) {
@@ -1145,9 +1146,9 @@ async function scheduleMediaViewing(target: HatadyMediaWork) {
 			'hatask/events/create',
 			hatadyViewingEventPayload(String(copy.detail.viewingEventTitle), target.title, eventDate, eventTime) as never,
 		);
-		hatadyNotify('カレンダーに登録しました');
+		hatadyNotify(detailCopy.calendarAdded);
 	} catch {
-		hatadyNotify('カレンダーへ登録できませんでした');
+		hatadyNotify(detailCopy.calendarAddFailed);
 	}
 }
 
@@ -1155,16 +1156,16 @@ async function deleteWork() {
 	if (!work.value || !isMine.value || deleting.value || commentBusy.value) return;
 	deleting.value = true;
 	try {
-		const name = work.value.kind === 'work' ? '作業' : '作品';
-		const { canceled } = await os.confirm({ type: 'warning', text: `この${name}を削除しますか？ ${name}への返信とリアクションも削除されます。記録と、記録への返信・リアクションは残ります。` });
+		const name = work.value.kind === 'work' ? detailCopy.work : detailCopy.media;
+		const { canceled } = await os.confirm({ type: 'warning', text: i18n.tsx._hata._hatady._mediaWorkDetail.deleteConfirm({ name }) });
 		if (canceled) return;
 		await mediaApi('hata/hatady/media/works/delete', { workId: props.workId });
-		hatadyNotify(`${name}を削除しました`);
+		hatadyNotify(i18n.tsx._hata._hatady._mediaWorkDetail.deleted({ name }));
 		emit('deleted');
 		emit('changed');
 		dialog.value?.close();
 	} catch {
-		hatadyNotify('削除できませんでした。もう一度お試しください');
+		hatadyNotify(detailCopy.deleteFailed);
 	} finally {
 		deleting.value = false;
 	}
@@ -1247,11 +1248,11 @@ async function createComment() {
 		commentText.value = '';
 		commentSpoiler.value = false;
 		replyTo.value = null;
-		if (!replyDraft.clearDraft({ resume: true })) hatadyNotify('返信しましたが、端末の下書きを削除できませんでした');
+		if (!replyDraft.clearDraft({ resume: true })) hatadyNotify(detailCopy.replyDraftDeleteFailed);
 		await loadComments();
 		await reloadWork();
 	} catch {
-		draftError.value = '返信できませんでした。入力は残っています。';
+		draftError.value = detailCopy.replyFailed;
 	} finally {
 		commentBusy.value = false;
 	}

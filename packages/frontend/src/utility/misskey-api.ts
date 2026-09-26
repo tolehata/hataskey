@@ -7,8 +7,6 @@ import * as Misskey from 'cherrypick-js';
 import { ref } from 'vue';
 import { apiUrl } from '@@/js/config.js';
 import { $i } from '@/i.js';
-import { globalEvents } from '@/events.js';
-import { HATACORDING_RATE_LIMIT_REQUEST_HEADER, isHatacordingRateLimitTrackingActive, updateHatacordingRateLimit } from '@/utility/hatacording-rate-limit.js';
 export const pendingApiRequestsCount = ref(0);
 
 // Implements Misskey.api.ApiClient.request
@@ -37,7 +35,6 @@ export function misskeyApi<
 		if (token !== undefined) requestData.i = token;
 
 		// Send request
-		const trackHatacordingRateLimit = isHatacordingRateLimitTrackingActive();
 		window.fetch(`${apiUrl}/${endpoint}`, {
 			method: 'POST',
 			body: JSON.stringify(requestData),
@@ -45,18 +42,14 @@ export function misskeyApi<
 			cache: 'no-cache',
 			headers: {
 				'Content-Type': 'application/json',
-				...(trackHatacordingRateLimit ? { [HATACORDING_RATE_LIMIT_REQUEST_HEADER]: '1' } : {}),
 			},
 			signal,
 		}).then(async (res) => {
-			if (trackHatacordingRateLimit) updateHatacordingRateLimit(res.headers);
 			const body = res.status === 204 ? null : await res.json();
 
 			if (res.status === 200) {
-				if (trackHatacordingRateLimit) globalEvents.emit('hatacordingApiAction', endpoint);
 				resolve(body);
 			} else if (res.status === 204) {
-				if (trackHatacordingRateLimit) globalEvents.emit('hatacordingApiAction', endpoint);
 				resolve(undefined as _ResT); // void -> undefined
 			} else {
 				reject(body.error);
@@ -88,15 +81,12 @@ export function misskeyApiGet<
 	const query = new URLSearchParams(data as any);
 
 	const promise = new Promise<_ResT>((resolve, reject) => {
-		const trackHatacordingRateLimit = isHatacordingRateLimitTrackingActive();
 		// Send request
 		window.fetch(`${apiUrl}/${endpoint}?${query}`, {
 			method: 'GET',
 			credentials: 'omit',
 			cache: 'default',
-			headers: trackHatacordingRateLimit ? { [HATACORDING_RATE_LIMIT_REQUEST_HEADER]: '1' } : undefined,
 		}).then(async (res) => {
-			if (trackHatacordingRateLimit) updateHatacordingRateLimit(res.headers);
 			const body = res.status === 204 ? null : await res.json();
 
 			if (res.status === 200) {

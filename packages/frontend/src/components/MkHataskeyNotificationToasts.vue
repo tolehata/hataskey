@@ -13,14 +13,14 @@
 		/>
 	</TransitionGroup>
 </Teleport>
-<MkNotificationToastRing v-if="integrated && active" :target="context.surface.value?.outline.value ?? context.outline.value" :elapsed="active.elapsed" integrated :motion="motion"/>
+<MkNotificationToastRing v-if="integrated && active" :target="context.surface.value?.outline.value ?? context.outline.value" :elapsed="active.elapsed" :duration="getToastDuration(active)" integrated :motion="motion"/>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { entities } from 'cherrypick-js';
 import type { HataskeyNotificationToasts } from '@/utility/hataskey-notification-toast.js';
-import { getNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
+import { getNotificationPageContext, getToastDuration } from '@/utility/hataskey-notification-toast.js';
 import MkHataskeyNotificationToast from '@/components/MkHataskeyNotificationToast.vue';
 import MkNotificationToastRing from '@/components/MkNotificationToastRing.vue';
 import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
@@ -30,7 +30,12 @@ import { i18n } from '@/i18n.js';
 const props = withDefaults(defineProps<{ context: HataskeyNotificationToasts; receiveExternal?: boolean }>(), { receiveExternal: true });
 const context = props.context;
 const target = computed(() => context.surface.value?.target.value ?? context.target.value);
-const integrated = computed(() => context.integrated.value && !!target.value);
+// Keep an outgoing card in its original Teleport host until its leave animation ends.
+// A new item selects the current host; a removed target cannot retain integration.
+const integrated = computed<boolean>(previous => {
+	if (!target.value) return false;
+	return context.items.value.length === 0 ? (previous ?? false) : context.integrated.value;
+});
 const active = computed(() => context.items.value[0]);
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const reducedMotion = ref(reducedMotionQuery.matches);

@@ -67,7 +67,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<p :class="$style.helper">{{ copy.reasonsHint }}</p>
 						<div :class="$style.optionPills" role="group" :aria-label="main.optionalMealReasons"><button v-for="reason in reasons" :key="reason.value" type="button" :data-selected="draft.reasons.includes(reason.value)" :aria-pressed="draft.reasons.includes(reason.value)" :disabled="busy" @click="toggleReason(reason.value)">{{ reason.label }}</button></div>
 					</template>
-					<slot v-else-if="detail === 'reminders'" name="reminders"></slot>
 				</div>
 			</Transition>
 			<p v-if="!writable" :class="$style.status" role="status">{{ loading ? planner.loading : copy.readFailure }}</p>
@@ -182,14 +181,14 @@ const props = withDefaults(defineProps<{
 	storeTemplate?: (template: HataskMealTemplate, existingId?: string) => Promise<void>;
 	removeTemplate?: (id: string) => Promise<void>;
 }>(), { theme: undefined, loading: false, active: true, motion: true, illustration: undefined, templates: () => [], templatesWritable: false, summary: '', showSummary: true, storeTemplate: undefined, removeTemplate: undefined });
-const emit = defineEmits<{ info: [] }>();
+const emit = defineEmits<{ info: []; reminders: [] }>();
 const main = i18n.ts._hata._hatask._main;
 const planner = i18n.ts._hata._hatask._planner;
 const copy = i18n.ts._hata._hatask._journal;
 const copyx = i18n.tsx._hata._hatask._journal;
 const uid = useId();
 type View = 'today' | 'history' | 'review' | 'templates';
-type Detail = 'date' | 'time' | 'slot' | 'emoji' | 'reasons' | 'reminders';
+type Detail = 'date' | 'time' | 'slot' | 'emoji' | 'reasons';
 type Draft = { note: string; level: number | string; emoji: string; slot: string; reasons: string[]; date: string | null; time: string | null };
 const clock = ref(new Date());
 const today = computed(() => journalLocalDateTime(clock.value).date);
@@ -276,18 +275,24 @@ const captureChips = computed<HataskCaptureChip[]>(() => [
 ]);
 const captureTools = computed<HataskCaptureTool[]>(() => props.kind === 'mood' ? [
 	{ id: 'emoji', label: main.emoji, icon: 'ti ti-mood-smile', active: detail.value === 'emoji' },
-	{ id: 'reminders', label: main.reminderNotification, icon: 'ti ti-bell', active: detail.value === 'reminders' },
+	// リマインドの設定は Hatask 設定の「きもち記録」に一本化している。
+	{ id: 'reminders', label: main.reminderNotification, icon: 'ti ti-bell', active: false },
 ] : []);
-const detailLabel = computed(() => ({ date: copy.recordDate, time: copy.recordTime, slot: main.whichMeal, emoji: main.emoji, reasons: main.optionalMealReasons, reminders: main.reminderNotification })[detail.value ?? 'date']);
+const detailLabel = computed(() => ({ date: copy.recordDate, time: copy.recordTime, slot: main.whichMeal, emoji: main.emoji, reasons: main.optionalMealReasons })[detail.value ?? 'date']);
 
 async function toggleDetail(id: string): Promise<void> {
-	if (!props.writable || busy.value || !['date', 'time', 'slot', 'emoji', 'reasons', 'reminders'].includes(id)) return;
+	if (!props.writable || busy.value || !['date', 'time', 'slot', 'emoji', 'reasons'].includes(id)) return;
 	detail.value = detail.value === id ? null : id as Detail;
 	await nextTick();
 	detailEl.value?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
 }
 
 function onTool(id: string): void {
+	if (id === 'reminders') {
+		detail.value = null;
+		emit('reminders');
+		return;
+	}
 	void toggleDetail(id);
 }
 
@@ -508,8 +513,13 @@ function openTemplateMenu(template: HataskMealTemplate, event: MouseEvent): void
 	], event.currentTarget as HTMLElement);
 }
 
-function focusFromHome(slot?: string): void {
+function focusFromHome(slot?: string, moodLevel?: number): void {
 	if (busy.value) return;
+	// 外部(Hataskey UI 3 の右ペイン)で選んだ気分は、書きかけの記録が無いときだけ選択済みにする。
+	if (props.kind === 'mood' && moodLevel != null && Number.isInteger(moodLevel) && moodLevel >= 1 && moodLevel <= 5
+		&& !editingId.value && !draft.value.note && !draft.value.date && !draft.value.time && !draft.value.emoji && state.value === 'idle') {
+		draft.value.level = moodLevel;
+	}
 	// Empty capture may follow the selected meal; an existing or failed draft is never replaced.
 	if (props.kind === 'meal' && slot && ['breakfast', 'lunch', 'dinner', 'snack'].includes(slot)
 		&& !editingId.value && !draft.value.note && !draft.value.reasons.length && !draft.value.date

@@ -8,67 +8,74 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 			v-if="canAccess" :tab="issueId ? 'issues' : activeTab" :projectName="currentProject?.name ?? 'Hataskey'" :staff="isStaff" :unread="unreadCount" :refreshing="refreshing"
 			@navigate="navigateTab" @create="handleCreate" @project="openProjectSwitch" @notifications="openNotifications" @refresh="refreshAll" @settings="openDisplaySettings" @exit="exitHataFeed"
 		/>
-		<p v-if="loading" class="hf-empty" role="status">読み込んでいます</p>
-		<div v-else-if="error" class="hf-empty" role="alert">{{ error }}<button type="button" class="hy-secondary" @click="error = ''; init()">再読み込み</button></div>
-		<p v-else-if="!canAccess" class="hf-empty">HataFeed を利用できません</p>
+		<p v-if="loading" class="hf-empty" role="status">{{ pageCopy.loading }}</p>
+		<div v-else-if="error" class="hf-empty" role="alert">{{ error }}<button type="button" class="hy-secondary" @click="error = ''; init()">{{ pageCopy.reload }}</button></div>
+		<p v-else-if="!canAccess" class="hf-empty">{{ pageCopy.unavailable }}</p>
 		<HataFeedIssue v-else-if="issueId" :key="issueId" ref="issueView" :issueId="issueId" :isStaff="isStaff" @back="goList"/>
 		<main v-else :class="$style.main">
 			<HataFeedHome
-				v-if="activeTab === 'home'" :isStaff="isStaff" :roadmap="roadmap" :ownEmojiRequests="ownEmojiRequests" :emojiRequests="emojiRequests" :emojiQuota="emojiQuota" :activity="activity" :issues="issues" :issuesHasNext="issuesHasNext" :loading="issuePageLoading"
-				@issue="openIssue" @navigate="navigateTab" @approve="openApprove" @addRoadmap="addRoadmap" @ownHistory="openOwnHistory" @reviewQueue="openReviewQueue"
+				v-if="activeTab === 'home'" :isStaff="isStaff" :roadmap="roadmap" :ownEmojiRequests="ownEmojiRequests" :emojiRequests="emojiRequests" :emojiChangeRequests="emojiChangeRequests" :emojiQuota="emojiQuota" :activity="activity" :issues="issues" :issuesHasNext="issuesHasNext" :loading="issuePageLoading"
+				@issue="openIssue" @navigate="navigateTab" @approve="openApprove" @addRoadmap="addRoadmap" @ownHistory="openOwnHistory" @reviewQueue="openReviewQueue" @changed="loadEmojiRequests"
 			/>
 			<HataFeedBeta v-if="activeTab === 'beta'" @createIssue="createIssue"/>
 			<div v-if="activeTab === 'emoji' && isStaff" class="hf-panel" :class="$style.emojiAdmin">
-				<div :class="$style.eaTop">
-					<div :class="$style.eaFilters">
-						<button v-for="f in emojiAdminFilters" :key="String(f.value)" :class="$style.eaFilter" :aria-pressed="emojiAdminStatus === f.value" @click="setEmojiAdminStatus(f.value)">{{ f.label }}</button>
-					</div>
-					<div :class="$style.eaTopActions">
-						<button type="button" :class="$style.eaRequestOwn" @click="requestEmoji"><i class="ti ti-mood-plus"></i> {{ copy.requestEmojiForSelf }}</button>
-						<button v-if="emojiAdminStatus === 'pending' && emojiAdminList.length" type="button" :class="$style.eaBatch" @click="openReviewQueue"><i class="ti ti-player-track-next"></i> {{ copy.reviewPendingSequentially }}</button>
-					</div>
+				<div :class="$style.eaKindTabs" role="group" :aria-label="pageCopy.requestType">
+					<button type="button" :class="$style.eaKindTab" :aria-pressed="emojiAdminKind === 'add'" @click="emojiAdminKind = 'add'">{{ pageCopy.newAddition }}</button>
+					<button type="button" :class="$style.eaKindTab" :aria-pressed="emojiAdminKind === 'change'" @click="emojiAdminKind = 'change'">{{ pageCopy.imageUpdateWithdraw }}</button>
 				</div>
-				<div v-if="emojiAdminList.length === 0" :class="$style.emptyBlock">
-					<i class="ti ti-mood-empty" :class="$style.emptyBlockIcon"></i>
-					<div>{{ emojiAdminStatus === 'pending' ? copy.noPendingRequests : copy.noMatchingRequests }}</div>
-				</div>
-				<div v-else :class="$style.eaList">
-					<div v-for="r in emojiAdminList" :key="r.id" :class="$style.eaRow">
-						<span :class="$style.eaTile"><img v-if="r.imageUrl" :src="r.imageUrl" :class="$style.eaImg" :alt="r.name"/></span>
-						<div :class="$style.eaInfo">
-							<div :class="$style.eaName">:{{ r.name }}:</div>
-							<div :class="$style.eaMeta">
-								<HfAvatar v-if="r.requestedBy" :user="r.requestedBy" :size="16"/>
-								<span>{{ r.requestedBy?.name ?? r.requestedBy?.username }}</span>
-								・ <MkTime :time="r.createdAt" mode="relative"/>
-								・ {{ r.sourceType === 'remote' ? (r.remoteHost ? copyx.remoteSource({ host: r.remoteHost }) : copy.remote) : copy.ownSource }}
+				<HataFeedEmojiChangeList v-if="emojiAdminKind === 'change'" ref="changeList" isStaff :showTitle="false" @changed="loadEmojiRequests"/>
+				<template v-else>
+					<div :class="$style.eaTop">
+						<div :class="$style.eaFilters">
+							<button v-for="f in emojiAdminFilters" :key="String(f.value)" :class="$style.eaFilter" :aria-pressed="emojiAdminStatus === f.value" @click="setEmojiAdminStatus(f.value)">{{ f.label }}</button>
+						</div>
+						<div :class="$style.eaTopActions">
+							<button type="button" :class="$style.eaRequestOwn" @click="requestEmoji"><i class="ti ti-mood-plus"></i> {{ copy.requestEmojiForSelf }}</button>
+							<button v-if="emojiAdminStatus === 'pending' && emojiAdminList.length" type="button" :class="$style.eaBatch" @click="openReviewQueue"><i class="ti ti-player-track-next"></i> {{ copy.reviewPendingSequentially }}</button>
+						</div>
+					</div>
+					<div v-if="emojiAdminList.length === 0" :class="$style.emptyBlock">
+						<i class="ti ti-mood-empty" :class="$style.emptyBlockIcon"></i>
+						<div>{{ emojiAdminStatus === 'pending' ? copy.noPendingRequests : copy.noMatchingRequests }}</div>
+					</div>
+					<div v-else :class="$style.eaList">
+						<div v-for="r in emojiAdminList" :key="r.id" :class="$style.eaRow">
+							<span :class="$style.eaTile"><img v-if="r.imageUrl" :src="r.imageUrl" :class="$style.eaImg" :alt="r.name"/></span>
+							<div :class="$style.eaInfo">
+								<div :class="$style.eaName">:{{ r.name }}:</div>
+								<div :class="$style.eaMeta">
+									<HfAvatar v-if="r.requestedBy" :user="r.requestedBy" :size="16"/>
+									<span>{{ r.requestedBy?.name ?? r.requestedBy?.username }}</span>
+									・ <MkTime :time="r.createdAt" mode="relative"/>
+									・ {{ r.sourceType === 'remote' ? (r.remoteHost ? copyx.remoteSource({ host: r.remoteHost }) : copy.remote) : copy.ownSource }}
+								</div>
+								<div v-if="r.resolvedComment" :class="$style.eaResolution"><i class="ti ti-message-circle"></i><span><strong>{{ copy.resolutionReason }}</strong> {{ r.resolvedComment }}</span></div>
 							</div>
-							<div v-if="r.resolvedComment" :class="$style.eaResolution"><i class="ti ti-message-circle"></i><span><strong>{{ copy.resolutionReason }}</strong> {{ r.resolvedComment }}</span></div>
-						</div>
-						<div :class="$style.eaAction">
-							<button v-if="r.status === 'pending' || r.status === 'held'" :class="$style.eaReview" @click="openApprove(r)"><i class="ti ti-eye"></i> {{ copy.review }}</button>
-							<span v-else :class="['ti', emojiStatusIcon[r.status] ?? '', 'hfEstIcon']" :data-est="r.status" :title="emojiStatusLabel[r.status]"></span>
+							<div :class="$style.eaAction">
+								<button v-if="r.status === 'pending' || r.status === 'held'" :class="$style.eaReview" @click="openApprove(r)"><i class="ti ti-eye"></i> {{ copy.review }}</button>
+								<span v-else :class="['ti', emojiStatusIcon[r.status] ?? '', 'hfEstIcon']" :data-est="r.status" :title="emojiStatusLabel[r.status]"></span>
+							</div>
 						</div>
 					</div>
-				</div>
-				<div v-if="emojiAdminPage > 0 || emojiAdminHasNext" :class="$style.pager">
-					<button :class="$style.pagerArrow" :disabled="emojiAdminPage === 0" @click="prevEmojiAdminPage"><i class="ti ti-chevron-left"></i> {{ copy.previous }}</button>
-					<span :class="$style.pagerPage">{{ emojiAdminPage + 1 }}</span>
-					<button :class="$style.pagerArrow" :disabled="!emojiAdminHasNext" @click="nextEmojiAdminPage">{{ copy.next }} <i class="ti ti-chevron-right"></i></button>
-				</div>
+					<div v-if="emojiAdminPage > 0 || emojiAdminHasNext" :class="$style.pager">
+						<button :class="$style.pagerArrow" :disabled="emojiAdminPage === 0" @click="prevEmojiAdminPage"><i class="ti ti-chevron-left"></i> {{ copy.previous }}</button>
+						<span :class="$style.pagerPage">{{ emojiAdminPage + 1 }}</span>
+						<button :class="$style.pagerArrow" :disabled="!emojiAdminHasNext" @click="nextEmojiAdminPage">{{ copy.next }} <i class="ti ti-chevron-right"></i></button>
+					</div>
+				</template>
 			</div>
-			<section v-if="activeTab === 'issues' || activeTab === 'roadmap'" class="hf-panel" :class="$style.statusBar" aria-label="対応状況">
-				<h2>対応状況<small>このページの {{ issues.length }} 件</small></h2>
-				<button v-for="status in ['open', 'inProgress', 'resolved']" :key="status" type="button" :class="$style.stat" @click="applyStatus(status)"><b>{{ counts[status] }}</b><span>{{ statusLabel[status] }}</span></button>
+			<section v-if="activeTab === 'issues' || activeTab === 'roadmap'" class="hf-panel" :class="$style.statusBar" :aria-label="pageCopy.responseStatus">
+				<h2>{{ pageCopy.responseStatus }}<small v-if="statusCounts">{{ i18n.tsx._hata._hatafeed._page.totalCount({ count: String(statusCounts.total) }) }}</small></h2>
+				<button v-for="status in (['open', 'inProgress', 'resolved'] as const)" :key="status" type="button" :class="$style.stat" :aria-pressed="filterStatus === status" @click="applyStatus(status)"><b>{{ statusCounts?.[status] ?? '-' }}</b><span>{{ statusLabel[status] }}</span></button>
 			</section>
 			<section v-if="activeTab === 'issues' || activeTab === 'roadmap'" class="hf-panel" :class="$style.listPanel" :aria-busy="issuePageLoading">
 				<header :class="$style.listHead" :data-roadmap-actions="activeTab === 'roadmap' && isStaff">
-					<h2>{{ activeTab === 'roadmap' ? 'ロードマップ' : 'イシュー' }}<small :title="'読み込み済みの件数'">{{ issues.length }}{{ issuesHasNext ? '+' : '' }}</small></h2>
-					<button v-if="activeTab === 'roadmap' && isStaff" type="button" class="hy-secondary hf-roadmap-add" @click="addRoadmap"><i class="ti ti-plus" aria-hidden="true"></i>改善予定を追加</button>
-					<form :class="$style.search" role="search" @submit.prevent="reloadIssues"><i class="ti ti-search" aria-hidden="true"></i><input v-model="searchQuery" type="search" aria-label="イシュー・会話を検索" placeholder="イシュー・会話を検索"><button type="submit" class="hf-icon" aria-label="検索"><i class="ti ti-arrow-right" aria-hidden="true"></i></button></form>
+					<h2>{{ activeTab === 'roadmap' ? copy.roadmap : copy.issues }}<small :title="pageCopy.loadedCount">{{ issues.length }}{{ issuesHasNext ? '+' : '' }}</small></h2>
+					<button v-if="activeTab === 'roadmap' && isStaff" type="button" class="hy-secondary hf-roadmap-add" @click="addRoadmap"><i class="ti ti-plus" aria-hidden="true"></i>{{ pageCopy.addPlan }}</button>
+					<form :class="$style.search" role="search" @submit.prevent="reloadIssues"><i class="ti ti-search" aria-hidden="true"></i><input v-model="searchQuery" type="search" :aria-label="copy.searchPlaceholder" :placeholder="copy.searchPlaceholder"><button type="submit" class="hf-icon" :aria-label="pageCopy.search"><i class="ti ti-arrow-right" aria-hidden="true"></i></button></form>
 				</header>
-				<div :class="$style.filters"><div :class="$style.segment"><button type="button" :aria-pressed="!includeClosed" @click="setClosed(false)">受付中</button><button type="button" :aria-pressed="includeClosed" @click="setClosed(true)">終了分も含む</button></div><div :class="$style.dropdowns"><button type="button" @click="openCategoryMenu">{{ filterCategory ? categoryLabel[filterCategory] : copy.category }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openStatusMenu">{{ filterStatus ? statusLabel[filterStatus] : copy.status }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openAuthorMenu">{{ authorFilter ? (authorFilter.name ?? authorFilter.username) : copy.author }}<i class="ti ti-chevron-down"></i></button></div></div>
-				<div v-if="!visibleIssues.length" class="hf-empty"><p>{{ activeTab === 'roadmap' ? copy.noPublishedPlans : 'イシューがありません' }}</p></div>
+				<div :class="$style.filters"><div :class="$style.segment"><button type="button" :aria-pressed="!includeClosed" @click="setClosed(false)">{{ pageCopy.excludeClosed }}</button><button type="button" :aria-pressed="includeClosed" @click="setClosed(true)">{{ pageCopy.includeClosed }}</button></div><div :class="$style.dropdowns"><button type="button" @click="openCategoryMenu">{{ filterCategory ? categoryLabel[filterCategory] : copy.category }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openStatusMenu">{{ filterStatus ? statusLabel[filterStatus] : copy.status }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openAuthorMenu">{{ authorFilter ? (authorFilter.name ?? authorFilter.username) : copy.author }}<i class="ti ti-chevron-down"></i></button></div></div>
+				<div v-if="!visibleIssues.length" class="hf-empty"><p>{{ activeTab === 'roadmap' ? copy.noPublishedPlans : pageCopy.noIssues }}</p></div>
 				<div v-else ref="issueListEl" :class="$style.listCard">
 					<button
 						v-for="issue in visibleIssues"
@@ -118,9 +125,12 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue';
-import type { HataFeedEmojiRequest } from '@/utility/hatafeed.js';
+import * as Misskey from 'cherrypick-js';
+import { computed, inject, onActivated, onDeactivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import type { HataFeedEmojiRequest, HataFeedEmojiChangeRequest } from '@/utility/hatafeed.js';
 import type { HataFeedTab } from '@/utility/hatafeed-ui.js';
+import HataFeedEmojiChangeList from '@/components/HataFeedEmojiChangeList.vue';
+import { openHataFeedEmojiNotification } from '@/utility/hatafeed-emoji-notification.js';
 import HataFeedHeader from '@/components/HataFeedHeader.vue';
 import HataFeedBeta from '@/components/HataFeedBeta.vue';
 import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
@@ -147,9 +157,10 @@ import {
 import { $i, iAmModerator } from '@/i.js';
 import { i18n } from '@/i18n.js';
 
-const props = defineProps<{ issueId?: string; number?: string; initialTab?: HataFeedTab }>();
+const props = defineProps<{ issueId?: string; number?: string; initialTab?: HataFeedTab; emojiRequestId?: string; emojiChangeRequestId?: string }>();
 const copy = i18n.ts._hata._hatafeed._home;
 const copyx = i18n.tsx._hata._hatafeed._home;
+const pageCopy = i18n.ts._hata._hatafeed._page;
 
 // 旗鯖fork: スタッフ専用カテゴリ(security等)は一般ユーザーの絞り込みから隠す。
 const filterCategoryKeys = computed(() => categoryKeys.filter(c => iAmModerator || !staffOnlyCategoryKeys.some(staffOnly => staffOnly === c)));
@@ -200,6 +211,9 @@ const searchQuery = ref('');
 // 旗鯖fork: バッジは共有の状態を見る(標準通知から既読にしたときも消えるように)。
 const unreadCount = hataFeedUnreadCount;
 const emojiRequests = ref<HataFeedEmojiRequest[]>([]);
+const emojiChangeRequests = ref<HataFeedEmojiChangeRequest[]>([]);
+const emojiAdminKind = ref<'add' | 'change'>('add');
+const changeList = useTemplateRef('changeList');
 const emojiQuota = ref<{ limit: number; remaining: number } | null>(null);
 
 const issueId = computed(() => props.issueId ?? null);
@@ -221,16 +235,10 @@ onActivated(() => {
 	maybeShowTutorial();
 });
 
-// 旗鯖fork(3a): モバイルの集計チップ。現在読み込み済みページ内の件数を状態別に数える
-// (総件数の集計APIは持たないため、表示中ページのローカル集計)。
-const counts = computed(() => {
-	const c: Record<string, number> = { open: 0, inProgress: 0, planned: 0, resolved: 0 };
-	for (const i of issues.value) {
-		if (i.status in c) c[i.status]++;
-	}
-	return c;
-});
-
+// 旗鯖fork(3a): 対応状況の件数。表示中ページではなく、状態以外の絞り込みが同じ全件を数える
+// (状態で絞り込んでも他の数値が変わらず、一覧の件数とも一致するように)。
+const statusCounts = ref<Misskey.entities.HataFeedbackIssuesStatusCountsResponse | null>(null);
+let statusCountsRequestId = 0;
 // 旗鯖fork: 若葉アニメの表示可否(アクセシビリティ設定・既定OFF)。
 const leavesEnabled = computed(() => prefer.r['hatafeed.leaves'].value && prefer.r.animation.value);
 
@@ -287,7 +295,7 @@ async function init() {
 		if (activeTab.value === 'roadmap') filterCategory.value = 'improvement';
 		await Promise.all([reloadIssues(), loadRoadmap(), loadNotifications(), loadEmojiRequests(), ...(activeTab.value === 'emoji' ? [reloadEmojiAdmin()] : [])]);
 	} catch {
-		error.value = '読み込めませんでした';
+		error.value = pageCopy.loadError;
 	} finally {
 		loading.value = false;
 	}
@@ -303,7 +311,7 @@ async function refreshProjects() {
 		await loadProjects();
 		if (currentProjectId.value && !projects.value.some(project => project.id === currentProjectId.value)) selectProject(null);
 	} catch {
-		hataFeedNotify('プロジェクトを読み込めませんでした');
+		hataFeedNotify(pageCopy.projectsLoadError);
 	}
 }
 
@@ -340,8 +348,27 @@ async function fetchIssuePage(untilId: string | undefined) {
 	}
 }
 
+async function loadStatusCounts() {
+	const requestId = ++statusCountsRequestId;
+	try {
+		const result = await misskeyApi('hata/feedback/issues/status-counts', {
+			projectId: currentProjectId.value,
+			category: filterCategory.value,
+			createdById: authorFilter.value?.id ?? null,
+			query: searchQuery.value.trim() || null,
+			includeClosed: includeClosed.value,
+		});
+		if (requestId === statusCountsRequestId) statusCounts.value = result;
+	} catch (error) {
+		// 件数は補助表示なので、取得できなくても一覧は使えるようにする。
+		console.error(error);
+		if (requestId === statusCountsRequestId) statusCounts.value = null;
+	}
+}
+
 // フィルタ変更・表示数変更時は1ページ目から取り直す。
 async function reloadIssues() {
+	loadStatusCounts();
 	if (!await fetchIssuePage(undefined)) return false;
 	issuePage.value = 0;
 	issueCursors.value = [undefined];
@@ -431,10 +458,10 @@ function setClosed(v: boolean) {
 	reloadIssues();
 }
 
-// 3a 集計チップからのステータス絞り込み。
+// 3a 集計チップからのステータス絞り込み。もう一度押すと解除する。
+// 解決済みは受付終了(closed)とは別状態なので、「受付終了も含む」の選択は変えない。
 function applyStatus(s: string) {
 	filterStatus.value = filterStatus.value === s ? null : s;
-	if (s === 'resolved') includeClosed.value = true;
 	reloadIssues();
 }
 
@@ -485,6 +512,7 @@ async function reloadEmojiAdmin() {
 	emojiAdminPage.value = 0;
 	emojiAdminCursors.value = [undefined];
 	await fetchEmojiAdminPage(undefined);
+	await changeList.value?.reload();
 }
 
 function setEmojiAdminStatus(s: HataFeedEmojiRequest['status'] | null) {
@@ -529,12 +557,14 @@ async function openNotifications(event: MouseEvent) {
 }
 
 async function loadEmojiRequests() {
-	const [own, pending] = await Promise.all([
+	const [own, pending, changes] = await Promise.all([
 		misskeyApi('hata/feedback/emoji-requests', { mine: true, limit: 20 }),
 		isStaff.value ? misskeyApi('hata/feedback/emoji-requests', { status: 'pending', limit: 20 }) : Promise.resolve([]),
+		isStaff.value ? misskeyApi('hata/feedback/emoji-change-requests', { status: 'pending', limit: 20 }) : Promise.resolve([]),
 	]);
 	ownEmojiRequests.value = own as unknown as HataFeedEmojiRequest[];
 	emojiRequests.value = isStaff.value ? pending as unknown as HataFeedEmojiRequest[] : ownEmojiRequests.value;
+	emojiChangeRequests.value = changes as unknown as HataFeedEmojiChangeRequest[];
 	emojiQuota.value = await misskeyApi('hata/feedback/emoji-quota', {}).catch(() => null);
 }
 
@@ -623,8 +653,14 @@ watch(() => props.issueId, (v, old) => {
 
 onMounted(() => {
 	if (props.number) { resolveNumber(); return; }
-	init();
+	init().then(openLinkedEmojiRequest);
 });
+
+function openLinkedEmojiRequest() {
+	if (canAccess.value && (props.emojiRequestId || props.emojiChangeRequestId)) openHataFeedEmojiNotification(props, loadEmojiRequests);
+}
+
+watch([() => props.emojiRequestId, () => props.emojiChangeRequestId], openLinkedEmojiRequest);
 
 // 旗鯖fork(2a): 更新はツールバーの更新アイコンから。MkPageHeader の actions 帯は
 // リポジトリUIのツールバーと機能が重複し、下の UI に覆いかぶさって邪魔なため廃止した。
@@ -635,8 +671,8 @@ async function refreshAll() {
 																																											...(activeTab.value === 'emoji' && isStaff.value ? [reloadEmojiAdmin()] : []),
 																																											...(issueView.value ? [issueView.value.reload()] : []),
 	]);
-	if (results.some(result => result.status === 'rejected') || (results[0].status === 'fulfilled' && results[0].value === false)) hataFeedNotify('更新できない項目がありました');
-	else hataFeedNotify('更新しました');
+	if (results.some(result => result.status === 'rejected') || (results[0].status === 'fulfilled' && results[0].value === false)) hataFeedNotify(pageCopy.refreshPartial);
+	else hataFeedNotify(pageCopy.refreshed);
 	refreshing.value = false;
 }
 
@@ -678,7 +714,7 @@ async function openDisplaySettings() {
 }
 
 async function openOwnHistory() {
-	const { dispose } = os.popup((await import('@/components/HataFeedEmojiHistory.vue')).default, {}, { closed: () => { loadEmojiRequests(); dispose(); } });
+	const { dispose } = os.popup((await import('@/components/HataFeedEmojiHistory.vue')).default, {}, { changed: loadEmojiRequests, closed: () => { loadEmojiRequests(); dispose(); } });
 }
 
 </script>

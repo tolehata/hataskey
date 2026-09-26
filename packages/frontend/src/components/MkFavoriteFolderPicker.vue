@@ -42,7 +42,7 @@ import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { canCreateFavoriteFolder, favoriteFolderColorStyle, favoriteFolderErrorMessage, favoriteFolderPath, favoriteFoldersState, isFavoriteAccountCurrent, openFavoriteFolderEditor, refreshFavoriteFolders, saveFavoriteNote, sortedFavoriteFolders } from '@/utility/favorite-folders.js';
-import { hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
+import { getNotificationPageContext, hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
 import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
 
 const props = withDefaults(defineProps<{ noteId: string; mode: 'create' | 'move' | 'remove'; folderId?: string | null }>(), { folderId: undefined });
@@ -50,7 +50,7 @@ const emit = defineEmits<{ (ev: 'done', saved: boolean): void; (ev: 'closed'): v
 const copy = i18n.ts._hata._favoriteFolders;
 const dialog = useTemplateRef('dialog');
 const notificationToasts = inject(hataskeyNotificationToastsKey, null);
-let savedMessage: string | undefined;
+let savedTarget: string | undefined;
 const snapshot = { id: $i?.id ?? null, token: $i?.token };
 const stale = computed(() => !isFavoriteAccountCurrent(snapshot));
 const selected = ref<string | null>(props.folderId ?? null);
@@ -91,11 +91,11 @@ function cancel() {
 }
 
 function onClosed() {
-	const message = savedMessage;
-	savedMessage = undefined;
+	const target = savedTarget;
+	savedTarget = undefined;
 	// Start the shared navbar feedback after the destination dialog has left.
-	if (message && !stale.value && !notificationToastsSuppressed.value && !window.document.hidden) {
-		notificationToasts?.enqueueStatus(message, performance.now(), undefined, true);
+	if (target && !stale.value && !notificationToastsSuppressed.value && !window.document.hidden) {
+		(notificationToasts ?? getNotificationPageContext())?.enqueueNavbarNotice({ kind: 'noteAction', action: 'favorite', message: i18n.ts._hata._navbarNotice.favoriteAdded, target });
 	}
 	emit('closed');
 }
@@ -107,7 +107,7 @@ async function save() {
 	const destination = selected.value === null ? copy.unfiled : favoriteFolderPath(selected.value);
 	try {
 		if (!await saveFavoriteNote(props.noteId, selected.value, props.mode)) return;
-		if (props.mode === 'create' && notificationToasts) savedMessage = i18n.tsx._hata._favoriteFolders.noteAddedToFolder({ name: destination });
+		if (props.mode === 'create') savedTarget = destination;
 		emit('done', true);
 		dialog.value?.close();
 	} catch (err) {

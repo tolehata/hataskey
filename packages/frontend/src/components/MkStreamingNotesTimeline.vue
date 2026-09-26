@@ -81,6 +81,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<component
 			:is="prefer.s.animation ? TransitionGroup : 'div'"
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
+			data-streaming-notes
 			:data-deck-ui="isDeckUi ? 'on' : undefined"
 			:data-hatasaba-spacer="isHatasabaDeck ? 'on' : undefined"
 			:data-hatasaba-normal="isHatasabaNormal ? 'on' : undefined"
@@ -102,7 +103,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</template>
 			<template v-for="(note, i) in visibleItems" v-else :key="note.id">
-				<div v-if="i > 0 && isSeparatorNeeded(visibleItems[i -1].createdAt, note.createdAt)" :class="[{ '_gaps': !noGap, [$style.sepWrapLeft]: dateOnLeft, [$style.sepWrapTight]: !dateHidden && !dateOnLeft }]" :data-scroll-anchor="note.id">
+				<div v-if="i > 0 && isSeparatorNeeded(visibleItems[i -1].createdAt, note.createdAt)" :class="[{ '_gaps': !noGap, [$style.sepWrapLeft]: dateOnLeft, [$style.sepWrapTight]: !dateHidden && !dateOnLeft }]" :data-scroll-anchor="note.id" :data-note-removal-id="note.id">
 					<div v-if="!dateHidden" :class="[$style.date, { [$style.noGap]: noGap, [$style.dateLeft]: dateOnLeft, [$style.dateMobile]: isMobile, [$style.dateDeck]: isHatasabaDeck }]">
 						<i v-if="dateOnLeft" :class="['ti ti-clock', $style.dateLeftIcon]"></i>
 						<span><i class="ti ti-chevron-up"></i> {{ getSeparatorInfo(visibleItems[i -1].createdAt, note.createdAt)?.prevText }}</span>
@@ -111,13 +112,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 					<MkNote :class="$style.note" :note="note" :withHardMute="true"/>
 				</div>
-				<div v-else-if="shouldInsertAd(note)" :class="{ '_gaps': !noGap }" :data-scroll-anchor="note.id">
+				<div v-else-if="shouldInsertAd(note)" :class="{ '_gaps': !noGap }" :data-scroll-anchor="note.id" :data-note-removal-id="note.id">
 					<MkNote :class="$style.note" :note="note" :withHardMute="true"/>
 					<div :class="[$style.ad, { [$style.noGap]: noGap }]">
 						<MkAd :preferForms="['horizontal', 'horizontal-big']"/>
 					</div>
 				</div>
-				<MkNote v-else :class="$style.note" :note="note" :withHardMute="true" :data-scroll-anchor="note.id"/>
+				<MkNote v-else :class="$style.note" :note="note" :withHardMute="true" :data-scroll-anchor="note.id" :data-note-removal-id="note.id"/>
 				<MkLtlEmojiVote
 					v-if="!props.emojiVoteNavbar && !props.emojiVoteNavbarTarget && emojiVoteRound && emojiVoteAnchor === note.id"
 					:key="`emoji-vote:${emojiVoteRound.id}`"
@@ -186,6 +187,7 @@ import { haptic, hapticConfirm } from '@/utility/haptic.js';
 // 旗鯖fork(Hataskey UI 2): bot 非表示のフィルタで appearNote を参照するため。
 import { getAppearNote } from '@/utility/get-appear-note.js';
 import { useHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
+import { useNoteRemoval } from '@/composables/use-note-removal.js';
 
 const timelineCopy = i18n.ts._hata._timelineCustom;
 
@@ -327,11 +329,6 @@ const bubbleEnabled = computed(() => {
 // 旗鯖fork(#1): 宴枠(outline)の描き方を MkNote 側で吹き出し有無に合わせて切り替えるため、
 // 吹き出し有効状態を子(MkNote)へ伝える。吹き出しON=枠を外側に、OFF=枠を内側に描く。
 provide('noteBubbleEnabled', bubbleEnabled);
-// 旗鯖fork(HataSNSCordUI): このタイムラインはノートをさらに外側の吹き出し等でラップしないため、
-// 祖先(HataSNSCordUI本体)が utageFrameExternal を true で provide していても、ここで false に
-// 打ち消しておく。打ち消さないと、サブペインにこのコンポーネントを埋め込んだ時に MkNote 側の
-// 宴の枠描画が誤って抑制され、枠を描く外側の器も無いため枠が消えてしまう。
-provide('utageFrameExternal', ref(false));
 // 旗鯖fork: 背景ぼかし(glass)が有効な時、MkNote 側で skipRender(content-visibility:auto)を
 // 付けないようにするため、glass 状態を伝える。content-visibility は contain:paint を含み、
 // カードを透明にしても背景が透けない上、CSS の visible 上書きでは Firefox の再描画が追いつかず
@@ -674,6 +671,7 @@ function onScrollContainerScroll() {
 }
 
 const rootEl = useTemplateRef('rootEl');
+const removal = useNoteRemoval(() => rootEl.value?.querySelector<HTMLElement>('[data-streaming-notes]') ?? null);
 watch(rootEl, (el) => {
 	if (el && scrollContainer == null) {
 		scrollContainer = getScrollContainer(el);
@@ -731,7 +729,7 @@ if (!store.s.realtimeMode) {
 }
 
 useGlobalEvent('noteDeleted', (noteId) => {
-	paginator.removeItem(noteId);
+	removal.remove(noteId, () => paginator.removeItem(noteId));
 });
 
 // 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナのタイムラインから個別のノートを削除できるように
@@ -929,6 +927,7 @@ onUnmounted(() => {
 
 function reloadTimeline() {
 	return new Promise<void>((res) => {
+		removal.cancelAll();
 		adInsertionCounter = 0;
 
 		paginator.reload().then(() => {
@@ -964,6 +963,11 @@ defineExpose({
 
 .transition_x_leaveActive {
 	transition: height 0.2s cubic-bezier(0,.5,.5,1), opacity 0.2s cubic-bezier(0,.5,.5,1);
+	&:global([data-note-removal-collapsed]) {
+		// 空間はすでに詰め終わっているため、Vueのleave待機中に元のサイズへ戻さない。
+		transition: none !important;
+		display: none !important;
+	}
 }
 
 /* 上からスライド（デフォルト） */
@@ -1587,13 +1591,8 @@ html.hataGlassUiBubble.hataGlassUi [data-bubble="on"] [data-note-content]::befor
 	}
 }
 
-/* ===== 吹き出し無効化時 =====
-   旗鯖fork: Hataskey UI 2 (`html.hataGlassUi`) 時は透過ガラス面 (`html.hataGlassUi article` in
-   MkNote の非module <style>) を尊重するため、この !important パネル塗りを除外する。
-   これがないと `:not([data-bubble=on])` が `html.hataGlassUi article` (specificity 12) より
-   `!important` で勝ち、クリップ/お気に入り/トレンド等の非 bubble ノートが不透明パネルのまま
-   透過率スライダーが効かなくなる。 */
-html:not(.hataGlassUi) :not([data-bubble="on"]) article {
+/* 吹き出し無効の通常タイムラインだけをパネル背景にする。グラスUIと他画面には適用しない。 */
+html:not(.hataGlassUi) [data-streaming-notes]:not([data-bubble="on"]) article {
 	background: var(--MI_THEME-panel) !important;
 }
 

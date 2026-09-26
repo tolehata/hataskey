@@ -11,7 +11,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@close="dialog?.close()"
 	@closed="emit('closed')"
 >
-	<HyCapsule v-model="activeType" :options="tabs" label="つながり" @update:modelValue="reload"/>
+	<HyCapsule v-model="activeType" :options="tabs" :label="copy.connections" @update:modelValue="reload"/>
 	<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
 		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
@@ -89,7 +89,7 @@ function openRowMenu(it: any, ev: MouseEvent) {
 				try {
 					await misskeyApi('hata/hatady/followers/remove', { userId: it.user.id });
 				} catch {
-					hatadyNotify('フォロワーを解除できませんでした');
+					hatadyNotify(copy.removeFollowerFailed);
 					return;
 				}
 				items_remove(it);
@@ -114,7 +114,7 @@ async function reload() {
 		const res = (await misskeyApi('hata/hatady/following/list', payload)) as any[];
 		items.value = res.map((r) => ({ ...r, busy: false }));
 	} catch {
-		error.value = 'つながりを読み込めませんでした';
+		error.value = copy.loadFailed;
 	} finally {
 		loading.value = false;
 	}
@@ -134,7 +134,7 @@ async function toggle(it: any) {
 		it.isFollowing = next;
 		emit('changed');
 	} catch {
-		hatadyNotify('フォローを変更できませんでした');
+		hatadyNotify(copy.followChangeFailed);
 	} finally {
 		it.busy = false;
 	}

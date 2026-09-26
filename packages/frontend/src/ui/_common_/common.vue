@@ -149,7 +149,7 @@ const dev = _DEV_;
 const hataskeyToasts = inject(hataskeyNotificationToastsKey, null);
 const notifications = ref<Misskey.entities.Notification[]>([]);
 
-// HataSNSCordUIへ切り替えた時点で既に出ている通知も残さない。
+// Hataskey UI 3 のタイムライン表示に切り替えた時点で既に出ている通知も残さない。
 // 解除後は新しく届いた通知だけが従来どおり表示される。
 watch(notificationToastsSuppressed, (suppressed) => {
 	if (suppressed) notifications.value = [];

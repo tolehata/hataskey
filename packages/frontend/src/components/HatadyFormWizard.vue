@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <HyDialog ref="dialog" :title="title" :back="currentIndex > 0 || embedded" :busy="saving" :embedded="embedded" :inert="closePrompt" @close="requestClose" @back="back" @closed="emit('closed')">
-	<div :class="$style.progress"><div><span><i :class="icon" aria-hidden="true"></i>{{ label }}</span><small>{{ currentIndex + 1 }} / {{ route.length }}</small></div><progress :value="currentIndex + 1" :max="route.length" aria-label="入力の進み具合"></progress></div>
+	<div :class="$style.progress"><div><span><i :class="icon" aria-hidden="true"></i>{{ label }}</span><small>{{ currentIndex + 1 }} / {{ route.length }}</small></div><progress :value="currentIndex + 1" :max="route.length" :aria-label="copy.progress"></progress></div>
 	<p v-if="error" ref="errorBox" role="alert" tabindex="-1" :class="$style.error">{{ error }}</p>
 	<form ref="form" novalidate @submit.prevent="next">
 		<fieldset :disabled="saving || hasSaved" :class="$style.formBody">
@@ -9,7 +9,7 @@
 				<h3 :id="`${id}-${page.id}`" tabindex="-1">{{ page.title }}</h3>
 				<p v-if="page.description" :class="$style.description">{{ page.description }}</p>
 				<div v-if="page.choices" :class="$style.extras">
-					<label v-for="group in groups" :key="group.id" :class="$style.extra"><input v-model="selectedGroups" name="optional-pages" type="checkbox" :value="group.id"><span><i :class="group.icon" aria-hidden="true"></i><span><strong>{{ group.title }}</strong><small>{{ groupHasValue(group.id) ? '入力あり' : '任意' }}</small></span><i class="ti ti-check" aria-hidden="true"></i></span></label>
+					<label v-for="group in groups" :key="group.id" :class="$style.extra"><input v-model="selectedGroups" name="optional-pages" type="checkbox" :value="group.id"><span><i :class="group.icon" aria-hidden="true"></i><span><strong>{{ group.title }}</strong><small>{{ groupHasValue(group.id) ? copy.hasInput : copy.optional }}</small></span><i class="ti ti-check" aria-hidden="true"></i></span></label>
 				</div>
 				<template v-if="page.summary">
 					<div :class="$style.summary"><i :class="icon" aria-hidden="true"></i><div><small>{{ label }}</small><strong>{{ values.title || summaryTitle || label }}</strong></div></div>
@@ -21,8 +21,8 @@
 		</fieldset>
 	</form>
 	<template #actions>
-		<button v-if="currentIndex > 0 || embedded" type="button" class="hy-secondary" :disabled="saving || hasSaved" @click="back"><i class="ti ti-arrow-left" aria-hidden="true"></i>戻る</button>
-		<button type="button" class="hy-primary" :disabled="saving" @click="next">{{ saving ? '保存中' : currentIndex === route.length - 1 ? saveLabel : '次へ' }}<i :class="currentIndex === route.length - 1 ? 'ti ti-check' : 'ti ti-arrow-right'" aria-hidden="true"></i></button>
+		<button v-if="currentIndex > 0 || embedded" type="button" class="hy-secondary" :disabled="saving || hasSaved" @click="back"><i class="ti ti-arrow-left" aria-hidden="true"></i>{{ copy.back }}</button>
+		<button type="button" class="hy-primary" :disabled="saving" @click="next">{{ saving ? copy.saving : currentIndex === route.length - 1 ? saveLabel : copy.next }}<i :class="currentIndex === route.length - 1 ? 'ti ti-check' : 'ti ti-arrow-right'" aria-hidden="true"></i></button>
 	</template>
 </HyDialog>
 <HatadyDraftPrompt v-if="closePrompt" :busy="saving" :error="draftError" @save="closeWithDraft(true)" @discard="closeWithDraft(false)" @return="returnToEditing"/>
@@ -35,12 +35,14 @@ import HyDialog from '@/components/HyDialog.vue';
 import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
 import MkMediaList from '@/components/MkMediaList.vue';
 import HatadyFormFields from '@/components/HatadyFormFields.vue';
-import { commitFormLists, formValidation, initialFormGroups, meaningfulField } from '@/utility/hatady-form.js';
+import { HatadyFormPartialError, commitFormLists, formServerError, formValidation, initialFormGroups, meaningfulField } from '@/utility/hatady-form.js';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { HATADY_RECORD_TAGS, hatadyDuration, hatadyNotify } from '@/utility/hatady-ui.js';
+import { i18n } from '@/i18n.js';
+const copy = i18n.ts._hata._hatady._formWizard;
 
 const values = defineModel<HatadyFormValues>({ required: true });
-const props = withDefaults(defineProps<{ title: string; label: string; icon: string; pages: HatadyFormPage[]; draftId: string; embedded?: boolean; saveLabel?: string; summaryTitle?: string; restore?: (draft: HatadyFormValues) => HatadyFormValues; save: (values: HatadyFormValues) => Promise<any> }>(), { embedded: false, saveLabel: '保存する', summaryTitle: '' });
+const props = withDefaults(defineProps<{ title: string; label: string; icon: string; pages: HatadyFormPage[]; draftId: string; embedded?: boolean; saveLabel?: string; summaryTitle?: string; restore?: (draft: HatadyFormValues) => HatadyFormValues; save: (values: HatadyFormValues) => Promise<any> }>(), { embedded: false, saveLabel: i18n.ts._hata._hatady._formWizard.saveDefault, summaryTitle: '' });
 const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void; (event: 'back'): void }>();
 const dialog = useTemplateRef('dialog'), form = useTemplateRef('form'), errorBox = useTemplateRef('errorBox'), id = useId();
 const currentPage = ref(props.pages[0]?.id ?? ''), selectedGroups = ref(initialFormGroups(props.pages, values.value));
@@ -80,9 +82,9 @@ const summaryFacts = computed(() => {
 		const value = values.value[field.key];
 		if (used.has(field.key) || field.key === 'title' || !meaningfulField(value) || field.when && !field.when(values.value)) return [];
 		used.add(field.key);
-		if (field.type === 'images') return [{ key: field.key, label: field.label, value: `${value.length}枚` }];
-		if (field.type === 'weaponStats' || field.type === 'bookmarks' || field.type === 'memos') return [{ key: field.key, label: field.label, value: `${Array.isArray(value) ? value.length : 0}件` }];
-		const display = field.type === 'duration' ? hatadyDuration(Number(value)) : Array.isArray(value) ? value.map(item => field.options?.find(option => option.value === item)?.label ?? HATADY_RECORD_TAGS.find(tag => tag.value === item)?.label ?? String(item)).join('・') : field.options?.find(option => option.value === String(value))?.label ?? (field.type === 'visibility' ? ({ public: '公開', followers: 'フォロワーのみ', private: '自分のみ' } as Record<string, string>)[value] ?? String(value) : typeof value === 'boolean' ? 'あり' : String(value));
+		if (field.type === 'images') return [{ key: field.key, label: field.label, value: i18n.tsx._hata._hatady._formWizard.imageCount({ count: value.length }) }];
+		if (field.type === 'weaponStats' || field.type === 'bookmarks' || field.type === 'memos') return [{ key: field.key, label: field.label, value: i18n.tsx._hata._hatady._formWizard.itemCount({ count: Array.isArray(value) ? value.length : 0 }) }];
+		const display = field.type === 'duration' ? hatadyDuration(Number(value)) : Array.isArray(value) ? value.map(item => field.options?.find(option => option.value === item)?.label ?? HATADY_RECORD_TAGS.find(tag => tag.value === item)?.label ?? String(item)).join('・') : field.options?.find(option => option.value === String(value))?.label ?? (field.type === 'visibility' ? ({ public: i18n.ts._hata._hatady._home.activityPublic, followers: i18n.ts._hata._hatady._home.activityFollowers, private: i18n.ts._hata._hatady._home.activityPrivate } as Record<string, string>)[value] ?? String(value) : typeof value === 'boolean' ? copy.yes : String(value));
 		return [{ key: field.key, label: field.label, value: display }];
 	}));
 });
@@ -103,14 +105,21 @@ async function validate(all = false): Promise<boolean> {
 		const badInput = Array.from(section?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input,textarea,select') ?? []).find(input => { const field = page.fields.find(item => item.key === input.closest<HTMLElement>('[data-field]')?.dataset.field); return !input.disabled && (!field?.when || field.when(values.value)) && !input.checkValidity(); });
 		const invalid = page.fields.map(field => ({ field, message: formValidation(field, values.value) })).find(item => item.message);
 		if (!badInput && !invalid) continue;
-		if (page.group && !selectedGroups.value.includes(page.group)) selectedGroups.value.push(page.group);
-		await go(page.id, false);
-		error.value = invalid?.message || '入力した値を確認してください';
-		await nextTick();
-		if (badInput) { badInput.focus(); badInput.reportValidity(); } else section?.querySelector<HTMLElement>(`[data-field="${CSS.escape(invalid!.field.key)}"] input,[data-field="${CSS.escape(invalid!.field.key)}"] textarea,[data-field="${CSS.escape(invalid!.field.key)}"] select`)?.focus();
+		const badField = page.fields.find(item => item.key === badInput?.closest<HTMLElement>('[data-field]')?.dataset.field);
+		const message = invalid?.message || (badField ? badInput!.validity.valueMissing ? i18n.tsx._hata._hatady._formWizard.enterField({ field: badField.label }) : i18n.tsx._hata._hatady._formWizard.checkField({ field: badField.label }) : copy.checkInput);
+		await showInvalid(page, invalid?.field.key ?? null, message);
+		if (badInput) { badInput.focus(); badInput.reportValidity(); }
 		return false;
 	}
 	return true;
+}
+
+async function showInvalid(page: HatadyFormPage, key: string | null, message: string): Promise<void> {
+	if (page.group && !selectedGroups.value.includes(page.group)) selectedGroups.value.push(page.group);
+	await go(page.id, false);
+	error.value = message;
+	await nextTick();
+	if (key) form.value?.querySelector<HTMLElement>(`[data-page="${CSS.escape(page.id)}"] :is([data-field="${CSS.escape(key)}"] input,[data-field="${CSS.escape(key)}"] textarea,[data-field="${CSS.escape(key)}"] select)`)?.focus();
 }
 
 async function next(): Promise<void> {
@@ -122,12 +131,14 @@ async function next(): Promise<void> {
 	saving.value = true; error.value = '';
 	try {
 		if (!hasSaved.value) { savedResult = await props.save(values.value); hasSaved.value = true; }
-		if (!draft.clearDraft()) { error.value = '保存は完了しましたが、端末の下書きを削除できませんでした。もう一度保存ボタンを押すと削除を再試行します'; return; }
-		hatadyNotify('保存しました'); emit('done', savedResult); dialog.value?.close();
+		if (!draft.clearDraft()) { error.value = copy.savedDraftCleanupFailed; return; }
+		hatadyNotify(copy.saved); emit('done', savedResult); dialog.value?.close();
 	} catch (reason) {
+		const invalid = formServerError(reason, props.pages, values.value);
+		if (invalid) { saving.value = false; await showInvalid(invalid.page, invalid.field.key, invalid.message); return; }
 		error.value = (reason as { code?: string } | null)?.code === 'INVALID_HATADY_ATTACHMENTS'
-			? '添付した画像を確認してください。削除済みの画像は添付を外してから保存できます。入力内容は残っています'
-			: reason instanceof Error && reason.message.startsWith('一部') ? reason.message : '保存できませんでした。入力内容は残っています';
+			? copy.checkAttachments
+			: reason instanceof HatadyFormPartialError ? reason.message : copy.saveFailed;
 	} finally { saving.value = false; }
 }
 
@@ -150,9 +161,9 @@ function requestClose(toBack = false): void {
 function finishClose(): void { if (exitToBack) emit('back'); else dialog.value?.close(); }
 
 function closeWithDraft(save: boolean): void {
-	if (!(save ? draft.saveDraft() : draft.clearDraft())) { draftError.value = save ? '端末に下書きを保存できませんでした。編集内容は残っています' : '端末の下書きを削除できませんでした'; return; }
+	if (!(save ? draft.saveDraft() : draft.clearDraft())) { draftError.value = save ? copy.draftSaveFailed : copy.draftDeleteFailed; return; }
 	closePrompt.value = false;
-	if (save) hatadyNotify('下書きを保存しました');
+	if (save) hatadyNotify(copy.draftSaved);
 	finishClose();
 }
 

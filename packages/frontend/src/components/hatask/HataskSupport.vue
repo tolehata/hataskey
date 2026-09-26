@@ -3,25 +3,25 @@ SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
-<section ref="rootEl" :class="$style.page" :data-theme="theme" :data-mode="mode" :data-motion="animations ? 'on' : 'off'" data-hatask-support aria-label="支援情報" :aria-busy="loading">
-	<p v-if="loading" :class="$style.empty" role="status">支援情報を読み込んでいます</p>
-	<div v-else-if="error" :class="$style.empty" role="alert"><p>支援情報を読み込めませんでした</p><button type="button" :class="$style.secondaryButton" @click="load">再試行</button></div>
-	<div v-else-if="!data?.configured || !data.settings" :class="$style.empty" data-section="unconfigured-support"><p>このサーバーでは支援情報がありません。<br>また、後ほどご確認ください</p></div>
+<section ref="rootEl" :class="$style.page" :data-theme="theme" :data-mode="mode" :data-motion="animations ? 'on' : 'off'" data-hatask-support :aria-label="copy.title" :aria-busy="loading">
+	<p v-if="loading" :class="$style.empty" role="status">{{ copy.loading }}</p>
+	<div v-else-if="error" :class="$style.empty" role="alert"><p>{{ copy.loadFailed }}</p><button type="button" :class="$style.secondaryButton" @click="load">{{ copy.retry }}</button></div>
+	<div v-else-if="!data?.configured || !data.settings" :class="$style.empty" data-section="unconfigured-support"><p>{{ copy.unconfiguredBefore }}<br>{{ copy.unconfiguredAfter }}</p></div>
 	<template v-else>
-		<header :class="$style.heading"><div><div :class="$style.kicker">SUPPORT / <span>{{ instance.name }}</span></div><h2>支援情報</h2><p>この場所を、これからも。</p></div></header>
-		<section v-if="data.settings.bannerVisible" :class="$style.hero" aria-label="ご支援への感謝" data-section="thanks-banner">
-			<div :class="$style.heroCopy"><div :class="$style.eyebrow">THANK YOU FOR YOUR SUPPORT</div><h3 :class="$style.heroTitle" :data-default-title="defaultBannerTitle"><template v-if="defaultBannerTitle"><span :class="$style.heroTitlePart">ご支援</span><wbr><span :class="$style.heroTitlePart">ありがとうございます！</span></template><template v-else>{{ data.settings.bannerTitle }}</template></h3><p :class="$style.heroMessage">{{ data.settings.bannerMessage }}</p></div>
+		<header :class="$style.heading"><div><div :class="$style.kicker">SUPPORT / <span>{{ instance.name }}</span></div><h2>{{ copy.title }}</h2><p>{{ copy.tagline }}</p></div></header>
+		<section v-if="data.settings.bannerVisible" :class="$style.hero" :aria-label="copy.thanksLabel" data-section="thanks-banner">
+			<div :class="$style.heroCopy"><div :class="$style.eyebrow">THANK YOU FOR YOUR SUPPORT</div><h3 :class="$style.heroTitle" :data-default-title="defaultBannerTitle"><template v-if="defaultBannerTitle"><span :class="$style.heroTitlePart">{{ copy.defaultBannerFirst }}</span><wbr><span :class="$style.heroTitlePart">{{ copy.defaultBannerSecond }}</span></template><template v-else>{{ data.settings.bannerTitle }}</template></h3><p :class="$style.heroMessage">{{ data.settings.bannerMessage }}</p></div>
 			<div :class="$style.heroArt" aria-hidden="true"><img v-if="theme === 'hatakyu'" :src="heartHands" :class="$style.heroIllustration" alt="" width="168" height="168"><i v-else class="ti ti-heart-handshake" :class="$style.heroMark"></i></div>
 		</section>
 		<div :class="$style.supportGrid">
 			<div :class="$style.primary">
 				<section v-if="data.isSupporter" :class="$style.supportStatus" data-section="support-status" :data-pending="pendingBenefits || !benefits.length">
-					<div :class="$style.statusLabel"><i class="ti ti-rosette-discount-check" aria-hidden="true"></i>管理者による支援確認済み</div><h3>{{ pendingBenefits || !benefits.length ? 'ご支援を確認しています' : '支援特典が有効になっています' }}</h3><p :class="$style.lede">{{ supporterStatusCopy }}</p>
+					<div :class="$style.statusLabel"><i class="ti ti-rosette-discount-check" aria-hidden="true"></i>{{ copy.adminConfirmed }}</div><h3>{{ pendingBenefits || !benefits.length ? copy.confirmingSupport : copy.benefitsActive }}</h3><p :class="$style.lede">{{ supporterStatusCopy }}</p>
 				</section>
 				<section ref="benefitPanelEl" :class="$style.panel" :data-section="data.isSupporter ? 'active-benefits' : 'available-benefits'" :data-disclosure="benefits.length > 3" :data-compact="compact" :data-expanded="isExpanded">
-					<h3 :class="$style.sectionTitle"><i :class="data.isSupporter ? 'ti ti-circle-check' : 'ti ti-sparkles'" aria-hidden="true"></i>{{ data.isSupporter ? 'いま使える支援特典' : '支援によって利用できる機能' }}</h3>
-					<p :class="$style.lede">{{ data.isSupporter ? 'あなたのアカウントで現在有効な内容です。\n設定の反映状況も、特典ごとに確認できます' : '管理者が案内している特典です。\n利用条件や反映の時期は、支援先の案内をご確認ください' }}</p>
-					<div v-if="!benefits.length" :class="$style.empty"><i class="ti ti-list-details" aria-hidden="true"></i><h4>特典の案内は準備中です</h4><p>掲載内容が決まるまでお待ちください</p></div>
+					<h3 :class="$style.sectionTitle"><i :class="data.isSupporter ? 'ti ti-circle-check' : 'ti ti-sparkles'" aria-hidden="true"></i>{{ data.isSupporter ? copy.activeBenefits : copy.availableBenefits }}</h3>
+					<p :class="$style.lede">{{ data.isSupporter ? copy.activeBenefitsDescription : copy.availableBenefitsDescription }}</p>
+					<div v-if="!benefits.length" :class="$style.empty"><i class="ti ti-list-details" aria-hidden="true"></i><h4>{{ copy.benefitsPending }}</h4><p>{{ copy.benefitsPendingDescription }}</p></div>
 					<template v-else>
 						<div :class="$style.benefitViewport" :style="compact && benefits.length > 3 && benefitHeight !== null ? { '--benefit-height': `${benefitHeight}px` } : undefined">
 							<div :id="benefitListId" ref="benefitGridEl" :class="$style.benefitGrid">
@@ -30,27 +30,27 @@ SPDX-License-Identifier: AGPL-3.0-only
 									<div :class="$style.valueLabel">{{ benefit.valueLabel }}</div>
 									<div :class="$style.valueWrap"><div :class="$style.value" :style="{ '--value-em': supportTextWidthBudget(benefit.valueText) }" :data-baseline-value="benefit.promoteBaseline ? benefit.key : undefined">{{ benefit.valueText }}</div></div>
 									<small v-if="benefit.condition" :class="$style.condition">{{ benefit.condition }}</small>
-									<dl v-if="benefit.comparisons.length" :class="$style.comparison" aria-label="利用内容の比較"><div v-for="comparison in benefit.comparisons" :key="comparison.kind" :data-emphasized="comparison.emphasized"><dt>{{ comparison.label }}</dt><dd :data-baseline-value="comparison.kind === 'baseline' ? benefit.key : undefined" :data-offered-value="comparison.kind === 'offered' ? benefit.key : undefined">{{ comparison.text }}</dd><dd v-if="comparison.condition"><small :class="$style.condition">{{ comparison.condition }}</small></dd></div></dl>
+									<dl v-if="benefit.comparisons.length" :class="$style.comparison" :aria-label="copy.comparisonLabel"><div v-for="comparison in benefit.comparisons" :key="comparison.kind" :data-emphasized="comparison.emphasized"><dt>{{ comparison.label }}</dt><dd :data-baseline-value="comparison.kind === 'baseline' ? benefit.key : undefined" :data-offered-value="comparison.kind === 'offered' ? benefit.key : undefined">{{ comparison.text }}</dd><dd v-if="comparison.condition"><small :class="$style.condition">{{ comparison.condition }}</small></dd></div></dl>
 									<p :class="$style.benefitDescription">{{ benefit.description }}</p>
-									<div v-if="data.isSupporter" :class="$style.benefitStatus"><i :class="benefit.reflected ? 'ti ti-circle-check' : 'ti ti-clock'" aria-hidden="true"></i>{{ benefit.reflected ? benefit.current.available ? '利用できます' : '設定が反映されています' : '特典の設定が未反映です' }}</div>
+									<div v-if="data.isSupporter" :class="$style.benefitStatus"><i :class="benefit.reflected ? 'ti ti-circle-check' : 'ti ti-clock'" aria-hidden="true"></i>{{ benefit.reflected ? benefit.current.available ? copy.available : copy.reflected : copy.notReflected }}</div>
 								</article>
 							</div>
 						</div>
-						<button v-if="compact && benefits.length > 3" type="button" :class="$style.secondaryButton" data-benefit-toggle :aria-controls="benefitListId" :aria-expanded="isExpanded" @click="toggleBenefits"><i :class="expanded ? 'ti ti-arrow-up' : 'ti ti-arrow-down'" aria-hidden="true"></i>{{ expanded ? '閉じる' : '支援特典をもっとみる' }}</button>
+						<button v-if="compact && benefits.length > 3" type="button" :class="$style.secondaryButton" data-benefit-toggle :aria-controls="benefitListId" :aria-expanded="isExpanded" @click="toggleBenefits"><i :class="expanded ? 'ti ti-arrow-up' : 'ti ti-arrow-down'" aria-hidden="true"></i>{{ expanded ? copy.close : copy.moreBenefits }}</button>
 					</template>
 				</section>
 				<section :class="$style.panel" data-section="supporters" :aria-busy="supportersLoading">
-					<h3 :class="$style.sectionTitle"><i class="ti ti-users" aria-hidden="true"></i>支えてくださるみなさん<span :class="$style.supporterCount">{{ supporterCount }}<small> 人</small></span></h3><p :class="$style.lede">ご支援、本当にありがとうございます</p>
+					<h3 :class="$style.sectionTitle"><i class="ti ti-users" aria-hidden="true"></i>{{ copy.supporters }}<span :class="$style.supporterCount">{{ supporterCount }}<small>{{ supporterCount === 1 ? copy.personUnit : copy.peopleUnit }}</small></span></h3><p :class="$style.lede">{{ copy.thanksSupporters }}</p>
 					<div v-if="supporters.length" :class="$style.supporterList"><div v-for="user in supporters" :key="user.id" :class="$style.supporterCard"><MkAvatar :user="user" :class="$style.avatar"/><MkA :to="`/@${user.username}`" :class="$style.supporterWho"><MkUserName :user="user" :class="$style.supporterName"/><small :class="$style.supporterHandle">@{{ user.username }}</small></MkA></div></div>
-					<p v-if="supportersLoading" :class="$style.empty" role="status">支援者を読み込んでいます</p>
-					<div v-else-if="supportersError" :class="$style.empty" role="alert"><p>支援者を読み込めませんでした</p><button type="button" :class="$style.secondaryButton" @click="loadSupporters">再試行</button></div>
-					<div v-else-if="!supporters.length" :class="$style.empty"><i class="ti ti-users" aria-hidden="true"></i><h4>支援者の掲載はまだありません</h4><p>管理者が確認・登録したローカルユーザーを、こちらに表示します</p></div>
-					<button v-if="hasMoreSupporters && !supportersError" type="button" :class="$style.secondaryButton" :disabled="supportersLoading" @click="loadSupporters">支援者をもっとみる</button>
+					<p v-if="supportersLoading" :class="$style.empty" role="status">{{ copy.supportersLoading }}</p>
+					<div v-else-if="supportersError" :class="$style.empty" role="alert"><p>{{ copy.supportersLoadFailed }}</p><button type="button" :class="$style.secondaryButton" @click="loadSupporters">{{ copy.retry }}</button></div>
+					<div v-else-if="!supporters.length" :class="$style.empty"><i class="ti ti-users" aria-hidden="true"></i><h4>{{ copy.noSupporters }}</h4><p>{{ copy.noSupportersDescription }}</p></div>
+					<button v-if="hasMoreSupporters && !supportersError" type="button" :class="$style.secondaryButton" :disabled="supportersLoading" @click="loadSupporters">{{ copy.moreSupporters }}</button>
 				</section>
 			</div>
-			<aside :class="$style.secondary" aria-label="支援先とご案内">
-				<section v-if="data.isSupporter" :class="$style.panel" data-section="cancel-guidance"><h3 :class="$style.sectionTitle"><i class="ti ti-receipt" aria-hidden="true"></i>支援の停止・変更について</h3><p :class="$style.lede">継続的な支援を停止・変更する場合は、支援したプラットフォームで手続きするか、サーバー管理者へご連絡ください。Hatask内では停止手続きはできません</p><a v-if="manageUrl" :class="$style.secondaryButton" :href="manageUrl" target="_blank" rel="noopener noreferrer"><i class="ti ti-external-link" aria-hidden="true"></i>支援先で確認する</a><p v-else :class="$style.smallCopy">支援先のURLが未設定です。支援に使用したプラットフォームをご確認ください</p></section>
-				<section v-else :class="$style.panel" data-section="support-destination"><h3 :class="$style.sectionTitle"><i class="ti ti-heart-handshake" aria-hidden="true"></i>サーバーを支援する</h3><p :class="$style.lede">{{ data.settings.intro }}</p><template v-if="supportUrl"><div :class="$style.linkCard"><strong>{{ data.settings.platform }}</strong><div :class="$style.supportUrl">{{ supportUrl }}</div></div><a :class="$style.primaryButton" :href="supportUrl" target="_blank" rel="noopener noreferrer"><i class="ti ti-external-link" aria-hidden="true"></i>支援先を確認する</a></template><div v-else :class="$style.empty"><i class="ti ti-link" aria-hidden="true"></i><h4>支援先はまだ設定されていません</h4><p>管理者からの案内をお待ちください</p></div><ol :class="$style.steps"><li><div><strong>支援先の案内を確認</strong><span>利用条件や支払い方法をご確認ください</span></div></li><li><div><strong>管理者が支援を確認</strong><span>支援の確認・反映には時間がかかる場合があります</span></div></li><li><div><strong>この画面で特典を確認</strong><span>支援確認後は、あなたの利用状況に合った表示になります</span></div></li></ol></section>
+			<aside :class="$style.secondary" :aria-label="copy.destinationLabel">
+				<section v-if="data.isSupporter" :class="$style.panel" data-section="cancel-guidance"><h3 :class="$style.sectionTitle"><i class="ti ti-receipt" aria-hidden="true"></i>{{ copy.cancelTitle }}</h3><p :class="$style.lede">{{ copy.cancelDescription }}</p><a v-if="manageUrl" :class="$style.secondaryButton" :href="manageUrl" target="_blank" rel="noopener noreferrer"><i class="ti ti-external-link" aria-hidden="true"></i>{{ copy.manageSupport }}</a><p v-else :class="$style.smallCopy">{{ copy.manageUrlMissing }}</p></section>
+				<section v-else :class="$style.panel" data-section="support-destination"><h3 :class="$style.sectionTitle"><i class="ti ti-heart-handshake" aria-hidden="true"></i>{{ copy.supportServer }}</h3><p :class="$style.lede">{{ data.settings.intro }}</p><template v-if="supportUrl"><div :class="$style.linkCard"><strong>{{ data.settings.platform }}</strong><div :class="$style.supportUrl">{{ supportUrl }}</div></div><a :class="$style.primaryButton" :href="supportUrl" target="_blank" rel="noopener noreferrer"><i class="ti ti-external-link" aria-hidden="true"></i>{{ copy.viewDestination }}</a></template><div v-else :class="$style.empty"><i class="ti ti-link" aria-hidden="true"></i><h4>{{ copy.noDestination }}</h4><p>{{ copy.noDestinationDescription }}</p></div><ol :class="$style.steps"><li><div><strong>{{ copy.stepOne }}</strong><span>{{ copy.stepOneDescription }}</span></div></li><li><div><strong>{{ copy.stepTwo }}</strong><span>{{ copy.stepTwoDescription }}</span></div></li><li><div><strong>{{ copy.stepThree }}</strong><span>{{ copy.stepThreeDescription }}</span></div></li></ol></section>
 			</aside>
 		</div>
 	</template>
@@ -63,12 +63,14 @@ import type { Endpoints } from 'cherrypick-js';
 import { instance } from '@/instance.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatakyuAssetUrl } from '@/utility/hatakyu-assets.js';
-import { formatSupportSnapshot, supportBenefitHeading, supportDisclosureHeights, supportHttpsUrl, supportPolicyDefinition, supportSnapshotCondition, supportTextWidthBudget } from '@/utility/hatask-support.js';
+import { formatSupportSnapshot, supportBenefitHeading, supportDisclosureHeights, supportHttpsUrl, supportPolicyDefinition, supportPolicyDisplay, supportSnapshotCondition, supportTextWidthBudget } from '@/utility/hatask-support.js';
+import { i18n } from '@/i18n.js';
 import MkAvatar from '@/components/global/MkAvatar.vue';
 import MkUserName from '@/components/global/MkUserName.vue';
 import MkA from '@/components/global/MkA.vue';
 
 const props = withDefaults(defineProps<{ theme: string; mode: 'light' | 'dark'; animations?: boolean }>(), { animations: true });
+const copy = i18n.ts._hata._hatask._support;
 type SupportData = Endpoints['hatask/support/show']['res'];
 type SupporterPage = Endpoints['hatask/support/supporters']['res'];
 const data = ref<SupportData | null>(null);
@@ -101,19 +103,20 @@ const benefits = computed(() => (data.value?.benefits ?? []).map(benefit => {
 	const promoteBaseline = !registered && emphasizeBaseline;
 	const primary = registered ? benefit.current : promoteBaseline ? benefit.baseline : benefit.offered;
 	const policy = supportPolicyDefinition(benefit.key);
+	const display = supportPolicyDisplay(benefit.key, benefit.title, benefit.description);
 	const valueText = formatSupportSnapshot(benefit.key, primary);
-	const valueLabel = registered ? '現在の設定' : promoteBaseline ? policy?.type === 'boolean' ? '支援なし' : '支援なしでも利用できます' : '支援特典';
+	const valueLabel = registered ? copy.currentSetting : promoteBaseline ? policy?.type === 'boolean' ? copy.withoutSupport : copy.availableWithoutSupport : copy.supportBenefit;
 	const { baseline, offered } = benefit;
 	// Only collapse a known, identical comparison; matching formatted text alone can hide different limits or conditions.
-	const sameAsBaseline = promoteBaseline && valueText !== '未設定' && baseline != null && offered != null
+	const sameAsBaseline = promoteBaseline && valueText !== copy.unset && baseline != null && offered != null
 		&& (['value', 'available', 'unlimited', 'condition', 'rateMultiplier'] as const).every(key => baseline[key] === offered[key]);
 	const comparisons: { kind: 'baseline' | 'offered'; emphasized: boolean; label: string; text: string; condition: string | null }[] = [];
-	if (benefit.showBaseline && benefit.baseline && !promoteBaseline) comparisons.push({ kind: 'baseline', emphasized: emphasizeBaseline, label: emphasizeBaseline ? '支援なしでも利用できます' : '支援なし', text: formatSupportSnapshot(benefit.key, benefit.baseline), condition: supportSnapshotCondition(benefit.baseline) });
-	if (registered || (promoteBaseline && !sameAsBaseline)) comparisons.push({ kind: 'offered', emphasized: false, label: '支援特典', text: formatSupportSnapshot(benefit.key, benefit.offered), condition: supportSnapshotCondition(benefit.offered) });
-	return { ...benefit, promoteBaseline, comparisons, icon: policy?.icon ?? 'sparkles', titleLines: supportBenefitHeading(benefit.key, benefit.title), valueSource: registered ? 'current' : promoteBaseline ? 'baseline' : 'offered', valueText, valueLabel, condition: supportSnapshotCondition(primary) };
+	if (benefit.showBaseline && benefit.baseline && !promoteBaseline) comparisons.push({ kind: 'baseline', emphasized: emphasizeBaseline, label: emphasizeBaseline ? copy.availableWithoutSupport : copy.withoutSupport, text: formatSupportSnapshot(benefit.key, benefit.baseline), condition: supportSnapshotCondition(benefit.baseline) });
+	if (registered || (promoteBaseline && !sameAsBaseline)) comparisons.push({ kind: 'offered', emphasized: false, label: copy.supportBenefit, text: formatSupportSnapshot(benefit.key, benefit.offered), condition: supportSnapshotCondition(benefit.offered) });
+	return { ...benefit, ...display, promoteBaseline, comparisons, icon: policy?.icon ?? 'sparkles', titleLines: supportBenefitHeading(benefit.key, benefit.title), valueSource: registered ? 'current' : promoteBaseline ? 'baseline' : 'offered', valueText, valueLabel, condition: supportSnapshotCondition(primary) };
 }));
 const pendingBenefits = computed(() => benefits.value.some(benefit => !benefit.reflected));
-const supporterStatusCopy = computed(() => !benefits.value.length ? 'サーバー管理者が、\nあなたからの支援を確認しています。\n特典の案内はまだ設定されていません。\n詳しくは管理者へご確認ください' : pendingBenefits.value ? 'サーバー管理者が、\nあなたからの支援を確認しています。\n一部の特典は設定がまだ反映されていません。\n現在利用できる内容を下でご確認ください' : 'サーバー管理者が、\nあなたからの支援を確認しました。\n現在ご利用いただける支援特典を、\n下にまとめています');
+const supporterStatusCopy = computed(() => !benefits.value.length ? copy.confirmingNoBenefits : pendingBenefits.value ? copy.confirmingSomeBenefits : copy.confirmedBenefits);
 
 async function load(): Promise<void> {
 	if (!active || disposed) return;
