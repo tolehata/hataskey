@@ -4,6 +4,12 @@ Copyright © hatacha and hataskey-project
 
 And is distributed under The GNU Affero General Public License Version 3, you should have received a copy of the license file as LICENSE.
 
+The audio files and accompanying documentation in
+packages/frontend/assets/sounds/hataskey-sound/ are exceptions to the above:
+Copyright (c) 2026 hataskey-sound contributors
+License: MIT
+See packages/frontend/assets/sounds/hataskey-sound/LICENSE.
+
 
 CherryPick includes several third-party Open-Source softwares.
 

@@ -80,6 +80,18 @@ export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = 
 			],
 		},
 		{
+			label: 'サウンド', title: 'いつもの操作に、新しい音を。', cards: [
+				{ id: 'hataskey-sounds', label: '新しい既定音', icon: 'ti ti-music', title: 'Hataskeyのオリジナル効果音。', points: [
+					'新しいオリジナル効果音「hataskey-sound」を既定音にしました。',
+					'新着ノート・投稿・予約登録・編集・通知・リアクション・チャットの7種類です。',
+				] },
+				{ id: 'sound-preferences', label: '音の設定', icon: 'ti ti-volume', title: '好みの音と音量を、そのまま。', points: [
+					'旧既定音と一致する設定だけを一度、新しい音へ切り替えます。別の音源・無音・音量の設定は保ちます。',
+					'音の設定から新しい音を選べます。従来の音も引き続き使えます。',
+				] },
+			],
+		},
+		{
 			label: 'HataFeed', title: '絵文字の変更も、声の行方も。', cards: [
 				{ id: 'emoji-changes', label: '絵文字の変更申請', icon: 'ti ti-mood-edit', title: '使っている絵文字も、更新できます。', points: [
 					'自分が申請して承認された絵文字の画像更新や取り下げを申請し、審査結果を確認できます。',
@@ -123,7 +135,7 @@ export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = 
 				] },
 				{ id: 'timeline-display', label: 'タイムライン', icon: 'ti ti-layout-list', title: '新着の人と画面を、見やすく。', points: [
 					'新着ノートの案内に、最大3人のアバターと投稿者の情報を表示します。',
-					'背景の表示設定が別の画面へ漏れる問題も修正しました。',
+					'背景の表示設定が別の画面へ漏れる問題と、ノート削除時に周囲のノートが一瞬跳ねる問題を修正しました。',
 				] },
 			],
 		},

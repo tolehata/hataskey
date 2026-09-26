@@ -20,6 +20,13 @@ export const soundsTypes = [
 	'_driveFile_',
 
 	// プリインストール
+	'hataskey-sound/note',
+	'hataskey-sound/noteMy',
+	'hataskey-sound/notification',
+	'hataskey-sound/reaction',
+	'hataskey-sound/noteEdited',
+	'hataskey-sound/noteSchedulePost',
+	'hataskey-sound/chatMessage',
 	'syuilo/n-aec',
 	'syuilo/n-aec-4va',
 	'syuilo/n-aec-4vb',
@@ -176,7 +183,7 @@ async function playMisskeySfxFileInternal(soundStore: SoundStore): Promise<boole
 	if (isMute() || masterVolume === 0 || soundStore.volume === 0) {
 		return true; // ミュート時は成功として扱う
 	}
-	const url = soundStore.type === '_driveFile_' ? soundStore.fileUrl : `/client-assets/sounds/${soundStore.type}.mp3`;
+	const url = soundStore.type === '_driveFile_' ? soundStore.fileUrl : `/client-assets/sounds/${soundStore.type}.${soundStore.type.startsWith('hataskey-sound/') ? 'wav' : 'mp3'}`;
 	const buffer = await loadAudio(url).catch(() => {
 		return undefined;
 	});

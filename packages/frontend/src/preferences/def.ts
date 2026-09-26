@@ -469,25 +469,25 @@ export const PREF_DEF = definePreferences({
 		default: false,
 	},
 	'sound.on.note': {
-		default: { type: 'syuilo/n-aec', volume: 1 } as SoundStore,
+		default: { type: 'hataskey-sound/note', volume: 1 } as SoundStore,
 	},
 	'sound.on.noteMy': {
-		default: { type: 'syuilo/n-cea-4va', volume: 1 } as SoundStore,
+		default: { type: 'hataskey-sound/noteMy', volume: 1 } as SoundStore,
 	},
 	'sound.on.noteSchedulePost': {
-		default: { type: 'syuilo/n-cea', volume: 1 } as SoundStore,
+		default: { type: 'hataskey-sound/noteSchedulePost', volume: 1 } as SoundStore,
 	},
 	'sound.on.noteEdited': {
-		default: { type: 'syuilo/n-eca', volume: 1 } as SoundStore,
+		default: { type: 'hataskey-sound/noteEdited', volume: 1 } as SoundStore,
 	},
 	'sound.on.notification': {
-		default: { type: 'syuilo/n-ea', volume: 1 } as SoundStore,
+		default: { type: 'hataskey-sound/notification', volume: 1 } as SoundStore,
 	},
 	'sound.on.reaction': {
-		default: { type: 'syuilo/bubble2', volume: 1 } as SoundStore,
+		default: { type: 'hataskey-sound/reaction', volume: 1 } as SoundStore,
 	},
 	'sound.on.chatMessage': {
-		default: { type: 'syuilo/waon', volume: 1 } as SoundStore,
+		default: { type: 'hataskey-sound/chatMessage', volume: 1 } as SoundStore,
 	},
 
 	'deck.alwaysShowMainColumn': {

@@ -44,5 +44,6 @@ archive/hanaawase/
 packages/frontend/hanaawase/
 # ローカルモックとソースコピーは本番の実行に不要
 temp/
+mockups/sound-design/
 
 .pnpm-store/

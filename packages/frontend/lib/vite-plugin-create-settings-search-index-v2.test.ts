@@ -729,7 +729,7 @@ describe('settings control search index V2', () => {
 		expect(storageTargets('reactionAcceptance').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		expect(storageTargets('realtimeMode').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		const audit = collectSettingsStorageKeyAuditV2(input);
-		expect(audit.counts).toEqual({ preference: 285, pizzax: 105, local: 98 });
+		expect(audit.counts).toEqual({ preference: 285, pizzax: 105, local: 99 });
 		expect(audit.items.find(item => item.kind === 'local' && item.key === 'hataSideStudioUiS')).toMatchObject({
 			disposition: 'runtime', descriptorStableIds: [],
 		});
@@ -745,7 +745,7 @@ describe('settings control search index V2', () => {
 			disposition: 'runtime', descriptorStableIds: [], reason: expect.stringContaining('[src/pages/notifications.vue]'),
 		});
 		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'enableCondensedLine')).toMatchObject({ disposition: 'deprecated', descriptorStableIds: [] });
-		expect(audit.items).toHaveLength(488);
+		expect(audit.items).toHaveLength(489);
 		expect(audit.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(audit.items.every(item => item.descriptorStableIds.length > 0
 			? item.disposition === 'catalog-control' || item.disposition === 'catalog-group'
@@ -757,7 +757,7 @@ describe('settings control search index V2', () => {
 			'preference:migration': 6, 'preference:deprecated': 17, 'preference:internal': 12,
 			'pizzax:catalog-control': 8, 'pizzax:catalog-group': 1, 'pizzax:runtime': 9,
 			'pizzax:migration': 3, 'pizzax:cache': 2, 'pizzax:deprecated': 78, 'pizzax:internal': 4,
-			'local:catalog-control': 13, 'local:catalog-group': 1, 'local:runtime': 9, 'local:migration': 21,
+			'local:catalog-control': 13, 'local:catalog-group': 1, 'local:runtime': 9, 'local:migration': 22,
 			'local:cache': 29, 'local:deprecated': 6, 'local:internal': 19,
 		});
 		expect(audit.items.filter(item => item.kind === 'pizzax' && item.disposition === 'catalog-control')
@@ -813,7 +813,7 @@ describe('settings control search index V2', () => {
 	test('実Vite入力でもstorage key XOR監査を実行し、runtime evidence変更を再生成対象にする', async () => {
 		const inventory = await collectRealSettingsInventory();
 		const audit = await collectSettingsStorageKeyAuditFromRepositoryV2(process.cwd(), inventory.files, inventory.descriptors);
-		expect(audit.counts).toEqual({ preference: 285, pizzax: 105, local: 98 });
+		expect(audit.counts).toEqual({ preference: 285, pizzax: 105, local: 99 });
 		for (const key of ['emojiAdditionNotice', 'hourlyTimeNotice']) {
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key)).toMatchObject({
 				disposition: 'catalog-control',
@@ -824,6 +824,7 @@ describe('settings control search index V2', () => {
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/ui/universal.vue');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/preferences/def.ts');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/utility/retired-portal-migration.ts');
+		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/utility/hataskey-sound-migration.ts');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/utility/external-notifications-sidebar-migration.ts');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/utility/hatask-akatsuki-usage.ts');
 		for (const file of ['settings-preferences-catalog.ts', 'settings-preferences-models.ts', 'settings-preferences-search-index.ts', 'SettingsPreferencesSurface.vue']) {
@@ -883,6 +884,31 @@ describe('settings control search index V2', () => {
 			runtimeSources: input.runtimeSources.map(source => source.file !== evidenceFile
 				? source
 				: { ...source, code: source.code.replace('hata_portal_cleanup_migrated:', 'redacted_portal_marker:') }),
+		})).toThrow('explicit local key has invalid evidence: ' + key);
+	});
+
+	test('既定音移行のプロファイル・設定キー・scope別キーだけを実装証拠付きで分類し、別キーや証拠欠落は拒否する', async () => {
+		const input = await collectStorageAuditInput();
+		const key = 'hata_sound_default_migrated:${string}';
+		const audit = collectSettingsStorageKeyAuditV2(input);
+		expect(audit.items.find(item => item.kind === 'local' && item.key === key)).toMatchObject({
+			disposition: 'migration',
+			descriptorStableIds: [],
+			reason: expect.stringContaining('[src/utility/hataskey-sound-migration.ts]'),
+		});
+		// Mutate the real declaration instead of bypassing its parser with a synthetic fixture.
+		expect(input.localStorageDefinition).toContain(key);
+		expect(() => collectSettingsStorageKeyAuditV2({
+			...input,
+			localStorageDefinition: input.localStorageDefinition.replace(key, 'hata_sound_default_unreviewed:${string}'),
+		})).toThrow('unclassified local key: hata_sound_default_unreviewed:${string}');
+		const evidenceFile = 'src/utility/hataskey-sound-migration.ts';
+		expect(input.runtimeSources.find(source => source.file === evidenceFile)?.code).toContain('hata_sound_default_migrated:');
+		expect(() => collectSettingsStorageKeyAuditV2({
+			...input,
+			runtimeSources: input.runtimeSources.map(source => source.file !== evidenceFile
+				? source
+				: { ...source, code: source.code.replace('hata_sound_default_migrated:', 'redacted_sound_marker:') }),
 		})).toThrow('explicit local key has invalid evidence: ' + key);
 	});
 

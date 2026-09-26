@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import { getHataWhatsNewDisplayVersion, getHataWhatsNewStories, HATA_WHATS_NEW, HATA_WHATS_NEW_THEMES } from './hata-whats-new.js';
 
 const root = path.resolve(process.cwd(), '../..');
-const ids = ['ui-s-layout', 'ui-s-hatask', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'upstream-update', 'script-errors'];
+const ids = ['ui-s-layout', 'ui-s-hatask', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'hataskey-sounds', 'sound-preferences', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'upstream-update', 'script-errors'];
 describe('approved release stories', () => {
 	test('the displayed-version gate stays aligned with the package and release metadata', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -38,7 +38,7 @@ describe('approved release stories', () => {
 	test('short-window pages use stable topic ids, including the second topic when pages merge', () => {
 		const compact = getHataWhatsNewStories(380), full = getHataWhatsNewStories(600);
 		for (const topic of compact) expect(full.find(story => story.cards.some(card => card.id === topic.id))).toBeDefined();
-		expect(full.map(story => story.id)).toEqual(['ui-s-layout', 'recipes', 'flower-care', 'ui-s-settings', 'ui-s-rss', 'note-actions', 'emoji-changes', 'utage-revival', 'mood-timezone', 'hatady-forms', 'upstream-update']);
+		expect(full.map(story => story.id)).toEqual(['ui-s-layout', 'recipes', 'flower-care', 'ui-s-settings', 'ui-s-rss', 'note-actions', 'hataskey-sounds', 'emoji-changes', 'utage-revival', 'mood-timezone', 'hatady-forms', 'upstream-update']);
 	});
 	test('the six approved themes keep their persisted ids and the new moss theme', () => {
 		expect(HATA_WHATS_NEW_THEMES.map(theme => theme.id)).toEqual(['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu']);

@@ -367,6 +367,10 @@ export async function common(createVue: () => Promise<App<Element>>) {
 	}
 
 	// 初期同期を待つ清掃は起動を止めずに行う。取得・保存失敗時には完了印を付けない。
+	const { migrateHataskeyDefaultSounds } = await import('@/utility/hataskey-sound-migration.js');
+	void migrateHataskeyDefaultSounds(prefer, miLocalStorage).catch(() => {
+		console.warn('[hataskey-sound-migration] 設定の取得・保存に失敗したため、次回起動時に再試行します');
+	});
 	const { migrateRetiredPortalMenu } = await import('@/utility/retired-portal-migration.js');
 	const { migrateExternalNotificationsSidebar } = await import('@/utility/external-notifications-sidebar-migration.js');
 	const repairExternalNotificationsSidebar = async () => {
