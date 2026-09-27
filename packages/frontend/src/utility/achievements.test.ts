@@ -142,3 +142,44 @@ describe('Utage achievement propagation', () => {
 		}
 	});
 });
+
+
+describe('LTL punch server-only achievements', () => {
+	const punchIds = ['ltlPunchVictory', 'ltlPunchDefeat'];
+
+	test('registers badges, locale types and SDK result types without enabling client claims', () => {
+		const achievementSchema = sdkTypes.slice(sdkTypes.indexOf('AchievementName:'), sdkTypes.indexOf(';', sdkTypes.indexOf('AchievementName:')));
+		const claimSchema = sdkTypes.slice(sdkTypes.indexOf("    'i___claim-achievement': {"), sdkTypes.indexOf("    'i___delete-account': {"));
+		expect(claimSchema).toContain("name: 'notes1'");
+		for (const id of punchIds) {
+			expect(frontendAchievements.match(new RegExp(`'${id}'`, 'g')), id).toHaveLength(2);
+			expect(backendUserProfile.match(new RegExp(`'${id}'`, 'g')), id).toHaveLength(1);
+			expect(achievementSchema, id).toContain(`'${id}'`);
+			expect(claimSchema, id).not.toContain(`'${id}'`);
+			expect(localeTypes, id).toContain(`"_${id}": {`);
+		}
+	});
+
+	test('excludes punch and existing Utage achievements from frontend and backend claim allowlists', () => {
+		for (const source of [frontendAchievements, backendUserProfile]) {
+			expect(source).toContain('Extract<AchievementType, `utage${string}` | `ltlPunch${string}`>');
+			expect(source).toContain("=> !type.startsWith('utage') && !type.startsWith('ltlPunch')");
+		}
+		const claimEndpoint = read('packages/backend/src/server/api/endpoints/i/claim-achievement.ts');
+		expect(claimEndpoint).toContain("enum: CLIENT_CLAIMABLE_ACHIEVEMENT_TYPES");
+		expect(frontendAchievements).toMatch(/claimAchievement\(type: ClientClaimableAchievementType\) \{\s*if \(!CLIENT_CLAIMABLE_ACHIEVEMENT_TYPES.includes\(type\)\) return;/);
+	});
+
+	test('preserves the requested Japanese copy', () => {
+		expect(jaLocale).toContain('    _ltlPunchVictory:\n      title: "パンチは消えた..."\n      description: "そもそも何この手は？"');
+		expect(jaLocale).toContain('    _ltlPunchDefeat:\n      title: "TLはパンチされた..."\n      description: "パンチがあるゲームだったね..."');
+	});
+
+	test('credits the existing Twemoji graphics and presentation changes', () => {
+		const about = read('packages/frontend/src/pages/about.overview.vue');
+		expect(about).toContain('© Twitter, Inc. and other contributors');
+		expect(about).toContain('https://creativecommons.org/licenses/by/4.0/');
+		expect(about).toContain('https://github.com/discord/twemoji');
+		expect(about).toContain('元のSVGは変更していません。');
+	});
+});

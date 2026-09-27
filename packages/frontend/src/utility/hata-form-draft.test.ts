@@ -13,7 +13,7 @@ const unmounts: Array<() => void> = [];
 function editor(autoSave?: boolean, id = 'hatady:log:create') {
 	const value = ref('');
 	let draft!: ReturnType<typeof useHataFormDraft<{ text: string }>>;
-	const app = createApp(defineComponent({ setup() { draft = useHataFormDraft({ id, autoSave, capture: () => ({ text: value.value }), restore: data => { value.value = data.text; }, isMeaningful: data => data.text.length > 0 }); return () => h('div'); } }));
+	const app = createApp(defineComponent({ setup() { draft = useHataFormDraft({ id, autoSave, capture: () => ({ text: value.value }), restore: data => { if (typeof data.text !== 'string') throw new Error('Invalid draft'); value.value = data.text; }, isMeaningful: data => data.text.length > 0 }); return () => h('div'); } }));
 	const target = window.document.createElement('div'); window.document.body.append(target); app.mount(target);
 	let disposed = false;
 	const unmount = () => { if (!disposed) { disposed = true; app.unmount(); target.remove(); } };
@@ -27,6 +27,14 @@ beforeEach(() => { storage.records.clear(); storage.failRead = false; storage.fa
 afterEach(() => { unmounts.splice(0).forEach(unmount => unmount()); vi.useRealTimers(); });
 
 describe('account-local manual Hatady drafts', () => {
+	test('failed restoration keeps the saved record until new input replaces it', () => {
+		const old = { version: 1, updatedAt: Date.now(), data: { text: 123, otherText: 'recoverable' } };
+		storage.records.set('hataFormDrafts:one', JSON.stringify({ 'hatady:log:create': old }));
+		const untouched = editor(); untouched.unmount();
+		expect(store()['hatady:log:create']).toEqual(old);
+		const changed = editor(); changed.value.value = 'new input'; changed.unmount();
+		expect(store()['hatady:log:create'].data).toEqual({ text: 'new input' });
+	});
 	test('manual mode saves only on explicit choice and never on unmount', async () => {
 		vi.useFakeTimers(); const first = editor(false); first.value.value = '途中の入力'; await nextTick(); await vi.advanceTimersByTimeAsync(1000);
 		expect(first.draft.hasChanges()).toBe(true); expect(storage.records.size).toBe(0);

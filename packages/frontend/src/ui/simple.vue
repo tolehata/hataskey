@@ -196,10 +196,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</nav>
 			<!-- Top pill navbar (timeline tabs) - scroll reactive -->
 			<div
-				v-show="nativeNavbarVisible || mobileToastVisible" data-hata-collapse-group
-				:data-toast-motion="prefer.r.animation.value" :data-hidden="!showTopBar && !mobileToastVisible && !navbarNewNotes && !emojiVoteInNavbar && !notificationToasts.navbarNotice.value"
+				v-show="nativeNavbarVisible || mobileToastVisible || punchVisible" data-hata-collapse-group
+				:data-toast-motion="prefer.r.animation.value" :data-hidden="!punchVisible && !showTopBar && !mobileToastVisible && !navbarNewNotes && !emojiVoteInNavbar && !notificationToasts.navbarNotice.value"
 				:data-emoji-vote="emojiVoteInNavbar"
-				:data-notification-only="mobileNotificationOnly"
+				:data-notification-only="mobileNotificationOnly && !punchVisible"
 				:class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight]"
 			>
 				<div ref="topNavStackEl" :class="$style.topNavStack" :data-navbar-notice="notificationToasts.navbarNotice.value?.kind" :style="emojiVoteNavbarStackStyle">
@@ -207,7 +207,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<MkLtlEmojiVoteOutline v-if="emojiVoteInNavbar" :target="notificationOutlineEl"/>
 						<div :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value" :data-new-notes="!!navbarNewNotesContent" :data-emoji-vote="emojiVoteInNavbar">
 							<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${notificationToasts.integrated.value && !notificationToasts.surface.value ? notificationToasts.height.value : 0}px` }"></div>
-							<div v-show="!mobileNotificationOnly" ref="emojiVoteNavbarNav" :class="$style.topPillNav">
+							<div v-show="!mobileNotificationOnly || punchVisible" ref="emojiVoteNavbarNav" :class="$style.topPillNav">
 								<button v-if="!isDesktop" type="button" :class="$style.avatarBtn" :aria-label="copy.account" @click="openAccountMenu">
 									<img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg" alt=""/>
 									<i v-else class="ti ti-user" aria-hidden="true"></i>
@@ -252,6 +252,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 									</div>
 								</div>
 							</div>
+							<div ref="punchNavbarTarget" :class="$style.punchNavbarTarget"></div>
 							<div ref="ltlEmojiVoteNavbarTarget" :class="$style.emojiVoteNavbarViewport" :data-active="emojiVoteInNavbar"></div>
 							<div :class="$style.newNotesViewport" :data-active="!!navbarNewNotes" :aria-hidden="!navbarNewNotes" :inert="!navbarNewNotes">
 								<div :class="$style.newNotesContent">
@@ -290,14 +291,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-if="timelineGlassBg && $i?.bannerUrl" :class="$style.timelineBanner">
 				<img :src="$i.bannerUrl" :class="$style.timelineBannerImg"/>
 			</div>
-			<div ref="contentEl" :class="$style.content" @scroll="onContentScroll" @wheel="onContentWheel">
-				<Transition :name="$style.tlFade" mode="out-in">
-					<div v-show="!isPageView && !deckActive" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="$style.timelineContainer" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart.passive="onTouchStart" @touchend="onTouchEnd">
+			<div ref="contentEl" data-timeline-tab-gestures :class="$style.content" @scroll="onContentScroll" @wheel="onContentWheel">
+				<Transition :css="newNotesMotionEnabled" :enter-active-class="$style.timelineEnterActive" :leave-active-class="$style.timelineLeaveActive" :enter-from-class="$style.timelineEnterFrom" :enter-to-class="$style.timelineEnterTo" :leave-from-class="$style.timelineLeaveFrom" :leave-to-class="$style.timelineLeaveTo" @before-leave="prepareTimelineLeave" mode="out-in">
+					<div v-show="!isPageView && !deckActive" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="$style.timelineContainer" :style="{ '--timeline-slide-direction': timelineSlideDirection }" :data-timeline-motion="newNotesMotionEnabled" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart.passive="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" @touchcancel="onTouchCancel">
 						<!-- 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定がONのとき、外部TL以外でMkPostFormを表示 -->
 						<MkPostForm v-if="showFixedPostForm && !isExternalTab" :class="$style.fixedPostForm" class="_panel" fixed :autofocus="false"/>
 						<KeepAlive>
 							<MkStreamingNotesTimeline v-if="tab === 'mixed'" key="mixed" newNotesNavbarKey="main:mixed" src="global" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive" :emojiVoteEffectTarget="ltlEmojiVoteEffects" :emojiVoteNavbar="normalLtlVoteActive && nativeNavbarVisible" :emojiVoteNavbarTarget="normalLtlVoteActive && nativeNavbarVisible ? ltlEmojiVoteNavbarTarget : null" @emojiVoteNavbarState="emojiVoteNavbarState = $event"/>
+							<MkStreamingNotesTimeline v-else-if="tab === 'local'" ref="punchTimeline" :updatesPaused="punchBusy" key="local" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive && !punchBusy" :emojiVoteEffectTarget="ltlEmojiVoteEffects" :emojiVoteNavbar="normalLtlVoteActive && nativeNavbarVisible" :emojiVoteNavbarTarget="normalLtlVoteActive && nativeNavbarVisible ? ltlEmojiVoteNavbarTarget : null" @emojiVoteNavbarState="emojiVoteNavbarState = $event"/>
 							<MkStreamingNotesTimeline v-else-if="tab === 'social'" key="social" newNotesNavbarKey="main:social" src="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
 							<MkStreamingNotesTimeline v-else-if="tab === 'following'" key="following" newNotesNavbarKey="main:following" src="home" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
 							<MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" key="ohtl" newNotesNavbarKey="main:ohtl" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
@@ -316,6 +317,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 				<div v-show="isPageView" data-hata-collapse-part :class="[$style.pageContainer, { [$style.collectionPageContainer]: isCollectionTimelinePage }]"><RouterView/></div>
 			</div>
+			<MkLtlPunch :active="normalLtlVoteActive && !!$i" :navbarTarget="punchNavbarTarget" :navbarFrame="notificationOutlineEl" :timelineRoot="punchNoteRoot" :viewportTarget="contentEl" :animationEnabled="prefer.r.animation.value" @busy="punchBusy = $event" @visible="punchVisible = $event"/>
 			<div v-if="normalLtlVoteActive" ref="ltlEmojiVoteEffects" :class="$style.ltlEmojiVoteEffects" :style="ltlEmojiVoteViewport" aria-hidden="true"></div>
 
 			<!-- 通常TL: ナビバー（モバイルのみ） -->
@@ -486,6 +488,7 @@ import type { TimelineCollectionKind } from '@/utility/hatasaba-navigation.js';
 import type { HataSideButton, HataSideGroup, HataSideWidget, HataSideWidgetKind } from '@/utility/hata-side-studio.js';
 import { globalEvents } from '@/events.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
+import MkLtlPunch from '@/components/MkLtlPunch.vue';
 import MkHataskeyUiSAnnouncement from '@/components/MkHataskeyUiSAnnouncement.vue';
 import MkLtlEmojiVoteOutline from '@/components/MkLtlEmojiVoteOutline.vue';
 import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
@@ -505,6 +508,7 @@ import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
 import { isHataskeyTimelineAllowed } from '@/utility/hataskey-timeline-availability.js';
 import { antennasCache, userListsCache } from '@/cache.js';
+import { createTimelineTabGestures } from '@/utility/timeline-tab-gestures.js';
 import { deckIgnoreWidth, glassUiLocal, tabSwipeEnabled, rightWidgetsCollapsed, setRightWidgetsCollapsed } from '@/utility/hatasaba-device-prefs.js';
 import { hatadyTzOffset } from '@/utility/hatady-prefs.js';
 import { prefer } from '@/preferences.js';
@@ -655,63 +659,8 @@ function toggleSidebarCollapse() {
 	prefer.commit('simpleUi.sidebarCollapsed', !sidebarCollapsed.value);
 }
 
-// 旗鯖fork: トラックパッドの横スクロールでタイムラインタブを切替。
-// macOSでは横スワイプがブラウザの「戻る/進む」履歴ジェスチャに化けてしまうため、
-// 横方向が優位なwheelイベントを preventDefault で食い、タブ切替に割り当てる
-// (CSS側の overscroll-behavior-x: none と併用)。
-let wheelAccX = 0;
-// 旗鯖fork: wheel(トラックパッド横スワイプ)とtouchの両方がタブ移動を起こすと
-// 1スワイプで2タブ動いてしまう。両者で共有するロックで二重発火を防ぐ。
-let tabSwitchLockUntil = 0;
-// 旗鯖fork: トラックパッドの大きな横スワイプは wheel イベントが連続で飛んでくるため、
-// ロック時間だけでは1ジェスチャ中に2回移動してしまう。
-// 「wheelが一定時間途切れたら1ジェスチャ終了」とみなし、1ジェスチャにつき1回だけ移動させる。
-let wheelGestureMoved = false; // この連続ジェスチャ中に既に1回移動したか
-let wheelEndTimer: number | null = null;
-const orderedWheelTabs = computed<string[]>(() => [
-	...visibleTopTabs.value.map((t: any) => t.id),
-	...(showOHTL.value ? ['ohtl'] : []),
-	...(showOLTL.value ? ['oltl'] : []),
-]);
-
-// ノート内のコードブロック等、横スクロール可能な子要素の上では奪わない
-function hasHScrollableAncestor(start: HTMLElement | null): boolean {
-	let el = start;
-	while (el && el !== contentEl.value) {
-		if (el.scrollWidth > el.clientWidth + 1) {
-			const ox = window.getComputedStyle(el).overflowX;
-			if (ox === 'auto' || ox === 'scroll') return true;
-		}
-		el = el.parentElement;
-	}
-	return false;
-}
-
-function onContentWheel(ev: WheelEvent) {
-	if (!tabSwipeEnabled.value) return;
-	if (!isDesktop.value || isPageView.value || deckActive.value) return;
-	if (Math.abs(ev.deltaX) <= Math.abs(ev.deltaY) * 1.2) return; // 横方向優位のみ
-	if (hasHScrollableAncestor(ev.target as HTMLElement)) return;
-	ev.preventDefault(); // macの履歴スワイプ誤発火を抑止
-
-	// wheelが途切れたら1ジェスチャ終了とみなす。来るたびにタイマーをリセット。
-	if (wheelEndTimer) window.clearTimeout(wheelEndTimer);
-	wheelEndTimer = window.setTimeout(() => { wheelGestureMoved = false; wheelAccX = 0; wheelEndTimer = null; }, 150);
-
-	// このジェスチャ中に既に1回動いていたら、以降のwheelは溜めずに無視(=1ジェスチャ1タブ)
-	if (wheelGestureMoved) { wheelAccX = 0; return; }
-
-	wheelAccX += ev.deltaX;
-	if (Math.abs(wheelAccX) < 90) return;
-	const dir = wheelAccX > 0 ? 1 : -1;
-	wheelAccX = 0;
-	wheelGestureMoved = true; // このジェスチャでは移動済み
-	tabSwitchLockUntil = Date.now() + 450; // touch側との二重発火も防ぐ
-	const tabs = orderedWheelTabs.value;
-	const idx = tabs.indexOf(tab.value);
-	const next = idx === -1 ? 0 : Math.min(tabs.length - 1, Math.max(0, idx + dir));
-	if (tabs[next] && tabs[next] !== tab.value) switchTab(tabs[next] as TabType);
-}
+// 横ホイールも幅にかかわらず、表示中のタイムラインへ渡す。
+function onContentWheel(event: WheelEvent) { timelineTabGestures.wheel(event); }
 
 // ===== デスクトップ判定 =====
 const DESKTOP_THRESHOLD = 1100;
@@ -988,6 +937,7 @@ function getInitialTab(): TabType {
 }
 
 const tab = ref<TabType>(getInitialTab());
+const timelineSlideDirection = ref<1 | -1>(1);
 
 // Role changes also retire the active stream; saved tab preferences are retained.
 watch(() => isHataskeyTimelineAllowed(tab.value), allowed => {
@@ -995,6 +945,14 @@ watch(() => isHataskeyTimelineAllowed(tab.value), allowed => {
 }, { flush: 'sync' });
 
 const ltlEmojiVoteEffects = ref<HTMLElement | null>(null);
+const punchBusy = ref(false);
+const punchVisible = ref(false);
+const punchNavbarTarget = ref<HTMLElement | null>(null);
+const punchTimeline = ref<InstanceType<typeof MkStreamingNotesTimeline> | null>(null);
+const punchNoteRoot = computed(() => punchTimeline.value?.noteRoot ?? null);
+watch(punchBusy, busy => {
+	if (busy) timelineCollapseEffect.cancel();
+});
 const normalLtlVoteActive = computed(() => tab.value === 'local' && !isPageView.value && !deckActive.value);
 const ltlEmojiVoteViewport = ref({ top: '0px', left: '0px', width: '0px', height: '0px' });
 // watchは登録時にもgetterを評価するので、tab・isPageViewの初期化後に登録する。
@@ -1033,6 +991,13 @@ const tabOrder = computed<TabType[]>(() => {
 	if (showOLTL.value) tabs.push('oltl');
 	return tabs;
 });
+
+watch(tab, (next, previous) => {
+	const order = tabOrder.value;
+	const from = order.indexOf(previous);
+	const to = order.indexOf(next);
+	if (from >= 0 && to >= 0 && from !== to) timelineSlideDirection.value = to > from ? 1 : -1;
+}, { flush: 'sync' });
 
 // ===== prefer連動: 下部ナビ =====
 const visibleBottomNav = computed(() => getVisibleBottomNav(prefer.r['simpleUi.bottomNav'].value as any[]));
@@ -1568,11 +1533,14 @@ const sidebarGroups = computed(() => {
 	// グループの表示順を固定 (定義順に依存しないように)
 	return groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 });
+function prepareTimelineLeave(element: Element) {
+	if (element instanceof HTMLElement) element.style.setProperty('--timeline-slide-direction', String(timelineSlideDirection.value));
+}
 const switchTab = (t:TabType) => {
 	if (!isHataskeyTimelineAllowed(t)) return;
 	if (isCollectionTimelinePage.value) mainRouter.push('/');
 	timelinePickerKind.value = null;
-	if (tab.value === t) { if (contentEl.value) contentEl.value.scrollTo({ top: 0, behavior: 'smooth' }); } else { tab.value = t; }
+	if (tab.value === t) { if (contentEl.value) contentEl.value.scrollTo({ top: 0, behavior: newNotesMotionEnabled.value ? 'smooth' : 'auto' }); } else { tab.value = t; }
 	if (t !== 'ohtl' && t !== 'oltl') miLocalStorage.setItem('hatasabaUiLastTab', t);
 };
 
@@ -1583,26 +1551,26 @@ async function openAccountMenu(ev: MouseEvent) {
 }
 
 // ===== スワイプ =====
-const touchStartPos = ref<{ x: number;y: number } | null>(null);
-const onTouchStart = (e:TouchEvent) => {
-	if (!tabSwipeEnabled.value) { touchStartPos.value = null; return; }
-	touchStartPos.value = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-};
-const onTouchEnd = (e:TouchEvent) => {
-	if (!tabSwipeEnabled.value) { touchStartPos.value = null; return; }
-	if (!touchStartPos.value) return;
-	const dx = e.changedTouches[0].clientX - touchStartPos.value.x;
-	const dy = e.changedTouches[0].clientY - touchStartPos.value.y;
-	touchStartPos.value = null;
-	if (Math.abs(dy) > Math.abs(dx) || Math.abs(dy) > 50) return;
-	if (Math.abs(dx) > 60) {
-		// 旗鯖fork: wheelとtouchの二重発火で2タブ動くのを防ぐ共通ロック
-		if (Date.now() < tabSwitchLockUntil) return;
-		tabSwitchLockUntil = Date.now() + 450;
-		const idx = tabOrder.value.indexOf(tab.value);
-		if (dx > 0) {if (idx > 0)switchTab(tabOrder.value[idx - 1]); else simpleDrawerShowing.value = true;} else {if (idx < tabOrder.value.length - 1)switchTab(tabOrder.value[idx + 1]);}
-	}
-};
+const timelineTabGestures = createTimelineTabGestures({
+	enabled: () => tabSwipeEnabled.value && !isPageView.value && !deckActive.value && !punchBusy.value,
+	root: () => contentEl.value,
+	canMove: (direction, source) => {
+		const index = tabOrder.value.indexOf(tab.value);
+		return index >= 0 && (tabOrder.value[index + direction] != null || (source === 'touch' && direction === -1 && index === 0));
+	},
+	move: (direction, source) => {
+		const index = tabOrder.value.indexOf(tab.value);
+		const next = tabOrder.value[index + direction];
+		if (next) switchTab(next);
+		else if (source === 'touch' && direction === -1 && index === 0) simpleDrawerShowing.value = true;
+	},
+});
+const onTouchStart = timelineTabGestures.touchStart;
+const onTouchMove = timelineTabGestures.touchMove;
+const onTouchEnd = timelineTabGestures.touchEnd;
+const onTouchCancel = timelineTabGestures.touchCancel;
+watch([tabSwipeEnabled, isPageView, deckActive, punchBusy], () => timelineTabGestures.reset());
+onUnmounted(timelineTabGestures.destroy);
 
 // ===== ナビゲーション =====
 // 旗鯖fork: 上部ナビバーの横スクロール(縦ホイール→横)
@@ -1686,7 +1654,7 @@ const topNavStackEl = ref<HTMLElement | null>(null);
 const nativeNavbarVisible = computed(() => (!isPageView.value || isCollectionTimelinePage.value) && !deckActive.value);
 const ltlEmojiVoteNavbarTarget = ref<HTMLElement | null>(null);
 const emojiVoteNavbarState = ref({ visible: false, celebrating: false, leaving: false });
-const emojiVoteInNavbar = computed(() => normalLtlVoteActive.value && nativeNavbarVisible.value && emojiVoteNavbarState.value.visible);
+const emojiVoteInNavbar = computed(() => normalLtlVoteActive.value && !punchBusy.value && nativeNavbarVisible.value && emojiVoteNavbarState.value.visible);
 const emojiVoteNavbarNav = ref<HTMLElement | null>(null);
 const emojiVoteNavbarTabs = ref<HTMLElement | null>(null);
 const emojiVoteNavbarRestWidth = ref<number | null>(null);
@@ -2034,6 +2002,7 @@ let streamRetryTimer: number | null = null;
 let streamUnmounted = false;
 
 function onHataTimelineCollapse() {
+	if (punchBusy.value) return;
 	timelineCollapseEffect.play();
 }
 
@@ -3434,6 +3403,9 @@ onUnmounted(() => {
 .topPillFrame[data-emoji-celebrating='true'][data-emoji-leaving='false'] > svg[data-emoji-vote-outline='true'] { opacity:.55; }
 .topBar[data-emoji-vote='true'] .topNavStack { transition:width .48s cubic-bezier(.22,1,.36,1); }
 .topBar[data-emoji-vote='true'] .topPillFrame { width:100%; }
+.punchNavbarTarget {
+    width:100%; min-width:0;
+}
 .emojiVoteNavbarViewport {
     order:2; width:100%; min-width:0; max-height:0; overflow:hidden;
 }
@@ -3641,12 +3613,15 @@ onUnmounted(() => {
     padding-top:calc(68px + env(safe-area-inset-top,0px));
 }
 
-// ===== フェードトランジション =====
-.tlFade {
-    :global(&-enter-active) { transition:opacity .25s ease, transform .28s cubic-bezier(.22,1,.36,1); }
-    :global(&-leave-active) { transition:opacity .15s ease, transform .2s cubic-bezier(.22,1,.36,1); }
-    :global(&-enter-from) { opacity:0; transform:translateX(24px); }
-    :global(&-leave-to) { opacity:0; transform:translateX(-24px); }
+// ===== タブの方向に沿ったスライドとフェード（合計約300ms） =====
+.timelineEnterActive { transition:opacity .18s ease, transform .18s cubic-bezier(.22,1,.36,1); }
+.timelineLeaveActive { transition:opacity .12s ease, transform .12s cubic-bezier(.22,1,.36,1); }
+.timelineEnterFrom { opacity:0; transform:translateX(calc(var(--timeline-slide-direction,1) * 24px)); }
+.timelineLeaveTo { opacity:0; transform:translateX(calc(var(--timeline-slide-direction,1) * -24px)); }
+.timelineEnterTo, .timelineLeaveFrom { opacity:1; transform:translateX(0); }
+.timelineContainer[data-timeline-motion='false'] { transition:none!important; }
+@media(prefers-reduced-motion:reduce) {
+    .timelineEnterActive, .timelineLeaveActive { transition:none!important; }
 }
 
 // ===== ボトムバー =====

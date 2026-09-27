@@ -70,6 +70,7 @@ export function useHataFormDraft<T>(options: {
 	// アカウント切替後のアンマウントでも元のアカウントへだけ保存する。
 	const key = storageKey();
 	let completed = false;
+	let restoreFailed = false;
 	let initialSnapshot = '';
 	let timer: number | null = null;
 	let stopWatch: WatchStopHandle | null = null;
@@ -90,6 +91,8 @@ export function useHataFormDraft<T>(options: {
 		const store = readStore(key);
 		if (store == null) return false;
 		const data = options.capture();
+		if (restoreFailed && snapshot(data) === initialSnapshot) return true;
+		restoreFailed = false;
 		if (hasUnsavedChanges(data)) {
 			store[options.id] = { version: 1, updatedAt: Date.now(), data };
 		} else {
@@ -104,6 +107,7 @@ export function useHataFormDraft<T>(options: {
 		if (store == null) return false;
 		delete store[options.id];
 		if (!writeStore(key, store)) return false;
+		restoreFailed = false;
 		completed = !clearOptions?.resume;
 		if (clearOptions?.resume) initialSnapshot = snapshot(options.capture());
 		restored.value = false;
@@ -125,6 +129,7 @@ export function useHataFormDraft<T>(options: {
 				options.restore(draft.data as T);
 				restored.value = true;
 			} catch {
+				restoreFailed = true;
 				// 読み取れない旧形式もここでは消さず、明示破棄まで残す。
 			}
 		}

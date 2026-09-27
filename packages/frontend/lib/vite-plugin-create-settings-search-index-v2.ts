@@ -2457,6 +2457,7 @@ const EXPLICIT_CONTROL_STORAGE_BINDINGS_V2: Readonly<Record<string, Readonly<Rec
 		'model:code': { refs: [{ kind: 'pref', key: 'plugins' }], evidence: 'installPlugin() は解析済みコードを prefer.commit(plugins) で profile 設定へ保存する' },
 	},
 	'src/pages/settings/preferences.vue': {
+		'model:deviceHorizontalSwipe': { refs: [{ kind: 'local', key: 'hatasabaTabSwipeEnabled' }], evidence: 'usesDeviceHorizontalSwipe 分岐の useHorizontalSwipeModel() setter は setTabSwipeEnabled() を通じ、miLocalStorage の hatasabaTabSwipeEnabled を即時更新する' },
 		'click:enableAll': { refs: [{ kind: 'pref', key: 'reactionPickerSize' }], evidence: 'enableAll() は既存のリアクションpicker preference群を一括変更する' },
 		'click:disableAll': { refs: [{ kind: 'pref', key: 'reactionPickerSize' }], evidence: 'disableAll() は既存のリアクションpicker preference群を一括変更する' },
 		'click:enableAllDataSaver': { refs: [{ kind: 'pref', key: 'dataSaver' }], evidence: 'enableAllDataSaver() は dataSaver の全項目を profile preference として保存する' },

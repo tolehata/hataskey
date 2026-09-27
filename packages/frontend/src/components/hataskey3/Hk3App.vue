@@ -32,7 +32,7 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 		<template v-else>
 			<main data-hk3-stage :class="$style.main">
 				<template v-if="isHome">
-					<Hk3Timeline ref="timelineRef">
+					<Hk3Timeline ref="timelineRef" @punchBusy="punchBusy = $event">
 						<Hk3Composer ref="composerRef" :menuPlacement="prefer.r.hataskeyUi3ComposerPosition.value === 'top' ? 'down' : 'up'"/>
 					</Hk3Timeline>
 				</template>
@@ -54,7 +54,7 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 		</div>
 
 		<template v-if="isHome">
-			<Hk3Timeline ref="timelineRef" compact>
+			<Hk3Timeline ref="timelineRef" @punchBusy="punchBusy = $event" compact>
 				<Hk3Composer ref="composerRef" compact :menuPlacement="prefer.r.hataskeyUi3ComposerPosition.value === 'top' ? 'down' : 'up'"/>
 			</Hk3Timeline>
 		</template>
@@ -114,6 +114,7 @@ const RIGHT_PANE_MIN = 1200;
 const rootEl = shallowRef<HTMLElement | null>(null);
 const deckBoxEl = shallowRef<HTMLElement | null>(null);
 const composeWindowEl = shallowRef<HTMLElement | null>(null);
+const punchBusy = ref(false);
 const timelineRef = shallowRef<InstanceType<typeof Hk3Timeline> | null>(null);
 const composerRef = shallowRef<InstanceType<typeof Hk3Composer> | null>(null);
 
@@ -192,7 +193,12 @@ const timelineCollapseEffect = createHataTimelineCollapseEffect({
 });
 const timelineCollapseStream = useStream();
 
+watch(punchBusy, busy => {
+	if (busy) timelineCollapseEffect.cancel();
+});
+
 function onHataTimelineCollapse() {
+	if (punchBusy.value) return;
 	timelineCollapseEffect.play();
 }
 

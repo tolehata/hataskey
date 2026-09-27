@@ -194,6 +194,7 @@ import { instance } from '@/instance.js';
 import { ensureSignin, notesCount, incNotesCount } from '@/i.js';
 import { getAccounts, getAccountMenu } from '@/accounts.js';
 import { deepClone } from '@/utility/clone.js';
+import type { Cloneable } from '@/utility/clone.js';
 import MkRippleEffect from '@/components/MkRippleEffect.vue';
 import { miLocalStorage } from '@/local-storage.js';
 import { claimAchievement } from '@/utility/achievements.js';
@@ -225,6 +226,7 @@ const props = withDefaults(defineProps<PostFormProps & {
 	autofocus: true,
 	mock: false,
 	initialLocalOnly: undefined,
+	restoreDraft: true,
 	postDelayStatusTarget: null,
 });
 
@@ -259,8 +261,8 @@ function waitForSubmitMotion(duration: number): Promise<void> {
 
 const text = ref(props.initialText ?? '');
 const files = shallowRef(props.initialFiles ?? ([] as Misskey.entities.DriveFile[]));
-const poll = ref<PollEditorModelValue | null>(null);
-const event = ref<any>(null);
+const poll = ref<PollEditorModelValue | null>(deepClone(props.initialPoll ?? null));
+const event = ref<any>(deepClone((props.initialEvent ?? null) as Cloneable));
 const useCw = ref<boolean>(!!props.initialCw);
 const showPreview = ref(prefer.s.showPreview);
 const showProfilePreview = ref(prefer.s.showProfilePreview);
@@ -291,7 +293,7 @@ const visibilityBorderStyle = computed(() => {
 if (props.initialVisibleUsers) {
 	props.initialVisibleUsers.forEach(u => pushVisibleUser(u));
 }
-const reactionAcceptance = ref(store.s.reactionAcceptance);
+const reactionAcceptance = ref(props.initialReactionAcceptance !== undefined ? props.initialReactionAcceptance : store.s.reactionAcceptance);
 const scheduledAt = ref<number | null>(null);
 const draghover = ref(false);
 const quoteId = ref<string | null>(null);
@@ -1848,7 +1850,7 @@ onMounted(() => {
 
 	nextTick(() => {
 		// 書きかけの投稿を復元
-		if (!props.instant && !props.mention && !props.specified && !props.mock) {
+		if (props.restoreDraft !== false && !props.instant && !props.mention && !props.specified && !props.mock) {
 			const draft = JSON.parse(miLocalStorage.getItem('drafts') ?? '{}')[draftKey.value];
 			if (draft) {
 				text.value = draft.data.text;

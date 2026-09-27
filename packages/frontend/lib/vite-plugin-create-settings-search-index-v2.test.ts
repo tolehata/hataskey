@@ -210,7 +210,7 @@ async function buildRealCatalogFromVirtualModule() {
 		targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 		mainVirtualModule: 'search-index-v2:settings-real-catalog',
 		routerDefinitionPath: 'src/router.definition.ts',
-		expectedControlCount: 519,
+		expectedControlCount: 520,
 	});
 	const load = typeof plugin.load === 'function' ? plugin.load : undefined;
 	if (load == null) throw new Error('settings V2 plugin did not expose virtual loader');
@@ -1238,7 +1238,7 @@ describe('settings control search index V2', () => {
 		expect(settingsFiles).toHaveLength(49);
 		expect(inventory.files).toHaveLength(59);
 		expect(legacy).toHaveLength(280);
-		validateSettingsControlDescriptorsV2(inventory.descriptors, 519);
+		validateSettingsControlDescriptorsV2(inventory.descriptors, 520);
 		expect(inventory.descriptors.filter(entry => entry.activation?.kind === 'popup' && entry.route === '/settings/hata-custom').length).toBeGreaterThan(15);
 		expect(inventory.results.reduce((count, result) => count + (result.injected.code.match(/data-settings-search-id=/gu)?.length ?? 0), 0)).toBeGreaterThan(0);
 		expect(inventory.results.flatMap(result => parseSfc(result.injected.code).errors)).toHaveLength(0);
@@ -1274,12 +1274,12 @@ describe('settings control search index V2', () => {
 		await expect(load!.call({}, '\0search-index-v2:missing')).rejects.toThrow('target matched no SFC');
 	});
 
-	test('新しい仮想モジュールは59 source SFC・519項目とactivationを配信する', async () => {
+	test('新しい仮想モジュールは59 source SFC・520項目とactivationを配信する', async () => {
 		const plugin = pluginCreateSettingsSearchIndexV2({
 			targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 			mainVirtualModule: 'search-index-v2:settings',
 			routerDefinitionPath: 'src/router.definition.ts',
-			expectedControlCount: 519,
+			expectedControlCount: 520,
 			modulesToHmrOnUpdate: ['src/pages/settings-redesign/index.vue'],
 		});
 		const load = typeof plugin.load === 'function' ? plugin.load : undefined;
@@ -1290,7 +1290,7 @@ describe('settings control search index V2', () => {
 		const inventoryJson = (generated as string).match(/^export const settingsControlSearchIndexV2 = ([\s\S]+);\n$/u)?.[1];
 		expect(inventoryJson).toBeDefined();
 		const inventory = JSON.parse(inventoryJson!) as Array<{ sourceFile: string; route: string; activation?: { kind: string; popup?: string } }>;
-		expect(inventory).toHaveLength(519);
+		expect(inventory).toHaveLength(520);
 		// Safe `editor.copy` controls stay individual; only the three dynamic
 		// runtime/value areas become semantic groups.
 		expect(inventory.filter(entry => entry.sourceFile === 'src/components/HatasabaUi2SettingsBody.vue' && entry.activation?.popup === 'hatasaba-ui2')).toHaveLength(15);
@@ -1518,7 +1518,7 @@ describe('settings control search index V2', () => {
 		}
 		expect(relationSuspects).toHaveLength(0);
 		expect(labelAuditIssues).toHaveLength(0);
-		expect(descriptors).toHaveLength(519);
+		expect(descriptors).toHaveLength(520);
 		expect(legacy).toHaveLength(280);
 		expect(catalog.byLegacyId.size).toBe(280);
 		expect(controls).toHaveLength(descriptors.filter((descriptor: { searchable: boolean }) => descriptor.searchable).length);

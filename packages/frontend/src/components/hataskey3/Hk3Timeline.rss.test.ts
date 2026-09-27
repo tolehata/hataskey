@@ -4,6 +4,7 @@ import { createApp, h, nextTick } from 'vue';
 import Hk3Timeline from './Hk3Timeline.vue';
 import { hk3Toasts, hk3PostedNote } from './hk3-state.js';
 import { prefer } from '@/preferences.js';
+import { tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
 
 const mocks = vi.hoisted(() => ({
 	navigate: vi.fn(), sound: vi.fn(), api: vi.fn(), channel: vi.fn(), dispose: vi.fn(), lists: vi.fn(), antennas: vi.fn(),
@@ -31,6 +32,10 @@ vi.mock('@/i18n.js', () => ({ i18n: { tsx: { newNoteRecivedCount: ({ n }: { n: n
 		_hatasabaUi: { _simple: { list: 'Lists', channel: 'Channels', antenna: 'Antennas', selectList: 'Select list', selectAntenna: 'Select antenna', switchList: 'Switch list', switchAntenna: 'Switch antenna', configureList: 'Configure list', configureAntenna: 'Configure antenna', noLists: 'No lists', noAntennas: 'No antennas', options: 'Options' } },
 	},
 } } }));
+vi.mock('@/utility/hatasaba-device-prefs.js', async () => {
+	const { ref } = await import('vue');
+	return { tabSwipeEnabled: ref(true) };
+});
 vi.mock('@/preferences.js', async () => {
 	const { ref } = await import('vue');
 	return { prefer: { r: {
@@ -70,8 +75,8 @@ vi.mock('./Hk3RssReader.vue', () => ({ default: {
 	template: '<div data-rss-reader :data-interrupted="String(interrupted)" :data-paused="String(paused)">Reader</div>',
 } }));
 vi.mock('./Hk3Note.vue', () => ({ default: {
-	props: ['note', 'instanceBadgePosition', 'showAudienceIcons', 'size'],
-	template: '<div :data-rendered-note="note.id" :data-badge-position="instanceBadgePosition" :data-audience-enabled="String(showAudienceIcons)" :data-note-size="size" />',
+	props: ['note', 'instanceBadgePosition', 'showAudienceIcons', 'showLocalOnlyIcon', 'size'],
+	template: '<div :data-rendered-note="note.id" :data-badge-position="instanceBadgePosition" :data-audience-enabled="String(showAudienceIcons)" :data-local-only-enabled="String(showLocalOnlyIcon)" :data-note-size="size" />',
 } }));
 vi.mock('./Hk3PostSuccess.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/MkExternalTimeline.vue', async () => {
@@ -108,6 +113,7 @@ async function mount(compact = false) {
 }
 
 beforeEach(() => {
+	tabSwipeEnabled.value = true;
 	hk3Toasts.value = [];
 	prefer.r.hataskeyUi3RssEnabled.value = true;
 	prefer.r['simpleUi.topNav'].value = [{ id: 'local', icon: '', label: 'Local', visible: true }];
@@ -274,7 +280,7 @@ describe('UI S streamed note sounds', () => {
 		expect(mocks.sound).toHaveBeenCalledExactlyOnceWith('noteMy');
 	});
 });
-afterEach(() => { cleanups.splice(0).forEach(fn => fn()); vi.unstubAllGlobals(); });
+afterEach(() => { cleanups.splice(0).forEach(fn => fn()); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe('UI S shared RSS banner', () => {
 	it('keeps the reader mounted through a notice, queued notes, and their dismissal', async () => {
@@ -328,10 +334,11 @@ describe('UI S audience icon tab gating', () => {
 		mocks.antennas.mockResolvedValue([{ id: 'antenna', name: 'My antenna' }]);
 		mocks.api.mockResolvedValue([{ id: 'same-note', userId: 'other', user: { id: 'other' }, text: 'body' }]);
 		const host = await mount(compact);
-		const assertAudience = (enabled: boolean) => {
+		const assertAudience = (enabled: boolean, localOnly = false) => {
 			const rendered = host.querySelector('[data-rendered-note="same-note"]');
 			expect(rendered).not.toBeNull();
 			expect(rendered?.getAttribute('data-audience-enabled')).toBe(String(enabled));
+			expect(rendered?.getAttribute('data-local-only-enabled')).toBe(String(localOnly));
 			expect(rendered?.getAttribute('data-note-size')).toBe(compact ? 'sm' : 'lg');
 		};
 		assertAudience(true);
@@ -341,7 +348,7 @@ describe('UI S audience icon tab gating', () => {
 		] as const) {
 			navButton(host, label).click();
 			await settle();
-			assertAudience(enabled);
+			assertAudience(enabled, label === 'Local' || label === 'Global');
 		}
 		for (const [label, src] of [['External home', 'ohtl'], ['External local', 'oltl']] as const) {
 			navButton(host, label).click();
@@ -363,9 +370,9 @@ describe('UI S audience icon tab gating', () => {
 		mocks.api.mockResolvedValue([{ id: 'restored-note', userId: 'other', user: { id: 'other' }, text: 'body' }]);
 		const host = await mount();
 		expect(host.querySelector('[data-rendered-note="restored-note"]')?.getAttribute('data-audience-enabled')).toBe(String(tab === 'following' || tab === 'social'));
+		expect(host.querySelector('[data-rendered-note="restored-note"]')?.getAttribute('data-local-only-enabled')).toBe(String(tab === 'local' || tab === 'mixed'));
 	});
 });
-
 
 describe('UI S new notes shared content', () => {
 	it('passes the newest three queued notes, counts and real decorations and releases that queue', async () => {
@@ -410,5 +417,46 @@ describe('UI S new notes shared content', () => {
 		await settle();
 		expect(show).toHaveBeenCalledOnce();
 		expect(host.querySelector('[data-kind="queue"]')).toBeNull();
+	});
+});
+
+
+describe('UI S timeline tab gestures', () => {
+	function sendTouch(target: Element, type: string, x: number, end = false) {
+		const event = new Event(type, { bubbles: true, cancelable: true });
+		const point = { clientX: x, clientY: 0, identifier: 1 };
+		Object.assign(event, { touches: end ? [] : [point], changedTouches: [point] });
+		target.dispatchEvent(event);
+	}
+	it('moves adjacent tabs with touch and keeps one trackpad gesture to one tab at compact width', async () => {
+		vi.useFakeTimers();
+		prefer.r['simpleUi.topNav'].value = ['following', 'local', 'social'].map(id => ({ id, label: id, icon: '', visible: true }));
+		const host = await mount(true);
+		const surface = host.querySelector('[data-timeline-tab-gestures]')!;
+		sendTouch(surface, 'touchstart', 100); sendTouch(surface, 'touchend', 0, true);
+		await settle();
+		expect(mocks.storage.get('hataskeyUi3Tab')).toBe('social');
+		vi.advanceTimersByTime(451);
+		surface.dispatchEvent(new WheelEvent('wheel', { deltaX: -110, bubbles: true, cancelable: true }));
+		await settle();
+		expect(mocks.storage.get('hataskeyUi3Tab')).toBe('local');
+		vi.advanceTimersByTime(100);
+		surface.dispatchEvent(new WheelEvent('wheel', { deltaX: -110, bubbles: true, cancelable: true }));
+		await settle();
+		expect(mocks.storage.get('hataskeyUi3Tab')).toBe('local');
+	});
+	it('respects the setting and leaves RSS gestures alone', async () => {
+		prefer.r['simpleUi.topNav'].value = ['following', 'local', 'social'].map(id => ({ id, label: id, icon: '', visible: true }));
+		const host = await mount();
+		const surface = host.querySelector('[data-timeline-tab-gestures]')!;
+		tabSwipeEnabled.value = false; await settle();
+		sendTouch(surface, 'touchstart', 100); sendTouch(surface, 'touchend', 0, true);
+		surface.dispatchEvent(new WheelEvent('wheel', { deltaX: 110, bubbles: true, cancelable: true }));
+		await settle(); expect(mocks.storage.get('hataskeyUi3Tab')).toBeUndefined();
+		tabSwipeEnabled.value = true; await settle();
+		const rss = host.querySelector('[data-rss-reader]')!;
+		sendTouch(rss, 'touchstart', 100); sendTouch(rss, 'touchend', 0, true);
+		rss.dispatchEvent(new WheelEvent('wheel', { deltaX: 110, bubbles: true, cancelable: true }));
+		await settle(); expect(mocks.storage.get('hataskeyUi3Tab')).toBeUndefined();
 	});
 });

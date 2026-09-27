@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkPageHeader v-else-if="!popup && !hideHeader" v-model:tab="tab" v-bind="pageHeaderProps" :actions="actions" :tabs="props.tabs ?? []" :displayMyAvatar="displayMyAvatar" :disableFollowButton="(user && (user.isBlocked || user.isBlocking)) == true"/>
 		</template>
 		<div :class="$style.body">
-			<MkSwiper v-if="prefer.s.enableHorizontalSwipe && swipable && (props.tabs?.length ?? 1) > 1" v-model:tab="tab" :class="$style.swiper" :tabs="props.tabs ?? []">
+			<MkSwiper v-if="horizontalSwipeEnabled && swipable && (props.tabs?.length ?? 1) > 1" v-model:tab="tab" :class="$style.swiper" :tabs="props.tabs ?? []">
 				<slot></slot>
 			</MkSwiper>
 			<slot v-else></slot>
@@ -37,6 +37,7 @@ import { useScrollPositionKeeper } from '@/composables/use-scroll-position-keepe
 import MkSwiper from '@/components/MkSwiper.vue';
 import { useRouter } from '@/router.js';
 import { prefer } from '@/preferences.js';
+import { horizontalSwipeEnabled } from '@/utility/horizontal-swipe-preference.js';
 import MkTabs from '@/components/MkTabs.vue';
 import { deviceKind } from '@/utility/device-kind.js';
 import { i18n } from '@/i18n.js';

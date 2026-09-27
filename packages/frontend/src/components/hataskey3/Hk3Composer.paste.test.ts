@@ -6,12 +6,14 @@ import type { PostFormProps } from '@/types/post-form.js';
 import Hk3Composer from './Hk3Composer.vue';
 import { postSendDelayEnabled } from '@/utility/post-send-delay.js';
 import { formatTimeString } from '@/utility/format-time-string.js';
+import { prefer } from '@/preferences.js';
 
 const mocks = vi.hoisted(() => ({
 	upload: vi.fn(), pc: vi.fn(), drive: vi.fn(), url: vi.fn(), menu: vi.fn(),
 	api: vi.fn(), alert: vi.fn(), actions: vi.fn(), postDirect: vi.fn(),
 	interruptors: [] as { handler: (data: unknown) => Promise<unknown> }[],
 	attachmentModels: [] as Misskey.entities.DriveFile[][],
+	storage: new Map<string, string>(),
 }));
 vi.mock('@/os.js', () => ({
 	launchUploader: mocks.upload, popupMenu: mocks.menu, alert: mocks.alert,
@@ -21,6 +23,12 @@ vi.mock('@/utility/drive.js', () => ({
 	chooseFileFromPcAndUpload: mocks.pc, chooseDriveFile: mocks.drive, chooseFileFromUrl: mocks.url,
 }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api }));
+vi.mock('@/local-storage.js', () => ({ miLocalStorage: {
+	getItem: (key: string) => mocks.storage.get(key) ?? null,
+	setItem: (key: string, value: string) => mocks.storage.set(key, value),
+	getItemAsJson: (key: string) => JSON.parse(mocks.storage.get(key) ?? 'null'),
+	setItemAsJson: (key: string, value: unknown) => mocks.storage.set(key, JSON.stringify(value)),
+} }));
 vi.mock('@/i.js', () => ({ $i: { id: 'me' }, incNotesCount: vi.fn(), notesCount: 10 }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: {
 	upload: 'Upload', fromDrive: 'Drive', fromUrl: 'URL', cancel: 'Cancel',
@@ -28,7 +36,7 @@ vi.mock('@/i18n.js', () => ({ i18n: { ts: {
 	_hata: {
 		_drawingTool: { attachmentLimit: 'Limit 16' },
 		_postDelay: { countdown: 'Waiting', cancel: 'Cancel', sendNow: 'Send now' },
-		_hataskeyUi3: { attach: 'Attach', post: 'Post', postTools: 'Tools', expandForm: 'Full', noAltText: 'Missing alt' },
+		_hataskeyUi3: { attach: 'Attach', post: 'Post', postTools: 'Tools', expandForm: 'Full', noAltText: 'Missing alt', preview: 'Preview' },
 	},
 } } }));
 vi.mock('@/preferences.js', async () => {
@@ -66,12 +74,16 @@ vi.mock('./Hk3ShortcutGuide.vue', () => ({ default: { render: () => null } }));
 const cleanups: (() => void)[] = [];
 type Composer = { adopt: (request: PostFormProps) => boolean };
 
-function mount() {
+function mount(draftId = 'uiS:composer:main') {
 	const composer = shallowRef<Composer>();
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
-	const app = createApp({ render: () => h(Hk3Composer, { ref: composer, compact: true }) });
-	for (const name of ['MkAvatar', 'MkUserName', 'Mfm']) app.component(name, { render: () => null });
+	const app = createApp({ render: () => h(Hk3Composer, { ref: composer, compact: true, draftId }) });
+	for (const name of ['MkAvatar', 'MkUserName']) app.component(name, { render: () => null });
+	app.component('Mfm', {
+		props: ['text'],
+		setup: (props: { text: string }) => () => h('span', { 'data-mfm': '' }, props.text),
+	});
 	app.mount(target);
 	let mounted = true;
 	const unmount = () => { if (mounted) app.unmount(); mounted = false; target.remove(); };
@@ -93,7 +105,7 @@ function deferred<T>() {
 }
 
 function driveFile(id: string): Misskey.entities.DriveFile {
-	return { id, name: `${id}.png`, comment: 'Alt text' } as Misskey.entities.DriveFile;
+	return { id, name: `${id}.png`, type: 'image/png', url: `https://example.com/${id}.png`, thumbnailUrl: null, isSensitive: false, comment: 'Alt text' } as Misskey.entities.DriveFile;
 }
 
 function clipboardFile(name = 'image.png', type = 'image/png') {
@@ -132,6 +144,7 @@ function attachmentAction(view: ReturnType<typeof mount>, index: number) {
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.clearAllMocks();
+	mocks.storage.clear();
 	mocks.interruptors.length = 0;
 	mocks.attachmentModels.length = 0;
 	mocks.upload.mockReset().mockResolvedValue([]);
@@ -142,11 +155,55 @@ beforeEach(() => {
 	mocks.actions.mockReset().mockResolvedValue({ canceled: false, result: 'post' });
 	mocks.postDirect.mockReset().mockResolvedValue(undefined);
 	postSendDelayEnabled.value = false;
+	prefer.r.animation.value = false;
 });
 afterEach(() => {
 	cleanups.splice(0).forEach(cleanup => cleanup());
 	vi.clearAllTimers();
 	vi.useRealTimers();
+});
+
+describe('UI S compact composer preview', () => {
+	it('retains outgoing text and cancels closing when input resumes', async () => {
+		prefer.r.animation.value = true;
+		const view = mount();
+		const preview = () => view.target.querySelector('[data-composer-preview]');
+		setText(view, 'first line\nsecond line');
+		await settle();
+		await vi.advanceTimersByTimeAsync(1000);
+		setText(view, '');
+		await settle();
+		expect(preview()?.querySelector('[data-mfm]')?.textContent).toBe('first line\nsecond line');
+		setText(view, 'resumed input');
+		await settle();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(view.target.querySelectorAll('[data-composer-preview]')).toHaveLength(1);
+		expect(preview()?.querySelector('[data-mfm]')?.textContent).toBe('resumed input');
+		setText(view, '');
+		await settle();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect((preview() as HTMLElement).style.display).toBe('none');
+		expect(preview()?.querySelector('[data-mfm]')?.textContent).toBe('');
+	});
+
+	it('renders and updates the input text, hiding the preview for empty or whitespace-only input', async () => {
+		const view = mount();
+		const preview = () => view.target.querySelector('[data-composer-preview]');
+		expect(preview()).toBeNull();
+		setText(view, 'first preview');
+		await settle();
+		expect(preview()).not.toBeNull();
+		expect(preview()!.querySelector('[data-mfm]')!.textContent).toBe('first preview');
+		setText(view, 'updated preview\nsecond line');
+		await settle();
+		expect(preview()!.querySelector('[data-mfm]')!.textContent).toBe('updated preview\nsecond line');
+		setText(view, '');
+		await settle();
+		expect(preview()).toBeNull();
+		setText(view, ' \n\t ');
+		await settle();
+		expect(preview()).toBeNull();
+	});
 });
 
 describe('UI S composer clipboard attachment integration', () => {
@@ -357,5 +414,84 @@ describe('UI S composer clipboard attachment integration', () => {
 		view.target.querySelector<HTMLButtonElement>('[data-send-now]')!.click();
 		await settle();
 		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({ fileIds: ['captured'] }));
+	});
+});
+
+describe('UI S full composer handoff', () => {
+	async function expand(view: ReturnType<typeof mount>) {
+		await settle();
+		const button = view.target.querySelector<HTMLButtonElement>('button[title="Full"]');
+		expect(button).not.toBeNull();
+		button!.click();
+		await settle();
+		return mocks.postDirect.mock.calls.at(-1)! as [PostFormProps, () => void];
+	}
+
+	it('retains the UI S draft when the full dialog closes without a successful posted event', async () => {
+		const view = mount();
+		view.adopt({ initialText: 'keep me', initialFiles: [driveFile('original')] });
+		const [props] = await expand(view);
+		expect(props.restoreDraft).toBe(false);
+		expect(props.initialPoll).toBeNull();
+		expect(props.initialReactionAcceptance).toBeNull();
+		expect(view.input().value).toBe('keep me');
+		expect(view.ids()).toEqual(['original']);
+		// Mutations inside the full form operate on its copied input values.
+		props.initialFiles![0].id = 'changed-inside-full';
+		props.initialFiles!.push(driveFile('extra'));
+		await settle();
+		expect(view.ids()).toEqual(['original']);
+	});
+
+	it('clears the unchanged draft only after the full form reports success', async () => {
+		const view = mount();
+		view.adopt({ initialText: 'posted text', initialFiles: [driveFile('image')] });
+		const [, posted] = await expand(view);
+		expect(view.input().value).toBe('posted text');
+		posted();
+		await settle();
+		expect(view.input().value).toBe('');
+		expect(view.ids()).toEqual([]);
+	});
+
+	it('preserves newer input or a different context after an earlier full form succeeds', async () => {
+		const view = mount();
+		view.adopt({ initialText: 'first draft' });
+		const [, firstPosted] = await expand(view);
+		setText(view, 'new input');
+		firstPosted();
+		await settle();
+		expect(view.input().value).toBe('new input');
+		const [, secondPosted] = await expand(view);
+		view.adopt({ initialText: 'different draft', reply: { id: 'reply', user: { username: 'author' } } as Misskey.entities.Note });
+		secondPosted();
+		await settle();
+		expect(view.input().value).toContain('different draft');
+	});
+});
+
+describe('automatic composer drafts', () => {
+	it('restores text and attachments and separates deck columns', async () => {
+		const first = mount('uiS:composer:deck:a');
+		first.adopt({ initialText: 'saved input', initialFiles: [driveFile('saved')] });
+		await settle();
+		first.unmount();
+		expect(mount('uiS:composer:deck:b').input().value).toBe('');
+		const restored = mount('uiS:composer:deck:a');
+		await settle();
+		expect(restored.input().value).toBe('saved input');
+		expect(restored.ids()).toEqual(['saved']);
+	});
+	it('clears a successful post and resumes saving the next draft', async () => {
+		const first = mount();
+		first.adopt({ initialText: 'first draft' });
+		await settle();
+		first.send().click();
+		await settle();
+		expect(JSON.parse(mocks.storage.get('hataFormDrafts:me')!)).toEqual({});
+		first.adopt({ initialText: 'next draft' });
+		await settle();
+		first.unmount();
+		expect(mount().input().value).toBe('next draft');
 	});
 });

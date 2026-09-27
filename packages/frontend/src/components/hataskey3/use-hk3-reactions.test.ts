@@ -83,6 +83,29 @@ describe('UI S reaction filtering', () => {
 		await nextTick();
 		expect(result.value).toEqual({ '👍': 1, '❤️': 1 });
 	});
+	it('subtracts muted actors sharing my emoji and updates on removal, re-reaction and disabling', async () => {
+		hideMutedReactionsLocal.value = true;
+		mocks.entry = { delta: { '👍': 2, '😢': 2 } };
+		const { result, source, mine } = setup({ '👍': 3, '😢': 2, '❤️': 2 });
+		mine.value = '👍';
+		await nextTick();
+		// Two muted actors share my reaction; only my one reaction stays visible.
+		expect(result.value).toEqual({ '👍': 1, '❤️': 2 });
+
+		mine.value = null;
+		source.value['👍'] = 2;
+		await nextTick();
+		expect(result.value).toEqual({ '❤️': 2 });
+
+		mine.value = '👍';
+		source.value['👍'] = 3;
+		await nextTick();
+		expect(result.value).toEqual({ '👍': 1, '❤️': 2 });
+
+		hideMutedReactionsLocal.value = false;
+		await nextTick();
+		expect(result.value).toEqual({ '👍': 3, '😢': 2, '❤️': 2 });
+	});
 	it('never flashes unfiltered counts while enabling or refreshing mute filtering', async () => {
 		const { result, source } = setup();
 		expect(result.value).toEqual({ '👍': 3, '❤️': 1 });

@@ -35,7 +35,8 @@ export function useHk3Reactions(
 		}
 		stableCounts.value = Object.fromEntries(Object.entries(counts).map(([reaction, count]) => [
 			reaction,
-			Math.max(0, count - (reaction === myReaction() ? 0 : (entry.delta[reaction] ?? 0))),
+			// 自分と同じ絵文字のミュート分も引き、自分の1件だけを下限として残す。
+			Math.max(reaction === myReaction() && count > 0 ? 1 : 0, count - (entry.delta[reaction] ?? 0)),
 		]));
 	}, { immediate: true, deep: true });
 

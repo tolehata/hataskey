@@ -968,7 +968,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</SearchMarker>
 
 							<SearchMarker :keywords="['swipe', 'horizontal', 'tab']">
-								<MkPreferenceContainer k="enableHorizontalSwipe">
+								<MkSwitch v-if="usesDeviceHorizontalSwipe" v-model="deviceHorizontalSwipe">
+									<template #label><SearchLabel>{{ i18n.ts.enableHorizontalSwipe }}</SearchLabel></template>
+									<template #caption><SearchText>{{ i18n.ts._hata._hatasabaUi._editWindow.deviceSpecificSetting }}</SearchText></template>
+								</MkSwitch>
+								<MkPreferenceContainer v-else k="enableHorizontalSwipe">
 									<MkSwitch v-model="enableHorizontalSwipe">
 										<template #label><SearchLabel>{{ i18n.ts.enableHorizontalSwipe }}</SearchLabel></template>
 									</MkSwitch>
@@ -1395,6 +1399,7 @@ import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
+import { useHorizontalSwipeModel, usesDeviceHorizontalSwipe } from '@/utility/horizontal-swipe-preference.js';
 import MkPreferenceContainer from '@/components/MkPreferenceContainer.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
 import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
@@ -1472,6 +1477,7 @@ const reduceAnimation = prefer.model('animation', v => !v, v => !v);
 const animatedMfm = prefer.model('animatedMfm');
 const disableShowingAnimatedImages = prefer.model('disableShowingAnimatedImages');
 const keepScreenOn = prefer.model('keepScreenOn');
+const deviceHorizontalSwipe = useHorizontalSwipeModel();
 const enableHorizontalSwipe = prefer.model('enableHorizontalSwipe');
 const showPageTabBarBottom = prefer.model('showPageTabBarBottom');
 const enablePullToRefresh = prefer.model('enablePullToRefresh');
@@ -1585,7 +1591,7 @@ watch([
 	// fontSize,
 	useSystemFont,
 	makeEveryTextElementsSelectable,
-	enableHorizontalSwipe,
+	prefer.r.enableHorizontalSwipe,
 	showPageTabBarBottom,
 	enablePullToRefresh,
 	reduceAnimation,

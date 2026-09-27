@@ -11,7 +11,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, provide, ref } from 'vue';
+import { onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { instanceName } from '@@/js/config.js';
 import XCommon from './_common_/common.vue';
 import type { PageMetadata } from '@/page.js';
@@ -22,8 +22,21 @@ import { DI } from '@/di.js';
 
 const pageMetadata = ref<PageMetadata | null>(null);
 
+function restoreHomeMetadata() {
+	pageMetadata.value = { title: instanceName, icon: 'ti ti-home' };
+	window.document.title = instanceName;
+}
+
+watch(() => mainRouter.currentRoute.value.path, path => {
+	if (path === '/') restoreHomeMetadata();
+}, { immediate: true, flush: 'post' });
+
 provide(DI.router, mainRouter);
 provideMetadataReceiver((metadataGetter) => {
+	if (mainRouter.currentRoute.value.path === '/') {
+		restoreHomeMetadata();
+		return;
+	}
 	pageMetadata.value = metadataGetter();
 	if (pageMetadata.value) {
 		window.document.title = `${pageMetadata.value.title} | ${instanceName}`;

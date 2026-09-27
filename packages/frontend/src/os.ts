@@ -778,7 +778,7 @@ export function post(props: PostFormProps = {}): Promise<void> {
 }
 
 /** インターセプターを経由せず、標準投稿フォームを明示的に開く。 */
-export function postDirect(props: PostFormProps = {}): Promise<void> {
+export function postDirect(props: PostFormProps = {}, onPosted?: () => void): Promise<void> {
 	pleaseLogin({
 		openOnRemote: (props.initialText || props.initialNote ? {
 			type: 'share',
@@ -798,6 +798,7 @@ export function postDirect(props: PostFormProps = {}): Promise<void> {
 		//       複数のpost formを開いたときに場合によってはエラーになる
 		//       もちろん複数のpost formを開けること自体Misskeyサイドのバグなのだが
 		const { dispose } = popup(MkPostFormDialog, props, {
+			posted: () => onPosted?.(),
 			closed: () => {
 				resolve();
 				dispose();

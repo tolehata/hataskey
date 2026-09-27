@@ -255,6 +255,7 @@ const props = withDefaults(defineProps<{
 	/** 未認証トップのプレビュー用。初回の一過性エラーは自動再試行し、ページ全体をエラー表示にしない。 */
 	visitorMode?: boolean;
 	newNotesNavbarKey?: string;
+	updatesPaused?: boolean;
 	/** Only explicit Hataskey LTL hosts enable the shared joke event. */
 	emojiVoteActive?: boolean;
 	emojiVoteEffectTarget?: HTMLElement | null;
@@ -665,7 +666,7 @@ function isTop() {
 let scrollContainer: HTMLElement | null = null;
 
 function onScrollContainerScroll() {
-	if (isTop()) {
+	if (isTop() && !props.updatesPaused && !isPausingUpdate) {
 		paginator.releaseQueue();
 	}
 }
@@ -714,7 +715,7 @@ if (!store.s.realtimeMode) {
 	// TODO: 先頭のノートの作成日時が1日以上前であれば流速が遅いTLと見做してインターバルを通常より延ばす
 	useInterval(async () => {
 		paginator.fetchNewer({
-			toQueue: !isTop() || isPausingUpdate,
+			toQueue: !isTop() || isPausingUpdate || props.updatesPaused,
 		});
 	}, POLLING_INTERVAL, {
 		immediate: false,
@@ -723,7 +724,7 @@ if (!store.s.realtimeMode) {
 
 	useGlobalEvent('notePosted', (note) => {
 		paginator.fetchNewer({
-			toQueue: !isTop() || isPausingUpdate,
+			toQueue: !isTop() || isPausingUpdate || props.updatesPaused,
 		});
 	});
 }
@@ -740,6 +741,7 @@ useGlobalEvent('noteRemovedFromAntenna', (antennaId, noteId) => {
 });
 
 function releaseQueue() {
+	if (props.updatesPaused) return;
 	updateRandomDir(); // 旗鯖: ランダム方向更新
 	haptic();
 	paginator.releaseQueue();
@@ -774,7 +776,7 @@ function prepend(note: Misskey.entities.Note & MisskeyEntity) {
 		note._shouldInsertAd_ = true;
 	}
 
-	if (isTop() && !isPausingUpdate) {
+	if (isTop() && !isPausingUpdate && !props.updatesPaused) {
 		paginator.prepend(note);
 	} else {
 		paginator.enqueue(note);
@@ -940,6 +942,7 @@ function reloadTimeline() {
 
 defineExpose({
 	reloadTimeline,
+	noteRoot: rootEl,
 });
 </script>
 

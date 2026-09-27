@@ -59,10 +59,17 @@ Hataskey UI 3: 画面下の投稿欄。返信・引用・チャンネルの文�
 	<XPostFormAttaches v-model="draftFiles" @detach="removeDraftFile" @changeSensitive="updateDraftFileSensitive" @changeName="updateDraftFileName"/>
 	<MkHataPostDelayStatus v-if="postDelay.active.value" :class="$style.delay" :pattern="i18n.ts._hata._postDelay.countdown" :seconds="postDelay.remainingSeconds.value" :progress="postDelay.progress.value" :cancelLabel="i18n.ts._hata._postDelay.cancel" :sendNowLabel="i18n.ts._hata._postDelay.sendNow" @cancel="cancelPostDelay" @sendNow="postDelay.sendNow()"/>
 
-	<section v-if="!compact && draftText.trim().length > 0 && sendState === 'idle'" :class="$style.preview">
-		<span :class="$style.previewLabel"><Eye :size="13"/>{{ copy.preview }}</span>
-		<div :class="$style.previewBody"><Mfm :text="draftText" :author="$i ?? undefined" :nyaize="'respect'"/></div>
-	</section>
+	<div :class="$style.previewWrap" :data-open="previewVisible ? 'true' : undefined" :data-reduced-motion="reducedMotion ? 'true' : undefined" :inert="!previewVisible" :aria-hidden="!previewVisible">
+		<div :class="$style.previewClip">
+			<!-- Keep the same DOM during reversal; the persistent wrapper owns the motion. -->
+			<Transition name="hk3-composer-preview" :css="!reducedMotion" :duration="{ enter: 0, leave: 220 }" @afterLeave="clearPreviewText">
+				<section v-if="previewVisible || !reducedMotion" v-show="previewVisible" :class="$style.preview" data-composer-preview>
+					<span :class="$style.previewLabel"><Eye :size="13"/>{{ copy.preview }}</span>
+					<div :class="$style.previewBody"><Mfm :text="previewText" :author="$i ?? undefined" :nyaize="'respect'"/></div>
+				</section>
+			</Transition>
+		</div>
+	</div>
 
 	<div v-if="editingNote" :class="$style.editing">
 		<Pencil :size="15"/><b>{{ i18n.ts.edit }}</b>
@@ -152,6 +159,9 @@ import { mfmFunctionPicker } from '@/utility/mfm-function-picker.js';
 import { createPostSendDelayController, postSendDelayEnabled, postSendDelaySeconds } from '@/utility/post-send-delay.js';
 import { Autocomplete } from '@/utility/autocomplete.js';
 import { deepClone } from '@/utility/clone.js';
+import { useHataFormDraft } from '@/utility/hata-form-draft.js';
+import { parseHk3ComposerDraft, isMeaningfulHk3ComposerDraft } from './hk3-composer-draft.js';
+import type { PollEditorModelValue } from '@/components/MkPollEditor.vue';
 import { formatTimeString } from '@/utility/format-time-string.js';
 import { getPluginHandlers } from '@/plugin.js';
 import { globalEvents } from '@/events.js';
@@ -163,10 +173,12 @@ import Hk3ShortcutGuide from './Hk3ShortcutGuide.vue';
 
 const props = withDefaults(defineProps<{
 	compact?: boolean;
+	draftId?: string;
 	// デッキの投稿窓・カラムでは上に開くと枠からはみ出すため、メニューを下へ開く。
 	menuPlacement?: 'up' | 'down';
 }>(), {
 	compact: false,
+	draftId: 'uiS:composer:main',
 	menuPlacement: 'up',
 });
 
@@ -200,6 +212,49 @@ const context = ref<ComposerContext | null>(null);
 // 「編集」で開いたときの元ノート。送信は新規投稿ではなく、このノートの更新になる。
 const editingNote = shallowRef<Misskey.entities.Note | null>(null);
 const lastContext = ref<ComposerContext | null>(null);
+const composerDraft = useHataFormDraft({
+	id: props.draftId,
+	capture: () => deepClone({
+		schemaVersion: 1 as const,
+		draftText: draftText.value,
+		draftFiles: draftFiles.value,
+		cwEnabled: cwEnabled.value,
+		cwText: cwText.value,
+		pollEnabled: pollEnabled.value,
+		pollChoices: pollChoices.value,
+		pollMultiple: pollMultiple.value,
+		pollExpiresAt: pollExpiresAt.value,
+		pollExpiredAfterUnit: pollExpiredAfterUnit.value,
+		event: event.value,
+		reactionAcceptance: reactionAcceptance.value,
+		visibility: visibility.value,
+		localOnly: localOnly.value,
+		visibleUsers: visibleUsers.value,
+		context: context.value,
+		editingNote: editingNote.value,
+	}),
+	restore: (snapshot) => {
+		const data = parseHk3ComposerDraft(snapshot);
+		draftText.value = data.draftText;
+		draftFiles.value = data.draftFiles;
+		cwEnabled.value = data.cwEnabled;
+		cwText.value = data.cwText;
+		pollEnabled.value = data.pollEnabled;
+		pollChoices.value = data.pollChoices;
+		pollMultiple.value = data.pollMultiple;
+		pollExpiresAt.value = data.pollExpiresAt;
+		pollExpiredAfterUnit.value = data.pollExpiredAfterUnit;
+		event.value = data.event;
+		reactionAcceptance.value = data.reactionAcceptance;
+		visibility.value = data.visibility;
+		localOnly.value = data.localOnly;
+		visibleUsers.value = data.visibleUsers;
+		context.value = data.context;
+		editingNote.value = data.editingNote;
+		lastContext.value = data.context;
+	},
+	isMeaningful: isMeaningfulHk3ComposerDraft,
+});
 const toolsOpen = ref(false);
 const visMenuOpen = ref(false);
 const focused = ref(false);
@@ -209,6 +264,21 @@ let unmounted = false;
 const sendState = ref<SendState>('idle');
 const postDelay = createPostSendDelayController();
 const reducedMotion = computed(() => !prefer.r.animation.value);
+const previewVisible = computed(() => draftText.value.trim().length > 0 && sendState.value === 'idle');
+const previewText = ref('');
+
+// Freeze the outgoing MFM until the wrapper has finished collapsing.
+watch([previewVisible, draftText, reducedMotion], ([visible, text, motionOff]) => {
+	if (visible) {
+		previewText.value = text;
+	} else if (motionOff) {
+		clearPreviewText();
+	}
+}, { immediate: true });
+
+function clearPreviewText() {
+	if (!previewVisible.value) previewText.value = '';
+}
 
 // 公開範囲ごとに枠の色を変える(投稿フォームの設定を共有)。レイアウトを動かさないよう内側の影で描き、送信待ちの間は進捗表示に譲る。
 const pillStyle = computed(() => {
@@ -510,9 +580,34 @@ async function selectReactionAcceptance() {
 	if (!selected.canceled) reactionAcceptance.value = selected.result;
 }
 
+// A successful full-form post must never erase a newer UI S draft, even if
+// the user changes a value and later restores it while the dialog is open.
+let fullComposerDraftRevision = 0;
+watch([
+	draftText, draftFiles, cwEnabled, cwText, pollEnabled, pollChoices,
+	pollMultiple, pollExpiresAt, pollExpiredAfterUnit, event, reactionAcceptance,
+	visibility, localOnly, visibleUsers, context, editingNote,
+], () => { fullComposerDraftRevision++; }, { deep: true, flush: 'sync' });
+
+function currentPoll(choices = pollChoices.value): PollEditorModelValue | null {
+	if (!pollEnabled.value) return null;
+	return {
+		choices,
+		multiple: pollMultiple.value,
+		expiresAt: pollExpiredAfterUnit.value === 'original' ? pollExpiresAt.value : null,
+		expiredAfter: { original: null, infinite: null, hour: 3_600_000, day: 86_400_000, week: 604_800_000 }[pollExpiredAfterUnit.value],
+	};
+}
+
 function openFullComposer() {
-	void os.postDirect({
+	const revision = fullComposerDraftRevision;
+	const generation = draftGeneration;
+	void os.postDirect(deepClone({
+		restoreDraft: false,
 		initialText: draftText.value,
+		initialPoll: currentPoll(),
+		initialEvent: event.value,
+		initialReactionAcceptance: reactionAcceptance.value,
 		initialCw: cwEnabled.value ? cwText.value : undefined,
 		initialFiles: draftFiles.value,
 		initialVisibility: effectiveVisibility.value,
@@ -521,7 +616,9 @@ function openFullComposer() {
 		reply: context.value?.kind === 'reply' ? context.value.note : undefined,
 		renote: context.value?.kind === 'quote' ? context.value.note : undefined,
 		channel: composerChannel.value as Misskey.entities.Channel | null ?? undefined,
-	}).then(() => clearComposer());
+	}), () => {
+		if (!unmounted && generation === draftGeneration && revision === fullComposerDraftRevision) clearComposer();
+	});
 }
 
 function clearComposer() {
@@ -541,6 +638,7 @@ function clearComposer() {
 	lastContext.value = null;
 	editingNote.value = null;
 	if (visibility.value === 'specified') visibleUsers.value = [];
+	composerDraft.clearDraft({ resume: true });
 }
 
 let draftGeneration = 0;
@@ -670,7 +768,6 @@ async function submitDraft() {
 	if (!await confirmWarnings()) return;
 	if (unmounted || generation !== draftGeneration || pendingAttachments.value > 0) return;
 
-	const expiredAfter = { original: null, infinite: null, hour: 3_600_000, day: 86_400_000, week: 604_800_000 }[pollExpiredAfterUnit.value];
 	const submittedContext = context.value;
 	let postData: Record<string, any> | null = {
 		text: draftText.value === '' ? null : draftText.value,
@@ -682,7 +779,7 @@ async function submitDraft() {
 		channelId: composerChannel.value?.id,
 		replyId: submittedContext?.kind === 'reply' ? submittedContext.note?.id : undefined,
 		renoteId: submittedContext?.kind === 'quote' ? submittedContext.note?.id : undefined,
-		poll: pollEnabled.value ? { choices, multiple: pollMultiple.value, expiresAt: pollExpiredAfterUnit.value === 'original' ? pollExpiresAt.value : null, expiredAfter } : undefined,
+		poll: currentPoll(choices) ?? undefined,
 		event: event.value,
 		reactionAcceptance: reactionAcceptance.value,
 	};
@@ -1095,14 +1192,35 @@ defineExpose({ adopt, focus });
 	&:hover { border-color: var(--hk3-accent); }
 }
 
+.previewWrap {
+	display: grid;
+	grid-template-rows: 0fr;
+	min-width: 0;
+	margin-bottom: -8px; // Cancel the root's extra gap while closed.
+	opacity: 0;
+	transition: grid-template-rows 220ms ease, margin-bottom 220ms ease, opacity 180ms ease;
+
+	&[data-open] { grid-template-rows: 1fr; margin-bottom: 0; opacity: 1; }
+	&[data-reduced-motion] { transition: none; }
+}
+
+.previewClip {
+	min-height: 0;
+	min-width: 0;
+	overflow: hidden;
+}
+
 .preview {
 	display: flex;
 	flex-direction: column;
+	min-width: 0;
 	gap: 4px;
 	padding: 8px 12px;
 	background: var(--hk3-surface);
 	max-height: 120px;
 	overflow: auto;
+
+	.root[data-compact] & { max-height: min(120px, 20dvh); }
 }
 
 .previewLabel {
@@ -1411,6 +1529,7 @@ defineExpose({ adopt, focus });
 @keyframes hk3Spin { to { transform: rotate(360deg); } }
 
 @media (prefers-reduced-motion: reduce) {
+	.previewWrap { transition: none; }
 	.ctxWrap, .ctx, .odoReel, .odoDigit { transition: none !important; }
 	.spin { animation: none; }
 	.delayRail > span, .sendCancel { transition: none; }

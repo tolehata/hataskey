@@ -38,6 +38,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 				<MkA :to="userPage(note.user)" :class="$style.renotedName"><MkUserName :user="note.user"/></MkA>
 				<MkTime :time="note.createdAt" :class="$style.renotedTime"/>
 				<button v-if="isMyRenote" ref="unrenoteButtonEl" type="button" :class="$style.unrenoteButton" :title="i18n.ts.unrenote" :aria-label="i18n.ts.unrenote" :aria-expanded="unrenoteConfirmOpen" :disabled="unrenoteBusy" @click.stop="openUnrenoteConfirm"><Undo2 :size="16"/><span>{{ i18n.ts.unrenote }}</span></button>
+				<button v-else type="button" data-renote-menu :class="$style.renoteMenuButton" :title="i18n.ts.more" :aria-label="i18n.ts.more" :disabled="unrenoteBusy" @click.stop="showRenoteMenu"><Ellipsis :size="16"/></button>
 			</div>
 			<div v-if="unrenoteConfirmOpen" :class="$style.unrenoteConfirm" role="group" :aria-label="copy.unrenoteConfirm" :aria-busy="unrenoteBusy" @keydown.esc.stop.prevent="cancelUnrenoteConfirm">
 				<span :class="$style.unrenoteQuestion">{{ copy.unrenoteConfirm }}</span>
@@ -49,7 +50,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 		</div>
 		<div v-if="!threadReply" :class="$style.avatarCol">
 			<MkAvatar :user="appearNote.user" :class="$style.avatar" link preview/>
-			<Hk3AudienceIcons v-if="showAudienceIcons" :visibility="appearNote.visibility" :localOnly="appearNote.localOnly" :class="$style.audienceIcons"/>
+			<Hk3AudienceIcons v-if="showAudienceIcons || (showLocalOnlyIcon && appearNote.localOnly)" :visibility="appearNote.visibility" :localOnly="appearNote.localOnly" :showVisibility="showAudienceIcons" :class="$style.audienceIcons"/>
 			<span v-if="hasThread" :class="$style.threadLine"></span>
 		</div>
 		<div :class="$style.body">
@@ -60,7 +61,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 				<span :class="$style.meta">
 					<template v-if="!showAudienceIcons">
 						<component :is="visibilityIcon" v-if="visibilityIcon" :size="13"/>
-						<GlobeLock v-if="appearNote.localOnly" :size="13"/>
+						<GlobeLock v-if="appearNote.localOnly && !showLocalOnlyIcon" :size="13"/>
 					</template>
 					<MkA :to="notePage(appearNote)" :class="$style.time"><MkTime :time="appearNote.createdAt"/></MkA>
 				</span>
@@ -71,14 +72,19 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 			</MkA>
 			<div v-if="appearNote.cw != null" :class="$style.cw">
 				<EyeOff :size="15" :class="$style.muted700"/>
-				<Mfm v-if="appearNote.cw !== ''" :text="appearNote.cw" :author="appearNote.user" :nyaize="'respect'" :class="$style.cwText"/>
+				<Mfm v-if="appearNote.cw !== ''" :text="appearNote.cw" :author="appearNote.user" :nyaize="prefer.r.disableNyaize.value || noNyaize ? false : 'respect'" :class="$style.cwText"/>
 				<button type="button" :class="$style.cwButton" :title="copy.toggleContent" :aria-pressed="showContent" @click="showContent = !showContent"><component :is="showContent ? EyeOff : Eye" :size="16"/></button>
 			</div>
 			<template v-if="appearNote.cw == null || showContent">
 				<p v-if="appearNote.text || appearNote.isHidden" :class="$style.text">
 					<span v-if="appearNote.isHidden" :class="$style.muted700">({{ i18n.ts._ffVisibility.private }})</span>
-					<Mfm v-if="appearNote.text" :text="appearNote.text" :author="appearNote.user" :nyaize="'respect'" :emojiUrls="appearNote.emojis" :enableEmojiMenu="true" :enableEmojiMenuReaction="true" class="_selectable"/>
+					<Mfm v-if="appearNote.text" :text="appearNote.text" :author="appearNote.user" :nyaize="prefer.r.disableNyaize.value || noNyaize ? false : 'respect'" :emojiUrls="appearNote.emojis" :enableEmojiMenu="true" :enableEmojiMenuReaction="!!$i" class="_selectable"/>
 				</p>
+				<div v-if="viewTextSource" :class="$style.textSource" data-note-text-source>
+					<hr>
+					<pre><small>{{ appearNote.text }}</small></pre>
+					<button type="button" class="_button" @click.stop="viewTextSource = false"><small>{{ i18n.ts.close }}</small></button>
+				</div>
 				<div v-if="appearNote.files && appearNote.files.length > 0" :class="$style.media">
 					<MkMediaList :mediaList="appearNote.files" :user="appearNote.user" :disableRightClick="appearNote.disableRightClick"/>
 				</div>
@@ -150,10 +156,10 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 				<div v-for="(r, i) in replies" :key="r.id" :class="$style.treeRow" :style="{ '--hk3-delay': `${120 + i * 70}ms` }">
 					<div :class="$style.treeRail"><span :class="$style.treeRailV"></span><span :class="$style.treeRailH"></span></div>
 					<div :class="$style.treeAvatarCol">
-						<MkAvatar :user="r.user" :class="$style.treeAvatar" link preview/>
-						<Hk3AudienceIcons v-if="showAudienceIcons" :visibility="r.visibility" :localOnly="r.localOnly" tiny :class="$style.audienceIcons"/>
+						<MkAvatar :user="(getAppearNote(r) ?? r).user" :class="$style.treeAvatar" link preview/>
+						<Hk3AudienceIcons v-if="showAudienceIcons || (showLocalOnlyIcon && (getAppearNote(r) ?? r).localOnly)" :visibility="(getAppearNote(r) ?? r).visibility" :localOnly="(getAppearNote(r) ?? r).localOnly" :showVisibility="showAudienceIcons" tiny :class="$style.audienceIcons"/>
 					</div>
-					<Hk3Note :note="r" :size="size" threadReply :showAudienceIcons="showAudienceIcons" :hideSensitive="hideSensitive" :inLocal="inLocal" :instanceBadgePosition="instanceBadgePosition" :class="$style.treeBubble"/>
+					<Hk3Note :note="r" :size="size" threadReply :showAudienceIcons="showAudienceIcons" :showLocalOnlyIcon="showLocalOnlyIcon" :hideSensitive="hideSensitive" :inLocal="inLocal" :instanceBadgePosition="instanceBadgePosition" :class="$style.treeBubble"/>
 				</div>
 				<div :class="$style.treeRow" :style="{ '--hk3-delay': `${120 + replies.length * 70}ms` }">
 					<div :class="$style.treeRail"><span :class="[$style.treeRailV, $style.treeRailEnd]"></span><span :class="$style.treeRailH"></span></div>
@@ -168,7 +174,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { ArrowDown, Bot, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CornerUpLeft, Ellipsis, Eye, EyeOff, House, Lock, Mail, MessageCircle, Quote, Repeat2, Reply, GlobeLock, SmilePlus, Tv, Undo2, X } from '@lucide/vue';
 import type { Component } from 'vue';
@@ -184,17 +190,20 @@ import MkUtageStatus from '@/components/MkUtageStatus.vue';
 import * as os from '@/os.js';
 import * as sound from '@/utility/sound.js';
 import { $i } from '@/i.js';
+import { DI } from '@/di.js';
+import { customEmojisMap } from '@/custom-emojis.js';
 import { globalEvents } from '@/events.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
-import { getNoteMenu, getRenoteMenu } from '@/utility/get-note-menu.js';
+import { getAbuseNoteMenu, getCopyNoteLinkMenu, getNoteMenu, getRenoteMenu } from '@/utility/get-note-menu.js';
 import { noteEvents, useNoteCapture } from '@/composables/use-note-capture.js';
 import { checkWordMute } from '@/utility/check-word-mute.js';
 import { getAppearNote } from '@/utility/get-appear-note.js';
 import { pleaseLogin } from '@/utility/please-login.js';
 import { notePage } from '@/filters/note.js';
+import type { MenuItem } from '@/types/menu.js';
 import { userPage } from '@/filters/user.js';
 
 const props = withDefaults(defineProps<{
@@ -205,6 +214,7 @@ const props = withDefaults(defineProps<{
 	hideSensitive?: boolean;
 	threadReply?: boolean;
 	showAudienceIcons?: boolean;
+	showLocalOnlyIcon?: boolean;
 	instanceBadgePosition?: 'left' | 'right';
 }>(), {
 	size: 'lg',
@@ -213,6 +223,7 @@ const props = withDefaults(defineProps<{
 	hideSensitive: false,
 	threadReply: false,
 	showAudienceIcons: false,
+	showLocalOnlyIcon: false,
 	instanceBadgePosition: 'right',
 });
 
@@ -228,6 +239,8 @@ const sideEl = shallowRef<HTMLElement | null>(null);
 const inlineEl = shallowRef<HTMLElement | null>(null);
 const hover = ref(false);
 const menuOpen = ref(false);
+const viewTextSource = ref(false);
+const noNyaize = ref(false);
 const unrenoteBusy = ref(false);
 const unrenoteConfirmOpen = ref(false);
 const unrenoteButtonEl = shallowRef<HTMLButtonElement | null>(null);
@@ -408,12 +421,39 @@ async function renote(ev: MouseEvent) {
 
 function showMenu(ev: MouseEvent) {
 	const anchor = ev.currentTarget as HTMLElement;
-	const { menu, cleanup } = getNoteMenu({ note, viewTextSource: ref(false), noNyaize: ref(false) });
+	const { menu, cleanup } = getNoteMenu({ note, viewTextSource, noNyaize });
 	menuOpen.value = true;
 	os.popupMenu(menu, anchor).finally(() => {
 		menuOpen.value = false;
 		cleanup();
 	});
+}
+
+function showRenoteMenu(ev: MouseEvent) {
+	if (!Misskey.note.isPureRenote(note) || isMyRenote) return;
+	const menu: MenuItem[] = [
+		{ type: 'link', text: i18n.ts.renoteDetails, icon: 'ti ti-info-circle', to: notePage(note) },
+		getCopyNoteLinkMenu(note, i18n.ts.copyLinkRenote),
+		{ type: 'divider' },
+		getAbuseNoteMenu(note, i18n.ts.reportAbuseRenote),
+	];
+	if ($i?.isAdmin || $i?.isModerator) {
+		menu.push({ text: i18n.ts.unrenote, icon: 'ti ti-trash', danger: true, action: moderateUnrenote });
+	}
+	menuOpen.value = true;
+	os.popupMenu(menu, ev.currentTarget as HTMLElement).finally(() => { menuOpen.value = false; });
+}
+
+async function moderateUnrenote() {
+	if (unrenoteBusy.value || !Misskey.note.isPureRenote(note) || !($i?.isAdmin || $i?.isModerator)) return;
+	unrenoteBusy.value = true;
+	try {
+		await os.apiWithDialog('notes/delete', { noteId: note.id });
+		globalEvents.emit('noteDeleted', note.id);
+	} catch {
+		// apiWithDialog displays the error; retain the wrapper and allow retry.
+		unrenoteBusy.value = false;
+	}
 }
 
 async function openUnrenoteConfirm() {
@@ -441,26 +481,38 @@ async function unrenote() {
 	}
 }
 
-function createReaction(reaction: string) {
+provide(DI.mfmEmojiReactCallback, reaction => {
+	if (!$i) return;
+	void createReaction(reaction).catch(() => { /* apiWithDialog がエラーを表示する。 */ });
+});
+
+async function createReaction(reaction: string) {
+	const me = $i;
+	if (!me) return;
+	await os.apiWithDialog('notes/reactions/create', { noteId: appearNote.id, reaction });
 	sound.playMisskeySfx('reaction');
-	misskeyApi('notes/reactions/create', { noteId: appearNote.id, reaction }).then(() => {
-		noteEvents.emit(`reacted:${appearNote.id}`, { userId: $i!.id, reaction });
-	});
+	noteEvents.emit(`reacted:${appearNote.id}`, { userId: me.id, reaction });
 }
 
 async function changeReaction(reaction: string, confirmed = false) {
-	const oldReaction = $appearNote.myReaction;
-	if (oldReaction) {
-		if (!confirmed) {
-			const confirm = await os.confirm({ type: 'warning', text: oldReaction !== reaction ? i18n.ts.changeReactionConfirm : i18n.ts.cancelReactionConfirm });
-			if (confirm.canceled) return;
+	const me = $i;
+	if (!me) return;
+	try {
+		const oldReaction = $appearNote.myReaction;
+		if (oldReaction) {
+			if (!confirmed) {
+				const confirm = await os.confirm({ type: 'warning', text: oldReaction !== reaction ? i18n.ts.changeReactionConfirm : i18n.ts.cancelReactionConfirm });
+				if (confirm.canceled) return;
+			}
+			await os.apiWithDialog('notes/reactions/delete', { noteId: appearNote.id });
+			noteEvents.emit(`unreacted:${appearNote.id}`, { userId: me.id, reaction: oldReaction });
+			if (oldReaction !== reaction) await createReaction(reaction);
+			return;
 		}
-		await misskeyApi('notes/reactions/delete', { noteId: appearNote.id });
-		noteEvents.emit(`unreacted:${appearNote.id}`, { userId: $i!.id, reaction: oldReaction });
-		if (oldReaction !== reaction) createReaction(reaction);
-		return;
+		await createReaction(reaction);
+	} catch {
+		// apiWithDialog がエラーを表示する。失敗した操作の成功イベントは送らない。
 	}
-	createReaction(reaction);
 }
 
 function react(ev: MouseEvent) {
@@ -483,17 +535,22 @@ function react(ev: MouseEvent) {
 function toggleReaction(reaction: string, ev: MouseEvent) {
 	pleaseLogin();
 	if (!$i) return;
-	// 他サーバーのカスタム絵文字はこのサーバーから付けられないため、ピッカーで代わりを選んでもらう。
-	const remoteCustom = reaction.startsWith(':') && !reaction.endsWith('@.:');
-	if (remoteCustom && $appearNote.myReaction !== reaction) {
-		react(ev);
-		return;
-	}
-	// 自分のリアクションを外すときは、その絵文字を起点にした吹き出しで確かめる。
+	// 自分のリアクションを外す確認は、外部絵文字の代替選択より先に行う。
 	if ($appearNote.myReaction === reaction) {
 		unreactAnchor.value = ev.currentTarget as HTMLElement;
 		return;
 	}
+	const remote = reaction.match(/^:([^:@]+)@([^:]+):$/);
+	if (remote && remote[2] !== '.') {
+		const localName = remote[1];
+		if (!prefer.s.reactableRemoteReactionEnabled || !customEmojisMap.has(localName)) {
+			react(ev);
+			return;
+		}
+		void createReaction(`:${localName}:`).catch(() => { /* apiWithDialog がエラーを表示する。 */ });
+		return;
+	}
+
 	void changeReaction(reaction);
 }
 
@@ -693,6 +750,23 @@ onBeforeUnmount(() => {
 
 .renotedTime { margin-left: auto; flex: none; white-space: nowrap; }
 
+.renoteMenuButton {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	&:hover, &:focus-visible { background: var(--hk3-bg); }
+	&:disabled { opacity: 0.5; cursor: wait; }
+}
+
 .unrenoteButton {
 	display: inline-flex;
 	align-items: center;
@@ -868,6 +942,13 @@ onBeforeUnmount(() => {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	opacity: 0.8;
+}
+
+.textSource {
+	min-width: 0;
+	hr { margin: 10px 0; }
+	pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+	button { padding: 5px 0; color: var(--MI_THEME-accent); }
 }
 
 .cw {

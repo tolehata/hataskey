@@ -113,14 +113,16 @@ export const ACHIEVEMENT_TYPES = [
 	'utageInterruption90',
 	'utageInterruption100',
 	'utageInterruptionWithin5Seconds',
+	'ltlPunchVictory',
+	'ltlPunchDefeat',
 ] as const;
 
 export type AchievementType = typeof ACHIEVEMENT_TYPES[number];
-export type ServerOnlyAchievementType = Extract<AchievementType, `utage${string}`>;
+export type ServerOnlyAchievementType = Extract<AchievementType, `utage${string}` | `ltlPunch${string}`>;
 export type ClientClaimableAchievementType = Exclude<AchievementType, ServerOnlyAchievementType>;
 
 export const CLIENT_CLAIMABLE_ACHIEVEMENT_TYPES = ACHIEVEMENT_TYPES.filter(
-	(type): type is ClientClaimableAchievementType => !type.startsWith('utage'),
+	(type): type is ClientClaimableAchievementType => !type.startsWith('utage') && !type.startsWith('ltlPunch'),
 );
 
 export const ACHIEVEMENT_BADGES = {
@@ -660,6 +662,16 @@ export const ACHIEVEMENT_BADGES = {
 		bg: 'linear-gradient(0deg, rgb(255 77 77), rgb(255 183 77))',
 		frame: 'gold',
 	},
+	'ltlPunchVictory': {
+		img: '/twemoji/1f91c.svg',
+		bg: 'linear-gradient(0deg, rgb(118 110 255), rgb(0 212 255))',
+		frame: 'gold',
+	},
+	'ltlPunchDefeat': {
+		img: '/twemoji/1f44a.svg',
+		bg: null,
+		frame: 'bronze',
+	},
 /* @see <https://github.com/misskey-dev/misskey/pull/10365#discussion_r1155511107>
 } as const satisfies Record<typeof ACHIEVEMENT_TYPES[number], {
 	img: string;
@@ -674,6 +686,7 @@ export const claimedAchievements: typeof ACHIEVEMENT_TYPES[number][] = ($i && $i
 const claimingQueue = new Set<string>();
 
 export async function claimAchievement(type: ClientClaimableAchievementType) {
+	if (!CLIENT_CLAIMABLE_ACHIEVEMENT_TYPES.includes(type)) return;
 	if ($i == null) return;
 	if ($i.movedTo) return;
 	if (claimedAchievements.includes(type)) return;

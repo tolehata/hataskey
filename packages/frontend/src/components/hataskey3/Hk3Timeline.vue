@@ -5,7 +5,7 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 -->
 <template>
 <div :class="$style.root" :data-compact="compact ? 'true' : undefined">
-	<header data-hata-collapse-part :class="$style.navbar">
+	<header ref="punchNavbarFrame" :data-hata-collapse-part="punchBusy ? undefined : true" :class="$style.navbar">
 		<div ref="navEl" :class="$style.nav" @click="onNavClick">
 			<div v-if="!compact" :class="$style.navSpacer"></div>
 			<div :class="$style.tabs">
@@ -84,12 +84,14 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 				@dismiss="dismissEmojiVote"
 			/>
 		</div>
+		<div ref="punchNavbarTarget"></div>
 	</header>
+	<MkLtlPunch :active="tab === 'local' && !!$i" :navbarTarget="punchNavbarTarget" :navbarFrame="punchNavbarFrame" :timelineRoot="listEl" :viewportTarget="scrollEl" :animationEnabled="motionEnabled" @busy="punchBusy = $event"/>
 
 	<div :class="$style.scrollWrap">
 		<div v-if="emojiVoteActive" ref="voteEffectsEl" :class="$style.voteEffects" aria-hidden="true"></div>
-		<div ref="scrollEl" :class="$style.scroll">
-			<div data-hata-collapse-part :class="$style.bannerStack" :data-rss="rssEnabled ? 'true' : undefined">
+		<div ref="scrollEl" data-timeline-tab-gestures :class="$style.scroll" @touchstart.passive="timelineTabGestures.touchStart" @touchmove="timelineTabGestures.touchMove" @touchend="timelineTabGestures.touchEnd" @touchcancel="timelineTabGestures.touchCancel" @wheel="timelineTabGestures.wheel">
+			<div data-hata-collapse-part data-timeline-tab-gesture-ignore :class="$style.bannerStack" :data-rss="rssEnabled ? 'true' : undefined">
 				<Hk3RssReader v-if="rssEnabled" :interrupted="bannerOn" :paused="rssEffectPaused" :compact="compact" :motion="motionEnabled" @settings="openRssSettings"/>
 				<button v-if="bannerShown" ref="bannerEl" type="button" :class="$style.banner" :data-kind="bannerToast ? 'toast' : 'queue'" :tabindex="bannerOn ? undefined : -1" :inert="!bannerOn" :aria-hidden="!bannerOn || undefined" :aria-label="bannerToast ? undefined : bannerQueueLabel" @click="onBannerClick">
 					<span ref="flashEl" :class="$style.flash" aria-hidden="true"></span>
@@ -138,6 +140,7 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 						:linked="linkKindFor(note)"
 						:inLocal="tab === 'local'"
 						:showAudienceIcons="tab === 'following' || tab === 'social'"
+						:showLocalOnlyIcon="tab === 'local' || tab === 'mixed'"
 						:hideSensitive="!filterState.withSensitive"
 					/>
 				</div>
@@ -158,6 +161,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRe
 import { AtSign, Ellipsis, Bell, ChartBar, Check, Clock, Paperclip, Pencil, SmilePlus, Star, Trash2, Eye, Filter, Heart, Image, Moon, Quote, Repeat2, Reply, Rss, SendHorizontal, Sun, UserPlus, Zap, ZapOff } from '@lucide/vue';
 import * as Misskey from 'cherrypick-js';
 import Hk3Note from './Hk3Note.vue';
+import MkLtlPunch from '@/components/MkLtlPunch.vue';
 import MkTimelineNewNotesContent from '@/components/MkTimelineNewNotesContent.vue';
 import Hk3PostSuccess from './Hk3PostSuccess.vue';
 import Hk3RssReader from './Hk3RssReader.vue';
@@ -179,6 +183,8 @@ import { prefer } from '@/preferences.js';
 import { useStream } from '@/stream.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { deepMerge } from '@/utility/merge.js';
+import { createTimelineTabGestures } from '@/utility/timeline-tab-gestures.js';
+import { tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { getExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
 import { useGlobalEvent } from '@/events.js';
@@ -397,6 +403,12 @@ const loadMoreFailed = ref(false);
 const error = ref(false);
 
 const navEl = shallowRef<HTMLElement | null>(null);
+const emit = defineEmits<{ punchBusy: [busy: boolean] }>();
+const punchBusy = ref(false);
+const punchNavbarFrame = shallowRef<HTMLElement | null>(null);
+const punchNavbarTarget = shallowRef<HTMLElement | null>(null);
+watch(punchBusy, busy => emit('punchBusy', busy), { flush: 'sync' });
+onBeforeUnmount(() => emit('punchBusy', false));
 const scrollEl = shallowRef<HTMLElement | null>(null);
 const listEl = shallowRef<HTMLElement | null>(null);
 const removal = useNoteRemoval(() => listEl.value);
@@ -412,7 +424,7 @@ const filterState = computed(() => store.r.tl.value.filter);
 // Hataskey UI と同じ投票ストアを使い、投票・演出の「1回だけ」は UI をまたいで共有される。
 const VOTE_TRIGGER = '絵文字を選ぶぞ';
 const voteEffectsEl = shallowRef<HTMLElement | null>(null);
-const emojiVoteActive = computed(() => tab.value === 'local' && prefer.r.ltlEmojiVoteEnabled.value);
+const emojiVoteActive = computed(() => tab.value === 'local' && !punchBusy.value && prefer.r.ltlEmojiVoteEnabled.value);
 const {
 	round: emojiVoteRound, choice: emojiVoteChoice, now: emojiVoteNow, phase: emojiVotePhase,
 	submitting: emojiVoteSubmitting, voteError: emojiVoteError, declined: emojiVoteDeclined,
@@ -432,6 +444,22 @@ watch(() => emojiVoteActive.value
 // 「…」一覧。外側を押す・Esc・タブ切り替えで閉じる。
 const optionsOpen = ref(false);
 const optionsWrapEl = shallowRef<HTMLElement | null>(null);
+
+const timelineTabGestures = createTimelineTabGestures({
+	enabled: () => tabSwipeEnabled.value && !punchBusy.value && !pickerKind.value && !optionsOpen.value,
+	root: () => scrollEl.value,
+	canMove: direction => {
+		const index = tabs.value.findIndex(item => item.id === tab.value);
+		return index >= 0 && tabs.value[index + direction] != null;
+	},
+	move: direction => {
+		const index = tabs.value.findIndex(item => item.id === tab.value);
+		const next = tabs.value[index + direction];
+		if (next) void onTabClick(next.id);
+	},
+});
+watch([tabSwipeEnabled, punchBusy, pickerKind, optionsOpen], () => timelineTabGestures.reset());
+onBeforeUnmount(timelineTabGestures.destroy);
 
 function onOptionsPointerDown(ev: PointerEvent) {
 	if (!optionsOpen.value) return;
@@ -477,7 +505,7 @@ const hasQueued = computed(() => queue.value.length > 0 || externalNotice.value 
 const bannerOn = computed(() => currentToast.value != null || hasQueued.value);
 const rssEnabled = computed(() => prefer.r.hataskeyUi3RssEnabled.value);
 const timelineCollapsing = ref(false);
-const rssEffectPaused = computed(() => timelineCollapsing.value || (!!emojiVoteAnchor.value && ['rain', 'leaving'].includes(emojiVotePhase.value)));
+const rssEffectPaused = computed(() => punchBusy.value || timelineCollapsing.value || (!!emojiVoteAnchor.value && ['rain', 'leaving'].includes(emojiVotePhase.value)));
 
 function openRssSettings() {
 	optionsOpen.value = false;
@@ -705,7 +733,7 @@ function onStreamNote(note: Misskey.entities.Note) {
 	// 通常UIと同じサウンド設定を使い、LIVE表示・新着待ちのどちらでも受信時に一度だけ鳴らす。
 	sound.playMisskeySfx($i && note.userId === $i.id ? 'noteMy' : 'note');
 	// LIVE中でも、読み進めている位置を動かさないよう、スクロール中の新着はバナーへ回す。
-	if (live.value && (scrollEl.value?.scrollTop ?? 0) < 8) {
+	if (!punchBusy.value && live.value && (scrollEl.value?.scrollTop ?? 0) < 8) {
 		notes.value.unshift(note);
 		return;
 	}
@@ -723,6 +751,11 @@ useGlobalEvent('noteDeleted', noteId => {
 
 watch(hk3PostedNote, note => {
 	if (note == null || isKnown(note.id) || tab.value === 'trending' || isCollectionTab.value) return;
+	if (punchBusy.value) {
+		queue.value = [note, ...queue.value].slice(0, QUEUE_MAX);
+		hk3PostedNote.value = null;
+		return;
+	}
 	notes.value.unshift(note);
 	hk3PostedNote.value = null;
 	scrollEl.value?.scrollTo({ top: 0, behavior: motion() ? 'smooth' : 'auto' });
@@ -808,6 +841,7 @@ function toggleLive() {
 }
 
 function flushQueue() {
+	if (punchBusy.value) return;
 	const added = queue.value.length;
 	const known = new Set(notes.value.map(note => note.id));
 	notes.value = [...queue.value.filter(note => !known.has(note.id)), ...notes.value];
@@ -977,8 +1011,6 @@ watch(() => currentToast.value?.id ?? (hasQueued.value ? 'queue' : null), async 
 	], { duration: 420, easing: EASE_OUT }));
 	bannerFlash();
 });
-
-
 
 // ===== 無限スクロール =====
 let observer: IntersectionObserver | null = null;
@@ -1336,6 +1368,7 @@ defineExpose({ scrollTop, reload });
 }
 
 .scroll {
+	touch-action: pan-y;
 	position: relative;
 	flex: 1;
 	min-height: 0;

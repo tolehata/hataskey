@@ -41,10 +41,12 @@ const props = withDefaults(defineProps<PostFormProps & {
 	updateMode?: boolean;
 }>(), {
 	initialLocalOnly: undefined,
+	restoreDraft: true,
 });
 
 const emit = defineEmits<{
 	(ev: 'closed'): void;
+	(ev: 'posted'): void;
 }>();
 
 const modal = useTemplateRef('modal');
@@ -52,6 +54,7 @@ const form = useTemplateRef('form');
 const postDelayStatusTarget = useTemplateRef<HTMLDivElement>('postDelayStatusTarget');
 
 function onPosted() {
+	emit('posted');
 	modal.value?.close({
 		useSendAnimation: true,
 	});

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 import Hk3Note from './Hk3Note.vue';
 import type * as Misskey from 'cherrypick-js';
+import { prefer } from '@/preferences.js';
 
 const mocks = vi.hoisted(() => ({
 	apiWithDialog: vi.fn(),
@@ -18,16 +19,20 @@ vi.mock('@/os.js', () => ({ apiWithDialog: mocks.apiWithDialog, post: mocks.post
 vi.mock('@/events.js', () => ({ globalEvents: { emit: mocks.emit } }));
 vi.mock('@/i.js', () => ({ $i: { id: 'me' } }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: {
-	unrenote: 'Undo renote', cancel: 'Cancel',
+	unrenote: 'Undo renote', cancel: 'Cancel', close: 'Close',
 	renote: 'Renote', quote: 'Quote', more: 'More',
 	_visibility: { public: 'Public', home: 'Home', followers: 'Followers', specified: 'Direct' },
 	_hata: { _hataskeyUi3: {
-		conversation: 'Conversation', reply: 'Reply', addReaction: 'React',
+		conversation: 'Conversation', reply: 'Reply', addReaction: 'React', toggleContent: 'Toggle content',
 		federateTitle: 'Federated', localOnlyTitle: 'Local only (this server)',
 		unrenoteConfirm: 'Undo this renote?', unrenoteConfirmAction: 'Confirm undo',
 	} },
 } } }));
-vi.mock('@/preferences.js', () => ({ prefer: { s: { animation: false } } }));
+vi.mock('@/custom-emojis.js', () => ({ customEmojisMap: new Map() }));
+vi.mock('@/preferences.js', async () => {
+	const { ref } = await import('vue');
+	return { prefer: { s: { animation: false }, r: { disableNyaize: ref(false) } } };
+});
 vi.mock('@/utility/check-word-mute.js', () => ({ checkWordMute: () => false }));
 vi.mock('@/composables/use-note-capture.js', () => ({
 	noteEvents: { emit: vi.fn() },
@@ -38,7 +43,7 @@ vi.mock('@/composables/use-note-capture.js', () => ({
 }));
 vi.mock('@/utility/reaction-picker.js', () => ({ reactionPicker: { show: mocks.picker } }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api }));
-vi.mock('@/utility/get-note-menu.js', () => ({ getNoteMenu: mocks.menu, getRenoteMenu: vi.fn() }));
+vi.mock('@/utility/get-note-menu.js', () => ({ getNoteMenu: mocks.menu, getRenoteMenu: vi.fn(), getCopyNoteLinkMenu: vi.fn(), getAbuseNoteMenu: vi.fn() }));
 vi.mock('@/utility/please-login.js', () => ({ pleaseLogin: vi.fn() }));
 vi.mock('@/utility/sound.js', () => ({ playMisskeySfx: vi.fn() }));
 vi.mock('@/filters/note.js', () => ({ notePage: (linked: { id: string }) => `/notes/${linked.id}` }));
@@ -68,7 +73,7 @@ type NoteFixture = {
 	user: { id: string; username: string; host: string | null; instance?: { name: string } };
 	createdAt: string;
 	text: string | null;
-	cw: null;
+	cw: string | null;
 	renoteId: string | null;
 	renote?: NoteFixture;
 	fileIds: string[];
@@ -98,17 +103,18 @@ async function settle() {
 	await nextTick();
 }
 
-function mount(size: 'lg' | 'sm', instanceBadgePosition?: 'left' | 'right', remote = false, audience: { showAudienceIcons?: boolean; note?: NoteFixture } = {}) {
+function mount(size: 'lg' | 'sm', instanceBadgePosition?: 'left' | 'right', remote = false, audience: { showAudienceIcons?: boolean; showLocalOnlyIcon?: boolean; note?: NoteFixture } = {}) {
 	const parent = audience.note ?? { ...note('parent', 'author'), repliesCount: 2 };
 	if (remote) parent.user = { ...parent.user, host: 'remote.example', instance: { name: 'Remote Garden' } };
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
-	const app = createApp({ render: () => h(Hk3Note, { note: parent as unknown as Misskey.entities.Note, size, instanceBadgePosition, showAudienceIcons: audience.showAudienceIcons }) });
+	const app = createApp({ render: () => h(Hk3Note, { note: parent as unknown as Misskey.entities.Note, size, instanceBadgePosition, showAudienceIcons: audience.showAudienceIcons, showLocalOnlyIcon: audience.showLocalOnlyIcon }) });
 	app.component('MkA', { props: { to: String }, template: '<a :href="to"><slot /></a>' });
 	app.component('MkAvatar', { props: ['user'], template: '<span :data-avatar-user="user.id" />' });
-	for (const name of ['MkUserName', 'MkTime', 'Mfm', 'MkLoading']) {
+	for (const name of ['MkUserName', 'MkTime', 'MkLoading']) {
 		app.component(name, { template: '<span><slot /></span>' });
 	}
+	app.component('Mfm', { props: ['text', 'nyaize'], template: '<span data-mfm :data-nyaize="String(nyaize)">{{ text }}</span>' });
 	app.directive('user-preview', {});
 	app.mount(target);
 	cleanups.push(() => { app.unmount(); target.remove(); });
@@ -123,6 +129,7 @@ function button(root: Element, label: string) {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	prefer.r.disableNyaize.value = false;
 	mocks.api.mockImplementation((endpoint: string) => Promise.resolve(endpoint === 'notes/replies'
 		? [{ ...note('reply-b', 'b'), reactions: { '👍': 1 } }, note('reply-a', 'a')]
 		: undefined));
@@ -222,6 +229,48 @@ describe('Hk3Note audience icons', () => {
 		}
 	});
 
+	it.each(['lg', 'sm'] as const)('shows only local-only marks while retaining scope headers (%s)', async size => {
+		mocks.api.mockResolvedValue([
+			{ ...note('local-reply', 'reply-author'), visibility: 'specified', localOnly: true },
+			{ ...note('federated-reply'), localOnly: false },
+		]);
+		const target = mount(size, undefined, false, {
+			showLocalOnlyIcon: true,
+			note: { ...note('local-parent'), visibility: 'home', localOnly: true, repliesCount: 2 },
+		});
+		button(target, 'Conversation').click();
+		await settle();
+		const rows = [...target.querySelectorAll('[data-audience-icons]')];
+		expect(rows).toHaveLength(2);
+		for (const row of rows) {
+			expect(row.querySelectorAll('[role="img"]')).toHaveLength(1);
+			expect(row.querySelector('[data-local-only="true"] line')).not.toBeNull();
+			expect(row.querySelector('[data-visibility]')).toBeNull();
+			expect(row.previousElementSibling?.hasAttribute('data-avatar-user')).toBe(true);
+		}
+		const child = target.querySelector('[data-note-id="local-reply"]')!;
+		const replyRow = child.previousElementSibling!.querySelector('[data-audience-icons][data-tiny]')!;
+		expect(replyRow).not.toBeNull();
+		for (const svg of replyRow.querySelectorAll('svg')) expect(svg.getAttribute('width')).toBe('13');
+		expect(child.querySelector('[data-audience-icons]')).toBeNull();
+		expect(child.querySelector('header svg[class*="lucide-mail"]')).not.toBeNull();
+		expect(target.querySelector('[data-note-id="local-parent"] > article header svg[class*="lucide-house"]')).not.toBeNull();
+		expect(target.querySelector('header svg[class*="lucide-globe-lock"]')).toBeNull();
+		const federatedChild = target.querySelector('[data-note-id="federated-reply"]')!;
+		expect(federatedChild.previousElementSibling!.querySelector('[data-audience-icons]')).toBeNull();
+	});
+
+	it.each([false, true])('uses the original federation state for the local-only renote row (%s)', localOnly => {
+		const original = { ...note('original', 'original-author'), visibility: 'followers' as const, localOnly };
+		const renote = { ...note('renote', 'renoter', null), localOnly: !localOnly, renoteId: original.id, renote: original };
+		const target = mount('lg', undefined, false, { showLocalOnlyIcon: true, note: renote });
+		const row = target.querySelector('[data-audience-icons]');
+		expect(row !== null).toBe(localOnly);
+		if (row) expect(row.previousElementSibling?.getAttribute('data-avatar-user')).toBe('original-author');
+		expect(target.querySelector('header svg[class*="lucide-lock"]')).not.toBeNull();
+		expect(target.querySelector('header svg[class*="lucide-globe-lock"]')).toBeNull();
+	});
+
 	it('uses the original note and author for a pure renote', () => {
 		const original = { ...note('original', 'original-author'), visibility: 'followers' as const, localOnly: true };
 		const renote = { ...note('renote', 'renoter', null), renoteId: original.id, renote: original };
@@ -258,5 +307,55 @@ describe('Hk3Note audience icons', () => {
 		for (const svg of row.querySelectorAll('svg')) expect(svg.getAttribute('width')).toBe('13');
 		expect(child.querySelector('[data-audience-icons], header svg')).toBeNull();
 		expect(target.querySelectorAll('[data-audience-icons]')).toHaveLength(2);
+	});
+});
+
+describe('UI S text menu state', () => {
+	it('shows escaped source beside MFM, closes it and reuses persistent menu refs', async () => {
+		const raw = '<script>alert(1)</script> **source**';
+		const target = mount('sm', undefined, false, { note: { ...note('source', 'author'), text: raw } });
+		button(target, 'More').click();
+		const first = mocks.menu.mock.lastCall![0];
+		first.viewTextSource.value = true;
+		first.noNyaize.value = true;
+		await settle();
+		const source = target.querySelector('[data-note-text-source]')!;
+		expect(source.querySelector('pre')?.textContent).toBe(raw);
+		expect(source.querySelector('script')).toBeNull();
+		expect(source.closest('p')).toBeNull();
+		expect(target.querySelector('[data-mfm]')?.textContent).toBe(raw);
+		expect(target.querySelector('[data-mfm]')?.getAttribute('data-nyaize')).toBe('false');
+		button(target, 'More').click();
+		const second = mocks.menu.mock.lastCall![0];
+		expect(second.viewTextSource).toBe(first.viewTextSource);
+		expect(second.noNyaize).toBe(first.noNyaize);
+		source.querySelector<HTMLButtonElement>('button')!.click();
+		await settle();
+		expect(target.querySelector('[data-note-text-source]')).toBeNull();
+		expect(first.viewTextSource.value).toBe(false);
+	});
+	it('updates CW/body nyaize from menu and global preference without revealing a closed CW', async () => {
+		const target = mount('lg', undefined, false, { note: { ...note('cw', 'author'), cw: 'CW text', text: 'private body' } });
+		button(target, 'More').click();
+		const state = mocks.menu.mock.lastCall![0];
+		state.viewTextSource.value = true;
+		state.noNyaize.value = true;
+		await settle();
+		expect(target.querySelector('[data-note-text-source]')).toBeNull();
+		expect(target.querySelectorAll('[data-mfm]')).toHaveLength(1);
+		expect(target.querySelector('[data-mfm]')?.getAttribute('data-nyaize')).toBe('false');
+		button(target, 'Toggle content').click();
+		await settle();
+		expect(target.querySelectorAll('[data-mfm]')).toHaveLength(2);
+		expect([...target.querySelectorAll('[data-mfm]')].every(element => element.getAttribute('data-nyaize') === 'false')).toBe(true);
+		state.noNyaize.value = false;
+		await settle();
+		expect([...target.querySelectorAll('[data-mfm]')].every(element => element.getAttribute('data-nyaize') === 'respect')).toBe(true);
+		prefer.r.disableNyaize.value = true;
+		await settle();
+		expect([...target.querySelectorAll('[data-mfm]')].every(element => element.getAttribute('data-nyaize') === 'false')).toBe(true);
+		prefer.r.disableNyaize.value = false;
+		await settle();
+		expect([...target.querySelectorAll('[data-mfm]')].every(element => element.getAttribute('data-nyaize') === 'respect')).toBe(true);
 	});
 });

@@ -721,7 +721,7 @@ function buildColumnProps(tab: DeckTab): Record<string, unknown> {
 		excludeBots: tab.excludeBots === true,
 		showFilterPolicyNotice: hasConfiguredNotificationFilter(tab.excludeTypes, tab.notificationFilterKnownTypes),
 	};
-	if (tab.type === 'postForm') return props.hk3 ? { menuPlacement: 'down' } : { fixed: true, autofocus: false };
+	if (tab.type === 'postForm') return props.hk3 ? { menuPlacement: 'down', draftId: `uiS:composer:deck:${tab.id}` } : { fixed: true, autofocus: false };
 	// デッキのウィジェットは操作ボタン行を省き、三点メニュー / タブ右クリックから編集する。
 	if (tab.type === 'widgets') return { deckEmbedded: true };
 	if (tab.type === 'earthquake') return {};

@@ -4,6 +4,7 @@
  */
 
 import * as Misskey from 'cherrypick-js';
+import type { PollEditorModelValue } from '@/components/MkPollEditor.vue';
 
 export interface ExternalNote {
 	id: string;
@@ -39,6 +40,11 @@ export interface PostFormProps {
 	initialCw?: string;
 	initialVisibility?: (typeof Misskey.noteVisibilities)[number];
 	initialFiles?: Misskey.entities.DriveFile[];
+	initialPoll?: PollEditorModelValue | null;
+	initialEvent?: Misskey.entities.Note['event'];
+	initialReactionAcceptance?: Misskey.entities.Note['reactionAcceptance'];
+	/** false prevents an unrelated saved draft from replacing explicit inputs. */
+	restoreDraft?: boolean;
 	initialLocalOnly?: boolean;
 	initialVisibleUsers?: Misskey.entities.UserDetailed[];
 	initialNote?: Misskey.entities.Note;

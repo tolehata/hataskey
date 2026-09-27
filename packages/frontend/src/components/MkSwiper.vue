@@ -31,6 +31,7 @@ import { ref, useTemplateRef, computed, nextTick, watch } from 'vue';
 import type { Tab } from '@/components/global/MkPageHeader.tabs.vue';
 import { isHorizontalSwipeSwiping as isSwiping } from '@/utility/touch.js';
 import { prefer } from '@/preferences.js';
+import { horizontalSwipeEnabled } from '@/utility/horizontal-swipe-preference.js';
 
 const rootEl = useTemplateRef('rootEl');
 
@@ -44,7 +45,7 @@ const emit = defineEmits<{
 	(ev: 'swiped', newKey: string, direction: 'left' | 'right'): void;
 }>();
 
-const shouldAnimate = computed(() => prefer.r.enableHorizontalSwipe.value || prefer.r.animation.value);
+const shouldAnimate = computed(() => horizontalSwipeEnabled.value || prefer.r.animation.value);
 
 // ▼ しきい値 ▼ //
 
@@ -73,7 +74,7 @@ let swipeAborted = false;
 let swipeDirectionLocked: 'horizontal' | 'vertical' | null = null;
 
 function touchStart(event: TouchEvent) {
-	if (!prefer.r.enableHorizontalSwipe.value) return;
+	if (!horizontalSwipeEnabled.value) return;
 
 	if (event.touches.length !== 1) return;
 
@@ -85,7 +86,7 @@ function touchStart(event: TouchEvent) {
 }
 
 function touchMove(event: TouchEvent) {
-	if (!prefer.r.enableHorizontalSwipe.value) return;
+	if (!horizontalSwipeEnabled.value) return;
 
 	if (event.touches.length !== 1) return;
 
@@ -145,7 +146,7 @@ function touchEnd(event: TouchEvent) {
 		return;
 	}
 
-	if (!prefer.r.enableHorizontalSwipe.value) return;
+	if (!horizontalSwipeEnabled.value) return;
 
 	if (event.touches.length !== 0) return;
 

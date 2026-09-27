@@ -12,7 +12,11 @@ vi.mock('@/i.js', () => ({ $i: null }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: {
 	_hata: { _hataskeyUi3: {}, _utage: { success: '宴成功', failed: '宴失敗' } },
 } } }));
-vi.mock('@/preferences.js', () => ({ prefer: { s: { animation: false } } }));
+vi.mock('@/custom-emojis.js', () => ({ customEmojisMap: new Map() }));
+vi.mock('@/preferences.js', async () => {
+	const { ref } = await import('vue');
+	return { prefer: { s: { animation: false }, r: { disableNyaize: ref(false) } } };
+});
 vi.mock('@/utility/check-word-mute.js', () => ({ checkWordMute: () => false }));
 vi.mock('@/composables/use-note-capture.js', async () => {
 	const { reactive } = await import('vue');
@@ -27,7 +31,7 @@ vi.mock('@/composables/use-note-capture.js', async () => {
 });
 vi.mock('@/utility/reaction-picker.js', () => ({ reactionPicker: { show: vi.fn() } }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn() }));
-vi.mock('@/utility/get-note-menu.js', () => ({ getNoteMenu: vi.fn(), getRenoteMenu: vi.fn() }));
+vi.mock('@/utility/get-note-menu.js', () => ({ getNoteMenu: vi.fn(), getRenoteMenu: vi.fn(), getCopyNoteLinkMenu: vi.fn(), getAbuseNoteMenu: vi.fn() }));
 vi.mock('@/utility/please-login.js', () => ({ pleaseLogin: vi.fn() }));
 vi.mock('@/utility/sound.js', () => ({ playMisskeySfx: vi.fn() }));
 vi.mock('@/filters/note.js', () => ({ notePage: () => '/notes/note' }));

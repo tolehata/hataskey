@@ -224,7 +224,7 @@ function get(): Misskey.entities.Note['event'] {
 			} : undefined,
 			inLanguage: language.value ?? undefined,
 			typicalAgeRange: ageRange.value ?? undefined,
-			isAccessibleForFree: isFree,
+			isAccessibleForFree: isFree.value,
 			offers: ticketsUrl.value || price.value ? {
 				price: price.value ?? undefined,
 				priceCurrency: undefined,
