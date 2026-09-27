@@ -2411,6 +2411,13 @@ _achievements:
       title: "早すぎる宴の終わり"
       description: "ほかの人の宴を開始から5秒以内に阻止した"
 
+    _ltlPunchVictory:
+      title: "パンチは消えた..."
+      description: "そもそも何この手は？"
+    _ltlPunchDefeat:
+      title: "TLはパンチされた..."
+      description: "パンチがあるゲームだったね..."
+
 _role:
   new: "ロールの作成"
   edit: "ロールの編集"

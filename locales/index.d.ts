@@ -9238,6 +9238,26 @@ export interface Locale extends ILocale {
                  */
                 "description": string;
             };
+            "_ltlPunchVictory": {
+                /**
+                 * パンチは消えた...
+                 */
+                "title": string;
+                /**
+                 * そもそも何この手は？
+                 */
+                "description": string;
+            };
+            "_ltlPunchDefeat": {
+                /**
+                 * TLはパンチされた...
+                 */
+                "title": string;
+                /**
+                 * パンチがあるゲームだったね...
+                 */
+                "description": string;
+            };
         };
     };
     "_role": {

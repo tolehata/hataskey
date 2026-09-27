@@ -52,6 +52,7 @@ import { ReversiGameChannelService } from './api/stream/channels/reversi-game.js
 import { SigninWithPasskeyApiService } from './api/SigninWithPasskeyApiService.js';
 import { BubbleTimelineChannelService } from './api/stream/channels/bubble-timeline.js';
 import { StackingGameRoomChannelService } from './api/stream/channels/stacking-game-room.js';
+import { LtlPunchChannelService } from './api/stream/channels/ltl-punch.js';
 import { WhackEmojiRoomChannelService } from './api/stream/channels/whack-emoji-room.js';
 
 @Module({
@@ -105,6 +106,7 @@ import { WhackEmojiRoomChannelService } from './api/stream/channels/whack-emoji-
 		OAuth2ProviderService,
 		BubbleTimelineChannelService,
 		StackingGameRoomChannelService,
+		LtlPunchChannelService,
 		WhackEmojiRoomChannelService,
 	],
 	exports: [

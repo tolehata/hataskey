@@ -33,7 +33,31 @@ type ReversiUpdateSettings<K extends ReversiUpdateKey> = {
 	value: ReversiGameDetailed[K];
 };
 
+export type LtlPunchState = {
+	id: string;
+	revision: number;
+	startedAt: number;
+	fallAt: number;
+	endsAt: number;
+	finishedAt: number | null;
+	status: 'active' | 'won' | 'escaped';
+	hp: number;
+	maxHp: number;
+	people: number;
+	serverNow: number;
+};
+
 export type Channels = {
+	ltlPunch: {
+		params: null;
+		events: {
+			state: (payload: LtlPunchState | null) => void;
+		};
+		receives: {
+			sync: Record<string, never>;
+			attack: { eventId: string; requestId: string };
+		};
+	};
 	main: {
 		params: null;
 		events: {

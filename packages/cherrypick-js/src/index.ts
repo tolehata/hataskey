@@ -30,12 +30,13 @@ export { api, entities, acct, note, nyaize };
 //#region standalone types
 import type { Endpoints } from './api.types.js';
 import type { StreamEvents, IStream, IChannelConnection } from './streaming.js';
-import type { Channels } from './streaming.types.js';
+import type { Channels, LtlPunchState } from './streaming.types.js';
 import type { Acct } from './acct.js';
 
 export type {
 	Endpoints,
 	Channels,
+	LtlPunchState,
 	Acct,
 	StreamEvents,
 	IStream,

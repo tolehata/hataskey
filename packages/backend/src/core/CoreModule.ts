@@ -57,6 +57,7 @@ import { RegistrationApplicationReviewService } from './RegistrationApplicationR
 import { RegistrationRejectionNotificationService } from './RegistrationRejectionNotificationService.js';
 import { PollService } from './PollService.js';
 import { UtageService } from './UtageService.js';
+import { LtlPunchService } from './LtlPunchService.js';
 import { LtlEmojiVoteService } from './LtlEmojiVoteService.js';
 import { HataskRankingService } from './HataskRankingService.js';
 import { HataskSupportService } from './HataskSupportService.js';
@@ -236,6 +237,7 @@ const $RegistrationApplicationReviewService: Provider = { provide: 'Registration
 const $RegistrationApplicationNotificationService: Provider = { provide: 'RegistrationApplicationNotificationService', useExisting: RegistrationApplicationNotificationService };
 const $PollService: Provider = { provide: 'PollService', useExisting: PollService };
 const $UtageService: Provider = { provide: 'UtageService', useExisting: UtageService };
+const $LtlPunchService: Provider = { provide: 'LtlPunchService', useExisting: LtlPunchService };
 const $LtlEmojiVoteService: Provider = { provide: 'LtlEmojiVoteService', useExisting: LtlEmojiVoteService };
 const $FeedbackService: Provider = { provide: 'FeedbackService', useExisting: FeedbackService };
 const $HatadyService: Provider = { provide: 'HatadyService', useExisting: HatadyService };
@@ -417,6 +419,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		RegistrationRejectionNotificationService,
 		PollService,
 		UtageService,
+		LtlPunchService,
 		LtlEmojiVoteService,
 		HataskRankingService,
 		HataskSupportService,
@@ -599,6 +602,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$RegistrationApplicationReviewService,
 		$PollService,
 		$UtageService,
+		$LtlPunchService,
 		$LtlEmojiVoteService,
 		$FeedbackService,
 		$HatadyService,
@@ -776,6 +780,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		RegistrationRejectionNotificationService,
 		PollService,
 		UtageService,
+		LtlPunchService,
 		LtlEmojiVoteService,
 		HataskRankingService,
 		HataskSupportService,
@@ -957,6 +962,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$RegistrationApplicationReviewService,
 		$PollService,
 		$UtageService,
+		$LtlPunchService,
 		$LtlEmojiVoteService,
 		$FeedbackService,
 		$ChannelService,

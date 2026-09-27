@@ -519,12 +519,14 @@ export const ACHIEVEMENT_TYPES = [
 	'utageInterruption90',
 	'utageInterruption100',
 	'utageInterruptionWithin5Seconds',
+	'ltlPunchVictory',
+	'ltlPunchDefeat',
 ] as const;
 
 export type AchievementType = typeof ACHIEVEMENT_TYPES[number];
-export type ServerOnlyAchievementType = Extract<AchievementType, `utage${string}`>;
+export type ServerOnlyAchievementType = Extract<AchievementType, `utage${string}` | `ltlPunch${string}`>;
 export type ClientClaimableAchievementType = Exclude<AchievementType, ServerOnlyAchievementType>;
 
 export const CLIENT_CLAIMABLE_ACHIEVEMENT_TYPES = ACHIEVEMENT_TYPES.filter(
-	(type): type is ClientClaimableAchievementType => !type.startsWith('utage'),
+	(type): type is ClientClaimableAchievementType => !type.startsWith('utage') && !type.startsWith('ltlPunch'),
 );

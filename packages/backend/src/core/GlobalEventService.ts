@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import type { LtlPunchState } from '@/misc/ltl-punch.js';
 import { Inject, Injectable } from '@nestjs/common';
 import * as Redis from 'ioredis';
 import * as Reversi from 'misskey-reversi';
@@ -295,6 +296,7 @@ export type EventTypesToEventPayload<T> = EventUnionFromDictionary<UndefinedAsNu
 
 // name/messages(spec) pairs dictionary
 export type GlobalEvents = {
+	ltlPunch: { name: 'ltlPunchStream'; payload: { type: 'state'; body: LtlPunchState | null }; };
 	internal: {
 		name: 'internal';
 		payload: EventTypesToEventPayload<InternalEventTypes>;
@@ -479,6 +481,10 @@ export class GlobalEventService {
 	@bindThis
 	public publishWhackEmojiRoomStream(roomId: string, type: string, value?: any): void {
 		this.publish(`whackEmojiRoomStream:${roomId}`, type, typeof value === 'undefined' ? null : value);
+	}
+
+	public publishLtlPunchStream(state: LtlPunchState | null): Promise<number> {
+		return this.publish('ltlPunchStream', 'state', state);
 	}
 
 	public publishReversiGameStream<K extends keyof ReversiGameEventTypes>(gameId: MiReversiGame['id'], type: K, value?: ReversiGameEventTypes[K]): void {
