@@ -3259,6 +3259,8 @@ onUnmounted(() => {
     to { transform:translateX(0); }
 }
 .desktopWidgets {
+    // タイムラインの切替演出とウィジェットバーの重なり順を分離する。
+    isolation:isolate;
     --widget-bar-width:350px;
     width:var(--widget-bar-width);
     flex-shrink:0;
