@@ -7,22 +7,24 @@ SPDX-License-Identifier: AGPL-3.0-only
 <div
 	role="menu"
 	:data-viewport-constrained="maxWidth != null"
+	:data-hk3-composer-menus="menuAppearance ? true : undefined"
 	:class="{
 		[$style.root]: true,
 		[$style.center]: align === 'center',
 		[$style.big]: big,
 		[$style.asDrawer]: asDrawer,
 		[$style.widthSpecified]: width != null,
+		[$style.composerGlass]: menuAppearance === 'uiS-composer',
 	}"
 	@focusin.passive.stop="() => {}"
 >
 	<div
-		class="_shadow"
 		:class="[
 			$style.menu,
 			{
-				_popup: !prefer.s.useBlurEffect || !prefer.s.useBlurEffectForModal || !prefer.s.removeModalBgColorForBlur,
-				_popupAcrylic: prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur,
+				_shadow: !menuAppearance,
+				_popup: !menuAppearance && (!prefer.s.useBlurEffect || !prefer.s.useBlurEffectForModal || !prefer.s.removeModalBgColorForBlur),
+				_popupAcrylic: !menuAppearance && prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur,
 			}
 		]"
 		:style="{
@@ -228,7 +230,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts">
-import { computed, defineAsyncComponent, inject, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, unref, watch, shallowRef } from 'vue';
+import { computed, defineAsyncComponent, inject, nextTick, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, unref, watch, shallowRef } from 'vue';
+import type { Ref } from 'vue';
+import type { Hk3ComposerMenuAppearance } from '@/components/hataskey3/hk3-composer-menu.js';
 import type { MenuItem, InnerMenuItem, MenuPending, MenuAction, MenuSwitch, MenuRadio, MenuRadioOption, MenuParent } from '@/types/menu.js';
 import type { Keymap } from '@/utility/hotkey.js';
 import MkSwitchButton from '@/components/MkSwitch.button.vue';
@@ -252,7 +256,13 @@ const props = defineProps<{
 	width?: number;
 	maxWidth?: number;
 	maxHeight?: number;
+	appearance?: Hk3ComposerMenuAppearance;
 }>();
+
+// Child menus retain the opt-in without changing their positioning component.
+const inheritedAppearance = inject<Ref<Hk3ComposerMenuAppearance | undefined>>('hk3ComposerMenuAppearance', ref());
+const menuAppearance = computed(() => props.appearance ?? inheritedAppearance.value);
+provide('hk3ComposerMenuAppearance', menuAppearance);
 
 const emit = defineEmits<{
 	(ev: 'close', actioned?: boolean): void;
@@ -483,6 +493,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" module>
+@use './hataskey3/hk3-glass';
 .root {
 	&.center {
 		> .menu {
@@ -556,6 +567,32 @@ onBeforeUnmount(() => {
 	&:focus-visible {
 		outline: none;
 	}
+}
+
+.root.composerGlass {
+	color: var(--hk3-text, var(--MI_THEME-fg));
+	--menuFg: var(--hk3-text, var(--MI_THEME-fg));
+	--menuHoverFg: var(--hk3-accent-800, var(--MI_THEME-accent));
+	--menuHoverBg: color-mix(in srgb, var(--hk3-accent, var(--MI_THEME-accent)) 12%, transparent);
+	--menuActiveFg: var(--hk3-accent-800, var(--MI_THEME-accent));
+	--menuActiveBg: color-mix(in srgb, var(--hk3-accent, var(--MI_THEME-accent)) 16%, transparent);
+	font-size: 14px;
+
+	> .menu {
+		@include hk3-glass.menu;
+		isolation: isolate;
+	}
+
+	&.asDrawer > .menu {
+		border-bottom-right-radius: 0;
+		border-bottom-left-radius: 0;
+	}
+
+	.item { font-family: inherit; font-weight: 700; }
+	.item.radio, .item.parent { --menuActiveBg: color-mix(in srgb, var(--hk3-accent, var(--MI_THEME-accent)) 16%, transparent); }
+	.item::before { border-radius: 10px; }
+	.item_content_text_caption, .label { opacity: 0.85; }
+	.divider { border-color: var(--hk3-divider, var(--MI_THEME-divider)); }
 }
 
 /* Only viewport-bounded child menus reflow long labels. Top-level menus and

@@ -176,10 +176,16 @@ function fixture(options: { host?: boolean; tab?: string; deck?: boolean; page?:
 				ref: Vue.ref, computed: Vue.computed, watch: Vue.watch, tab, deckActive, isPageView,
 				isCollectionTimelinePage: Vue.ref(false), isDesktop: Vue.ref(true),
 				notificationToasts, navbarNewNotes, navbarNewNotesContent: navbarNewNotes,
+				punchBusy: Vue.ref(false), punchVisible: Vue.ref(false),
+				pullRefresh: {
+					active: Vue.ref(false), state: Vue.ref({ phase: 'idle', height: 0, distance: 0 }), style: Vue.ref({}),
+				},
+				navbarLoadingShown: Vue.ref(false), newNotesMotionEnabled: Vue.ref(false), pendingApiRequestsCount: Vue.ref(0),
 			};
 			state = execute(simple.setup, [
 				'normalLtlVoteActive', 'nativeNavbarVisible', 'ltlEmojiVoteNavbarTarget', 'emojiVoteNavbarState', 'emojiVoteInNavbar', 'mobileNotificationOnly',
 				'emojiVoteNavbarNav', 'emojiVoteNavbarTabs', 'emojiVoteNavbarRestWidth', 'notificationOutlineEl', 'emojiVoteNavbarStackStyle',
+				'navbarPullPillEl', 'navbarPullFrameStyle',
 			], bindings, navbarWidthStatements) as typeof state;
 			return {
 				...bindings, ...state, hostAvailable, showTopBar, footerIsDark: false,

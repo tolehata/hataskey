@@ -584,5 +584,66 @@
 }
 @media (prefers-reduced-motion: reduce) { .featureWord, .uiSBrandChar { animation: none !important; } }
 
-.featurePage[data-feature='flowers'] { font-family: 'LINE Seed JP', system-ui, sans-serif; }
+.featurePage[data-feature='flowers'] { font-family: inherit; }
 .featurePage[data-feature='flowers'] .updatesHeading h2 { text-wrap: balance; }
+
+/* The release reads like a short illustrated magazine; the body owns scrolling. */
+.releasePanel {
+  width: min(1120px, 100%);
+  height: min(860px, calc(100dvh - 28px));
+  font-family: inherit;
+  border-radius: 24px;
+  background: var(--MI_THEME-panel);
+  box-shadow: 0 28px 80px color-mix(in srgb, var(--MI_THEME-fg) 17%, transparent);
+}
+.releaseHeader { padding: 15px clamp(18px, 4cqw, 42px); background: color-mix(in srgb, var(--MI_THEME-panel) 92%, transparent); }
+.releaseHeading h1 { font-size: 16px; letter-spacing: .01em; }
+.closeButton { background: var(--preview-soft); color: var(--MI_THEME-fg); }
+.releaseBody { overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-color: var(--MI_THEME-divider) transparent; }
+.storyPage, .updatesPage, .updatesPage[data-single='true'] { height: auto; min-height: 100%; grid-template-rows: none; align-content: start; }
+.storyPage { max-width: 1060px; margin-inline: auto; gap: 18px; padding: 34px clamp(20px, 4cqw, 48px) 40px; }
+.updatesHeading { text-align: center; }
+.updatesHeading .eyebrow { font: 400 11px/1.4 Righteous, sans-serif; letter-spacing: .18em; }
+.updatesHeading h2 { margin: 8px 0 10px; font-family: inherit; font-size: clamp(26px, 3.7cqw, 43px); font-weight: 700; line-height: 1.35; letter-spacing: -.045em; text-wrap: balance; }
+.updatesHeading h2 em { color: var(--MI_THEME-accent); font-style: normal; }
+.featurePage[data-feature='ui-s-2'] { max-width: 1100px; }
+.featurePage[data-feature='ui-s-2'] .uiSBrandTitle { display: flex; justify-content: center; align-items: baseline; flex-wrap: wrap; column-gap: .25em; margin: 4px 0 0; font: 400 clamp(46px, 7.8cqw, 94px)/1.14 Righteous, sans-serif; letter-spacing: -.055em; color: var(--MI_THEME-fg); }
+.featurePage[data-feature='ui-s-2'] .uiSBrandLine { display: inline-flex; white-space: nowrap; }
+.featurePage[data-feature='ui-s-2'] .uiSBrandLine:nth-child(2) { color: var(--MI_THEME-accent); }
+.featurePage[data-feature='ui-s-2'] .uiSBrandLine:nth-child(3) { color: color-mix(in srgb, var(--MI_THEME-accent) 75%, var(--MI_THEME-fg)); }
+.releasePanel[data-motion='true'] .featurePage[data-feature='ui-s-2'] .uiSBrandChar { animation-duration: 720ms; }
+.featurePage[data-feature='ui-s-2'] .uiSTagline { margin: 8px 0 0; color: var(--MI_THEME-fg); font-family: inherit; font-size: clamp(17px, 2.4cqw, 23px); font-weight: 700; line-height: 1.5; letter-spacing: .04em; }
+.featureLead { max-width: 37em; margin: 10px auto 0; color: var(--MI_THEME-fgMuted); line-height: 1.8; text-align: center; }
+.sceneLead { max-width: 45em; margin: 0 auto; color: var(--MI_THEME-fgMuted); font-size: 13px; line-height: 1.8; text-wrap: pretty; }
+.sceneLead span { display: block; }
+.sceneTabs { position: sticky; top: 0; z-index: 3; display: flex; gap: 6px; width: min(100%, 700px); margin: 0 auto; padding: 6px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; background: color-mix(in srgb, var(--MI_THEME-panel) 90%, transparent); backdrop-filter: blur(16px); }
+.sceneTabs button { flex: 1; min-height: 44px; border: 0; border-radius: 999px; padding: 7px 9px; background: transparent; color: var(--MI_THEME-fgMuted); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.sceneTabs button span { margin-right: 6px; font: 400 11px Righteous, sans-serif; }
+.sceneTabs button[aria-current='step'] { background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); }
+.sceneTabs button:disabled { cursor: wait; }
+.featureStage { overflow: visible; }
+.featureHighlight, .updateCard, .updateCard[data-digest='true'] { border-radius: 20px; background: color-mix(in srgb, var(--MI_THEME-panel) 84%, var(--MI_THEME-accentedBg)); box-shadow: 0 8px 24px color-mix(in srgb, var(--MI_THEME-fg) 6%, transparent); }
+.featureHighlight { padding: 18px 21px; }
+.featureHighlight h3, .updateCopy h3 { font-size: 17px; }
+.updateCopy { background: transparent; }
+.updateCard { min-height: 176px; }
+.updatesPage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.updatesPage .updatesHeading { grid-column: 1 / -1; }
+.updatesPage .updateCard { display: grid; grid-template-columns: minmax(0, 1fr); }
+.updatesPage .updateCard:not([data-digest='true']) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.releaseFooter { padding: 12px clamp(18px, 4cqw, 42px); background: color-mix(in srgb, var(--MI_THEME-panel) 94%, transparent); backdrop-filter: blur(16px); }
+.stepTrack { width: min(170px, 35%); }
+.primaryButton { min-height: 46px; }
+@container release (max-width: 700px) {
+  .storyPage { padding: 24px 18px 32px; }
+  .updatesPage { grid-template-columns: minmax(0, 1fr); }
+  .updatesPage .updateCard:not([data-digest='true']) { grid-template-columns: minmax(0, 1fr); }
+  .featureHighlights { grid-template-columns: minmax(0, 1fr); }
+}
+@container release (max-width: 460px) {
+  .featurePage[data-feature='ui-s-2'] .uiSBrandTitle { font-size: clamp(38px, 11cqw, 54px); }
+  .sceneTabs { border-radius: 18px; flex-wrap: wrap; }
+  .sceneTabs button { flex-basis: calc(50% - 4px); }
+  .stepCaption > span, .stepTrack { display: none; }
+  .stepCaption { justify-content: center; }
+}

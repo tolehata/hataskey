@@ -37,6 +37,7 @@ vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn(() => { throw new Error('Introductions must not request real records'); }) }));
 vi.mock('@/utility/hatakyu-assets.js', () => ({ useHatakyuBranding: () => true, hatakyuAssetUrl: (key: string) => `/client-assets/hatakyu/${key}.png` }));
 vi.mock('@/components/MkHatakyuIllustration.vue', () => ({ default: { template: '<img alt="" data-mascot>' } }));
+vi.mock('./hata-whats-new/UiS2Feature.vue', () => ({ default: { props: ['scene', 'motion'], template: '<div data-feature-mock inert aria-hidden="true">Hataskey UI S 2 scene {{ scene }}</div>' } }));
 vi.mock('@/components/HyDialog.vue', () => ({ default: { setup() { throw new Error('A decorative preview opened a live dialog'); } } }));
 vi.mock('@/components/MkHataskeyNotificationToasts.vue', () => ({ default: { setup() { throw new Error('A decorative preview started a live receiver'); } } }));
 vi.mock('@/components/MkModal.vue', async () => {
@@ -75,7 +76,7 @@ let modalCloseCalls: number;
 let deferModalClose: boolean;
 let closed: ReturnType<typeof vi.fn>;
 
-const approvedIds = ['ui-s-layout', 'ui-s-hatask', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'hataskey-sounds', 'sound-preferences', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'ui-s-fixes', 'daily-fixes', 'upstream-update', 'script-errors'];
+const approvedIds = ['ui-s-layout', 'ui-s-hatask', 'ui-s-split', 'ui-s-mobile-dock', 'ui-s-search', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'hataskey-sounds', 'sound-preferences', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'note-appearance', 'ui-s-fixes', 'daily-fixes', 'upstream-update', 'script-errors', 'composer-drafts', 'note-menu', 'timeline-swipe', 'ltl-punch'];
 const approvedPreviews = ['note-actions', 'emoji-changes'];
 const previewCopy: Record<string, string> = { 'note-actions': 'クリップに追加しました', 'emoji-changes': '絵文字の変更申請' };
 
@@ -233,6 +234,29 @@ describe('production update introduction', () => {
 		expect(motions.length).toBe(count);
 		expect(host.querySelector('[data-story]')).toBeNull();
 	});
+	test('the four UI S 2 chapters use the release navigation and stay keyboard accessible', async () => {
+		await mount();
+		const brand = requiredElement('[data-story] h2');
+		expect(brand.getAttribute('aria-label')).toBe('Hataskey UI S 2');
+		expect(brand.querySelectorAll('[aria-hidden="true"]')).toHaveLength(3);
+		expect(brand.textContent).toBe('HataskeyUI S2');
+		const characters = [...brand.querySelectorAll<HTMLElement>('span[style]')];
+		expect(characters).toHaveLength('HataskeyUI S2'.length);
+		expect(characters.at(-1)?.style.animationDelay).toBe('1120ms');
+		const chapterButtons = [...host.querySelectorAll<HTMLButtonElement>('[data-chapter-nav] button')];
+		expect(chapterButtons.map(button => button.textContent?.trim())).toEqual(['01新しい景色', '02PCで並べる', '03指先で選ぶ', '04探す・書く']);
+		expect(chapterButtons[0].getAttribute('aria-current')).toBe('step');
+		chapterButtons[2].focus();
+		chapterButtons[2].click(); await flush();
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('ui-s-mobile-dock');
+		expect(requiredElement('[data-story] h2 + p').textContent).toContain('長押しして、タイムラインの一覧へ。');
+		expect(requiredElement('[data-story] h2 + p').querySelectorAll('span')).toHaveLength(2);
+		expect(requiredElement('[data-chapter-nav] [aria-current="step"]').textContent).toContain('指先で選ぶ');
+		expect(host.querySelectorAll('[aria-label="次へ"]')).toHaveLength(1);
+		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
+		await next();
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('ui-s-search');
+	});
 	test.each([600, 380])('all approved topics and decorative previews retain notification ownership at body height %s', async height => {
 		bodyHeight = height;
 		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
@@ -277,7 +301,7 @@ describe('production update introduction', () => {
 			if (storyFeature) {
 				expect(requiredElement('[data-story]').getAttribute('data-feature')).toBe(storyFeature);
 				expect(feature).not.toBeNull();
-				expect(feature?.textContent).toContain(({ 'ui-s': 'Hatask', recipes: 'Hatady 料理記録', flowers: 'しずく' })[storyFeature]);
+				expect(feature?.textContent).toContain(({ 'ui-s-2': 'Hataskey UI S 2', 'ui-s': 'Hatask', recipes: 'Hatady 料理記録', flowers: 'しずく' })[storyFeature]);
 				expect(feature?.getAttribute('aria-hidden')).toBe('true');
 				expect(feature?.hasAttribute('inert')).toBe(true);
 				expect(feature?.querySelector('button, input, select, textarea, a[href], [tabindex]')).toBeNull();
@@ -319,7 +343,7 @@ describe('production update introduction', () => {
 		for (const height of [600, 469, 470, 380]) {
 			bodyHeight = height; resizeCallbacks.forEach(callback => callback()); await flush();
 			expect(host.querySelector(`[data-change-id="${id}"]`)).not.toBeNull();
-			expect(host.querySelectorAll('[data-change-id]')).toHaveLength(group.feature || height >= 470 ? 2 : 1);
+			expect(host.querySelectorAll('[data-change-id]')).toHaveLength(!group.feature && height < 470 ? 1 : group.cards.length);
 			if (height < 470) expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe(group.feature ? group.cards[0].id : id);
 			expect(host.querySelector('footer')?.textContent).toContain(`/ ${getHataWhatsNewStories(height).length}`);
 		}
@@ -454,7 +478,8 @@ describe('production update introduction', () => {
 		expect(centered(css.replaceAll('44px minmax(0, 1fr) 44px', '1fr auto'))).toBe(false);
 		expect(centered(css)).toBe(true);
 		expect(css).toContain('mask-image: linear-gradient(to bottom');
-		expect(css).toContain('overflow: clip; container: release-body / size');
+		expect(css).toContain('.releaseBody { overflow-y: auto; overflow-x: hidden;');
+		expect(css).toContain('.sceneTabs button[aria-current=\'step\']');
 	});
 	test('narrow or short containers hide decorative previews and keep a single copy column', async () => {
 		const css = fs.readFileSync(path.join(process.cwd(), 'src/components/hata-whats-new/release.module.css'), 'utf8');

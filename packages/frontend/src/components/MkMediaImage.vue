@@ -250,18 +250,18 @@ defineExpose<MediaComponentExposes>({
 	position: relative;
 	-webkit-tap-highlight-color: transparent;
 	//box-shadow: 0 0 0 1px var(--MI_THEME-divider) inset;
-	background: var(--MI_THEME-bg);
+	background: var(--MI-media-image-background, var(--MI_THEME-bg));
 	background-size: 16px 16px;
 }
 
 html[data-color-scheme=dark] .visible {
 	--c: rgb(255 255 255 / 2%);
-	background-image: linear-gradient(45deg, var(--c) 16.67%, var(--MI_THEME-bg) 16.67%, var(--MI_THEME-bg) 50%, var(--c) 50%, var(--c) 66.67%, var(--MI_THEME-bg) 66.67%, var(--MI_THEME-bg) 100%);
+	background-image: var(--MI-media-image-pattern, linear-gradient(45deg, var(--c) 16.67%, var(--MI_THEME-bg) 16.67%, var(--MI_THEME-bg) 50%, var(--c) 50%, var(--c) 66.67%, var(--MI_THEME-bg) 66.67%, var(--MI_THEME-bg) 100%));
 }
 
 html[data-color-scheme=light] .visible {
 	--c: rgb(0 0 0 / 2%);
-	background-image: linear-gradient(45deg, var(--c) 16.67%, var(--MI_THEME-bg) 16.67%, var(--MI_THEME-bg) 50%, var(--c) 50%, var(--c) 66.67%, var(--MI_THEME-bg) 66.67%, var(--MI_THEME-bg) 100%);
+	background-image: var(--MI-media-image-pattern, linear-gradient(45deg, var(--c) 16.67%, var(--MI_THEME-bg) 16.67%, var(--MI_THEME-bg) 50%, var(--c) 50%, var(--c) 66.67%, var(--MI_THEME-bg) 66.67%, var(--MI_THEME-bg) 100%));
 }
 
 .menu {

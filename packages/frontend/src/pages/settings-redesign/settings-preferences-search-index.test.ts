@@ -14,6 +14,7 @@ vi.mock('@/i18n.js', async () => {
 });
 import {
 	canonicalSearchIdForDescriptor,
+	canonicalSearchIdForPreferenceKey,
 	generatedPreferenceSearchId,
 	preferenceAuxiliaryControls,
 	preferenceControls,
@@ -29,7 +30,7 @@ import {
 } from './settings-preferences-search-index.js';
 import type { SearchIndexItem } from '@/utility/inapp-search.js';
 import type { SettingsControlCatalogItemV2 } from '@/utility/settings-control-search-v2.js';
-import { assertSettingsCatalogRelationsV2, buildSettingsCatalogV2, getRelatedSettingsV2, searchSettingsV2 } from '@/utility/settings-search-v2.js';
+import { assertSettingsCatalogRelationsV2, buildSettingsCatalogV2, canonicalStableIdForCatalogV2, getRelatedSettingsV2, searchSettingsV2 } from '@/utility/settings-search-v2.js';
 
 const metadata = {
 	persistence: 'test fixture: legacy preference generator metadata',
@@ -75,6 +76,86 @@ function legacyMarkers(): SearchIndexItem[] {
 }
 
 describe('redesigned preferences search index', () => {
+	test('finds UI S display size as a device setting', () => {
+		const stableId = 'settings.control.device.hataskey-ui-s-display-size';
+		const merged = mergeRedesignedPreferenceSearchItems([]);
+		const item = merged.find(control => control.stableId === stableId);
+		expect(item).toMatchObject({ destinationId: 'hataskey-ui-s', persistence: 'device', saveMode: 'immediate', preferenceKeys: [], storageRefs: [{ kind: 'local', key: 'hataskeyUiSDisplaySize' }] });
+		expect(isRedesignedPreferenceSearchId(stableId)).toBe(true);
+		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
+		for (const query of ['表示サイズ', 'サイズ', '表示密度', 'コンパクト', '画面', 'UI S']) {
+			expect(searchSettingsV2(catalog, query).results.some(result => result.stableId === stableId), query).toBe(true);
+		}
+	});
+	test('routes bottom navigation searches to the UI S settings section', () => {
+		const stableId = generatedPreferenceSearchId('simpleUi.bottomNav');
+		const merged = mergeRedesignedPreferenceSearchItems([]);
+		const item = merged.find(control => control.stableId === stableId);
+		expect(item).toMatchObject({ destinationId: 'hataskey-ui-s', preferenceKeys: ['hataskeyUi3BottomNav'], saveMode: 'immediate', availability: 'all' });
+		expect(canonicalSearchIdForPreferenceKey('hataskeyUi3BottomNav')).toBe(stableId);
+		expect(canonicalSearchIdForPreferenceKey('simpleUi.bottomNav')).toBe(stableId);
+		expect(isRedesignedPreferenceSearchId(stableId)).toBe(true);
+		const generated = { ...item!, stableId: 'settings.control.generated-ui-s-bottom-nav' };
+		expect(mergeRedesignedPreferenceSearchItems([generated]).filter(control => control.preferenceKeys.includes('hataskeyUi3BottomNav'))).toHaveLength(1);
+		expect(redesignedPreferenceStableIdAliases([generated]).get(generated.stableId)).toBe(stableId);
+		expect(preferenceDestinationForSearchTarget(item!)).toBe('hataskey-ui-s');
+		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
+		for (const query of ['下部ナビバー', '並び替え', 'モバイル', 'ウィジェット', 'simpleUi.bottomNav', 'hataskeyUi3BottomNav']) {
+			expect(searchSettingsV2(catalog, query).results.some(result => result.stableId === stableId), query).toBe(true);
+		}
+	});
+	test('aliases every shared custom-page border control to one new row and preserves unrelated custom controls', () => {
+		const keys = ['postFormVisibilityBorder.enabled', 'postFormVisibilityBorder.width', 'postFormVisibilityBorder.color.public', 'postFormVisibilityBorder.color.home', 'postFormVisibilityBorder.color.followers', 'postFormVisibilityBorder.color.specified'];
+		const custom = generatedLegacyControls().filter(item => keys.includes(item.preferenceKeys[0]!)).map(item => ({ ...item, stableId: `${item.stableId}-custom`, sourceFile: 'src/pages/settings/hata-custom.vue', route: '/settings/hata-custom', owner: 'hatasaba' as const, unmet: [{ kind: 'preference' as const, id: 'pfvbEnabled', behavior: 'explain' as const }] }));
+		const unrelated = { ...custom[0]!, stableId: 'settings.control.custom-unrelated', preferenceKeys: ['hideBotsInTimeline'], aliases: ['hideBotsInTimeline'] };
+		const generated = [...generatedLegacyControls(), ...custom, unrelated];
+		const aliases = redesignedPreferenceStableIdAliases(generated);
+		const merged = mergeRedesignedPreferenceSearchItems(generated);
+		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2(), aliases);
+		expect(merged.find(item => item.stableId === unrelated.stableId)?.destinationId).toBe('hataskey-ui');
+		expect(aliases.has(unrelated.stableId)).toBe(false);
+		for (const [index, key] of keys.entries()) {
+			const stableId = generatedPreferenceSearchId(key);
+			expect(merged.filter(item => item.preferenceKeys.includes(key))).toHaveLength(1);
+			expect(catalog.byStableId.get(stableId)?.unmet).toBeUndefined();
+			expect(aliases.get(custom[index]!.stableId)).toBe(stableId);
+			expect(canonicalStableIdForCatalogV2(catalog, custom[index]!.stableId)).toBe(stableId);
+			expect(catalog.byStableId.get(stableId)).toMatchObject({ route: '/settings/preferences', destinationId: 'hataskey-ui-s', persistence: 'profile', saveMode: 'immediate', preferenceKeys: [key] });
+		}
+		for (const query of ['公開範囲', '色分け', '投稿フォーム', 'ぼかし']) {
+			const results = searchSettingsV2(catalog, query).results;
+			expect(results.some(result => result.stableId === generatedPreferenceSearchId(keys[0]!)), query).toBe(true);
+			expect(results.some(result => custom.some(item => item.stableId === result.stableId)), query).toBe(false);
+		}
+	});
+
+	test.each([
+		['hataskeyUi3SideMenuBackground', ['左サイドメニュー', '左メニュー', 'サイドバー', 'sidebar']],
+		['hataskeyUi3RightPaneBackground', ['右ペイン', 'ウィジェット', 'Hatask', 'widgets']],
+		['hataskeyUi3GlassDensity', ['透過度', '透明度', '濃さ', 'opacity', 'transparency', 'density', '浓度']],
+	] as const)('finds the independent background setting %s by appearance aliases', (key, queries) => {
+		const stableId = generatedPreferenceSearchId(key);
+		const merged = mergeRedesignedPreferenceSearchItems([]);
+		const descriptor = merged.find(item => item.stableId === stableId);
+		expect(descriptor).toMatchObject({ destinationId: 'hataskey-ui-s', preferenceKeys: [key], persistence: 'profile', saveMode: 'immediate', owner: 'hatasaba' });
+		expect(descriptor?.aliases).not.toContain('投稿フォーム');
+		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
+		for (const query of [...queries, '背景', 'すりガラス']) {
+			expect(searchSettingsV2(catalog, query).results.some(result => result.stableId === stableId), query).toBe(true);
+		}
+	});
+	test('finds the UI S background by its label and image aliases without a composer alias', () => {
+		const key = 'hataskeyUi3TimelineBackground';
+		const stableId = generatedPreferenceSearchId(key);
+		const merged = mergeRedesignedPreferenceSearchItems([]);
+		const descriptor = merged.find(item => item.stableId === stableId);
+		expect(descriptor).toMatchObject({ destinationId: 'hataskey-ui-s', preferenceKeys: [key], persistence: 'profile', saveMode: 'immediate', owner: 'hatasaba' });
+		expect(descriptor?.aliases).not.toContain('投稿フォーム');
+		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
+		for (const query of ['タイムライン背景', '背景', 'すりガラス', 'ヘッダー', 'アイコン', 'background', 'avatar', '磨砂玻璃']) {
+			expect(searchSettingsV2(catalog, query).results.some(result => result.stableId === stableId), query).toBe(true);
+		}
+	});
 	test('finds UI S RSS controls and keeps their device-local destination', () => {
 		const merged = mergeRedesignedPreferenceSearchItems([]);
 		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
@@ -113,14 +194,14 @@ describe('redesigned preferences search index', () => {
 		}
 	});
 	test('legacy and new preference controls are each materialized exactly once', () => {
-		expect(preferenceControls).toHaveLength(112);
+		expect(preferenceControls).toHaveLength(122);
 		expect(preferenceAuxiliaryControls).toHaveLength(18);
-		expect(settingsInventoryKeys).toHaveLength(130);
+		expect(settingsInventoryKeys).toHaveLength(140);
 		const merged = mergeRedesignedPreferenceSearchItems(generatedLegacyControls());
 		const preferenceDescriptors = merged.filter(item => item.route === '/settings/preferences');
-		expect(preferenceDescriptors).toHaveLength(130);
-		expect(new Set(preferenceDescriptors.map(item => item.preferenceKeys[0])).size).toBe(130);
-		expect(new Set(preferenceDescriptors.map(item => item.stableId)).size).toBe(130);
+		expect(preferenceDescriptors).toHaveLength(settingsInventoryKeys.length + 2);
+		expect(new Set(preferenceDescriptors.map(item => item.preferenceKeys[0])).size).toBe(settingsInventoryKeys.length + 2);
+		expect(new Set(preferenceDescriptors.map(item => item.stableId)).size).toBe(settingsInventoryKeys.length + 2);
 		for (const key of settingsInventoryKeys) {
 			const descriptor = preferenceDescriptors.find(item => item.preferenceKeys[0] === key);
 			expect(descriptor?.stableId, key).toBe(generatedPreferenceSearchId(key));
@@ -130,7 +211,9 @@ describe('redesigned preferences search index', () => {
 
 	test('runtime-generated legacy ids all rewrite to the canonical preference controls', () => {
 		const generated = generatedLegacyControls();
-		const aliases = redesignedPreferenceStableIdAliases(generated);
+		const aliases = new Map(redesignedPreferenceStableIdAliases(generated));
+		expect(aliases.get(generatedPreferenceSearchId('hataskeyUi3BottomNav'))).toBe(generatedPreferenceSearchId('simpleUi.bottomNav'));
+		aliases.delete(generatedPreferenceSearchId('hataskeyUi3BottomNav'));
 		expect(aliases.size).toBe(generated.length);
 		expect(new Set(aliases.values()).size).toBe(settingsInventoryKeys.length);
 		for (const item of generated) expect(aliases.get(item.stableId)).toBe(generatedPreferenceSearchId(item.preferenceKeys[0]!));
@@ -141,6 +224,21 @@ describe('redesigned preferences search index', () => {
 		expect(() => redesignedPreferenceStableIdAliases([multiKey])).toThrow(/not represented exactly once/u);
 		const duplicate = { ...generated[0]! };
 		expect(() => redesignedPreferenceStableIdAliases([generated[0]!, duplicate])).toThrow(/duplicate legacy preference descriptor id/u);
+	});
+
+	test('legacy device swipe ids map to the redesigned swipe row only with storage evidence', () => {
+		const deviceSwipe: SettingsControlCatalogItemV2 = {
+			...generatedLegacyControls()[0]!,
+			stableId: 'settings.control.devicehorizontalswipe-1mqerrh',
+			preferenceKeys: [],
+			aliases: ['deviceHorizontalSwipe'],
+			storageRefs: [{ kind: 'local', key: 'hatasabaTabSwipeEnabled' }],
+		};
+		expect(redesignedPreferenceStableIdAliases([deviceSwipe]).get(deviceSwipe.stableId))
+			.toBe(generatedPreferenceSearchId('enableHorizontalSwipe'));
+		expect(() => redesignedPreferenceStableIdAliases([{ ...deviceSwipe, storageRefs: [] }])).toThrow(/not represented exactly once/u);
+		expect(() => redesignedPreferenceStableIdAliases([{ ...deviceSwipe, aliases: [] }])).toThrow(/not represented exactly once/u);
+		expect(() => redesignedPreferenceStableIdAliases([{ ...deviceSwipe, preferenceKeys: ['lang'] }])).toThrow(/not represented exactly once/u);
 	});
 
 	test('legacy runtime ids are inferred from aliases and storage evidence', () => {
@@ -240,7 +338,7 @@ describe('redesigned preferences search index', () => {
 
 	test('the legacy page generator cannot make a dynamic new-surface setting disappear', () => {
 		const merged = mergeRedesignedPreferenceSearchItems([]);
-		expect(merged).toHaveLength(130);
+		expect(merged).toHaveLength(settingsInventoryKeys.length + 2);
 		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
 		for (const key of settingsInventoryKeys) {
 			const stableId = generatedPreferenceSearchId(key);
@@ -316,7 +414,7 @@ describe('redesigned preferences search index', () => {
 		source.relatedIds = source.related.map(relation => relation.stableId);
 		source.relatedTotal = beforeTotal + 1;
 		suppressLegacyPreferenceSearchMarkers(catalog);
-		expect(markers).toHaveLength(130);
+		expect(markers).toHaveLength(140);
 		for (const descriptor of markers) {
 			expect(descriptor.searchable).toBe(false);
 			expect(descriptor.related).toEqual([]);

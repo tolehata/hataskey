@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div v-if="show" ref="el" :class="[$style.root, { [$style.reduceBlurEffect]: !prefer.s.useBlurEffect, [$style.reduceAnimation]: !prefer.s.animation, [$style.scrollToTransparent]: showEl }]">
 	<div :class="[$style.upper, { [$style.slim]: narrow, [$style.thin]: thin_ }]">
-		<div v-if="!thin_ && !canBack && !notification" :class="$style.buttonsLeft">
+		<div v-if="hasBackButton" :class="$style.buttonsLeft">
 			<button class="_button" :class="[$style.button, $style.goBack]" @click.stop="goBack" @touchstart.passive="preventDrag"><i class="ti ti-chevron-left"></i></button>
 		</div>
 		<div v-if="!thin_ && (narrow || deviceKind === 'smartphone') && props.displayMyAvatar && $i && !notification" class="_button" :class="$style.buttonsLeft" @click="openAccountMenu">
@@ -50,7 +50,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button :id="action.id" v-tooltip.noDelay="action.text" class="_button" :class="[$style.button, { [$style.highlighted]: action.highlighted }]" :aria-label="action.text" :aria-controls="action.controls" :aria-expanded="action.expanded" @click.stop="action.handler" @touchstart.passive="preventDrag"><i :class="action.icon" aria-hidden="true"></i></button>
 			</template>
 		</div>
-		<div v-else-if="!thin_ && !canBack && !(actions && actions.length > 0)" :class="$style.buttonsRight"/>
+		<div v-else-if="hasBackButton && !(actions && actions.length > 0)" :class="$style.buttonsRight"/>
 		<div v-if="pageMetadata && pageMetadata.avatar && ($i && $i.id !== pageMetadata.userName?.id) && router.currentRoute.value.name === 'user' && !disableFollowButton && !notification" :class="$style.followButton">
 			<MkFollowButton :user="pageMetadata.avatar" :transparent="false" :full="!narrow"/>
 		</div>
@@ -85,8 +85,9 @@ export type PageHeaderProps = {
 </script>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, ref, inject, useTemplateRef, computed } from 'vue';
+import { onMounted, onUnmounted, ref, inject, useTemplateRef, computed, unref } from 'vue';
 import { getScrollPosition, scrollToTop } from '@@/js/scroll.js';
+import type { MaybeRef } from 'vue';
 import { deviceKind } from '@/utility/device-kind.js';
 import XTabs from './MkPageHeader.tabs.vue';
 import { globalEvents } from '@/events.js';
@@ -136,7 +137,9 @@ const emit = defineEmits<{
 const injectedPageMetadata = inject(DI.pageMetadata, ref(null));
 const pageMetadata = computed(() => props.overridePageMetadata ?? injectedPageMetadata.value);
 
-const hideTitle = computed(() => inject('shouldOmitHeaderTitle', false) || props.hideTitle || (props.canOmitTitle && props.tabs.length > 0));
+const omitHeaderTitle = inject<MaybeRef<boolean>>('shouldOmitHeaderTitle', false);
+const omitHeaderBack = inject<MaybeRef<boolean>>('shouldOmitHeaderBack', false);
+const hideTitle = computed(() => unref(omitHeaderTitle) || props.hideTitle || (props.canOmitTitle && props.tabs.length > 0));
 const thin_ = props.thin || inject('shouldHeaderThin', false);
 
 const el = useTemplateRef('el');
@@ -148,12 +151,16 @@ const hasTabs = computed(() => props.tabs.length > 0);
 const tabsInUpper = computed(() => hasTabs.value && (!narrow.value || hideTitle.value));
 const shouldCenterTitle = computed(() => !canBack.value && !hideTitle.value && !tabsInUpper.value);
 const hasActions = computed(() => props.actions && props.actions.length > 0);
+const hasBackButton = computed(() => !thin_ && !canBack.value && !props.notification && !unref(omitHeaderBack));
+const hasAccountButton = computed(() => !thin_ && (narrow.value || deviceKind === 'smartphone') && props.displayMyAvatar && !!$i && !props.notification);
+const hasFollowButton = computed(() => !!pageMetadata.value?.avatar && !!$i && $i.id !== pageMetadata.value.userName?.id && router.currentRoute.value.name === 'user' && !props.disableFollowButton && !props.notification);
 const show = computed(() => {
-	return !hideTitle.value || hasTabs.value || hasActions.value;
+	return !hideTitle.value || hasTabs.value || hasActions.value || hasBackButton.value || hasAccountButton.value || hasFollowButton.value;
 });
 
 const leftSpacing = computed(() => {
 	if (thin_ || props.notification) return null;
+	if (unref(omitHeaderBack) && !canBack.value) return null;
 
 	const actions = props.actions;
 	const actionsLength = actions?.length ?? 0;
@@ -253,7 +260,7 @@ onUnmounted(() => {
 
 <style lang="scss" module>
 .root {
-	background: color(from var(--MI_THEME-pageHeaderBg) srgb r g b / 0.75);
+	background: var(--MI-page-header-background, color(from var(--MI_THEME-pageHeaderBg) srgb r g b / 0.75));
 	-webkit-backdrop-filter: var(--MI-blur, blur(15px));
 	backdrop-filter: var(--MI-blur, blur(15px));
 	border-bottom: solid 0.5px transparent;
@@ -278,7 +285,7 @@ onUnmounted(() => {
 
 @container style(--MI_THEME-pageHeaderBg: var(--MI_THEME-bg)) {
 	.root {
-		border-bottom: solid 0.5px var(--MI_THEME-divider);
+		border-bottom: solid 0.5px var(--MI-page-header-divider, var(--MI_THEME-divider));
 	}
 }
 

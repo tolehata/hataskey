@@ -4,21 +4,49 @@ SPDX-License-Identifier: AGPL-3.0-only
 Hataskey UI 3: 右ペイン。「ウィジェット」(Hataskey UI と共通)と「Hatask」(今日の概況)をタブで切り替える。
 -->
 <template>
-<aside :class="$style.root">
-	<div :class="$style.head" role="tablist" :data-active="tab">
+<aside :class="$style.root" :data-glass="prefer.r.hataskeyUi3RightPaneBackground.value ? 'true' : undefined" :data-mobile="mobile ? 'true' : undefined">
+	<header v-if="mobile" :class="$style.mobileHead">
+		<div :class="$style.mobileTitle">
+			<strong :class="tab === 'hatask' ? $style.mobileBrand : undefined">{{ tab === 'widgets' ? copy.paneWidgets : 'Hatask' }}</strong>
+			<button
+				v-if="tab === 'widgets'" type="button" :class="$style.editButton" data-cy-widget-edit
+				:disabled="!widgetControls"
+				:aria-label="widgetEditing ? i18n.ts.editWidgetsExit : i18n.ts.editWidgets"
+				:title="widgetEditing ? i18n.ts.editWidgetsExit : i18n.ts.editWidgets"
+				:aria-pressed="widgetEditing" @click="widgetControls?.toggleWidgetEditMode()"
+			>
+				<Check v-if="widgetEditing" :size="18" aria-hidden="true"/><Pencil v-else :size="18" aria-hidden="true"/>
+			</button>
+		</div>
+		<slot name="close"/>
+	</header>
+	<div v-else :class="$style.head" :data-active="tab">
 		<span :class="$style.indicator" aria-hidden="true"></span>
-		<button type="button" role="tab" :class="$style.tab" :aria-selected="tab === 'widgets'" @click="setTab('widgets')"><LayoutGrid :size="18"/>{{ copy.paneWidgets }}</button>
-		<button type="button" role="tab" :class="$style.tab" :aria-selected="tab === 'hatask'" @click="setTab('hatask')">
-			<CalendarCheck :size="18"/><span :class="$style.brand">Hatask</span>
-			<span v-if="pendingTodos.length > 0" :class="$style.badge">{{ pendingTodos.length > 99 ? '99+' : pendingTodos.length }}</span>
-		</button>
+		<div :class="$style.tabs" role="tablist">
+			<button type="button" role="tab" :class="$style.tab" :aria-selected="tab === 'widgets'" @click="setTab('widgets')"><LayoutGrid :size="18"/>{{ copy.paneWidgets }}</button>
+			<button type="button" role="tab" :class="$style.tab" :aria-selected="tab === 'hatask'" @click="setTab('hatask')">
+				<CalendarCheck :size="18"/><span :class="$style.brand">Hatask</span>
+				<span v-if="pendingTodos.length > 0" :class="$style.badge">{{ pendingTodos.length > 99 ? '99+' : pendingTodos.length }}</span>
+			</button>
+		</div>
+		<div :class="$style.editSlot">
+			<button
+				v-if="tab === 'widgets'" type="button" :class="$style.editButton" data-cy-widget-edit
+				:disabled="!widgetControls"
+				:aria-label="widgetEditing ? i18n.ts.editWidgetsExit : i18n.ts.editWidgets"
+				:title="widgetEditing ? i18n.ts.editWidgetsExit : i18n.ts.editWidgets"
+				:aria-pressed="widgetEditing" @click="widgetControls?.toggleWidgetEditMode()"
+			>
+				<Check v-if="widgetEditing" :size="18" aria-hidden="true"/><Pencil v-else :size="18" aria-hidden="true"/>
+			</button>
+		</div>
 	</div>
 
 	<div :class="$style.body" :data-active="tab">
 		<div :class="$style.track">
 			<!-- ===== ウィジェット ===== -->
 			<section :class="$style.view" :data-on="tab === 'widgets' ? 'true' : undefined" :inert="tab !== 'widgets'">
-				<div :class="$style.widgets"><XWidgets/></div>
+				<div :class="$style.widgets"><XWidgets ref="widgetControls" :deckEmbedded="true"/></div>
 			</section>
 
 			<!-- ===== Hatask ===== -->
@@ -100,7 +128,7 @@ Hataskey UI 3: 右ペイン。「ウィジェット」(Hataskey UI と共通)と
 
 <script lang="ts" setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Calendar, CalendarCheck, Check, ChevronRight, Flower2, LayoutGrid, ListChecks, Smile, Soup } from '@lucide/vue';
+import { Calendar, CalendarCheck, Check, ChevronRight, Flower2, LayoutGrid, ListChecks, Pencil, Smile, Soup } from '@lucide/vue';
 import HataskEmoji from '@/components/HataskEmoji.vue';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
@@ -121,8 +149,12 @@ import { isJournalEntry } from '@/utility/hatask-journal.js';
 import type { HataskJournalEntry } from '@/utility/hatask-journal.js';
 
 const XWidgets = defineAsyncComponent(() => import('@/ui/_common_/widgets.vue'));
+const widgetControls = ref<InstanceType<typeof XWidgets> | null>(null);
+const widgetEditing = computed(() => widgetControls.value?.getWidgetEditMode() ?? false);
 
 type PaneTab = 'widgets' | 'hatask';
+const props = defineProps<{ initialTab?: PaneTab; mobile?: boolean }>();
+const emit = defineEmits<{ tabChange: [tab: PaneTab] }>();
 
 const copy = i18n.ts._hata._hataskeyUi3;
 const MOOD_EMOJIS = ['😢', '🙁', '😐', '🙂', '🥰'] as const;
@@ -132,11 +164,15 @@ const moodLabels = [hataskMain.moodLevelHard, hataskMain.moodLevelUneasy, hatask
 const LEAVE_MS = 720;
 
 const tab = ref<PaneTab>(miLocalStorage.getItem('hataskeyUi3PaneTab') === 'widgets' ? 'widgets' : 'hatask');
+watch(() => props.initialTab, next => { if (next) tab.value = next; }, { immediate: true });
 
 function setTab(next: PaneTab) {
 	tab.value = next;
 	miLocalStorage.setItem('hataskeyUi3PaneTab', next);
+	emit('tabChange', next);
 }
+
+defineExpose({ setTab });
 
 const now = ref(new Date());
 const loaded = ref(false);
@@ -369,17 +405,45 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	overflow: hidden;
 	background: var(--hk3-bg);
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
 	color: var(--hk3-text);
+
+	&[data-glass] {
+		background: var(--hk3-glass-pane, var(--hk3-bg));
+		-webkit-backdrop-filter: blur(16px);
+		backdrop-filter: blur(16px);
+	}
+	&[data-mobile] {
+		flex: 1;
+		min-height: 0;
+		background: transparent;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
 
 	a { color: inherit; text-decoration: none; }
 }
+
+.mobileHead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex: none;
+	min-height: 52px;
+	padding: env(safe-area-inset-top, 0px) calc(8px * var(--hk3-ui-scale, 1)) 0 calc(20px * var(--hk3-ui-scale, 1));
+}
+
+.mobileTitle { display: flex; align-items: center; gap: calc(8px * var(--hk3-ui-scale, 1)); min-width: 0; }
+.mobileTitle strong { font-size: calc(15px * var(--hk3-ui-scale, 1)); }
+.mobileTitle .mobileBrand { font-family: 'Righteous', system-ui, sans-serif; font-weight: 400; font-size: calc(18px * var(--hk3-ui-scale, 1)); }
 
 .head {
 	position: relative;
 	height: 58px;
 	flex: none;
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr);
 	border-bottom: 2px solid var(--hk3-divider);
 }
 
@@ -389,13 +453,46 @@ onBeforeUnmount(() => {
 	top: 0;
 	bottom: 0;
 	left: 0;
-	width: 50%;
+	width: calc((100% - 48px) / 2);
 	background: var(--hk3-accent-100);
 	box-shadow: inset 0 -3px 0 var(--hk3-accent);
 	transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 	pointer-events: none;
 
-	.head[data-active="hatask"] & { transform: translateX(100%); }
+	.head[data-active="hatask"] & { transform: translateX(calc(100% + 48px)); }
+}
+
+.tabs {
+	display: contents;
+}
+
+.editSlot {
+	grid-column: 2;
+	grid-row: 1;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.editButton {
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--hk3-neutral-700);
+	cursor: pointer;
+
+	&:hover, &[aria-pressed="true"] {
+		background: var(--hk3-accent-100);
+		color: var(--hk3-accent-800);
+	}
+	&:focus-visible { outline: 2px solid var(--hk3-accent); outline-offset: 2px; }
+	&:disabled { opacity: 0.5; cursor: default; }
 }
 
 .tab {
@@ -404,17 +501,21 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 8px;
+	gap: calc(8px * var(--hk3-ui-scale, 1));
 	border: 0;
 	background: transparent;
 	color: var(--hk3-neutral-700);
 	cursor: pointer;
 	font: inherit;
-	font-size: 14px;
+	font-size: calc(14px * var(--hk3-ui-scale, 1));
 	font-weight: 800;
 	transition: color 300ms ease;
 
-	& + & { border-left: 1px solid var(--hk3-divider); }
+	grid-row: 1;
+	min-width: 0;
+	padding: 0;
+	&:first-child { grid-column: 1; }
+	&:last-child { grid-column: 3; }
 	&[aria-selected="true"] { color: var(--hk3-accent-800); }
 	&[aria-selected="true"] svg { color: var(--hk3-accent); }
 	&:hover:not([aria-selected="true"]) { color: var(--hk3-accent-700); }
@@ -426,17 +527,17 @@ onBeforeUnmount(() => {
 	letter-spacing: 0.01em;
 }
 
-.brand { font-size: 17px; }
-.brandSm { font-size: 16px; }
+.brand { font-size: calc(17px * var(--hk3-ui-scale, 1)); }
+.brandSm { font-size: calc(16px * var(--hk3-ui-scale, 1)); }
 
 .badge {
 	position: absolute;
 	top: 11px;
 	right: calc(50% - 50px);
-	padding: 0 5px;
+	padding: 0 calc(5px * var(--hk3-ui-scale, 1));
 	background: var(--hk3-accent);
 	color: var(--hk3-bg);
-	font-size: 10px;
+	font-size: calc(10px * var(--hk3-ui-scale, 1));
 	font-weight: 800;
 	line-height: 1.5;
 }
@@ -454,6 +555,7 @@ onBeforeUnmount(() => {
 	transition: transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
 
 	.body[data-active="hatask"] & { transform: translateX(-50%); }
+	.root[data-mobile] & { transition: none; }
 }
 
 .view {
@@ -465,6 +567,8 @@ onBeforeUnmount(() => {
 	transition: opacity 360ms ease;
 
 	&[data-on] { opacity: 1; }
+	.root[data-mobile] & { opacity: 1; visibility: hidden; transition: none; }
+	.root[data-mobile] &[data-on] { visibility: visible; }
 }
 
 // ===== ウィジェット: 中身は Hataskey UI と同じ。角を四角、区切りをUI3の線に揃える =====
@@ -479,16 +583,23 @@ onBeforeUnmount(() => {
 	}
 }
 
+// モバイルのガラス背景は外側の1枚だけにし、カードの背景と見出しの段差をなくす。
+.root[data-mobile][data-glass] .widgets {
+	:global(._panel), :global(._panel > header), :global(._panel > div) {
+		background: transparent !important;
+	}
+}
+
 // ===== Hatask =====
 .day {
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	padding: 14px 20px;
+	gap: calc(10px * var(--hk3-ui-scale, 1));
+	padding: calc(14px * var(--hk3-ui-scale, 1)) calc(20px * var(--hk3-ui-scale, 1));
 	border-bottom: 3px solid var(--hk3-divider);
 
-	> b { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-	> span { font-size: 15px; font-weight: 700; }
+	> b { font-size: calc(30px * var(--hk3-ui-scale, 1)); font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+	> span { font-size: calc(15px * var(--hk3-ui-scale, 1)); font-weight: 700; }
 }
 
 .open {
@@ -496,7 +607,7 @@ onBeforeUnmount(() => {
 	display: inline-flex;
 	align-items: center;
 	gap: 2px;
-	padding: 4px 2px 4px 8px;
+	padding: calc(4px * var(--hk3-ui-scale, 1)) 2px calc(4px * var(--hk3-ui-scale, 1)) calc(8px * var(--hk3-ui-scale, 1));
 	color: var(--hk3-accent-700) !important;
 	box-shadow: inset 0 -2px 0 transparent;
 	transition: box-shadow 200ms ease;
@@ -514,21 +625,21 @@ onBeforeUnmount(() => {
 }
 
 .stat {
-	padding: 12px 12px 14px;
+	padding: calc(12px * var(--hk3-ui-scale, 1)) calc(12px * var(--hk3-ui-scale, 1)) calc(14px * var(--hk3-ui-scale, 1));
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: calc(4px * var(--hk3-ui-scale, 1));
 
 	& + & { border-left: 2px solid var(--hk3-divider); }
 	&:hover { background: var(--hk3-accent-100); }
 
-	small { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; color: var(--hk3-neutral-700); }
+	small { display: flex; align-items: center; gap: calc(5px * var(--hk3-ui-scale, 1)); font-size: calc(11px * var(--hk3-ui-scale, 1)); font-weight: 800; color: var(--hk3-neutral-700); }
 	small svg { color: var(--hk3-accent); }
-	b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
-	em { font-style: normal; font-size: 12px; color: var(--hk3-neutral-600); margin-left: 2px; }
+	b { font-size: calc(22px * var(--hk3-ui-scale, 1)); font-weight: 800; font-variant-numeric: tabular-nums; }
+	em { font-style: normal; font-size: calc(12px * var(--hk3-ui-scale, 1)); color: var(--hk3-neutral-600); margin-left: 2px; }
 }
 
-.loading { padding: 24px; display: grid; place-items: center; }
+.loading { padding: calc(24px * var(--hk3-ui-scale, 1)); display: grid; place-items: center; }
 
 .sec {
 	display: block;
@@ -538,9 +649,9 @@ onBeforeUnmount(() => {
 .secHead {
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	padding: 14px 20px 10px;
-	font-size: 15px;
+	gap: calc(10px * var(--hk3-ui-scale, 1));
+	padding: calc(14px * var(--hk3-ui-scale, 1)) calc(20px * var(--hk3-ui-scale, 1)) calc(10px * var(--hk3-ui-scale, 1));
+	font-size: calc(15px * var(--hk3-ui-scale, 1));
 	font-weight: 800;
 
 	> svg { color: var(--hk3-accent); flex: none; }
@@ -548,7 +659,7 @@ onBeforeUnmount(() => {
 
 .cnt {
 	margin-left: auto;
-	font-size: 13px;
+	font-size: calc(13px * var(--hk3-ui-scale, 1));
 	font-variant-numeric: tabular-nums;
 }
 
@@ -556,8 +667,8 @@ onBeforeUnmount(() => {
 
 .empty {
 	margin: 0;
-	padding: 0 20px 14px;
-	font-size: 13px;
+	padding: 0 calc(20px * var(--hk3-ui-scale, 1)) calc(14px * var(--hk3-ui-scale, 1));
+	font-size: calc(13px * var(--hk3-ui-scale, 1));
 	color: var(--hk3-neutral-700);
 }
 
@@ -568,15 +679,15 @@ onBeforeUnmount(() => {
 .event {
 	display: grid;
 	grid-template-columns: 52px minmax(0, 1fr);
-	gap: 12px;
+	gap: calc(12px * var(--hk3-ui-scale, 1));
 	align-items: center;
-	padding: 10px 20px;
+	padding: calc(10px * var(--hk3-ui-scale, 1)) calc(20px * var(--hk3-ui-scale, 1));
 	border-top: 2px solid var(--hk3-divider);
 
 	&:hover { background: var(--hk3-accent-100); }
 	&[data-next] { box-shadow: inset 3px 0 0 var(--hk3-accent); }
 
-	time { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--hk3-accent-700); }
+	time { font-size: calc(13px * var(--hk3-ui-scale, 1)); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--hk3-accent-700); }
 }
 
 .eventBody {
@@ -585,8 +696,8 @@ onBeforeUnmount(() => {
 	gap: 2px;
 	min-width: 0;
 
-	b { display: flex; align-items: center; gap: 6px; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	small { font-size: 12px; color: var(--hk3-neutral-700); }
+	b { display: flex; align-items: center; gap: calc(6px * var(--hk3-ui-scale, 1)); font-size: calc(14px * var(--hk3-ui-scale, 1)); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	small { font-size: calc(12px * var(--hk3-ui-scale, 1)); color: var(--hk3-neutral-700); }
 }
 
 .eventEmoji { width: 18px; height: 18px; flex: none; }
@@ -611,18 +722,18 @@ onBeforeUnmount(() => {
 .todoRow {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: calc(12px * var(--hk3-ui-scale, 1));
 	min-height: 46px;
 	min-width: 0;
 	overflow: hidden;
-	padding: 0 20px;
+	padding: 0 calc(20px * var(--hk3-ui-scale, 1));
 	border: 0;
 	border-top: 2px solid var(--hk3-divider);
 	background: transparent;
 	color: var(--hk3-text);
 	cursor: pointer;
 	font: inherit;
-	font-size: 14px;
+	font-size: calc(14px * var(--hk3-ui-scale, 1));
 	text-align: left;
 
 	&:hover { background: var(--hk3-accent-100); }
@@ -657,7 +768,7 @@ onBeforeUnmount(() => {
 
 .todoTime {
 	flex: none;
-	font-size: 12px;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
 	color: var(--hk3-neutral-700);
 	font-variant-numeric: tabular-nums;
 
@@ -671,18 +782,18 @@ onBeforeUnmount(() => {
 }
 
 .meal {
-	padding: 10px 12px 12px;
+	padding: calc(10px * var(--hk3-ui-scale, 1)) calc(12px * var(--hk3-ui-scale, 1)) calc(12px * var(--hk3-ui-scale, 1));
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: calc(4px * var(--hk3-ui-scale, 1));
 	min-width: 0;
-	font-size: 12px;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
 
 	& + & { border-left: 2px solid var(--hk3-divider); }
 	&:hover { background: var(--hk3-accent-100); }
 
 	small { color: var(--hk3-neutral-700); }
-	b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	b { font-size: calc(13px * var(--hk3-ui-scale, 1)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	&[data-empty] b { color: var(--hk3-neutral-600); font-weight: 700; }
 }
 
@@ -709,9 +820,9 @@ onBeforeUnmount(() => {
 .flower {
 	display: grid;
 	grid-template-columns: 56px minmax(0, 1fr);
-	gap: 12px;
+	gap: calc(12px * var(--hk3-ui-scale, 1));
 	align-items: center;
-	padding: 4px 20px 16px;
+	padding: calc(4px * var(--hk3-ui-scale, 1)) calc(20px * var(--hk3-ui-scale, 1)) calc(16px * var(--hk3-ui-scale, 1));
 }
 
 .flowerEm {
@@ -729,17 +840,17 @@ onBeforeUnmount(() => {
 .flowerBody {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: calc(6px * var(--hk3-ui-scale, 1));
 	min-width: 0;
 
-	b { font-size: 14px; }
-	small { font-size: 12px; color: var(--hk3-neutral-700); }
+	b { font-size: calc(14px * var(--hk3-ui-scale, 1)); }
+	small { font-size: calc(12px * var(--hk3-ui-scale, 1)); color: var(--hk3-neutral-700); }
 }
 
 .stages {
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
-	gap: 4px;
+	gap: calc(4px * var(--hk3-ui-scale, 1));
 
 	i { height: 8px; background: var(--hk3-neutral-300); }
 	i[data-level="full"] { background: var(--hk3-accent); }

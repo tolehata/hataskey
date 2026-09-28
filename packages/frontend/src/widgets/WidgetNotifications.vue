@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<MkContainer :style="`height: ${widgetProps.height}px;`" :showHeader="widgetProps.showHeader" :scrollable="true" data-testid="mkw-notifications" class="mkw-notifications">
+<MkContainer :style="`height: ${widgetProps.height}px;`" :showHeader="widgetProps.showHeader" :scrollable="true" data-testid="mkw-notifications" class="mkw-notifications" :class="$style.root">
 	<template #icon><i class="ti ti-bell"></i></template>
 	<template #header>{{ i18n.ts.notifications }}</template>
 	<template #func="{ buttonStyleClass }">
@@ -112,3 +112,16 @@ defineExpose<WidgetComponentExpose>({
 	id: props.widget ? props.widget.id : null,
 });
 </script>
+
+<style lang="scss" module>
+:global(html[data-hk3-ui]) .root {
+	--hk3-notifications-bg: transparent;
+	--hk3-notifications-blur: none;
+	background: transparent;
+
+	> header,
+	> div {
+		background: transparent;
+	}
+}
+</style>

@@ -31,14 +31,17 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 		<span>{{ sensitiveMuted && !wordMuted ? copy.sensitiveNote : copy.mutedNote }}</span>
 		<button type="button" :class="$style.mutedButton" @click="showMuted = true">{{ i18n.ts.show }}</button>
 	</div>
-	<article v-else :class="$style.article" :style="articleStyle">
+	<article v-else ref="articleEl" :class="$style.article" :style="articleStyle">
+		<span v-if="channelColor != null" :class="$style.channelRail" aria-hidden="true"></span>
+		<div v-if="hasTintImages && (appearNote.cw == null || showContent)" :class="$style.imageTint" :style="imageTintStyle" :data-tinted="imageEdgeTint && imageTintGeometry ? 'true' : undefined" aria-hidden="true" data-image-edge-tint>
+			<span v-for="side in IMAGE_EDGE_SIDES" :key="side" :class="$style.imageGlow" :data-edge="side" :style="{ backgroundColor: imageTintGeometry?.visibleEdges[side] && imageEdgeTint?.[side] ? `rgb(${imageEdgeTint[side]!.join(',')})` : 'transparent' }"></span>
+		</div>
 		<div v-if="isRenote" :class="$style.renotedBy">
 			<div :class="$style.renotedSummary">
 				<Repeat2 :size="16" :class="$style.renotedIcon"/>
 				<MkA :to="userPage(note.user)" :class="$style.renotedName"><MkUserName :user="note.user"/></MkA>
 				<MkTime :time="note.createdAt" :class="$style.renotedTime"/>
-				<button v-if="isMyRenote" ref="unrenoteButtonEl" type="button" :class="$style.unrenoteButton" :title="i18n.ts.unrenote" :aria-label="i18n.ts.unrenote" :aria-expanded="unrenoteConfirmOpen" :disabled="unrenoteBusy" @click.stop="openUnrenoteConfirm"><Undo2 :size="16"/><span>{{ i18n.ts.unrenote }}</span></button>
-				<button v-else type="button" data-renote-menu :class="$style.renoteMenuButton" :title="i18n.ts.more" :aria-label="i18n.ts.more" :disabled="unrenoteBusy" @click.stop="showRenoteMenu"><Ellipsis :size="16"/></button>
+				<button ref="unrenoteButtonEl" type="button" data-renote-menu :class="$style.renoteMenuButton" :title="i18n.ts.more" :aria-label="i18n.ts.more" aria-haspopup="menu" :disabled="unrenoteBusy" @click.stop="showRenoteMenu"><Ellipsis :size="16"/></button>
 			</div>
 			<div v-if="unrenoteConfirmOpen" :class="$style.unrenoteConfirm" role="group" :aria-label="copy.unrenoteConfirm" :aria-busy="unrenoteBusy" @keydown.esc.stop.prevent="cancelUnrenoteConfirm">
 				<span :class="$style.unrenoteQuestion">{{ copy.unrenoteConfirm }}</span>
@@ -56,6 +59,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 		<div :class="$style.body">
 			<header :class="$style.header">
 				<MkA v-user-preview="appearNote.userId" :to="userPage(appearNote.user)" :class="$style.name"><MkUserName :user="appearNote.user"/></MkA>
+				<MkUserRoleBadges :user="appearNote.user" :class="$style.roleBadges" style="margin-right: 0;"/>
 				<Bot v-if="appearNote.user.isBot" :size="14" :class="$style.muted700"/>
 				<span :class="$style.acct">@{{ appearNote.user.username }}<template v-if="appearNote.user.host">@{{ appearNote.user.host }}</template></span>
 				<span :class="$style.meta">
@@ -66,16 +70,16 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 					<MkA :to="notePage(appearNote)" :class="$style.time"><MkTime :time="appearNote.createdAt"/></MkA>
 				</span>
 			</header>
-			<MkA v-if="appearNote.reply && !threadReply" :to="notePage(appearNote.reply)" :class="$style.replyTo">
-				<CornerUpLeft :size="13"/><span>@{{ appearNote.reply.user.username }}</span>
-				<Mfm v-if="appearNote.reply.text" :text="appearNote.reply.text" :plain="true" :nowrap="true" :author="appearNote.reply.user" :class="$style.replyToText"/>
+			<MkA v-if="!threadReply && (appearNote.reply || appearNote.replyId)" :to="appearNote.reply ? notePage(appearNote.reply) : `/notes/${appearNote.replyId}`" :class="$style.replyTo">
+				<span :class="$style.replyToHeader"><Reply :size="14" aria-hidden="true"/><span>{{ i18n.ts.reply }}</span><template v-if="appearNote.reply"><b :class="$style.replyToName"><MkUserName :user="appearNote.reply.user"/></b><small :class="$style.replyToAcct">@{{ appearNote.reply.user.username }}<template v-if="appearNote.reply.user.host">@{{ appearNote.reply.user.host }}</template></small></template></span>
+				<span v-if="appearNote.reply" :class="$style.replyToText"><template v-if="appearNote.reply.isHidden">({{ i18n.ts._ffVisibility.private }})</template><Mfm v-else-if="appearNote.reply.cw != null || appearNote.reply.text" :text="appearNote.reply.cw ?? appearNote.reply.text ?? ''" :plain="true" :author="appearNote.reply.user" :emojiUrls="appearNote.reply.emojis"/><template v-else>{{ copy.attachmentsOnly }}</template></span>
 			</MkA>
 			<div v-if="appearNote.cw != null" :class="$style.cw">
 				<EyeOff :size="15" :class="$style.muted700"/>
 				<Mfm v-if="appearNote.cw !== ''" :text="appearNote.cw" :author="appearNote.user" :nyaize="prefer.r.disableNyaize.value || noNyaize ? false : 'respect'" :class="$style.cwText"/>
 				<button type="button" :class="$style.cwButton" :title="copy.toggleContent" :aria-pressed="showContent" @click="showContent = !showContent"><component :is="showContent ? EyeOff : Eye" :size="16"/></button>
 			</div>
-			<template v-if="appearNote.cw == null || showContent">
+			<Hk3NoteContent v-if="(appearNote.cw == null || showContent) && (appearNote.text || appearNote.isHidden || viewTextSource || (appearNote.files?.length ?? 0) > 0 || appearNote.poll || quoted)" :collapsible="autoCollapseContent" :animationEnabled="prefer.r.animation?.value ?? prefer.s.animation">
 				<p v-if="appearNote.text || appearNote.isHidden" :class="$style.text">
 					<span v-if="appearNote.isHidden" :class="$style.muted700">({{ i18n.ts._ffVisibility.private }})</span>
 					<Mfm v-if="appearNote.text" :text="appearNote.text" :author="appearNote.user" :nyaize="prefer.r.disableNyaize.value || noNyaize ? false : 'respect'" :emojiUrls="appearNote.emojis" :enableEmojiMenu="true" :enableEmojiMenuReaction="!!$i" class="_selectable"/>
@@ -85,18 +89,19 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 					<pre><small>{{ appearNote.text }}</small></pre>
 					<button type="button" class="_button" @click.stop="viewTextSource = false"><small>{{ i18n.ts.close }}</small></button>
 				</div>
-				<div v-if="appearNote.files && appearNote.files.length > 0" :class="$style.media">
-					<MkMediaList :mediaList="appearNote.files" :user="appearNote.user" :disableRightClick="appearNote.disableRightClick"/>
+				<div v-if="appearNote.files && appearNote.files.length > 0" ref="mediaEl" :class="$style.media">
+					<MkMediaList :mediaList="appearNote.files" :user="appearNote.user" :disableRightClick="appearNote.disableRightClick" fitSingleImage/>
 				</div>
 				<MkPoll v-if="appearNote.poll" :noteId="appearNote.id" :multiple="appearNote.poll.multiple" :expiresAt="appearNote.poll.expiresAt" :choices="$appearNote.pollChoices" :author="appearNote.user" :emojiUrls="appearNote.emojis"/>
 				<MkA v-if="quoted" :to="notePage(quoted)" :class="$style.quote">
 					<MkAvatar :user="quoted.user" :class="$style.quoteAvatar"/>
 					<div :class="$style.quoteBody">
 						<b :class="$style.quoteName"><MkUserName :user="quoted.user"/></b>
-						<span :class="$style.quoteText"><Mfm v-if="quoted.cw != null || quoted.text" :text="quoted.cw ?? quoted.text ?? ''" :plain="true" :author="quoted.user"/><template v-else>{{ copy.attachmentsOnly }}</template></span>
+						<span :class="$style.quoteText"><template v-if="quoted.isHidden">({{ i18n.ts._ffVisibility.private }})</template><Mfm v-else-if="quoted.cw != null || quoted.text" :text="quoted.cw ?? quoted.text ?? ''" :plain="true" :author="quoted.user" :emojiUrls="quoted.emojis"/><template v-else>{{ copy.attachmentsOnly }}</template></span>
 					</div>
+					<Quote :size="14" :class="$style.quoteIcon" aria-hidden="true"/>
 				</MkA>
-			</template>
+			</Hk3NoteContent>
 			<MkA v-if="appearNote.channel" :to="`/channels/${appearNote.channel.id}`" :class="$style.channel"><Tv :size="13"/>{{ appearNote.channel.name }}</MkA>
 			<div v-if="utageResult" :class="$style.utageBadge" :data-utage-result="utageResult">
 				<component :is="utageResult === 'succeeded' ? Check : X" :size="14" aria-hidden="true"/>
@@ -159,7 +164,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 						<MkAvatar :user="(getAppearNote(r) ?? r).user" :class="$style.treeAvatar" link preview/>
 						<Hk3AudienceIcons v-if="showAudienceIcons || (showLocalOnlyIcon && (getAppearNote(r) ?? r).localOnly)" :visibility="(getAppearNote(r) ?? r).visibility" :localOnly="(getAppearNote(r) ?? r).localOnly" :showVisibility="showAudienceIcons" tiny :class="$style.audienceIcons"/>
 					</div>
-					<Hk3Note :note="r" :size="size" threadReply :showAudienceIcons="showAudienceIcons" :showLocalOnlyIcon="showLocalOnlyIcon" :hideSensitive="hideSensitive" :inLocal="inLocal" :instanceBadgePosition="instanceBadgePosition" :class="$style.treeBubble"/>
+					<Hk3Note :note="r" :size="size" threadReply :showAudienceIcons="showAudienceIcons" :showLocalOnlyIcon="showLocalOnlyIcon" :hideSensitive="hideSensitive" :inLocal="inLocal" :inSocial="inSocial" :instanceBadgePosition="instanceBadgePosition" :class="$style.treeBubble"/>
 				</div>
 				<div :class="$style.treeRow" :style="{ '--hk3-delay': `${120 + replies.length * 70}ms` }">
 					<div :class="$style.treeRail"><span :class="[$style.treeRailV, $style.treeRailEnd]"></span><span :class="$style.treeRailH"></span></div>
@@ -176,16 +181,20 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import * as Misskey from 'cherrypick-js';
-import { ArrowDown, Bot, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CornerUpLeft, Ellipsis, Eye, EyeOff, House, Lock, Mail, MessageCircle, Quote, Repeat2, Reply, GlobeLock, SmilePlus, Tv, Undo2, X } from '@lucide/vue';
+import { ArrowDown, Bot, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Ellipsis, Eye, EyeOff, House, Lock, Mail, MessageCircle, Quote, Repeat2, Reply, GlobeLock, SmilePlus, Tv, X } from '@lucide/vue';
 import type { Component } from 'vue';
 import MkMediaList from '@/components/MkMediaList.vue';
 import MkPoll from '@/components/MkPoll.vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
+import MkUserRoleBadges from '@/components/MkUserRoleBadges.vue';
 import XReaction from '@/components/MkReactionsViewer.reaction.vue';
 import { useHk3Reactions } from './use-hk3-reactions.js';
 import Hk3ConfirmBubble from './Hk3ConfirmBubble.vue';
 import Hk3InstanceBadge from './Hk3InstanceBadge.vue';
 import Hk3AudienceIcons from './Hk3AudienceIcons.vue';
+import Hk3NoteContent from './Hk3NoteContent.vue';
+import { IMAGE_EDGE_SIDES, observeImageEdgeTint } from './hk3-image-edge-tint.js';
+import type { ImageEdgeTint, ImageEdgeTintGeometry } from './hk3-image-edge-tint.js';
 import MkUtageStatus from '@/components/MkUtageStatus.vue';
 import * as os from '@/os.js';
 import * as sound from '@/utility/sound.js';
@@ -198,6 +207,7 @@ import { prefer } from '@/preferences.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
 import { getAbuseNoteMenu, getCopyNoteLinkMenu, getNoteMenu, getRenoteMenu } from '@/utility/get-note-menu.js';
+import { requestNoteActionConfirmation } from '@/utility/note-action-confirmation.js';
 import { noteEvents, useNoteCapture } from '@/composables/use-note-capture.js';
 import { checkWordMute } from '@/utility/check-word-mute.js';
 import { getAppearNote } from '@/utility/get-appear-note.js';
@@ -205,12 +215,16 @@ import { pleaseLogin } from '@/utility/please-login.js';
 import { notePage } from '@/filters/note.js';
 import type { MenuItem } from '@/types/menu.js';
 import { userPage } from '@/filters/user.js';
+import { shouldCollapsed, shouldMfmCollapsed } from '@@/js/collapsed.js';
+import { parseMfmCached } from '@/utility/mfm-cache.js';
+import { extractUrlFromMfm } from '@/utility/extract-url-from-mfm.js';
 
 const props = withDefaults(defineProps<{
 	note: Misskey.entities.Note;
 	size?: 'lg' | 'sm';
 	linked?: 'reply' | 'quote' | null;
 	inLocal?: boolean;
+	inSocial?: boolean;
 	hideSensitive?: boolean;
 	threadReply?: boolean;
 	showAudienceIcons?: boolean;
@@ -220,6 +234,7 @@ const props = withDefaults(defineProps<{
 	size: 'lg',
 	linked: null,
 	inLocal: false,
+	inSocial: false,
 	hideSensitive: false,
 	threadReply: false,
 	showAudienceIcons: false,
@@ -233,6 +248,8 @@ const isRenote = Misskey.note.isPureRenote(note);
 const isMyRenote = isRenote && $i?.id === note.userId;
 const appearNote = getAppearNote(note) ?? note;
 const { $note: $appearNote, subscribe: subscribeNoteCapture } = useNoteCapture({ note: appearNote, parentNote: note });
+// MkNote と同じ、本文側のチャンネルに設定されたCSS色をそのまま使う。
+const channelColor = computed(() => appearNote.channel?.color?.trim() || null);
 
 const rootEl = shallowRef<HTMLElement | null>(null);
 const sideEl = shallowRef<HTMLElement | null>(null);
@@ -242,7 +259,9 @@ const menuOpen = ref(false);
 const viewTextSource = ref(false);
 const noNyaize = ref(false);
 const unrenoteBusy = ref(false);
+let ownUnrenoteInFlight: Promise<void> | undefined;
 const unrenoteConfirmOpen = ref(false);
+let unrenoteConfirmAccountId: string | null = null;
 const unrenoteButtonEl = shallowRef<HTMLButtonElement | null>(null);
 const unrenoteCancelEl = shallowRef<HTMLButtonElement | null>(null);
 const showContent = ref(false);
@@ -261,7 +280,45 @@ const wordMuted = computed(() => $i != null && checkWordMute(note, $i, $i.mutedW
 // 「センシティブを表示」が無効のときも一覧からは消さず、通常UIと同じく畳んで見せる。
 const sensitiveMuted = computed(() => props.hideSensitive && (appearNote.files ?? []).some(file => file.isSensitive));
 const softMuted = computed(() => wordMuted.value || sensitiveMuted.value);
+const hasTintImages = computed(() => appearNote.files?.some(file => file.type.startsWith('image/')));
+const articleEl = shallowRef<HTMLElement | null>(null);
+const mediaEl = shallowRef<HTMLElement | null>(null);
+const imageEdgeTint = shallowRef<ImageEdgeTint | null>(null);
+const imageTintGeometry = shallowRef<ImageEdgeTintGeometry | null>(null);
+const imageTintStyle = computed(() => {
+	const rect = imageTintGeometry.value;
+	if (!rect) return {};
+	return {
+		'--image-left': `${rect.left}px`,
+		'--image-top': `${rect.top}px`,
+		'--image-width': `${rect.width}px`,
+		'--image-height': `${rect.height}px`,
+		'--image-mid-x': `${rect.centerX}px`,
+		'--image-mid-y': `${rect.centerY}px`,
+		'--image-reach-x': `${Math.min(140, Math.max(56, rect.width * 0.2))}px`,
+		'--image-reach-y': `${Math.min(140, Math.max(56, rect.height * 0.2))}px`,
+	};
+});
+let stopImageTint: (() => void) | undefined;
+watch(mediaEl, element => {
+	stopImageTint?.();
+	imageEdgeTint.value = null;
+	imageTintGeometry.value = null;
+	stopImageTint = element && articleEl.value ? observeImageEdgeTint(element, tint => {
+		imageEdgeTint.value = tint;
+		if (!tint) imageTintGeometry.value = null;
+	}, { geometry: { relativeTo: articleEl.value, apply: geometry => { imageTintGeometry.value = geometry; } } }) : undefined;
+}, { flush: 'post' });
 const quoted = computed(() => (!isRenote && appearNote.renote) ? appearNote.renote : null);
+const noteUrls = appearNote.text ? extractUrlFromMfm(parseMfmCached(appearNote.text))
+	.filter(url => appearNote.renote?.url !== url && appearNote.renote?.uri !== url) : [];
+const longContent = shouldCollapsed(appearNote, noteUrls);
+const mfmContent = shouldMfmCollapsed(appearNote);
+const autoCollapseContent = computed(() => !!(appearNote.cw == null && (
+	(longContent && (prefer.r.collapseLongNoteContent?.value ?? prefer.s.collapseLongNoteContent)) ||
+	(mfmContent && (prefer.r.collapseDefault?.value ?? prefer.s.collapseDefault)) ||
+	((appearNote.files?.length ?? 0) > 0 && (prefer.r.allMediaNoteCollapse?.value ?? prefer.s.allMediaNoteCollapse))
+)));
 const hasThread = computed(() => !props.threadReply && (appearNote.repliesCount ?? 0) > 0);
 const sideReactions = computed(() => props.size === 'lg' && !props.threadReply);
 const chipHeight = computed(() => props.size === 'sm' ? 34 : 38);
@@ -330,14 +387,15 @@ function sideCell(index: number) {
 }
 
 const articleStyle = computed(() => ({
-	gridTemplateColumns: props.threadReply ? 'minmax(0, 1fr)' : sideReactions.value ? `44px minmax(0, 1fr) ${sideWidth.value}px` : `${props.size === 'sm' ? 36 : 44}px minmax(0, 1fr)`,
+	gridTemplateColumns: props.threadReply ? 'minmax(0, 1fr)' : `var(--hk3-note-avatar-size) minmax(0, 1fr)${sideReactions.value ? ` ${sideWidth.value}px` : ''}`,
+	'--hk3-channel-color': channelColor.value ?? undefined,
 }));
 
-// 宴(うたげ): ローカルTLで進行中の宴ノートは、残り時間を枠のゲージとして描く。
+// 宴(うたげ): ローカル/ソーシャルTLにあるローカル投稿の残り時間を枠のゲージとして描く。
 const UTAGE_WINDOW_MS = 15 * 60 * 1000;
 const UTAGE_EXPIRE_MS = 6 * 60 * 60 * 1000;
 const utageDisplayUntil = new Date(appearNote.createdAt).getTime() + UTAGE_EXPIRE_MS;
-const utageTarget = computed(() => props.inLocal && appearNote.user.host == null && $appearNote.utageStatus != null);
+const utageTarget = computed(() => (props.inLocal || props.inSocial) && appearNote.user.host === null && $appearNote.utageStatus != null);
 const utageShown = computed(() => utageTarget.value && now.value < utageDisplayUntil);
 // 確定結果にはintervalを増やさず、6時間の表示境界だけで再評価する。
 watch(utageTarget, (target, _, cleanup) => {
@@ -430,18 +488,27 @@ function showMenu(ev: MouseEvent) {
 }
 
 function showRenoteMenu(ev: MouseEvent) {
-	if (!Misskey.note.isPureRenote(note) || isMyRenote) return;
+	if (!Misskey.note.isPureRenote(note) || unrenoteBusy.value) return;
+	let confirmUnrenote = false;
 	const menu: MenuItem[] = [
 		{ type: 'link', text: i18n.ts.renoteDetails, icon: 'ti ti-info-circle', to: notePage(note) },
 		getCopyNoteLinkMenu(note, i18n.ts.copyLinkRenote),
-		{ type: 'divider' },
-		getAbuseNoteMenu(note, i18n.ts.reportAbuseRenote),
 	];
-	if ($i?.isAdmin || $i?.isModerator) {
-		menu.push({ text: i18n.ts.unrenote, icon: 'ti ti-trash', danger: true, action: moderateUnrenote });
+	menu.push({ type: 'divider' });
+	if (isMyRenote) {
+		menu.push({ text: i18n.ts.unrenote, icon: 'ti ti-trash', danger: true, action: () => { confirmUnrenote = true; } });
+	} else {
+		menu.push(getAbuseNoteMenu(note, i18n.ts.reportAbuseRenote));
+		if ($i?.isAdmin || $i?.isModerator) {
+			menu.push({ text: i18n.ts.unrenote, icon: 'ti ti-trash', danger: true, action: moderateUnrenote });
+		}
 	}
 	menuOpen.value = true;
-	os.popupMenu(menu, ev.currentTarget as HTMLElement).finally(() => { menuOpen.value = false; });
+	os.popupMenu(menu, ev.currentTarget as HTMLElement).finally(() => {
+		menuOpen.value = false;
+		// メニューのフォーカス復帰後に帯内の確認へ移す。
+		if (confirmUnrenote) void openUnrenoteConfirm();
+	});
 }
 
 async function moderateUnrenote() {
@@ -457,7 +524,10 @@ async function moderateUnrenote() {
 }
 
 async function openUnrenoteConfirm() {
-	if (unrenoteBusy.value || unrenoteConfirmOpen.value) return;
+	if (unrenoteBusy.value || unrenoteConfirmOpen.value || !$i || $i.id !== note.userId || !Misskey.note.isPureRenote(note)) return;
+	const accountId = $i.id;
+	if (requestNoteActionConfirmation({ kind: 'unrenote', note, run: () => runOwnUnrenote(accountId) })) return;
+	unrenoteConfirmAccountId = accountId;
 	unrenoteConfirmOpen.value = true;
 	await nextTick();
 	unrenoteCancelEl.value?.focus();
@@ -466,18 +536,30 @@ async function openUnrenoteConfirm() {
 function cancelUnrenoteConfirm() {
 	if (unrenoteBusy.value || !unrenoteConfirmOpen.value) return;
 	unrenoteConfirmOpen.value = false;
+	unrenoteConfirmAccountId = null;
 	void nextTick(() => unrenoteButtonEl.value?.focus());
 }
 
-async function unrenote() {
-	if (!unrenoteConfirmOpen.value || unrenoteBusy.value || !$i || $i.id !== note.userId || !Misskey.note.isPureRenote(note)) return;
+function runOwnUnrenote(accountId: string): Promise<void> {
+	if (ownUnrenoteInFlight) return ownUnrenoteInFlight;
+	if (unrenoteBusy.value || !$i || $i.id !== accountId || accountId !== note.userId || !Misskey.note.isPureRenote(note)) return Promise.reject(new Error(i18n.ts.error));
 	unrenoteBusy.value = true;
-	try {
-		await os.apiWithDialog('notes/delete', { noteId: note.id });
+	ownUnrenoteInFlight = (async () => {
+		await misskeyApi('notes/delete', { noteId: note.id });
 		globalEvents.emit('noteDeleted', note.id);
-	} catch {
-		// apiWithDialog がエラーを表示する。失敗時は帯を残して再試行できるようにする。
+	})().catch(error => {
 		unrenoteBusy.value = false;
+		throw error;
+	}).finally(() => { ownUnrenoteInFlight = undefined; });
+	return ownUnrenoteInFlight;
+}
+
+async function unrenote() {
+	if (!unrenoteConfirmOpen.value || !unrenoteConfirmAccountId) return;
+	try {
+		await runOwnUnrenote(unrenoteConfirmAccountId);
+	} catch (error) {
+		await os.alert({ type: 'error', text: error instanceof Error ? error.message : i18n.ts.error });
 	}
 }
 
@@ -489,7 +571,7 @@ provide(DI.mfmEmojiReactCallback, reaction => {
 async function createReaction(reaction: string) {
 	const me = $i;
 	if (!me) return;
-	await os.apiWithDialog('notes/reactions/create', { noteId: appearNote.id, reaction });
+	await os.apiWithDialog('notes/reactions/create', { noteId: appearNote.id, reaction }, undefined, undefined, { showSuccess: false });
 	sound.playMisskeySfx('reaction');
 	noteEvents.emit(`reacted:${appearNote.id}`, { userId: me.id, reaction });
 }
@@ -504,7 +586,7 @@ async function changeReaction(reaction: string, confirmed = false) {
 				const confirm = await os.confirm({ type: 'warning', text: oldReaction !== reaction ? i18n.ts.changeReactionConfirm : i18n.ts.cancelReactionConfirm });
 				if (confirm.canceled) return;
 			}
-			await os.apiWithDialog('notes/reactions/delete', { noteId: appearNote.id });
+			await os.apiWithDialog('notes/reactions/delete', { noteId: appearNote.id }, undefined, undefined, { showSuccess: false });
 			noteEvents.emit(`unreacted:${appearNote.id}`, { userId: me.id, reaction: oldReaction });
 			if (oldReaction !== reaction) await createReaction(reaction);
 			return;
@@ -607,6 +689,7 @@ onMounted(() => {
 watch(reactions, () => nextTick(scheduleMeasure));
 
 onBeforeUnmount(() => {
+	stopImageTint?.();
 	resizeObserver?.disconnect();
 	window.cancelAnimationFrame(measureFrame);
 });
@@ -614,14 +697,35 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .root {
+	--hk3-note-avatar-size: 44px;
 	position: relative;
 	border-bottom: 1px solid var(--hk3-divider);
 	background: transparent;
 	transition: background 380ms ease, box-shadow 380ms ease;
 
-	&[data-thread-open] { background: var(--hk3-surface); }
-	&[data-linked] { background: var(--hk3-accent-100); box-shadow: inset 0 0 0 2px var(--hk3-accent); }
+	&[data-linked] {
+		background: radial-gradient(ellipse 90% 120% at 0 0, color-mix(in srgb, var(--hk3-accent) 10%, transparent), transparent 82%), color-mix(in srgb, var(--hk3-accent-100) 24%, transparent);
+		box-shadow: inset 0 0 32px color-mix(in srgb, var(--hk3-accent) 6%, transparent);
+	}
 	&[data-utage] { background: var(--hk3-accent-100); }
+	&[data-size="sm"] { --hk3-note-avatar-size: 36px; }
+}
+
+:global([data-mobile="true"]) .root[data-size="sm"]:not([data-thread-reply]) {
+	--hk3-note-avatar-size: 40px;
+}
+
+.root[data-linked] > .article {
+	padding-top: calc(38px * var(--hk3-ui-scale, 1));
+}
+
+.root[data-linked][data-size="sm"] > .article { padding-top: calc(34px * var(--hk3-ui-scale, 1)); }
+
+.root[data-linked] > .muted { padding-top: calc(38px * var(--hk3-ui-scale, 1)); }
+
+// 移動中の隣接ノートにも操作バーが覆われないよう、表示中のノートを前面に置く。
+.root:has(> .hoverBar) {
+	z-index: 2;
 }
 
 .utageFrame {
@@ -652,7 +756,7 @@ onBeforeUnmount(() => {
 	padding: 2px 6px;
 	border: 1px solid currentColor;
 	border-radius: 0;
-	font-size: 11px;
+	font-size: calc(11px * var(--hk3-ui-scale, 1));
 	font-weight: 700;
 	line-height: 1.4;
 
@@ -662,36 +766,44 @@ onBeforeUnmount(() => {
 
 .linkBadge {
 	position: absolute;
-	top: 0;
-	left: 0;
+	top: 8px;
+	left: 12px;
 	z-index: 2;
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
-	padding: 3px 8px;
-	background: var(--hk3-accent);
-	color: var(--hk3-bg);
-	font-size: 11px;
-	font-weight: 800;
+	padding: 3px 9px;
+	border: 1px solid color-mix(in srgb, var(--hk3-accent) 24%, transparent);
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--hk3-accent-100) 62%, transparent);
+	-webkit-backdrop-filter: blur(10px);
+	backdrop-filter: blur(10px);
+	box-shadow: 0 2px 10px color-mix(in srgb, var(--hk3-accent) 10%, transparent);
+	color: var(--hk3-accent-700);
+	font-size: calc(11px * var(--hk3-ui-scale, 1));
+	font-weight: 700;
+	white-space: nowrap;
+	pointer-events: none;
 }
 
 .muted {
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	padding: 14px 20px;
+	padding: calc(14px * var(--hk3-ui-scale, 1)) calc(20px * var(--hk3-ui-scale, 1));
 	color: var(--hk3-neutral-700);
-	font-size: 13px;
+	font-size: calc(13px * var(--hk3-ui-scale, 1));
 }
 
 .mutedButton {
 	height: 30px;
 	padding: 0 12px;
 	border: 1px solid var(--hk3-divider);
+	border-radius: 12px;
 	background: transparent;
 	color: var(--hk3-text);
 	font: inherit;
-	font-size: 12px;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
 	font-weight: 700;
 	cursor: pointer;
 
@@ -700,42 +812,93 @@ onBeforeUnmount(() => {
 
 .article {
 	position: relative;
+	isolation: isolate;
 	display: grid;
-	column-gap: 12px;
-	row-gap: 8px;
-	padding: 18px 20px;
+	column-gap: calc(12px * var(--hk3-ui-scale, 1));
+	row-gap: calc(8px * var(--hk3-ui-scale, 1));
+	padding: calc(18px * var(--hk3-ui-scale, 1)) calc(20px * var(--hk3-ui-scale, 1));
 	transition: grid-template-columns 480ms cubic-bezier(0.22, 1, 0.36, 1);
 
-	.root[data-size="sm"] & { padding: 12px 14px; }
+	.root[data-size="sm"] & { padding: calc(12px * var(--hk3-ui-scale, 1)) calc(14px * var(--hk3-ui-scale, 1)); }
+}
+
+.channelRail {
+	position: absolute;
+	top: 10px;
+	bottom: 10px;
+	left: 3px;
+	width: 4px;
+	border-radius: 999px;
+	background: linear-gradient(to bottom, color-mix(in srgb, var(--hk3-channel-color) 36%, transparent), var(--hk3-channel-color) 28%, var(--hk3-channel-color) 66%, color-mix(in srgb, var(--hk3-channel-color) 16%, transparent));
+	box-shadow: 4px 0 12px color-mix(in srgb, var(--hk3-channel-color) 18%, transparent);
+	pointer-events: none;
+
+	.root[data-size="sm"] & { top: 8px; bottom: 8px; left: 2px; width: 3px; }
+}
+
+.imageTint {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	overflow: hidden;
+	pointer-events: none;
+	opacity: 0.4;
+	&[data-tinted] { animation: imageTintEnter 320ms ease-out; }
+}
+
+@keyframes imageTintEnter {
+	from { opacity: 0; }
+	to { opacity: 0.4; }
+}
+
+.imageGlow {
+	position: absolute;
+	mask-image: radial-gradient(ellipse closest-side at center, #000 0%, #000 8%, transparent 100%);
+	filter: blur(6px);
+	transform: translate(-50%, -50%);
+	transition: background-color 320ms cubic-bezier(0.22, 1, 0.36, 1);
+	&[data-edge="left"], &[data-edge="right"] {
+		width: calc(var(--image-reach-x) + var(--image-reach-x));
+		height: calc(var(--image-height) + var(--image-reach-y) + var(--image-reach-y));
+		top: var(--image-mid-y);
+	}
+	&[data-edge="top"], &[data-edge="bottom"] {
+		width: calc(var(--image-width) + var(--image-reach-x) + var(--image-reach-x));
+		height: calc(var(--image-reach-y) + var(--image-reach-y));
+		left: var(--image-mid-x);
+	}
+	&[data-edge="left"] { left: var(--image-left); }
+	&[data-edge="right"] { left: calc(var(--image-left) + var(--image-width)); }
+	&[data-edge="top"] { top: var(--image-top); }
+	&[data-edge="bottom"] { top: calc(var(--image-top) + var(--image-height)); }
+	// Removing permission or a stale palette must clear immediately, without a fade-out.
+	.imageTint:not([data-tinted]) & { transition: none; }
 }
 
 .renotedBy {
 	grid-column: 1 / -1;
 	min-width: 0;
 	box-sizing: border-box;
-	margin: -18px -20px 0;
-	padding: 0 14px;
-	border: 1px solid var(--hk3-renote-border);
-	border-left: 3px solid var(--hk3-renote-accent);
-	background: var(--hk3-renote-bg);
-	font-size: 12px;
-	color: var(--hk3-renote-fg);
-
-	.root[data-size="sm"] & { margin: -12px -14px 0; padding: 0 10px; }
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
+	color: color-mix(in srgb, var(--hk3-renote-fg) 65%, var(--hk3-text));
 }
 
 .renotedSummary {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 	min-width: 0;
-	min-height: 36px;
+	min-height: 34px;
 }
 
 .renotedIcon {
 	width: 18px;
 	flex: none;
-	color: var(--hk3-renote-accent);
+	color: color-mix(in srgb, var(--hk3-renote-accent) 65%, currentColor);
 }
 
 .renotedName {
@@ -745,7 +908,7 @@ onBeforeUnmount(() => {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	color: inherit;
-	font-weight: 700;
+	font-weight: 500;
 }
 
 .renotedTime { margin-left: auto; flex: none; white-space: nowrap; }
@@ -755,35 +918,16 @@ onBeforeUnmount(() => {
 	align-items: center;
 	justify-content: center;
 	flex: none;
-	width: 28px;
-	height: 28px;
+	width: 34px;
+	height: 34px;
 	padding: 0;
 	border: 0;
-	border-radius: 6px;
+	border-radius: 12px;
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
 	&:hover, &:focus-visible { background: var(--hk3-bg); }
-	&:disabled { opacity: 0.5; cursor: wait; }
-}
-
-.unrenoteButton {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	flex: none;
-	min-height: 28px;
-	gap: 5px;
-	padding: 2px 7px;
-	border: 1px solid var(--hk3-renote-border);
-	border-radius: 6px;
-	background: var(--hk3-bg);
-	color: inherit;
-	cursor: pointer;
-	font: inherit;
-	white-space: nowrap;
-
-	&:hover, &:focus-visible { border-color: var(--hk3-renote-fg); }
+	&:focus-visible { outline: 2px solid var(--hk3-renote-accent); outline-offset: -2px; }
 	&:disabled { opacity: 0.5; cursor: wait; }
 }
 
@@ -816,7 +960,7 @@ onBeforeUnmount(() => {
 	min-height: 32px;
 	padding: 5px 12px;
 	border: 1px solid var(--hk3-renote-border);
-	border-radius: 6px;
+	border-radius: 12px;
 	cursor: pointer;
 	font: inherit;
 	font-weight: 600;
@@ -848,22 +992,21 @@ onBeforeUnmount(() => {
 }
 
 .avatar {
-	width: 44px;
-	height: 44px;
+	width: var(--hk3-note-avatar-size);
+	height: var(--hk3-note-avatar-size);
 	flex: none;
 	border-radius: 0 !important;
 
 	:global(img), :global(.indicator) { border-radius: 0 !important; }
-
-	.root[data-size="sm"] & { width: 36px; height: 36px; }
 }
 
 .threadLine {
 	flex: 1;
-	width: 2px;
+	width: 1px;
 	margin-top: 6px;
 	margin-bottom: -18px;
-	background: var(--hk3-neutral-500);
+	border-radius: 999px;
+	background: linear-gradient(to bottom, color-mix(in srgb, var(--hk3-text) 16%, transparent) 75%, color-mix(in srgb, var(--hk3-text) 10%, transparent));
 	opacity: 0;
 	transform: scaleY(0);
 	transform-origin: top;
@@ -876,36 +1019,45 @@ onBeforeUnmount(() => {
 .body {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: calc(8px * var(--hk3-ui-scale, 1));
 	min-width: 0;
 }
 
 .header {
 	display: flex;
 	align-items: baseline;
-	gap: 8px;
+	gap: calc(8px * var(--hk3-ui-scale, 1));
 	min-width: 0;
 }
 
 .name {
-	flex: none;
+	flex: 0 1 auto;
+	min-width: 0;
 	max-width: 60%;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	color: var(--hk3-text);
 	font-weight: 700;
-	font-size: 15px;
+	font-size: calc(15px * var(--hk3-ui-scale, 1));
 
-	.root[data-size="sm"] & { font-size: 14px; }
+	.root[data-size="sm"] & { font-size: calc(14px * var(--hk3-ui-scale, 1)); }
+}
+
+.roleBadges {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
 }
 
 .acct {
+	flex: 1 1 auto;
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-size: 12px;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
 	color: var(--hk3-neutral-700);
 }
 
@@ -915,7 +1067,7 @@ onBeforeUnmount(() => {
 	align-items: center;
 	gap: 6px;
 	flex: none;
-	font-size: 12px;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
 	color: var(--hk3-neutral-700);
 	white-space: nowrap;
 }
@@ -929,26 +1081,56 @@ onBeforeUnmount(() => {
 
 .replyTo {
 	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	min-width: 0;
+	padding: 9px 12px;
+	border: 1px solid color-mix(in srgb, var(--hk3-divider) 40%, transparent);
+	border-radius: 18px;
+	background: color-mix(in srgb, color-mix(in srgb, var(--hk3-surface) 88%, var(--hk3-accent-100)) 62%, transparent);
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+	box-shadow: 0 4px 16px color-mix(in srgb, var(--hk3-text) 7%, transparent), inset 0 1px color-mix(in srgb, var(--hk3-bg) 42%, transparent);
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
+	color: var(--hk3-text);
+	&:hover { border-color: color-mix(in srgb, var(--hk3-accent) 45%, transparent); text-decoration: none; }
+	&:focus-visible { outline: 2px solid var(--hk3-accent); outline-offset: 2px; }
+}
+
+.replyToHeader {
+	display: flex;
 	align-items: center;
 	gap: 6px;
 	min-width: 0;
-	font-size: 12px;
+	:global(svg) { flex: none; color: var(--hk3-accent-700); }
+}
+
+.replyToName { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.replyToAcct {
+	min-width: 0;
+	max-width: 45%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	color: var(--hk3-neutral-700);
 }
 
 .replyToText {
 	min-width: 0;
 	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	opacity: 0.8;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow-wrap: anywhere;
+	color: var(--hk3-neutral-800);
 }
 
 .textSource {
 	min-width: 0;
 	hr { margin: 10px 0; }
 	pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-	button { padding: 5px 0; color: var(--MI_THEME-accent); }
+	button { padding: 5px 0; border-radius: 12px; color: var(--MI_THEME-accent); }
 }
 
 .cw {
@@ -959,8 +1141,8 @@ onBeforeUnmount(() => {
 }
 
 .cwText {
-	font-size: 15px;
-	.root[data-size="sm"] & { font-size: 14px; }
+	font-size: calc(15px * var(--hk3-ui-scale, 1));
+	.root[data-size="sm"] & { font-size: calc(14px * var(--hk3-ui-scale, 1)); }
 }
 
 .cwButton {
@@ -970,6 +1152,7 @@ onBeforeUnmount(() => {
 	width: 36px;
 	height: 28px;
 	border: 1px solid var(--hk3-divider);
+	border-radius: 12px;
 	background: transparent;
 	color: var(--hk3-text);
 	cursor: pointer;
@@ -979,36 +1162,42 @@ onBeforeUnmount(() => {
 
 .text {
 	margin: 0;
-	font-size: 15px;
+	font-size: calc(15px * var(--hk3-ui-scale, 1));
 	line-height: 1.7;
 	text-wrap: pretty;
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 
-	.root[data-size="sm"] & { font-size: 14px; }
+	.root[data-size="sm"] & { font-size: calc(14px * var(--hk3-ui-scale, 1)); }
 }
 
 .media {
 	max-width: 480px;
+	--MI-media-image-background: transparent;
+	--MI-media-image-pattern: none;
 }
 
 .quote {
 	display: grid;
-	grid-template-columns: 26px minmax(0, 1fr);
+	grid-template-columns: 26px minmax(0, 1fr) 14px;
 	gap: 10px;
+	min-width: 0;
 	padding: 10px 12px;
-	border: 1px solid var(--hk3-divider);
-	background: var(--hk3-surface);
+	border: 1px solid color-mix(in srgb, var(--hk3-divider) 40%, transparent);
+	border-radius: 18px;
+	background: color-mix(in srgb, color-mix(in srgb, var(--hk3-surface) 88%, var(--hk3-accent-100)) 62%, transparent);
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+	box-shadow: 0 4px 16px color-mix(in srgb, var(--hk3-text) 7%, transparent), inset 0 1px color-mix(in srgb, var(--hk3-bg) 42%, transparent);
 	color: var(--hk3-text);
 
-	&:hover { border-color: var(--hk3-accent); text-decoration: none; }
+	&:hover { border-color: color-mix(in srgb, var(--hk3-accent) 45%, transparent); text-decoration: none; }
+	&:focus-visible { outline: 2px solid var(--hk3-accent); outline-offset: 2px; }
 }
 
 .quoteAvatar {
 	width: 26px;
 	height: 26px;
-	border-radius: 0 !important;
-	:global(img) { border-radius: 0 !important; }
 }
 
 .quoteBody {
@@ -1018,16 +1207,24 @@ onBeforeUnmount(() => {
 	min-width: 0;
 }
 
-.quoteName { font-size: 13px; }
+.quoteName { min-width: 0; font-size: calc(13px * var(--hk3-ui-scale, 1)); overflow-wrap: anywhere; }
 
 .quoteText {
-	font-size: 13px;
+	min-width: 0;
+	font-size: calc(13px * var(--hk3-ui-scale, 1));
 	line-height: 1.55;
 	color: var(--hk3-neutral-800);
+	overflow-wrap: anywhere;
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
 	overflow: hidden;
+}
+
+.quoteIcon {
+	align-self: start;
+	color: var(--hk3-accent-700);
+	opacity: 0.7;
 }
 
 .channel {
@@ -1035,7 +1232,7 @@ onBeforeUnmount(() => {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 12px;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
 	color: var(--hk3-accent-700);
 }
 
@@ -1063,11 +1260,12 @@ onBeforeUnmount(() => {
 	justify-content: center;
 	height: 38px;
 	border: 1px solid var(--hk3-divider);
+	border-radius: 13px;
 	background: var(--hk3-surface);
 	color: var(--hk3-text);
 	cursor: pointer;
 	font: inherit;
-	font-size: 14px;
+	font-size: calc(14px * var(--hk3-ui-scale, 1));
 	font-weight: 700;
 	font-variant-numeric: tabular-nums;
 
@@ -1076,10 +1274,9 @@ onBeforeUnmount(() => {
 }
 
 .chip {
+	position: relative;
 	gap: 8px;
 	padding: 0 12px;
-
-	&[data-mine] { background: var(--hk3-accent); border-color: var(--hk3-accent); color: var(--hk3-bg); }
 }
 
 .chipEmoji {
@@ -1106,7 +1303,7 @@ onBeforeUnmount(() => {
 	padding: 0 10px;
 	border-color: var(--hk3-text);
 	background: var(--hk3-bg);
-	font-size: 13px;
+	font-size: calc(13px * var(--hk3-ui-scale, 1));
 	font-weight: 800;
 
 	&[data-open] { background: var(--hk3-text); color: var(--hk3-bg); }
@@ -1126,11 +1323,12 @@ onBeforeUnmount(() => {
 	min-width: 44px;
 	height: 40px;
 	border: 0;
+	border-radius: 12px;
 	background: transparent;
 	color: var(--hk3-neutral-800);
 	cursor: pointer;
 	font: inherit;
-	font-size: 12px;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
 	font-variant-numeric: tabular-nums;
 
 	&[data-active] { color: var(--hk3-accent-700); }
@@ -1149,16 +1347,22 @@ onBeforeUnmount(() => {
 	gap: 12px;
 	min-height: 44px;
 	padding: 6px 12px 6px 6px;
-	border: 1px solid var(--hk3-divider);
-	background: var(--hk3-bg);
+	border: 1px solid color-mix(in srgb, var(--hk3-text) 10%, transparent);
+	border-radius: 18px;
+	background: color-mix(in srgb, var(--hk3-surface) var(--hk3-glass-soft-alpha, 30%), transparent);
+	-webkit-backdrop-filter: blur(16px) saturate(1.1);
+	backdrop-filter: blur(16px) saturate(1.1);
 	color: var(--hk3-text);
 	cursor: pointer;
 	font: inherit;
 	text-align: left;
 	transition: background 260ms ease, border-color 260ms ease;
 
-	&[data-open] { background: var(--hk3-accent-100); border-color: var(--hk3-accent); }
-	&:hover { border-color: var(--hk3-accent); }
+	&[data-open] { background: color-mix(in srgb, var(--hk3-surface) var(--hk3-glass-soft-alpha, 30%), color-mix(in srgb, var(--hk3-accent) 12%, transparent)); }
+	&:hover { border-color: color-mix(in srgb, var(--hk3-text) 18%, transparent); background: color-mix(in srgb, var(--hk3-surface) var(--hk3-glass-soft-alpha, 30%), color-mix(in srgb, var(--hk3-accent) 8%, transparent)); }
+	&[data-open]:hover { background: color-mix(in srgb, var(--hk3-surface) var(--hk3-glass-soft-alpha, 30%), color-mix(in srgb, var(--hk3-accent) 15%, transparent)); }
+	&:active { background: color-mix(in srgb, var(--hk3-surface) var(--hk3-glass-soft-alpha, 30%), color-mix(in srgb, var(--hk3-accent) 16%, transparent)); }
+	&:focus-visible { outline: 2px solid var(--hk3-accent); outline-offset: 2px; }
 }
 
 .convFaces {
@@ -1169,11 +1373,7 @@ onBeforeUnmount(() => {
 .convFace {
 	width: 28px;
 	height: 28px;
-	margin-right: -6px;
-	border: 2px solid var(--hk3-bg);
-	border-radius: 0 !important;
-	box-sizing: border-box;
-	:global(img) { border-radius: 0 !important; }
+	margin-right: -5px;
 }
 
 .convCount {
@@ -1182,7 +1382,7 @@ onBeforeUnmount(() => {
 	gap: 6px;
 	margin-left: 6px;
 	flex: none;
-	font-size: 14px;
+	font-size: calc(14px * var(--hk3-ui-scale, 1));
 	font-weight: 800;
 	color: var(--hk3-accent-700);
 }
@@ -1223,11 +1423,12 @@ onBeforeUnmount(() => {
 	height: 50px;
 	padding: 0 4px;
 	border: 1px solid var(--hk3-divider);
+	border-radius: 13px;
 	background: var(--hk3-surface);
 	color: var(--hk3-text);
 	cursor: pointer;
 	font: inherit;
-	font-size: 13px;
+	font-size: calc(13px * var(--hk3-ui-scale, 1));
 	font-weight: 700;
 	font-variant-numeric: tabular-nums;
 
@@ -1237,8 +1438,42 @@ onBeforeUnmount(() => {
 .sideChip {
 	flex-direction: column;
 	gap: 2px;
+}
 
-	&[data-mine] { background: var(--hk3-accent); border-color: var(--hk3-accent); color: var(--hk3-bg); }
+.chip, .sideChip {
+	&[data-mine] {
+		// 一色の背景を縁から外へ薄くぼかし、絵文字・件数は鮮明に保つ。
+		isolation: isolate;
+		background: transparent;
+		border-color: transparent;
+		color: var(--hk3-text);
+
+		&:hover {
+			background: transparent;
+			border-color: transparent;
+		}
+
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 3px;
+			z-index: -1;
+			border-radius: inherit;
+			background: color-mix(in srgb, var(--hk3-accent) 22%, var(--hk3-surface));
+			filter: blur(3px);
+			pointer-events: none;
+		}
+
+		&:hover::before {
+			background: color-mix(in srgb, var(--hk3-accent) 26%, var(--hk3-surface));
+		}
+	}
+
+	// 親の overflow: hidden に切られない内側のフォーカス輪郭。
+	&:focus-visible {
+		outline: 2px solid var(--hk3-text);
+		outline-offset: -3px;
+	}
 }
 
 .sideEmoji {
@@ -1289,7 +1524,7 @@ onBeforeUnmount(() => {
 	padding: 0;
 	border-color: var(--hk3-text);
 	background: var(--hk3-bg);
-	font-size: 12px;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
 	font-weight: 800;
 
 	&[data-open] { background: var(--hk3-text); color: var(--hk3-bg); }
@@ -1310,6 +1545,8 @@ onBeforeUnmount(() => {
 // ノートごとの操作バーは本文に重ねず、ノートの上端の区切り線にまたがせる(下半分は上余白18pxの中に収まる)。
 // 一覧の先頭のノートは上が切れるため、下端の区切り線にまたがせる。
 .hoverBar {
+	// 薄めは62%、濃いめは86%。操作バー内だけで背景の透明度を調整する。
+	--hk3-hover-bar-alpha: clamp(62%, calc(var(--hk3-glass-pane-alpha, 76%) * 1.5 - 52%), 86%);
 	position: absolute;
 	top: -17px;
 	z-index: 6;
@@ -1318,8 +1555,20 @@ onBeforeUnmount(() => {
 	.root[data-renote] > & { top: auto; bottom: -17px; }
 	display: flex;
 	background: var(--hk3-bg);
+	background: color-mix(in srgb, var(--hk3-bg) var(--hk3-hover-bar-alpha), transparent);
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
 	border: 1px solid var(--hk3-divider);
+	border-color: color-mix(in srgb, var(--hk3-divider) 75%, transparent);
+	border-radius: 14px;
 	box-shadow: var(--hk3-shadow-md);
+}
+
+// 移動中は親がクリップされるため、はみ出す操作バーを全体ごと隠す。
+:global([inert]) .hoverBar,
+:global([data-hk3-note-moving]) .hoverBar {
+	visibility: hidden;
+	pointer-events: none;
 }
 
 .hoverAction {
@@ -1327,8 +1576,14 @@ onBeforeUnmount(() => {
 	gap: 6px;
 	padding: 0 12px;
 	border-right: 1px solid var(--hk3-divider);
+	border-right-color: color-mix(in srgb, var(--hk3-divider) 75%, transparent);
 
-	&:last-child { border-right: 0; }
+	&:hover { background: color-mix(in srgb, var(--hk3-accent-100) var(--hk3-hover-bar-alpha), transparent); }
+	&:focus-visible { background: var(--hk3-accent-100); color: var(--hk3-accent-700); }
+
+	// バーをクリップせず端の塗りだけを丸め、フォーカスの輪郭を残す。
+	&:first-child { border-top-left-radius: 13px; border-bottom-left-radius: 13px; }
+	&:last-child { border-right: 0; border-top-right-radius: 13px; border-bottom-right-radius: 13px; }
 }
 
 .tree {
@@ -1358,13 +1613,11 @@ onBeforeUnmount(() => {
 
 .treeRow {
 	display: grid;
-	grid-template-columns: 44px 30px minmax(0, 1fr);
+	grid-template-columns: var(--hk3-note-avatar-size) 30px minmax(0, 1fr);
 	column-gap: 10px;
 	opacity: 0;
 	transform: translateY(-10px);
 	transition: opacity 340ms ease 0ms, transform 460ms cubic-bezier(0.22, 1, 0.36, 1) 0ms;
-
-	.root[data-size="sm"] & { grid-template-columns: 36px 30px minmax(0, 1fr); }
 
 	.tree[data-open] & {
 		opacity: 1;
@@ -1377,22 +1630,28 @@ onBeforeUnmount(() => {
 
 .treeRailV {
 	position: absolute;
-	left: calc(50% - 1px);
+	left: calc(50% - 0.5px);
 	top: 0;
 	bottom: 0;
-	width: 2px;
-	background: var(--hk3-neutral-500);
+	width: 1px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--hk3-text) 14%, transparent);
 }
 
-.treeRailEnd { bottom: auto; height: 25px; }
+.treeRailEnd {
+	bottom: auto;
+	height: 25px;
+	background: linear-gradient(to bottom, color-mix(in srgb, var(--hk3-text) 14%, transparent) 90%, transparent);
+}
 
 .treeRailH {
 	position: absolute;
-	left: calc(50% - 1px);
+	left: 50%;
 	top: 23px;
-	width: calc(50% + 11px);
-	height: 2px;
-	background: var(--hk3-neutral-500);
+	width: calc(50% + 10px);
+	height: 1px;
+	border-radius: 999px;
+	background: linear-gradient(to right, color-mix(in srgb, var(--hk3-text) 14%, transparent) 75%, color-mix(in srgb, var(--hk3-text) 9%, transparent));
 }
 
 .treeAvatarCol {
@@ -1407,26 +1666,34 @@ onBeforeUnmount(() => {
 	width: 30px;
 	height: 30px;
 	flex: none;
-	border-radius: 0 !important;
-	:global(img) { border-radius: 0 !important; }
 }
 
 .treeBubble {
-	margin: 6px 0;
+	margin: 5px 0 7px;
 	min-width: 0;
-	background: var(--hk3-bg);
-	border: 1px solid var(--hk3-divider);
+	border: 1px solid color-mix(in srgb, var(--hk3-text) 10%, transparent);
+	border-radius: 18px;
+	background: color-mix(in srgb, var(--hk3-surface) var(--hk3-glass-soft-alpha, 30%), transparent);
+	-webkit-backdrop-filter: blur(16px) saturate(1.1);
+	backdrop-filter: blur(16px) saturate(1.1);
 	color: var(--hk3-text);
+	transition: background 260ms ease, border-color 260ms ease, box-shadow 260ms ease;
 
-	&:hover, &:focus-within { border-color: var(--hk3-accent); }
+	&:hover { border-color: color-mix(in srgb, var(--hk3-text) 18%, transparent); background: color-mix(in srgb, var(--hk3-surface) var(--hk3-glass-soft-alpha, 30%), color-mix(in srgb, var(--hk3-accent) 8%, transparent)); }
+	&:active { background: color-mix(in srgb, var(--hk3-surface) var(--hk3-glass-soft-alpha, 30%), color-mix(in srgb, var(--hk3-accent) 12%, transparent)); }
+	&:focus-within { border-color: color-mix(in srgb, var(--hk3-accent) 35%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--hk3-accent) 16%, transparent); }
 }
 
 .root[data-thread-reply] {
-	> .article { padding: 8px 12px; }
-	.body { gap: 3px; }
-	.name { font-size: 13px; }
-	.acct { display: none; }
-	.text { font-size: 14px; line-height: 1.6; }
+	> .article { padding: calc(10px * var(--hk3-ui-scale, 1)) calc(14px * var(--hk3-ui-scale, 1)); border-radius: inherit; }
+	.imageTint { border-radius: inherit; }
+	.body { gap: calc(3px * var(--hk3-ui-scale, 1)); }
+	.header { gap: calc(6px * var(--hk3-ui-scale, 1)); }
+	.name { max-width: 42%; font-size: calc(13px * var(--hk3-ui-scale, 1)); }
+	.acct { display: block; }
+	.meta { min-width: 0; max-width: 30%; }
+	.time { display: block; overflow: hidden; text-overflow: ellipsis; }
+	.text { font-size: calc(14px * var(--hk3-ui-scale, 1)); line-height: 1.6; }
 	.smActions { flex-wrap: wrap; }
 	.smAction { padding: 0 6px; }
 }
@@ -1447,21 +1714,30 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	height: 40px;
-	padding: 0 12px;
-	border: 1px solid var(--hk3-divider);
-	background: var(--hk3-bg);
+	min-width: 0;
+	min-height: 44px;
+	padding: 0 14px;
+	border: 1px solid color-mix(in srgb, var(--hk3-text) 10%, transparent);
+	border-radius: 18px;
+	background: color-mix(in srgb, var(--hk3-surface) var(--hk3-glass-soft-alpha, 30%), transparent);
+	-webkit-backdrop-filter: blur(16px) saturate(1.1);
+	backdrop-filter: blur(16px) saturate(1.1);
 	color: var(--hk3-neutral-700);
 	cursor: pointer;
 	font: inherit;
-	font-size: 14px;
+	font-size: calc(14px * var(--hk3-ui-scale, 1));
 	text-align: left;
+	transition: background 260ms ease, border-color 260ms ease, color 260ms ease;
 
 	span { flex: 1; }
-	&:hover { border-color: var(--hk3-accent); color: var(--hk3-accent-700); }
+	&:hover { border-color: color-mix(in srgb, var(--hk3-text) 18%, transparent); background: color-mix(in srgb, var(--hk3-surface) var(--hk3-glass-soft-alpha, 30%), color-mix(in srgb, var(--hk3-accent) 8%, transparent)); color: var(--hk3-accent-700); }
+	&:active { background: color-mix(in srgb, var(--hk3-surface) var(--hk3-glass-soft-alpha, 30%), color-mix(in srgb, var(--hk3-accent) 12%, transparent)); }
+	&:focus-visible { outline: 2px solid var(--hk3-accent); outline-offset: 2px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.root, .article, .threadLine, .tree, .treeRow, .convChevron, .rxInlineList, .sideChip, .sideAdd, .sideMore { transition: none !important; }
+	.imageTint { animation: none !important; }
+	.imageGlow { transition: none !important; }
+	.root, .article, .threadLine, .tree, .treeRow, .treeBubble, .treeReply, .convButton, .convChevron, .rxInlineList, .sideChip, .sideAdd, .sideMore { transition: none !important; }
 }
 </style>

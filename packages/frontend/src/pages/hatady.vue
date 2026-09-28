@@ -1334,7 +1334,7 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 	display: flex;
 	position: relative;
 	flex-direction: column;
-	height: calc(var(--MI-viewport-height, 100dvh) - var(--MI-stickyTop, 0px));
+	height: calc(100cqh - var(--MI-stickyTop, 0px));
 	min-height: 0;
 	background: var(--hy-bg);
 	overflow: hidden;
@@ -1403,10 +1403,11 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-	padding: 0 24px 24px;
+	padding: 0 24px calc(24px + var(--MI-page-bottom-inset, 0px));
 	scrollbar-width: none;
 	overscroll-behavior: contain;
 	scroll-padding-top: 12px;
+	scroll-padding-bottom: var(--MI-page-bottom-inset, 0px);
 }
 .main::-webkit-scrollbar {
 	display: none;
@@ -1780,7 +1781,7 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 		border: 1px solid var(--hy-border);
 	}
 	.main {
-		padding: 0 14px 20px;
+		padding: 0 14px calc(20px + var(--MI-page-bottom-inset, 0px));
 	}
 	.mobileRecord {
 		display: flex;

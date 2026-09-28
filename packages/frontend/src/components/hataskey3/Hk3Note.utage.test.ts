@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, h, nextTick, ref } from 'vue';
 import Hk3Note from './Hk3Note.vue';
 import { useNoteCapture } from '@/composables/use-note-capture.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 import type * as Misskey from 'cherrypick-js';
 import type { UtageSnapshot } from '@/utility/utage.js';
 
@@ -58,6 +59,11 @@ const iso = (time: number) => new Date(time).toISOString();
 const results = ['succeeded', 'failed'] as const;
 const sizes = ['lg', 'sm'] as const;
 const revival = () => ({ startedAt: iso(START), expiresAt: iso(START + 90 * 1000), targetCount: 6, reactionCount: 2 });
+const displays = [
+	{ utageStatus: 'succeeded' }, { utageStatus: 'failed' },
+	{ utageStatus: 'succeeded', utageRevival: revival() }, { utageStatus: 'failed', utageRevival: revival() },
+	{ utageStatus: 'running' }, { utageStatus: 'reviving', utageRevival: revival() },
+] satisfies UtageSnapshot[];
 const cleanups: (() => void)[] = [];
 
 function note(snapshot: UtageSnapshot = {}): Misskey.entities.Note {
@@ -69,14 +75,16 @@ function note(snapshot: UtageSnapshot = {}): Misskey.entities.Note {
 	} as unknown as Misskey.entities.Note;
 }
 
-function mount(source: Misskey.entities.Note, size: 'lg' | 'sm' = 'lg', local = true) {
+function mount(source: Misskey.entities.Note, size: 'lg' | 'sm' = 'lg', local = true, social = false) {
 	const inLocal = ref(local);
+	const inSocial = ref(social);
 	const host = window.document.createElement('div');
 	window.document.body.append(host);
-	const app = createApp({ render: () => h(Hk3Note, { note: source, size, inLocal: inLocal.value }) });
+	const app = createApp({ render: () => h(Hk3Note, { note: source, size, inLocal: inLocal.value, inSocial: inSocial.value }) });
 	app.component('MkA', { template: '<a><slot /></a>' });
 	for (const name of ['MkAvatar', 'MkUserName', 'MkTime', 'Mfm', 'MkLoading']) app.component(name, { template: '<span />' });
 	app.directive('user-preview', {});
+	app.directive('tooltip', {});
 	app.mount(host);
 	const captured = vi.mocked(useNoteCapture).mock.results.at(-1)!.value.$note;
 	let mounted = true;
@@ -87,11 +95,21 @@ function mount(source: Misskey.entities.Note, size: 'lg' | 'sm' = 'lg', local = 
 		host.remove();
 	};
 	cleanups.push(unmount);
-	return { host, captured, inLocal, unmount };
+	return { host, captured, inLocal, inSocial, unmount };
 }
 
 function expectPlain(host: Element) {
 	expect(host.querySelector('[data-utage-result], [data-utage-status-line], [data-utage="true"]')).toBeNull();
+}
+
+function expectDisplay(host: Element, snapshot: UtageSnapshot) {
+	if (snapshot.utageRevival != null) {
+		expect(host.querySelector('[data-utage-status-line]')?.getAttribute('data-state')).toBe(snapshot.utageStatus);
+	} else if (snapshot.utageStatus === 'running') {
+		expect(host.querySelector('[data-utage="true"]')).not.toBeNull();
+	} else {
+		expect(host.querySelector('[data-utage-result]')?.getAttribute('data-utage-result')).toBe(snapshot.utageStatus);
+	}
 }
 
 beforeEach(() => {
@@ -115,7 +133,7 @@ describe.each(sizes)('Hk3Note utage (%s)', size => {
 		const badge = host.querySelector('[data-utage-result]')!;
 		expect(badge.getAttribute('data-utage-result')).toBe(status);
 		expect(badge.textContent?.trim()).toBe(status === 'succeeded' ? '宴成功' : '宴失敗');
-		expect(badge.previousElementSibling?.tagName).toBe('P');
+		expect(badge.previousElementSibling?.querySelector('p')).toBeTruthy();
 		expect(badge.querySelector('svg')?.getAttribute('width')).toBe('14');
 		expect(badge.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
 		expect(host.querySelector('[data-utage-status-line], [data-utage="true"]')).toBeNull();
@@ -170,11 +188,6 @@ describe('Hk3Note utage reactive state and display window', () => {
 		expect(vi.getTimerCount()).toBe(1);
 	});
 
-	const displays = [
-		{ utageStatus: 'succeeded' }, { utageStatus: 'failed' },
-		{ utageStatus: 'succeeded', utageRevival: revival() }, { utageStatus: 'failed', utageRevival: revival() },
-		{ utageStatus: 'running' }, { utageStatus: 'reviving', utageRevival: revival() },
-	] satisfies UtageSnapshot[];
 	it.each(displays)('suppresses every display outside LTL, on remote notes, and at/after six hours: %j', snapshot => {
 		const source = note(snapshot);
 		expectPlain(mount(source, 'lg', false).host);
@@ -236,6 +249,124 @@ describe('Hk3Note utage reactive state and display window', () => {
 		target.captured.utageStatus = snapshot.utageStatus;
 		await nextTick();
 		expect(vi.getTimerCount()).toBe(timers);
+		target.unmount();
+		expect(vi.getTimerCount()).toBe(0);
+	});
+});
+
+describe.each(sizes)('Hk3Note utage on local and social timelines (%s)', size => {
+	it.each(displays)('shows each local-author state in both timelines: %j', snapshot => {
+		for (const [local, social] of [[true, false], [false, true]] as const) {
+			const target = mount(note(snapshot), size, local, social);
+			expectDisplay(target.host, snapshot);
+			target.unmount();
+		}
+	});
+
+	it.each(displays)('never shows a nonlocal or malformed author host: %j', snapshot => {
+		for (const hostValue of ['remote.example', undefined, '']) {
+			const source = note(snapshot);
+			const user = { ...source.user, host: hostValue } as Misskey.entities.Note['user'];
+			for (const [local, social] of [[true, false], [false, true]] as const) {
+				const target = mount({ ...source, user, localOnly: true }, size, local, social);
+				expectPlain(target.host);
+				expect(vi.getTimerCount()).toBe(0);
+				target.unmount();
+			}
+		}
+		expect(vi.getTimerCount()).toBe(0);
+	});
+});
+
+describe('Hk3Note social utage ownership and lifetime', () => {
+	it.each([false, true])('uses the original author of a pure renote (original local: %s)', originalLocal => {
+		const original = note({ utageStatus: 'succeeded' });
+		original.id = 'original';
+		original.user = { ...original.user, host: originalLocal ? null : 'remote.example' };
+		const wrapper = {
+			...note({ utageStatus: 'failed' }), id: 'wrapper', text: null,
+			renoteId: original.id, renote: original,
+			user: { ...original.user, host: originalLocal ? 'remote.example' : null },
+		} as Misskey.entities.Note;
+		const target = mount(wrapper, 'lg', false, true);
+		if (originalLocal) {
+			expect(target.host.querySelector('[data-utage-result]')?.getAttribute('data-utage-result')).toBe('succeeded');
+		} else {
+			expectPlain(target.host);
+		}
+	});
+
+	it.each([false, true])('uses the quote author instead of the quoted author (quote local: %s)', quoteLocal => {
+		const quoted = note({ utageStatus: quoteLocal ? 'failed' : 'succeeded' });
+		quoted.id = 'quoted';
+		quoted.user = { ...quoted.user, host: quoteLocal ? 'remote.example' : null };
+		const quote = {
+			...note({ utageStatus: 'succeeded' }), id: 'quote', text: '宴の引用文',
+			renoteId: quoted.id, renote: quoted,
+			user: { ...quoted.user, host: quoteLocal ? null : 'remote.example' },
+		} as Misskey.entities.Note;
+		const target = mount(quote, 'lg', false, true);
+		if (quoteLocal) {
+			expect(target.host.querySelector('[data-utage-result]')?.getAttribute('data-utage-result')).toBe('succeeded');
+		} else {
+			expectPlain(target.host);
+		}
+	});
+
+	it('checks each expanded social reply by its own author', async () => {
+		const parent = { ...note({ utageStatus: 'running' }), id: 'parent', repliesCount: 2 };
+		const localReply = { ...note({ utageStatus: 'succeeded' }), id: 'local-reply' };
+		const remoteReply = {
+			...note({ utageStatus: 'failed' }), id: 'remote-reply', localOnly: true,
+			user: { ...parent.user, id: 'remote-author', host: 'remote.example' },
+		};
+		vi.mocked(misskeyApi).mockResolvedValue([localReply, remoteReply] as never);
+		const target = mount(parent, 'lg', false, true);
+		const conversationButton = target.host.querySelector<HTMLButtonElement>('button[aria-expanded="false"]');
+		expect(conversationButton).not.toBeNull();
+		conversationButton!.click();
+		await Promise.resolve();
+		await nextTick();
+		await nextTick();
+		expect(target.host.querySelector('[data-note-id="local-reply"] [data-utage-result]')?.getAttribute('data-utage-result')).toBe('succeeded');
+		expectPlain(target.host.querySelector('[data-note-id="remote-reply"]')!);
+	});
+
+	it('reacts to a social status update and expires exactly at six hours', async () => {
+		const source = { ...note({ utageStatus: 'running', utageExpiresAt: iso(START + 1000) }), createdAt: iso(START - SIX_HOURS + 250) };
+		const target = mount(source, 'sm', false, true);
+		expect(target.host.querySelector('[data-utage="true"]')).not.toBeNull();
+		expect(vi.getTimerCount()).toBe(2);
+		target.captured.utageStatus = 'succeeded';
+		await nextTick();
+		expect(target.host.querySelector('[data-utage-result]')?.getAttribute('data-utage-result')).toBe('succeeded');
+		expect(vi.getTimerCount()).toBe(1);
+		await vi.advanceTimersByTimeAsync(249);
+		await nextTick();
+		expect(target.host.querySelector('[data-utage-result]')).not.toBeNull();
+		await vi.advanceTimersByTimeAsync(1);
+		await nextTick();
+		expectPlain(target.host);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('releases social timers on exit, reentry, status removal and unmount', async () => {
+		const target = mount(note({ utageStatus: 'running' }), 'lg', false, true);
+		expect(vi.getTimerCount()).toBe(2);
+		target.inSocial.value = false;
+		await nextTick();
+		expectPlain(target.host);
+		expect(vi.getTimerCount()).toBe(0);
+		target.inSocial.value = true;
+		await nextTick();
+		expect(vi.getTimerCount()).toBe(2);
+		target.captured.utageStatus = undefined;
+		await nextTick();
+		expectPlain(target.host);
+		expect(vi.getTimerCount()).toBe(0);
+		target.captured.utageStatus = 'running';
+		await nextTick();
+		expect(vi.getTimerCount()).toBe(2);
 		target.unmount();
 		expect(vi.getTimerCount()).toBe(0);
 	});

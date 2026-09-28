@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import { getHataWhatsNewDisplayVersion, getHataWhatsNewStories, HATA_WHATS_NEW, HATA_WHATS_NEW_THEMES } from './hata-whats-new.js';
 
 const root = path.resolve(process.cwd(), '../..');
-const ids = ['ui-s-layout', 'ui-s-hatask', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'hataskey-sounds', 'sound-preferences', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'ui-s-fixes', 'daily-fixes', 'upstream-update', 'script-errors'];
+const ids = ['ui-s-layout', 'ui-s-hatask', 'ui-s-split', 'ui-s-mobile-dock', 'ui-s-search', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'hataskey-sounds', 'sound-preferences', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'note-appearance', 'ui-s-fixes', 'daily-fixes', 'upstream-update', 'script-errors', 'composer-drafts', 'note-menu', 'timeline-swipe', 'ltl-punch'];
 describe('approved release stories', () => {
 	test('the displayed-version gate stays aligned with the package and release metadata', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -30,16 +30,21 @@ describe('approved release stories', () => {
 		expect(stories).toHaveLength(HATA_WHATS_NEW.groups.reduce((total, group) => total + (!group.feature && height < 470 ? group.cards.length : 1), 0));
 		expect(stories[0].id).toBe('ui-s-layout');
 		expect(stories.flatMap(story => story.cards.map(card => card.id))).toEqual(ids);
-		expect(stories.slice(0, 3).map(story => story.feature)).toEqual(['ui-s', 'recipes', 'flowers']);
+		expect(stories.slice(0, 4).map(story => [story.feature, story.scene])).toEqual([0, 1, 2, 3].map(scene => ['ui-s-2', scene]));
+		expect(stories.slice(0, 4).map(story => story.label)).toEqual(['Hataskey UI S 2', 'PCで並べる', '指先で選ぶ', '探す・書く']);
 		for (const story of stories) {
 			expect(story.title).toBeTruthy();
-			expect(story.cards).toHaveLength(story.feature || height >= 470 ? 2 : 1);
+			const sourceGroup = HATA_WHATS_NEW.groups.find(group => group.cards.some(card => card.id === story.id));
+			if (!sourceGroup) throw new Error(`Missing source group for ${story.id}`);
+			expect(story.cards).toHaveLength(!story.feature && height < 470 ? 1 : sourceGroup.cards.length);
 		}
 	});
 	test('short-window pages use stable topic ids, including the second topic when pages merge', () => {
 		const compact = getHataWhatsNewStories(380), full = getHataWhatsNewStories(600);
 		for (const topic of compact) expect(full.find(story => story.cards.some(card => card.id === topic.id))).toBeDefined();
-		expect(full.map(story => story.id)).toEqual(['ui-s-layout', 'recipes', 'flower-care', 'ui-s-settings', 'ui-s-rss', 'note-actions', 'hataskey-sounds', 'emoji-changes', 'utage-revival', 'mood-timezone', 'hatady-forms', 'ui-s-fixes', 'upstream-update']);
+		expect(full.slice(0, 4).map(story => story.id)).toEqual(['ui-s-layout', 'ui-s-split', 'ui-s-mobile-dock', 'ui-s-search']);
+		expect(full.at(-2)?.id).toBe('composer-drafts');
+		expect(full.at(-1)?.id).toBe('timeline-swipe');
 	});
 	test('the six approved themes keep their persisted ids and the new moss theme', () => {
 		expect(HATA_WHATS_NEW_THEMES.map(theme => theme.id)).toEqual(['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu']);
@@ -48,7 +53,16 @@ describe('approved release stories', () => {
 	test('copy covers visibility, migration, notification timing and safety conditions', () => {
 		const cards = HATA_WHATS_NEW.groups.flatMap(group => group.cards);
 		const points = (id: string) => cards.find(card => card.id === id)?.points?.join('');
-		expect(points('ui-s-layout')).toContain('ベータ公開');
+		expect(points('ui-s-layout')).toContain('UI S 2');
+		expect(points('ui-s-split')).toContain('タイムライン');
+		expect(points('ui-s-mobile-dock')).toContain('長押し');
+		expect(points('ui-s-search')).toContain('検索');
+		expect(points('composer-drafts')).toContain('自動保存');
+		expect(points('ltl-punch')).toContain('拳');
+		expect(points('note-appearance')).toContain('添付画像の縁色');
+		expect(points('note-appearance')).toContain('読み込み線');
+		expect(points('note-appearance')).toContain('上部ナビの縁');
+		expect(points('ui-s-fixes')).toContain('カスタム絵文字');
 		expect(points('legacy-ui-migration')).toContain('ノートは維持');
 		expect(points('note-actions')).toContain('3秒間');
 		expect(points('note-actions')).toContain('お気に入り・クリップ');
@@ -73,7 +87,8 @@ describe('approved release stories', () => {
 		expect(points('upstream-update')).toContain('公式リリースノートを参照');
 		expect(cards.flatMap(card => card.link ? [card.link] : [])).toEqual([{ label: 'Misskey公式リリースノート（2026.9.1）', url: 'https://github.com/misskey-dev/misskey/releases/tag/2026.9.1' }]);
 		expect(cards.flatMap(card => card.preview ? [card.preview] : [])).toEqual(['note-actions', 'emoji-changes']);
-		for (const card of cards) expect(card.points).toHaveLength(2);
+		for (const card of cards) expect(card.points?.length).toBeGreaterThanOrEqual(2);
+		for (const card of cards) expect(card.points?.length).toBeLessThanOrEqual(3);
 	});
 	test('release copy contains no implementation paths or internal storage and API terminology', () => {
 		const implementationTerms = /Registry|API|localStorage|packages\/|マイグレーション|\/home\//u;

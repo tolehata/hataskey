@@ -61,6 +61,44 @@ describe('Hataskey notification queue', () => {
 		queue.tick(15000, new Set());
 		expect(queue.items.value).toHaveLength(0);
 	});
+	it.each(['notification', 'noteAction'] as const)('preserves the remaining %s lifetime while the navbar contents are hidden', (kind) => {
+		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
+		if (kind === 'notification') queue.enqueue(notification('first'), 'local', 0);
+		else queue.enqueueNavbarNotice({ kind: 'noteAction', action: 'edit', message: 'Edited' }, 0);
+		queue.tick(1000, new Set());
+		const item = queue.items.value[0];
+		queue.paused.value = true;
+		queue.tick(12000, new Set());
+		expect(item.elapsed).toBe(1000);
+		expect(item.updatedAt).toBe(12000);
+		queue.paused.value = false;
+		const expiresAt = 12000 + getToastDuration(item) - item.elapsed;
+		queue.tick(expiresAt - 1, new Set());
+		expect(queue.items.value[0]).toBe(item);
+		queue.tick(expiresAt, new Set());
+		expect(queue.items.value).toHaveLength(0);
+	});
+	it('keeps surface and individual pauses effective after the navbar pause ends', () => {
+		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
+		const surfacePaused = ref(false);
+		queue.registerSurface({ active: ref(true), target: ref(window.document.createElement('div')), outline: ref(window.document.createElement('header')), animations: ref(false), paused: surfacePaused });
+		queue.enqueue(notification('first'), 'local', 0);
+		queue.tick(1000, new Set());
+		const item = queue.items.value[0];
+		queue.paused.value = true;
+		queue.tick(6000, new Set());
+		surfacePaused.value = true;
+		queue.paused.value = false;
+		queue.tick(11000, new Set());
+		expect(item.elapsed).toBe(1000);
+		surfacePaused.value = false;
+		queue.tick(16000, new Set([item.id]));
+		expect(item.elapsed).toBe(1000);
+		queue.tick(19999, new Set());
+		expect(queue.items.value[0]).toBe(item);
+		queue.tick(20000, new Set());
+		expect(queue.items.value).toHaveLength(0);
+	});
 	it('keeps three desktop cards, with the newest at the bottom, without mixing account IDs', () => {
 		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
 		queue.enqueue(notification('same'), 'local', 0);

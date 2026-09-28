@@ -23,11 +23,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
+import { inject, onDeactivated, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import { getScrollContainer } from '@@/js/scroll.js';
 import { i18n } from '@/i18n.js';
 import { isHorizontalSwipeSwiping } from '@/utility/touch.js';
 import { haptic } from '@/utility/haptic.js';
+import { attachNavbarPullGesture, navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
+
+const navbarPull = inject(navbarPullRefreshKey, null);
+let navbarGesture: ReturnType<typeof attachNavbarPullGesture> | undefined;
 
 const SCROLL_STOP = 10;
 const MAX_PULL_DISTANCE = Infinity;
@@ -84,6 +88,7 @@ function cancelPull() {
 
 // When at the top of the page, disable vertical overscroll so passive touch listeners can take over.
 function lockDownScroll() {
+	if (navbarPull?.enabled.value) return;
 	if (scrollEl == null) return;
 	scrollEl.style.touchAction = 'pan-x pan-down pinch-zoom';
 	scrollEl.style.overscrollBehavior = 'auto none';
@@ -96,6 +101,7 @@ function unlockDownScroll() {
 }
 
 function moveStartByMouse(event: MouseEvent) {
+	if (navbarPull?.enabled.value) return;
 	if (event.button !== 1) return;
 	if (isRefreshing.value || isPulling.value || scrollEl == null) return;
 
@@ -120,6 +126,7 @@ function moveStartByMouse(event: MouseEvent) {
 }
 
 function moveStartByTouch(event: TouchEvent) {
+	if (navbarPull?.enabled.value) return;
 	if (isRefreshing.value) return;
 	if (event.touches.length !== 1) {
 		if (isPulling.value) cancelPull();
@@ -259,13 +266,20 @@ onMounted(() => {
 	if (rootEl.value == null) return;
 	mounted = true;
 	scrollEl = getScrollContainer(rootEl.value);
+	if (navbarPull && scrollEl) navbarGesture = attachNavbarPullGesture(rootEl.value, scrollEl, navbarPull, async () => {
+		emit('refresh');
+		await props.refresher();
+	});
 	lockDownScroll();
 	rootEl.value.addEventListener('mousedown', moveStartByMouse, { passive: false }); // preventDefaultするため
 	rootEl.value.addEventListener('touchstart', moveStartByTouch, { passive: true });
 	rootEl.value.addEventListener('touchend', toggleScrollLockOnTouchEnd, { passive: true });
 });
 
+onDeactivated(() => navbarGesture?.reset());
+
 onUnmounted(() => {
+	navbarGesture?.dispose();
 	mounted = false;
 	releaseVersion++;
 	removeGestureListeners();

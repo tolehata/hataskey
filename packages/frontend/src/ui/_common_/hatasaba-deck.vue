@@ -721,7 +721,7 @@ function buildColumnProps(tab: DeckTab): Record<string, unknown> {
 		excludeBots: tab.excludeBots === true,
 		showFilterPolicyNotice: hasConfiguredNotificationFilter(tab.excludeTypes, tab.notificationFilterKnownTypes),
 	};
-	if (tab.type === 'postForm') return props.hk3 ? { menuPlacement: 'down', draftId: `uiS:composer:deck:${tab.id}` } : { fixed: true, autofocus: false };
+	if (tab.type === 'postForm') return props.hk3 ? { deck: true, menuPlacement: 'down', draftId: `uiS:composer:deck:${tab.id}` } : { fixed: true, autofocus: false };
 	// デッキのウィジェットは操作ボタン行を省き、三点メニュー / タブ右クリックから編集する。
 	if (tab.type === 'widgets') return { deckEmbedded: true };
 	if (tab.type === 'earthquake') return {};
@@ -1946,7 +1946,7 @@ function openProfileMenu(ev: MouseEvent) {
 
 /* ===== Hataskey UI 3 のデッキ: 角のない面を区切り線で並べ、UI3 の色に揃える ===== */
 .deckWrap[data-hk3] {
-	background: var(--hk3-bg);
+	background: transparent;
 	color: var(--hk3-text);
 
 	.deck { padding: 10px; }
@@ -1956,16 +1956,22 @@ function openProfileMenu(ev: MouseEvent) {
 	.frameRoot {
 		border: 2px solid var(--hk3-divider);
 		border-radius: 0;
-		background: var(--hk3-bg);
+		background: var(--hk3-glass-soft, var(--hk3-bg));
 		box-shadow: none;
 	}
 	.frameColored { border-color: var(--deckColBorder, var(--hk3-divider)); }
 	.frameDragOver { box-shadow: 0 0 0 2px var(--hk3-accent); }
+	// ノート列にはガラスを一度だけ重ね、背景が濁るのを防ぐ。
+	.frameRoot:has(.tabPane[data-active="true"] > :global([data-hk3-deck-timeline])) {
+		background: transparent;
+		border-color: color-mix(in srgb, var(--hk3-text) 15%, transparent);
+		&.frameColored { border-color: var(--deckColBorder, var(--hk3-divider)); }
+	}
 
 	.tabBar {
 		gap: 0;
 		padding: 0;
-		background: var(--hk3-surface);
+		background: var(--hk3-glass-panel, var(--hk3-bg));
 		border-bottom: 2px solid var(--deckColBorder, var(--hk3-divider));
 	}
 	.tabs { gap: 0; }
@@ -1981,7 +1987,7 @@ function openProfileMenu(ev: MouseEvent) {
 	}
 	.tabActive {
 		opacity: 1;
-		background: var(--hk3-bg);
+		background: var(--hk3-glass-soft, var(--hk3-bg));
 		box-shadow: inset 0 -3px 0 var(--hk3-accent);
 	}
 	.tabIcon { color: var(--hk3-accent); }
@@ -2006,14 +2012,18 @@ function openProfileMenu(ev: MouseEvent) {
 
 	/* カラム内のノートも UI3 と同じく、角のない行を区切り線で並べる */
 	.tabPane {
-		background: var(--hk3-bg);
+		background: var(--hk3-glass-note, var(--hk3-bg));
+		&:has(> :global([data-hk3-deck-timeline])) {
+			-webkit-backdrop-filter: blur(20px);
+			backdrop-filter: blur(20px);
+		}
 
 		:global(._panel), :global(._gaps) > :global(*), :global([data-scroll-anchor]) { border-radius: 0 !important; }
 		:global(._gaps) { gap: 0 !important; }
 		:global([data-scroll-anchor]) {
 			margin: 0 !important;
-			border-bottom: 1px solid var(--hk3-divider);
-			background: var(--hk3-bg) !important;
+			border-bottom: 1px solid color-mix(in srgb, var(--hk3-text) 15%, transparent);
+			background: transparent !important;
 			box-shadow: none !important;
 		}
 		/* Hataskey UI の吹き出しカードを外し、行そのものをノートにする */
@@ -2032,7 +2042,7 @@ function openProfileMenu(ev: MouseEvent) {
 	/* UI3 の投稿欄は自然な高さのまま上に置き、下へ開くメニュー(田・公開範囲)が切れないよう枠内でスクロールさせる */
 	.tabPanePostForm {
 		overflow: auto;
-		background: var(--hk3-bg);
+		background: transparent;
 		> :global(div) { height: auto; padding: 10px 10px 14px; border-top: 0; }
 		:global(textarea) { flex: none; }
 	}

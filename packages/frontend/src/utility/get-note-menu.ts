@@ -30,6 +30,7 @@ import { globalEvents } from '@/events.js';
 import { addDividersBetweenMenuSections } from '@/utility/add-dividers-between-menu-sections.js';
 import { popup } from '@/os.js';
 import { openFavoriteFolderPicker, removeFavoriteNote } from '@/utility/favorite-folders.js';
+import { requestNoteActionConfirmation } from '@/utility/note-action-confirmation.js';
 
 export async function getNoteClipMenu(props: {
 	note: Misskey.entities.Note;
@@ -184,55 +185,63 @@ export function getNoteMenu(props: {
 }) {
 	const appearNote = getAppearNote(props.note) ?? props.note;
 	const link = appearNote.url ?? appearNote.uri;
+	const accountId = $i?.id;
+	let deleteInFlight: Promise<void> | undefined;
+	let deleteCompleted = false;
+	let confirmationPending = false;
 
 	const cleanups = [] as (() => void)[];
 
-	function del(): void {
-		os.confirm({
-			type: 'warning',
-			text: i18n.ts.noteDeleteConfirm,
-		}).then(({ canceled }) => {
-			if (canceled) return;
-			if ($i == null) return;
-
-			misskeyApi('notes/delete', {
-				noteId: appearNote.id,
-			}).then(() => {
-				globalEvents.emit('noteDeleted', appearNote.id);
-				os.toast(i18n.ts._hata._navbarNotice.noteDeleted, 'deleted');
-			});
-
-			if (Date.now() - new Date(appearNote.createdAt).getTime() < 1000 * 60 && appearNote.userId === $i.id) {
+	function runDelete(editAfterDelete: boolean): Promise<void> {
+		if (deleteInFlight) return deleteInFlight;
+		if (deleteCompleted) return Promise.resolve();
+		const currentAccount = $i;
+		if (!accountId || !currentAccount || currentAccount.id !== accountId || (appearNote.userId !== accountId && !currentAccount.isAdmin && !currentAccount.isModerator)) {
+			return Promise.reject(new Error(i18n.ts.error));
+		}
+		deleteInFlight = (async () => {
+			await misskeyApi('notes/delete', { noteId: appearNote.id });
+			deleteCompleted = true;
+			globalEvents.emit('noteDeleted', appearNote.id);
+			if ($i?.id !== accountId) return;
+			if (editAfterDelete) {
+				void os.post({ initialNote: appearNote, renote: appearNote.renote, reply: appearNote.reply, channel: appearNote.channel });
+				// UI3 がホームの投稿欄へ移動する場合も、移動先の通知領域で成功を表示する。
+				await nextTick();
+				if ($i?.id !== accountId) return;
+			}
+			os.toast(i18n.ts._hata._navbarNotice.noteDeleted, 'deleted');
+			if (Date.now() - new Date(appearNote.createdAt).getTime() < 1000 * 60 && appearNote.userId === accountId) {
 				claimAchievement('noteDeletedWithin1min');
 			}
-		});
+		})().finally(() => { deleteInFlight = undefined; });
+		return deleteInFlight;
 	}
 
-	function delEdit(): void {
-		os.confirm({
-			type: 'warning',
-			text: i18n.ts.deleteAndEditConfirm,
-		}).then(async ({ canceled }) => {
+	async function confirmDelete(kind: 'delete' | 'deleteAndEdit', run: () => Promise<void>): Promise<void> {
+		if (deleteInFlight || deleteCompleted || confirmationPending || !accountId || $i?.id !== accountId) return;
+		if (requestNoteActionConfirmation({ kind, note: appearNote, run })) return;
+		confirmationPending = true;
+		try {
+			const { canceled } = await os.confirm({
+				type: 'warning',
+				text: kind === 'delete' ? i18n.ts.noteDeleteConfirm : i18n.ts.deleteAndEditConfirm,
+			});
 			if (canceled) return;
-			if ($i == null) return;
+			await run();
+		} catch (error) {
+			await os.alert({ type: 'error', text: error instanceof Error ? error.message : i18n.ts.error });
+		} finally {
+			confirmationPending = false;
+		}
+	}
 
-			try {
-				await misskeyApi('notes/delete', { noteId: appearNote.id });
-			} catch (error) {
-				await os.alert({ type: 'error', text: error instanceof Error ? error.message : i18n.ts.error });
-				return;
-			}
-			globalEvents.emit('noteDeleted', appearNote.id);
+	function del(): Promise<void> {
+		return confirmDelete('delete', () => runDelete(false));
+	}
 
-			void os.post({ initialNote: appearNote, renote: appearNote.renote, reply: appearNote.reply, channel: appearNote.channel });
-			// UI3 がホームの投稿欄へ移動する場合も、移動先の通知領域で成功を表示する。
-			await nextTick();
-			os.toast(i18n.ts._hata._navbarNotice.noteDeleted, 'deleted');
-
-			if (Date.now() - new Date(appearNote.createdAt).getTime() < 1000 * 60 && appearNote.userId === $i.id) {
-				claimAchievement('noteDeletedWithin1min');
-			}
-		});
+	function delEdit(): Promise<void> {
+		return confirmDelete('deleteAndEdit', () => runDelete(true));
 	}
 
 	async function edit(): Promise<void> {

@@ -4,100 +4,100 @@ SPDX-License-Identifier: AGPL-3.0-only
 Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・新着バナーを持ち、新しい順に並べる。
 -->
 <template>
-<div :class="$style.root" :data-compact="compact ? 'true' : undefined">
-	<header ref="punchNavbarFrame" :data-hata-collapse-part="punchBusy ? undefined : true" :class="$style.navbar">
-		<div ref="navEl" :class="$style.nav" @click="onNavClick">
-			<div v-if="!compact" :class="$style.navSpacer"></div>
-			<div :class="$style.tabs">
-				<button
-					v-for="t in tabs"
-					:key="t.id"
-					type="button"
-					:class="$style.tab"
-					:data-active="t.id === tab ? 'true' : undefined"
-					:aria-pressed="t.id === tab"
-					:title="t.label"
-					:data-external="t.external ? 'true' : undefined"
-					@click.stop="onTabClick(t.id)"
-				>
-					<i :class="[t.icon, $style.tabIcon]" aria-hidden="true"></i>
-					<span v-if="t.id === tab">{{ t.label }}</span>
-				</button>
+<div :class="$style.root" :style="compact ? { '--hk3-mobile-dock-height': `${mobileDockHeight}px` } : undefined" :data-mobile-docked="compact && mobileComposerTarget ? true : undefined" :data-compact="compact ? 'true' : undefined" :data-desktop-rail="desktopRailActive ? true : undefined" :data-composer-position="composerPosition" :data-motion="motionEnabled">
+	<header ref="punchNavbarFrame" :inert="confirmationActive" :data-hata-collapse-part="punchBusy ? undefined : true" :class="$style.navbar" :data-pulling="!mobileDocked && pullRefresh.active.value ? true : undefined" :style="mobileDocked ? undefined : pullNavbarStyle">
+		<div :class="$style.navbarContents" :inert="!mobileDocked && pullRefresh.state.value.height > 8">
+			<Teleport :to="desktopRailEl ?? 'body'" :disabled="!desktopRailActive">
+				<div v-show="!compact || !mobileComposerTarget" ref="navEl" :class="$style.nav" role="navigation" :aria-label="i18n.ts.timeline" @click="onNavClick">
+					<div v-if="!compact" :class="$style.navSpacer"></div>
+					<div :class="$style.tabs">
+						<button
+							v-for="t in tabs"
+							:key="t.id"
+							type="button"
+							:class="$style.tab"
+							:data-active="t.id === tab ? 'true' : undefined"
+							:aria-pressed="t.id === tab"
+							:title="t.label"
+							:data-external="t.external ? 'true' : undefined"
+							@click.stop="onTabClick(t.id)"
+						>
+							<i :class="[t.icon, $style.tabIcon]" aria-hidden="true"></i>
+							<span v-if="!compact || t.id === tab" :class="$style.railLabel">{{ t.label }}</span>
+						</button>
 
-				<template v-if="$i">
-					<template v-for="item in collectionNav" :key="item.id">
-						<button v-if="item.id === 'channel'" type="button" :class="$style.tab" data-collection-nav="channel" :title="collectionCopy.channel" :aria-label="collectionCopy.channel" @click.stop="goToChannels"><i class="ti ti-device-tv" :class="$style.tabIcon" aria-hidden="true"></i></button>
-						<div v-else :class="$style.collectionTab" :data-active="tab === item.id ? 'true' : undefined">
-							<button type="button" :class="$style.tab" :data-collection-nav="item.id" :data-active="tab === item.id ? 'true' : undefined" :aria-pressed="tab === item.id" :title="item.label" :aria-label="item.label" :aria-expanded="pickerKind === item.id" :aria-controls="pickerKind === item.id ? pickerId : undefined" aria-haspopup="dialog" @click.stop="openCollection(item.id, $event)">
-								<i :class="[item.icon, $style.tabIcon]" aria-hidden="true"></i>
-								<span v-if="tab === item.id" :class="$style.collectionCopy"><span>{{ item.label }}</span><span :class="$style.collectionName">{{ activeCollection?.name }}</span></span>
-							</button>
-							<button v-if="tab === item.id" type="button" :class="$style.collectionAction" :data-collection-switch="item.id" :title="item.switchLabel" :aria-label="item.switchLabel" :aria-expanded="pickerKind === item.id" :aria-controls="pickerKind === item.id ? pickerId : undefined" aria-haspopup="dialog" @click.stop="toggleCollectionPicker(item.id, $event)"><i class="ti ti-selector" aria-hidden="true"></i></button>
-							<button v-if="tab === item.id" type="button" :class="$style.collectionAction" :data-collection-settings="item.id" :title="item.settingsLabel" :aria-label="item.settingsLabel" @click.stop="openCollectionSettings(item.id)"><i class="ti ti-settings" aria-hidden="true"></i></button>
+						<template v-if="$i">
+							<template v-for="item in collectionNav" :key="item.id">
+								<button v-if="item.id === 'channel'" type="button" :class="$style.tab" data-collection-nav="channel" :title="collectionCopy.channel" :aria-label="collectionCopy.channel" @click.stop="goToChannels"><i class="ti ti-device-tv" :class="$style.tabIcon" aria-hidden="true"></i><span v-if="!compact" :class="$style.railLabel">{{ collectionCopy.channel }}</span></button>
+								<div v-else :class="$style.collectionTab" :data-active="tab === item.id ? 'true' : undefined">
+									<button type="button" :class="$style.tab" :data-collection-nav="item.id" :data-active="tab === item.id ? 'true' : undefined" :aria-pressed="tab === item.id" :title="item.label" :aria-label="item.label" :aria-expanded="pickerKind === item.id" :aria-controls="pickerKind === item.id ? pickerId : undefined" aria-haspopup="dialog" @click.stop="openCollection(item.id, $event)">
+										<i :class="[item.icon, $style.tabIcon]" aria-hidden="true"></i>
+										<span v-if="!compact || tab === item.id" :class="[$style.collectionCopy, $style.railLabel]"><span>{{ item.label }}</span><span v-if="tab === item.id" :class="$style.collectionName">{{ activeCollection?.name }}</span></span>
+									</button>
+									<button v-if="tab === item.id" type="button" :class="$style.collectionAction" :data-collection-switch="item.id" :title="item.switchLabel" :aria-label="item.switchLabel" :aria-expanded="pickerKind === item.id" :aria-controls="pickerKind === item.id ? pickerId : undefined" aria-haspopup="dialog" @click.stop="toggleCollectionPicker(item.id, $event)"><i class="ti ti-selector" aria-hidden="true"></i><span v-if="!compact" :class="$style.railLabel">{{ item.switchLabel }}</span></button>
+									<button v-if="tab === item.id" type="button" :class="$style.collectionAction" :data-collection-settings="item.id" :title="item.settingsLabel" :aria-label="item.settingsLabel" @click.stop="openCollectionSettings(item.id)"><i class="ti ti-settings" aria-hidden="true"></i><span v-if="!compact" :class="$style.railLabel">{{ item.settingsLabel }}</span></button>
+								</div>
+							</template>
+						</template>
+					</div>
+					<div :class="$style.navEnd">
+						<!-- 表示の切り替え(リノート・ファイル・センシティブ・LIVE)を「…」の一覧にまとめる。 -->
+						<div ref="optionsWrapEl" :class="$style.optionsWrap">
+							<div :class="$style.optionsButton">
+								<button type="button" :class="$style.live" :data-on="optionsOpen || live ? 'true' : undefined" :aria-expanded="optionsOpen" aria-haspopup="menu" :aria-label="i18n.ts.options" :title="i18n.ts.options" @click.stop="optionsOpen = !optionsOpen">
+									<Ellipsis :size="20"/>
+									<span v-if="!compact" :class="$style.railLabel">{{ i18n.ts.options }}</span>
+								</button>
+							</div>
+							<Transition v-if="active" :name="motion() ? 'hk3-options' : ''">
+								<div v-if="optionsOpen" ref="optionsEl" :class="$style.options" :style="desktopPopupStyle" role="menu" @click.stop>
+									<button v-for="f in filters" :key="f.key" type="button" role="menuitemcheckbox" :aria-checked="f.on" :class="$style.option" :data-on="f.on ? 'true' : undefined" @click="toggleFilter(f.key)">
+										<component :is="f.icon" :size="18"/><span>{{ f.label }}</span><span :class="$style.optionCheck"><Check v-if="f.on" :size="16"/></span>
+									</button>
+									<button type="button" role="menuitemcheckbox" :aria-checked="live" :class="$style.option" :data-on="live ? 'true' : undefined" :disabled="tab === 'trending' || isExternalTab" @click="toggleLive">
+										<component :is="live ? Zap : ZapOff" :size="18"/><span>{{ copy.realtime }}</span><span :class="$style.optionCheck"><Check v-if="live" :size="16"/></span>
+									</button>
+									<button type="button" role="menuitem" :class="$style.option" @click="openRssSettings"><Rss :size="18"/><span>{{ copy._rss.settings }}</span></button>
+								</div>
+							</Transition>
 						</div>
-					</template>
-				</template>
-			</div>
-			<div :class="$style.navEnd">
-				<!-- 表示の切り替え(リノート・ファイル・センシティブ・LIVE)を「…」の一覧にまとめる。 -->
-				<div ref="optionsWrapEl" :class="$style.optionsWrap">
-					<button type="button" :class="$style.live" :data-on="optionsOpen || live ? 'true' : undefined" :aria-expanded="optionsOpen" aria-haspopup="menu" :aria-label="i18n.ts.options" :title="i18n.ts.options" @click.stop="optionsOpen = !optionsOpen">
-						<Ellipsis :size="20"/>
-					</button>
-					<Transition :name="motion() ? 'hk3-options' : ''">
-						<div v-if="optionsOpen" :class="$style.options" role="menu" @click.stop>
-							<button v-for="f in filters" :key="f.key" type="button" role="menuitemcheckbox" :aria-checked="f.on" :class="$style.option" :data-on="f.on ? 'true' : undefined" @click="toggleFilter(f.key)">
-								<component :is="f.icon" :size="18"/><span>{{ f.label }}</span><span :class="$style.optionCheck"><Check v-if="f.on" :size="16"/></span>
-							</button>
-							<button type="button" role="menuitemcheckbox" :aria-checked="live" :class="$style.option" :data-on="live ? 'true' : undefined" :disabled="tab === 'trending' || isExternalTab" @click="toggleLive">
-								<component :is="live ? Zap : ZapOff" :size="18"/><span>{{ copy.realtime }}</span><span :class="$style.optionCheck"><Check v-if="live" :size="16"/></span>
-							</button>
-							<button type="button" role="menuitem" :class="$style.option" @click="openRssSettings"><Rss :size="18"/><span>{{ copy._rss.settings }}</span></button>
-						</div>
-					</Transition>
+					</div>
 				</div>
+				<div v-if="pickerKind" :id="pickerId" ref="pickerEl" :class="$style.collectionPicker" :style="desktopPopupStyle" :data-collection-picker="pickerKind" :data-state="pickerState" role="dialog" :aria-label="pickerKind === 'list' ? collectionCopy.selectList : collectionCopy.selectAntenna" :aria-busy="pickerState === 'loading'" tabindex="-1" @click.stop @keydown="onPickerKeydown">
+					<div v-if="pickerState === 'loading'" :class="$style.collectionPickerState" role="status"><MkLoading/></div>
+					<div v-else-if="pickerState === 'error'" :class="$style.collectionPickerState" role="status"><span>{{ copy.loadFailed }}</span><button type="button" :class="$style.retry" data-collection-retry @click="retryCollection">{{ copy.retry }}</button></div>
+					<div v-else-if="pickerState === 'empty'" :class="$style.collectionPickerState" role="status"><span>{{ pickerKind === 'list' ? collectionCopy.noLists : collectionCopy.noAntennas }}</span></div>
+					<button v-for="item in pickerState === 'ready' ? pickerItems : []" :key="item.id" type="button" :class="$style.collectionPickerItem" :data-collection-id="item.id" :data-active="item.id === selectedCollections[pickerKind] ? 'true' : undefined" :aria-pressed="item.id === selectedCollections[pickerKind]" @click="selectCollection(pickerKind, item.id)"><i :class="pickerKind === 'list' ? 'ti ti-list' : 'ti ti-antenna'" aria-hidden="true"></i><span>{{ item.name }}</span><Check v-if="item.id === selectedCollections[pickerKind]" :size="16"/></button>
+					<a :class="$style.collectionPickerItem" :href="pickerKind === 'list' ? '/my/lists' : '/my/antennas'" data-collection-manage @click.prevent="openCollectionSettings(pickerKind, true)"><i class="ti ti-settings" aria-hidden="true"></i><span>{{ pickerKind === 'list' ? collectionCopy.configureList : collectionCopy.configureAntenna }}</span></a>
+				</div>
+			</Teleport>
+			<div v-if="emojiVoteRound && emojiVoteAnchor" :class="$style.voteNavbar">
+				<MkLtlEmojiVote
+					:key="`hk3-emoji-vote:${emojiVoteRound.id}`"
+					:round="emojiVoteRound"
+					:choice="emojiVoteChoice"
+					:now="emojiVoteNow"
+					:phase="emojiVotePhase"
+					:declined="emojiVoteDeclined"
+					:active="emojiVoteActive"
+					:effectTarget="voteEffectsEl"
+					:submitting="emojiVoteSubmitting"
+					:voteError="emojiVoteError"
+					:canVote="!!$i"
+					:claimEffect="claimEmojiVoteEffect"
+					navbar
+					@vote="voteEmoji"
+					@dismiss="dismissEmojiVote"
+				/>
 			</div>
-		</div>
-		<div v-if="pickerKind" :id="pickerId" ref="pickerEl" :class="$style.collectionPicker" :data-collection-picker="pickerKind" :data-state="pickerState" role="dialog" :aria-label="pickerKind === 'list' ? collectionCopy.selectList : collectionCopy.selectAntenna" :aria-busy="pickerState === 'loading'" tabindex="-1" @click.stop @keydown="onPickerKeydown">
-			<div v-if="pickerState === 'loading'" :class="$style.collectionPickerState" role="status"><MkLoading/></div>
-			<div v-else-if="pickerState === 'error'" :class="$style.collectionPickerState" role="status"><span>{{ copy.loadFailed }}</span><button type="button" :class="$style.retry" data-collection-retry @click="retryCollection">{{ copy.retry }}</button></div>
-			<div v-else-if="pickerState === 'empty'" :class="$style.collectionPickerState" role="status"><span>{{ pickerKind === 'list' ? collectionCopy.noLists : collectionCopy.noAntennas }}</span></div>
-			<button v-for="item in pickerState === 'ready' ? pickerItems : []" :key="item.id" type="button" :class="$style.collectionPickerItem" :data-collection-id="item.id" :data-active="item.id === selectedCollections[pickerKind] ? 'true' : undefined" :aria-pressed="item.id === selectedCollections[pickerKind]" @click="selectCollection(pickerKind, item.id)"><i :class="pickerKind === 'list' ? 'ti ti-list' : 'ti ti-antenna'" aria-hidden="true"></i><span>{{ item.name }}</span><Check v-if="item.id === selectedCollections[pickerKind]" :size="16"/></button>
-			<a :class="$style.collectionPickerItem" :href="pickerKind === 'list' ? '/my/lists' : '/my/antennas'" data-collection-manage @click.prevent="openCollectionSettings(pickerKind, true)"><i class="ti ti-settings" aria-hidden="true"></i><span>{{ pickerKind === 'list' ? collectionCopy.configureList : collectionCopy.configureAntenna }}</span></a>
-		</div>
-		<div v-if="emojiVoteRound && emojiVoteAnchor" :class="$style.voteNavbar">
-			<MkLtlEmojiVote
-				:key="`hk3-emoji-vote:${emojiVoteRound.id}`"
-				:round="emojiVoteRound"
-				:choice="emojiVoteChoice"
-				:now="emojiVoteNow"
-				:phase="emojiVotePhase"
-				:declined="emojiVoteDeclined"
-				:active="emojiVoteActive"
-				:effectTarget="voteEffectsEl"
-				:submitting="emojiVoteSubmitting"
-				:voteError="emojiVoteError"
-				:canVote="!!$i"
-				:claimEffect="claimEmojiVoteEffect"
-				navbar
-				@vote="voteEmoji"
-				@dismiss="dismissEmojiVote"
-			/>
-		</div>
-		<div ref="punchNavbarTarget"></div>
-	</header>
-	<MkLtlPunch :active="tab === 'local' && !!$i" :navbarTarget="punchNavbarTarget" :navbarFrame="punchNavbarFrame" :timelineRoot="listEl" :viewportTarget="scrollEl" :animationEnabled="motionEnabled" @busy="punchBusy = $event"/>
-
-	<div :class="$style.scrollWrap">
-		<div v-if="emojiVoteActive" ref="voteEffectsEl" :class="$style.voteEffects" aria-hidden="true"></div>
-		<div ref="scrollEl" data-timeline-tab-gestures :class="$style.scroll" @touchstart.passive="timelineTabGestures.touchStart" @touchmove="timelineTabGestures.touchMove" @touchend="timelineTabGestures.touchEnd" @touchcancel="timelineTabGestures.touchCancel" @wheel="timelineTabGestures.wheel">
+			<div ref="punchNavbarTarget"></div>
 			<div data-hata-collapse-part data-timeline-tab-gesture-ignore :class="$style.bannerStack" :data-rss="rssEnabled ? 'true' : undefined">
 				<Hk3RssReader v-if="rssEnabled" :interrupted="bannerOn" :paused="rssEffectPaused" :compact="compact" :motion="motionEnabled" @settings="openRssSettings"/>
 				<button v-if="bannerShown" ref="bannerEl" type="button" :class="$style.banner" :data-kind="bannerToast ? 'toast' : 'queue'" :tabindex="bannerOn ? undefined : -1" :inert="!bannerOn" :aria-hidden="!bannerOn || undefined" :aria-label="bannerToast ? undefined : bannerQueueLabel" @click="onBannerClick">
 					<span ref="flashEl" :class="$style.flash" aria-hidden="true"></span>
 					<span ref="flash2El" :class="$style.flash2" aria-hidden="true"></span>
 					<span v-if="bannerToast" :key="bannerToast.id" ref="bannerContentEl" :class="$style.bannerContent">
-						<Hk3PostSuccess v-if="bannerToast.icon === 'send'" :key="bannerToast.id" :text="bannerToast.text" :motion="prefer.r.animation.value"/>
+						<Hk3PostSuccess v-if="bannerToast.icon === 'send'" :key="bannerToast.id" :text="bannerToast.text" :motion="motionEnabled"/>
 						<template v-else>
 							<span :class="$style.bannerLead">
 								<MkAvatar v-if="bannerToast.user" :user="bannerToast.user" :class="[$style.bannerFace, bannerToast.welcome && $style.bannerWelcomeFace]" :isToastAvatar="!!bannerToast.welcome"/>
@@ -114,10 +114,21 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 					</span>
 				</button>
 			</div>
+		</div>
+		<div v-if="!mobileDocked && pullRefresh.active.value" :class="$style.pullSurface" aria-hidden="true"></div>
+		<div v-if="!mobileDocked && pullRefresh.active.value" :class="$style.pullPrompt" role="status"><i class="ti ti-arrow-down" :style="{ transform: `rotate(${pullRefresh.style.value['--navbar-pull-turn']})` }" aria-hidden="true"></i><span>{{ pullRefresh.state.value.phase === 'refreshing' ? i18n.ts.refreshing : pullRefresh.state.value.phase === 'ready' ? i18n.ts.releaseToRefresh : i18n.ts.pullDownToRefresh }}</span></div>
+	</header>
+	<aside v-if="!compact" :class="$style.desktopRailSlot">
+		<div ref="desktopRailEl" :class="$style.desktopRail" :data-menu-open="optionsOpen || pickerKind ? true : undefined" :inert="pullRefresh.active.value || confirmationActive"></div>
+	</aside>
+	<MkLtlPunch :active="active && !confirmationActive && tab === 'local' && !!$i" :navbarTarget="punchNavbarTarget" :navbarFrame="punchNavbarFrame" :timelineRoot="listEl" :viewportTarget="scrollEl" :animationEnabled="motionEnabled" @busy="punchBusy = $event"/>
 
+	<div :class="$style.scrollWrap" :inert="confirmationActive">
+		<div v-if="emojiVoteActive" ref="voteEffectsEl" :class="$style.voteEffects" aria-hidden="true"></div>
+		<div ref="scrollEl" data-timeline-tab-gestures :class="$style.scroll" @touchstart.passive="timelineTabGestures.touchStart" @touchmove="timelineTabGestures.touchMove" @touchend="timelineTabGestures.touchEnd" @touchcancel="timelineTabGestures.touchCancel" @wheel="timelineTabGestures.wheel">
 			<!-- 外部アカウントのタイムラインは、Hataskey UI と同じ外部TL部品で表示する。 -->
-			<MkExternalTimeline v-if="isExternalTab && externalHost && externalToken" :key="tab" :src="tab === 'ohtl' ? 'ohtl' : 'oltl'" :newNotesNavbarKey="`hk3:${tab}`" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :class="$style.external"/>
-			<template v-else>
+			<MkExternalTimeline v-if="isExternalTab && externalHost && externalToken" :key="tab" ref="externalTimelineRef" :src="tab === 'ohtl' ? 'ohtl' : 'oltl'" :newNotesNavbarKey="`hk3:${tab}`" :host="externalHost" :token="externalToken" :sound="active" :simpleUi="true" :hataskeyUi="true" :class="$style.external"/>
+			<component :is="prefer.r.enablePullToRefresh.value ? MkPullToRefresh : 'div'" v-else :refresher="refreshFromPull">
 				<div v-if="isCollectionTab && !activeCollection" :class="$style.state">
 					<MkLoading v-if="loading || activeCollectionState === 'loading'"/>
 					<template v-else><span>{{ activeCollectionState === 'error' ? copy.loadFailed : tab === 'list' ? collectionCopy.noLists : collectionCopy.noAntennas }}</span><button type="button" :class="$style.retry" @click="openCollection(tab as CollectionKind, $event)">{{ activeCollectionState === 'error' ? copy.retry : tab === 'list' ? collectionCopy.selectList : collectionCopy.selectAntenna }}</button></template>
@@ -130,29 +141,35 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 				<div v-else-if="notes.length === 0" :class="$style.state">{{ copy.noNotes }}</div>
 
 				<div ref="listEl" data-hata-collapse-items :class="$style.list">
-					<Hk3Note
-						v-for="note in notes"
-						:key="note.id"
-						:data-note-removal-id="note.id"
-						:note="note"
-						instanceBadgePosition="left"
-						:size="compact ? 'sm' : 'lg'"
-						:linked="linkKindFor(note)"
-						:inLocal="tab === 'local'"
-						:showAudienceIcons="tab === 'following' || tab === 'social'"
-						:showLocalOnlyIcon="tab === 'local' || tab === 'mixed'"
-						:hideSensitive="!filterState.withSensitive"
-					/>
+					<template v-for="note in notes" :key="note.id">
+						<Hk3Note
+							:data-note-removal-id="note.id"
+							:note="note"
+							instanceBadgePosition="left"
+							:size="compact || narrow ? 'sm' : 'lg'"
+							:linked="linkKindFor(note)"
+							:inLocal="tab === 'local'"
+							:inSocial="tab === 'social'"
+							:showAudienceIcons="tab === 'following' || tab === 'social'"
+							:showLocalOnlyIcon="tab === 'local' || tab === 'mixed'"
+							:hideSensitive="!filterState.withSensitive"
+						/>
+						<MkAd v-if="note._shouldInsertAd_" :class="$style.ad" :preferForms="['horizontal', 'horizontal-big']"/>
+					</template>
 				</div>
 				<div v-if="notes.length > 0" ref="sentinelEl" :class="$style.sentinel">
 					<MkLoading v-if="loadingMore" :em="true"/>
 					<button v-else-if="loadMoreFailed" type="button" :class="$style.retry" @click="loadMore">{{ copy.loadOlderFailed }}</button>
 					<span v-else-if="!hasMore" :class="$style.end">{{ copy.endOfTimeline }}</span>
 				</div>
-			</template>
+			</component>
 		</div>
 	</div>
-	<div data-hata-collapse-part :class="$style.composer" :data-position="prefer.r.hataskeyUi3ComposerPosition.value"><slot/></div>
+	<Teleport :to="mobileComposerTarget ?? 'body'" :disabled="!compact || !mobileComposerTarget">
+	<div ref="composerEl" data-hata-collapse-part :class="$style.composer" :data-docked="compact && mobileComposerTarget ? true : undefined" :data-motion="motionEnabled" :data-position="composerPosition" :data-hidden="composerScroll.hidden.value ? true : undefined" :inert="composerScroll.hidden.value || mobileMenuOpen" :aria-hidden="composerScroll.hidden.value || mobileMenuOpen">
+		<div :class="$style.composerBody"><slot/></div>
+	</div>
+	</Teleport>
 </div>
 </template>
 
@@ -161,16 +178,26 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRe
 import { AtSign, Ellipsis, Bell, ChartBar, Check, Clock, Paperclip, Pencil, SmilePlus, Star, Trash2, Eye, Filter, Heart, Image, Moon, Quote, Repeat2, Reply, Rss, SendHorizontal, Sun, UserPlus, Zap, ZapOff } from '@lucide/vue';
 import * as Misskey from 'cherrypick-js';
 import Hk3Note from './Hk3Note.vue';
-import MkLtlPunch from '@/components/MkLtlPunch.vue';
-import MkTimelineNewNotesContent from '@/components/MkTimelineNewNotesContent.vue';
 import Hk3PostSuccess from './Hk3PostSuccess.vue';
 import Hk3RssReader from './Hk3RssReader.vue';
 import Hk3WelcomeText from './Hk3WelcomeText.vue';
-import { dismissHk3Toast, hk3ComposerLink, hk3PostedNote, hk3Toasts, pushHk3Toast } from './hk3-state.js';
+import { hk3PostContextKey } from './hk3-post-context.js';
+import { animateHk3PostEntrance } from './hk3-post-entrance.js';
+import { createHk3NoteMoving } from './hk3-note-moving.js';
+import { createHk3ComposerScroll } from './hk3-composer-scroll.js';
+import { reorderHk3TopNav, restoreHk3MobileOrder } from './hk3-mobile-order.js';
+import type { Hk3MobileChoice, Hk3MobileNavigation } from './hk3-mobile-navigation.js';
+import { dismissHk3Toast, hk3ComposerLink, hk3PostedNote, hk3Toasts, pushHk3Toast, setHk3ToastsPaused } from './hk3-state.js';
 import type { Component } from 'vue';
 import type { HataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
 import type { Hk3Toast } from './hk3-state.js';
+import type { TimelineAdMarker } from '@/utility/timeline-ad.js';
+import MkTimelineNewNotesContent from '@/components/MkTimelineNewNotesContent.vue';
+import MkLtlPunch from '@/components/MkLtlPunch.vue';
 import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
+import MkPullToRefresh from '@/components/MkPullToRefresh.vue';
+import { attachNavbarPullGesture, createNavbarPullRefresh, navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
+import type { NavbarPullState } from '@/utility/navbar-pull-refresh.js';
 import MkLtlEmojiVote from '@/components/MkLtlEmojiVote.vue';
 import MkNoteActionAnimation from '@/components/MkNoteActionAnimation.vue';
 import { useLtlEmojiVote } from '@/utility/ltl-emoji-vote.js';
@@ -182,8 +209,11 @@ import { store } from '@/store.js';
 import { prefer } from '@/preferences.js';
 import { useStream } from '@/stream.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { instance } from '@/instance.js';
+import { markTimelineAdPage, shouldInsertStreamingAd } from '@/utility/timeline-ad.js';
 import { deepMerge } from '@/utility/merge.js';
 import { createTimelineTabGestures } from '@/utility/timeline-tab-gestures.js';
+import { createHk3HomeScroll } from './hk3-home-scroll.js';
 import { tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { getExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
@@ -194,11 +224,25 @@ import { mainRouter } from '@/router.js';
 import { userListsCache, antennasCache } from '@/cache.js';
 import * as sound from '@/utility/sound.js';
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
 	compact?: boolean;
+	active?: boolean;
+	narrow?: boolean;
+	mobileComposerTarget?: HTMLElement | null;
+	mobileDockHeight?: number;
+	mobileMenuOpen?: boolean;
+	confirmationActive?: boolean;
 }>(), {
 	compact: false,
+	active: true,
+	narrow: false,
+	mobileComposerTarget: null,
+	mobileDockHeight: 0,
+	mobileMenuOpen: false,
+	confirmationActive: false,
 });
+
+const composerPosition = computed(() => props.compact ? 'bottom' : prefer.r.hataskeyUi3ComposerPosition.value);
 
 type CollectionKind = 'list' | 'antenna';
 type TabId = 'following' | 'local' | 'social' | 'mixed' | 'trending' | 'ohtl' | 'oltl' | CollectionKind;
@@ -295,6 +339,7 @@ function closeCollectionPicker(restoreFocus = false) {
 }
 
 async function showCollectionPicker(kind: CollectionKind, event?: MouseEvent) {
+	if (props.compact && props.mobileComposerTarget) return;
 	optionsOpen.value = false;
 	if (event?.currentTarget instanceof HTMLElement) pickerTrigger.value = event.currentTarget;
 	pickerKind.value = kind;
@@ -305,6 +350,10 @@ async function showCollectionPicker(kind: CollectionKind, event?: MouseEvent) {
 
 async function openCollection(kind: CollectionKind, event?: MouseEvent) {
 	if (!$i) return;
+	if (props.compact && props.mobileComposerTarget) {
+		emit('mobileCollection', kind);
+		return;
+	}
 	const intent = ++collectionIntent;
 	preferredPicker = true;
 	void showCollectionPicker(kind, event);
@@ -394,8 +443,9 @@ watch(pickerKind, kind => {
 	}
 });
 
-const notes = ref<Misskey.entities.Note[]>([]);
-const queue = ref<Misskey.entities.Note[]>([]);
+type TimelineNote = Misskey.entities.Note & TimelineAdMarker;
+const notes = ref<TimelineNote[]>([]);
+const queue = ref<TimelineNote[]>([]);
 const loading = ref(false);
 const loadingMore = ref(false);
 const hasMore = ref(true);
@@ -403,13 +453,16 @@ const loadMoreFailed = ref(false);
 const error = ref(false);
 
 const navEl = shallowRef<HTMLElement | null>(null);
-const emit = defineEmits<{ punchBusy: [busy: boolean] }>();
+const desktopRailEl = shallowRef<HTMLElement | null>(null);
+const desktopRailActive = computed(() => !props.compact && desktopRailEl.value != null);
+const emit = defineEmits<{ punchBusy: [busy: boolean]; mobileCollection: [kind: CollectionKind] }>();
 const punchBusy = ref(false);
 const punchNavbarFrame = shallowRef<HTMLElement | null>(null);
 const punchNavbarTarget = shallowRef<HTMLElement | null>(null);
 watch(punchBusy, busy => emit('punchBusy', busy), { flush: 'sync' });
 onBeforeUnmount(() => emit('punchBusy', false));
 const scrollEl = shallowRef<HTMLElement | null>(null);
+const externalTimelineRef = shallowRef<InstanceType<typeof MkExternalTimeline> | null>(null);
 const listEl = shallowRef<HTMLElement | null>(null);
 const removal = useNoteRemoval(() => listEl.value);
 const sentinelEl = shallowRef<HTMLElement | null>(null);
@@ -424,13 +477,13 @@ const filterState = computed(() => store.r.tl.value.filter);
 // Hataskey UI と同じ投票ストアを使い、投票・演出の「1回だけ」は UI をまたいで共有される。
 const VOTE_TRIGGER = '絵文字を選ぶぞ';
 const voteEffectsEl = shallowRef<HTMLElement | null>(null);
-const emojiVoteActive = computed(() => tab.value === 'local' && !punchBusy.value && prefer.r.ltlEmojiVoteEnabled.value);
+const emojiVoteActive = computed(() => props.active && tab.value === 'local' && !punchBusy.value && prefer.r.ltlEmojiVoteEnabled.value);
 const {
 	round: emojiVoteRound, choice: emojiVoteChoice, now: emojiVoteNow, phase: emojiVotePhase,
 	submitting: emojiVoteSubmitting, voteError: emojiVoteError, declined: emojiVoteDeclined,
 	refresh: refreshEmojiVote, vote: voteEmoji, dismiss: dismissEmojiVote, claimEffect: claimEmojiVoteEffect,
 } = useLtlEmojiVote(emojiVoteActive);
-const emojiVoteAnchor = computed(() => emojiVoteActive.value && emojiVotePhase.value !== 'idle' && !loading.value
+const emojiVoteAnchor = computed(() => emojiVoteActive.value && emojiVotePhase.value !== 'idle' && (!loading.value || pullRefresh.active.value)
 	? getLtlEmojiVoteAnchor([...queue.value, ...notes.value], emojiVoteRound.value?.noteId, $i, {
 		mutedWords: [...($i?.mutedWords ?? []), ...($i?.hardMutedWords ?? [])],
 		withSensitive: filterState.value.withSensitive,
@@ -444,9 +497,36 @@ watch(() => emojiVoteActive.value
 // 「…」一覧。外側を押す・Esc・タブ切り替えで閉じる。
 const optionsOpen = ref(false);
 const optionsWrapEl = shallowRef<HTMLElement | null>(null);
+const optionsEl = shallowRef<HTMLElement | null>(null);
+const desktopPopupStyle = shallowRef<Record<string, string>>({});
+
+function positionDesktopPopup() {
+	const rail = desktopRailEl.value;
+	const popup = pickerKind.value ? pickerEl.value : optionsOpen.value ? optionsEl.value : null;
+	if (!desktopRailActive.value || !rail || !popup) {
+		desktopPopupStyle.value = {};
+		return;
+	}
+	const viewportWidth = window.document.documentElement.clientWidth || window.innerWidth;
+	const viewportHeight = window.innerHeight;
+	// Anchor to the expanded rail edge even while its width is animating.
+	const railLeft = rail.getBoundingClientRect().right - 208;
+	const width = Math.min(pickerKind.value ? 320 : 260, Math.max(0, railLeft - 20), Math.max(0, viewportWidth - 24));
+	const maxHeight = Math.max(0, viewportHeight - 24);
+	const height = Math.min(popup.scrollHeight + 4, maxHeight);
+	const trigger = pickerKind.value ? pickerTrigger.value : optionsWrapEl.value;
+	const top = Math.max(12, Math.min(trigger?.getBoundingClientRect().top ?? 12, viewportHeight - height - 12));
+	const left = Math.max(12, railLeft - width - 8);
+	desktopPopupStyle.value = { width: `${width}px`, left: `${left}px`, top: `${top}px`, maxHeight: `${maxHeight}px` };
+}
+
+watch([desktopRailActive, pickerKind, optionsOpen, pickerState, pickerItems], async () => {
+	await nextTick();
+	positionDesktopPopup();
+}, { flush: 'post' });
 
 const timelineTabGestures = createTimelineTabGestures({
-	enabled: () => tabSwipeEnabled.value && !punchBusy.value && !pickerKind.value && !optionsOpen.value,
+	enabled: () => props.active && !props.confirmationActive && tabSwipeEnabled.value && !props.mobileMenuOpen && !pullRefresh.active.value && !punchBusy.value && !pickerKind.value && !optionsOpen.value,
 	root: () => scrollEl.value,
 	canMove: direction => {
 		const index = tabs.value.findIndex(item => item.id === tab.value);
@@ -458,7 +538,7 @@ const timelineTabGestures = createTimelineTabGestures({
 		if (next) void onTabClick(next.id);
 	},
 });
-watch([tabSwipeEnabled, punchBusy, pickerKind, optionsOpen], () => timelineTabGestures.reset());
+watch([tabSwipeEnabled, punchBusy, pickerKind, optionsOpen, () => props.active], () => timelineTabGestures.reset(), { flush: 'sync' });
 onBeforeUnmount(timelineTabGestures.destroy);
 
 function onOptionsPointerDown(ev: PointerEvent) {
@@ -505,7 +585,7 @@ const hasQueued = computed(() => queue.value.length > 0 || externalNotice.value 
 const bannerOn = computed(() => currentToast.value != null || hasQueued.value);
 const rssEnabled = computed(() => prefer.r.hataskeyUi3RssEnabled.value);
 const timelineCollapsing = ref(false);
-const rssEffectPaused = computed(() => punchBusy.value || timelineCollapsing.value || (!!emojiVoteAnchor.value && ['rain', 'leaving'].includes(emojiVotePhase.value)));
+const rssEffectPaused = computed(() => !props.active || props.confirmationActive || pullRefresh.active.value || punchBusy.value || timelineCollapsing.value || (!!emojiVoteAnchor.value && ['rain', 'leaving'].includes(emojiVotePhase.value)));
 
 function openRssSettings() {
 	optionsOpen.value = false;
@@ -573,8 +653,74 @@ const bannerQueueLabel = computed(() => bannerExternalNotice.value?.text ?? i18n
 
 const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const systemReducedMotion = ref(motionQuery.matches);
-const motionEnabled = computed(() => prefer.r.animation.value && !systemReducedMotion.value);
+const motionEnabled = computed(() => props.active && prefer.r.animation.value && !systemReducedMotion.value);
 const motion = () => motionEnabled.value;
+const homeScroll = createHk3HomeScroll(() => scrollEl.value, motion);
+watch(motionEnabled, enabled => {
+	if (!enabled) {
+		if (props.active) homeScroll.finish();
+		else homeScroll.cancel();
+	}
+}, { flush: 'sync' });
+const mobileDocked = computed(() => props.compact && !!props.mobileComposerTarget);
+const noteMoving = createHk3NoteMoving();
+const movingCleanupFrames = new Set<number>();
+
+function cancelMovingNotes() {
+	for (const frame of movingCleanupFrames) window.cancelAnimationFrame(frame);
+	movingCleanupFrames.clear();
+	noteMoving.cancelAll();
+}
+
+watch(motionEnabled, enabled => { if (!enabled) cancelMovingNotes(); }, { flush: 'sync' });
+const pullRefresh = createNavbarPullRefresh(computed(() => props.active && !props.confirmationActive && prefer.r.enablePullToRefresh.value && !props.mobileMenuOpen && !punchBusy.value && !pickerKind.value && !optionsOpen.value && !timelineCollapsing.value), motionEnabled);
+const mobilePullState = computed<NavbarPullState>(() => pullRefresh.state.value);
+provide(navbarPullRefreshKey, pullRefresh);
+const pullToastOwner = Symbol('timeline-pull');
+const pullBaseHeight = ref(0);
+const pullTabsHeight = ref(0);
+const pullColors = ref<Record<string, string>>({});
+const pullNavbarStyle = computed(() => ({
+	...pullRefresh.style.value,
+	...(pullRefresh.active.value ? {
+		height: `${pullBaseHeight.value + pullRefresh.state.value.height}px`,
+		'--pull-tabs-height': `${pullTabsHeight.value}px`,
+		...pullColors.value,
+	} : {}),
+}));
+watch(pullRefresh.active, active => {
+	setHk3ToastsPaused(pullToastOwner, active);
+	if (!active) return;
+	pullBaseHeight.value = punchNavbarFrame.value?.getBoundingClientRect().height ?? (desktopRailActive.value ? 0 : 58);
+	pullTabsHeight.value = desktopRailActive.value ? 0 : navEl.value?.getBoundingClientRect().height ?? 58;
+	const frame = punchNavbarFrame.value;
+	if (frame) {
+		const colors = getComputedStyle(frame);
+		const hasBanner = bannerOn.value || rssEnabled.value;
+		pullColors.value = {
+			'--pull-surface': hasBanner ? colors.getPropertyValue(currentToast.value ? '--hk3-text' : '--hk3-accent') : colors.getPropertyValue('--hk3-bg'),
+			'--pull-ink': colors.getPropertyValue(hasBanner ? '--hk3-bg' : '--hk3-text'),
+		};
+	}
+}, { flush: 'sync' });
+watch(tab, () => pullRefresh.reset());
+watch(desktopRailActive, () => pullRefresh.reset());
+watch([() => props.compact, mobileDocked], () => pullRefresh.reset());
+onBeforeUnmount(() => { pullRefresh.dispose(); setHk3ToastsPaused(pullToastOwner, false); });
+
+function refreshFromPull() {
+	if (!props.active || props.confirmationActive) return Promise.resolve();
+	homeScroll.cancel();
+	return isExternalTab.value ? externalTimelineRef.value?.reloadTimeline() ?? Promise.resolve() : reload(false, true);
+}
+
+function attachMobilePullGesture(root: HTMLElement, onClaim: () => void, canStart: () => boolean) {
+	return attachNavbarPullGesture(root, root, pullRefresh, refreshFromPull, {
+		direction: 'up',
+		onClaim,
+		canStart: () => mobileDocked.value && canStart(),
+	});
+}
 
 function onMotionChange(event: MediaQueryListEvent) { systemReducedMotion.value = event.matches; }
 
@@ -609,18 +755,26 @@ async function fetchPage(untilId?: string, offset = 0): Promise<Misskey.entities
 // トレンドは同じ seed で並び順を固定し、続きの読み込みで重複・抜けが出ないようにする。
 let trendingSeed = 1;
 let loadSeq = 0;
+let adInsertionCounter = 0;
+const countedIncomingAds = new Map<string, boolean>();
 
-async function reload(collectionValidated = false) {
+async function reload(collectionValidated = false, preserveIncoming = false) {
+	homeScroll.cancel();
+	composerScroll.show();
+	cancelPostEntrance();
+	discardPendingPost();
 	removal.cancelAll();
 	const seq = ++loadSeq;
+	adInsertionCounter = 0;
+	countedIncomingAds.clear();
 	const intent = collectionIntent;
 	trendingSeed = Math.floor(Math.random() * 2147483646) + 1;
 	loading.value = true;
 	loadingMore.value = false;
 	error.value = false;
-	queue.value = [];
+	if (!preserveIncoming) queue.value = [];
 	loadMoreFailed.value = false;
-	disconnect();
+	if (!preserveIncoming) disconnect();
 	if (isExternalTab.value) {
 		notes.value = [];
 		loading.value = false;
@@ -652,22 +806,26 @@ async function reload(collectionValidated = false) {
 		}
 		const result = await fetchPage();
 		if (seq !== loadSeq) return;
-		notes.value = result;
+		if (preserveIncoming) {
+			const known = new Set(result.map(note => note.id));
+			queue.value = queue.value.filter(note => !known.has(note.id));
+		}
+		notes.value = markTimelineAdPage(result, 'initial');
 		// タイムラインは件数が上限未満でも続きがあることがある。空になった時だけ終端とする。
 		hasMore.value = result.length > 0;
-		connect();
+		if (!connection) connect();
 	} catch (err) {
 		if (seq !== loadSeq) return;
 		console.error('Hataskey UI 3 timeline failed', err);
 		error.value = true;
-		notes.value = [];
+		if (!preserveIncoming) notes.value = [];
 	} finally {
 		if (seq === loadSeq) loading.value = false;
 	}
 }
 
 async function loadMore() {
-	if (loadingMore.value || loading.value || !hasMore.value || notes.value.length === 0) return;
+	if (!props.active || loadingMore.value || loading.value || !hasMore.value || notes.value.length === 0) return;
 	loadingMore.value = true;
 	const seq = loadSeq;
 	try {
@@ -675,7 +833,7 @@ async function loadMore() {
 		const result = await fetchPage(tab.value === 'trending' ? undefined : oldest.id, notes.value.length);
 		if (seq !== loadSeq) return;
 		const known = new Set(notes.value.map(note => note.id));
-		notes.value.push(...result.filter(note => !known.has(note.id)));
+		notes.value.push(...markTimelineAdPage(result, 'older').filter(note => !known.has(note.id)));
 		// タイムラインは件数が上限未満でも続きがあることがある。空になった時だけ終端とする。
 		hasMore.value = result.length > 0;
 		loadMoreFailed.value = false;
@@ -728,20 +886,38 @@ function isKnown(id: string): boolean {
 	return notes.value.some(note => note.id === id) || queue.value.some(note => note.id === id);
 }
 
+function markIncomingAd(note: Misskey.entities.Note): TimelineNote {
+	let marked = countedIncomingAds.get(note.id);
+	if (marked === undefined) {
+		adInsertionCounter++;
+		marked = shouldInsertStreamingAd(adInsertionCounter, instance.notesPerOneAd);
+		countedIncomingAds.set(note.id, marked);
+	}
+	return marked ? { ...note, _shouldInsertAd_: true } : note;
+}
+
 function onStreamNote(note: Misskey.entities.Note) {
 	if (isKnown(note.id)) return;
-	// 通常UIと同じサウンド設定を使い、LIVE表示・新着待ちのどちらでも受信時に一度だけ鳴らす。
-	sound.playMisskeySfx($i && note.userId === $i.id ? 'noteMy' : 'note');
-	// LIVE中でも、読み進めている位置を動かさないよう、スクロール中の新着はバナーへ回す。
-	if (!punchBusy.value && live.value && (scrollEl.value?.scrollTop ?? 0) < 8) {
-		notes.value.unshift(note);
+	// Hold this composer's echo until its API result identifies the new note.
+	// Other people's posts still arrive normally; a failed send releases the buffer.
+	if (pendingPost && pendingPost.seq === loadSeq && note.userId === $i?.id) {
+		if (!pendingPost.echoes.some(item => item.id === note.id)) pendingPost.echoes.push(markIncomingAd(note));
 		return;
 	}
-	queue.value = [note, ...queue.value].slice(0, QUEUE_MAX);
+	const receivedNote = markIncomingAd(note);
+	// 通常UIと同じサウンド設定を使い、LIVE表示・新着待ちのどちらでも受信時に一度だけ鳴らす。
+	if (props.active) sound.playMisskeySfx($i && note.userId === $i.id ? 'noteMy' : 'note');
+	// LIVE中でも、読み進めている位置を動かさないよう、スクロール中の新着はバナーへ回す。
+	if (props.active && !pullRefresh.active.value && !punchBusy.value && live.value && (scrollEl.value?.scrollTop ?? 0) < 8) {
+		notes.value.unshift(receivedNote);
+		return;
+	}
+	queue.value = [receivedNote, ...queue.value].slice(0, QUEUE_MAX);
 }
 
 // 削除されたノート(自分の削除・ストリームの削除通知)は、その純リノートも含めて一覧と新着待ちから外す。
 useGlobalEvent('noteDeleted', noteId => {
+	if (enteringPostId === noteId) cancelPostEntrance();
 	const keep = (note: Misskey.entities.Note) => note.id !== noteId && !(note.renoteId === noteId && Misskey.note.isPureRenote(note));
 	for (const note of notes.value.filter(note => !keep(note))) {
 		removal.remove(note.id, () => { notes.value = notes.value.filter(item => item.id !== note.id); });
@@ -749,21 +925,153 @@ useGlobalEvent('noteDeleted', noteId => {
 	queue.value = queue.value.filter(keep);
 });
 
-watch(hk3PostedNote, note => {
-	if (note == null || isKnown(note.id) || tab.value === 'trending' || isCollectionTab.value) return;
-	if (punchBusy.value) {
-		queue.value = [note, ...queue.value].slice(0, QUEUE_MAX);
-		hk3PostedNote.value = null;
+type PendingPost = { seq: number; echoes: TimelineNote[]; cancel: () => void };
+let pendingPost: PendingPost | null = null;
+let stopPostEntrance: (() => void) | null = null;
+let enteringPostId: string | null = null;
+let postEntranceRevision = 0;
+const postEntranceActive = ref(false);
+let postEntranceTimer: number | undefined;
+
+const composerEl = shallowRef<HTMLElement | null>(null);
+const composerScroll = createHk3ComposerScroll({
+	viewport: () => scrollEl.value,
+	composer: () => composerEl.value,
+	blocked: () => !props.active || props.confirmationActive || props.mobileMenuOpen || pullRefresh.active.value || punchBusy.value || timelineCollapsing.value || postEntranceActive.value ||
+		!!composerEl.value?.querySelector('[data-busy="true"], [aria-expanded="true"]'),
+});
+watch([pullRefresh.active, punchBusy, timelineCollapsing, postEntranceActive, composerPosition], () => composerScroll.show());
+watch([() => props.mobileMenuOpen, () => props.confirmationActive], () => { composerScroll.show(); timelineTabGestures.reset(); });
+
+function cancelPostEntrance() {
+	window.clearTimeout(postEntranceTimer);
+	postEntranceActive.value = false;
+	postEntranceRevision++;
+	stopPostEntrance?.();
+	stopPostEntrance = null;
+	enteringPostId = null;
+}
+
+watch(() => props.active, active => {
+	if (active) return;
+	homeScroll.cancel();
+	// The desktop rail and mobile composer can be teleported outside the hidden parent.
+	// Close popups without returning focus to a timeline that is no longer visible.
+	closeCollectionPicker();
+	optionsOpen.value = false;
+	pullRefresh.reset();
+	timelineTabGestures.reset();
+	cancelPostEntrance();
+	cancelMovingNotes();
+	bannerRevision++;
+	stopBannerAnimations();
+	bannerShown.value = bannerOn.value;
+}, { flush: 'sync' });
+
+function discardPendingPost() {
+	if (pendingPost) pendingPost.echoes = [];
+	pendingPost?.cancel();
+}
+
+function acceptsPostedNote(note: Misskey.entities.Note): boolean {
+	if (isExternalTab.value || isCollectionTab.value || tab.value === 'trending' || note.channelId) return false;
+	if ((tab.value === 'local' || tab.value === 'mixed') && note.visibility !== 'public') return false;
+	return !filterState.value.onlyFiles || (note.files?.length ?? 0) > 0;
+}
+
+async function showPostedNote(note: Misskey.entities.Note, source: DOMRectReadOnly | null = null) {
+	if (!acceptsPostedNote(note)) return;
+	if (notes.value.some(item => item.id === note.id)) return;
+	const incomingNote = markIncomingAd(note);
+	if (!props.active || punchBusy.value || pullRefresh.active.value || timelineCollapsing.value || loading.value) {
+		if (!isKnown(note.id)) queue.value = [incomingNote, ...queue.value].slice(0, QUEUE_MAX);
 		return;
 	}
-	notes.value.unshift(note);
+	cancelPostEntrance();
+	const revision = postEntranceRevision;
+	const seq = loadSeq;
+	const atTop = (scrollEl.value?.scrollTop ?? 0) < 8;
+	queue.value = queue.value.filter(item => item.id !== note.id);
+	notes.value.unshift(incomingNote);
+	await nextTick();
+	if (revision !== postEntranceRevision || seq !== loadSeq) return;
+	const viewport = scrollEl.value;
+	if (!viewport) return;
+	if (!atTop) {
+		viewport.scrollTo({ top: 0, behavior: motion() ? 'smooth' : 'auto' });
+		return;
+	}
+	if (!source) return;
+	const target = Array.from(listEl.value?.children ?? []).find((el): el is HTMLElement =>
+		el instanceof HTMLElement && el.dataset.noteRemovalId === note.id);
+	if (!target) return;
+	enteringPostId = note.id;
+	postEntranceActive.value = true;
+	stopPostEntrance = animateHk3PostEntrance({ source, target, viewport, note: incomingNote, motion: motion() });
+	postEntranceTimer = window.setTimeout(() => { postEntranceActive.value = false; }, 700);
+}
+
+// Only the standard timeline provides this context, including its compact mobile view.
+// The deck composer has no provider and keeps its existing posting behavior.
+provide(hk3PostContextKey, {
+	reveal: () => composerScroll.show(),
+	begin() {
+		composerScroll.show();
+		pendingPost?.cancel();
+		const seq = loadSeq;
+		let finished = false;
+		const release = (createdId?: string) => {
+			if (finished) return false;
+			finished = true;
+			window.clearTimeout(timer);
+			if (pendingPost === receipt) pendingPost = null;
+			if (seq === loadSeq) {
+				for (const echo of receipt.echoes) if (echo.id !== createdId) onStreamNote(echo);
+			}
+			receipt.echoes = [];
+			return seq === loadSeq;
+		};
+		const receipt: PendingPost = { seq, echoes: [], cancel: () => { release(); } };
+		// A stalled request must not indefinitely hold posts from another device.
+		const timer = window.setTimeout(() => {
+			if (pendingPost === receipt) pendingPost = null;
+			if (seq === loadSeq) for (const echo of receipt.echoes) onStreamNote(echo);
+			receipt.echoes = [];
+		}, 10000);
+		pendingPost = receipt;
+		return {
+			cancel: receipt.cancel,
+			complete(note, source) {
+				const alreadyKnown = isKnown(note.id);
+				const accepted = acceptsPostedNote(note);
+				// Collections use the server stream as proof that a note belongs there.
+				if (!release(accepted ? note.id : undefined) || !accepted) return;
+				if (props.active && !alreadyKnown) sound.playMisskeySfx('noteMy');
+				void showPostedNote(note, source);
+			},
+		};
+	},
+});
+
+watch([motionEnabled, pullRefresh.active, punchBusy, timelineCollapsing], ([enabled, pulling, punching, collapsing]) => {
+	if (!enabled || pulling || punching || collapsing) cancelPostEntrance();
+});
+
+watch(hk3PostedNote, note => {
+	if (note == null) return;
 	hk3PostedNote.value = null;
-	scrollEl.value?.scrollTo({ top: 0, behavior: motion() ? 'smooth' : 'auto' });
+	void showPostedNote(note);
 });
 
 // ===== 操作 =====
 function scrollTop() {
+	if (!props.active) return;
+	homeScroll.cancel();
 	scrollEl.value?.scrollTo({ top: 0, behavior: motion() ? 'smooth' : 'auto' });
+}
+
+function scrollHomeTop() {
+	if (props.active) homeScroll.start();
 }
 
 function onNavClick(ev: MouseEvent) {
@@ -775,6 +1083,7 @@ let navigationRevision = 0;
 let navigationPending = false;
 
 async function onTabClick(id: TabId, force = false, collectionValidated = false) {
+	homeScroll.cancel();
 	closeCollectionPicker();
 	const revision = ++navigationRevision;
 	if (id === tab.value && !force && !navigationPending) {
@@ -809,20 +1118,25 @@ async function hideList(): Promise<void> {
 	if (!motion()) return;
 	const els = listChildren();
 	if (els.length === 0) return;
-	const anims = els.map((el, i) => el.animate([
+	const anims = els.map((el, i) => noteMoving.track(el, el.animate([
 		{ opacity: 1, transform: 'translateY(0)', clipPath: 'inset(0 0 0 0)' },
 		{ opacity: 0, transform: 'translateY(-20px)', clipPath: 'inset(0 0 100% 0)' },
-	], { duration: 280, delay: (els.length - 1 - i) * 30, easing: 'cubic-bezier(0.64, 0, 0.78, 0)', fill: 'forwards' }));
+	], { duration: 280, delay: (els.length - 1 - i) * 30, easing: 'cubic-bezier(0.64, 0, 0.78, 0)', fill: 'forwards' }), true));
 	await Promise.allSettled(anims.map(a => a.finished));
-	window.requestAnimationFrame(() => anims.forEach(a => a.cancel()));
+	if (!motion()) return;
+	const frame = window.requestAnimationFrame(() => {
+		movingCleanupFrames.delete(frame);
+		anims.forEach(noteMoving.cancel);
+	});
+	movingCleanupFrames.add(frame);
 }
 
 function revealList(step: number) {
 	if (!motion()) return;
-	listChildren().forEach((el, i) => el.animate([
+	listChildren().forEach((el, i) => noteMoving.track(el, el.animate([
 		{ opacity: 0, transform: 'translateY(-24px)', clipPath: 'inset(0 0 100% 0)' },
 		{ opacity: 1, transform: 'translateY(0)', clipPath: 'inset(0 0 0 0)' },
-	], { duration: 560, delay: i * step, easing: EASE_OUT, fill: 'backwards' }));
+	], { duration: 560, delay: i * step, easing: EASE_OUT, fill: 'backwards' })));
 }
 
 function toggleFilter(key: FilterKey) {
@@ -841,18 +1155,20 @@ function toggleLive() {
 }
 
 function flushQueue() {
-	if (punchBusy.value) return;
-	const added = queue.value.length;
+	if (!props.active || punchBusy.value) return;
 	const known = new Set(notes.value.map(note => note.id));
-	notes.value = [...queue.value.filter(note => !known.has(note.id)), ...notes.value];
+	const incoming = queue.value.filter(note => !known.has(note.id));
+	notes.value = [...incoming, ...notes.value];
 	queue.value = [];
 	scrollTop();
 	if (!motion()) return;
+	const seq = loadSeq;
 	void nextTick(() => {
-		(Array.from(listEl.value?.children ?? []) as HTMLElement[]).slice(0, added).forEach((el, i) => el.animate(
+		if (!motion() || seq !== loadSeq) return;
+		(Array.from(listEl.value?.children ?? []) as HTMLElement[]).filter(el => el.dataset.noteRemovalId).slice(0, incoming.length).forEach((el, i) => noteMoving.track(el, el.animate(
 			[{ opacity: 0, transform: 'translateY(-14px)' }, { opacity: 1, transform: 'translateY(0)' }],
 			{ duration: 460, delay: 120 + i * 60, easing: EASE_OUT, fill: 'backwards' },
-		));
+		)));
 	});
 }
 
@@ -1025,7 +1341,10 @@ watch(sentinelEl, el => {
 
 let collapseObserver: MutationObserver | null = null;
 onMounted(() => {
+	composerScroll.start();
 	motionQuery.addEventListener('change', onMotionChange);
+	window.addEventListener('resize', positionDesktopPopup);
+	window.addEventListener('scroll', positionDesktopPopup, true);
 	const root = scrollEl.value?.closest('[data-hk3-theme]');
 	if (root) {
 		const update = () => { timelineCollapsing.value = root.hasAttribute('data-hata-timeline-collapse-active'); };
@@ -1037,6 +1356,11 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	homeScroll.cancel();
+	composerScroll.dispose();
+	cancelPostEntrance();
+	cancelMovingNotes();
+	discardPendingPost();
 	loadSeq++;
 	navigationRevision++;
 	collectionIntent++;
@@ -1049,37 +1373,346 @@ onBeforeUnmount(() => {
 	observer?.disconnect();
 	collapseObserver?.disconnect();
 	motionQuery.removeEventListener('change', onMotionChange);
+	window.removeEventListener('resize', positionDesktopPopup);
+	window.removeEventListener('scroll', positionDesktopPopup, true);
 	bannerRevision++;
 	stopBannerAnimations();
 });
 
-defineExpose({ scrollTop, reload });
+const mobileOrder = ref(miLocalStorage.getItem('hataskeyUi3MobileOrder'));
+const mobileChoices = computed<Hk3MobileChoice[]>(() => {
+	const choices: Hk3MobileChoice[] = [...tabs.value];
+	if ($i) choices.push(
+		{ id: 'list', label: collectionCopy.list, icon: 'ti ti-list', branch: 'list' },
+		{ id: 'channel', label: collectionCopy.channel, icon: 'ti ti-device-tv' },
+		{ id: 'antenna', label: collectionCopy.antenna, icon: 'ti ti-antenna', branch: 'antenna' },
+	);
+	return restoreHk3MobileOrder(choices.reverse(), mobileOrder.value, JSON.stringify(prefer.r['simpleUi.topNav'].value));
+});
+const mobileNavigation = computed<Hk3MobileNavigation>(() => ({
+	choices: mobileChoices.value,
+	active: tab.value,
+	selected: { ...selectedCollections.value },
+	select: id => {
+		if (!mobileChoices.value.some(item => item.id === id)) return;
+		if (id === 'channel') goToChannels();
+		else if (tabs.value.some(item => item.id === id)) void onTabClick(id as TabId);
+	},
+	load: kind => $i ? fetchCollections(kind) : Promise.resolve([]),
+	selectCollection: (kind, id) => { if ($i) void selectCollection(kind, id); },
+	settings: kind => openCollectionSettings(kind, true),
+	reorder: ids => {
+		const allowed = mobileChoices.value.map(item => item.id);
+		if (ids.length !== allowed.length || new Set(ids).size !== ids.length || ids.some(id => !allowed.includes(id))) return;
+		const nav = reorderHk3TopNav(prefer.r['simpleUi.topNav'].value, ids);
+		prefer.commit('simpleUi.topNav', nav);
+		mobileOrder.value = JSON.stringify({ base: JSON.stringify(nav), ids });
+		miLocalStorage.setItem('hataskeyUi3MobileOrder', mobileOrder.value);
+	},
+	options: [
+		...filters.value.map(f => ({ id: f.key, label: f.label, icon: f.key === 'withRenotes' ? 'ti ti-repeat' : f.key === 'onlyFiles' ? 'ti ti-photo' : 'ti ti-eye', checked: f.on, action: () => toggleFilter(f.key) })),
+		{ id: 'live', label: copy.realtime, icon: 'ti ti-bolt', checked: live.value, disabled: tab.value === 'trending' || isExternalTab.value, action: toggleLive },
+		{ id: 'rss', label: copy._rss.settings, icon: 'ti ti-rss', action: openRssSettings },
+	],
+}));
+
+defineExpose({ scrollTop, scrollHomeTop, reload, mobileNavigation, mobilePullState, attachMobilePullGesture });
 </script>
 
 <style lang="scss" module>
+@use './hk3-glass';
 .root {
+	--hk3-timeline-note-width: 800px;
+	--hk3-banner-alpha: clamp(66%, calc(var(--hk3-glass-pane-alpha, 76%) - 10%), 82%);
+	--hk3-banner-radius: 16px;
+	--hk3-nav-alpha: clamp(80%, var(--hk3-glass-pane-alpha, 80%), 92%);
+	--hk3-banner-edge: clamp(16px, 5vw, 36px);
+	--hk3-banner-mask: linear-gradient(to right, transparent, #000 var(--hk3-banner-edge), #000 calc(100% - var(--hk3-banner-edge)), transparent);
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
 	min-height: 0;
 	flex: 1;
+	// TL とフォームの下地を連続させ、透けた外周に背景色の切れ目を残さない。
+	background: var(--hk3-glass-note, var(--hk3-bg));
+}
+
+.root[data-desktop-rail] {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 56px;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	grid-template-areas: 'header rail' 'scroll rail' 'composer rail';
+	&[data-composer-position='top'] {
+		grid-template-rows: auto auto minmax(0, 1fr);
+		grid-template-areas: 'header rail' 'composer rail' 'scroll rail';
+	}
+	> .navbar { grid-area: header; min-height: 0; }
+	> .scrollWrap {
+		grid-area: scroll; min-width: 0;
+		border-top: 1px solid transparent;
+		border-image: linear-gradient(to right, transparent, var(--hk3-divider), transparent) 1;
+	}
+	> .composer {
+		grid-area: composer;
+		margin-left: var(--hk3-composer-left-inset, 0px);
+		margin-right: 0;
+	}
+	&:has(> .desktopRailSlot > .desktopRail:hover),
+	&:has(> .desktopRailSlot > .desktopRail :focus-visible),
+	&:has(> .desktopRailSlot > .desktopRail[data-menu-open]) {
+		> .composer { margin-right: 152px; }
+	}
+}
+
+.desktopRailSlot {
+	grid-area: rail;
+	position: relative;
+	min-width: 0;
+	min-height: 0;
+	z-index: 20;
+}
+
+// Only this overlay expands. The grid keeps reserving 56px beside the right pane.
+.desktopRail {
+	--hk3-rail-width: 56px;
+	position: absolute;
+	inset: 0 0 0 auto;
+	width: var(--hk3-rail-width);
+	isolation: isolate;
+	border: 0;
+	box-sizing: border-box;
+	transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+	// Keep the blur on a separate layer so fixed menus retain viewport coordinates.
+	&::before {
+		content: '';
+		position: absolute;
+		inset: 0 0 0 -24px;
+		z-index: -1;
+		// 下地は TL と共通。重ねる色を薄くしてガラスが不透明になるのを防ぐ。
+		background: color-mix(in srgb, var(--hk3-bg) var(--hk3-glass-overlay-alpha, 36%), transparent);
+		-webkit-backdrop-filter: blur(20px);
+		backdrop-filter: blur(20px);
+		// 文字はぼかさず、背景の左右と項目のない上端だけを溶かす。
+		-webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 12px), transparent), linear-gradient(to bottom, transparent, #000 clamp(64px, 24%, 240px));
+		mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 12px), transparent), linear-gradient(to bottom, transparent, #000 clamp(64px, 24%, 240px));
+		-webkit-mask-composite: source-in;
+		mask-composite: intersect;
+		pointer-events: none;
+	}
+	&:hover, &:has(:focus-visible), &[data-menu-open] {
+		--hk3-rail-width: 208px;
+		.railLabel { opacity: 1; }
+	}
+	.nav {
+		background: transparent;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+		flex-direction: column;
+		height: 100%;
+		min-height: 0;
+		border: 0;
+	}
+	.navSpacer { display: none; }
+	.tabs {
+		flex: 1 1 0;
+		flex-direction: column;
+		align-items: flex-end;
+		width: 100%;
+		min-height: 0;
+		overflow-x: hidden;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		// Auto margin becomes zero when the rail needs to scroll, keeping every item reachable.
+		> :first-child { margin-top: auto; }
+	}
+	.tab, .collectionAction, .live {
+		position: relative;
+		isolation: isolate;
+		box-sizing: border-box;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 56px;
+		align-items: center;
+		gap: 0;
+		width: 208px;
+		min-height: max(44px, calc(56px * var(--hk3-ui-scale, 1)));
+		padding: calc(8px * var(--hk3-ui-scale, 1)) 0;
+		border: 0;
+		text-align: left;
+		transition: color 180ms ease;
+		> i { grid-column: 2; grid-row: 1; justify-self: center; }
+		&, &:hover, &[data-active] { background: transparent; box-shadow: none; }
+
+		// 文字はぼかさず、見えている幅の内側で背景だけをフェードさせる。
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 10px 10px 10px auto;
+			width: calc(var(--hk3-rail-width) - 20px);
+			z-index: -1;
+			border-radius: 10px;
+			pointer-events: none;
+			background: color-mix(in srgb, var(--hk3-accent) 18%, transparent);
+			box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hk3-accent) 28%, transparent);
+			filter: blur(6px);
+			opacity: 0;
+			transform: scale(0.96);
+			transition: opacity 200ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1), width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+		}
+		&:hover::before, &:focus-visible::before { opacity: 0.65; transform: scale(1); }
+		&[data-active]::before, &[aria-expanded='true']::before { opacity: 1; transform: scale(1); }
+	}
+	.collectionTab {
+		width: 208px;
+		flex-direction: column;
+		align-items: flex-end;
+		&[data-active] { background: transparent; box-shadow: none; }
+	}
+	.collectionAction { min-height: 44px; font-size: calc(13px * var(--hk3-ui-scale, 1)); }
+	.collectionName { max-width: 100%; overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+	.railLabel {
+		grid-column: 1;
+		grid-row: 1;
+		box-sizing: border-box;
+		width: 152px;
+		padding: 0 calc(12px * var(--hk3-ui-scale, 1));
+		white-space: normal;
+		overflow-wrap: anywhere;
+		opacity: 0;
+		transition: opacity 180ms ease;
+	}
+	.navEnd { flex: none; min-width: 0; width: 100%; }
+	.optionsWrap { width: 100%; }
+	.optionsButton { display: flex; justify-content: flex-end; width: 100%; overflow: hidden; }
+	.live {
+		box-sizing: border-box;
+		display: grid;
+		grid-template-columns: 152px 56px;
+		gap: 0;
+		width: 208px;
+		min-width: 208px;
+		min-height: max(44px, calc(56px * var(--hk3-ui-scale, 1)));
+		padding: calc(8px * var(--hk3-ui-scale, 1)) 0;
+		border: 0;
+		overflow: hidden;
+		text-align: left;
+		> svg { grid-column: 2; grid-row: 1; justify-self: center; }
+		> .railLabel { justify-self: end; }
+		&, &[data-on] { background: transparent; color: var(--hk3-neutral-700); }
+		&:hover, &:focus-visible { color: var(--hk3-text); }
+	}
+	.options, .collectionPicker {
+		position: fixed;
+		right: auto;
+		box-sizing: border-box;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		transform-origin: top right;
+	}
+}
+
+.root[data-motion='false'] .desktopRail,
+.root[data-motion='false'] .desktopRail .railLabel,
+.root[data-motion='false'] .desktopRail .tab,
+.root[data-motion='false'] .desktopRail .collectionAction,
+.root[data-motion='false'] .desktopRail .live,
+.root[data-motion='false'] .desktopRail .tab::before,
+.root[data-motion='false'] .desktopRail .collectionAction::before,
+.root[data-motion='false'] .desktopRail .live::before { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+	.desktopRail, .desktopRail .railLabel,
+	.desktopRail .tab, .desktopRail .collectionAction, .desktopRail .live,
+	.desktopRail .tab::before, .desktopRail .collectionAction::before, .desktopRail .live::before { transition: none; }
 }
 
 .navbar {
+	// Each nav/banner owns one glass surface, including during departure and pull.
+	background: transparent;
 	position: relative;
+	isolation: isolate;
 	z-index: 7;
 	flex: none;
 	min-width: 0;
+	&[data-pulling] { overflow: clip; border-radius: var(--hk3-banner-radius, 16px); }
+
+	&[data-pulling] {
+		--hk3-rss-surface-display: none;
+		--hk3-rss-banner-background: transparent;
+		--hk3-rss-details-background: transparent;
+		--hk3-rss-backdrop-filter: none;
+
+		// Keep the stretched header on one background while its content fades.
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			z-index: -1;
+			border-radius: inherit;
+			background: linear-gradient(to bottom,
+				color-mix(in srgb, var(--hk3-bg) var(--hk3-nav-alpha), transparent) 0,
+				color-mix(in srgb, var(--hk3-bg) var(--hk3-nav-alpha), transparent) calc(var(--pull-tabs-height, 58px) * var(--navbar-pull-nav-opacity, 1)),
+				color-mix(in srgb, var(--pull-surface, var(--hk3-bg)) var(--hk3-banner-alpha), transparent) calc(var(--pull-tabs-height, 58px) * var(--navbar-pull-nav-opacity, 1)),
+				color-mix(in srgb, var(--pull-surface, var(--hk3-bg)) var(--hk3-banner-alpha), transparent) 100%);
+			-webkit-backdrop-filter: blur(24px);
+			backdrop-filter: blur(24px);
+			-webkit-mask-image: var(--hk3-banner-mask);
+			mask-image: var(--hk3-banner-mask);
+			pointer-events: none;
+		}
+
+		.nav, .banner, .pullSurface, .voteNavbar {
+			background: transparent;
+			-webkit-backdrop-filter: none;
+			backdrop-filter: none;
+		}
+		.voteNavbar { --MI_THEME-panel: transparent; --MI_THEME-bg: transparent; }
+		.banner::before, .voteNavbar::before, .flash, .flash2 { display: none; }
+	}
+}
+
+.navbarContents {
+	position: relative;
+	z-index: 1;
+	opacity: var(--navbar-pull-nav-opacity, 1);
+	transform: translateY(var(--navbar-pull-shift, 0));
+}
+
+.pullSurface {
+	position: absolute;
+	inset: calc(var(--pull-tabs-height, 58px) * var(--navbar-pull-nav-opacity, 1)) 0 0;
+	border-radius: var(--hk3-banner-radius, 16px);
+	background: color-mix(in srgb, var(--pull-surface, var(--hk3-bg)) var(--hk3-banner-alpha), transparent);
+	-webkit-backdrop-filter: blur(20px);
+	backdrop-filter: blur(20px);
+	pointer-events: none;
+}
+
+.pullPrompt {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: calc(9px * var(--hk3-ui-scale, 1));
+	color: var(--pull-ink, var(--hk3-text));
+	font-size: calc(13px * var(--hk3-ui-scale, 1));
+	font-weight: 700;
+	opacity: var(--navbar-pull-prompt-opacity, 0);
+	pointer-events: none;
 }
 
 .nav {
+	background: color-mix(in srgb, var(--hk3-bg) var(--hk3-nav-alpha), transparent);
+	-webkit-backdrop-filter: blur(20px);
+	backdrop-filter: blur(20px);
 	display: flex;
 	align-items: stretch;
 	height: 58px;
 	flex: none;
-	border-bottom: 2px solid var(--hk3-divider);
+	border-bottom: 1px solid transparent;
+	border-image: linear-gradient(to right, transparent, var(--hk3-divider), transparent) 1;
 
-	.root[data-compact] & { height: 54px; border-top: 2px solid var(--hk3-divider); }
+	.root[data-compact] & { height: 54px; border-top: 1px solid transparent; }
 }
 
 .navSpacer {
@@ -1099,7 +1732,7 @@ defineExpose({ scrollTop, reload });
 }
 
 .tabIcon {
-	font-size: 20px;
+	font-size: calc(20px * var(--hk3-ui-scale, 1));
 	line-height: 20px;
 }
 
@@ -1108,16 +1741,16 @@ defineExpose({ scrollTop, reload });
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 8px;
+	gap: calc(8px * var(--hk3-ui-scale, 1));
 	min-width: 56px;
-	padding: 0 18px;
+	padding: 0 calc(18px * var(--hk3-ui-scale, 1));
 	border: 0;
 	border-right: 1px solid var(--hk3-divider);
 	background: transparent;
 	color: var(--hk3-text);
 	cursor: pointer;
 	font: inherit;
-	font-size: 14px;
+	font-size: calc(14px * var(--hk3-ui-scale, 1));
 	font-weight: 700;
 	white-space: nowrap;
 	position: relative;
@@ -1125,7 +1758,7 @@ defineExpose({ scrollTop, reload });
 	&[data-active] { background: var(--hk3-accent-100); color: var(--hk3-accent-800); box-shadow: inset 0 -3px 0 var(--hk3-accent); }
 	&:hover { background: var(--hk3-accent-100); }
 
-	.root[data-compact] & { flex: none; gap: 6px; min-width: 50px; padding: 0 14px; font-size: 13px; }
+	.root[data-compact] & { flex: none; gap: calc(6px * var(--hk3-ui-scale, 1)); min-width: 50px; padding: 0 calc(14px * var(--hk3-ui-scale, 1)); font-size: calc(13px * var(--hk3-ui-scale, 1)); }
 }
 
 .collectionTab {
@@ -1136,7 +1769,7 @@ defineExpose({ scrollTop, reload });
 }
 
 .collectionCopy { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
-.collectionName { max-width: 140px; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-weight: 500; }
+.collectionName { max-width: 140px; overflow: hidden; text-overflow: ellipsis; font-size: calc(11px * var(--hk3-ui-scale, 1)); font-weight: 500; }
 .collectionAction {
 	flex: none;
 	width: 36px;
@@ -1145,11 +1778,19 @@ defineExpose({ scrollTop, reload });
 	border-right: 1px solid var(--hk3-divider);
 	border-radius: 0;
 	font: inherit;
-	font-size: 18px;
+	font-size: calc(18px * var(--hk3-ui-scale, 1));
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
 	&:hover { background: var(--hk3-accent-200); }
+}
+
+.collectionPicker, .options {
+	@include hk3-glass.menu;
+	box-sizing: border-box;
+	padding: calc(8px * var(--hk3-ui-scale, 1));
+	color: var(--hk3-text);
+	transform-origin: top right;
 }
 
 .collectionPicker {
@@ -1162,40 +1803,43 @@ defineExpose({ scrollTop, reload });
 	max-height: min(420px, 60dvh);
 	overflow-y: auto;
 	overscroll-behavior: contain;
-	padding: 6px;
-	border: 2px solid var(--hk3-text);
-	border-radius: 0;
-	background: var(--hk3-bg);
-	color: var(--hk3-text);
-	box-shadow: var(--hk3-shadow-lg);
 }
-.collectionPickerState { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 12px; }
+.collectionPickerState { display: flex; flex-direction: column; align-items: center; gap: calc(12px * var(--hk3-ui-scale, 1)); padding: calc(20px * var(--hk3-ui-scale, 1)) calc(12px * var(--hk3-ui-scale, 1)); }
 .collectionPickerItem {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: calc(10px * var(--hk3-ui-scale, 1));
 	box-sizing: border-box;
 	width: 100%;
 	min-height: 44px;
-	padding: 10px 12px;
+	padding: calc(10px * var(--hk3-ui-scale, 1)) calc(12px * var(--hk3-ui-scale, 1));
 	border: 0;
-	border-radius: 0;
+	border-radius: 8px;
 	background: transparent;
 	color: inherit;
 	font: inherit;
-	font-size: 14px;
+	font-size: calc(14px * var(--hk3-ui-scale, 1));
 	text-align: left;
 	text-decoration: none;
 	cursor: pointer;
+	transition: background-color 180ms ease, color 180ms ease;
 	> span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-	&[data-active], &:hover { background: var(--hk3-accent-100); color: var(--hk3-accent-800); }
-	&[data-collection-manage] { border-top: 1px solid var(--hk3-divider); }
+	&[data-active], &:hover, &:focus-visible { background: color-mix(in srgb, var(--hk3-accent) 14%, transparent); color: var(--hk3-accent-800); }
+	&[data-collection-manage] { margin-top: 4px; border-top: 1px solid var(--hk3-divider); }
 }
-.collectionAction, .collectionPickerItem, .tab { &:focus-visible { outline: 2px solid var(--hk3-accent); outline-offset: -3px; } }
+.collectionAction, .collectionPickerItem, .tab, .live, .option { &:focus-visible { outline: 2px solid var(--hk3-accent); outline-offset: -3px; } }
 
 // 外部TLのタブは印を付けず、アイコンの色で見分ける。
 .tab[data-external] > .tabIcon {
 	color: var(--hk3-external, #3d8fd1);
+}
+
+.list,
+.external {
+	max-width: var(--hk3-timeline-note-width);
+	width: 100%;
+	margin-inline: auto;
+	box-sizing: border-box;
 }
 
 .external {
@@ -1205,16 +1849,17 @@ defineExpose({ scrollTop, reload });
 	:global([data-external-timeline-ui]) {
 		gap: 0 !important;
 		padding: 0 !important;
-		background: var(--hk3-bg);
+		background: transparent;
 	}
 
 	:global([data-external-timeline-ui] > *) {
 		margin: 0 !important;
-		padding: 16px 20px !important;
+		padding: calc(16px * var(--hk3-ui-scale, 1)) calc(20px * var(--hk3-ui-scale, 1)) !important;
 		border: 0 !important;
 		border-bottom: 1px solid var(--hk3-divider) !important;
+		border-image: linear-gradient(to right, transparent, var(--hk3-divider) 10%, var(--hk3-divider) 90%, transparent) 1 !important;
 		border-radius: 0 !important;
-		background: var(--hk3-bg) !important;
+		background: transparent !important;
 		box-shadow: none !important;
 		backdrop-filter: none !important;
 		color: var(--hk3-text);
@@ -1242,16 +1887,16 @@ defineExpose({ scrollTop, reload });
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 8px;
+	gap: calc(8px * var(--hk3-ui-scale, 1));
 	min-width: 58px;
-	padding: 0 18px;
+	padding: 0 calc(18px * var(--hk3-ui-scale, 1));
 	border: 0;
 	border-left: 2px solid var(--hk3-divider);
 	background: transparent;
 	color: var(--hk3-neutral-700);
 	cursor: pointer;
 	font: inherit;
-	font-size: 13px;
+	font-size: calc(13px * var(--hk3-ui-scale, 1));
 	font-weight: 800;
 	letter-spacing: 0.06em;
 
@@ -1266,40 +1911,44 @@ defineExpose({ scrollTop, reload });
 	align-items: stretch;
 }
 
+.optionsButton { display: contents; }
+
 .options {
 	position: absolute;
 	top: calc(100% + 2px);
 	right: 0;
 	z-index: 30;
 	width: min(260px, calc(100vw - 24px));
-	padding: 6px;
+	max-height: min(420px, 60dvh);
+	overflow-y: auto;
+	overscroll-behavior: contain;
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
-	background: var(--hk3-bg);
-	border: 2px solid var(--hk3-text);
-	box-shadow: var(--hk3-shadow-lg);
-	transform-origin: top right;
 }
 
 .option {
+	box-sizing: border-box;
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	height: 44px;
-	padding: 0 12px;
+	gap: calc(10px * var(--hk3-ui-scale, 1));
+	min-height: 44px;
+	flex: none;
+	padding: calc(10px * var(--hk3-ui-scale, 1)) calc(12px * var(--hk3-ui-scale, 1));
 	border: 0;
+	border-radius: 8px;
 	background: transparent;
 	color: var(--hk3-text);
 	cursor: pointer;
 	font: inherit;
-	font-size: 14px;
+	font-size: calc(14px * var(--hk3-ui-scale, 1));
 	font-weight: 700;
 	text-align: left;
+	transition: background-color 180ms ease, color 180ms ease;
 
 	> span:first-of-type { flex: 1; min-width: 0; }
-	&[data-on] { color: var(--hk3-accent-800); background: var(--hk3-accent-100); }
-	&:hover:not(:disabled) { background: var(--hk3-accent-100); }
+	&[data-on] { color: var(--hk3-accent-800); background: color-mix(in srgb, var(--hk3-accent) 14%, transparent); }
+	&:hover:not(:disabled), &:focus-visible { background: color-mix(in srgb, var(--hk3-accent) 20%, transparent); }
 	&:disabled { opacity: 0.45; cursor: default; }
 }
 
@@ -1311,8 +1960,22 @@ defineExpose({ scrollTop, reload });
 	color: var(--hk3-accent);
 }
 
-:global(.hk3-options-enter-active), :global(.hk3-options-leave-active) { transition: opacity 160ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1); }
-:global(.hk3-options-enter-from), :global(.hk3-options-leave-to) { opacity: 0; transform: translateY(-6px) scale(0.97); }
+:global(.hk3-options-enter-active), :global(.hk3-options-leave-active) { transition: opacity 180ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+:global(.hk3-options-enter-from), :global(.hk3-options-leave-to) { opacity: 0; transform: translateY(-4px) scale(0.985); }
+.root[data-motion='true'] .collectionPicker { animation: hk3-picker-appear 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes hk3-picker-appear {
+	from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.root[data-motion='false'] .collectionPickerItem,
+.root[data-motion='false'] .option,
+.root[data-motion='false'] :global(.hk3-options-enter-active),
+.root[data-motion='false'] :global(.hk3-options-leave-active) { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+	.root[data-motion] .collectionPicker { animation: none; }
+	.collectionPickerItem, .option,
+	:global(.hk3-options-enter-active), :global(.hk3-options-leave-active) { transition: none; }
+}
 
 .scrollWrap {
 	order: 2;
@@ -1324,15 +1987,79 @@ defineExpose({ scrollTop, reload });
 }
 
 .composer {
+	--hk3-composer-reveal-opacity: 1;
+	--hk3-composer-reveal-offset: 0px;
 	flex: none;
 	min-width: 0;
+	min-height: 0;
+	position: relative;
+	z-index: 3;
+	display: grid;
+	grid-template-rows: 1fr;
+	// すりガラスの祖先に opacity を付けると、切り替えの両端でぼかす背景が変わる。
+	// 内容と背景を別々にフェードし、この枠は高さと横幅だけを動かす。
+	transition: grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1), margin-left 280ms cubic-bezier(0.22, 1, 0.36, 1), margin-right 280ms cubic-bezier(0.22, 1, 0.36, 1);
 	order: 3;
+	// 背景だけを外周へ溶かす。本文・操作・メニューにはマスクを掛けない。
+	// フォームのフェードする要素の外に置き、ぼかす背景が途中で切り替わるのを防ぐ。
+	&::before {
+		content: '';
+		position: absolute;
+		inset: -12px;
+		z-index: -1;
+		pointer-events: none;
+		background: color-mix(in srgb, var(--hk3-bg) var(--hk3-glass-overlay-alpha, 36%), transparent);
+		-webkit-backdrop-filter: blur(16px);
+		backdrop-filter: blur(16px);
+		filter: blur(4px);
+		-webkit-mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent), linear-gradient(to bottom, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+		mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent), linear-gradient(to bottom, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+		-webkit-mask-composite: source-in;
+		mask-composite: intersect;
+		opacity: var(--hk3-composer-reveal-opacity);
+		transition: opacity 180ms ease;
+	}
+	&[data-hidden] {
+		--hk3-composer-reveal-opacity: 0;
+		--hk3-composer-reveal-offset: 14px;
+		grid-template-rows: 0fr;
+		pointer-events: none;
+	}
 	&[data-position="top"] {
 		order: 1;
-		border-bottom: 2px solid var(--hk3-divider);
-		> :global(*) { border-top: 0; }
+		&::before { bottom: -24px; }
+		&[data-hidden] { --hk3-composer-reveal-offset: -14px; }
+	}
+	&[data-position="bottom"]::before { top: -24px; }
+	&[data-docked] {
+		// The floating dock supplies the shared glass surface for the form and navigation.
+		&::before { display: none; }
+		.composerBody {
+			overflow: clip;
+			overflow-clip-margin: 0;
+		}
 	}
 }
+.composerBody {
+	min-width: 0;
+	min-height: 0;
+	// 境目の24pxのフェードを常に残し、開閉完了時に切り取り方を変えない。
+	overflow: clip;
+	overflow-clip-margin: 24px;
+}
+.root:not([data-compact]) > .composer::before {
+	left: 50%;
+	right: auto;
+	width: min(calc(100% + 24px), calc(var(--hk3-timeline-note-width) + 24px));
+	transform: translateX(-50%);
+	-webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent), linear-gradient(to bottom, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+	mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent), linear-gradient(to bottom, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+}
+.root[data-motion='false'] .composer,
+.root[data-motion='false'] .composer::before,
+.composer[data-motion='false'],
+.composer[data-motion='false']::before { transition: none; }
+@media (prefers-reduced-motion: reduce) { .composer, .composer::before { transition: none; } }
 
 // 投票結果の紙吹雪・絵文字の雨は、スクロールに流されないようタイムラインの表示領域に重ねる。
 .voteEffects {
@@ -1347,6 +2074,11 @@ defineExpose({ scrollTop, reload });
 	position: sticky;
 	top: 0;
 	z-index: 5;
+	// The notice remains mounted throughout its exit animation.
+	&:has(> .banner) {
+		--hk3-rss-underlayer-visibility: hidden;
+		--hk3-rss-underlayer-opacity: 0;
+	}
 	&[data-rss] > .banner {
 		position: absolute;
 		top: 0;
@@ -1356,15 +2088,21 @@ defineExpose({ scrollTop, reload });
 }
 
 .voteNavbar {
+	// Fade only the wrapper surface; keep shared card content and controls intact.
+	--MI_THEME-panel: transparent;
+	--MI_THEME-bg: color-mix(in srgb, var(--hk3-bg) var(--hk3-nav-alpha), transparent);
+	--MI_THEME-fg: var(--hk3-text);
+	position: relative;
+	isolation: isolate;
 	max-height: min(50dvh, 420px);
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	border-bottom: 1px solid var(--hk3-divider);
-	background: var(--hk3-surface);
+	background: transparent;
+	border-radius: var(--hk3-banner-radius, 16px);
 	color: var(--hk3-text);
 
-	// UI3 の角のない面に揃える。
-	:global(*) { border-radius: 0 !important; }
+	&::before { background: color-mix(in srgb, var(--hk3-surface) var(--hk3-banner-alpha), transparent); }
 }
 
 .scroll {
@@ -1376,39 +2114,65 @@ defineExpose({ scrollTop, reload });
 	// スクロールバーの有無でノートの中心が左へずれないよう、両端を同じ幅にする。
 	scrollbar-gutter: stable both-edges;
 	overscroll-behavior: contain;
+	.root[data-mobile-docked] & {
+		padding-bottom: calc(var(--hk3-mobile-dock-height) + env(safe-area-inset-bottom, 0px) + calc(24px * var(--hk3-ui-scale, 1)));
+		scroll-padding-bottom: calc(var(--hk3-mobile-dock-height) + 24px);
+	}
 }
 
 .banner {
+	--banner-color: var(--hk3-accent);
 	--hata-new-notes-accent: var(--hk3-accent);
 	--hata-new-notes-fg: var(--hk3-bg);
 	position: relative;
+	isolation: isolate;
 	width: 100%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 10px;
+	gap: calc(10px * var(--hk3-ui-scale, 1));
 	height: 48px;
-	padding: 0 20px;
+	padding: 0 calc(20px * var(--hk3-ui-scale, 1));
 	border: 0;
-	background: var(--hk3-accent);
+	border-radius: var(--hk3-banner-radius, 16px);
+	background: transparent;
 	color: var(--hk3-bg);
 	cursor: pointer;
 	font: inherit;
-	font-size: 15px;
+	font-size: calc(15px * var(--hk3-ui-scale, 1));
 	font-weight: 800;
 	overflow: hidden;
-	transition: background 260ms ease;
+	&::before {
+		background: color-mix(in srgb, var(--banner-color) var(--hk3-banner-alpha), transparent);
+		transition: background 260ms ease;
+	}
 
-	&[data-kind="toast"] { background: var(--hk3-text); }
-	&:hover { background: var(--hk3-accent-600); }
-	&[data-kind="toast"]:hover { background: var(--hk3-neutral-800); }
-	.root[data-compact] & { height: 44px; padding: 0 16px; gap: 8px; font-size: 14px; }
+	&[data-kind="toast"] { --banner-color: var(--hk3-text); }
+	&:hover { --banner-color: var(--hk3-accent-600); }
+	&[data-kind="toast"]:hover { --banner-color: var(--hk3-neutral-800); }
+	.root[data-compact] & { height: 44px; padding: 0 calc(16px * var(--hk3-ui-scale, 1)); gap: calc(8px * var(--hk3-ui-scale, 1)); font-size: calc(14px * var(--hk3-ui-scale, 1)); }
+}
+
+.banner::before, .voteNavbar::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border-radius: inherit;
+	-webkit-backdrop-filter: blur(24px);
+	backdrop-filter: blur(24px);
+	-webkit-mask-image: var(--hk3-banner-mask);
+	mask-image: var(--hk3-banner-mask);
+	pointer-events: none;
 }
 
 .flash, .flash2 {
 	position: absolute;
 	inset: 0;
+	border-radius: inherit;
 	opacity: 0;
+	-webkit-mask-image: var(--hk3-banner-mask);
+	mask-image: var(--hk3-banner-mask);
 	pointer-events: none;
 }
 
@@ -1420,7 +2184,7 @@ defineExpose({ scrollTop, reload });
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 10px;
+	gap: calc(10px * var(--hk3-ui-scale, 1));
 	min-width: 0;
 	[data-kind='toast'] & {
 		--banner-lead-width: 26px;
@@ -1439,7 +2203,7 @@ defineExpose({ scrollTop, reload });
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
-	gap: 6px;
+	gap: calc(6px * var(--hk3-ui-scale, 1));
 	min-width: 0;
 	grid-column: 1;
 }
@@ -1448,15 +2212,12 @@ defineExpose({ scrollTop, reload });
 	width: 26px;
 	height: 26px;
 	flex: none;
-	border: 2px solid var(--hk3-bg);
-	border-radius: 0 !important;
+	border: 0;
 	box-sizing: border-box;
 	object-fit: cover;
-	:global(img) { border-radius: 0 !important; }
 }
 
 .bannerWelcomeFace {
-	border: 0;
 	border-radius: 50% !important;
 	overflow: hidden;
 	:global(img) { border-radius: 50% !important; }
@@ -1495,16 +2256,16 @@ defineExpose({ scrollTop, reload });
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 12px;
+	gap: calc(12px * var(--hk3-ui-scale, 1));
 	min-height: 200px;
-	padding: 32px 20px;
+	padding: calc(32px * var(--hk3-ui-scale, 1)) calc(20px * var(--hk3-ui-scale, 1));
 	color: var(--hk3-neutral-700);
-	font-size: 14px;
+	font-size: calc(14px * var(--hk3-ui-scale, 1));
 }
 
 .retry {
 	height: 36px;
-	padding: 0 16px;
+	padding: 0 calc(16px * var(--hk3-ui-scale, 1));
 	border: 1px solid var(--hk3-divider);
 	background: transparent;
 	color: var(--hk3-text);
@@ -1520,15 +2281,21 @@ defineExpose({ scrollTop, reload });
 	flex-direction: column;
 }
 
+.list > :global([data-note-id]) {
+	border-image: linear-gradient(to right, transparent, var(--hk3-divider) 10%, var(--hk3-divider) 90%, transparent) 1;
+}
+
+.ad { padding: 12px 20px; }
+
 .sentinel {
 	display: grid;
 	place-items: center;
 	min-height: 64px;
-	padding: 12px;
+	padding: calc(12px * var(--hk3-ui-scale, 1));
 }
 
 .end {
-	font-size: 12px;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
 	color: var(--hk3-neutral-600);
 }
 

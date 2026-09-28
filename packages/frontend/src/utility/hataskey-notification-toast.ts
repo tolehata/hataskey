@@ -37,6 +37,7 @@ export function createHataskeyNotificationToasts(nativeMobile: ComputedRef<boole
 	const target = shallowRef<HTMLElement | null>(null);
 	const outline = shallowRef<HTMLElement | null>(null);
 	const height = shallowRef(0);
+	const paused = shallowRef(false);
 	const surfaces = shallowRef<HataskeyToastSurface[]>([]);
 	const surface = computed(() => surfaces.value.findLast(value => value.active.value && value.target.value && value.outline.value));
 	const mobile = computed(() => !!surface.value || nativeMobile.value);
@@ -78,9 +79,9 @@ export function createHataskeyNotificationToasts(nativeMobile: ComputedRef<boole
 		items.value = items.value.filter(item => item.id !== id);
 	}
 
-	function tick(now: number, paused: ReadonlySet<number>) {
+	function tick(now: number, pausedItems: ReadonlySet<number>) {
 		for (const item of items.value) {
-			if (!surface.value?.paused?.value && !paused.has(item.id)) item.elapsed = Math.min(getToastDuration(item), item.elapsed + Math.max(0, now - item.updatedAt));
+			if (!paused.value && !surface.value?.paused?.value && !pausedItems.has(item.id)) item.elapsed = Math.min(getToastDuration(item), item.elapsed + Math.max(0, now - item.updatedAt));
 			item.updatedAt = now;
 		}
 		const expired = items.value.filter(item => item.elapsed >= getToastDuration(item));
@@ -91,7 +92,7 @@ export function createHataskeyNotificationToasts(nativeMobile: ComputedRef<boole
 		items.value = [];
 	}
 
-	return { mobile, integrated, canIntegrateStatus, navbarNotice, items, target, outline, height, surface, registerSurface, enqueue, enqueueStatus, enqueueNavbarNotice, dismissNavbarNotice, dismiss, tick, clear };
+	return { mobile, integrated, canIntegrateStatus, navbarNotice, items, target, outline, height, paused, surface, registerSurface, enqueue, enqueueStatus, enqueueNavbarNotice, dismissNavbarNotice, dismiss, tick, clear };
 }
 
 export type HataskeyNotificationToasts = ReturnType<typeof createHataskeyNotificationToasts>;

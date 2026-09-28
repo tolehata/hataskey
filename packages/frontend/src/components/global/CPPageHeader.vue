@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <div v-if="show" ref="el" :class="[$style.root, {[$style.slim]: narrow, [$style.thin]: thin_, [$style.reduceBlurEffect]: !prefer.s.useBlurEffect, [$style.reduceAnimation]: !prefer.s.animation, [$style.scrollToTransparent]: showEl }]">
-	<div v-if="!thin_ && !canBack" :class="$style.buttonsLeft">
+	<div v-if="hasBackButton" :class="$style.buttonsLeft">
 		<button class="_button" :class="[$style.button, $style.goBack]" @click.stop="goBack" @touchstart.passive="preventDrag"><i class="ti ti-chevron-left"></i></button>
 	</div>
 	<div v-if="!thin_ && narrow && props.displayMyAvatar && $i" class="_button" :class="$style.buttonsLeft" @click="openAccountMenu">
@@ -54,7 +54,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button :id="action.id" v-tooltip.noDelay="action.text" class="_button" :class="[$style.button, { [$style.highlighted]: action.highlighted }]" :aria-label="action.text" :aria-controls="action.controls" :aria-expanded="action.expanded" @click.stop="action.handler" @touchstart.passive="preventDrag"><i :class="action.icon" aria-hidden="true"></i></button>
 		</template>
 	</div>
-	<div v-else-if="!thin_ && !canBack && !(actions && actions.length > 0)" :class="$style.buttonsRight"/>
+	<div v-else-if="hasBackButton && !(actions && actions.length > 0)" :class="$style.buttonsRight"/>
 	<div v-if="pageMetadata && pageMetadata.avatar && ($i && $i.id !== pageMetadata.userName?.id) && !disableFollowButton" :class="$style.followButton">
 		<MkFollowButton v-if="router.currentRoute.value.name === 'user'" :user="pageMetadata.avatar" :transparent="false" :full="!narrow"/>
 	</div>
@@ -89,8 +89,9 @@ export type PageHeaderProps = {
 </script>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, ref, inject, watch, nextTick, useTemplateRef, computed } from 'vue';
+import { onMounted, onUnmounted, ref, inject, watch, nextTick, useTemplateRef, computed, unref } from 'vue';
 import { getScrollPosition, scrollToTop } from '@@/js/scroll.js';
+import type { MaybeRef } from 'vue';
 import { globalEvents } from '@/events.js';
 import { getAccountMenu } from '@/accounts.js';
 import { $i } from '@/i.js';
@@ -121,7 +122,9 @@ const pageMetadata = computed(() => props.overridePageMetadata ?? injectedPageMe
 
 // 外側のペインがタイトルを持つ埋め込み表示では、
 // タイトルだけを省略し、ページ固有のタブと操作ボタンはそのまま温存する。
-const hideTitle = computed(() => inject('shouldOmitHeaderTitle', false) || props.hideTitle);
+const omitHeaderTitle = inject<MaybeRef<boolean>>('shouldOmitHeaderTitle', false);
+const omitHeaderBack = inject<MaybeRef<boolean>>('shouldOmitHeaderBack', false);
+const hideTitle = computed(() => unref(omitHeaderTitle) || props.hideTitle);
 const thin_ = props.thin || inject('shouldHeaderThin', false);
 
 const el = useTemplateRef('el');
@@ -130,8 +133,11 @@ const tabHighlightEl = useTemplateRef('tabHighlightEl');
 const narrow = ref(false);
 const hasTabs = computed(() => props.tabs.length > 0);
 const hasActions = computed(() => props.actions && props.actions.length > 0);
+const hasBackButton = computed(() => !thin_ && !canBack.value && !unref(omitHeaderBack));
+const hasAccountButton = computed(() => !thin_ && narrow.value && props.displayMyAvatar && !!$i);
+const hasFollowButton = computed(() => !!pageMetadata.value?.avatar && !!$i && $i.id !== pageMetadata.value.userName?.id && router.currentRoute.value.name === 'user' && !props.disableFollowButton);
 const show = computed(() => {
-	return !hideTitle.value || hasTabs.value || hasActions.value;
+	return !hideTitle.value || hasTabs.value || hasActions.value || hasBackButton.value || hasAccountButton.value || hasFollowButton.value;
 });
 
 const showTabsPopup = (ev: MouseEvent) => {
@@ -251,7 +257,7 @@ onUnmounted(() => {
 	--height: 50px;
 	display: flex;
 	width: 100%;
-	background: color(from var(--MI_THEME-pageHeaderBg) srgb r g b / 0.75);
+	background: var(--MI-page-header-background, color(from var(--MI_THEME-pageHeaderBg) srgb r g b / 0.75));
 	-webkit-backdrop-filter: var(--MI-blur, blur(15px));
 	backdrop-filter: var(--MI-blur, blur(15px));
 	border-bottom: solid 0.5px transparent;
@@ -304,7 +310,7 @@ onUnmounted(() => {
 
 @container style(--MI_THEME-pageHeaderBg: var(--MI_THEME-bg)) {
 	.root {
-		border-bottom: solid 0.5px var(--MI_THEME-divider);
+		border-bottom: solid 0.5px var(--MI-page-header-divider, var(--MI_THEME-divider));
 	}
 }
 

@@ -45,6 +45,89 @@ async function fixture() {
 
 const excludesBots = (preferences: PreferencesManager) => preferences.s['deck.profiles'][0].columns[0].excludeBots;
 
+describe('forward-compatible preference persistence', () => {
+	test('unknown settings survive normalization, known commits, and a new manager reload', async () => {
+		const f = await fixture();
+		const profile = f.saved;
+		const storedPreferences = profile.preferences as Record<string, unknown>;
+		const unknown = [[{ server: 'example.test', account: 'a' }, { enabled: false, nested: ['future'] }, { sync: true, updatedAt: 123 }]];
+		storedPreferences.futurePreference = copy(unknown);
+		Reflect.deleteProperty(storedPreferences, 'animation');
+		f.replace(profile);
+		const preferences = f.boot();
+		await preferences.cloudReady;
+		expect((f.saved.preferences as Record<string, unknown>).futurePreference).toEqual(unknown);
+		expect(preferences.s).not.toHaveProperty('futurePreference');
+		expect(preferences.r).not.toHaveProperty('futurePreference');
+		await preferences.commit('animation', !preferences.s.animation);
+
+		const reload = f.boot();
+		await reload.cloudReady;
+		expect((f.saved.preferences as Record<string, unknown>).futurePreference).toEqual(unknown);
+		expect(reload.s.animation).toBe(preferences.s.animation);
+		expect(reload.s).not.toHaveProperty('futurePreference');
+	});
+
+	test('an old tab preserves the latest unknown settings added or changed by another version', async () => {
+		const f = await fixture();
+		const oldTab = f.boot();
+		await oldTab.cloudReady;
+		for (const value of [false, true]) {
+			const profile = f.saved;
+			const storedPreferences = profile.preferences as Record<string, unknown>;
+			storedPreferences.futurePreference = [[{}, value, { updatedAt: 123 }]];
+			f.replace(profile);
+			await oldTab.commit('animation', !oldTab.s.animation);
+			oldTab.reloadProfile();
+			await oldTab.cloudReady;
+			expect((f.saved.preferences as Record<string, unknown>).futurePreference).toEqual(storedPreferences.futurePreference);
+			expect(oldTab.r).not.toHaveProperty('futurePreference');
+		}
+	});
+
+	test('an old profile missing all three background preferences defaults to on and persists all off after another tab save and reload', async () => {
+		const f = await fixture();
+		const keys = ['hataskeyUi3TimelineBackground', 'hataskeyUi3SideMenuBackground', 'hataskeyUi3RightPaneBackground'] as const;
+		const profile = f.saved;
+		for (const key of keys) {
+			Reflect.deleteProperty(profile.preferences, key);
+			expect(profile.preferences).not.toHaveProperty(key);
+		}
+		f.replace(profile);
+		const preferences = f.boot();
+		const otherTab = f.boot();
+		for (const key of keys) expect(preferences.s[key]).toBe(true);
+		await Promise.all([preferences.cloudReady, otherTab.cloudReady]);
+		for (const key of keys) {
+			expect(preferences.s[key]).toBe(true);
+			expect(f.saved.preferences).toHaveProperty(key);
+			await preferences.commit(key, false);
+		}
+		await otherTab.commit('animation', !otherTab.s.animation);
+		preferences.reloadProfile();
+		await preferences.cloudReady;
+		const reload = f.boot();
+		await reload.cloudReady;
+		for (const key of keys) {
+			expect(preferences.s[key]).toBe(false);
+			expect(reload.s[key]).toBe(false);
+		}
+	});
+
+	test.each(['hataskeyUi3TimelineBackground', 'hataskeyUi3SideMenuBackground', 'hataskeyUi3RightPaneBackground'] as const)('%s defaults to on and persists off after reload and another tab save', async (key) => {
+		const f = await fixture();
+		const preferences = f.boot();
+		const oldTab = f.boot();
+		await Promise.all([preferences.cloudReady, oldTab.cloudReady]);
+		expect(preferences.s[key]).toBe(true);
+		await preferences.commit(key, false);
+		await oldTab.commit('animation', !oldTab.s.animation);
+		const reload = f.boot();
+		await reload.cloudReady;
+		expect(reload.s[key]).toBe(false);
+	});
+});
+
 describe('RSS preference persistence with real storage manager', () => {
 	const rss = {
 		hataskeyUi3RssEnabled: true,

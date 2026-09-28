@@ -10,7 +10,7 @@ import path from 'node:path';
 import { compileTemplate, parse as parseSfc } from 'vue/compiler-sfc';
 import { load as loadYaml } from 'js-yaml';
 import { resolveSettingsControlSearchDescriptionV2, resolveSettingsControlSearchLabelV2, toSettingsControlCatalogItemsV2 } from '../src/utility/settings-control-search-v2.js';
-import { assertSettingsCatalogRelationsV2, buildSettingsCatalogV2, searchSettingsV2 } from '../src/utility/settings-search-v2.js';
+import { canonicalStableIdForCatalogV2, assertSettingsCatalogRelationsV2, buildSettingsCatalogV2, searchSettingsV2 } from '../src/utility/settings-search-v2.js';
 import { initIntlString } from '../src/utility/intl-string.js';
 import { MarkerIdAssigner, collectFileMarkers } from './vite-plugin-create-search-index.js';
 import {
@@ -531,7 +531,7 @@ describe('settings control search index V2', () => {
 		expect(parseSfc(injected.code).errors).toHaveLength(0);
 	});
 
-	test('実設定49ファイルの主要フォーム351項目を漏れなく分類する', async () => {
+	test('実設定49ファイルの主要フォーム352項目を漏れなく分類する', async () => {
 		const [routerSource, files] = await Promise.all([
 			fs.readFile('src/router.definition.ts', 'utf8'),
 			glob('src/pages/settings/*.vue'),
@@ -541,11 +541,11 @@ describe('settings control search index V2', () => {
 			file, await fs.readFile(file, 'utf8'), currentRoutes,
 		)))).flat();
 		expect(files).toHaveLength(49);
-		// The LTL emoji vote switch adds one control to the measured 350-item
+		// The LTL emoji vote and device swipe switches add two controls to the measured 350-item
 		// settings-page population; the extension targets are counted separately.
-		expect(entries).toHaveLength(351);
-		validateSettingsControlDescriptorsV2(entries, 351);
-		expect(entries.filter(entry => entry.searchable || entry.intentionallyExcluded).length).toBe(351);
+		expect(entries).toHaveLength(352);
+		validateSettingsControlDescriptorsV2(entries, 352);
+		expect(entries.filter(entry => entry.searchable || entry.intentionallyExcluded).length).toBe(352);
 		const excluded = entries.filter(entry => entry.intentionallyExcluded);
 		expect(excluded.length).toBeGreaterThan(0);
 		expect(Object.fromEntries([...new Set(excluded.map(entry => entry.exclusionReason))].map(reason => [reason, excluded.filter(entry => entry.exclusionReason === reason).length]))).toEqual({
@@ -584,9 +584,9 @@ describe('settings control search index V2', () => {
 		// Keep the raw population separate from the smaller catalog-descriptor
 		// count so new visible buttons cannot disappear behind an old total.
 		expect(inventory.files).toHaveLength(59);
-		expect(inventory.items).toHaveLength(684);
+		expect(inventory.items).toHaveLength(685);
 		expect(Object.fromEntries(classifications.map(classification => [classification, inventory.items.filter(item => item.classification === classification).length]))).toEqual({
-			'user-facing-setting': 445,
+			'user-facing-setting': 446,
 			'navigation-action': 150,
 			'save-cancel': 26,
 			'disabled-display-only': 17,
@@ -599,7 +599,7 @@ describe('settings control search index V2', () => {
 			'src/components/HataFeedDisplaySettings.vue': { 'user-facing-setting': 3, 'navigation-action': 4, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/HatadyDisplaySettings.vue': { 'user-facing-setting': 1, 'navigation-action': 7, 'save-cancel': 2, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/MkUISetup.vue': { 'user-facing-setting': 4, 'navigation-action': 1, 'save-cancel': 2, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
-			'src/pages/HataskSettings.vue': { 'user-facing-setting': 11, 'navigation-action': 8, 'save-cancel': 1, 'disabled-display-only': 1, 'runtime-collection': 1, destructive: 0 },
+			'src/pages/HataskSettings.vue': { 'user-facing-setting': 11, 'navigation-action': 9, 'save-cancel': 2, 'disabled-display-only': 1, 'runtime-collection': 1, destructive: 0 },
 			'src/pages/MkMascotSettings.vue': { 'user-facing-setting': 77, 'navigation-action': 16, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 12, destructive: 0 },
 			'src/pages/settings/hata-custom.vue': { 'user-facing-setting': 29, 'navigation-action': 13, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 1, destructive: 0 },
 		});
@@ -609,7 +609,7 @@ describe('settings control search index V2', () => {
 		expect(inventory.items.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		// Carousel arrows and dots remain in the raw inventory even when a
 		// static theme group owns their search destination.
-		expect(resolved).toHaveLength(684);
+		expect(resolved).toHaveLength(685);
 		expect(resolved.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		const descriptorIds = new Set(controls.descriptors.filter(descriptor => descriptor.searchable).map(descriptor => descriptor.stableId));
 		expect(resolved.filter(item => item.descriptorStableId != null).every(item => descriptorIds.has(item.descriptorStableId!))).toBe(true);
@@ -729,13 +729,39 @@ describe('settings control search index V2', () => {
 		expect(storageTargets('reactionAcceptance').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		expect(storageTargets('realtimeMode').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		const audit = collectSettingsStorageKeyAuditV2(input);
-		expect(audit.counts).toEqual({ preference: 285, pizzax: 105, local: 99 });
+		expect(audit.counts).toEqual({ preference: 290, pizzax: 105, local: 102 });
+		expect(audit.items.find(item => item.kind === 'local' && item.key === 'hataskeyUiSDisplaySize')).toMatchObject({
+			disposition: 'catalog-control', descriptorStableIds: ['settings.control.device.hataskey-ui-s-display-size'],
+		});
+		expect(() => collectSettingsStorageKeyAuditV2({
+			...input,
+			runtimeSources: input.runtimeSources.map(source => source.file === 'src/utility/hatasaba-device-prefs.ts'
+				? { ...source, code: source.code.replace("miLocalStorage.setItem('hataskeyUiSDisplaySize', size)", "miLocalStorage.setItem('disconnectedSize', size)") }
+				: source),
+		})).toThrow('UI S display size has invalid device control evidence');
+		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'hataskeyUi3BottomNav')).toMatchObject({ disposition: 'catalog-control', descriptorStableIds: ['settings.control.preference.simpleui-bottomnav'] });
+		expect(() => collectSettingsStorageKeyAuditV2({
+			...input,
+			runtimeSources: input.runtimeSources.map(source => source.file.endsWith('/HataskeyUiSBottomNavSettings.vue')
+				? { ...source, code: source.code.replace("prefer.commit('hataskeyUi3BottomNav',", "prefer.commit('disconnectedNav',") } : source),
+		})).toThrow('redesigned preference control has invalid evidence: hataskeyUi3BottomNav');
+		for (const key of ['hataskeyUi3MobileOrder', 'hataskeyUi3MobileGuideShown:${string}']) {
+			expect(audit.items.find(item => item.kind === 'local' && item.key === key)).toMatchObject({ disposition: 'runtime', descriptorStableIds: [] });
+		}
 		expect(audit.items.find(item => item.kind === 'local' && item.key === 'hataSideStudioUiS')).toMatchObject({
 			disposition: 'runtime', descriptorStableIds: [],
 		});
 		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'hataskeyUi3ComposerPosition')).toMatchObject({
 			disposition: 'catalog-control', descriptorStableIds: ['settings.control.preference.hataskeyui3composerposition'],
 		});
+		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'hataskeyUi3TimelineBackground')).toMatchObject({
+			disposition: 'catalog-control', descriptorStableIds: ['settings.control.preference.hataskeyui3timelinebackground'],
+		});
+		for (const key of ['hataskeyUi3SideMenuBackground', 'hataskeyUi3RightPaneBackground', 'hataskeyUi3GlassDensity']) {
+			expect(audit.items.find(item => item.kind === 'preference' && item.key === key)).toMatchObject({
+				disposition: 'catalog-control', descriptorStableIds: [`settings.control.preference.${key.toLowerCase()}`],
+			});
+		}
 		for (const key of ['hataskeyUi3RssEnabled', 'hataskeyUi3RssFeeds', 'hataskeyUi3RssAutoSwitch', 'hataskeyUi3RssReadSeconds', 'hataskeyUi3RssReadMode']) {
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key)).toMatchObject({
 				disposition: 'catalog-control', descriptorStableIds: [`settings.control.preference.${key.toLowerCase()}`],
@@ -745,7 +771,14 @@ describe('settings control search index V2', () => {
 			disposition: 'runtime', descriptorStableIds: [], reason: expect.stringContaining('[src/pages/notifications.vue]'),
 		});
 		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'enableCondensedLine')).toMatchObject({ disposition: 'deprecated', descriptorStableIds: [] });
-		expect(audit.items).toHaveLength(489);
+		// Existing old controls already provide audit evidence for these shared keys.
+		for (const key of ['postFormVisibilityBorder.enabled', 'postFormVisibilityBorder.width', 'postFormVisibilityBorder.color.public', 'postFormVisibilityBorder.color.home', 'postFormVisibilityBorder.color.followers', 'postFormVisibilityBorder.color.specified']) {
+			const old = input.descriptors.filter(item => item.sourceFile === 'src/pages/settings/hata-custom.vue' && item.preferenceKeys.includes(key));
+			expect(old, key).toHaveLength(1);
+			expect(old[0]?.storageRefs, key).toContainEqual({ kind: 'pref', key });
+			expect(audit.items.find(item => item.kind === 'preference' && item.key === key), key).toMatchObject({ disposition: 'catalog-control', descriptorStableIds: old.map(item => item.stableId) });
+		}
+		expect(audit.items).toHaveLength(497);
 		expect(audit.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(audit.items.every(item => item.descriptorStableIds.length > 0
 			? item.disposition === 'catalog-control' || item.disposition === 'catalog-group'
@@ -753,11 +786,11 @@ describe('settings control search index V2', () => {
 		const dispositionCounts = Object.fromEntries([...new Set(audit.items.map(item => `${item.kind}:${item.disposition}`))]
 			.map(identity => [identity, audit.items.filter(item => `${item.kind}:${item.disposition}` === identity).length]));
 		expect(dispositionCounts).toEqual({
-			'preference:catalog-control': 222, 'preference:catalog-group': 5, 'preference:runtime': 23,
+			'preference:catalog-control': 227, 'preference:catalog-group': 5, 'preference:runtime': 23,
 			'preference:migration': 6, 'preference:deprecated': 17, 'preference:internal': 12,
 			'pizzax:catalog-control': 8, 'pizzax:catalog-group': 1, 'pizzax:runtime': 9,
 			'pizzax:migration': 3, 'pizzax:cache': 2, 'pizzax:deprecated': 78, 'pizzax:internal': 4,
-			'local:catalog-control': 13, 'local:catalog-group': 1, 'local:runtime': 9, 'local:migration': 22,
+			'local:catalog-control': 14, 'local:catalog-group': 1, 'local:runtime': 11, 'local:migration': 22,
 			'local:cache': 29, 'local:deprecated': 6, 'local:internal': 19,
 		});
 		expect(audit.items.filter(item => item.kind === 'pizzax' && item.disposition === 'catalog-control')
@@ -813,7 +846,7 @@ describe('settings control search index V2', () => {
 	test('実Vite入力でもstorage key XOR監査を実行し、runtime evidence変更を再生成対象にする', async () => {
 		const inventory = await collectRealSettingsInventory();
 		const audit = await collectSettingsStorageKeyAuditFromRepositoryV2(process.cwd(), inventory.files, inventory.descriptors);
-		expect(audit.counts).toEqual({ preference: 285, pizzax: 105, local: 99 });
+		expect(audit.counts).toEqual({ preference: 290, pizzax: 105, local: 102 });
 		for (const key of ['emojiAdditionNotice', 'hourlyTimeNotice']) {
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key)).toMatchObject({
 				disposition: 'catalog-control',
@@ -1132,7 +1165,7 @@ describe('settings control search index V2', () => {
 			searchable: true,
 			isGroup: true,
 			route: '/settings/hatafeed',
-			label: 'テーマ',
+			labelI18nKeys: ['i18n.ts._hata._hatafeed._displaySettings.theme'],
 			persistence: 'device',
 			saveMode: 'immediate',
 			storageRefs: [{ kind: 'local', key: 'hatafeedTheme' }],
@@ -1465,22 +1498,42 @@ describe('settings control search index V2', () => {
 		// are intentionally resolved only after the redesigned runtime merge.
 		const productionZeroRelated = productionCatalog.descriptors.filter(descriptor => descriptor.source === 'control' && descriptor.searchable && !descriptor.destructive && descriptor.related.length === 0);
 		const legacyPreferenceControls = controls.filter(control => control.sourceFile === 'src/pages/settings/preferences.vue' && control.route === '/settings/preferences');
-		expect(legacyPreferenceControls).toHaveLength(123);
-		expect(stableIdAliases.size).toBe(legacyPreferenceControls.length);
+		expect(legacyPreferenceControls).toHaveLength(124);
+		const legacyBorderControls = controls.filter(control => control.sourceFile === 'src/pages/settings/hata-custom.vue' && control.preferenceKeys.some(key => key.startsWith('postFormVisibilityBorder.')));
+		expect(legacyBorderControls).toHaveLength(6);
+		// The UI S navigation alias is generated directly, outside the legacy SFC inventory.
+		expect(stableIdAliases.get(generatedPreferenceSearchId('hataskeyUi3BottomNav'))).toBe(generatedPreferenceSearchId('simpleUi.bottomNav'));
+		expect(stableIdAliases.size).toBe(legacyPreferenceControls.length + legacyBorderControls.length + 1);
+		for (const control of legacyBorderControls) {
+			const key = control.preferenceKeys[0]!;
+			const stableId = generatedPreferenceSearchId(key);
+			expect(stableIdAliases.get(control.stableId), key).toBe(stableId);
+			expect(canonicalStableIdForCatalogV2(productionCatalog, control.stableId), key).toBe(stableId);
+			expect(productionCatalog.byStableId.get(stableId)?.unmet, key).toBeUndefined();
+			expect(productionCatalog.byStableId.get(stableId), key).toMatchObject({ route: '/settings/preferences', destinationId: 'hataskey-ui-s', preferenceKeys: [key], persistence: 'profile', saveMode: 'immediate' });
+			expect(productionCatalog.descriptors.filter(item => item.source === 'control' && item.preferenceKeys.includes(key)), key).toHaveLength(1);
+		}
+		for (const query of ['公開範囲', '色分け', '投稿フォーム', 'ぼかし']) {
+			expect(searchSettingsV2(productionCatalog, query).results.some(result => result.stableId === generatedPreferenceSearchId('postFormVisibilityBorder.enabled')), query).toBe(true);
+		}
 		const canonicalPreferenceIds = productionCatalog.descriptors
 			.filter(descriptor => descriptor.sourceFile === 'src/pages/settings-redesign/settings-preferences-catalog.ts' && descriptor.route === '/settings/preferences')
 			.map(descriptor => descriptor.stableId);
-		expect(canonicalPreferenceIds).toHaveLength(130);
-		expect(new Set(canonicalPreferenceIds).size).toBe(130);
+		expect(canonicalPreferenceIds).toHaveLength(140);
+		expect(new Set(canonicalPreferenceIds).size).toBe(140);
 		const aliasValues = new Set(stableIdAliases.values());
-		expect(aliasValues.size).toBe(118);
+		expect(aliasValues.size).toBe(125);
 		// These canonical descriptors have no legacy searchable stable ID,
-		// while the redesigned catalog still materializes all 130 canonical descriptors.
+		// while the redesigned catalog still materializes all 140 canonical descriptors.
 		const missingCanonicalIds = canonicalPreferenceIds.filter(id => !aliasValues.has(id)).sort();
 		expect(missingCanonicalIds).toEqual([
 			generatedPreferenceSearchId('emojiAdditionNotice'),
 			generatedPreferenceSearchId('hataskeyUi3ComposerEmojiPosition'),
 			generatedPreferenceSearchId('hataskeyUi3ComposerPosition'),
+			generatedPreferenceSearchId('hataskeyUi3TimelineBackground'),
+			generatedPreferenceSearchId('hataskeyUi3SideMenuBackground'),
+			generatedPreferenceSearchId('hataskeyUi3RightPaneBackground'),
+			generatedPreferenceSearchId('hataskeyUi3GlassDensity'),
 			generatedPreferenceSearchId('hataskeyUi3ComposerShortcut1'),
 			generatedPreferenceSearchId('hataskeyUi3ComposerShortcut2'),
 			generatedPreferenceSearchId('hataskeyUi3RssEnabled'),
@@ -1492,13 +1545,14 @@ describe('settings control search index V2', () => {
 			generatedPreferenceSearchId('smoothTransitionAnimations'),
 			generatedPreferenceSearchId('testNotification'),
 		].sort());
-		expect([...aliasValues].filter(id => !canonicalPreferenceIds.includes(id))).toEqual(['settings.destination.misskey-data-saver']);
+		expect([...aliasValues].filter(id => !canonicalPreferenceIds.includes(id))).toEqual([generatedPreferenceSearchId('simpleUi.bottomNav'), 'settings.destination.misskey-data-saver']);
 		for (const control of legacyPreferenceControls) {
 			expect(stableIdAliases.has(control.stableId)).toBe(true);
 		}
 		expect(stableIdAliases.get('settings.control.lang-iirt1l')).toBe(generatedPreferenceSearchId('lang'));
 		expect(stableIdAliases.get('settings.control.useboldfont-1hpnn4z')).toBe(generatedPreferenceSearchId('useBoldFont'));
 		expect(stableIdAliases.get('settings.control.usesystemfont-1nx4imd')).toBe(generatedPreferenceSearchId('useSystemFont'));
+		expect(stableIdAliases.get('settings.control.devicehorizontalswipe-1mqerrh')).toBe(generatedPreferenceSearchId('enableHorizontalSwipe'));
 		expect(stableIdAliases.get('settings.control.i18n-ts-enableall-1fiasic')).toBe('settings.destination.misskey-data-saver');
 		expect(stableIdAliases.get('settings.control.i18n-ts-disableall-1y966ue')).toBe('settings.destination.misskey-data-saver');
 		expect(stableIdAliases.get('settings.group.src-pages-settings-preferences-vue-pu703b')).toBe(generatedPreferenceSearchId('additionalUnicodeEmojiIndexes'));

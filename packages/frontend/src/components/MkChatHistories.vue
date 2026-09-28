@@ -109,6 +109,7 @@ onMounted(() => {
 	position: relative;
 	display: flex;
 	padding: 16px 24px;
+	background: var(--MI-embedded-panel, var(--MI_THEME-panel));
 
 	&.isRead,
 	&.isMe {

@@ -1,12 +1,16 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, h, nextTick, shallowRef } from 'vue';
+import { createApp, defineComponent, h, nextTick, shallowRef } from 'vue';
+import { hk3PostContextKey } from './hk3-post-context.js';
+import { hk3PostedNote } from './hk3-state.js';
 import type * as Misskey from 'cherrypick-js';
+import type { Hk3PostContext } from './hk3-post-context.js';
 import type { PostFormProps } from '@/types/post-form.js';
 import Hk3Composer from './Hk3Composer.vue';
 import { postSendDelayEnabled } from '@/utility/post-send-delay.js';
 import { formatTimeString } from '@/utility/format-time-string.js';
 import { prefer } from '@/preferences.js';
+import type { NoteActionConfirmation } from '@/utility/note-action-confirmation.js';
 
 const mocks = vi.hoisted(() => ({
 	upload: vi.fn(), pc: vi.fn(), drive: vi.fn(), url: vi.fn(), menu: vi.fn(),
@@ -14,6 +18,7 @@ const mocks = vi.hoisted(() => ({
 	interruptors: [] as { handler: (data: unknown) => Promise<unknown> }[],
 	attachmentModels: [] as Misskey.entities.DriveFile[][],
 	storage: new Map<string, string>(),
+	pickers: [] as { choose: (emoji: string) => void; close: () => void }[],
 }));
 vi.mock('@/os.js', () => ({
 	launchUploader: mocks.upload, popupMenu: mocks.menu, alert: mocks.alert,
@@ -31,25 +36,31 @@ vi.mock('@/local-storage.js', () => ({ miLocalStorage: {
 } }));
 vi.mock('@/i.js', () => ({ $i: { id: 'me' }, incNotesCount: vi.fn(), notesCount: 10 }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: {
-	upload: 'Upload', fromDrive: 'Drive', fromUrl: 'URL', cancel: 'Cancel',
+	upload: 'Upload', fromDrive: 'Drive', fromUrl: 'URL', cancel: 'Cancel', close: 'Close', delete: 'Delete', deleteAndEdit: 'Delete and edit', unrenote: 'Remove renote', retry: 'Retry', noteDeleteConfirm: 'Delete this note?', deleteAndEditConfirm: 'Delete and edit this note?', unableToProcess: 'Could not complete',
 	_visibility: { public: 'Public', home: 'Home', followers: 'Followers', specified: 'Specified' },
 	_hata: {
 		_drawingTool: { attachmentLimit: 'Limit 16' },
 		_postDelay: { countdown: 'Waiting', cancel: 'Cancel', sendNow: 'Send now' },
-		_hataskeyUi3: { attach: 'Attach', post: 'Post', postTools: 'Tools', expandForm: 'Full', noAltText: 'Missing alt', preview: 'Preview' },
+		_hataskeyUi3: { attach: 'Attach', emoji: 'Emoji', visibility: 'Visibility', post: 'Post', postTools: 'Tools', cw: 'Content warning', cwPlaceholder: 'Example warning', expandForm: 'Full', noAltText: 'Missing alt', preview: 'Preview', quote: 'Quote', reply: 'Reply', channel: 'Channel', clearContext: 'Clear context', attachmentsOnly: 'Attachments only', unrenoteConfirm: 'Remove this renote?' },
 	},
-} } }));
+}, tsx: { _hata: { _hataskeyUi3: {
+	replyTo: ({ name }: { name: string }) => `Reply to ${name}`,
+	postToChannel: ({ name }: { name: string }) => `Post to ${name}`,
+	pollChoice: ({ number }: { number: string }) => `Choice ${number}`,
+} } } } }));
 vi.mock('@/preferences.js', async () => {
 	const { ref } = await import('vue');
 	return { prefer: {
 		s: { animation: false, defaultNoteVisibility: 'public', defaultNoteLocalOnly: false, showNoAltTextWarning: true },
 		r: {
 			animation: ref(false), 'postFormVisibilityBorder.enabled': ref(false),
+			hataskeyUi3ComposerPosition: ref('bottom'),
 			hataskeyUi3ComposerEmojiPosition: ref('afterShortcuts'),
 			hataskeyUi3ComposerShortcut1: ref('full'), hataskeyUi3ComposerShortcut2: ref('none'),
 		},
 	} };
 });
+
 vi.mock('@/store.js', () => ({ store: { s: {}, set: vi.fn() } }));
 vi.mock('@/instance.js', () => ({ instance: { maxNoteTextLength: 3000 } }));
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'en-US' }));
@@ -70,20 +81,41 @@ vi.mock('@/components/MkHataPostDelayStatus.vue', () => ({ default: {
 	template: '<button data-send-now @click="$emit(\'sendNow\')">Send now</button>',
 } }));
 vi.mock('./Hk3ShortcutGuide.vue', () => ({ default: { render: () => null } }));
+vi.mock('./Hk3ComposerEmojiPicker.vue', async () => {
+	const { defineComponent, h, ref } = await import('vue');
+	return { __esModule: true, default: defineComponent({
+		props: ['maxHeight'], emits: ['done', 'closed'],
+		setup(_props, { emit, expose }) {
+			const search = ref<HTMLInputElement>();
+			mocks.pickers.push({ choose: emoji => emit('done', emoji), close: () => emit('closed') });
+			expose({ focus: () => search.value?.focus(), reset: vi.fn() });
+			return () => h('div', { 'data-embedded-picker': '' }, [h('input', { ref: search, 'aria-label': 'Emoji search' })]);
+		},
+	}) };
+});
 
 const cleanups: (() => void)[] = [];
-type Composer = { adopt: (request: PostFormProps) => boolean };
+type Composer = {
+	adopt: (request: PostFormProps) => boolean;
+	focus: () => void;
+	openConfirmation: (request: NoteActionConfirmation) => boolean;
+	cancelConfirmation: () => void;
+	confirmationActive: boolean;
+	canConfirm: boolean;
+};
 
-function mount(draftId = 'uiS:composer:main') {
+function mount(draftId = 'uiS:composer:main', options: { postContext?: Hk3PostContext; deck?: boolean; compact?: boolean } = {}) {
 	const composer = shallowRef<Composer>();
+	const compact = shallowRef(options.compact ?? true);
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
-	const app = createApp({ render: () => h(Hk3Composer, { ref: composer, compact: true, draftId }) });
+	const app = createApp({ render: () => h(Hk3Composer, { ref: composer, compact: compact.value, draftId, deck: options.deck }) });
+	if (options.postContext) app.provide(hk3PostContextKey, options.postContext);
 	for (const name of ['MkAvatar', 'MkUserName']) app.component(name, { render: () => null });
-	app.component('Mfm', {
-		props: ['text'],
-		setup: (props: { text: string }) => () => h('span', { 'data-mfm': '' }, props.text),
-	});
+	app.component('Mfm', defineComponent({
+		props: { text: { type: String, required: true }, emojiUrls: Object },
+		setup: props => () => h('span', { 'data-mfm': '', 'data-emoji-urls': JSON.stringify(props.emojiUrls) }, props.text),
+	}));
 	app.mount(target);
 	let mounted = true;
 	const unmount = () => { if (mounted) app.unmount(); mounted = false; target.remove(); };
@@ -91,6 +123,12 @@ function mount(draftId = 'uiS:composer:main') {
 	return {
 		target, unmount,
 		adopt: (request: PostFormProps) => composer.value!.adopt(request),
+		openConfirmation: (request: NoteActionConfirmation) => composer.value!.openConfirmation(request),
+		cancelConfirmation: () => composer.value!.cancelConfirmation(),
+		confirmationActive: () => composer.value!.confirmationActive,
+		canConfirm: () => composer.value!.canConfirm,
+		setCompact: (value: boolean) => { compact.value = value; },
+		focus: () => composer.value!.focus(),
 		input: () => target.querySelector<HTMLTextAreaElement>('textarea')!,
 		send: () => target.querySelector<HTMLButtonElement>('button[data-state]')!,
 		ids: () => [...target.querySelectorAll('[data-file-id]')].map(el => el.getAttribute('data-file-id')),
@@ -136,9 +174,12 @@ async function settle() {
 	for (let i = 0; i < 8; i++) { await Promise.resolve(); await nextTick(); }
 }
 
-function attachmentAction(view: ReturnType<typeof mount>, index: number) {
+async function attachmentAction(view: ReturnType<typeof mount>, index: number) {
 	view.target.querySelector<HTMLButtonElement>('button[title="Attach"]')!.click();
-	return mocks.menu.mock.calls.at(-1)![0][index].action as () => Promise<void>;
+	await settle();
+	const action = view.target.querySelectorAll<HTMLButtonElement>('[data-composer-menu="attachment"] [role="menuitem"]')[index];
+	expect(action).toBeDefined();
+	return async () => { action.click(); await settle(); };
 }
 
 beforeEach(() => {
@@ -147,6 +188,7 @@ beforeEach(() => {
 	mocks.storage.clear();
 	mocks.interruptors.length = 0;
 	mocks.attachmentModels.length = 0;
+	mocks.pickers.length = 0;
 	mocks.upload.mockReset().mockResolvedValue([]);
 	mocks.pc.mockReset().mockResolvedValue([]);
 	mocks.drive.mockReset().mockResolvedValue([]);
@@ -156,11 +198,154 @@ beforeEach(() => {
 	mocks.postDirect.mockReset().mockResolvedValue(undefined);
 	postSendDelayEnabled.value = false;
 	prefer.r.animation.value = false;
+	prefer.r.hataskeyUi3ComposerEmojiPosition.value = 'afterShortcuts';
 });
 afterEach(() => {
 	cleanups.splice(0).forEach(cleanup => cleanup());
 	vi.clearAllTimers();
 	vi.useRealTimers();
+});
+
+describe('UI S composer post context receipts', () => {
+	let previousPostedNote: typeof hk3PostedNote.value;
+	beforeEach(() => {
+		previousPostedNote = hk3PostedNote.value;
+		hk3PostedNote.value = null;
+	});
+	afterEach(() => {
+		hk3PostedNote.value = previousPostedNote;
+	});
+
+	function postContext() {
+		const receipt = { complete: vi.fn(), cancel: vi.fn() };
+		return { receipt, begin: vi.fn(() => receipt) };
+	}
+
+	it('reveals the post context when public focus is called, then focuses the input', async () => {
+		const context = { ...postContext(), reveal: vi.fn() };
+		const view = mount('uiS:composer:main', { postContext: context });
+		await settle();
+		context.reveal.mockClear();
+		view.input().blur();
+		view.focus();
+		expect(context.reveal).toHaveBeenCalledTimes(1);
+		await settle();
+		expect(window.document.activeElement).toBe(view.input());
+		expect(context.begin).not.toHaveBeenCalled();
+	});
+
+	it('begins before notes/create and completes once with the created note and composer rect without fallback', async () => {
+		const context = postContext();
+		const sending = deferred<{ createdNote: Misskey.entities.Note }>();
+		const createdNote = { id: 'created', text: 'draft' } as Misskey.entities.Note;
+		mocks.api.mockImplementation(() => {
+			expect(context.begin).toHaveBeenCalledTimes(1);
+			return sending.promise;
+		});
+		const view = mount('uiS:composer:main', { postContext: context });
+		setText(view);
+		await settle();
+		const rect = new DOMRect(12, 34, 320, 48);
+		const rectSpy = vi.spyOn(view.input().parentElement!, 'getBoundingClientRect').mockReturnValue(rect);
+		cleanups.push(() => rectSpy.mockRestore());
+		keyboardSubmit(view);
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({ text: 'draft' }));
+		expect(context.receipt.complete).not.toHaveBeenCalled();
+		sending.resolve({ createdNote });
+		await settle();
+		expect(context.begin).toHaveBeenCalledTimes(1);
+		expect(context.receipt.complete).toHaveBeenCalledTimes(1);
+		expect(context.receipt.complete).toHaveBeenCalledWith(createdNote, rect);
+		expect(rectSpy).toHaveBeenCalledTimes(1);
+		expect(context.receipt.cancel).not.toHaveBeenCalled();
+		expect(hk3PostedNote.value).toBeNull();
+		view.unmount();
+		expect(context.receipt.complete).toHaveBeenCalledTimes(1);
+		expect(context.receipt.cancel).not.toHaveBeenCalled();
+	});
+
+	it('cancels the receipt after API rejection without completing or publishing fallback', async () => {
+		const context = postContext();
+		const sending = deferred<{ createdNote: Misskey.entities.Note }>();
+		mocks.api.mockReturnValue(sending.promise);
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		cleanups.push(() => errorSpy.mockRestore());
+		const view = mount('uiS:composer:main', { postContext: context });
+		setText(view);
+		keyboardSubmit(view);
+		await settle();
+		expect(context.begin).toHaveBeenCalledTimes(1);
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+		sending.reject(new Error('create rejected'));
+		await settle();
+		expect(context.receipt.cancel).toHaveBeenCalledTimes(1);
+		expect(context.receipt.complete).not.toHaveBeenCalled();
+		expect(hk3PostedNote.value).toBeNull();
+		expect(view.input().value).toBe('draft');
+	});
+
+	it('updates an editing note without beginning a new post receipt', async () => {
+		const context = postContext();
+		const view = mount('uiS:composer:main', { postContext: context });
+		expect(view.adopt({ initialNote: { id: 'edit', text: 'original', visibility: 'public', files: [] } as unknown as Misskey.entities.Note, updateMode: true })).toBe(true);
+		await settle();
+		setText(view, 'updated');
+		keyboardSubmit(view);
+		await settle();
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+		expect(mocks.api).toHaveBeenCalledWith('notes/update', expect.objectContaining({ noteId: 'edit', text: 'updated' }));
+		expect(context.begin).not.toHaveBeenCalled();
+		expect(context.receipt.complete).not.toHaveBeenCalled();
+		expect(context.receipt.cancel).not.toHaveBeenCalled();
+	});
+
+	it('cancels the post delay without beginning a receipt or calling the API', async () => {
+		const context = postContext();
+		postSendDelayEnabled.value = true;
+		const view = mount('uiS:composer:main', { postContext: context });
+		setText(view);
+		keyboardSubmit(view);
+		await settle();
+		expect(view.send().dataset.state).toBe('countdown');
+		expect(context.begin).not.toHaveBeenCalled();
+		view.send().click();
+		await settle();
+		await vi.advanceTimersByTimeAsync(10000);
+		expect(view.send().dataset.state).toBe('idle');
+		expect(view.input().value).toBe('draft');
+		expect(mocks.api).not.toHaveBeenCalled();
+		expect(context.begin).not.toHaveBeenCalled();
+		expect(context.receipt.complete).not.toHaveBeenCalled();
+		expect(context.receipt.cancel).not.toHaveBeenCalled();
+	});
+
+	it('cancels on unmount before notes/create resolves and ignores the late created note', async () => {
+		const context = postContext();
+		const sending = deferred<{ createdNote: Misskey.entities.Note }>();
+		mocks.api.mockReturnValue(sending.promise);
+		const view = mount('uiS:composer:main', { postContext: context });
+		setText(view);
+		keyboardSubmit(view);
+		await settle();
+		expect(context.begin).toHaveBeenCalledTimes(1);
+		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({ text: 'draft' }));
+		view.unmount();
+		expect(context.receipt.cancel).toHaveBeenCalledTimes(1);
+		sending.resolve({ createdNote: { id: 'late', text: 'draft' } as Misskey.entities.Note });
+		await settle();
+		expect(context.receipt.cancel).toHaveBeenCalledTimes(1);
+		expect(context.receipt.complete).not.toHaveBeenCalled();
+		expect(hk3PostedNote.value).toBeNull();
+	});
+
+	it('marks deck composers while keeping the mobile compact composer outside deck', () => {
+		const deck = mount('uiS:composer:deck:a', { deck: true });
+		const mobile = mount('uiS:composer:mobile', { deck: false });
+		expect(deck.target.querySelector('[data-compact="true"][data-deck="true"]')).not.toBeNull();
+		expect(mobile.target.querySelector('[data-compact="true"]')).not.toBeNull();
+		expect(mobile.target.querySelector('[data-deck]')).toBeNull();
+	});
 });
 
 describe('UI S compact composer preview', () => {
@@ -326,7 +511,7 @@ describe('UI S composer clipboard attachment integration', () => {
 		const upload = deferred<Misskey.entities.DriveFile[]>();
 		mocks.upload.mockReturnValue(upload.promise);
 		const view = mount();
-		const action = attachmentAction(view, 1);
+		const action = await attachmentAction(view, 1);
 		pasteFile(view);
 		const detachedModel = mocks.attachmentModels.at(-1)!;
 		view.unmount();
@@ -345,7 +530,7 @@ describe('UI S composer clipboard attachment integration', () => {
 		mocks.url.mockImplementation(async () => (await upload.promise)[0]);
 		const view = mount();
 		setText(view);
-		void attachmentAction(view, index)();
+		await (await attachmentAction(view, index))();
 		await settle();
 		expect(view.send().disabled).toBe(false);
 		view.adopt({ channel: null });
@@ -361,7 +546,7 @@ describe('UI S composer clipboard attachment integration', () => {
 		mocks.url.mockReturnValue(neverSettles);
 		const view = mount();
 		setText(view);
-		void attachmentAction(view, index)();
+		await (await attachmentAction(view, index))();
 		await settle();
 		expect(view.send().disabled).toBe(false);
 		keyboardSubmit(view);
@@ -370,7 +555,7 @@ describe('UI S composer clipboard attachment integration', () => {
 	});
 	it('rejects a menu action saved before adopting another draft', async () => {
 		const view = mount();
-		const action = attachmentAction(view, 0);
+		const action = await attachmentAction(view, 0);
 		view.adopt({ channel: null });
 		await action();
 		expect(mocks.pc).not.toHaveBeenCalled();
@@ -428,8 +613,8 @@ describe('UI S full composer handoff', () => {
 	}
 
 	it('retains the UI S draft when the full dialog closes without a successful posted event', async () => {
-		const view = mount();
-		view.adopt({ initialText: 'keep me', initialFiles: [driveFile('original')] });
+		const view = mount('uiS:composer:main', { compact: false });
+		expect(view.adopt({ channel: null, initialText: 'keep me', initialFiles: [driveFile('original')] })).toBe(true);
 		const [props] = await expand(view);
 		expect(props.restoreDraft).toBe(false);
 		expect(props.initialPoll).toBeNull();
@@ -444,8 +629,8 @@ describe('UI S full composer handoff', () => {
 	});
 
 	it('clears the unchanged draft only after the full form reports success', async () => {
-		const view = mount();
-		view.adopt({ initialText: 'posted text', initialFiles: [driveFile('image')] });
+		const view = mount('uiS:composer:main', { compact: false });
+		expect(view.adopt({ channel: null, initialText: 'posted text', initialFiles: [driveFile('image')] })).toBe(true);
 		const [, posted] = await expand(view);
 		expect(view.input().value).toBe('posted text');
 		posted();
@@ -455,15 +640,15 @@ describe('UI S full composer handoff', () => {
 	});
 
 	it('preserves newer input or a different context after an earlier full form succeeds', async () => {
-		const view = mount();
-		view.adopt({ initialText: 'first draft' });
+		const view = mount('uiS:composer:main', { compact: false });
+		expect(view.adopt({ channel: null, initialText: 'first draft' })).toBe(true);
 		const [, firstPosted] = await expand(view);
 		setText(view, 'new input');
 		firstPosted();
 		await settle();
 		expect(view.input().value).toBe('new input');
 		const [, secondPosted] = await expand(view);
-		view.adopt({ initialText: 'different draft', reply: { id: 'reply', user: { username: 'author' } } as Misskey.entities.Note });
+		expect(view.adopt({ channel: null, initialText: 'different draft', reply: { id: 'reply', user: { username: 'author' } } as Misskey.entities.Note })).toBe(true);
 		secondPosted();
 		await settle();
 		expect(view.input().value).toContain('different draft');
@@ -473,7 +658,7 @@ describe('UI S full composer handoff', () => {
 describe('automatic composer drafts', () => {
 	it('restores text and attachments and separates deck columns', async () => {
 		const first = mount('uiS:composer:deck:a');
-		first.adopt({ initialText: 'saved input', initialFiles: [driveFile('saved')] });
+		expect(first.adopt({ channel: null, initialText: 'saved input', initialFiles: [driveFile('saved')] })).toBe(true);
 		await settle();
 		first.unmount();
 		expect(mount('uiS:composer:deck:b').input().value).toBe('');
@@ -484,14 +669,570 @@ describe('automatic composer drafts', () => {
 	});
 	it('clears a successful post and resumes saving the next draft', async () => {
 		const first = mount();
-		first.adopt({ initialText: 'first draft' });
+		expect(first.adopt({ channel: null, initialText: 'first draft' })).toBe(true);
 		await settle();
 		first.send().click();
 		await settle();
 		expect(JSON.parse(mocks.storage.get('hataFormDrafts:me')!)).toEqual({});
-		first.adopt({ initialText: 'next draft' });
+		expect(first.adopt({ channel: null, initialText: 'next draft' })).toBe(true);
 		await settle();
 		first.unmount();
-		expect(mount().input().value).toBe('next draft');
+		const restored = mount();
+		await settle();
+		expect(restored.input().value).toBe('next draft');
+	});
+});
+
+describe('UI S composer quote context', () => {
+	it('keeps the draft and cursor when clearing a quote, then sends without renoteId', async () => {
+		const note = { id: 'quoted', user: { id: 'author', username: 'author' }, text: 'original' } as Misskey.entities.Note;
+		const view = mount();
+		expect(view.adopt({ channel: null, renote: note, initialText: 'draft text', initialCw: 'draft warning', initialFiles: [driveFile('kept')], initialVisibility: 'followers' })).toBe(true);
+		await settle();
+		const quote = view.target.querySelector<HTMLElement>('[data-kind="quote"]')!;
+		const wrapper = quote.parentElement!.parentElement!;
+		expect(wrapper.getAttribute('aria-hidden')).toBe('false');
+		expect(wrapper.hasAttribute('inert')).toBe(false);
+		view.input().setSelectionRange(2, 2);
+		quote.querySelector<HTMLButtonElement>('button[title="Clear context"]')!.click();
+		await settle();
+		expect(wrapper.getAttribute('aria-hidden')).toBe('true');
+		expect(wrapper.hasAttribute('inert')).toBe(true);
+		expect(window.document.activeElement).toBe(view.input());
+		expect(view.input().selectionStart).toBe(2);
+		expect(view.input().value).toBe('draft text');
+		expect(view.ids()).toEqual(['kept']);
+		view.send().click();
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({
+			text: 'draft text', fileIds: ['kept'], cw: 'draft warning', visibility: 'followers', renoteId: undefined,
+		}));
+	});
+
+	it('shows a CW before body text, passes custom emojis, and hides hidden note contents', async () => {
+		const view = mount();
+		const note = { id: 'quoted', user: { id: 'author', username: 'author' }, text: 'private body', cw: ':party: warning', emojis: { party: 'https://example.com/party.png' } } as unknown as Misskey.entities.Note;
+		expect(view.adopt({ channel: null, renote: note })).toBe(true);
+		await settle();
+		const quote = () => view.target.querySelector<HTMLElement>('[data-kind="quote"]')!;
+		expect(quote().querySelector('[data-mfm]')?.textContent).toBe(':party: warning');
+		expect(quote().querySelector('[data-mfm]')?.getAttribute('data-emoji-urls')).toBe(JSON.stringify(note.emojis));
+		expect(view.adopt({ channel: null, renote: { ...note, isHidden: true } })).toBe(true);
+		await settle();
+		expect(quote().querySelector('[data-mfm]')).toBeNull();
+		expect(quote().textContent).not.toContain('private body');
+		expect(quote().textContent).not.toContain('warning');
+		expect(view.adopt({ channel: null, renote: { ...note, cw: null, text: null, files: [driveFile('attachment')] } })).toBe(true);
+		await settle();
+		expect(quote().textContent).toContain('Attachments only');
+	});
+});
+
+describe('inline composer menus', () => {
+	function controls(view: ReturnType<typeof mount>) {
+		const tools = view.target.querySelector<HTMLButtonElement>('button[title="Tools"]')!;
+		const visibility = view.target.querySelector<HTMLButtonElement>('button[title="Visibility"]')!;
+		const panel = view.target.querySelector<HTMLElement>('[data-composer-menu-panel]')!;
+		const menu = panel.querySelector<HTMLElement>('[data-composer-menu]')!;
+		return { tools, visibility, panel, menu };
+	}
+
+	it('keeps CW text and input through rapid reversal, hides closed CW from focus, and leaves inline menus usable', async () => {
+		const view = mount();
+		const toggle = view.target.querySelector<HTMLButtonElement>('button[title="Content warning"]')!;
+		const cw = view.target.querySelector<HTMLInputElement>('input[aria-label="Content warning"]')!;
+		const wrapper = cw.closest<HTMLElement>('[aria-hidden]')!;
+		expect(wrapper.hasAttribute('inert')).toBe(true);
+		toggle.click(); await settle();
+		expect(wrapper.hasAttribute('inert')).toBe(false);
+		expect(cw.getAttribute('placeholder')).toBe('Example warning');
+		cw.value = 'spoiler';
+		cw.dispatchEvent(new Event('input', { bubbles: true }));
+		await settle();
+		cw.focus();
+		toggle.click(); await settle();
+		expect(wrapper.hasAttribute('inert')).toBe(true);
+		expect(wrapper.getAttribute('aria-hidden')).toBe('true');
+		expect(window.document.activeElement).toBe(toggle);
+		toggle.click(); toggle.click(); toggle.click(); await settle();
+		expect(view.target.querySelector<HTMLInputElement>('input[aria-label="Content warning"]')).toBe(cw);
+		expect(cw.value).toBe('spoiler');
+		expect(wrapper.hasAttribute('inert')).toBe(false);
+		const { tools, visibility, panel } = controls(view);
+		tools.click(); await settle();
+		expect(panel.dataset.open).toBe('true');
+		expect(cw.value).toBe('spoiler');
+		visibility.click(); await settle();
+		expect(panel.querySelectorAll('[role="menuitemradio"]')).toHaveLength(4);
+		expect(wrapper.hasAttribute('inert')).toBe(false);
+	});
+
+	it('keeps one menu in the composer, switches content and preserves the draft', async () => {
+		const view = mount();
+		setText(view, 'keep this draft');
+		await settle();
+		const { tools, visibility, panel, menu } = controls(view);
+		let contentHeight = 210;
+		Object.defineProperty(menu, 'offsetHeight', { get: () => contentHeight });
+		tools.click();
+		await settle();
+		expect(panel.closest('[data-hk3-composer-menus]')).toBe(view.target.querySelector('[data-hk3-composer-menus]'));
+		expect(panel.dataset.open).toBe('true');
+		expect(panel.style.height).toBe('210px');
+		expect(menu.dataset.composerMenu).toBe('tools');
+		expect(menu.querySelectorAll('[role="menuitemcheckbox"]').length).toBeGreaterThan(1);
+		expect(view.target.querySelector('[data-hk3-composer-menus]')?.getAttribute('data-busy')).toBe('true');
+		contentHeight = 174;
+		visibility.click();
+		await settle();
+		expect(panel.style.height).toBe('174px');
+		expect(menu.dataset.composerMenu).toBe('visibility');
+		expect(menu.querySelectorAll('[role="menuitemradio"]')).toHaveLength(4);
+		expect(tools.getAttribute('aria-expanded')).toBe('false');
+		expect(visibility.getAttribute('aria-expanded')).toBe('true');
+		visibility.click();
+		await settle();
+		expect(panel.style.height).toBe('0px');
+		expect(panel.getAttribute('aria-hidden')).toBe('true');
+		expect(view.input().value).toBe('keep this draft');
+		expect(view.target.querySelector('[data-composer-preview]')).not.toBeNull();
+	});
+
+	it('reverses closing height and returns focus on Escape; outside click closes', async () => {
+		const view = mount();
+		const { tools, panel, menu } = controls(view);
+		Object.defineProperty(menu, 'offsetHeight', { get: () => 190 });
+		tools.click();
+		await settle();
+		menu.querySelector<HTMLButtonElement>('button')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await settle();
+		expect(panel.style.height).toBe('0px');
+		expect(window.document.activeElement).toBe(tools);
+		tools.click();
+		await settle();
+		expect(panel.style.height).toBe('190px');
+		window.document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+		await settle();
+		expect(panel.style.height).toBe('0px');
+	});
+
+	it('closes after selecting a tool while keeping menu items inside a viewport cap', async () => {
+		const view = mount();
+		const { tools, panel, menu } = controls(view);
+		const root = panel.closest<HTMLElement>('[data-hk3-composer-menus]')!;
+		Object.defineProperty(root, 'offsetHeight', { get: () => 126 });
+		const rect = vi.spyOn(root, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, window.innerHeight - 126, 390, 126));
+		cleanups.push(() => rect.mockRestore());
+		tools.click();
+		await settle();
+		expect(menu.style.maxHeight).toBe('240px');
+		const viewportHeight = vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(320);
+		window.dispatchEvent(new Event('resize'));
+		await settle();
+		// The mobile dock reserves 150px below/above its body and 14px of padding.
+		expect(menu.style.maxHeight).toBe('30px');
+		viewportHeight.mockRestore();
+		const items = menu.querySelectorAll<HTMLButtonElement>('[role="menuitemcheckbox"]');
+		const scroll = vi.fn();
+		items[1].scrollIntoView = scroll;
+		items[0].focus();
+		items[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+		expect(window.document.activeElement).toBe(items[1]);
+		expect(scroll).toHaveBeenCalledWith({ block: 'nearest' });
+		menu.querySelector<HTMLButtonElement>('[role="menuitemcheckbox"]')!.click();
+		await settle();
+		expect(tools.getAttribute('aria-expanded')).toBe('false');
+		expect(panel.getAttribute('aria-hidden')).toBe('true');
+		const deck = mount('uiS:composer:deck:menu', { deck: true, compact: false });
+		expect(controls(deck).panel.closest('[data-hk3-composer-menus]')).toBe(deck.target.querySelector('[data-hk3-composer-menus]'));
+	});
+});
+
+describe('embedded composer picker and attachments', () => {
+	async function openEmoji(view: ReturnType<typeof mount>) {
+		const trigger = view.target.querySelector<HTMLButtonElement>('button[title="Emoji"]')!;
+		trigger.click();
+		await vi.dynamicImportSettled();
+		await settle();
+		expect(view.target.querySelector('[data-embedded-picker]')).not.toBeNull();
+		return { trigger, picker: mocks.pickers.at(-1)! };
+	}
+
+	it('replaces the selection with exact Unicode and custom shortcodes, including rapid picks and a moved caret', async () => {
+		const view = mount();
+		setText(view, 'before REPLACE after');
+		await settle();
+		view.input().setSelectionRange(7, 14);
+		const { picker } = await openEmoji(view);
+		picker.choose('👩🏽‍🚀');
+		picker.choose(':custom_flower:');
+		await settle();
+		expect(view.input().value).toBe('before 👩🏽‍🚀:custom_flower: after');
+		expect(view.input().selectionStart).toBe('before 👩🏽‍🚀:custom_flower:'.length);
+		view.input().setSelectionRange(0, 6);
+		picker.choose('🌸');
+		await settle();
+		expect(view.input().value).toBe('🌸 👩🏽‍🚀:custom_flower: after');
+		expect(view.input().selectionStart).toBe('🌸'.length);
+		expect(mocks.menu).not.toHaveBeenCalled();
+	});
+
+	it.each(['afterShortcuts', 'beforeVisibility'] as const)('lets the picker own arrow keys and returns Escape focus at %s', async position => {
+		prefer.r.hataskeyUi3ComposerEmojiPosition.value = position;
+		const view = mount();
+		const { trigger } = await openEmoji(view);
+		const search = view.target.querySelector<HTMLInputElement>('[aria-label="Emoji search"]')!;
+		search.focus();
+		const arrow = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true });
+		search.dispatchEvent(arrow);
+		expect(arrow.defaultPrevented).toBe(false);
+		expect(window.document.activeElement).toBe(search);
+		search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await settle();
+		expect(window.document.activeElement).toBe(trigger);
+		expect(trigger.getAttribute('aria-expanded')).toBe('false');
+	});
+
+	it('keeps the embedded deck picker usable when the floating composer starts at the bottom edge', async () => {
+		const view = mount('uiS:composer:deck:picker', { deck: true });
+		const root = view.target.querySelector<HTMLElement>('[data-hk3-composer-menus]')!;
+		Object.defineProperty(root, 'offsetHeight', { get: () => 126 });
+		const rect = vi.spyOn(root, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, window.innerHeight - 126, 560, 126));
+		cleanups.push(() => rect.mockRestore());
+		await openEmoji(view);
+		const menu = view.target.querySelector<HTMLElement>('[data-composer-menu="emoji"]')!;
+		expect(Number.parseFloat(menu.style.maxHeight)).toBeGreaterThan(100);
+		expect(Number.parseFloat(menu.style.maxHeight)).toBeLessThanOrEqual(480);
+	});
+
+	it('reserves the mobile dock body padding so a short-screen picker cannot cover the posting controls', async () => {
+		const viewportHeight = vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(568);
+		cleanups.push(() => viewportHeight.mockRestore());
+		const view = mount();
+		const root = view.target.querySelector<HTMLElement>('[data-hk3-composer-menus]')!;
+		Object.defineProperty(root, 'offsetHeight', { get: () => 126 });
+		const rect = vi.spyOn(root, 'getBoundingClientRect').mockReturnValue(new DOMRect(10, 358, 300, 126));
+		cleanups.push(() => rect.mockRestore());
+		await openEmoji(view);
+		const menu = view.target.querySelector<HTMLElement>('[data-composer-menu="emoji"]')!;
+		expect(Number.parseFloat(menu.style.maxHeight) + 126 + 14).toBeLessThanOrEqual(568 - 150);
+	});
+
+	it('switches in place and discards a closed picker callback when adopting a different draft', async () => {
+		const view = mount();
+		setText(view, 'original');
+		const { picker } = await openEmoji(view);
+		const panel = view.target.querySelector('[data-composer-menu-panel]')!;
+		view.target.querySelector<HTMLButtonElement>('button[title="Attach"]')!.click();
+		await settle();
+		expect(view.target.querySelector('[data-composer-menu-panel]')).toBe(panel);
+		expect(view.target.querySelector('[data-embedded-picker]')).toBeNull();
+		expect(panel.querySelectorAll('[role="menuitem"]')).toHaveLength(3);
+		picker.choose(':late:');
+		expect(view.adopt({ channel: null, initialText: 'next' })).toBe(true);
+		picker.choose(':later:');
+		await settle();
+		expect(view.input().value).toBe('original next');
+		expect(panel.getAttribute('aria-hidden')).toBe('true');
+	});
+
+	it('retains the picker while closing, safely reverses the transition and disposes it on unmount', async () => {
+		prefer.r.animation.value = true;
+		const view = mount();
+		const { trigger, picker } = await openEmoji(view);
+		const element = view.target.querySelector('[data-embedded-picker]');
+		picker.close();
+		await settle();
+		expect(view.target.querySelector('[data-embedded-picker]')).toBe(element);
+		expect(view.target.querySelector('[data-composer-menu-panel]')!.getAttribute('inert')).not.toBeNull();
+		picker.choose('ignored');
+		expect(view.input().value).toBe('');
+		trigger.click();
+		await settle();
+		expect(window.document.activeElement).toBe(view.target.querySelector('[aria-label="Emoji search"]'));
+		await vi.advanceTimersByTimeAsync(340);
+		expect(view.target.querySelector('[data-embedded-picker]')).toBe(element);
+		view.unmount();
+		await vi.advanceTimersByTimeAsync(340);
+		expect(view.target.querySelector('[data-embedded-picker]')).toBeNull();
+	});
+
+	it.each([0, 1, 2])('routes inline attachment source %s through existing choosers and preserves local-only home payload', async index => {
+		mocks.pc.mockResolvedValue([driveFile('chosen')]);
+		mocks.drive.mockResolvedValue([driveFile('chosen')]);
+		mocks.url.mockResolvedValue(driveFile('chosen'));
+		const view = mount();
+		expect(view.adopt({ channel: null, initialText: 'body :local:', initialVisibility: 'home', initialLocalOnly: true })).toBe(true);
+		await (await attachmentAction(view, index))();
+		expect(view.ids()).toEqual(['chosen']);
+		const chooser = [mocks.pc, mocks.drive, mocks.url][index];
+		expect(chooser).toHaveBeenCalledTimes(1);
+		if (index !== 2) expect(chooser).toHaveBeenCalledWith({ multiple: true });
+		keyboardSubmit(view);
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({ text: 'body :local:', fileIds: ['chosen'], visibility: 'home', localOnly: true }));
+		expect(mocks.menu).not.toHaveBeenCalled();
+	});
+});
+
+describe('UI S composer textarea width changes', () => {
+	let observers: ResizeObserverMock[];
+
+	class ResizeObserverMock {
+		private readonly targets = new Set<Element>();
+		readonly disconnect = vi.fn(() => this.targets.clear());
+
+		constructor(private readonly callback: ResizeObserverCallback) {
+			observers.push(this);
+		}
+
+		observe = vi.fn((target: Element) => { this.targets.add(target); });
+
+		notify(target: Element, width: number, height = 42) {
+			expect(this.targets.has(target)).toBe(true);
+			this.callback([{
+				target,
+				contentRect: new DOMRect(0, 0, width, height),
+			} as ResizeObserverEntry], this as unknown as ResizeObserver);
+		}
+	}
+
+	beforeEach(() => {
+		observers = [];
+		vi.stubGlobal('ResizeObserver', ResizeObserverMock);
+	});
+
+	afterEach(() => { vi.unstubAllGlobals(); });
+
+	it('tracks confirmation panel height changes without replacing the draft', async () => {
+		const view = mount();
+		const input = view.input();
+		const action: NoteActionConfirmation = {
+			kind: 'delete',
+			note: { id: 'target', text: 'Target', user: { id: 'writer', username: 'writer', host: null } } as Misskey.entities.Note,
+			run: vi.fn().mockResolvedValue(undefined),
+		};
+		view.openConfirmation(action);
+		await settle();
+		const root = view.target.querySelector<HTMLElement>('[data-hk3-composer-menus]')!;
+		const stage = root.firstElementChild as HTMLElement;
+		const panel = view.target.querySelector<HTMLElement>('[role="dialog"]')!;
+		let height = 180;
+		Object.defineProperty(panel, 'offsetHeight', { get: () => height });
+		observers[1].notify(panel, 300, height);
+		await settle();
+		expect(stage.style.height).toBe('180px');
+		height = 220;
+		observers[1].notify(panel, 250, height);
+		await settle();
+		expect(stage.style.height).toBe('220px');
+		expect(view.input()).toBe(input);
+	});
+
+	it('recalculates the open picker budget when preview or context increases the composer height', async () => {
+		const viewportHeight = vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(568);
+		cleanups.push(() => viewportHeight.mockRestore());
+		const view = mount();
+		const root = view.target.querySelector<HTMLElement>('[data-hk3-composer-menus]')!;
+		let baseHeight = 126;
+		Object.defineProperty(root, 'offsetHeight', { get: () => baseHeight });
+		const rect = vi.spyOn(root, 'getBoundingClientRect').mockImplementation(() => new DOMRect(10, 484 - baseHeight, 300, baseHeight));
+		cleanups.push(() => rect.mockRestore());
+		view.target.querySelector<HTMLButtonElement>('button[title="Emoji"]')!.click();
+		await vi.dynamicImportSettled();
+		await settle();
+		const menu = view.target.querySelector<HTMLElement>('[data-composer-menu="emoji"]')!;
+		expect(menu.style.maxHeight).toBe('278px');
+		baseHeight = 230;
+		observers[0].notify(root, 300, baseHeight);
+		await settle();
+		expect(menu.style.maxHeight).toBe('174px');
+	});
+
+	it('shrinks the same textarea when a narrow pane returns to full width', async () => {
+		const view = mount();
+		const input = view.input();
+		const observer = observers[0];
+		let width = 180;
+		Object.defineProperty(input, 'clientWidth', { get: () => width });
+		Object.defineProperty(input, 'scrollHeight', { get: () => width < 300 ? 210 : 65 });
+		setText(view, 'draft that wraps in a narrow pane');
+		await settle();
+		observer.notify(input, width);
+		expect(input.style.height).toBe('120px');
+		width = 400;
+		observer.notify(input, width);
+		expect(view.input()).toBe(input);
+		expect(input.style.height).toBe('65px');
+		expect(input.value).toBe('draft that wraps in a narrow pane');
+	});
+
+	it('keeps the last height at zero width and measures again on return', async () => {
+		const view = mount();
+		const input = view.input();
+		const observer = observers[0];
+		let width = 180;
+		const scrollHeight = vi.fn(() => width < 300 ? 210 : 65);
+		Object.defineProperty(input, 'clientWidth', { get: () => width });
+		Object.defineProperty(input, 'scrollHeight', { get: scrollHeight });
+		observer.notify(input, width);
+		expect(input.style.height).toBe('120px');
+		width = 0;
+		observer.notify(input, width);
+		const reads = scrollHeight.mock.calls.length;
+		setText(view, 'draft while hidden');
+		await settle();
+		expect(input.style.height).toBe('120px');
+		expect(scrollHeight).toHaveBeenCalledTimes(reads);
+		width = 400;
+		observer.notify(input, width);
+		expect(input.style.height).toBe('65px');
+		expect(input.value).toBe('draft while hidden');
+	});
+
+	it('ignores height-only notifications, updates a compact limit at the same width, and disconnects', async () => {
+		const view = mount('uiS:composer:main', { compact: false });
+		const input = view.input();
+		const observer = observers[0];
+		const scrollHeight = vi.fn(() => 145);
+		Object.defineProperty(input, 'clientWidth', { get: () => 400 });
+		Object.defineProperty(input, 'scrollHeight', { get: scrollHeight });
+		observer.notify(input, 400);
+		expect(input.style.height).toBe('145px');
+		const reads = scrollHeight.mock.calls.length;
+		observer.notify(input, 400, 145);
+		observer.notify(input, 400, 160);
+		expect(scrollHeight).toHaveBeenCalledTimes(reads);
+		view.setCompact(true);
+		await settle();
+		expect(view.input()).toBe(input);
+		expect(input.style.height).toBe('120px');
+		view.unmount();
+		expect(observer.disconnect).toHaveBeenCalledOnce();
+	});
+});
+
+describe('UI S inline note confirmation', () => {
+	function request(run = vi.fn().mockResolvedValue(undefined), kind: NoteActionConfirmation['kind'] = 'delete'): NoteActionConfirmation {
+		return {
+			kind, run,
+			note: { id: 'original', text: 'Original note', cw: null, files: [], emojis: {}, isHidden: false, user: { id: 'writer', username: 'writer', host: 'example.org', name: 'Writer' } } as unknown as Misskey.entities.Note,
+		};
+	}
+
+	it('keeps the same draft DOM and attachment through cancel, and a closed dialog cannot run', async () => {
+		const view = mount();
+		expect(view.adopt({ channel: null, initialFiles: [driveFile('kept')] })).toBe(true);
+		setText(view, 'Unsent text');
+		await settle();
+		const input = view.input();
+		const action = request();
+		expect(view.canConfirm()).toBe(true);
+		expect(view.openConfirmation(action)).toBe(true);
+		await settle();
+		const dialog = view.target.querySelector<HTMLElement>('[role="dialog"]')!;
+		expect(dialog.getAttribute('aria-modal')).toBe('true');
+		expect(dialog.hasAttribute('data-reduced-motion')).toBe(true);
+		expect(view.input()).toBe(input);
+		expect(input.closest('[inert]')).not.toBeNull();
+		expect(window.document.activeElement).toBe(dialog.querySelector('button[title="Cancel"]'));
+		dialog.querySelector<HTMLButtonElement>('button[title="Cancel"]')!.click();
+		await settle();
+		expect(view.confirmationActive()).toBe(false);
+		expect(view.input()).toBe(input);
+		expect(input.value).toBe('Unsent text');
+		expect(view.ids()).toEqual(['kept']);
+		expect(input.closest('[inert]')).toBeNull();
+		dialog.querySelector<HTMLButtonElement>('button[title="Delete"]')!.click();
+		await settle();
+		expect(action.run).not.toHaveBeenCalled();
+	});
+
+	it('reveals an offscreen composer before opening the confirmation', async () => {
+		const context: Hk3PostContext = { begin: vi.fn(() => ({ complete: vi.fn(), cancel: vi.fn() })), reveal: vi.fn() };
+		const view = mount('uiS:composer:main', { postContext: context });
+		await settle();
+		expect(view.openConfirmation(request())).toBe(true);
+		expect(context.reveal).toHaveBeenCalledTimes(1);
+	});
+
+	it('runs once during repeated confirmation and does not revive a cancelled busy dialog', async () => {
+		const view = mount();
+		const pending = deferred<void>();
+		const action = request(vi.fn(() => pending.promise));
+		view.openConfirmation(action);
+		await settle();
+		const button = view.target.querySelector<HTMLButtonElement>('[role="dialog"] button[title="Delete"]')!;
+		button.click();
+		button.click();
+		await settle();
+		expect(action.run).toHaveBeenCalledTimes(1);
+		const cancel = view.target.querySelector<HTMLButtonElement>('[role="dialog"] button[title="Cancel"]')!;
+		expect(cancel.getAttribute('aria-disabled')).toBe('true');
+		cancel.click();
+		cancel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await settle();
+		expect(view.confirmationActive()).toBe(true);
+		view.cancelConfirmation();
+		await settle();
+		expect(view.confirmationActive()).toBe(false);
+		expect(view.openConfirmation(action)).toBe(true);
+		pending.resolve();
+		await settle();
+		expect(view.confirmationActive()).toBe(false);
+		expect(action.run).toHaveBeenCalledTimes(1);
+	});
+
+	it('shows the original note for an unrenote while retaining its wrapper as the action target', async () => {
+		const view = mount();
+		const run = vi.fn().mockResolvedValue(undefined);
+		const action = request(run, 'unrenote');
+		action.note = { ...action.note, text: null, renote: { ...action.note, id: 'quoted', text: 'Quoted content', user: { ...action.note.user, username: 'quoted', host: null } } } as Misskey.entities.Note;
+		view.openConfirmation(action);
+		await settle();
+		expect(view.target.querySelector('[role="dialog"]')?.textContent).toContain('Quoted content');
+		expect(view.target.querySelector('[role="dialog"]')?.textContent).toContain('@quoted');
+		view.target.querySelector<HTMLButtonElement>('[role="dialog"] button[title="Remove renote"]')!.click();
+		await settle();
+		expect(run).toHaveBeenCalledTimes(1);
+		expect(action.note.id).toBe('original');
+	});
+
+	it('shows a failed action inline and permits an explicit retry', async () => {
+		const view = mount();
+		const run = vi.fn().mockRejectedValueOnce(new Error('Delete failed')).mockResolvedValue(undefined);
+		view.openConfirmation(request(run));
+		await settle();
+		const button = view.target.querySelector<HTMLButtonElement>('[role="dialog"] button[title="Delete"]')!;
+		button.click();
+		await settle();
+		expect(view.target.querySelector('[role="alert"]')?.textContent).toBe('Delete failed');
+		expect(view.confirmationActive()).toBe(true);
+		expect(button.getAttribute('aria-label')).toBe('Retry');
+		button.click();
+		await settle();
+		expect(run).toHaveBeenCalledTimes(2);
+		expect(view.confirmationActive()).toBe(false);
+	});
+
+	it('falls back while uploading or in deck, and keeps post shortcuts inactive during confirmation', async () => {
+		const uploading = deferred<Misskey.entities.DriveFile[]>();
+		mocks.upload.mockReturnValue(uploading.promise);
+		const view = mount();
+		pasteFile(view);
+		await settle();
+		expect(view.canConfirm()).toBe(false);
+		expect(view.openConfirmation(request())).toBe(false);
+		uploading.resolve([]);
+		await settle();
+		setText(view);
+		view.openConfirmation(request());
+		await settle();
+		keyboardSubmit(view);
+		await settle();
+		expect(mocks.api).not.toHaveBeenCalled();
+		const deck = mount('uiS:composer:deck', { deck: true });
+		expect(deck.canConfirm()).toBe(false);
+		expect(deck.openConfirmation(request())).toBe(false);
 	});
 });

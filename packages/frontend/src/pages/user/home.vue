@@ -18,8 +18,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkInfo v-if="user.host == null && user.username.includes('.')">{{ i18n.ts.isSystemAccount }}</MkInfo>
 
 					<div :key="user.id" class="main _panel">
-						<!-- 旗鯖fork(ベータ・グラスUI): バナー画像を大きくぼかしてカード背景に敷くヒーローレイヤ。
-						     通常モードでは CSS(display:none)で非表示、html.hataGlassUi の時だけ表示する。 -->
+						<!-- 旗鯖fork: 既存のバナー画像をぼかしてカード背景に敷くレイヤ。 -->
 						<div class="profileBgBlur" :style="style" aria-hidden="true"></div>
 						<div ref="bannerEl" class="banner-container">
 							<div class="banner" :style="style"></div>
@@ -1149,23 +1148,22 @@ onDeactivated(() => {
 }
 
 /* =======================================================================
-   旗鯖fork(ベータ): グラスUI × プロフィール(3a グラス・ヒーロー)。
-   html.hataGlassUi の時、プロフィールカード(.profile > .main)をガラス面にする。
+   旗鯖fork: UI 2 / S のプロフィールカードをガラス面にする。
    scoped ではプレフィックスの都合で :global を跨げないため、ページ固有ラッパ .ftskorzw
    配下に限定した非scopedグローバルとして定義(他ページの .main/.profile に影響させない)。
    ぼかしは --MI-blur (useBlurEffect=false で none) を尊重。
    ======================================================================= */
-html.hataGlassUi .ftskorzw > .main > .profile > .main {
-	background: color-mix(in srgb, var(--MI_THEME-panel) 70%, transparent);
+html:is(.hataGlassUi, [data-hk3-ui]) .ftskorzw > .main > .profile > .main {
+	background: var(--hk3-glass-soft, color-mix(in srgb, var(--MI_THEME-panel) 70%, transparent));
 	-webkit-backdrop-filter: var(--MI-blur, blur(20px)) saturate(1.5);
 	backdrop-filter: var(--MI-blur, blur(20px)) saturate(1.5);
 }
-/* ぼかしバナー背景ヒーローレイヤ(通常は非表示・グラス時のみ表示)。
+/* ぼかしバナー背景レイヤ(通常は非表示・グラス時のみ表示)。
    カードの角丸内に収めるため親 .main の overflow:clip(既存)で切り取られる。 */
 .profileBgBlur {
 	display: none;
 }
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .profileBgBlur {
+html:is(.hataGlassUi, [data-hk3-ui]) .ftskorzw > .main > .profile > .main > .profileBgBlur {
 	display: block;
 	position: absolute;
 	inset: -60px;
@@ -1176,15 +1174,15 @@ html.hataGlassUi .ftskorzw > .main > .profile > .main > .profileBgBlur {
 	transform: scale(1.2);
 	pointer-events: none;
 }
-/* 旗鯖fork(Hataskey UI 2): プロフィールぼかしOFF オプション。<html> に
+/* 既存のプロフィールぼかしOFF設定を UI 2 / S で共有する。<html> に
    'hataProfileNoBannerBg' クラスが付いている時 (simpleUi.profileNoBannerBg = true)、
-   Hataskey UI 2 有効中でもプロフィールカードのぼかしレイヤを非表示にする。
+   プロフィールカードのぼかしレイヤを非表示にする。
    同時にプロフィールカード面 (.main の背景) を不透明パネルに戻すことで、背景が透けない
    従来カードの見た目を維持する。 */
-html.hataGlassUi.hataProfileNoBannerBg .ftskorzw > .main > .profile > .main > .profileBgBlur {
+html:is(.hataGlassUi, [data-hk3-ui]).hataProfileNoBannerBg .ftskorzw > .main > .profile > .main > .profileBgBlur {
 	display: none !important;
 }
-html.hataGlassUi.hataProfileNoBannerBg .ftskorzw > .main > .profile > .main {
+html:is(.hataGlassUi, [data-hk3-ui]).hataProfileNoBannerBg .ftskorzw > .main > .profile > .main {
 	background: var(--MI_THEME-panel) !important;
 	-webkit-backdrop-filter: none !important;
 	backdrop-filter: none !important;
@@ -1194,7 +1192,7 @@ html.hataGlassUi.hataProfileNoBannerBg .ftskorzw > .main > .profile > .main {
    (明るい文字が映える)と、テーマに応じてコントラストが取れる方向に自動で働く。
    ヘッダー画像の色がベールを突き抜けて文字と干渉しないよう、やや濃いめ(72%)にしている
    (28% はぼかし画像が残るのでヒーロー感は保たれる)。 */
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .profileBgBlur::after {
+html:is(.hataGlassUi, [data-hk3-ui]) .ftskorzw > .main > .profile > .main > .profileBgBlur::after {
 	content: "";
 	position: absolute;
 	inset: 0;
@@ -1207,17 +1205,20 @@ html.hataGlassUi .ftskorzw > .main > .profile > .main > .profileBgBlur::after {
    「グラスUI × 狭い幅(コンテナ500px以下)」でプロフィールの名前が消えていた
    (広い幅ではバナー上の .banner-container > .title が使われるため再現しない＝"場合がある"の正体)。
    ⚠️.profile > .main の直下に子を足したら、必ずこのリストにも足すこと。 */
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .banner-container,
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .title,
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .followedMessage,
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .roles,
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .moderationNote,
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .memo,
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .utageSuccessWrapper,
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .description,
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .fields,
-html.hataGlassUi .ftskorzw > .main > .profile > .main > .status {
+html:is(.hataGlassUi, [data-hk3-ui]) .ftskorzw > .main > .profile > .main > :is(.banner-container, .title, .followedMessage, .roles, .moderationNote, .memo, .utageSuccessWrapper, .description, .fields, .status) {
 	position: relative;
 	z-index: 1;
+}
+
+/* プロフィール内だけ、埋め込みTLとピン留めノートへSのガラス面を渡す。 */
+html[data-hk3-ui] .ftskorzw {
+	--MI-notes-canvas: transparent;
+	--MI-notes-surface: var(--hk3-glass-note, color-mix(in srgb, var(--MI_THEME-panel) 70%, transparent));
+	--MI-notes-backdrop-filter: var(--MI-blur, blur(20px)) saturate(1.3);
+}
+html[data-hk3-ui] .ftskorzw > .main > .contents > ._gaps > .note {
+	background: var(--MI-notes-surface);
+	-webkit-backdrop-filter: var(--MI-notes-backdrop-filter);
+	backdrop-filter: var(--MI-notes-backdrop-filter);
 }
 </style>

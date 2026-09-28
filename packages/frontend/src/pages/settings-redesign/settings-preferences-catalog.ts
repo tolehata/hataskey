@@ -11,6 +11,7 @@ import { i18n } from '@/i18n.js';
 import { HK3_COMPOSER_EMOJI_POSITIONS, HK3_COMPOSER_SHORTCUT_OPTIONS } from '@/components/hataskey3/hk3-composer-tools.js';
 
 const preferencesRoute = '/settings/preferences';
+export const uiSDisplaySizeSearchId = 'settings.control.device.hataskey-ui-s-display-size';
 
 function manifestDestination(id: string): SettingsDestination {
 	const item = destinationForId(id);
@@ -26,7 +27,7 @@ export const preferenceDestinationIds = [
 	'misskey-other',
 ].map(id => manifestDestination(id).id) as readonly string[];
 export type PreferenceDestinationId = typeof preferenceDestinationIds[number];
-export type PreferenceControlKind = 'switch' | 'select' | 'range' | 'radios' | 'reaction';
+export type PreferenceControlKind = 'switch' | 'select' | 'range' | 'radios' | 'reaction' | 'color';
 
 /** Legacy MkPreferenceContainer keys plus controls owned by the new settings. */
 export const preferenceContainerKeys = [
@@ -53,7 +54,11 @@ export const preferenceContainerKeys = [
 	'showUnreadNotificationsCount', 'showingAnimatedImages', 'smoothTransitionAnimations', 'squareAvatars', 'useBlurEffect',
 	'useBlurEffectForModal', 'useGroupedNotifications', 'useNativeUiForVideoAudioPlayer', 'useReactionPickerForContextMenu',
 	'useStickyIcons', 'welcomeBackToast',
+	'hataskeyUi3TimelineBackground',
+	'hataskeyUi3SideMenuBackground', 'hataskeyUi3RightPaneBackground',
+	'hataskeyUi3GlassDensity',
 	'hataskeyUi3ComposerShortcut1', 'hataskeyUi3ComposerShortcut2', 'hataskeyUi3ComposerEmojiPosition', 'hataskeyUi3ComposerPosition',
+	'postFormVisibilityBorder.enabled', 'postFormVisibilityBorder.width', 'postFormVisibilityBorder.color.public', 'postFormVisibilityBorder.color.home', 'postFormVisibilityBorder.color.followers', 'postFormVisibilityBorder.color.specified',
 	'hataskeyUi3RssEnabled', 'hataskeyUi3RssFeeds', 'hataskeyUi3RssAutoSwitch', 'hataskeyUi3RssReadSeconds', 'hataskeyUi3RssReadMode',
 ] as const;
 export type PreferenceContainerKey = typeof preferenceContainerKeys[number];
@@ -106,9 +111,19 @@ const placements: Readonly<Record<PreferenceContainerKey, Placement>> = {
 	hemisphere: { destinationId: 'misskey-other' }, hideAvatarsInNote: { destinationId: 'cherrypick-display' },
 	highlightSensitiveMedia: { destinationId: 'display-preferences' }, imageNewTab: { destinationId: 'misskey-other' },
 	infoButtonForNoteActionsEnabled: { destinationId: 'cherrypick-display' }, instanceTicker: { destinationId: 'display-preferences' },
+	hataskeyUi3TimelineBackground: { destinationId: 'hataskey-ui-s' },
+	hataskeyUi3SideMenuBackground: { destinationId: 'hataskey-ui-s' },
+	hataskeyUi3RightPaneBackground: { destinationId: 'hataskey-ui-s' },
+	hataskeyUi3GlassDensity: { destinationId: 'hataskey-ui-s' },
 	hataskeyUi3ComposerShortcut1: { destinationId: 'hataskey-ui-s' }, hataskeyUi3ComposerShortcut2: { destinationId: 'hataskey-ui-s' },
 	hataskeyUi3ComposerEmojiPosition: { destinationId: 'hataskey-ui-s' },
 	hataskeyUi3ComposerPosition: { destinationId: 'hataskey-ui-s' },
+	'postFormVisibilityBorder.enabled': { destinationId: 'hataskey-ui-s' },
+	'postFormVisibilityBorder.width': { destinationId: 'hataskey-ui-s' },
+	'postFormVisibilityBorder.color.public': { destinationId: 'hataskey-ui-s' },
+	'postFormVisibilityBorder.color.home': { destinationId: 'hataskey-ui-s' },
+	'postFormVisibilityBorder.color.followers': { destinationId: 'hataskey-ui-s' },
+	'postFormVisibilityBorder.color.specified': { destinationId: 'hataskey-ui-s' },
 	hataskeyUi3RssEnabled: { destinationId: 'hataskey-ui-s' }, hataskeyUi3RssFeeds: { destinationId: 'hataskey-ui-s' },
 	hataskeyUi3RssAutoSwitch: { destinationId: 'hataskey-ui-s' }, hataskeyUi3RssReadSeconds: { destinationId: 'hataskey-ui-s' },
 	hataskeyUi3RssReadMode: { destinationId: 'hataskey-ui-s' },
@@ -146,9 +161,10 @@ const placements: Readonly<Record<PreferenceContainerKey, Placement>> = {
 };
 
 const rangeSpec: Readonly<Partial<Record<PreferenceContainerKey, { min: number; max: number }>>> = {
+	'postFormVisibilityBorder.width': { min: 1, max: 12 },
 	pollingInterval: { min: 1, max: 3 }, fontSize: { min: 1, max: 19 }, numberOfPageCache: { min: 1, max: 10 },
 };
-const radioKeys = new Set<PreferenceContainerKey>(['emojiStyle', 'notificationPosition', 'notificationStackAxis', 'reactionsDisplaySize', 'mediaListWithOneImageAppearance', 'hemisphere', 'hataskeyUi3ComposerEmojiPosition', 'hataskeyUi3ComposerPosition']);
+const radioKeys = new Set<PreferenceContainerKey>(['emojiStyle', 'notificationPosition', 'notificationStackAxis', 'reactionsDisplaySize', 'mediaListWithOneImageAppearance', 'hemisphere', 'hataskeyUi3GlassDensity', 'hataskeyUi3ComposerEmojiPosition', 'hataskeyUi3ComposerPosition']);
 const selectKeys = new Set<PreferenceContainerKey>(['forceRenoteVisibilitySelection', 'defaultNoteVisibility', 'instanceTicker', 'menuStyle', 'contextMenu', 'newNoteReceivedNotificationBehavior', 'nsfw', 'nsfwOpenBehavior', 'requireRefreshBehavior', 'serverDisconnectedBehavior', 'showingAnimatedImages', 'hataskeyUi3ComposerShortcut1', 'hataskeyUi3ComposerShortcut2', 'hataskeyUi3RssReadSeconds', 'hataskeyUi3RssReadMode']);
 const optionValues: Readonly<Partial<Record<PreferenceContainerKey, readonly string[]>>> = {
 	emojiStyle: ['native', 'fluentEmoji', 'twemoji'], forceRenoteVisibilitySelection: ['none', 'public', 'home', 'followers'],
@@ -162,6 +178,7 @@ const optionValues: Readonly<Partial<Record<PreferenceContainerKey, readonly str
 	hataskeyUi3ComposerShortcut1: HK3_COMPOSER_SHORTCUT_OPTIONS, hataskeyUi3ComposerShortcut2: HK3_COMPOSER_SHORTCUT_OPTIONS,
 	hataskeyUi3ComposerEmojiPosition: HK3_COMPOSER_EMOJI_POSITIONS,
 	hataskeyUi3ComposerPosition: ['top', 'bottom'],
+	hataskeyUi3GlassDensity: ['light', 'dense'],
 	hataskeyUi3RssReadSeconds: ['6', '10', '15', '30'],
 	hataskeyUi3RssReadMode: ['full', 'summary'],
 };
@@ -218,10 +235,20 @@ const labelValues: Readonly<Record<PreferenceContainerKey, string>> = {
 	imageNewTab: i18n.ts.openImageInNewTab,
 	infoButtonForNoteActionsEnabled: i18n.ts.infoButtonForNoteActions,
 	instanceTicker: i18n.ts.instanceTicker,
+	hataskeyUi3TimelineBackground: i18n.ts._hata._customSettings._general.ui3TimelineBackground,
+	hataskeyUi3SideMenuBackground: i18n.ts._hata._customSettings._general.ui3SideMenuBackground,
+	hataskeyUi3RightPaneBackground: i18n.ts._hata._customSettings._general.ui3RightPaneBackground,
+	hataskeyUi3GlassDensity: i18n.ts._hata._customSettings._general.ui3GlassDensity,
 	hataskeyUi3ComposerShortcut1: i18n.ts._hata._customSettings._general.ui3ComposerShortcut1,
 	hataskeyUi3ComposerShortcut2: i18n.ts._hata._customSettings._general.ui3ComposerShortcut2,
 	hataskeyUi3ComposerEmojiPosition: i18n.ts._hata._customSettings._general.ui3ComposerEmojiPosition,
 	hataskeyUi3ComposerPosition: i18n.ts._hata._customSettings._general.ui3ComposerPosition,
+	'postFormVisibilityBorder.enabled': i18n.ts._hata._customSettings._general.colorByVisibility,
+	'postFormVisibilityBorder.width': i18n.ts._hata._customSettings._general.borderWidth,
+	'postFormVisibilityBorder.color.public': i18n.ts._hata._customSettings._general.public,
+	'postFormVisibilityBorder.color.home': i18n.ts._hata._customSettings._general.home,
+	'postFormVisibilityBorder.color.followers': i18n.ts._hata._customSettings._general.followers,
+	'postFormVisibilityBorder.color.specified': i18n.ts._hata._customSettings._general.direct,
 	hataskeyUi3RssEnabled: i18n.ts._hata._hataskeyUi3._rss.enabled,
 	hataskeyUi3RssFeeds: i18n.ts._hata._hataskeyUi3._rss.feeds,
 	hataskeyUi3RssAutoSwitch: i18n.ts._hata._hataskeyUi3._rss.autoSwitch,
@@ -291,11 +318,22 @@ const labelValues: Readonly<Record<PreferenceContainerKey, string>> = {
 };
 
 const captionValues: Readonly<Partial<Record<PreferenceContainerKey, readonly string[]>>> = {
+	'postFormVisibilityBorder.enabled': [i18n.ts._hata._customSettings._general.colorByVisibilityCaption],
+	'postFormVisibilityBorder.width': [i18n.ts._hata._customSettings._general.postFormBorder],
+	'postFormVisibilityBorder.color.public': [i18n.ts._hata._customSettings._general.postFormBorder],
+	'postFormVisibilityBorder.color.home': [i18n.ts._hata._customSettings._general.postFormBorder],
+	'postFormVisibilityBorder.color.followers': [i18n.ts._hata._customSettings._general.postFormBorder],
+	'postFormVisibilityBorder.color.specified': [i18n.ts._hata._customSettings._general.postFormBorder],
+	hataskeyUi3TimelineBackground: [i18n.ts._hata._customSettings._general.ui3TimelineBackgroundCaption],
+	hataskeyUi3SideMenuBackground: [i18n.ts._hata._customSettings._general.ui3SideMenuBackgroundCaption],
+	hataskeyUi3RightPaneBackground: [i18n.ts._hata._customSettings._general.ui3RightPaneBackgroundCaption],
+	hataskeyUi3GlassDensity: [i18n.ts._hata._customSettings._general.ui3GlassDensityCaption],
 	emojiAdditionNotice: [i18n.ts._hata._navbarNotice.emojiSettingDescription, i18n.ts._hata._navbarNotice.deliveryDescription],
 	hourlyTimeNotice: [i18n.ts._hata._navbarNotice.timeSettingDescription, i18n.ts._hata._navbarNotice.deliveryDescription],
 	ltlEmojiVoteEnabled: [i18n.ts._hata._customSettings._general.showLtlEmojiVoteDescription],
 	hataskeyUi3ComposerShortcut1: [i18n.ts._hata._customSettings._general.ui3ComposerShortcutCaption],
 	hataskeyUi3ComposerShortcut2: [i18n.ts._hata._customSettings._general.ui3ComposerShortcutCaption],
+	hataskeyUi3ComposerPosition: [i18n.ts._hata._customSettings._general.ui3ComposerPositionCaption],
 	hemisphere: [i18n.ts._hemisphere.caption],
 	notificationPosition: [i18n.ts._hata._notificationToast.placement, i18n.ts._hata._notificationToast.otherUi],
 	notificationStackAxis: [i18n.ts._hata._notificationToast.sequence, i18n.ts._hata._notificationToast.otherUi],
@@ -340,6 +378,7 @@ function slugForKey(key: string): string { return key.replace(/[^A-Za-z0-9]+/gu,
 export function generatedPreferenceSearchId(key: string): string { return `settings.control.preference.${slugForKey(key)}`; }
 
 function kindFor(key: PreferenceContainerKey): PreferenceControlKind {
+	if (key.startsWith('postFormVisibilityBorder.color.')) return 'color';
 	if (key === 'selectReaction') return 'reaction';
 	if (rangeSpec[key] != null) return 'range';
 	if (radioKeys.has(key)) return 'radios';
@@ -390,6 +429,7 @@ export function parsePreferenceDestination(id: string): SettingsDestination | nu
 export function controlsForPreferenceDestination(id: string): readonly PreferenceControl[] { return preferenceControls.filter(control => control.destinationId === id); }
 export function auxiliaryForPreferenceDestination(id: string) { return preferenceAuxiliaryControls.filter(control => control.destinationId === id); }
 export function destinationForPreferenceKey(key: string): string | null {
+	if (key === 'simpleUi.bottomNav' || key === 'hataskeyUi3BottomNav') return 'hataskey-ui-s';
 	const destinations = [...new Set([...preferenceControls.filter(control => control.key === key).map(control => control.destinationId), ...preferenceAuxiliaryControls.filter(control => control.key === key).map(control => control.destinationId)])];
 	return destinations.length === 1 ? destinations[0] : null;
 }
@@ -398,19 +438,21 @@ export function legacyDescriptorIdsForPreferenceKey(key: string, descriptors: re
 }
 export function canonicalSearchIdForPreferenceKey(key: string, _descriptors: readonly { stableId: string; preferenceKeys: readonly string[] }[] = []): string {
 	void _descriptors;
-	return generatedPreferenceSearchId(key);
+	return generatedPreferenceSearchId(key === 'hataskeyUi3BottomNav' ? 'simpleUi.bottomNav' : key);
 }
 export function canonicalSearchIdForDescriptor(descriptor: { stableId: string; preferenceKeys: readonly string[] }, descriptors: readonly { stableId: string; preferenceKeys: readonly string[] }[]): string | null {
+	if (descriptor.stableId === uiSDisplaySizeSearchId) return uiSDisplaySizeSearchId;
 	const key = descriptor.preferenceKeys.find(value => destinationForPreferenceKey(value) != null);
 	return key == null ? null : canonicalSearchIdForPreferenceKey(key, descriptors);
 }
-export function destinationForSearchDescriptor(descriptor: { preferenceKeys: readonly string[] }): string | null {
+export function destinationForSearchDescriptor(descriptor: { stableId?: string; preferenceKeys: readonly string[] }): string | null {
+	if (descriptor.stableId === uiSDisplaySizeSearchId) return 'hataskey-ui-s';
 	const destinations = [...new Set(descriptor.preferenceKeys.map(destinationForPreferenceKey).filter((value): value is string => value != null))];
 	return destinations.length === 1 ? destinations[0] : null;
 }
 export function searchIdForPreferenceKey(key: string, descriptors: readonly { stableId: string; source?: string; route: string; preferenceKeys: readonly string[] }[]): string | null {
 	void descriptors;
-	return destinationForPreferenceKey(key) == null ? null : generatedPreferenceSearchId(key);
+	return destinationForPreferenceKey(key) == null ? null : canonicalSearchIdForPreferenceKey(key);
 }
 
 function sectionForDestination(item: SettingsDestination): { title: string; description: string } {

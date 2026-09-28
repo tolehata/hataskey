@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<MkStickyContainer style="background: var(--MI_THEME-bg);">
+<MkStickyContainer style="background: var(--MI-embedded-canvas, var(--MI_THEME-bg));">
 	<template #header>
 		<nav :class="$style.nav">
 			<div :class="$style.navPath" @contextmenu.prevent.stop="() => {}">
@@ -749,7 +749,7 @@ onBeforeUnmount(() => {
 	box-sizing: border-box;
 	overflow: auto;
 	font-size: 0.9em;
-	background: color(from var(--MI_THEME-bg) srgb r g b / 0.75);
+	background: var(--MI-embedded-bar, color(from var(--MI_THEME-bg) srgb r g b / 0.75));
 	-webkit-backdrop-filter: var(--MI-blur, blur(15px));
 	backdrop-filter: var(--MI-blur, blur(15px));
 	border-bottom: solid 0.5px var(--MI_THEME-divider);
@@ -834,7 +834,7 @@ onBeforeUnmount(() => {
 	font-size: 90%;
 	-webkit-backdrop-filter: var(--MI-blur, blur(8px));
 	backdrop-filter: var(--MI-blur, blur(8px));
-	background-color: color(from var(--MI_THEME-bg) srgb r g b / 0.85);
+	background-color: var(--MI-embedded-bar, color(from var(--MI_THEME-bg) srgb r g b / 0.85));
 }
 
 .loadMore {
@@ -846,7 +846,7 @@ onBeforeUnmount(() => {
 	font-size: 90%;
 	-webkit-backdrop-filter: var(--MI-blur, blur(8px));
 	backdrop-filter: var(--MI-blur, blur(8px));
-	background-color: color(from var(--MI_THEME-bg) srgb r g b / 0.85);
+	background-color: var(--MI-embedded-bar, color(from var(--MI_THEME-bg) srgb r g b / 0.85));
 }
 
 .empty {

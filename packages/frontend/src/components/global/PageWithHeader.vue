@@ -111,9 +111,9 @@ defineExpose({
 }
 
 .footerTabs {
-	background: color(from var(--MI_THEME-pageHeaderBg) srgb r g b / 0.75);
+	background: var(--MI-page-header-background, color(from var(--MI_THEME-pageHeaderBg) srgb r g b / 0.75));
 	-webkit-backdrop-filter: var(--MI-blur, blur(15px));
 	backdrop-filter: var(--MI-blur, blur(15px));
-	border-top: solid 0.5px var(--MI_THEME-divider);
+	border-top: solid 0.5px var(--MI-page-header-divider, var(--MI_THEME-divider));
 }
 </style>

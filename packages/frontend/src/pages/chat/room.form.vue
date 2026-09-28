@@ -330,7 +330,7 @@ onBeforeUnmount(() => {
 .footer {
 	position: sticky;
 	bottom: 0;
-	background: var(--MI_THEME-panel);
+	background: var(--MI-embedded-panel, var(--MI_THEME-panel));
 }
 
 .file {

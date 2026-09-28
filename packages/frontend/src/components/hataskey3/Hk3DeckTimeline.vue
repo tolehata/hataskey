@@ -5,7 +5,7 @@ Hataskey UI 3: デッキのカラム用タイムライン。標準表示と同�
 スクロールはカラム(デッキのタブ枠)が受け持ち、読んでいる途中の新着は上部の知らせに溜める。
 -->
 <template>
-<div ref="rootEl" :class="$style.root">
+<div ref="rootEl" data-hk3-deck-timeline :class="$style.root">
 	<!-- ローカルのカラムでは、LTL の絵文字投票をカラム上部に出す(標準表示の上部バナーと同じ投票ストア)。 -->
 	<div v-if="emojiVoteRound && emojiVoteAnchor" :class="$style.vote">
 		<MkLtlEmojiVote
@@ -38,7 +38,10 @@ Hataskey UI 3: デッキのカラム用タイムライン。標準表示と同�
 	<div v-else-if="notes.length === 0" :class="$style.state">{{ copy.noNotes }}</div>
 
 	<div ref="listEl" :class="$style.list">
-		<Hk3Note v-for="note in notes" :key="note.id" :data-note-removal-id="note.id" :note="note" size="sm" :inLocal="src === 'local'" :hideSensitive="!store.s.tl.filter.withSensitive"/>
+		<template v-for="note in notes" :key="note.id">
+			<Hk3Note :data-note-removal-id="note.id" :note="note" size="sm" :inLocal="src === 'local'" :inSocial="src === 'social'" :hideSensitive="!store.s.tl.filter.withSensitive"/>
+			<MkAd v-if="note._shouldInsertAd_" :class="$style.ad" :preferForms="['horizontal', 'horizontal-big']"/>
+		</template>
 	</div>
 	<div v-if="notes.length > 0" ref="sentinelEl" :class="$style.sentinel">
 		<MkLoading v-if="loadingMore" :em="true"/>
@@ -53,11 +56,14 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch 
 import { ArrowUp } from '@lucide/vue';
 import * as Misskey from 'cherrypick-js';
 import Hk3Note from './Hk3Note.vue';
+import type { TimelineAdMarker } from '@/utility/timeline-ad.js';
 import { i18n } from '@/i18n.js';
 import { store } from '@/store.js';
 import { prefer } from '@/preferences.js';
 import { useStream } from '@/stream.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { instance } from '@/instance.js';
+import { markTimelineAdPage, shouldInsertStreamingAd } from '@/utility/timeline-ad.js';
 import { globalEvents, useGlobalEvent } from '@/events.js';
 import { $i } from '@/i.js';
 import MkLtlEmojiVote from '@/components/MkLtlEmojiVote.vue';
@@ -89,8 +95,9 @@ const rootEl = shallowRef<HTMLElement | null>(null);
 const listEl = shallowRef<HTMLElement | null>(null);
 const removal = useNoteRemoval(() => listEl.value);
 const sentinelEl = shallowRef<HTMLElement | null>(null);
-const notes = ref<Misskey.entities.Note[]>([]);
-const queue = ref<Misskey.entities.Note[]>([]);
+type TimelineNote = Misskey.entities.Note & TimelineAdMarker;
+const notes = ref<TimelineNote[]>([]);
+const queue = ref<TimelineNote[]>([]);
 const loading = ref(false);
 const loadingMore = ref(false);
 const loadMoreFailed = ref(false);
@@ -138,10 +145,12 @@ async function fetchPage(untilId?: string): Promise<Misskey.entities.Note[]> {
 }
 
 let loadSeq = 0;
+let adInsertionCounter = 0;
 
 async function reload() {
 	removal.cancelAll();
 	const seq = ++loadSeq;
+	adInsertionCounter = 0;
 	loading.value = true;
 	error.value = false;
 	queue.value = [];
@@ -150,7 +159,7 @@ async function reload() {
 	try {
 		const result = await fetchPage();
 		if (seq !== loadSeq) return;
-		notes.value = result;
+		notes.value = markTimelineAdPage(result, 'initial');
 		// タイムラインは件数が上限未満でも続きがあることがある。空になった時だけ終端とする。
 		hasMore.value = result.length > 0;
 		connect();
@@ -172,7 +181,7 @@ async function loadMore() {
 		const result = await fetchPage(notes.value[notes.value.length - 1].id);
 		if (seq !== loadSeq) return;
 		const known = new Set(notes.value.map(note => note.id));
-		notes.value.push(...result.filter(note => !known.has(note.id)));
+		notes.value.push(...markTimelineAdPage(result, 'older').filter(note => !known.has(note.id)));
 		hasMore.value = result.length > 0;
 		loadMoreFailed.value = false;
 	} catch {
@@ -250,23 +259,26 @@ function isKnown(id: string): boolean {
 
 function onStreamNote(note: Misskey.entities.Note) {
 	if (isKnown(note.id)) return;
+	adInsertionCounter++;
+	const receivedNote = shouldInsertStreamingAd(adInsertionCounter, instance.notesPerOneAd)
+		? { ...note, _shouldInsertAd_: true } : note;
 	// 先頭を見ているときはそのまま差し込み、読み進めている途中なら位置を動かさず知らせに溜める。
 	if ((scrollContainer()?.scrollTop ?? 0) < 8) {
-		notes.value.unshift(note);
+		notes.value.unshift(receivedNote);
 		return;
 	}
-	queue.value = [note, ...queue.value].slice(0, QUEUE_MAX);
+	queue.value = [receivedNote, ...queue.value].slice(0, QUEUE_MAX);
 }
 
 function flushQueue() {
-	const added = queue.value.length;
 	const known = new Set(notes.value.map(note => note.id));
-	notes.value = [...queue.value.filter(note => !known.has(note.id)), ...notes.value];
+	const incoming = queue.value.filter(note => !known.has(note.id));
+	notes.value = [...incoming, ...notes.value];
 	queue.value = [];
 	scrollContainer()?.scrollTo({ top: 0, behavior: motion() ? 'smooth' : 'auto' });
 	if (!motion()) return;
 	void nextTick(() => {
-		(Array.from(listEl.value?.children ?? []) as HTMLElement[]).slice(0, added).forEach((el, i) => el.animate(
+		(Array.from(listEl.value?.children ?? []) as HTMLElement[]).filter(el => el.dataset.noteRemovalId).slice(0, incoming.length).forEach((el, i) => el.animate(
 			[{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'translateY(0)' }],
 			{ duration: 380, delay: i * 50, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' },
 		));
@@ -318,7 +330,8 @@ defineExpose({ reload });
 .root {
 	position: relative;
 	min-height: 100%;
-	background: var(--hk3-bg);
+	// The parent tab pane already supplies the single glassDensity-controlled glass layer.
+	background: transparent;
 	color: var(--hk3-text);
 }
 
@@ -358,6 +371,8 @@ defineExpose({ reload });
 	display: flex;
 	flex-direction: column;
 }
+
+.ad { padding: 12px 16px; }
 
 .state {
 	display: flex;

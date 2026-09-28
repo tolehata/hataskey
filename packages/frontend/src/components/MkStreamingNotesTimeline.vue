@@ -148,7 +148,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, watch, onBeforeUnmount, onUnmounted, provide, useTemplateRef, TransitionGroup, onMounted, shallowRef, ref, markRaw } from 'vue';
+import { computed, inject, watch, onBeforeUnmount, onUnmounted, provide, useTemplateRef, TransitionGroup, onMounted, shallowRef, ref, markRaw } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { useInterval } from '@@/js/use-interval.js';
 import { useDocumentVisibility } from '@@/js/use-document-visibility.js';
@@ -157,10 +157,12 @@ import type { BasicTimelineType } from '@/timelines.js';
 import type { SoundStore } from '@/preferences/def.js';
 import type { IPaginator, MisskeyEntity } from '@/utility/paginator.js';
 import MkPullToRefresh from '@/components/MkPullToRefresh.vue';
+import { navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
 import { useStream } from '@/stream.js';
 import * as sound from '@/utility/sound.js';
 import { $i } from '@/i.js';
 import { instance } from '@/instance.js';
+import { shouldInsertStreamingAd } from '@/utility/timeline-ad.js';
 import { prefer } from '@/preferences.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -281,6 +283,9 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
 	emojiVoteNavbarState: [state: { visible: boolean; celebrating: boolean; leaving: boolean }];
 }>();
+
+const navbarPull = inject(navbarPullRefreshKey, null);
+const updatesPaused = computed(() => props.updatesPaused || navbarPull?.active.value);
 
 provide('inTimeline', true);
 provide('tl_withSensitive', computed(() => props.withSensitive));
@@ -666,7 +671,7 @@ function isTop() {
 let scrollContainer: HTMLElement | null = null;
 
 function onScrollContainerScroll() {
-	if (isTop() && !props.updatesPaused && !isPausingUpdate) {
+	if (isTop() && !updatesPaused.value && !isPausingUpdate) {
 		paginator.releaseQueue();
 	}
 }
@@ -715,7 +720,7 @@ if (!store.s.realtimeMode) {
 	// TODO: 先頭のノートの作成日時が1日以上前であれば流速が遅いTLと見做してインターバルを通常より延ばす
 	useInterval(async () => {
 		paginator.fetchNewer({
-			toQueue: !isTop() || isPausingUpdate || props.updatesPaused,
+			toQueue: !isTop() || isPausingUpdate || updatesPaused.value,
 		});
 	}, POLLING_INTERVAL, {
 		immediate: false,
@@ -724,7 +729,7 @@ if (!store.s.realtimeMode) {
 
 	useGlobalEvent('notePosted', (note) => {
 		paginator.fetchNewer({
-			toQueue: !isTop() || isPausingUpdate || props.updatesPaused,
+			toQueue: !isTop() || isPausingUpdate || updatesPaused.value,
 		});
 	});
 }
@@ -741,7 +746,7 @@ useGlobalEvent('noteRemovedFromAntenna', (antennaId, noteId) => {
 });
 
 function releaseQueue() {
-	if (props.updatesPaused) return;
+	if (updatesPaused.value) return;
 	updateRandomDir(); // 旗鯖: ランダム方向更新
 	haptic();
 	paginator.releaseQueue();
@@ -772,11 +777,11 @@ function prepend(note: Misskey.entities.Note & MisskeyEntity) {
 
 	adInsertionCounter++;
 
-	if (instance.notesPerOneAd > 0 && adInsertionCounter % instance.notesPerOneAd === 0) {
+	if (shouldInsertStreamingAd(adInsertionCounter, instance.notesPerOneAd)) {
 		note._shouldInsertAd_ = true;
 	}
 
-	if (isTop() && !isPausingUpdate && !props.updatesPaused) {
+	if (isTop() && !isPausingUpdate && !updatesPaused.value) {
 		paginator.prepend(note);
 	} else {
 		paginator.enqueue(note);
@@ -1074,7 +1079,7 @@ defineExpose({
 	container-type: inline-size;
 
 	&.noGap {
-		background: var(--MI_THEME-panel);
+		background: var(--MI-notes-canvas, var(--MI_THEME-panel));
 
 		.note {
 			border-bottom: solid 0.5px var(--MI_THEME-divider);
@@ -1082,13 +1087,22 @@ defineExpose({
 	}
 
 	&:not(.noGap) {
-		background: var(--MI_THEME-bg);
+		background: var(--MI-notes-canvas, var(--MI_THEME-bg));
 
 		.note {
-			background: var(--MI_THEME-panel);
+			background: var(--MI-notes-surface, var(--MI_THEME-panel));
 			border-radius: var(--MI-radius);
 		}
 	}
+}
+
+:global(html[data-hk3-ui]) .notes.noGap .note {
+	background: var(--MI-notes-surface, transparent);
+}
+
+:global(html[data-hk3-ui]) .notes .note {
+	-webkit-backdrop-filter: var(--MI-notes-backdrop-filter, none);
+	backdrop-filter: var(--MI-notes-backdrop-filter, none);
 }
 
 .emojiVoteRow {

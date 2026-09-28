@@ -10,7 +10,7 @@ import MkUISetup from './MkUISetup.vue';
 
 const state = vi.hoisted(() => ({
 	storage: new Map<string, string>(),
-	prefer: { s: { animation: true } },
+	prefer: { s: { animation: true, useBlurEffect: true, useBlurEffectForModal: true } },
 }));
 
 vi.mock('@/local-storage.js', () => ({ miLocalStorage: {
@@ -22,8 +22,8 @@ vi.mock('@/i18n.js', () => ({ i18n: {
 	ts: {
 		close: '閉じる', recommended: '推奨', inUse: '使用中', goBack: '戻る',
 		_hata: { _uiSetup: {
-			title: 'UIを切り替える', hint: '使いたいUIを選んで切り替え', standardDescription: '標準UI',
-			ui3Description: 'タイムライン中心の新しいUI', otherUis: 'その他のUI', conflictNote: '競合する場合があります',
+			title: 'UIを切り替える', hint: '使いたいUIを選んで切り替え', standardDescription: 'HataskeyのデフォルトUIで使う楽しさを追求します',
+			ui3Description: '美しさと利便性を追求、S(Special)な体験を', otherUis: 'その他のUI', conflictNote: '競合する場合があります',
 			notRecommended: '非推奨', legacyDeck: '従来のデッキUI', deprecatedWarning: 'このUIは非推奨です。',
 			switchAction: '切り替える',
 		} },
@@ -33,10 +33,11 @@ vi.mock('@/i18n.js', () => ({ i18n: {
 vi.mock('@/components/MkModal.vue', async () => {
 	const { defineComponent, h } = await import('vue');
 	return { default: defineComponent({
+		props: { disableBgBlur: Boolean },
 		emits: ['click', 'esc', 'closed'],
-		setup(_, { slots, emit, expose }) {
+		setup(props, { slots, emit, expose }) {
 			expose({ close: () => emit('closed') });
-			return () => h('div', { 'data-modal': true, onKeydown: (event: KeyboardEvent) => {
+			return () => h('div', { 'data-modal': true, 'data-disable-bg-blur': String(props.disableBgBlur), onKeydown: (event: KeyboardEvent) => {
 				if (event.key === 'Escape') emit('esc', event);
 			} }, slots.default?.());
 		},
@@ -51,7 +52,7 @@ describe('UI切り替えモーダル', () => {
 	let assign: ReturnType<typeof vi.spyOn>;
 	let finishExit: () => void;
 	let cancelExit: ReturnType<typeof vi.fn>;
-	let animate: ReturnType<typeof vi.fn>;
+	let animate: ReturnType<typeof vi.fn<HTMLElement['animate']>>;
 
 	async function settle() {
 		await new Promise(resolve => setTimeout(resolve, 25));
@@ -63,6 +64,10 @@ describe('UI切り替えモーダル', () => {
 		app = createApp(MkUISetup, { embedded, onClosed: closed });
 		app.mount(host);
 		await nextTick();
+	}
+	function unmountCurrent() {
+		app?.unmount();
+		app = undefined;
 	}
 
 	function button(text: string) {
@@ -76,16 +81,18 @@ describe('UI切り替えモーダル', () => {
 		state.storage.set('ui', 'simple');
 		state.storage.set('ui_setup_completed', 'true');
 		state.prefer.s.animation = true;
+		state.prefer.s.useBlurEffect = true;
+		state.prefer.s.useBlurEffectForModal = true;
 		host = document.createElement('div');
 		document.body.append(host);
 		reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
 		assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {});
 		vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList);
-		animate = vi.fn(() => {
+		animate = vi.fn<HTMLElement['animate']>(() => {
 			let rejectExit: (reason?: unknown) => void;
 			const finished = new Promise<void>((resolve, reject) => { finishExit = resolve; rejectExit = reject; });
 			cancelExit = vi.fn(() => rejectExit());
-			return { finished, cancel: cancelExit };
+			return { finished, cancel: cancelExit } as unknown as Animation;
 		});
 		vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0));
 		vi.spyOn(HTMLElement.prototype, 'animate').mockImplementation(animate);
@@ -112,6 +119,24 @@ describe('UI切り替えモーダル', () => {
 		expect(assign).toHaveBeenCalledExactlyOnceWith('/');
 		button('Hataskey UI S').click();
 		expect(assign).toHaveBeenCalledTimes(1);
+	});
+
+	test('ガラス表示はぼかし設定に従い、背景のぼかしは共通モーダルへ任せる', async () => {
+		await mount();
+		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-glass')).toBe('true');
+		expect(host.querySelector('[data-modal]')?.getAttribute('data-disable-bg-blur')).toBe('false');
+		expect(host.textContent).toContain('HataskeyのデフォルトUIで使う楽しさを追求します');
+		expect(host.textContent).toContain('美しさと利便性を追求、S(Special)な体験を');
+		expect(host.textContent).not.toContain('Beta');
+		unmountCurrent();
+		state.prefer.s.useBlurEffectForModal = false;
+		await mount();
+		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-glass')).toBe('false');
+		unmountCurrent();
+		state.prefer.s.useBlurEffectForModal = true;
+		state.prefer.s.useBlurEffect = false;
+		await mount();
+		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-glass')).toBe('false');
 	});
 
 	test('非推奨UIは確認で戻れる。確定してから保存する', async () => {

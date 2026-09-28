@@ -85,7 +85,7 @@ const filesPaginator = markRaw(new Paginator('users/notes', {
 <style lang="scss" module>
 .tab {
 	padding: calc(var(--MI-margin) / 2) 0;
-	background: var(--MI_THEME-bg);
+	background: var(--MI-notes-surface, var(--MI_THEME-bg));
 	-webkit-backdrop-filter: var(--MI-blur, blur(15px));
 	backdrop-filter: var(--MI-blur, blur(15px));
 	transition: opacity 0.5s, background-color 0.5s;
@@ -102,8 +102,14 @@ const filesPaginator = markRaw(new Paginator('users/notes', {
 }
 
 .tl {
-	background: var(--MI_THEME-bg);
+	background: var(--MI-notes-canvas, var(--MI_THEME-bg));
 	border-radius: var(--MI-radius);
 	overflow: clip;
+}
+
+:global(html[data-hk3-ui]) .root {
+	--MI-notes-canvas: transparent;
+	--MI-notes-surface: var(--hk3-glass-note, color-mix(in srgb, var(--MI_THEME-panel) 70%, transparent));
+	--MI-notes-backdrop-filter: var(--MI-blur, blur(20px)) saturate(1.3);
 }
 </style>

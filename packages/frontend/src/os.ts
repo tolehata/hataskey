@@ -35,6 +35,8 @@ import { showMovedDialog } from '@/utility/show-moved-dialog.js';
 import { getHTMLElementOrNull } from '@/utility/get-dom-node-or-null.js';
 import { focusParent } from '@/utility/focus.js';
 import { enqueuePageStatusToast } from '@/utility/hataskey-notification-toast.js';
+import { captureHk3ComposerMenu } from '@/components/hataskey3/hk3-composer-menu.js';
+import type { Hk3ComposerMenuAppearance } from '@/components/hataskey3/hk3-composer-menu.js';
 
 export const openingWindowsCount = ref(0);
 
@@ -47,9 +49,10 @@ export const apiWithDialog = (<
 	data: P,
 	token?: string | null | undefined,
 	customErrors?: ApiWithDialogCustomErrors,
+	options?: { showSuccess?: boolean },
 ) => {
 	const promise = misskeyApi(endpoint, data, token);
-	promiseDialog(promise, null, async (err) => {
+	promiseDialog(promise, options?.showSuccess === false ? () => {} : null, async (err) => {
 		let title: string | undefined;
 		let text = err.message + '\n' + err.id;
 		if (err.code === 'INTERNAL_ERROR') {
@@ -694,11 +697,14 @@ export function popupMenu(items: (MenuItem | null)[], anchorElement?: HTMLElemen
 	width?: number;
 	onClosing?: () => void;
 	motionPreset?: 'postform';
+	appearance?: Hk3ComposerMenuAppearance;
 }): Promise<void> {
 	if (!(anchorElement instanceof HTMLElement)) {
 		anchorElement = null;
 	}
 
+	// The composer marker also opts in menus launched by shared attachment/MFM helpers.
+	const composerMenu = captureHk3ComposerMenu(anchorElement);
 	let returnFocusTo = getHTMLElementOrNull(anchorElement) ?? getHTMLElementOrNull(window.document.activeElement);
 	return new Promise(resolve => nextTick(() => {
 		const { dispose } = popup(MkPopupMenu, {
@@ -707,9 +713,12 @@ export function popupMenu(items: (MenuItem | null)[], anchorElement?: HTMLElemen
 			width: options?.width,
 			align: options?.align,
 			returnFocusTo,
-			motionPreset: options?.motionPreset,
+			motionPreset: options?.motionPreset ?? (composerMenu ? 'postform' : undefined),
+			appearance: options?.appearance ?? (composerMenu ? 'uiS-composer' : undefined),
+			appearanceStyle: composerMenu?.style,
 		}, {
 			closed: () => {
+				composerMenu?.release();
 				resolve();
 				dispose();
 				returnFocusTo = null;

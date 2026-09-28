@@ -10,6 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	v-hotkey="keymap"
 	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender && utageState === 'none' && !noteGlassActive, [$style.utageActive]: utageState !== 'none' && utageOutsideFrame }]"
 	:data-utage-state="utageState !== 'none' ? utageState : null"
+	:data-utage-motion="prefer.s.animation ? null : 'reduced'"
 	tabindex="0"
 >
 	<div v-if="pinned" :class="$style.tip"><i class="ti ti-pin"></i> {{ i18n.ts.pinnedNote }}</div>
@@ -66,11 +67,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<Mfm :text="getNoteSummary(appearNote)" :plain="true" :nowrap="true" :author="appearNote.user" :nyaize="'respect'" :class="[$style.collapsedRenoteTargetText, { [$style.showReplyTargetNoteInSemiTransparent]: prefer.s.showReplyTargetNoteInSemiTransparent }]" @click="renoteCollapsed ? renoteCollapsed = false : replyCollapsed ? replyCollapsed = false : ''"/>
 	</div>
 	<article v-else ref="utageArticle" :class="$style.article" :data-utage-square="(!utageOutsideFrame && utageState !== 'none') ? utageState : null" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
+		<span v-if="!utageOutsideFrame && (utageState === 'flashing' || utageState === 'failed' || utageState === 'success')" :class="$style.utageSurface" :data-utage-surface="utageState" aria-hidden="true"></span>
 		<!-- 旗鯖fork: C7 宴チュートリアル (自分の宴ノート初回のみ) -->
 		<MkTip v-if="showUtageTip" k="note.utage" style="margin-bottom: 8px;">
 			{{ utageCopy.tipBefore }}<b style="color: var(--MI_THEME-success);">{{ utageCopy.tipSuccess }}</b>{{ utageCopy.tipMiddle }}<b style="color: var(--MI_THEME-error);">{{ utageCopy.tipFailure }}</b>{{ utageCopy.tipAfter }}
 		</MkTip>
 		<div ref="utageBubble" :class="[$style.bubbleBody, { [$style.utageFlashing]: utageState === 'flashing' && utageOutsideFrame, [$style.utageReviving]: utageState === 'reviving' && utageOutsideFrame, [$style.utageFailed]: utageState === 'failed' && utageOutsideFrame, [$style.utageSuccess]: utageState === 'success' && utageOutsideFrame }]">
+		<span v-if="utageOutsideFrame && (utageState === 'flashing' || utageState === 'failed' || utageState === 'success')" :class="$style.utageSurface" :data-utage-surface="utageState" aria-hidden="true"></span>
 		<!-- 旗鯖fork: C7 宴 結果バッジ (吹き出し右下隅) -->
 		<div v-if="utageState === 'failed'" :class="[$style.utageBadge, $style.utageBadgeFailed]">{{ utageCopy.failed }}</div>
 		<div v-else-if="utageState === 'success'" :class="[$style.utageBadge, $style.utageBadgeSuccess]">{{ utageCopy.success }}</div>
@@ -456,7 +459,8 @@ const inChannel = inject('inChannel', null);
 // 旗鯖fork: C7 宴明滅機能。LTL表示中かどうか(MkStreamingNotesTimelineからprovide)。
 const inLocalTimeline = inject<Ref<boolean> | null>('inLocalTimeline', null);
 // 旗鯖fork(#1): 吹き出し表示が有効か(MkStreamingNotesTimelineからprovide)。
-// 宴枠(outline)を吹き出しON時は外側に、OFF時は内側(inset)に描くため。未提供時(=吹き出し文脈外)は内側にする。
+// 宴の着色面と復活枠の描画先を、吹き出しON時はbubbleBody、OFF時はarticleから選ぶ。
+// 未提供時(=吹き出し文脈外)はarticleにする。
 const noteBubbleEnabled = inject<Ref<boolean> | null>('noteBubbleEnabled', null);
 const utageOutsideFrame = computed(() => noteBubbleEnabled?.value ?? false);
 // 旗鯖fork: 背景ぼかし(glass)有効時は skipRender(content-visibility:auto)を付けない。
@@ -1271,9 +1275,8 @@ function emitUpdReaction(emoji: string, delta: number) {
 	}
 }
 
-/* 旗鯖fork: C7 宴 明滅/結果枠(outline)は要素の境界ボックス外に描画されるため、
-   .root の overflow:clip(および skipRender の content-visibility)に下端などをクリップされてしまう。
-   宴状態のノートに限り overflow を可視にして枠全体が見えるようにする(宴ノートは少数のため影響軽微)。 */
+/* 復活枠と失敗/復活の一時演出がノートの外へ出るため、
+   宴状態では .root の overflow:clip に切られないようにする。 */
 .utageActive {
 	overflow: visible;
 }
@@ -1404,53 +1407,58 @@ function emitUpdReaction(emoji: string, delta: number) {
 /* =======================================================================
    旗鯖fork: C7 宴(うたげ)明滅機能のスタイル
    ======================================================================= */
-/* 明滅中: 吹き出しの枠線(outline)の色を強弱させて脈動させる。
-   outlineは親のoverflow:clipに切られず、border-radiusにも沿うため両モードで安定して見える。
-   完全に透明にはせず薄く残すことで、チカチカせず「ふわっと脈打つ」目に優しい明滅にする。
-   主役は枠線の色。背景はごく薄く添えるだけ。--MI_THEME-accentはライト/ダーク両モードで
-   テーマの主色なので、不透明度の振り幅で両モードとも視認できる。 */
-/* 吹き出しON時の宴枠は .bubbleBody(=丸いカード)の外側(+2px)に丸い outline を描く。
-   吹き出しOFF(デッキ等の四角ノート)では代わりに .article[data-utage-square] で四角枠を描く。 */
-.utageFlashing {
-	border-radius: 16px;
-	outline: 2px solid transparent;
-	outline-offset: 2px;
-	animation: utageFlash 2.4s ease-in-out infinite;
+/* 面だけを着色し、文字・アバターの不透明度は変えない。
+   実要素なので失敗/復活演出の computed style snapshot にも反映できる。 */
+.utageFlashing, .utageFailed, .utageSuccess,
+.article[data-utage-square='flashing'],
+.article[data-utage-square='failed'],
+.article[data-utage-square='success'] {
+	isolation: isolate;
 }
 
-@keyframes utageFlash {
-	0%, 100% {
-		outline-color: color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent);
-		background: color-mix(in srgb, var(--MI_THEME-accent) 2%, transparent);
-	}
-	50% {
-		outline-color: color-mix(in srgb, var(--MI_THEME-accent) 92%, transparent);
-		background: color-mix(in srgb, var(--MI_THEME-accent) 9%, transparent);
-	}
+.utageFlashing, .utageFailed, .utageSuccess {
+	border-radius: 16px;
+}
+
+.utageSurface {
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	z-index: -1;
+	pointer-events: none;
+}
+
+.utageSurface[data-utage-surface='flashing'] {
+	background: var(--MI_THEME-accent);
+	opacity: 0.07;
+	animation: utageSurfacePulse 2.8s ease-in-out infinite;
+}
+
+@keyframes utageSurfacePulse {
+	0%, 100% { opacity: 0.07; }
+	50% { opacity: 0.21; }
+}
+
+.utageSurface[data-utage-surface='failed'] {
+	background: var(--MI_THEME-error);
+	opacity: 0.15;
+}
+
+.utageSurface[data-utage-surface='success'] {
+	background: var(--MI_THEME-success);
+	opacity: 0.15;
+}
+
+.root[data-utage-motion='reduced'] .utageSurface[data-utage-surface='flashing'] {
+	animation: none;
+	opacity: 0.14;
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.utageFlashing {
+	.utageSurface[data-utage-surface='flashing'] {
 		animation: none;
-		outline-color: color-mix(in srgb, var(--MI_THEME-accent) 70%, transparent);
-		background: color-mix(in srgb, var(--MI_THEME-accent) 7%, transparent);
+		opacity: 0.14;
 	}
-}
-
-/* 失敗: 赤色の枠 (固定、明滅しない) */
-.utageFailed {
-	border-radius: 16px;
-	outline: 2px solid color-mix(in srgb, var(--MI_THEME-error) 80%, transparent);
-	outline-offset: 2px;
-	background: color-mix(in srgb, var(--MI_THEME-error) 9%, transparent);
-}
-
-/* 成功: 緑色の枠で軽く強調 (固定、明滅しない) */
-.utageSuccess {
-	border-radius: 16px;
-	outline: 2px solid color-mix(in srgb, var(--MI_THEME-success) 75%, transparent);
-	outline-offset: 2px;
-	background: color-mix(in srgb, var(--MI_THEME-success) 8%, transparent);
 }
 
 .utageReviving {
@@ -1459,43 +1467,12 @@ function emitUpdReaction(emoji: string, delta: number) {
 	outline-offset: 2px;
 }
 
-/* 旗鯖fork(#1): 吹き出しOFF(デッキUI等、四隅が四角のノート)用の宴枠。
-   .article(=ノート本体の四角い箱)に inset の box-shadow で枠を描く。
-   inset なので隣のノートや他要素にはみ出さず、四角い枠なので四角ノートと形が一致する。
-   背景の淡い着色も .article 側で行う(.bubbleBody の着色は吹き出しON時のみ)。 */
+/* 吹き出しOFFでは article の四角い面へ着色する。復活枠は従来どおり残す。 */
 .article[data-utage-square] {
 	position: relative;
 }
-.article[data-utage-square='failed'] {
-	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-error) 80%, transparent);
-	background: color-mix(in srgb, var(--MI_THEME-error) 9%, transparent) !important;
-}
-.article[data-utage-square='success'] {
-	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-success) 75%, transparent);
-	background: color-mix(in srgb, var(--MI_THEME-success) 8%, transparent) !important;
-}
 .article[data-utage-square='reviving'] {
 	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-warn) 60%, transparent);
-}
-.article[data-utage-square='flashing'] {
-	animation: utageFlashInset 2.4s ease-in-out infinite;
-}
-@keyframes utageFlashInset {
-	0%, 100% {
-		box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent);
-		background: color-mix(in srgb, var(--MI_THEME-accent) 2%, transparent);
-	}
-	50% {
-		box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-accent) 92%, transparent);
-		background: color-mix(in srgb, var(--MI_THEME-accent) 9%, transparent);
-	}
-}
-@media (prefers-reduced-motion: reduce) {
-	.article[data-utage-square='flashing'] {
-		animation: none;
-		box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-accent) 70%, transparent);
-		background: color-mix(in srgb, var(--MI_THEME-accent) 7%, transparent);
-	}
 }
 
 /* 結果バッジ (右下隅)。背景に関わらず読めるよう、太字+縁取り(text-shadow)で表現。 */

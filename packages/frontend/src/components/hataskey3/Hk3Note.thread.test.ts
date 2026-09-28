@@ -20,12 +20,14 @@ vi.mock('@/events.js', () => ({ globalEvents: { emit: mocks.emit } }));
 vi.mock('@/i.js', () => ({ $i: { id: 'me' } }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: {
 	unrenote: 'Undo renote', cancel: 'Cancel', close: 'Close',
-	renote: 'Renote', quote: 'Quote', more: 'More',
+	renote: 'Renote', quote: 'Quote', more: 'More', reply: 'Reply',
 	_visibility: { public: 'Public', home: 'Home', followers: 'Followers', specified: 'Direct' },
+	_ffVisibility: { private: 'Private' },
 	_hata: { _hataskeyUi3: {
 		conversation: 'Conversation', reply: 'Reply', addReaction: 'React', toggleContent: 'Toggle content',
 		federateTitle: 'Federated', localOnlyTitle: 'Local only (this server)',
 		unrenoteConfirm: 'Undo this renote?', unrenoteConfirmAction: 'Confirm undo',
+		attachmentsOnly: 'Attachments only',
 	} },
 } } }));
 vi.mock('@/custom-emojis.js', () => ({ customEmojisMap: new Map() }));
@@ -70,12 +72,16 @@ vi.mock('./Hk3InstanceBadge.vue', () => ({ default: {
 type NoteFixture = {
 	id: string;
 	userId: string;
-	user: { id: string; username: string; host: string | null; instance?: { name: string } };
+	user: { id: string; username: string; host: string | null; instance?: { name: string }; badgeRoles?: { name: string; iconUrl: string | null; displayOrder: number }[] };
 	createdAt: string;
 	text: string | null;
 	cw: string | null;
 	renoteId: string | null;
 	renote?: NoteFixture;
+	replyId?: string | null;
+	reply?: NoteFixture;
+	isHidden?: boolean;
+	emojis?: Record<string, string>;
 	fileIds: string[];
 	files: never[];
 	visibility: Misskey.entities.Note['visibility'];
@@ -111,11 +117,13 @@ function mount(size: 'lg' | 'sm', instanceBadgePosition?: 'left' | 'right', remo
 	const app = createApp({ render: () => h(Hk3Note, { note: parent as unknown as Misskey.entities.Note, size, instanceBadgePosition, showAudienceIcons: audience.showAudienceIcons, showLocalOnlyIcon: audience.showLocalOnlyIcon }) });
 	app.component('MkA', { props: { to: String }, template: '<a :href="to"><slot /></a>' });
 	app.component('MkAvatar', { props: ['user'], template: '<span :data-avatar-user="user.id" />' });
-	for (const name of ['MkUserName', 'MkTime', 'MkLoading']) {
+	app.component('MkUserName', { props: ['user'], template: '<span>{{ user.username }}</span>' });
+	for (const name of ['MkTime', 'MkLoading']) {
 		app.component(name, { template: '<span><slot /></span>' });
 	}
-	app.component('Mfm', { props: ['text', 'nyaize'], template: '<span data-mfm :data-nyaize="String(nyaize)">{{ text }}</span>' });
+	app.component('Mfm', { props: ['text', 'nyaize', 'emojiUrls'], template: '<span data-mfm :data-nyaize="String(nyaize)" :data-emoji-urls="JSON.stringify(emojiUrls)">{{ text }}</span>' });
 	app.directive('user-preview', {});
+	app.directive('tooltip', {});
 	app.mount(target);
 	cleanups.push(() => { app.unmount(); target.remove(); });
 	return target;
@@ -133,6 +141,7 @@ beforeEach(() => {
 	mocks.api.mockImplementation((endpoint: string) => Promise.resolve(endpoint === 'notes/replies'
 		? [{ ...note('reply-b', 'b'), reactions: { '👍': 1 } }, note('reply-a', 'a')]
 		: undefined));
+	mocks.apiWithDialog.mockResolvedValue(undefined);
 	mocks.popupMenu.mockResolvedValue(undefined);
 	mocks.menu.mockReturnValue({ menu: [], cleanup: vi.fn() });
 	vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
@@ -145,7 +154,119 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
+describe('Hk3Note role badges', () => {
+	it.each(['lg', 'sm'] as const)('shows the author roles in the note and expanded reply (%s)', async size => {
+		const parent = note('parent', 'author');
+		parent.repliesCount = 1;
+		parent.user.badgeRoles = [
+			{ name: 'Author role', iconUrl: '/author-role.png', displayOrder: 0 },
+			{ name: 'No image', iconUrl: null, displayOrder: 1 },
+		];
+		const reply = note('reply', 'reply-author');
+		reply.user.badgeRoles = [{ name: 'Reply role', iconUrl: '/reply-role.png', displayOrder: 0 }];
+		mocks.api.mockResolvedValue([reply]);
+		const target = mount(size, undefined, false, { note: parent });
+		button(target, 'Conversation').click();
+		await settle();
+		const parentBadges = target.querySelectorAll<HTMLImageElement>('[data-note-id="parent"] > article header img[alt]');
+		expect([...parentBadges].map(img => [img.getAttribute('src'), img.alt])).toEqual([['/author-role.png', 'Author role']]);
+		const replyBadges = target.querySelectorAll<HTMLImageElement>('[data-note-id="reply"] > article header img[alt]');
+		expect([...replyBadges].map(img => [img.getAttribute('src'), img.alt])).toEqual([['/reply-role.png', 'Reply role']]);
+	});
+
+	it('shows the original author role on a pure renote', () => {
+		const original = note('original', 'original-author');
+		original.user.badgeRoles = [{ name: 'Original role', iconUrl: '/original-role.png', displayOrder: 0 }];
+		const renote = { ...note('renote', 'renoter', null), renoteId: original.id, renote: original };
+		renote.user.badgeRoles = [{ name: 'Renoter role', iconUrl: '/renoter-role.png', displayOrder: 0 }];
+		const target = mount('lg', undefined, false, { note: renote });
+		const badges = target.querySelectorAll<HTMLImageElement>('[data-note-id="renote"] > article header img[alt]');
+		expect([...badges].map(img => [img.getAttribute('src'), img.alt])).toEqual([['/original-role.png', 'Original role']]);
+	});
+
+	it.each([undefined, [], [{ name: 'No image', iconUrl: null, displayOrder: 0 }]])('leaves no role element when badgeRoles is %j', badgeRoles => {
+		const plain = note('plain');
+		plain.user.badgeRoles = badgeRoles;
+		const target = mount('sm', undefined, false, { note: plain });
+		const header = target.querySelector('[data-note-id="plain"] > article header')!;
+		expect(header.querySelector('img')).toBeNull();
+		expect(header.children).toHaveLength(3);
+	});
+});
+
+describe('Hk3Note quote previews', () => {
+	it.each(['lg', 'sm'] as const)('links to the quoted note and shows its CW with its emoji map (%s)', size => {
+		const original = { ...note('quoted', 'quoted-author', 'hidden body'), cw: 'CW :flower:', emojis: { flower: '/emoji/flower.png' } };
+		const parent = { ...note('parent', 'author', 'my comment'), renoteId: original.id, renote: original };
+		const target = mount(size, undefined, false, { note: parent });
+		const preview = target.querySelector<HTMLAnchorElement>('a[href="/notes/quoted"]')!;
+		expect(preview).not.toBeNull();
+		expect(preview.textContent).toContain('CW :flower:');
+		expect(preview.textContent).not.toContain('hidden body');
+		expect(preview.querySelector('[data-mfm]')?.getAttribute('data-emoji-urls')).toBe(JSON.stringify(original.emojis));
+		expect(preview.querySelector('svg')).not.toBeNull();
+	});
+
+	it.each(['lg', 'sm'] as const)('does not reveal a hidden quote and keeps the attachment fallback (%s)', size => {
+		const hidden = { ...note('hidden', 'quoted-author', 'private body'), cw: 'private CW', isHidden: true };
+		const parent = { ...note('parent', 'author', 'my comment'), renoteId: hidden.id, renote: hidden };
+		const target = mount(size, undefined, false, { note: parent });
+		const preview = target.querySelector<HTMLAnchorElement>('a[href="/notes/hidden"]')!;
+		expect(preview.textContent).toContain('Private');
+		expect(preview.textContent).not.toContain('private body');
+		expect(preview.textContent).not.toContain('private CW');
+		expect(preview.querySelector('[data-mfm]')).toBeNull();
+		const attachment = { ...note('attachment', 'quoted-author', null) };
+		const attachmentParent = { ...note('attachment-parent', 'author', 'my comment'), renoteId: attachment.id, renote: attachment };
+		const attachmentTarget = mount(size, undefined, false, { note: attachmentParent });
+		expect(attachmentTarget.querySelector('a[href="/notes/attachment"]')?.textContent).toContain('Attachments only');
+	});
+});
+
+describe('Hk3Note reply previews', () => {
+	it.each(['lg', 'sm'] as const)('links to the reply target and prioritizes its CW in %s', size => {
+		const original = { ...note('reply-target', 'author', 'body should stay hidden'), cw: 'CW :flower:', emojis: { flower: '/emoji/flower.png' } };
+		original.user.host = 'remote.example';
+		const target = mount(size, undefined, false, { note: { ...note('reply'), replyId: original.id, reply: original } });
+		const preview = target.querySelector<HTMLAnchorElement>('a[href="/notes/reply-target"]')!;
+		expect(preview).not.toBeNull();
+		expect(preview.textContent).toContain('Reply');
+		expect(preview.textContent).toContain('author');
+		expect(preview.textContent).toContain('@author@remote.example');
+		expect(preview.textContent).toContain('CW :flower:');
+		expect(preview.textContent).not.toContain('body should stay hidden');
+		expect(preview.querySelector('[data-mfm]')?.getAttribute('data-emoji-urls')).toBe(JSON.stringify(original.emojis));
+	});
+
+	it('does not leak a hidden reply target', () => {
+		const original = { ...note('hidden-target', 'author', 'private body'), cw: 'private CW', isHidden: true };
+		const target = mount('sm', undefined, false, { note: { ...note('reply'), replyId: original.id, reply: original } });
+		const preview = target.querySelector<HTMLAnchorElement>('a[href="/notes/hidden-target"]')!;
+		expect(preview.textContent).toContain('Private');
+		expect(preview.textContent).not.toContain('private body');
+		expect(preview.textContent).not.toContain('private CW');
+		expect(preview.querySelector('[data-mfm]')).toBeNull();
+	});
+
+	it('keeps a link and reply label when only replyId is available', () => {
+		const target = mount('sm', undefined, false, { note: { ...note('reply'), replyId: 'missing-target' } });
+		const preview = target.querySelector<HTMLAnchorElement>('a[href="/notes/missing-target"]')!;
+		expect(preview).not.toBeNull();
+		expect(preview.textContent).toContain('Reply');
+		expect(preview.textContent).not.toContain('@');
+	});
+});
+
 describe('Hk3Note expanded replies', () => {
+	it('does not repeat the reply preview inside the expanded child', async () => {
+		const parent = { ...note('parent', 'author'), repliesCount: 1 };
+		mocks.api.mockResolvedValueOnce([{ ...note('child'), replyId: parent.id, reply: parent }]);
+		const target = mount('sm', undefined, false, { note: parent });
+		button(target, 'Conversation').click();
+		await settle();
+		expect(target.querySelector('[data-note-id="child"] a[href="/notes/parent"]')).toBeNull();
+	});
+
 	it.each([
 		['lg', 'left'], ['sm', 'left'], ['sm', undefined],
 	] as const)('keeps the server badge placement for notes and replies (%s, %s)', async (size, position) => {
@@ -182,12 +303,13 @@ describe('Hk3Note expanded replies', () => {
 			expect(mocks.picker.mock.lastCall?.[1].id).toBe(id);
 			await mocks.picker.mock.lastCall?.[2]('❤️');
 			await settle();
-			expect(mocks.api).toHaveBeenLastCalledWith('notes/reactions/create', { noteId: id, reaction: '❤️' });
+			expect(mocks.apiWithDialog).toHaveBeenLastCalledWith('notes/reactions/create', { noteId: id, reaction: '❤️' }, undefined, undefined, { showSuccess: false });
 		}
 		const chip = target.querySelector<HTMLButtonElement>('[data-note-id="reply-b"] button[data-reaction="👍"]')!;
 		chip.click();
 		await settle();
-		expect(mocks.api).toHaveBeenLastCalledWith('notes/reactions/create', { noteId: 'reply-b', reaction: '👍' });
+		expect(mocks.apiWithDialog).toHaveBeenLastCalledWith('notes/reactions/create', { noteId: 'reply-b', reaction: '👍' }, undefined, undefined, { showSuccess: false });
+		expect(mocks.apiWithDialog).toHaveBeenCalledTimes(3);
 		expect(target.querySelector('a button')).toBeNull();
 		expect(mocks.post.mock.calls.every(([options]) => options.reply.id !== 'parent')).toBe(true);
 	});
@@ -336,6 +458,8 @@ describe('UI S text menu state', () => {
 	});
 	it('updates CW/body nyaize from menu and global preference without revealing a closed CW', async () => {
 		const target = mount('lg', undefined, false, { note: { ...note('cw', 'author'), cw: 'CW text', text: 'private body' } });
+		target.querySelector('[data-note-id="cw"]')!.dispatchEvent(new MouseEvent('mouseenter'));
+		await settle();
 		button(target, 'More').click();
 		const state = mocks.menu.mock.lastCall![0];
 		state.viewTextSource.value = true;

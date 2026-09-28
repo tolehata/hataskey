@@ -54,3 +54,24 @@ describe('右ウィジェットバーの端末ローカルな開閉', () => {
 		expect(values.get('hataRightWidgetsCollapsed')).toBe('false');
 	});
 });
+
+describe('UI S の端末ローカルな表示サイズ', () => {
+	beforeEach(() => { vi.resetModules(); storage.setItem.mockReset(); storage.getItem.mockReset(); });
+
+	test.each([['small', 'small'], ['standard', 'standard'], [null, 'standard'], ['invalid', 'standard']] as const)('保存値 %s を復元する', async (saved, expected) => {
+		storage.getItem.mockImplementation(key => key === 'hataskeyUiSDisplaySize' ? saved : null);
+		const { hataskeyUiSDisplaySize } = await import('./hatasaba-device-prefs.js');
+		expect(hataskeyUiSDisplaySize.value).toBe(expected);
+	});
+
+	test('変更と既定への戻しを専用キーへ即時保存する', async () => {
+		storage.getItem.mockReturnValue(null);
+		const { hataskeyUiSDisplaySize, setHataskeyUiSDisplaySize } = await import('./hatasaba-device-prefs.js');
+		setHataskeyUiSDisplaySize('small');
+		expect(hataskeyUiSDisplaySize.value).toBe('small');
+		expect(storage.setItem).toHaveBeenCalledWith('hataskeyUiSDisplaySize', 'small');
+		setHataskeyUiSDisplaySize('standard');
+		expect(hataskeyUiSDisplaySize.value).toBe('standard');
+		expect(storage.setItem).toHaveBeenLastCalledWith('hataskeyUiSDisplaySize', 'standard');
+	});
+});

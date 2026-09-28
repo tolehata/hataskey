@@ -120,7 +120,7 @@ defineProps<{
 	left: 19px;
 	width: 31px;
 	height: 30px;
-	color: var(--MI_THEME-warn, var(--MI_THEME-accent));
+	color: var(--hata-toast-fg, var(--MI_THEME-fg));
 }
 
 // Lucide trash-2 at 30px: its lid ends near local y9; the body starts there.

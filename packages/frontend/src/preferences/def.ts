@@ -768,6 +768,14 @@ export const PREF_DEF = definePreferences({
         showDrawingButtonInPostForm: {
 		default: true,
 	},
+	hataskeyUi3TimelineBackground: { default: true },
+	hataskeyUi3SideMenuBackground: { default: true },
+	hataskeyUi3RightPaneBackground: { default: true },
+	hataskeyUi3GlassDensity: { default: 'light' as 'light' | 'dense' },
+	// null は旧 simpleUi.bottomNav の読み取り互換。UI S の編集は専用キーに保存する。
+	hataskeyUi3BottomNav: {
+		default: null as { id: string; icon?: string; label?: string; visible?: boolean }[] | null,
+	},
 	// 旗鯖fork: Hataskey UI 3 の投稿欄に置く、よく使う機能のショートカット2枠('none' の枠は＋ボタン)。
 	hataskeyUi3ComposerShortcut1: {
 		default: 'none' as string,

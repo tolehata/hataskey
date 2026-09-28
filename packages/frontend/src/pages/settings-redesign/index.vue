@@ -20,7 +20,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button type="button" :class="$style.compactBack" :aria-label="i18n.ts.goBack" @click="goCompactBack"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
 					<!-- 旗鯖fork: しばらく何も変えていないときだけ、検索の在り処をそっと出す。
 					     ⚠️出しっぱなしにしないこと。題として読めなくなる。8秒で戻す。 -->
-					<h1 :class="$style.compactTitle"><Transition name="settings-title" :css="motionEnabled" mode="out-in"><span v-if="showSearchHint" key="settings-search-hint" :class="$style.compactHint" @click="openSearch">{{ copy.searchHint }}<span :class="$style.compactHintArrow" aria-hidden="true">＞</span></span><span v-else :key="mobilePageTitle" :class="{ settingsBrand: hasSettingsBrand(mobilePageTitle) }">{{ mobilePageTitle }}</span></Transition></h1>
+					<h1 v-if="!hideShellTitle" :class="$style.compactTitle"><Transition name="settings-title" :css="motionEnabled" mode="out-in"><span v-if="showSearchHint" key="settings-search-hint" :class="$style.compactHint" @click="openSearch">{{ copy.searchHint }}<span :class="$style.compactHintArrow" aria-hidden="true">＞</span></span><span v-else :key="mobilePageTitle" :class="{ settingsBrand: hasSettingsBrand(mobilePageTitle) }">{{ mobilePageTitle }}</span></Transition></h1>
+					<div v-else :class="$style.compactTitle">
+						<button v-if="showSearchHint" type="button" :class="[$style.compactHint, $style.compactHintButton]" @click="openSearch">{{ copy.searchHint }}<span :class="$style.compactHintArrow" aria-hidden="true">＞</span></button>
+					</div>
 						<!-- 旗鯖fork: ⚠️右側のボタンは1つの箱にまとめること。
 						     ⚠️列を足すたびに題の軸がずれる（虫眼鏡を足したときに実際にずれた）。
 						     ⚠️左右の列を同じ幅にして、真ん中の題を器の中央へ固定する。 -->
@@ -42,7 +45,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</template>
 			<template v-else>
 				<button v-if="tablet" type="button" :class="$style.compactBack" :aria-label="i18n.ts.goBack" @click="goSettingsBack"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
-				<h1 :class="$style.title">{{ i18n.ts.settings }}</h1>
+				<h1 v-if="!hideShellTitle" :class="$style.title">{{ i18n.ts.settings }}</h1>
 				<button ref="searchButtonEl" type="button" :class="$style.searchTrigger" @click="openSearch">
 					<i class="ti ti-search" aria-hidden="true"></i>
 					<span :class="$style.searchLabel">{{ copy.searchTrigger }}</span>
@@ -243,7 +246,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, provide, ref, unref, useTemplateRef, watch } from 'vue';
+import type { MaybeRef } from 'vue';
 import SettingsSearchPanel from './SettingsSearchPanel.vue';
 import SettingsNavigationNotice from './SettingsNavigationNotice.vue';
 import SettingsRelatedLinks from './SettingsRelatedLinks.vue';
@@ -310,6 +314,8 @@ type ExactNavigationElement =
 
 const copy = i18n.ts._hata._settingsRedesign;
 const copyx = i18n.tsx._hata._settingsRedesign;
+const omitHeaderTitle = inject<MaybeRef<boolean>>('shouldOmitHeaderTitle', false);
+const hideShellTitle = computed(() => unref(omitHeaderTitle));
 
 const settingsCatalogPresentation: SettingsCatalogPresentationV2 = {
 	categoryLabels: {
@@ -1914,8 +1920,8 @@ function onShellWheel(ev: WheelEvent) {
 
 let previousShellWidth: number | null = null;
 
-function updateCompact() {
-	const width = rootEl.value?.offsetWidth ?? 0;
+function updateCompact(width: number) {
+	if (!(width > 0)) return;
 	if (width !== previousShellWidth) navMotion.cancel();
 	previousShellWidth = width;
 	compact.value = width <= 680;
@@ -1973,7 +1979,9 @@ function settingsExitRoute(): string {
 	return previous != null && !isSettingsFullPath(previous) ? previous : '/';
 }
 
-const resizeObserver = new ResizeObserver(updateCompact);
+const resizeObserver = new ResizeObserver(([entry]) => {
+	if (entry != null) updateCompact(entry.contentRect.width);
+});
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 let shellListenersActive = false;
 
@@ -1983,14 +1991,21 @@ function syncReducedMotion(event?: MediaQueryListEvent) {
 
 function activateShell() {
 	settingsSurfaceLeaveGuard.install();
+	const root = rootEl.value;
 	if (!shellListenersActive) {
-		if (rootEl.value != null) resizeObserver.observe(rootEl.value);
+		if (root != null) resizeObserver.observe(root);
 		window.addEventListener('keydown', onGlobalKeydown);
 		reducedMotionQuery.addEventListener('change', syncReducedMotion);
 		shellListenersActive = true;
 	}
 	syncReducedMotion();
-	updateCompact();
+	if (root != null) {
+		const style = getComputedStyle(root);
+		const width = root.getBoundingClientRect().width
+			- parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth)
+			- parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+		updateCompact(width);
+	}
 }
 
 function deactivateShell() {
@@ -2192,6 +2207,7 @@ definePage(() => indexInfo);
 }
 
 .compactHint { display: inline-block; overflow: hidden; max-inline-size: 100%; color: var(--MI_THEME-fg); cursor: pointer; font-size: 1rem; font-weight: 700; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.compactHintButton { padding: 0; border: 0; background: transparent; }
 .compactBack, .compactPreview { display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: 1.15rem; touch-action: manipulation; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } }
 .compactPreview { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, var(--settings-surface, var(--MI_THEME-panel))); color: var(--MI_THEME-accent); }
 .compactTitle { overflow: hidden; margin: 0; color: var(--MI_THEME-fg); font-size: 1.375rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; text-align: center; text-overflow: ellipsis; white-space: nowrap; }

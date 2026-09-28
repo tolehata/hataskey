@@ -3,8 +3,8 @@ SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
-<component :is="embedded ? SettingsEmbeddedWindow : MkModal" ref="modal" :preferType="'dialog'" :disableBgBlur="true" @click="onBackdropClick" @esc="onEscape" @closed="emit('closed')">
-	<div ref="panel" :class="$style.root" role="dialog" :aria-modal="embedded ? undefined : true" aria-labelledby="mkuisetup-title" :data-animation="prefer.s.animation ? 'true' : 'false'" :data-embedded-scroll="embedded ? '' : undefined" @click.stop @keydown.esc.stop.prevent="onEscape">
+<component :is="embedded ? SettingsEmbeddedWindow : MkModal" ref="modal" :preferType="'dialog'" @click="onBackdropClick" @esc="onEscape" @closed="emit('closed')">
+	<div ref="panel" :class="$style.root" role="dialog" :aria-modal="embedded ? undefined : true" aria-labelledby="mkuisetup-title" :data-animation="prefer.s.animation ? 'true' : 'false'" :data-glass="prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal ? 'true' : 'false'" :data-embedded-scroll="embedded ? '' : undefined" @click.stop @keydown.esc.stop.prevent="onEscape">
 		<header :class="$style.header">
 			<h1 id="mkuisetup-title" :class="$style.title"><ChevronsLeftRight :size="16" aria-hidden="true" :class="$style.swapIcon"/>{{ copy.title }}</h1>
 			<button type="button" :class="$style.close" :aria-label="i18n.ts.close" :disabled="busy" @click="close"><X :size="20" aria-hidden="true"/></button>
@@ -21,7 +21,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</button>
 				<button type="button" data-ui="hataskey3" :class="[$style.option, { [$style.selected]: currentUi === 'hataskey3' }]" :aria-pressed="currentUi === 'hataskey3'" :disabled="busy" @click="choose('hataskey3')">
 					<PanelsTopLeft :size="22" aria-hidden="true" :class="$style.optionIcon"/>
-					<span :class="[$style.optionName, $style.brandName]">Hataskey UI S<span :class="$style.beta">{{ copy.beta }}</span></span>
+					<span :class="[$style.optionName, $style.brandName]">Hataskey UI S</span>
 					<span :class="$style.description">{{ copy.ui3Description }}</span>
 					<span :class="$style.optionEnd"><span v-if="currentUi === 'hataskey3'">{{ i18n.ts.inUse }}</span><ChevronRight v-else :size="16" aria-hidden="true"/></span>
 				</button>
@@ -180,15 +180,23 @@ onBeforeUnmount(() => {
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	margin: auto;
-	border: 1px solid var(--line);
-	border-radius: 16px;
+	border: 1px solid color-mix(in srgb, var(--MI_THEME-panel) 48%, var(--line));
+	border-radius: 20px;
 	background: var(--surface);
 	color: var(--foreground);
+	box-shadow: 0 22px 64px color-mix(in srgb, var(--MI_THEME-fg) 18%, transparent);
 	text-align: center;
 	caret-color: transparent;
-	-webkit-backdrop-filter: none;
-	backdrop-filter: none;
 	transform-origin: center;
+}
+.root[data-glass='true'] {
+	--surface: color-mix(in srgb, var(--MI_THEME-panel) 86%, transparent);
+	--soft: color-mix(in srgb, var(--MI_THEME-accent) 12%, var(--MI_THEME-panel) 58%);
+	-webkit-backdrop-filter: blur(22px) saturate(1.16);
+	backdrop-filter: blur(22px) saturate(1.16);
+}
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+	.root[data-glass='true'] { --surface: var(--MI_THEME-panel); }
 }
 .root * { box-sizing: border-box; }
 .root svg { stroke-width: 1.7; }
@@ -209,8 +217,7 @@ onBeforeUnmount(() => {
 .optionName { position: relative; font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .brandName { font-family: 'Righteous', system-ui, sans-serif; font-size: 17px; font-weight: 400; }
 .recommended { position: absolute; top: 50%; left: 100%; transform: translateY(-50%); margin-left: 6px; padding: 2px 5px; border-radius: 4px; background: var(--surface); color: var(--muted); font-family: system-ui, sans-serif; font-size: 10px; font-weight: 500; white-space: nowrap; }
-.beta { position: absolute; top: 50%; left: 100%; transform: translateY(-50%); margin-left: 6px; padding: 2px 5px; border-radius: 4px; background: var(--accent); color: var(--surface); font-family: system-ui, sans-serif; font-size: 10px; font-weight: 700; white-space: nowrap; }
-.description { color: var(--muted); font-size: 12px; }
+.description { color: var(--muted); font-size: 12px; line-break: strict; text-wrap: pretty; }
 .optionEnd { display: inline-flex; align-items: center; min-height: 19px; color: var(--muted); font-size: 12px; }
 .selected .optionEnd { color: var(--foreground); font-weight: 700; }
 .legacy { margin-top: 20px; padding-top: 8px; border-top: 1px solid var(--line); }

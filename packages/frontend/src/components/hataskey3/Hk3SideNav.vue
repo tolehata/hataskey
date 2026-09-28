@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 Hataskey UI 3: 左メニュー。HataSideStudio の有効プロファイル(拡大/縮小)をそのまま描画する。
 -->
 <template>
-<nav :class="$style.root" :data-mode="collapsed ? 'collapsed' : 'expanded'" :aria-label="copy.menu">
+<nav :class="$style.root" :data-glass="prefer.r.hataskeyUi3SideMenuBackground.value ? 'true' : undefined" :data-seamless="seamless ? 'true' : undefined" :data-mode="collapsed ? 'collapsed' : 'expanded'" :data-reduce-motion="!prefer.r.animation.value ? 'true' : undefined" :aria-label="copy.menu">
 	<button type="button" :class="$style.brand" :title="instanceName" aria-haspopup="menu" :aria-expanded="instanceMenuOpen" @click="openInstanceMenu">
 		<img :src="instance.iconUrl || '/favicon.ico'" alt="" :class="$style.brandIcon"/>
 	</button>
@@ -94,8 +94,10 @@ import MkLaunchPad from '@/components/MkLaunchPad.vue';
 import * as os from '@/os.js';
 import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
+import { prefer } from '@/preferences.js';
 import { instance } from '@/instance.js';
 import { mainRouter } from '@/router.js';
+import { pushAcceptedSidePage } from './use-hk3-side-page.js';
 import { navbarItemDef } from '@/navbar.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { getAccountMenu } from '@/accounts.js';
@@ -107,12 +109,14 @@ import { getHataSideWidgetDisplayLabel, HATA_SIDE_WIDGET_REGISTRY } from '@/util
 
 withDefaults(defineProps<{
 	collapsed?: boolean;
+	seamless?: boolean;
 	isDeck?: boolean;
 	deckAvailable?: boolean;
 	postOpen?: boolean;
 	dark?: boolean;
 }>(), {
 	collapsed: false,
+	seamless: false,
 	isDeck: false,
 	deckAvailable: true,
 	postOpen: false,
@@ -123,7 +127,7 @@ const emit = defineEmits<{
 	(ev: 'post'): void;
 	(ev: 'toggleTheme'): void;
 	(ev: 'mode', deck: boolean): void;
-	(ev: 'navigate'): void;
+	(ev: 'navigate', to?: string): void;
 	(ev: 'launchPadOpen', open: boolean): void;
 	(ev: 'instanceMenuOpen', open: boolean): void;
 }>();
@@ -241,8 +245,8 @@ function widgetMinHeight(widget: HataSideWidget): number {
 }
 
 function go(to: string) {
-	emit('navigate');
-	mainRouter.pushByPath(to as never);
+	const actual = pushAcceptedSidePage(mainRouter, to);
+	if (actual !== undefined) emit('navigate', actual);
 }
 
 const launchPadOpen = ref(false);
@@ -344,16 +348,35 @@ function openAccountMenu(ev: MouseEvent) {
 	height: 100%;
 	min-height: 0;
 	background: var(--hk3-bg);
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
 	color: var(--hk3-text);
-	border-right: 2px solid var(--hk3-divider);
+	border-right: 0;
 	overflow: hidden;
 	box-sizing: border-box;
+
+	&[data-glass] {
+		background: var(--hk3-glass-pane, var(--hk3-bg));
+		-webkit-backdrop-filter: blur(16px);
+		backdrop-filter: blur(16px);
+	}
+
+	&[data-seamless] {
+		background: transparent;
+		border-right: 0;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+
+	&[data-mode="collapsed"] {
+		.brand, .railItem { border-bottom: 0; }
+	}
 }
 
 .brand {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: calc(10px * var(--hk3-ui-scale, 1));
 	height: 58px;
 	flex: none;
 	border: 0;
@@ -392,17 +415,24 @@ function openAccountMenu(ev: MouseEvent) {
 
 .blockName {
 	@include sideNavItem.heading;
+	padding: calc(10px * var(--hk3-ui-scale, 1)) calc(14px * var(--hk3-ui-scale, 1)) calc(4px * var(--hk3-ui-scale, 1));
+	font-size: calc(11px * var(--hk3-ui-scale, 1));
 }
 
 .grid { display: grid; }
 
 .item {
 	@include sideNavItem.frame;
+	--hk3-side-icon-size: calc(22px * var(--hk3-ui-scale, 1));
+	gap: calc(6px * var(--hk3-ui-scale, 1));
+	height: max(44px, calc(72px * var(--hk3-ui-scale, 1)));
+	min-height: max(44px, calc(72px * var(--hk3-ui-scale, 1)));
+	padding: 0 calc(4px * var(--hk3-ui-scale, 1));
+	border-right: 0;
 	cursor: pointer;
 	font: inherit;
-
-	&[data-active] { background: var(--hk3-accent-100); color: var(--hk3-accent-800); }
-	&:hover { background: var(--hk3-accent-100); color: var(--hk3-accent-800); }
+	&[data-size="small"] { --hk3-side-icon-size: calc(20px * var(--hk3-ui-scale, 1)); height: max(44px, calc(52px * var(--hk3-ui-scale, 1))); min-height: max(44px, calc(52px * var(--hk3-ui-scale, 1))); }
+	&[data-size="large"] { height: max(44px, calc(84px * var(--hk3-ui-scale, 1))); min-height: max(44px, calc(84px * var(--hk3-ui-scale, 1))); }
 }
 
 .itemIcon {
@@ -414,18 +444,26 @@ function openAccountMenu(ev: MouseEvent) {
 
 .itemLabel {
 	@include sideNavItem.label;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
 }
 
-.item[data-menu-id="cacheClear"] .itemLabel { @include sideNavItem.cache-clear-label; }
-.item[data-menu-id="earthquake"] .itemLabel { @include sideNavItem.earthquake-label; }
+.item[data-menu-id="cacheClear"] .itemLabel {
+	@include sideNavItem.cache-clear-label;
+	font-size: min(calc(12px * var(--hk3-ui-scale, 1)), calc(var(--hk3-cache-label-size, 10.5cqi) * var(--hk3-ui-scale, 1)));
+	@container (min-width: 140px) { font-size: calc(12px * var(--hk3-ui-scale, 1)); }
+}
+.item[data-menu-id="earthquake"] .itemLabel {
+	@include sideNavItem.earthquake-label;
+	font-size: clamp(calc(9px * var(--hk3-ui-scale, 1)), calc(14cqi * var(--hk3-ui-scale, 1)), calc(12px * var(--hk3-ui-scale, 1)));
+}
 
 .badge, .railBadge {
 	position: absolute;
 	background: var(--hk3-accent);
 	color: var(--hk3-bg);
-	font-size: 11px;
+	font-size: calc(11px * var(--hk3-ui-scale, 1));
 	font-weight: 800;
-	padding: 1px 5px;
+	padding: 1px calc(5px * var(--hk3-ui-scale, 1));
 	line-height: 1.4;
 }
 
@@ -440,7 +478,7 @@ function openAccountMenu(ev: MouseEvent) {
 .widget {
 	position: relative;
 	min-width: 0;
-	border-right: 1px solid var(--hk3-divider);
+	border-right: 0;
 	border-bottom: 1px solid var(--hk3-divider);
 	overflow: hidden;
 
@@ -449,8 +487,8 @@ function openAccountMenu(ev: MouseEvent) {
 
 .widgetFallback {
 	display: block;
-	padding: 14px;
-	font-size: 13px;
+	padding: calc(14px * var(--hk3-ui-scale, 1));
+	font-size: calc(13px * var(--hk3-ui-scale, 1));
 	font-weight: 700;
 }
 
@@ -465,21 +503,18 @@ function openAccountMenu(ev: MouseEvent) {
 	align-items: center;
 	justify-content: center;
 	width: 100%;
-	height: 56px;
+	height: max(44px, calc(56px * var(--hk3-ui-scale, 1)));
 	padding: 0;
 	border: 0;
 	border-bottom: 1px solid var(--hk3-divider);
 	background: transparent;
 	color: var(--hk3-text);
 	cursor: pointer;
-
-	&[data-active] { background: var(--hk3-accent-100); color: var(--hk3-accent-800); }
-	&:hover { background: var(--hk3-accent-100); color: var(--hk3-accent-800); }
 }
 
 .railIcon {
 	display: block;
-	font-size: 22px;
+	font-size: calc(22px * var(--hk3-ui-scale, 1));
 	line-height: 22px;
 
 	.railItem[data-active] & { color: var(--hk3-accent); }
@@ -488,24 +523,38 @@ function openAccountMenu(ev: MouseEvent) {
 .railBadge {
 	top: 9px;
 	left: calc(50% + 5px);
-	font-size: 10px;
-	padding: 0 4px;
+	font-size: calc(10px * var(--hk3-ui-scale, 1));
+	padding: 0 calc(4px * var(--hk3-ui-scale, 1));
 }
 
 .foot {
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
-	padding: 12px;
+	gap: calc(10px * var(--hk3-ui-scale, 1));
+	padding: calc(12px * var(--hk3-ui-scale, 1));
 	flex: none;
 	border-top: 2px solid var(--hk3-divider);
 }
 
 .post {
+	position: relative;
 	height: 44px;
 	border: 0;
 	background: var(--hk3-accent);
 	color: var(--hk3-bg);
+	&::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		padding: 2px;
+		pointer-events: none;
+		background: linear-gradient(135deg,
+			color-mix(in srgb, var(--hk3-accent) 65%, var(--hk3-bg)),
+			var(--hk3-accent-100) 50%,
+			color-mix(in srgb, var(--hk3-accent) 75%, var(--hk3-text)));
+		mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+		mask-composite: exclude;
+	}
 	cursor: pointer;
 	display: grid;
 	place-items: center;
@@ -514,8 +563,23 @@ function openAccountMenu(ev: MouseEvent) {
 }
 
 .trio, .pair {
+	position: relative;
+	isolation: isolate;
 	display: grid;
-	border: 1px solid var(--hk3-divider);
+	border: 1px solid transparent;
+
+	// 寸法とボタンの選択背景を保ち、外枠だけを柔らかくする。
+	&::before {
+		content: '';
+		position: absolute;
+		inset: 2px;
+		z-index: -1;
+		border: 1px solid var(--hk3-divider);
+		border-radius: 6px;
+		filter: blur(1.5px);
+		opacity: 0.85;
+		pointer-events: none;
+	}
 }
 
 .trio { grid-template-columns: 1fr 1fr 1fr; }
@@ -531,24 +595,65 @@ function openAccountMenu(ev: MouseEvent) {
 	display: grid;
 	place-items: center;
 
-	& + & { border-left: 1px solid var(--hk3-divider); }
-	[data-stack] > & + & { border-left: 0; border-top: 1px solid var(--hk3-divider); }
-}
-
-.footBtn {
-	&[data-active] { background: var(--hk3-text); color: var(--hk3-bg); }
-	&:hover:not([data-active]) { background: var(--hk3-accent-100); color: var(--hk3-accent-800); }
+	& + & { border-left: 1px solid color-mix(in srgb, var(--hk3-divider) 70%, transparent); }
+	[data-stack] > & + & { border-left: 0; border-top: 1px solid color-mix(in srgb, var(--hk3-divider) 70%, transparent); }
 }
 
 .modeBtn {
-	&[data-on] { background: var(--hk3-text); color: var(--hk3-bg); }
 	&:disabled { opacity: 0.45; cursor: default; }
+}
+
+.item, .railItem, .footBtn, .modeBtn {
+	position: relative;
+	isolation: isolate;
+	background: transparent;
+	transition: color 180ms ease;
+
+	// 右TLメニューと同じ柔らかい背景。文字・アイコン・バッジはぼかさない。
+	&::before {
+		content: '';
+		position: absolute;
+		inset: var(--hk3-nav-highlight-inset, 10px);
+		z-index: -1;
+		border-radius: 10px;
+		pointer-events: none;
+		background: color-mix(in srgb, var(--hk3-accent) 18%, transparent);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hk3-accent) 28%, transparent);
+		filter: blur(6px);
+		opacity: 0;
+		transform: scale(0.96);
+		transition: opacity 200ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	&:hover:not(:disabled), &:focus-visible { color: var(--hk3-accent-800); }
+	&:hover:not(:disabled)::before, &:focus-visible::before { opacity: 0.65; transform: scale(1); }
+	&[data-active], &[data-on] { color: var(--hk3-accent-800); }
+	&[data-active]::before, &[data-on]::before { opacity: 1; transform: scale(1); }
+
+	.root &:focus-visible {
+		outline: 2px solid var(--hk3-accent);
+		outline-offset: -3px;
+	}
+}
+
+.footBtn, .modeBtn { --hk3-nav-highlight-inset: 8px; }
+.footBtn[data-active], .modeBtn[data-on] { color: var(--hk3-accent); }
+.itemIcon, .railIcon { transition: color 180ms ease; }
+
+.root[data-reduce-motion] {
+	.item, .railItem, .footBtn, .modeBtn, .itemIcon, .railIcon { transition: none; }
+	.item::before, .railItem::before, .footBtn::before, .modeBtn::before { transition: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.item, .railItem, .footBtn, .modeBtn, .itemIcon, .railIcon { transition: none; }
+	.item::before, .railItem::before, .footBtn::before, .modeBtn::before { transition: none; }
 }
 
 .account {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: calc(10px * var(--hk3-ui-scale, 1));
 	padding: 0;
 	border: 0;
 	background: transparent;
@@ -573,7 +678,7 @@ function openAccountMenu(ev: MouseEvent) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-size: 12px;
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
 	font-weight: 700;
 }
 </style>

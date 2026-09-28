@@ -19,9 +19,9 @@ import FlowerPreview from './FlowerPreview.vue';
 defineProps<{ feature: 'ui-s' | 'recipes' | 'flowers'; motion: boolean }>();
 </script>
 <style module>
-.featureMock { width:100%; max-width:850px; height:322px; margin-inline:auto; overflow:hidden; border:1px solid var(--MI_THEME-divider); border-radius:22px; background:var(--MI_THEME-panel); color:var(--MI_THEME-fg); box-shadow:0 18px 44px color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent); font-family:'Zen Kaku Gothic New',system-ui,sans-serif; font-size:12px; line-height:1.45; }
+.featureMock { width:100%; max-width:850px; height:322px; margin-inline:auto; overflow:hidden; border:1px solid var(--MI_THEME-divider); border-radius:22px; background:var(--MI_THEME-panel); color:var(--MI_THEME-fg); box-shadow:0 18px 44px color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent); font-family:inherit; font-size:12px; line-height:1.45; }
 .featureMock[data-feature='ui-s'] { height:380px; border-radius:4px; }
-.featureMock[data-feature='flowers'] { height:auto; border-radius:24px; font-family:'LINE Seed JP',system-ui,sans-serif; }
+.featureMock[data-feature='flowers'] { height:auto; border-radius:24px; font-family:inherit; }
 .featureMock * { box-sizing:border-box; }
 .featureMock :global(.ti) { display:inline-grid; place-items:center; width:1.25em; }
 .brandWord { font-family:Righteous,sans-serif; font-weight:400; font-synthesis:none; }

@@ -4,16 +4,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<MkModal ref="modal" v-slot="{ type, maxHeight }" :manualShowing="manualShowing" :zPriority="'high'" :anchorElement="anchorElement" :transparentBg="true" :returnFocusTo="returnFocusTo" :motionPreset="motionPreset" @click="click" @close="onModalClose" @closed="onModalClosed">
-	<MkMenu :items="items" :align="align" :width="width" :max-height="maxHeight" :asDrawer="type === 'drawer'" :returnFocusTo="returnFocusTo" :class="{ [$style.drawer]: type === 'drawer' }" @close="onMenuClose" @hide="hide"/>
+<MkModal ref="modal" v-slot="{ type, maxHeight }" :manualShowing="manualShowing" :zPriority="'high'" :anchorElement="anchorElement" :transparentBg="true" :returnFocusTo="returnFocusTo" :motionPreset="appearance && reducedMotion ? 'none' : motionPreset" @click="click" @close="onModalClose" @closed="onModalClosed">
+	<MkMenu :items="items" :align="align" :width="width" :max-height="maxHeight" :asDrawer="type === 'drawer'" :returnFocusTo="returnFocusTo" :appearance="appearance" :style="appearanceStyle" :class="{ [$style.drawer]: type === 'drawer' }" @close="onMenuClose" @hide="hide"/>
 </MkModal>
 </template>
 
 <script lang="ts" setup>
 import { ref, useTemplateRef } from 'vue';
+import type { CSSProperties } from 'vue';
 import MkModal from './MkModal.vue';
 import MkMenu from './MkMenu.vue';
 import type { MenuItem } from '@/types/menu.js';
+import { useHk3ComposerMenuReducedMotion } from '@/components/hataskey3/hk3-composer-menu.js';
+import type { Hk3ComposerMenuAppearance } from '@/components/hataskey3/hk3-composer-menu.js';
 
 defineProps<{
 	items: MenuItem[];
@@ -22,7 +25,11 @@ defineProps<{
 	anchorElement?: HTMLElement | null;
 	returnFocusTo?: HTMLElement | null;
 	motionPreset?: 'postform';
+	appearance?: Hk3ComposerMenuAppearance;
+	appearanceStyle?: CSSProperties;
 }>();
+
+const reducedMotion = useHk3ComposerMenuReducedMotion();
 
 const emit = defineEmits<{
 	(ev: 'closed'): void;

@@ -682,7 +682,7 @@ definePage(() => ({
 	display: flex;
 	justify-content: center;
 	padding: 12px 16px;
-	background: color-mix(in srgb, var(--MI_THEME-bg) 80%, transparent);
+	background: var(--MI-page-controls-background, color-mix(in srgb, var(--MI_THEME-bg) 80%, transparent));
 	backdrop-filter: blur(12px);
 	-webkit-backdrop-filter: blur(12px);
 	margin-bottom: 8px;
@@ -692,7 +692,7 @@ definePage(() => ({
 	display: inline-flex;
 	gap: 4px;
 	padding: 4px;
-	background: var(--MI_THEME-panel);
+	background: var(--MI-page-tabs-background, var(--MI_THEME-panel));
 	border: 1px solid var(--MI_THEME-divider);
 	border-radius: 999px;
 	max-width: 100%;

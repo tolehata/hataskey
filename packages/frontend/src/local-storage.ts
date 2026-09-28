@@ -86,6 +86,9 @@ export type Keys = (
 	'hataskeyUi3Live' | // 旗鯖fork: Hataskey UI 3 のLIVE表示(新着を即時にタイムラインへ差し込む)を使うか(端末ローカル)
 	'hataskeyUi3DeckMode' | // 旗鯖fork: Hataskey UI 3 でデッキ表示を使うか(端末ローカル)
 	'hataskeyUi3PaneTab' | // 旗鯖fork: Hataskey UI 3 の右ペインで開いているタブ(ウィジェット/Hatask)(端末ローカル)
+	'hataskeyUiSDisplaySize' | // UI S専用の表示サイズ(端末ローカル・プロファイル非同期)
+	'hataskeyUi3MobileOrder' | // UI SのモバイルTLメニュー。上部ナビ設定が変わった場合はその並びを優先する。
+	`hataskeyUi3MobileGuideShown:${string}` | // UI Sの長押し案内。端末・アカウントごと。
 	`hataNotificationFilterPolicyNoticeShown:${string}` | // 旗鯖fork: 通知フィルタ方針変更の案内を表示済みか(端末・アカウントごと)
 	`hatalyzeNoticeAcceptedV1:${string}` | // Hataskey fork: HATAlyzeの初回注意書きを確認済みか(端末・アカウントごと)
 	`hatalyzeNoticeSyncedV1:${string}` | // Hataskey fork: HATAlyze注意書き確認をアカウントのRegistryへ同期済みか

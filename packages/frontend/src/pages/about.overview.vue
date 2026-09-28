@@ -27,14 +27,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkKeyValue>
 			<div v-html="i18n.tsx.poweredByMisskeyDescription({ name: instance.name ?? host })">
 			</div>
-			<MkKeyValue>
-				<template #key>Twemoji</template>
-				<template #value>
-					<div>© Twitter, Inc. and other contributors (Jason Sofonia &amp; Justine De Caires)</div>
-					<div><MkLink url="https://creativecommons.org/licenses/by/4.0/" target="_blank">Graphics: CC BY 4.0</MkLink> · <MkLink url="https://github.com/discord/twemoji" target="_blank">Source</MkLink></div>
-					<div>パンチ演出では拡大・回転・移動・透明度・影を適用しています。元のSVGは変更していません。</div>
-				</template>
-			</MkKeyValue>
 			<FormLink to="/about-misskey">
 				<template #icon><i class="ti ti-info-circle"></i></template>
 				{{ i18n.ts.aboutMisskey }}

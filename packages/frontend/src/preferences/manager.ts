@@ -434,8 +434,17 @@ export class PreferencesManager {
 		}
 		this.profile.modifiedAt = Date.now();
 		this.profile.version = version;
-		this.io.save({ profile: this.profile });
-		this.savedProfile = JSON.parse(JSON.stringify(this.profile));
+		// Preserve newer versions' unknown settings without exposing them to runtime states.
+		const source = latest?.id === this.profile.id ? latest : this.savedProfile;
+		const storedProfile = {
+			...this.profile,
+			preferences: {
+				...(source.id === this.profile.id ? source.preferences : {}),
+				...preferences,
+			},
+		};
+		this.io.save({ profile: storedProfile });
+		this.savedProfile = JSON.parse(JSON.stringify(storedProfile));
 		return true;
 	}
 

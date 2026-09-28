@@ -26,7 +26,7 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 	     して左右スワイプによるタブ切替を復活させる (ウィンドウモード含む)。無効時は素の div。
 	     swiperBinds は MkSwiper の時だけ v-model:tab / tabs を渡し、div の時は空 (余分な属性を出さない)。 -->
 	<component :is="swiperEnabled ? MkSwiper : 'div'" v-bind="swiperBinds">
-	<div class="_spacer" style="--MI_SPACER-w: 700px;">
+	<div class="_spacer" :class="$style.channelContent" style="--MI_SPACER-w: 700px;">
 		<div v-if="channel && tab === 'overview'" class="_gaps">
 			<div class="_panel" :class="$style.bannerContainer">
 				<XChannelFollowButton :channel="channel" :full="true" :class="$style.subscribe"/>
@@ -62,7 +62,7 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 			<MkFoldableSection v-if="canViewContent">
 				<template #header><i class="ti ti-pin ti-fw" style="margin-right: 0.5em;"></i>{{ i18n.ts.pinnedNotes }}</template>
 				<div v-if="channel.pinnedNotes && channel.pinnedNotes.length > 0" class="_gaps">
-					<MkNote v-for="note in channel.pinnedNotes" :key="note.id" class="_panel" :note="note"/>
+					<MkNote v-for="note in channel.pinnedNotes" :key="note.id" class="_panel" :class="$style.pinnedNote" :note="note"/>
 				</div>
 			</MkFoldableSection>
 		</div>
@@ -463,15 +463,44 @@ definePage(() => ({
 </script>
 
 <style lang="scss" module>
+:global(html[data-hk3-ui]) .channelContent {
+	--MI-notes-canvas: transparent;
+	--MI-notes-surface: var(--hk3-glass-note, color-mix(in srgb, var(--MI_THEME-panel) 70%, transparent));
+	--MI-notes-backdrop-filter: var(--MI-blur, blur(20px)) saturate(1.3);
+}
+
+:global(html[data-hk3-ui]) .channelContent .pinnedNote {
+	background: var(--MI-notes-surface);
+	-webkit-backdrop-filter: var(--MI-notes-backdrop-filter);
+	backdrop-filter: var(--MI-notes-backdrop-filter);
+}
+
+// The shared bubble layout paints its own body; keep just that glass surface.
+:global(html[data-hk3-ui]) .channelContent :global([data-bubble="on"] article > div) {
+	background: transparent !important;
+}
+
+:global(html[data-hk3-ui]) .channelContent :global([data-bubble="on"] [data-note-content]) {
+	background: var(--MI-notes-surface) !important;
+}
+
+:global(html[data-hk3-ui]) .channelContent :global([data-bubble="on"] [data-note-content]::after) {
+	border-right-color: var(--MI-notes-surface) !important;
+}
+
+:global(html[data-hk3-ui]) .channelContent :global([data-streaming-notes]:not([data-bubble="on"]) article) {
+	background: transparent !important;
+}
+
 /* 旗鯖fork: Hataskey UI 統一ピル型タブ (channels.vue と同一デザイン) */
 .htkPillTabs {
 	position: sticky;
-	top: 0;
+	top: var(--MI-stickyTop, 0px);
 	z-index: 50;
 	display: flex;
 	justify-content: center;
 	padding: 12px 16px;
-	background: color-mix(in srgb, var(--MI_THEME-bg) 80%, transparent);
+	background: var(--MI-page-controls-background, color-mix(in srgb, var(--MI_THEME-bg) 80%, transparent));
 	backdrop-filter: blur(12px);
 	-webkit-backdrop-filter: blur(12px);
 	margin-bottom: 8px;
@@ -480,7 +509,7 @@ definePage(() => ({
 	display: inline-flex;
 	gap: 4px;
 	padding: 4px;
-	background: var(--MI_THEME-panel);
+	background: var(--MI-page-tabs-background, var(--MI_THEME-panel));
 	border: 1px solid var(--MI_THEME-divider);
 	border-radius: 999px;
 	max-width: 100%;

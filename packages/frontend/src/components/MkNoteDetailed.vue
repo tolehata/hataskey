@@ -70,9 +70,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<!-- 旗鯖fork: フォロー許可制アカウント (isLocked) の🔒バッジは非表示 (旗茶くんの依頼、タイムラインと統一) -->
 						<span v-if="appearNote.user.isBot" :class="$style.userBadge"><i class="ti ti-robot"></i></span>
 						<span v-if="appearNote.user.isProxy" :class="$style.userBadge"><i class="ti ti-ghost"></i></span>
-						<span v-if="badgeRoles.length > 0" :class="$style.badgeRoles">
-							<img v-for="(role, i) in badgeRoles" :key="i" v-tooltip="role.name" :class="$style.badgeRole" :src="role.iconUrl!"/>
-						</span>
+						<MkUserRoleBadges :user="appearNote.user"/>
 					</div>
 					<div :class="$style.noteHeaderUsername"><MkAcct :user="appearNote.user"/></div>
 				</div>
@@ -352,6 +350,7 @@ import MkPoll from '@/components/MkPoll.vue';
 import MkUsersTooltip from '@/components/MkUsersTooltip.vue';
 import MkUrlPreview from '@/components/MkUrlPreview.vue';
 import MkInstanceTicker from '@/components/MkInstanceTicker.vue';
+import MkUserRoleBadges from '@/components/MkUserRoleBadges.vue';
 import MkEvent from '@/components/MkEvent.vue';
 import { pleaseLogin } from '@/utility/please-login.js';
 import { checkWordMute } from '@/utility/check-word-mute.js';
@@ -426,7 +425,6 @@ if (noteViewInterruptors.length > 0) {
 
 const isRenote = Misskey.note.isPureRenote(note);
 const appearNote = getAppearNote(note) ?? note;
-const badgeRoles = computed(() => appearNote.user.badgeRoles?.filter(role => role.iconUrl) ?? []);
 const { $note: $appearNote, subscribe: subscribeManuallyToNoteCapture } = useNoteCapture({
 	note: appearNote,
 	parentNote: note,
@@ -1336,20 +1334,6 @@ function loadHistories() {
 	padding: 8px;
 	text-align: center;
 	opacity: 0.7;
-}
-
-.badgeRoles {
-	margin: 0 .5em 0 0;
-}
-
-.badgeRole {
-	height: 1.3em;
-	vertical-align: -20%;
-	border-radius: 0.4em;
-
-	& + .badgeRole {
-		margin-left: 0.2em;
-	}
 }
 
 .deleteAt {

@@ -37,13 +37,41 @@ export type Hk3Toast = {
 export const hk3Toasts = ref<Hk3Toast[]>([]);
 
 let toastSeq = 0;
+let toastTimer: number | undefined;
+let toastRemaining = 0;
+let toastDeadline = 0;
+const toastPauses = new Set<symbol>();
+
+function scheduleToast() {
+	window.clearTimeout(toastTimer);
+	toastTimer = undefined;
+	const id = hk3Toasts.value[0]?.id;
+	if (!id || toastPauses.size) return;
+	toastDeadline = performance.now() + toastRemaining;
+	toastTimer = window.setTimeout(() => dismissHk3Toast(id), toastRemaining);
+}
+
+/** Pull feedback temporarily borrows the banner without consuming notice time. */
+export function setHk3ToastsPaused(owner: symbol, paused: boolean): void {
+	const wasPaused = toastPauses.size > 0;
+	if (paused) toastPauses.add(owner);
+	else toastPauses.delete(owner);
+	if (!wasPaused && toastPauses.size) {
+		if (toastTimer !== undefined) toastRemaining = Math.max(0, toastDeadline - performance.now());
+		window.clearTimeout(toastTimer);
+		toastTimer = undefined;
+	} else if (wasPaused && !toastPauses.size) scheduleToast();
+}
+
 export function pushHk3Toast(toast: Omit<Hk3Toast, 'id'>, duration = 2800): void {
 	const id = `hk3-toast-${Date.now()}-${toastSeq++}`;
 	hk3Toasts.value = [{ ...toast, id }];
-	window.setTimeout(() => dismissHk3Toast(id), duration);
+	toastRemaining = duration;
+	scheduleToast();
 }
 
 export function dismissHk3Toast(id: string): void {
+	if (hk3Toasts.value[0]?.id === id) { window.clearTimeout(toastTimer); toastTimer = undefined; }
 	hk3Toasts.value = hk3Toasts.value.filter(toast => toast.id !== id);
 }
 

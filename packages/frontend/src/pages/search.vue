@@ -4,7 +4,88 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<PageWithHeader ref="searchPage" :actions="headerActions" :class="$style.searchPage" :data-mobile="isMobileSearch">
+<div
+	v-if="embedded" ref="embeddedRootEl" :class="$style.embedded" data-embedded-search
+	:style="{ '--embedded-search-max-height': `${embeddedMaxHeight}px` }"
+	:data-motion="motion" :inert="!active" :aria-hidden="!active" role="search" @keydown="onEmbeddedKeydown"
+>
+	<div ref="embeddedRowEl" :class="[$style.capsule, $style.embeddedRow]">
+		<button type="button" :class="$style.target" :aria-label="i18n.ts._search.searchTarget" :aria-expanded="choice === 'target'" :aria-controls="choiceId" @click="openChoice('target', $event)">
+			<i :class="targetIconClass" aria-hidden="true"/><span :class="$style.targetLabel">{{ targetLabel }}</span><i class="ti ti-chevron-down" :class="$style.targetChevron" aria-hidden="true"/>
+		</button>
+		<input
+			ref="queryInputEl" v-model="searchQuery" type="search" :class="$style.queryInput" :placeholder="i18n.ts.search" :aria-label="i18n.ts.search"
+			@compositionstart="composing = true" @compositionend="composing = false" @keydown.enter="onEnter"
+		/>
+		<button v-if="searchQuery !== ''" type="button" :class="$style.clearBtn" :aria-label="i18n.ts.clear" @click="clearQuery"><i class="ti ti-x" aria-hidden="true"/></button>
+		<button type="button" :class="$style.searchBtn" :aria-label="i18n.ts.search" @click="executeSearch"><i class="ti ti-search" aria-hidden="true"/></button>
+		<button ref="embeddedOptionsBtn" type="button" :class="$style.optionsBtn" :aria-label="i18n.ts.options" :aria-expanded="optionsOpen" :aria-controls="conditionsId" @click="toggleOptions"><i class="ti ti-adjustments-horizontal" aria-hidden="true"/></button>
+	</div>
+	<div ref="embeddedScrollEl" :class="$style.embeddedScroll">
+		<div v-show="choice != null" :id="choiceId" ref="choicePaneEl" :class="$style.choicePane" role="group" :aria-label="choiceTitle" @keydown="onChoiceKeydown">
+			<div :class="$style.choiceHeading">
+				<button type="button" :class="$style.choiceBack" :aria-label="i18n.ts.goBack" @click="closeChoice()"><i class="ti ti-chevron-left" aria-hidden="true"/></button>
+				<strong>{{ choiceTitle }}</strong>
+			</div>
+			<button v-for="item in choiceItems" :key="String(item.value)" type="button" :class="$style.choiceItem" :aria-pressed="item.value === choiceValue" :data-choice-value="item.value" @click="applyChoice(item.value)">
+				<span>{{ item.label }}</span><i v-if="item.value === choiceValue" class="ti ti-check" aria-hidden="true"/>
+			</button>
+		</div>
+		<div v-show="choice == null" ref="embeddedPaneEl">
+			<div v-show="optionsOpen" :id="conditionsId" :class="[$style.optionsPanel, $style.embeddedConditions]">
+				<div v-show="target === 'note'" class="_gaps_s">
+					<div :class="$style.choiceField" role="group" :aria-label="i18n.ts._search.searchScope">
+						<span>{{ i18n.ts._search.searchScope }}</span>
+						<button type="button" :class="$style.choiceTrigger" :aria-label="i18n.ts._search.searchScope" :aria-expanded="choice === 'noteScope'" :aria-controls="choiceId" @click="openChoice('noteScope', $event)">{{ selectLabel(noteScopeDef, noteScope) }}<i class="ti ti-chevron-down" aria-hidden="true"/></button>
+					</div>
+					<MkInput v-if="instance.federation !== 'none' && noteScope === 'server'" v-model="hostInput" small :placeholder="i18n.ts._search.serverHostPlaceholder" @enter.prevent="executeSearch">
+						<template #label>{{ i18n.ts._search.pleaseEnterServerHost }}</template>
+					</MkInput>
+					<div v-if="noteScope === 'user'">
+						<div :class="$style.userSelectLabel">{{ i18n.ts._search.pleaseSelectUser }}</div>
+						<div v-if="user == null" :class="$style.userSelectButtons">
+							<MkButton v-if="$i != null" transparent @click="selectSelf">{{ i18n.ts.selectSelf }}</MkButton>
+							<MkButton transparent @click="selectUser">{{ i18n.ts.selectUser }}</MkButton>
+						</div>
+						<div v-else :class="$style.userSelected">
+							<MkUserCardMini :user="user"/>
+							<button type="button" :class="$style.userRemoveBtn" :aria-label="i18n.ts.clear" @click="removeUser"><i class="ti ti-x" aria-hidden="true"/></button>
+						</div>
+					</div>
+					<MkInput v-model="rangeStartAt" small type="datetime-local"><template #label>{{ i18n.ts._search.postFrom }}</template></MkInput>
+					<MkInput v-model="rangeEndAt" small type="datetime-local"><template #label>{{ i18n.ts._search.postTo }}</template></MkInput>
+				</div>
+				<div v-show="target === 'user' || target === 'event'" class="_gaps_s">
+					<div :class="$style.choiceField" role="group" :aria-label="i18n.ts._search.searchScope">
+						<span>{{ i18n.ts._search.searchScope }}</span>
+						<button type="button" :class="$style.choiceTrigger" :aria-label="i18n.ts._search.searchScope" :aria-expanded="choice === 'origin'" :aria-controls="choiceId" @click="openChoice('origin', $event)">{{ selectLabel(userOriginDef, userOrigin) }}<i class="ti ti-chevron-down" aria-hidden="true"/></button>
+					</div>
+					<div v-show="target === 'event'" class="_gaps_s">
+						<div :class="$style.choiceField" role="group" :aria-label="i18n.ts.sort">
+							<span>{{ i18n.ts.sort }}</span>
+							<button type="button" :class="$style.choiceTrigger" :aria-label="i18n.ts.sort" :aria-expanded="choice === 'eventSort'" :aria-controls="choiceId" @click="openChoice('eventSort', $event)">{{ selectLabel(eventSortDef, eventSort) }}<i class="ti ti-chevron-down" aria-hidden="true"/></button>
+						</div>
+						<MkInput v-model="eventStartDate" small type="date"><template #label>{{ i18n.ts._event.startDate }}</template></MkInput>
+						<MkInput v-model="eventEndDate" small type="date"><template #label>{{ i18n.ts._event.endDate }}</template></MkInput>
+					</div>
+				</div>
+			</div>
+			<div :class="$style.embeddedResults" :aria-label="i18n.ts.searchResult" role="region">
+				<p v-if="emptySearchResult" :class="$style.embeddedEmpty">{{ emptyResultText }}</p>
+				<template v-if="target === 'note'">
+					<MkInfo v-if="!notesSearchAvailable" warn>{{ i18n.ts.notesSearchNotAvailable }}</MkInfo>
+					<MkNotesTimeline v-else-if="notePaginator" v-show="!emptySearchResult" :key="`searchNotes:${searchKey}`" :paginator="notePaginator" :pullToRefresh="false" :withControl="false"/>
+				</template>
+				<template v-else-if="target === 'user'">
+					<MkInfo v-if="!usersSearchAvailable" warn>{{ i18n.ts.usersSearchNotAvailable }}</MkInfo>
+					<MkUserList v-else-if="userPaginator" v-show="!emptySearchResult" :key="`searchUsers:${searchKey}`" :paginator="userPaginator"/>
+				</template>
+				<MkNotesTimeline v-else-if="eventPaginator" v-show="!emptySearchResult" :key="`searchEvents:${searchKey}`" :paginator="eventPaginator" :getDate="eventSort === 'startDate' ? note => note.event?.start : undefined" :pullToRefresh="false" :withControl="false"/>
+			</div>
+		</div>
+	</div>
+</div>
+<PageWithHeader v-else ref="searchPage" :actions="headerActions" :class="$style.searchPage" :data-mobile="isMobileSearch">
 	<div class="_spacer" style="--MI_SPACER-w: 800px;">
 		<div class="_gaps">
 			<!-- 画面内の contain/transform に固定位置を引きずられないようにする。 -->
@@ -39,7 +120,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								:class="$style.queryInput"
 								:placeholder="queryPlaceholder"
 								:aria-label="i18n.ts.search" :autofocus="true"
-								@keydown.enter.prevent="onEnter"
+								@compositionstart="composing = true" @compositionend="composing = false" @keydown.enter="onEnter"
 							/>
 
 							<!-- クリアボタン(クエリがあるときのみ) -->
@@ -228,6 +309,10 @@ const props = withDefaults(defineProps<{
 	host?: string | null;
 	type?: 'note' | 'user' | 'event';
 	origin?: 'combined' | 'local' | 'remote';
+	embedded?: boolean;
+	active?: boolean;
+	maxHeight?: number;
+	motion?: boolean;
 }>(), {
 	query: '',
 	userId: undefined,
@@ -235,9 +320,22 @@ const props = withDefaults(defineProps<{
 	host: undefined,
 	type: 'note',
 	origin: 'combined',
+	embedded: false,
+	active: true,
+	maxHeight: 386,
+	motion: true,
 });
 
+const emit = defineEmits<{
+	height: [height: number];
+	close: [];
+}>();
+defineExpose({ focus });
+
 const router = useRouter();
+let searchGeneration = 0;
+let focusGeneration = 0;
+let disposed = false;
 
 // ===== 検索対象 =====
 type SearchTarget = 'note' | 'user' | 'event';
@@ -268,6 +366,7 @@ function openTargetMenu(ev: MouseEvent) {
 // ===== 検索クエリ =====
 const searchQuery = ref(toRef(props, 'query').value);
 const queryInputEl = useTemplateRef('queryInputEl');
+const composing = ref(false);
 
 const queryPlaceholder = computed(() => {
 	switch (target.value) {
@@ -279,12 +378,14 @@ const queryPlaceholder = computed(() => {
 });
 
 function clearQuery() {
+	if (props.embedded && !props.active) return;
 	searchQuery.value = '';
-	queryInputEl.value?.focus();
+	queryInputEl.value?.focus({ preventScroll: true });
 }
 
 function onEnter(event: KeyboardEvent) {
-	if (event.isComposing) return;
+	if (event.isComposing || composing.value || event.keyCode === 229) return;
+	event.preventDefault();
 	executeSearch();
 }
 
@@ -292,19 +393,21 @@ function onEnter(event: KeyboardEvent) {
 const optionsOpen = ref(false);
 
 function toggleOptions() {
+	if (props.embedded && !props.active) return;
+	closeChoice(false);
 	optionsOpen.value = !optionsOpen.value;
 }
 
 // ===== ノート検索: scope ===== //
-const noteSearchableScope = instance.noteSearchableScope ?? 'local';
+const noteSearchableScope = computed(() => instance.noteSearchableScope ?? 'local');
 
 const noteScopeDef = computed<MkSelectItem[]>(() => {
 	const items: MkSelectItem[] = [];
-	if (instance.federation !== 'none' && noteSearchableScope === 'global') {
+	if (instance.federation !== 'none' && noteSearchableScope.value === 'global') {
 		items.push({ label: i18n.ts._search.searchScopeAll, value: 'all' });
 	}
 	items.push({ label: instance.federation === 'none' ? i18n.ts._search.searchScopeAll : i18n.ts._search.searchScopeLocal, value: 'local' });
-	if (instance.federation !== 'none' && noteSearchableScope === 'global') {
+	if (instance.federation !== 'none' && noteSearchableScope.value === 'global') {
 		items.push({ label: i18n.ts._search.searchScopeServer, value: 'server' });
 	}
 	items.push({ label: i18n.ts._search.searchScopeUser, value: 'user' });
@@ -330,17 +433,22 @@ if (props.username && fetchedUser == null) {
 	}).catch(() => null);
 }
 if (fetchedUser != null) {
-	if (!(noteSearchableScope === 'local' && fetchedUser.host != null)) {
+	if (!(noteSearchableScope.value === 'local' && fetchedUser.host != null)) {
 		user.value = fetchedUser;
 	}
 }
 
-const noteScope = ref<'all' | 'local' | 'server' | 'user'>((() => {
+type NoteScope = 'all' | 'local' | 'server' | 'user';
+const preferredNoteScope: NoteScope = (() => {
 	if (user.value != null) return 'user';
-	if (noteSearchableScope === 'local') return 'local';
+	if (noteSearchableScope.value === 'local') return 'local';
 	if (hostInput.value) return 'server';
 	return 'all';
-})());
+})();
+const noteScope = ref<NoteScope>(noteScopeDef.value.some(item => 'value' in item && item.value === preferredNoteScope) ? preferredNoteScope : 'local');
+watch(noteScopeDef, items => {
+	if (!items.some(item => 'value' in item && item.value === noteScope.value)) noteScope.value = 'local';
+}, { flush: 'sync' });
 
 // プロフィール検索経由で来た場合は最初からオプションパネルを開く(ユーザーが見えるように)
 if (user.value != null) {
@@ -387,6 +495,148 @@ const notePaginator = shallowRef<Paginator<'notes/search'> | null>(null);
 const userPaginator = shallowRef<Paginator<'users/search'> | null>(null);
 const eventPaginator = shallowRef<Paginator<'notes/events/search'> | null>(null);
 
+// Embedded mode shares the controller and result components with /search.
+type ChoiceKind = 'target' | 'noteScope' | 'origin' | 'eventSort';
+const choice = ref<ChoiceKind | null>(null);
+const choiceId = useId();
+const conditionsId = useId();
+const embeddedRootEl = useTemplateRef('embeddedRootEl');
+const embeddedRowEl = useTemplateRef('embeddedRowEl');
+const embeddedPaneEl = useTemplateRef('embeddedPaneEl');
+const embeddedScrollEl = useTemplateRef('embeddedScrollEl');
+const choicePaneEl = useTemplateRef('choicePaneEl');
+const embeddedOptionsBtn = useTemplateRef('embeddedOptionsBtn');
+let choiceOpener: HTMLElement | null = null;
+let paneScrollTop = 0;
+let lastEmbeddedHeight: number | null = null;
+const embeddedMaxHeight = computed(() => Number.isFinite(props.maxHeight) ? Math.max(0, props.maxHeight) : 386);
+const embeddedActive = computed(() => props.embedded && props.active && pageActive.value && !disposed);
+const currentPaginator = computed(() => target.value === 'note' ? notePaginator.value : target.value === 'user' ? userPaginator.value : eventPaginator.value);
+const emptySearchResult = computed(() => {
+	const paginator = currentPaginator.value;
+	return paginator != null && !paginator.fetching.value && !paginator.error.value && paginator.items.value.length === 0;
+});
+const emptyResultText = computed(() => target.value === 'user' ? i18n.ts.noUsers : i18n.ts.noNotes);
+
+function flatChoices(items: MkSelectItem[]) {
+	return items.flatMap(item => item.type === 'group' ? item.items : [item]);
+}
+
+function selectLabel(items: MkSelectItem[], value: string) {
+	return flatChoices(items).find(item => item.value === value)?.label ?? '';
+}
+
+const choiceTitle = computed(() => choice.value === 'target' ? i18n.ts._search.searchTarget : choice.value === 'eventSort' ? i18n.ts.sort : i18n.ts._search.searchScope);
+const choiceItems = computed(() => {
+	switch (choice.value) {
+		case 'target': return targetItems;
+		case 'noteScope': return flatChoices(noteScopeDef.value);
+		case 'origin': return flatChoices(userOriginDef.value);
+		case 'eventSort': return flatChoices(eventSortDef.value);
+		default: return [];
+	}
+});
+const choiceValue = computed(() => {
+	switch (choice.value) {
+		case 'target': return target.value;
+		case 'noteScope': return noteScope.value;
+		case 'origin': return userOrigin.value;
+		case 'eventSort': return eventSort.value;
+		default: return null;
+	}
+});
+
+function revealChoice(button: HTMLElement) {
+	const scroller = embeddedScrollEl.value;
+	if (!scroller || !embeddedActive.value) return;
+	const bounds = scroller.getBoundingClientRect();
+	const item = button.getBoundingClientRect();
+	if (item.top < bounds.top) scroller.scrollTop -= bounds.top - item.top;
+	else if (item.bottom > bounds.bottom) scroller.scrollTop += item.bottom - bounds.bottom;
+}
+
+function openChoice(kind: ChoiceKind, event: MouseEvent) {
+	if (!embeddedActive.value) return;
+	if (choice.value === kind) { closeChoice(); return; }
+	if (choice.value == null) paneScrollTop = embeddedScrollEl.value?.scrollTop ?? 0;
+	choiceOpener = event.currentTarget as HTMLElement;
+	choice.value = kind;
+	const generation = ++focusGeneration;
+	void nextTick(() => {
+		if (!embeddedActive.value || generation !== focusGeneration) return;
+		const selected = choicePaneEl.value?.querySelector<HTMLElement>('[aria-pressed="true"]');
+		selected?.focus({ preventScroll: true });
+		if (selected) revealChoice(selected);
+	});
+}
+
+function closeChoice(restoreFocus = true) {
+	if (choice.value == null) return;
+	choice.value = null;
+	const opener = choiceOpener;
+	const generation = ++focusGeneration;
+	void nextTick(() => {
+		if (!embeddedActive.value || generation !== focusGeneration) return;
+		if (embeddedScrollEl.value) embeddedScrollEl.value.scrollTop = paneScrollTop;
+		if (restoreFocus && opener?.isConnected) opener.focus({ preventScroll: true });
+	});
+}
+
+function applyChoice(value: string | number | null) {
+	if (!embeddedActive.value || !choiceItems.value.some(item => item.value === value)) return;
+	const changed = value !== choiceValue.value;
+	const kind = choice.value;
+	if (kind === 'target') target.value = value as SearchTarget;
+	else if (kind === 'noteScope') noteScope.value = value as typeof noteScope.value;
+	else if (kind === 'origin') userOrigin.value = value as typeof userOrigin.value;
+	else if (kind === 'eventSort') eventSort.value = value as typeof eventSort.value;
+	closeChoice();
+	if (kind === 'origin' && changed) void executeSearch();
+}
+
+function onChoiceKeydown(event: KeyboardEvent) {
+	if (!embeddedActive.value || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+	const buttons = Array.from(choicePaneEl.value?.querySelectorAll<HTMLElement>('[data-choice-value]') ?? []);
+	const index = buttons.indexOf(event.target as HTMLElement);
+	if (index < 0) return;
+	event.preventDefault();
+	const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+	buttons[next].focus({ preventScroll: true });
+	revealChoice(buttons[next]);
+}
+
+function onEmbeddedKeydown(event: KeyboardEvent) {
+	if (!embeddedActive.value || event.key !== 'Escape' || event.isComposing || composing.value) return;
+	event.preventDefault();
+	event.stopPropagation();
+	if (choice.value != null) closeChoice();
+	else if (optionsOpen.value) {
+		optionsOpen.value = false;
+		embeddedOptionsBtn.value?.focus({ preventScroll: true });
+	} else emit('close');
+}
+
+function focus() {
+	if (!embeddedActive.value) return;
+	const generation = ++focusGeneration;
+	void nextTick(() => {
+		if (!embeddedActive.value || generation !== focusGeneration) return;
+		const selected = choice.value == null ? null : choicePaneEl.value?.querySelector<HTMLElement>('[aria-pressed="true"]');
+		(selected ?? queryInputEl.value)?.focus({ preventScroll: true });
+	});
+}
+
+function measureEmbeddedHeight() {
+	if (disposed || !embeddedActive.value || !embeddedRowEl.value) return;
+	// The panes are unconstrained children of the scrollport: never measure its old animated height.
+	const pane = choice.value == null ? embeddedPaneEl.value : choicePaneEl.value;
+	const height = Math.min(embeddedMaxHeight.value, Math.ceil(embeddedRowEl.value.offsetHeight + (pane?.offsetHeight ?? 0)));
+	if (height !== lastEmbeddedHeight) {
+		lastEmbeddedHeight = height;
+		emit('height', height);
+	}
+}
+
 // モバイルの検索欄は、検索後に既存ヘッダーの右端へ収納する。
 const searchPage = useTemplateRef<{ $el: HTMLElement }>('searchPage');
 const searchControlsEl = useTemplateRef('searchControlsEl');
@@ -394,7 +644,7 @@ const searchControlsId = useId();
 const searchActionId = useId();
 const inWindow = inject<boolean>('inWindow', false);
 const compactWidth = ref(window.innerWidth <= 600);
-const isMobileSearch = computed(() => !inWindow && (deviceKind === 'smartphone' || compactWidth.value));
+const isMobileSearch = computed(() => !props.embedded && !inWindow && (deviceKind === 'smartphone' || compactWidth.value));
 const hasSearchResults = computed(() => Boolean(target.value === 'note' ? notePaginator.value : target.value === 'user' ? userPaginator.value : eventPaginator.value));
 const searchOpen = ref(true);
 const searchDocked = ref(false);
@@ -410,6 +660,7 @@ function searchActionElement() {
 }
 
 function positionSearchBar() {
+	if (props.embedded) return;
 	const page = searchPage.value?.$el;
 	const anchor = searchActionElement();
 	if (!page || !pageActive.value) return;
@@ -473,7 +724,7 @@ function leaveSearchBar(element: Element, done: () => void) {
 }
 
 function focusSearchControl() {
-	if (!isMobileSearch.value) return;
+	if (!isMobileSearch.value || !pageActive.value || disposed) return;
 	if (searchOpen.value) {
 		if (searchControlsEl.value) searchControlsEl.value.scrollTop = 0;
 		queryInputEl.value?.focus({ preventScroll: true });
@@ -502,14 +753,22 @@ async function toggleSearchBar() {
 	focusSearchControl();
 }
 
-const resizeObserver = new ResizeObserver(entries => {
+const resizeObserver = props.embedded ? null : new ResizeObserver(entries => {
 	const width = entries[0]?.contentRect.width;
 	if (width) compactWidth.value = width <= 600;
 	positionSearchBar();
 });
+const embeddedResizeObserver = props.embedded ? new ResizeObserver(measureEmbeddedHeight) : null;
 
 onMounted(() => {
-	if (searchPage.value) resizeObserver.observe(searchPage.value.$el);
+	if (props.embedded) {
+		for (const element of [embeddedRowEl.value, embeddedPaneEl.value, choicePaneEl.value]) {
+			if (element) embeddedResizeObserver?.observe(element);
+		}
+		measureEmbeddedHeight();
+		return;
+	}
+	if (searchPage.value) resizeObserver?.observe(searchPage.value.$el);
 	positionSearchBar();
 	window.addEventListener('resize', positionSearchBar);
 	window.visualViewport?.addEventListener('resize', positionSearchBar);
@@ -517,10 +776,12 @@ onMounted(() => {
 
 onActivated(() => {
 	pageActive.value = true;
-	void nextTick(positionSearchBar);
+	void nextTick(props.embedded ? measureEmbeddedHeight : positionSearchBar);
 });
 
 onDeactivated(() => {
+	searchGeneration++;
+	focusGeneration++;
 	queryInputEl.value?.blur();
 	cancelSearchMotion();
 	pageActive.value = false;
@@ -528,11 +789,28 @@ onDeactivated(() => {
 });
 
 onUnmounted(() => {
+	disposed = true;
+	searchGeneration++;
+	focusGeneration++;
 	cancelSearchMotion();
-	resizeObserver.disconnect();
+	resizeObserver?.disconnect();
+	embeddedResizeObserver?.disconnect();
 	window.removeEventListener('resize', positionSearchBar);
 	window.visualViewport?.removeEventListener('resize', positionSearchBar);
 });
+
+watch(() => props.active, active => {
+	if (!props.embedded || active) return;
+	searchGeneration++;
+	focusGeneration++;
+	lastEmbeddedHeight = null;
+	// Do not steal focus from a user lookup dialog; only blur an input owned by this panel.
+	if (embeddedRootEl.value?.contains(window.document.activeElement)) (window.document.activeElement as HTMLElement)?.blur();
+}, { flush: 'sync' });
+
+watch([() => props.active, embeddedMaxHeight, choice, optionsOpen, target, hasSearchResults, emptySearchResult], () => {
+	measureEmbeddedHeight();
+}, { flush: 'post' });
 
 watch(isMobileSearch, mobile => {
 	searchOpen.value = !mobile || !hasSearchResults.value;
@@ -545,16 +823,21 @@ const fixHostIfLocal = (hostStr: string | null | undefined) => {
 };
 
 async function executeSearch() {
+	if (disposed || !pageActive.value || (props.embedded && !props.active)) return;
 	const query = searchQuery.value.toString().trim();
 	if (!query && target.value !== 'event') return;
+	const generation = ++searchGeneration;
+	const current = () => !disposed && pageActive.value && (!props.embedded || props.active) && generation === searchGeneration;
 
 	// ===== AP lookup / @mention / #tag のショートカット ===== //
 	if (query.startsWith('https://') && !query.includes(' ')) {
 		const confirm = await os.confirm({ type: 'info', text: i18n.ts.lookupConfirm });
+		if (!current()) return;
 		if (!confirm.canceled) {
 			const promise = misskeyApi('ap/show', { uri: query });
 			os.promiseDialog(promise, null, null, i18n.ts.fetchingAsApObject);
 			const res = await promise;
+			if (!current()) return;
 			if (res.type === 'User') {
 				router.push('/@:acct/:page?', {
 					params: { acct: `${res.object.username}@${res.object.host}` },
@@ -571,6 +854,7 @@ async function executeSearch() {
 	if (query.length > 1 && !query.includes(' ')) {
 		if (query.startsWith('@')) {
 			const confirm = await os.confirm({ type: 'info', text: i18n.ts.lookupConfirm });
+			if (!current()) return;
 			if (!confirm.canceled) {
 				router.pushByPath(`/${query}`);
 				return;
@@ -578,6 +862,7 @@ async function executeSearch() {
 		}
 		if (query.startsWith('#')) {
 			const confirm = await os.confirm({ type: 'info', text: i18n.ts.openTagPageConfirm });
+			if (!current()) return;
 			if (!confirm.canceled) {
 				router.push('/tags/:tag', { params: { tag: query.substring(1) } });
 				return;
@@ -586,6 +871,7 @@ async function executeSearch() {
 	}
 
 	// ===== 対象別の検索 ===== //
+	if ((target.value === 'note' && !notesSearchAvailable) || (target.value === 'user' && !usersSearchAvailable)) return;
 	if (target.value === 'note') {
 		const params: any = { query };
 		if (noteScope.value === 'user') {
@@ -630,11 +916,12 @@ async function executeSearch() {
 	}
 
 	searchKey.value++;
-	void closeSearchBar();
+	if (!props.embedded) void closeSearchBar();
 }
 
 // 対象が変わったときに、結果はリセット(混乱回避)
 watch(target, () => {
+	searchGeneration++;
 	notePaginator.value = null;
 	userPaginator.value = null;
 	eventPaginator.value = null;
@@ -651,13 +938,27 @@ const headerActions = computed<PageHeaderItem[]>(() => isMobileSearch.value && (
 	handler: toggleSearchBar,
 }] : []);
 
-definePage(() => ({
-	title: i18n.ts.search,
-	icon: 'ti ti-search',
-}));
+if (!props.embedded) {
+	definePage(() => ({
+		title: i18n.ts.search,
+		icon: 'ti ti-search',
+	}));
+}
 </script>
 
 <style lang="scss" module>
+:global(html[data-hk3-ui]) .searchPage,
+:global(html[data-hk3-ui]) .embedded {
+	--MI-notes-canvas: transparent;
+	--MI-notes-surface: var(--hk3-glass-note, color-mix(in srgb, var(--MI_THEME-panel) 70%, transparent));
+	--MI-notes-backdrop-filter: var(--MI-blur, blur(20px)) saturate(1.3);
+}
+
+:global(html[data-hk3-ui]) .embedded {
+	// The dock already supplies the glass backdrop; avoid stacking two dense panels.
+	--MI-notes-surface: var(--hk3-glass-soft, color-mix(in srgb, var(--MI_THEME-panel) 30%, transparent));
+}
+
 .searchPage[data-mobile='true'] {
 	scroll-padding-bottom: var(--MI-minBottomSpacingMobile);
 }
@@ -917,5 +1218,185 @@ definePage(() => ({
 
 .userRemoveBtn:hover {
 	background: color(from var(--MI_THEME-error, #ff2a2a) srgb r g b / 0.1);
+}
+
+.embedded {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	max-height: var(--embedded-search-max-height);
+	overflow: hidden;
+	border-radius: inherit;
+	color: var(--MI_THEME-fg);
+
+	.capsule,
+	.capsule:focus-within {
+		background: none;
+		border: 0;
+		box-shadow: none;
+	}
+
+	.target {
+		gap: 4px;
+		padding: 0 3px;
+		min-height: 44px;
+		font-size: 12px;
+		flex-shrink: 0;
+	}
+
+	.queryInput {
+		width: 0;
+		font-size: 16px;
+	}
+
+	.searchBtn,
+	.optionsBtn,
+	.clearBtn {
+		width: 38px;
+		height: 44px;
+		flex-shrink: 0;
+		border-radius: 12px;
+		background: none;
+		color: var(--MI_THEME-accent);
+	}
+
+	.optionsBtn[aria-expanded='true'] {
+		background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent);
+	}
+
+	button:focus-visible {
+		outline: 2px solid var(--MI_THEME-accent);
+		outline-offset: -2px;
+	}
+}
+
+.embeddedRow {
+	box-sizing: border-box;
+	min-height: 59px;
+	flex-shrink: 0;
+	gap: 2px;
+	padding: 6px 6px 3px;
+}
+
+.embeddedScroll {
+	min-height: 0;
+	overflow: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: thin;
+
+	> div {
+		display: flow-root;
+	}
+}
+
+.embeddedConditions {
+	padding: 8px 12px 12px;
+	border-top: 1px solid var(--MI_THEME-divider);
+	border-radius: 0;
+}
+
+.embeddedResults {
+	display: flow-root;
+}
+
+.embeddedEmpty {
+	margin: 0;
+	padding: 24px 12px;
+	text-align: center;
+	font-size: 13px;
+	color: var(--MI_THEME-fgOnPanel);
+}
+
+.choicePane {
+	box-sizing: border-box;
+	padding: 3px 10px 10px;
+	border-top: 1px solid var(--MI_THEME-divider);
+}
+
+.choiceHeading {
+	display: grid;
+	grid-template-columns: 34px minmax(0, 1fr) 34px;
+	align-items: center;
+	gap: 8px;
+	min-height: 40px;
+
+	strong {
+		text-align: center;
+		font-size: 12px;
+	}
+}
+
+.choiceBack,
+.choiceItem,
+.choiceTrigger {
+	font: inherit;
+	color: inherit;
+	border: 0;
+	background: none;
+	cursor: pointer;
+}
+
+.choiceBack {
+	width: 34px;
+	min-height: 34px;
+	padding: 0;
+	border-radius: 10px;
+	color: var(--MI_THEME-accent);
+}
+
+.choiceItem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 44px;
+	margin-top: 3px;
+	padding: 8px 12px;
+	border-radius: 12px;
+	font-size: 13px;
+	text-align: start;
+
+	&:hover,
+	&[aria-pressed='true'] {
+		background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent);
+	}
+
+	&[aria-pressed='true'] {
+		color: var(--MI_THEME-accent);
+	}
+}
+
+.choiceField {
+	display: grid;
+	gap: 4px;
+	font-size: 12px;
+}
+
+.choiceTrigger {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	min-height: 34px;
+	padding: 0 8px;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 8px;
+	text-align: start;
+}
+
+.embedded[data-motion='false'] :deep(*) {
+	transition: none !important;
+	animation: none !important;
+	scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.embedded :deep(*) {
+		transition: none !important;
+		animation: none !important;
+		scroll-behavior: auto !important;
+	}
 }
 </style>

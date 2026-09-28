@@ -8,7 +8,7 @@
 			<div :key="destination.id" class="headingText">
 				<div v-if="destination.id === 'hataskey-ui-s'" class="sHeroLayout">
 					<div class="sHeroCopy">
-						<span class="sBadge" :class="{ sBadgeInactive: ui !== 'hataskey3' }">{{ ui === 'hataskey3' ? i18n.ts.inUse : i18n.ts._hata._uiSetup.beta }}</span>
+						<span v-if="ui === 'hataskey3'" class="sBadge">{{ i18n.ts.inUse }}</span>
 						<h2><span class="settingsBrand">{{ group.title }}</span></h2>
 						<p>{{ group.description }}</p>
 						<p class="sImmediate">{{ i18n.ts._hata._settingsRedesign.immediate.uiSImmediate }}</p>
@@ -23,7 +23,18 @@
 			</div>
 		</Transition>
 	</header>
+	<section v-if="destination.id === 'hataskey-ui-s'" class="auxiliary" role="list" :aria-label="group.title">
+		<article class="control" role="listitem" :data-settings-search-id="uiSDisplaySizeSearchId">
+			<MkRadios :modelValue="hataskeyUiSDisplaySize" @update:modelValue="setHataskeyUiSDisplaySize($event)">
+				<template #label>{{ i18n.ts._hata._hataskeyUi3._displaySize.title }}</template>
+				<template #caption>{{ i18n.ts._hata._hataskeyUi3._displaySize.caption }}</template>
+				<option value="standard">{{ i18n.ts._hata._hataskeyUi3._displaySize.standard }}</option>
+				<option value="small">{{ i18n.ts._hata._hataskeyUi3._displaySize.small }}</option>
+			</MkRadios>
+		</article>
+	</section>
 	<HataskeyUiSRssSettings v-if="destination.id === 'hataskey-ui-s'"/>
+	<HataskeyUiSBottomNavSettings v-if="destination.id === 'hataskey-ui-s'"/>
 
 	<section v-if="destination.id === 'display-general'" class="auxiliary" role="list" :aria-label="group.title">
 		<article class="control" role="listitem" :data-settings-search-id="searchIdFor('lang')">
@@ -85,6 +96,10 @@
 				<template v-else-if="control.key === 'showFixedPostForm' && ui === 'hataskey3'" #caption><span class="captionLine">{{ i18n.ts._hata._customSettings._general.ui3ComposerUsePosition }}</span></template>
 				<template v-else-if="control.caption.length" #caption><span v-for="caption in control.caption" :key="caption" class="captionLine">{{ caption }}</span></template>
 			</MkSwitch>
+			<MkInput v-else-if="control.kind === 'color'" type="color" :modelValue="String(read(control.key) ?? '')" :disabled="isDisabled(control)" @update:modelValue="write(control.key, $event)">
+				<template #label>{{ control.label }}</template>
+				<template v-if="control.caption.length" #caption><span v-for="caption in control.caption" :key="caption" class="captionLine">{{ caption }}</span></template>
+			</MkInput>
 			<MkSelect v-else-if="control.kind === 'select'" :modelValue="String(read(control.key) ?? '')" :items="selectItems(control)" :disabled="isDisabled(control)" @update:modelValue="write(control.key, $event)">
 				<template #label><span>{{ control.label }}</span><span v-if="control.cherry" class="brand">CherryPick</span></template>
 				<template v-if="control.caption.length" #caption><span v-for="caption in control.caption" :key="caption" class="captionLine">{{ caption }}</span></template>
@@ -138,12 +153,13 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { langs, ui } from '@@/js/config.js';
-import { canonicalSearchIdForPreferenceKey, controlsForPreferenceDestination, parsePreferenceDestination, preferenceAuxiliaryControls, preferenceGroups } from './settings-preferences-catalog.js';
+import { canonicalSearchIdForPreferenceKey, controlsForPreferenceDestination, parsePreferenceDestination, preferenceAuxiliaryControls, preferenceGroups, uiSDisplaySizeSearchId } from './settings-preferences-catalog.js';
 import { emojiIndexLangs, createSettingsPreferenceModels } from './settings-preferences-models.js';
 import type { PreferenceContainerKey, PreferenceControl } from './settings-preferences-catalog.js';
 import type { DataSaverKey } from './settings-preferences-models.js';
 import { HK3_COMPOSER_SHORTCUT_NONE, hk3ComposerToolLabel } from '@/components/hataskey3/hk3-composer-tools.js';
 import HataskeyUiSRssSettings from './HataskeyUiSRssSettings.vue';
+import HataskeyUiSBottomNavSettings from './HataskeyUiSBottomNavSettings.vue';
 import type { Hk3ComposerToolId } from '@/components/hataskey3/hk3-composer-tools.js';
 import MkButton from '@/components/MkButton.vue';
 import MkInfo from '@/components/MkInfo.vue';
@@ -158,6 +174,7 @@ import { $i } from '@/i.js';
 import { instance } from '@/instance.js';
 import { prefer } from '@/preferences.js';
 import { getInitialPrefValue } from '@/preferences/manager.js';
+import { hataskeyUiSDisplaySize, setHataskeyUiSDisplaySize } from '@/utility/hatasaba-device-prefs.js';
 import { store } from '@/store.js';
 import * as os from '@/os.js';
 
@@ -192,6 +209,7 @@ async function resetUi3ComposerPreferences(): Promise<void> {
 	});
 	if (canceled) return;
 	for (const key of ui3ComposerResetKeys) write(key, getInitialPrefValue(key));
+	setHataskeyUiSDisplaySize('standard');
 }
 
 function noop(): void { /* the forced-on control intentionally has no setter */ }
@@ -205,6 +223,7 @@ function auxiliaryLabel(key: string): string { return auxiliaryForKey(key).label
 function auxiliaryCaption(key: string): readonly string[] { return auxiliaryForKey(key).caption; }
 
 function optionLabel(key: PreferenceContainerKey, value: string): string {
+	if (key === 'hataskeyUi3GlassDensity') return value === 'dense' ? i18n.ts._hata._customSettings._general.ui3GlassDensityDense : i18n.ts._hata._customSettings._general.ui3GlassDensityLight;
 	if (key === 'hataskeyUi3ComposerShortcut1' || key === 'hataskeyUi3ComposerShortcut2') return value === HK3_COMPOSER_SHORTCUT_NONE ? i18n.ts._hata._customSettings._general.ui3ComposerShortcutNone : hk3ComposerToolLabel(value as Hk3ComposerToolId);
 	if (key === 'hataskeyUi3ComposerEmojiPosition') return value === 'beforeVisibility' ? i18n.ts._hata._customSettings._general.ui3ComposerEmojiBeforeVisibility : i18n.ts._hata._customSettings._general.ui3ComposerEmojiAfterShortcuts;
 	if (key === 'hataskeyUi3ComposerPosition') return value === 'top' ? i18n.ts._hata._customSettings._general.ui3ComposerPositionTop : i18n.ts._hata._customSettings._general.ui3ComposerPositionBottom;
@@ -228,6 +247,7 @@ function rangeTextConverter(key: PreferenceContainerKey) { return key === 'polli
 
 function isDisabled(control: PreferenceControl): boolean {
 	const key = control.key;
+	if (key.startsWith('postFormVisibilityBorder.') && key !== 'postFormVisibilityBorder.enabled') return !read('postFormVisibilityBorder.enabled');
 	if (key === 'showFixedPostForm') return ui === 'hataskey3';
 	if (key === 'pollingInterval') return models.realtimeMode.value;
 	if (key === 'enableMarkByDate') return Boolean(read('enableAbsoluteTime'));
@@ -266,7 +286,6 @@ function emojiLanguageName(language: typeof emojiIndexLangs[number]): string { r
 .sHero p { max-width: 60ch; line-height: 1.6; }
 .sHero .sImmediate { margin-top: 12px; color: var(--MI_THEME-accent); font-size: .8rem; font-weight: 700; }
 .sBadge { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 12px; border-radius: 999px; background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); font-size: .72rem; font-weight: 800; }
-.sBadgeInactive { background: color-mix(in srgb, var(--MI_THEME-fg) 8%, var(--MI_THEME-panel)); color: var(--MI_THEME-fgTransparentWeak); }
 .sReset { display: inline-flex; flex: 0 1 auto; align-items: center; justify-content: center; gap: 7px; max-width: 100%; min-height: 44px; padding: 9px 18px; border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 42%, var(--MI_THEME-divider)); border-radius: 999px; background: transparent; color: var(--MI_THEME-accent); font: inherit; font-weight: 700; cursor: pointer; }
 .sReset:hover, .sReset:focus-visible { background: var(--MI_THEME-accentedBg); }
 /* 旗鯖fork: 見出しの入れ替え。⚠️mode="out-in" なので、出ていく側と入る側は重ならない。 */

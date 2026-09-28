@@ -14,6 +14,7 @@ import {
 	preferenceAuxiliaryControls,
 	preferenceControls,
 	settingsInventoryKeys,
+	uiSDisplaySizeSearchId,
 	
 } from './settings-preferences-catalog.js';
 import { destinationForId, settingsDestinationSections, settingsDestinations } from './settings-destinations.js';
@@ -21,11 +22,82 @@ import type { SettingsInventoryKey } from './settings-preferences-catalog.js';
 import type { SettingsControlCatalogItemV2 } from '@/utility/settings-control-search-v2.js';
 import type { SettingsCatalogV2, SettingsDestinationCatalogItemV2 } from '@/utility/settings-search-v2.js';
 import { assertSettingsCatalogRelationsV2 } from '@/utility/settings-search-v2.js';
+import { i18n } from '@/i18n.js';
 
 const LEGACY_PREFERENCES_SOURCE = 'src/pages/settings/preferences.vue';
 const REDESIGNED_PREFERENCES_SOURCE = 'src/pages/settings-redesign/settings-preferences-catalog.ts';
 const PREFERENCES_ROUTE = '/settings/preferences';
 const settingsInventoryKeySet = new Set<string>(settingsInventoryKeys);
+const uiSBottomNavSearchId = generatedPreferenceSearchId('simpleUi.bottomNav');
+
+function uiSDisplaySizeSearchItem(): SettingsControlCatalogItemV2 {
+	const copy = i18n.ts._hata._hataskeyUi3._displaySize;
+	return {
+		stableId: uiSDisplaySizeSearchId,
+		route: PREFERENCES_ROUTE,
+		label: copy.title,
+		description: copy.caption,
+		aliases: ['サイズ', '表示密度', 'コンパクト', '画面', 'UI S', 'display size', 'density', 'compact', 'screen', '显示大小', '显示密度', '紧凑'],
+		preferenceKeys: [],
+		storageRefs: [{ kind: 'local', key: 'hataskeyUiSDisplaySize' }],
+		legacyMarkerAncestorIds: [],
+		semanticGroupId: 'settings.semantic.preference.hataskey-ui-s',
+		sourceSemanticGroupId: 'settings.semantic.preference.hataskey-ui-s',
+		categoryId: 'hataskey-ui',
+		persistence: 'device',
+		saveMode: 'immediate',
+		availability: 'all',
+		owner: 'hatasaba',
+		applicableUi: 'all',
+		metadataEvidence: {
+			persistence: 'hatasaba-device-prefs saves hataskeyUiSDisplaySize in miLocalStorage',
+			saveMode: 'SettingsPreferencesSurface calls setHataskeyUiSDisplaySize on every selection',
+			availability: 'the UI S settings section is mounted on desktop and mobile',
+			owner: 'UI S display size control',
+			applicableUi: 'the setting can be edited from every UI; its effect applies only to UI S',
+		},
+		destinationId: 'hataskey-ui-s',
+		relationDestinationId: 'hataskey-ui',
+		relatedHostId: uiSDisplaySizeSearchId,
+		sourceFile: 'src/pages/settings-redesign/SettingsPreferencesSurface.vue',
+		sourceLine: 1,
+		destructive: false,
+	};
+}
+
+function uiSBottomNavSearchItem(): SettingsControlCatalogItemV2 {
+	const copy = i18n.ts._hata._hataskeyUi3._bottomNav;
+	return {
+		stableId: uiSBottomNavSearchId,
+		route: PREFERENCES_ROUTE,
+		label: copy.title,
+		description: copy.caption,
+		aliases: ['下部ナビバー', '並び替え', 'モバイル', 'ウィジェット', 'bottom navigation', 'reorder', 'mobile', 'widgets', '底部导航栏', '调整顺序', '移动端', '小组件', 'simpleUi.bottomNav', 'hataskeyUi3BottomNav', 'Hataskey UI S'],
+		preferenceKeys: ['hataskeyUi3BottomNav'],
+		legacyMarkerAncestorIds: [],
+		semanticGroupId: 'settings.group.hataskey-ui-s.bottom-nav',
+		sourceSemanticGroupId: 'settings.group.hataskey-ui-s.bottom-nav',
+		categoryId: 'hataskey-ui',
+		persistence: 'profile',
+		saveMode: 'immediate',
+		availability: 'all',
+		owner: 'hatasaba',
+		applicableUi: 'all',
+		metadataEvidence: {
+			persistence: 'UI S saves hataskeyUi3BottomNav; simpleUi.bottomNav is read only for legacy fallback',
+			saveMode: 'HataskeyUiSBottomNavSettings commits every edit immediately',
+			availability: 'the settings section is mounted on desktop and mobile',
+			owner: 'UI S bottom navigation settings surface',
+			applicableUi: 'the settings section can be edited from every UI',
+		},
+		destinationId: 'hataskey-ui-s',
+		relationDestinationId: 'hataskey-ui',
+		relatedHostId: uiSBottomNavSearchId,
+		sourceFile: 'src/pages/settings-redesign/HataskeyUiSBottomNavSettings.vue',
+		sourceLine: 1,
+		destructive: false,
+	};
+}
 
 // These page sources share the redesigned destination shown for their
 // existing route. This mapping records current placement, not a relation
@@ -125,8 +197,25 @@ function isLegacyPreferencesControl(item: SettingsControlCatalogItemV2): boolean
 	return item.sourceFile === LEGACY_PREFERENCES_SOURCE && item.route === PREFERENCES_ROUTE;
 }
 
+/** Only the six shared border controls move out of the old custom page. */
+function isLegacyVisibilityBorderControl(item: SettingsControlCatalogItemV2): boolean {
+	return item.sourceFile === 'src/pages/settings/hata-custom.vue' && item.route === '/settings/hata-custom'
+		&& item.preferenceKeys.length === 1
+		&& item.preferenceKeys[0]!.startsWith('postFormVisibilityBorder.')
+		&& settingsInventoryKeySet.has(item.preferenceKeys[0]!);
+}
+
+function isReplacedPreferenceControl(item: SettingsControlCatalogItemV2): boolean {
+	return isLegacyPreferencesControl(item) || isLegacyVisibilityBorderControl(item) || isUiSBottomNavControl(item);
+}
+
+function isUiSBottomNavControl(item: SettingsControlCatalogItemV2): boolean {
+	return item.sourceFile === 'src/pages/settings-redesign/HataskeyUiSBottomNavSettings.vue'
+		&& item.preferenceKeys.includes('hataskeyUi3BottomNav');
+}
+
 /**
- * Preserve runtime-generated IDs from the removed legacy preferences surface.
+ * Preserve runtime-generated IDs from preferences and the shared custom-page border controls.
  * The generator is the only source that knows those IDs, so this mapping is
  * deliberately built from its current output rather than a static catalog.
  */
@@ -137,14 +226,19 @@ export function redesignedPreferenceStableIdAliases(
 		'i18n.ts.enableAll',
 		'i18n.ts.disableAll',
 	]);
-	const aliases = new Map<string, string>();
+	const aliases = new Map<string, string>([[generatedPreferenceSearchId('hataskeyUi3BottomNav'), uiSBottomNavSearchId]]);
 
-	for (const item of generated.filter(isLegacyPreferencesControl)) {
+	for (const item of generated.filter(isReplacedPreferenceControl)) {
+		if (isUiSBottomNavControl(item)) { aliases.set(item.stableId, uiSBottomNavSearchId); continue; }
+		// The legacy device switch and profile control share one redesigned row.
+		const isDeviceHorizontalSwipe = item.aliases.includes('deviceHorizontalSwipe') &&
+			(item.storageRefs ?? []).some(ref => ref.kind === 'local' && ref.key === 'hatasabaTabSwipeEnabled');
 		const representedPreferenceKeys = [
 			...new Set(
 				[
 					...item.preferenceKeys,
 					...item.aliases,
+					...(isDeviceHorizontalSwipe ? ['enableHorizontalSwipe'] : []),
 					...(item.storageRefs ?? []).flatMap((ref) =>
 						'key' in ref ? [ref.key] : [],
 					),
@@ -193,8 +287,8 @@ function fallbackMetadata(key: string): Pick<SettingsControlCatalogItemV2,
 > {
 	const deviceLocal = key === 'lang' || key === 'useBoldFont' || key === 'useSystemFont' || key.startsWith('hataskeyUi3Rss');
 	const navbarNotice = key === 'emojiAdditionNotice' || key === 'hourlyTimeNotice';
-	// 旗鯖fork: Hataskey UI 3 の投稿欄だけに効く設定。
-	const hataskeyUi3 = key.startsWith('hataskeyUi3');
+	// 旗鯖fork: UI S 設定と、他の投稿フォームにも共有される枠色設定。
+	const hataskeyUi3 = key.startsWith('hataskeyUi3') || key.startsWith('postFormVisibilityBorder.');
 	return {
 		persistence: deviceLocal ? 'device' : 'profile',
 		saveMode: 'immediate',
@@ -265,9 +359,14 @@ function materializePreferenceControl(
 		...(description ? { description } : {}),
 		aliases: [...new Set([
 			entry.key,
+			...(entry.key.startsWith('postFormVisibilityBorder.') ? ['公開範囲', '色分け', '投稿フォーム', 'ぼかし', 'visibility', 'border color', 'post form', 'blur', '可见范围', '颜色', '发帖框', '模糊'] : []),
+			...(entry.key === 'hataskeyUi3TimelineBackground' ? ['背景', 'すりガラス', 'ヘッダー', 'アイコン', 'background', 'frosted glass', 'header', 'avatar', '磨砂玻璃', '头像'] : []),
+			...(entry.key === 'hataskeyUi3SideMenuBackground' ? ['左サイドメニュー', '左メニュー', 'サイドバー', '背景', 'すりガラス', 'side menu', 'sidebar', 'background', 'frosted glass', '左侧菜单', '磨砂玻璃'] : []),
+			...(entry.key === 'hataskeyUi3RightPaneBackground' ? ['右ペイン', 'ウィジェット', 'Hatask', '背景', 'すりガラス', 'right pane', 'widgets', 'background', 'frosted glass', '右侧面板', '小组件', '磨砂玻璃'] : []),
+			...(entry.key === 'hataskeyUi3GlassDensity' ? ['背景', 'すりガラス', '透過度', '透明度', '濃さ', '薄め', '濃いめ', 'background', 'frosted glass', 'opacity', 'transparency', 'density', '磨砂玻璃', '浓度'] : []),
 			...(entry.key.startsWith('hataskeyUi3Rss') ? ['RSS', 'フィード', 'リーダー', 'feed', 'reader', '訂閱來源'] : []),
 			...(entry.destinationId === 'hataskey-ui-s' ? [
-				...(entry.key.startsWith('hataskeyUi3Rss') ? [] : ['投稿フォーム']), 'Hataskey UI S', 'UI3',
+				...(entry.key.startsWith('hataskeyUi3Composer') ? ['投稿フォーム'] : []), 'Hataskey UI S', 'UI3',
 			] : []),
 			...(legacy?.aliases ?? []),
 			...(legacy?.label != null ? [legacy.label] : []),
@@ -279,7 +378,8 @@ function materializePreferenceControl(
 		semanticGroupId: `settings.semantic.preference.${entry.destinationId}`,
 		sourceSemanticGroupId: `settings.semantic.preference.${entry.destinationId}`,
 		categoryId: sourceCategoryId(entry.destinationId, entry.cherry),
-		...(legacy?.unmet?.length ? { unmet: legacy.unmet } : {}),
+		// Border rows stay mounted when disabled; old v-if prerequisites do not apply.
+		...(!entry.key.startsWith('postFormVisibilityBorder.') && legacy?.unmet?.length ? { unmet: legacy.unmet } : {}),
 		persistence: legacy?.persistence ?? fallback.persistence,
 		saveMode: legacy?.saveMode ?? fallback.saveMode,
 		availability: legacy?.availability ?? fallback.availability,
@@ -298,7 +398,8 @@ function materializePreferenceControl(
 
 /**
  * The returned list intentionally removes every generated descriptor from the
- * legacy preferences SFC, including SearchMarker-derived groups.  Their
+ * legacy preferences SFC, including SearchMarker-derived groups, and the six
+ * shared visibility border controls from the custom page.  Their
  * content is now represented exactly once by the preference controls and
  * auxiliary rows above; retaining them would offer stale hash anchors in the
  * redesigned surface.
@@ -306,9 +407,9 @@ function materializePreferenceControl(
 export function mergeRedesignedPreferenceSearchItems(
 	generated: readonly SettingsControlCatalogItemV2[],
 ): SettingsControlCatalogItemV2[] {
-	const legacyPreferences = generated.filter(isLegacyPreferencesControl);
+	const legacyPreferences = generated.filter(isReplacedPreferenceControl);
 	const retained = generated
-		.filter(item => !isLegacyPreferencesControl(item))
+		.filter(item => !isReplacedPreferenceControl(item))
 		.map(item => {
 			const destinationId = item.destinationId ?? CURRENT_DESTINATION_BY_SOURCE_FILE[item.sourceFile];
 			const relationDestinationId = item.relationDestinationId ?? RELATION_DESTINATION_BY_SOURCE_FILE[item.sourceFile];
@@ -321,7 +422,7 @@ export function mergeRedesignedPreferenceSearchItems(
 				...(relationDestinationId != null ? { relationDestinationId } : {}),
 			};
 		});
-	return [...retained, ...inventory().map(entry => materializePreferenceControl(entry, legacyPreferences))];
+	return [...retained, ...inventory().map(entry => materializePreferenceControl(entry, legacyPreferences)), uiSBottomNavSearchItem(), uiSDisplaySizeSearchItem()];
 }
 
 /**
@@ -399,5 +500,6 @@ export function preferenceDestinationForSearchTarget(
 }
 
 export function isRedesignedPreferenceSearchId(id: string | undefined): boolean {
-	return id != null && settingsInventoryKeys.some(key => generatedPreferenceSearchId(key) === id);
+	return id === uiSDisplaySizeSearchId || id === uiSBottomNavSearchId || id === generatedPreferenceSearchId('hataskeyUi3BottomNav')
+		|| id != null && settingsInventoryKeys.some(key => generatedPreferenceSearchId(key) === id);
 }

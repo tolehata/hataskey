@@ -197,71 +197,78 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- Top pill navbar (timeline tabs) - scroll reactive -->
 			<div
 				v-show="nativeNavbarVisible || mobileToastVisible || punchVisible" data-hata-collapse-group
-				:data-toast-motion="prefer.r.animation.value" :data-hidden="!punchVisible && !showTopBar && !mobileToastVisible && !navbarNewNotes && !emojiVoteInNavbar && !notificationToasts.navbarNotice.value"
+				:inert="navbarSearchOpen" :data-toast-motion="prefer.r.animation.value" :data-hidden="!pullRefresh.active.value && !navbarLoadingShown && !punchVisible && !showTopBar && !mobileToastVisible && !navbarNewNotes && !emojiVoteInNavbar && !notificationToasts.navbarNotice.value"
 				:data-emoji-vote="emojiVoteInNavbar"
 				:data-notification-only="mobileNotificationOnly && !punchVisible"
 				:class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight]"
 			>
-				<div ref="topNavStackEl" :class="$style.topNavStack" :data-navbar-notice="notificationToasts.navbarNotice.value?.kind" :style="emojiVoteNavbarStackStyle">
-					<div ref="notificationOutlineEl" :class="$style.topPillFrame" :data-emoji-celebrating="emojiVoteInNavbar && emojiVoteNavbarState.celebrating" :data-emoji-leaving="emojiVoteInNavbar && emojiVoteNavbarState.leaving">
+				<div ref="topNavStackEl" :class="$style.topNavStack" :data-navbar-notice="notificationToasts.navbarNotice.value?.kind" :data-pull-active="pullRefresh.active.value" :data-pull-phase="pullRefresh.state.value.phase" :data-pull-motion="newNotesMotionEnabled" :style="[emojiVoteNavbarStackStyle, pullRefresh.style.value, navbarPullFrameStyle]">
+					<div ref="notificationOutlineEl" :class="$style.topPillFrame" :aria-busy="nativeNavbarVisible && pendingApiRequestsCount > 0" :data-emoji-celebrating="emojiVoteInNavbar && emojiVoteNavbarState.celebrating" :data-emoji-leaving="emojiVoteInNavbar && emojiVoteNavbarState.leaving">
+						<MkNavbarLoadingRing v-if="nativeNavbarVisible" :target="notificationOutlineEl" :active="pendingApiRequestsCount > 0" :motion="newNotesMotionEnabled" @visibleChange="navbarLoadingVisible = $event"/>
 						<MkLtlEmojiVoteOutline v-if="emojiVoteInNavbar" :target="notificationOutlineEl"/>
-						<div :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value" :data-new-notes="!!navbarNewNotesContent" :data-emoji-vote="emojiVoteInNavbar">
-							<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${notificationToasts.integrated.value && !notificationToasts.surface.value ? notificationToasts.height.value : 0}px` }"></div>
-							<div v-show="!mobileNotificationOnly || punchVisible" ref="emojiVoteNavbarNav" :class="$style.topPillNav">
-								<button v-if="!isDesktop" type="button" :class="$style.avatarBtn" :aria-label="copy.account" @click="openAccountMenu">
-									<img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg" alt=""/>
-									<i v-else class="ti ti-user" aria-hidden="true"></i>
-								</button>
-								<div ref="emojiVoteNavbarTabs" :class="$style.topPillTabs">
-									<template v-for="item in visibleTopTabs" :key="item.id">
-										<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
-											<i :class="item.icon"></i>
-											<span v-if="!isCollectionTimelinePage && tab === item.id" :class="$style.topTabLabel">{{ simpleMenuDisplayLabel(item.id, item.label) }}</span>
-										</button>
-									</template>
-									<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'ohtl' }]" @click="playSimpleNavMotion($event, 'timeline:external-home'); switchTab('ohtl')">
-										<i class="ti ti-home"></i>
-										<span v-if="!isCollectionTimelinePage && tab === 'ohtl'" :class="$style.topTabLabel">{{ copy.externalHome }}</span>
+						<div ref="navbarPullPillEl" :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value" :data-new-notes="!!navbarNewNotesContent" :data-emoji-vote="emojiVoteInNavbar">
+							<div :class="$style.navbarPullContent" :inert="pullRefresh.state.value.height > 8" :aria-hidden="pullRefresh.state.value.height > 8">
+								<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${notificationToasts.integrated.value && !notificationToasts.surface.value ? notificationToasts.height.value : 0}px` }"></div>
+								<div v-show="!mobileNotificationOnly || punchVisible" ref="emojiVoteNavbarNav" :class="$style.topPillNav">
+									<button v-if="!isDesktop" type="button" :class="$style.avatarBtn" :aria-label="copy.account" @click="openAccountMenu">
+										<img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg" alt=""/>
+										<i v-else class="ti ti-user" aria-hidden="true"></i>
 									</button>
-									<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'oltl' }]" @click="playSimpleNavMotion($event, 'timeline:external-local'); switchTab('oltl')">
-										<i class="ti ti-planet"></i>
-										<span v-if="!isCollectionTimelinePage && tab === 'oltl'" :class="$style.topTabLabel">{{ copy.externalLocal }}</span>
-									</button>
-									<div :class="$style.topTabDivider"></div>
-									<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isListTimelinePage }]">
-										<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isListTimelinePage }]" @click="playSimpleNavMotion($event, 'list'); openPreferredList()">
-											<i class="ti ti-list"></i>
-											<span v-if="isListTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.list }}</span><span :class="$style.topTabName">{{ activeListName }}</span></span>
+									<div ref="emojiVoteNavbarTabs" :class="$style.topPillTabs">
+										<template v-for="item in visibleTopTabs" :key="item.id">
+											<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
+												<i :class="item.icon"></i>
+												<span v-if="!isCollectionTimelinePage && tab === item.id" :class="$style.topTabLabel">{{ simpleMenuDisplayLabel(item.id, item.label) }}</span>
+											</button>
+										</template>
+										<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'ohtl' }]" @click="playSimpleNavMotion($event, 'timeline:external-home'); switchTab('ohtl')">
+											<i class="ti ti-home"></i>
+											<span v-if="!isCollectionTimelinePage && tab === 'ohtl'" :class="$style.topTabLabel">{{ copy.externalHome }}</span>
 										</button>
-										<button v-if="isListTimelinePage" v-tooltip="copy.switchList" :class="$style.listSelectBtn" :aria-label="copy.switchList" @click="playSimpleNavMotion($event, 'list'); toggleTimelinePicker('list')">
-											<i class="ti ti-selector"></i>
+										<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'oltl' }]" @click="playSimpleNavMotion($event, 'timeline:external-local'); switchTab('oltl')">
+											<i class="ti ti-planet"></i>
+											<span v-if="!isCollectionTimelinePage && tab === 'oltl'" :class="$style.topTabLabel">{{ copy.externalLocal }}</span>
 										</button>
-										<button v-if="isListTimelinePage" v-tooltip="copy.configureList" :class="$style.listSelectBtn" :aria-label="copy.configureList" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('list')"><i class="ti ti-settings"></i></button>
+										<div :class="$style.topTabDivider"></div>
+										<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isListTimelinePage }]">
+											<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isListTimelinePage }]" @click="playSimpleNavMotion($event, 'list'); openPreferredList()">
+												<i class="ti ti-list"></i>
+												<span v-if="isListTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.list }}</span><span :class="$style.topTabName">{{ activeListName }}</span></span>
+											</button>
+											<button v-if="isListTimelinePage" v-tooltip="copy.switchList" :class="$style.listSelectBtn" :aria-label="copy.switchList" @click="playSimpleNavMotion($event, 'list'); toggleTimelinePicker('list')">
+												<i class="ti ti-selector"></i>
+											</button>
+											<button v-if="isListTimelinePage" v-tooltip="copy.configureList" :class="$style.listSelectBtn" :aria-label="copy.configureList" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('list')"><i class="ti ti-settings"></i></button>
+										</div>
+										<button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="playSimpleNavMotion($event, 'channel'); goToChannels()">
+											<i class="ti ti-device-tv"></i>
+											<span v-if="isChannelPage" :class="$style.topTabLabel">{{ copy.channel }}</span>
+										</button>
+										<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isAntennaTimelinePage }]">
+											<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isAntennaTimelinePage }]" @click="playSimpleNavMotion($event, 'antenna'); openPreferredAntenna()">
+												<i class="ti ti-antenna"></i>
+												<span v-if="isAntennaTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.antenna }}</span><span :class="$style.topTabName">{{ activeAntennaName }}</span></span>
+											</button>
+											<button v-if="isAntennaTimelinePage" v-tooltip="copy.switchAntenna" :class="$style.listSelectBtn" :aria-label="copy.switchAntenna" @click="playSimpleNavMotion($event, 'antenna'); toggleTimelinePicker('antenna')"><i class="ti ti-selector"></i></button>
+											<button v-if="isAntennaTimelinePage" v-tooltip="copy.configureAntenna" :class="$style.listSelectBtn" :aria-label="copy.configureAntenna" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('antenna')"><i class="ti ti-settings"></i></button>
+										</div>
 									</div>
-									<button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="playSimpleNavMotion($event, 'channel'); goToChannels()">
-										<i class="ti ti-device-tv"></i>
-										<span v-if="isChannelPage" :class="$style.topTabLabel">{{ copy.channel }}</span>
-									</button>
-									<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isAntennaTimelinePage }]">
-										<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isAntennaTimelinePage }]" @click="playSimpleNavMotion($event, 'antenna'); openPreferredAntenna()">
-											<i class="ti ti-antenna"></i>
-											<span v-if="isAntennaTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.antenna }}</span><span :class="$style.topTabName">{{ activeAntennaName }}</span></span>
+								</div>
+								<div ref="punchNavbarTarget" :class="$style.punchNavbarTarget"></div>
+								<div ref="ltlEmojiVoteNavbarTarget" :class="$style.emojiVoteNavbarViewport" :data-active="emojiVoteInNavbar"></div>
+								<div :class="$style.newNotesViewport" :data-active="!!navbarNewNotes" :aria-hidden="!navbarNewNotes" :inert="!navbarNewNotes">
+									<div :class="$style.newNotesContent">
+										<button class="_button" :class="$style.newNotesButton" type="button" :disabled="!navbarNewNotes" :aria-label="navbarNewNotesLabel" @click="showNavbarNewNotes">
+											<span ref="newNotesFlashEl" :class="$style.newNotesFlash" aria-hidden="true"></span>
+											<span ref="newNotesContentEl" :class="$style.newNotesVisual"><MkTimelineNewNotesContent :avatars="navbarNewNotesContent?.avatars ?? []" :count="navbarNewNotesContent?.count" :text="navbarNewNotesContent?.text" :author="navbarNewNotesContent?.author" :emojiUrls="navbarNewNotesContent?.emojiUrls" :icon="navbarNewNotesContent?.icon" :motion="newNotesMotionEnabled" :compact="!isDesktop"/></span>
+											<span :class="$style.newNotesStatus" role="status" aria-atomic="true">{{ navbarNewNotes ? navbarNewNotesLabel : '' }}</span>
 										</button>
-										<button v-if="isAntennaTimelinePage" v-tooltip="copy.switchAntenna" :class="$style.listSelectBtn" :aria-label="copy.switchAntenna" @click="playSimpleNavMotion($event, 'antenna'); toggleTimelinePicker('antenna')"><i class="ti ti-selector"></i></button>
-										<button v-if="isAntennaTimelinePage" v-tooltip="copy.configureAntenna" :class="$style.listSelectBtn" :aria-label="copy.configureAntenna" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('antenna')"><i class="ti ti-settings"></i></button>
 									</div>
 								</div>
 							</div>
-							<div ref="punchNavbarTarget" :class="$style.punchNavbarTarget"></div>
-							<div ref="ltlEmojiVoteNavbarTarget" :class="$style.emojiVoteNavbarViewport" :data-active="emojiVoteInNavbar"></div>
-							<div :class="$style.newNotesViewport" :data-active="!!navbarNewNotes" :aria-hidden="!navbarNewNotes" :inert="!navbarNewNotes">
-								<div :class="$style.newNotesContent">
-									<button class="_button" :class="$style.newNotesButton" type="button" :disabled="!navbarNewNotes" :aria-label="navbarNewNotesLabel" @click="showNavbarNewNotes">
-										<span ref="newNotesFlashEl" :class="$style.newNotesFlash" aria-hidden="true"></span>
-										<span ref="newNotesContentEl" :class="$style.newNotesVisual"><MkTimelineNewNotesContent :avatars="navbarNewNotesContent?.avatars ?? []" :count="navbarNewNotesContent?.count" :text="navbarNewNotesContent?.text" :author="navbarNewNotesContent?.author" :emojiUrls="navbarNewNotesContent?.emojiUrls" :icon="navbarNewNotesContent?.icon" :motion="newNotesMotionEnabled" :compact="!isDesktop"/></span>
-										<span :class="$style.newNotesStatus" role="status" aria-atomic="true">{{ navbarNewNotes ? navbarNewNotesLabel : '' }}</span>
-									</button>
-								</div>
+							<div :class="$style.navbarPullPrompt" role="status" aria-atomic="true">
+								<i class="ti ti-refresh" :class="$style.navbarPullSymbol" aria-hidden="true"></i>
+								<span>{{ navbarPullPrompt }}</span>
 							</div>
 						</div>
 					</div>
@@ -279,7 +286,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 			<!-- Page view header -->
-			<header v-show="isPageView && showPageHeader && !isCollectionTimelinePage && !isSettingsPage" data-hata-collapse-group :class="$style.pageHeader">
+			<header v-show="isPageView && showPageHeader && !isCollectionTimelinePage && !isSettingsPage" :inert="navbarSearchOpen" data-hata-collapse-group :class="$style.pageHeader">
 				<button :class="$style.pageBackBtn" @click="goBack"><i class="ti ti-chevron-left"></i></button>
 				<div :class="$style.pageTitle">{{ pageMetadata?.title ?? '' }}</div>
 				<div style="width: 38px;"></div>
@@ -291,14 +298,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-if="timelineGlassBg && $i?.bannerUrl" :class="$style.timelineBanner">
 				<img :src="$i.bannerUrl" :class="$style.timelineBannerImg"/>
 			</div>
-			<div ref="contentEl" data-timeline-tab-gestures :class="$style.content" @scroll="onContentScroll" @wheel="onContentWheel">
-				<Transition :css="newNotesMotionEnabled" :enter-active-class="$style.timelineEnterActive" :leave-active-class="$style.timelineLeaveActive" :enter-from-class="$style.timelineEnterFrom" :enter-to-class="$style.timelineEnterTo" :leave-from-class="$style.timelineLeaveFrom" :leave-to-class="$style.timelineLeaveTo" @before-leave="prepareTimelineLeave" mode="out-in">
+			<div ref="contentEl" :inert="navbarSearchOpen" data-timeline-tab-gestures :class="$style.content" @scroll="onContentScroll" @wheel="onContentWheel">
+				<Transition :css="newNotesMotionEnabled" :enterActiveClass="$style.timelineEnterActive" :leaveActiveClass="$style.timelineLeaveActive" :enterFromClass="$style.timelineEnterFrom" :enterToClass="$style.timelineEnterTo" :leaveFromClass="$style.timelineLeaveFrom" :leaveToClass="$style.timelineLeaveTo" mode="out-in" @beforeLeave="prepareTimelineLeave">
 					<div v-show="!isPageView && !deckActive" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="$style.timelineContainer" :style="{ '--timeline-slide-direction': timelineSlideDirection }" :data-timeline-motion="newNotesMotionEnabled" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart.passive="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" @touchcancel="onTouchCancel">
 						<!-- 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定がONのとき、外部TL以外でMkPostFormを表示 -->
 						<MkPostForm v-if="showFixedPostForm && !isExternalTab" :class="$style.fixedPostForm" class="_panel" fixed :autofocus="false"/>
 						<KeepAlive>
 							<MkStreamingNotesTimeline v-if="tab === 'mixed'" key="mixed" newNotesNavbarKey="main:mixed" src="global" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkStreamingNotesTimeline v-else-if="tab === 'local'" ref="punchTimeline" :updatesPaused="punchBusy" key="local" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive && !punchBusy" :emojiVoteEffectTarget="ltlEmojiVoteEffects" :emojiVoteNavbar="normalLtlVoteActive && nativeNavbarVisible" :emojiVoteNavbarTarget="normalLtlVoteActive && nativeNavbarVisible ? ltlEmojiVoteNavbarTarget : null" @emojiVoteNavbarState="emojiVoteNavbarState = $event"/>
+							<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" ref="punchTimeline" :updatesPaused="punchBusy" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive && !punchBusy" :emojiVoteEffectTarget="ltlEmojiVoteEffects" :emojiVoteNavbar="normalLtlVoteActive && nativeNavbarVisible" :emojiVoteNavbarTarget="normalLtlVoteActive && nativeNavbarVisible ? ltlEmojiVoteNavbarTarget : null" @emojiVoteNavbarState="emojiVoteNavbarState = $event"/>
 							<MkStreamingNotesTimeline v-else-if="tab === 'social'" key="social" newNotesNavbarKey="main:social" src="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
 							<MkStreamingNotesTimeline v-else-if="tab === 'following'" key="following" newNotesNavbarKey="main:following" src="home" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
 							<MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" key="ohtl" newNotesNavbarKey="main:ohtl" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
@@ -320,28 +327,34 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkLtlPunch :active="normalLtlVoteActive && !!$i" :navbarTarget="punchNavbarTarget" :navbarFrame="notificationOutlineEl" :timelineRoot="punchNoteRoot" :viewportTarget="contentEl" :animationEnabled="prefer.r.animation.value" @busy="punchBusy = $event" @visible="punchVisible = $event"/>
 			<div v-if="normalLtlVoteActive" ref="ltlEmojiVoteEffects" :class="$style.ltlEmojiVoteEffects" :style="ltlEmojiVoteViewport" aria-hidden="true"></div>
 
+			<div v-if="navbarSearchOpen" :class="$style.navbarSearchScrim" data-navbar-search-scrim @pointerdown.stop.prevent @click.stop.prevent="closeNavbarSearch()" @touchmove.prevent @wheel.prevent></div>
 			<!-- 通常TL: ナビバー（モバイルのみ） -->
-			<div v-show="!isDesktop && !isHataskPage && !isExternalTab && !isChannelDetailPage && (!isPageView || bottomNavHasPage) && !userPanelUserId" data-htk-weather-footer data-hata-collapse-group :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar || widgetsShowing }]">
-				<button v-if="!isDesktop" :class="$style.sideBtn" @click="playSimpleNavMotion($event, 'layout'); simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
-				<div :class="$style.navPill">
-					<template v-for="item in visibleBottomNav" :key="item.id">
-						<button v-if="item.id==='search'" :class="[$style.navBtn, { [$style.navActive]: isSearchPage }]" @click="playSimpleNavMotion($event, 'search'); openSearch()"><i class="ti ti-search"></i></button>
-						<button v-else-if="item.id==='home'" :class="[$style.navBtn, { [$style.navActive]: isHomeTL }]" @click="playSimpleNavMotion($event, 'home'); goHome()"><i class="ti ti-home"></i></button>
-						<button v-else-if="item.id==='notifications'" :class="[$style.navBtn, { [$style.navActive]: isNotifPage }]" @click="playSimpleNavMotion($event, 'notifications'); goToNotifications()">
-							<i class="ti ti-bell"></i>
-							<template v-if="hasUnreadNotif">
-								<span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.badgeCount">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span>
-								<span v-else :class="$style.badge"></span>
-							</template>
-						</button>
-						<button v-else-if="item.id==='hatask'" :class="[$style.navBtn, { [$style.navActive]: isHataskPage }]" @click="playSimpleNavMotion($event, 'hatask'); goToHatask()"><i class="ti ti-eye"></i></button>
-						<button v-else-if="item.id==='hatady'" :class="[$style.navBtn, { [$style.navActive]: isHatadyPage }]" @click="playSimpleNavMotion($event, 'hatady'); goToHatady()"><i class="ti ti-book-2"></i></button>
-						<button v-else-if="item.id==='hatafeed'" :class="[$style.navBtn, { [$style.navActive]: isHataFeedPage }]" @click="playSimpleNavMotion($event, 'hatafeed'); goToHataFeed()"><i class="ti ti-message-report"></i></button>
-						<button v-else-if="item.id==='widgets'" :class="$style.navBtn" @click="playSimpleNavMotion($event, 'widgets'); widgetsShowing = true"><i class="ti ti-apps"></i></button>
-					</template>
+			<div v-show="!isDesktop && !isHataskPage && !isExternalTab && !isChannelDetailPage && (!isPageView || bottomNavHasPage) && !userPanelUserId" data-htk-weather-footer data-hata-collapse-group :data-search-open="navbarSearchOpen" :data-search-motion="newNotesMotionEnabled" :style="{ '--navbar-search-keyboard-inset': `${navbarSearchOpen ? navbarSearchKeyboardInset : 0}px` }" :class="[$style.bottomBar, $style.bottomSearchBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !navbarSearchOpen && (!showBottomBar || widgetsShowing) }]">
+				<button v-if="!isDesktop" :class="$style.sideBtn" :inert="navbarSearchOpen" @click="playSimpleNavMotion($event, 'layout'); simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
+				<div ref="navbarSearchShell" :class="[$style.navPill, $style.searchPill]" :data-search-open="navbarSearchOpen" :role="navbarSearchOpen ? 'dialog' : undefined" :aria-modal="navbarSearchOpen ? true : undefined" :aria-label="navbarSearchOpen ? i18n.ts.search : undefined" @keydown="onNavbarSearchKeydown">
+					<div :class="$style.navbarSearchBody" :style="{ height: `${navbarSearchOpen ? Math.min(navbarSearchHeight, navbarSearchMaxHeight) : 0}px` }" :inert="!navbarSearchOpen" :aria-hidden="!navbarSearchOpen">
+						<MkMobileNavbarSearch ref="navbarSearchContent" :active="navbarSearchOpen" :maxHeight="navbarSearchMaxHeight" :motion="newNotesMotionEnabled" @height="updateNavbarSearchHeight" @close="closeNavbarSearch()"/>
+					</div>
+					<div :class="$style.bottomNavRow">
+						<template v-for="item in visibleBottomNav" :key="item.id">
+							<button v-if="item.id==='search'" :ref="setNavbarSearchTrigger" :class="[$style.navBtn, { [$style.navActive]: navbarSearchOpen || isSearchPage }]" :aria-label="navbarSearchOpen ? i18n.ts.close : i18n.ts.search" :aria-expanded="navbarSearchOpen" aria-haspopup="dialog" data-navbar-search-toggle @click="toggleNavbarSearch"><span :class="$style.navbarSearchIcons" :data-open="navbarSearchOpen"><i class="ti ti-search" :class="$style.navbarSearchIcon" aria-hidden="true"></i><i class="ti ti-x" :class="$style.navbarSearchCloseIcon" aria-hidden="true"></i></span></button>
+							<button v-else-if="item.id==='home'" :disabled="navbarSearchOpen" :class="[$style.navBtn, { [$style.navActive]: isHomeTL }]" @click="playSimpleNavMotion($event, 'home'); goHome()"><i class="ti ti-home"></i></button>
+							<button v-else-if="item.id==='notifications'" :disabled="navbarSearchOpen" :class="[$style.navBtn, { [$style.navActive]: isNotifPage }]" @click="playSimpleNavMotion($event, 'notifications'); goToNotifications()">
+								<i class="ti ti-bell"></i>
+								<template v-if="hasUnreadNotif">
+									<span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.badgeCount">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span>
+									<span v-else :class="$style.badge"></span>
+								</template>
+							</button>
+							<button v-else-if="item.id==='hatask'" :disabled="navbarSearchOpen" :class="[$style.navBtn, { [$style.navActive]: isHataskPage }]" @click="playSimpleNavMotion($event, 'hatask'); goToHatask()"><i class="ti ti-eye"></i></button>
+							<button v-else-if="item.id==='hatady'" :disabled="navbarSearchOpen" :class="[$style.navBtn, { [$style.navActive]: isHatadyPage }]" @click="playSimpleNavMotion($event, 'hatady'); goToHatady()"><i class="ti ti-book-2"></i></button>
+							<button v-else-if="item.id==='hatafeed'" :disabled="navbarSearchOpen" :class="[$style.navBtn, { [$style.navActive]: isHataFeedPage }]" @click="playSimpleNavMotion($event, 'hatafeed'); goToHataFeed()"><i class="ti ti-message-report"></i></button>
+							<button v-else-if="item.id==='widgets'" :disabled="navbarSearchOpen" :class="$style.navBtn" @click="playSimpleNavMotion($event, 'widgets'); widgetsShowing = true"><i class="ti ti-apps"></i></button>
+						</template>
+					</div>
 				</div>
-				<button v-if="!isPageView || isCollectionTimelinePage" :class="$style.sideBtn" data-cy-open-post-form @click="playSimpleNavMotion($event, 'post'); onPostClick()"><i class="ti ti-pencil"></i></button>
-				<div v-else style="width:48px;"></div>
+				<button v-if="!isPageView || isCollectionTimelinePage" :class="$style.sideBtn" :inert="navbarSearchOpen" data-cy-open-post-form @click="playSimpleNavMotion($event, 'post'); onPostClick()"><i class="ti ti-pencil"></i></button>
+				<div v-else :class="$style.bottomSideSpacer"></div>
 			</div>
 
 			<!-- 外部TL: 投稿 & 通知ボタン（モバイルのみ） -->
@@ -460,7 +473,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<!-- PC/タブレット: 右ウィジェットバー -->
 	<!-- 旗鯖fork: 折りたたみ端末の広い面でも、このバーだけPCと同じ構成・同じ表示で常時出す。
 	     ⚠️isDesktop は広げない(下部ナビ等までPC化して「モバイル表示のまま」が崩れるため)。 -->
-	<div v-if="(isDesktop || isFoldableWide) && !deckActive" data-hata-collapse-part :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
+	<div v-if="(isDesktop || isFoldableWide) && !deckActive" :inert="navbarSearchOpen" data-hata-collapse-part :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
 		<div v-if="glassEffect" :class="$style.desktopWidgetsBanner">
 			<img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.desktopWidgetsBannerImg"/>
 		</div>
@@ -469,7 +482,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 	</div>
 
-	<XCommon v-model:widgetsShowing="widgetsShowing"/>
+	<XCommon v-model:widgetsShowing="widgetsShowing" :loadingIntegrated="nativeNavbarVisible && !!notificationOutlineEl"/>
 	<MkHataskeyUiSAnnouncement :navRoot="announcementNavRoot" :accountId="$i?.id ?? null" @switch="simpleDrawerShowing = false; void openUiSetup()"/>
 </div>
 </template>
@@ -479,8 +492,13 @@ import { ref, computed, provide, onMounted, onUnmounted, nextTick, defineAsyncCo
 import { instanceName } from '@@/js/config.js';
 import XCommon from './_common_/common.vue';
 import MkTimelineNewNotesContent from '@/components/MkTimelineNewNotesContent.vue';
+import MkNavbarLoadingRing from '@/components/MkNavbarLoadingRing.vue';
+import { pendingApiRequestsCount } from '@/utility/misskey-api.js';
 import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
+import { createNavbarPullRefresh, navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
 import { useHataskeyNavbarNotices } from '@/composables/use-hataskey-navbar-notices.js';
+import { attachIOSViewportRecovery } from '@/utility/ios-viewport-recovery.js';
+import MkMobileNavbarSearch from '@/components/MkMobileNavbarSearch.vue';
 import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
 import { createHataskeyTimelineNewNotes, hataskeyTimelineNewNotesKey, useRetainedHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
 import type { PageMetadata } from '@/page.js';
@@ -603,6 +621,15 @@ provideMetadataReceiver((metadataGetter) => {
 });
 provideReactiveMetadata(pageMetadata);
 
+const navbarSearchOpen = ref(false);
+const navbarSearchShell = ref<HTMLElement | null>(null);
+const navbarSearchTrigger = ref<HTMLButtonElement | null>(null);
+const navbarSearchContent = ref<InstanceType<typeof MkMobileNavbarSearch> | null>(null);
+const navbarSearchHeight = ref(59);
+const navbarSearchViewportHeight = ref(window.visualViewport?.height ?? window.innerHeight);
+const navbarSearchKeyboardInset = ref(0);
+const navbarSearchMaxHeight = computed(() => Math.max(0, navbarSearchViewportHeight.value - 150));
+let navbarSearchFocusVersion = 0;
 const simpleDrawerShowing = ref(false);
 const desktopNavEl = ref<HTMLElement | null>(null);
 const drawerNavEl = ref<HTMLElement | null>(null);
@@ -675,6 +702,7 @@ const windowWidth = ref(window.innerWidth);
 const isDesktop = computed(() => (deckIgnoreWidth.value && deckMode.value) ? true : windowWidth.value >= DESKTOP_THRESHOLD);
 
 function onResize() {
+	updateNavbarSearchViewport();
 	windowWidth.value = window.innerWidth;
 	nextTick(() => { updateSbFade(); });
 }
@@ -807,7 +835,7 @@ function onContentScroll() {
 	if (!contentEl.value) return;
 	const sy = contentEl.value.scrollTop;
 	const diff = sy - lastScrollY;
-	if (diff > 35) { showBottomBar.value = false; showTopBar.value = false; }
+	if (diff > 35 && !navbarSearchOpen.value) { showBottomBar.value = false; showTopBar.value = false; }
 	if (diff < -25) { showBottomBar.value = true; showTopBar.value = true; }
 	lastScrollY = sy;
 	if (scrollTimer) window.clearTimeout(scrollTimer);
@@ -911,6 +939,7 @@ const isHomeTL = computed(() => !isPageView.value && !isSearchPage.value && !isN
 const checkIsPageView = () => { isPageView.value = !HOME_ROUTES.has(mainRouter.currentRoute.value.name as string); };
 
 mainRouter.on('change', () => {
+	closeNavbarSearch(false);
 	checkIsPageView();
 	rememberCurrentCollection();
 	timelinePickerKind.value = null;
@@ -1533,11 +1562,14 @@ const sidebarGroups = computed(() => {
 	// グループの表示順を固定 (定義順に依存しないように)
 	return groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 });
+
 function prepareTimelineLeave(element: Element) {
 	if (element instanceof HTMLElement) element.style.setProperty('--timeline-slide-direction', String(timelineSlideDirection.value));
 }
+
 const switchTab = (t:TabType) => {
 	if (!isHataskeyTimelineAllowed(t)) return;
+	pullRefresh.reset();
 	if (isCollectionTimelinePage.value) mainRouter.push('/');
 	timelinePickerKind.value = null;
 	if (tab.value === t) { if (contentEl.value) contentEl.value.scrollTo({ top: 0, behavior: newNotesMotionEnabled.value ? 'smooth' : 'auto' }); } else { tab.value = t; }
@@ -1552,7 +1584,7 @@ async function openAccountMenu(ev: MouseEvent) {
 
 // ===== スワイプ =====
 const timelineTabGestures = createTimelineTabGestures({
-	enabled: () => tabSwipeEnabled.value && !isPageView.value && !deckActive.value && !punchBusy.value,
+	enabled: () => !navbarSearchOpen.value && tabSwipeEnabled.value && !isPageView.value && !deckActive.value && !punchBusy.value,
 	root: () => contentEl.value,
 	canMove: (direction, source) => {
 		const index = tabOrder.value.indexOf(tab.value);
@@ -1569,7 +1601,7 @@ const onTouchStart = timelineTabGestures.touchStart;
 const onTouchMove = timelineTabGestures.touchMove;
 const onTouchEnd = timelineTabGestures.touchEnd;
 const onTouchCancel = timelineTabGestures.touchCancel;
-watch([tabSwipeEnabled, isPageView, deckActive, punchBusy], () => timelineTabGestures.reset());
+watch([navbarSearchOpen, tabSwipeEnabled, isPageView, deckActive, punchBusy], () => timelineTabGestures.reset());
 onUnmounted(timelineTabGestures.destroy);
 
 // ===== ナビゲーション =====
@@ -1588,6 +1620,73 @@ const goBack = () => {
 	if (window.history.length > 1) { window.history.back(); } else { goHome(); }
 };
 const openSearch = () => { mainRouter.push('/search'); };
+
+function setNavbarSearchTrigger(element: unknown) {
+	navbarSearchTrigger.value = element instanceof HTMLButtonElement ? element : null;
+}
+
+function updateNavbarSearchHeight(height: number) {
+	if (Number.isFinite(height) && height > 0) navbarSearchHeight.value = height;
+}
+
+function updateNavbarSearchViewport() {
+	const viewport = window.visualViewport;
+	navbarSearchViewportHeight.value = viewport?.height ?? window.innerHeight;
+	navbarSearchKeyboardInset.value = viewport && viewport.scale === 1 ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
+}
+
+function toggleNavbarSearch() {
+	if (navbarSearchOpen.value) { closeNavbarSearch(); return; }
+	if (isDesktop.value || deckActive.value) { openSearch(); return; }
+	navbarSearchFocusVersion++;
+	const focusOrigin = window.document.activeElement;
+	simpleDrawerShowing.value = false;
+	widgetsShowing.value = false;
+	timelinePickerKind.value = null;
+	pullRefresh.reset();
+	showBottomBar.value = true;
+	showTopBar.value = true;
+	navbarSearchOpen.value = true;
+	updateNavbarSearchViewport();
+	void nextTick(() => {
+		const active = window.document.activeElement;
+		if (navbarSearchOpen.value && !navbarSearchShell.value?.closest('[inert]') && (active === focusOrigin || active === window.document.body || active instanceof Node && navbarSearchShell.value?.contains(active))) navbarSearchContent.value?.focus();
+	});
+}
+
+function closeNavbarSearch(restoreFocus = true) {
+	const version = ++navbarSearchFocusVersion;
+	if (!navbarSearchOpen.value) return;
+	navbarSearchOpen.value = false;
+	if (restoreFocus) void nextTick(() => {
+		const active = window.document.activeElement;
+		if (version === navbarSearchFocusVersion && !navbarSearchOpen.value && navbarSearchTrigger.value?.isConnected && (active === window.document.body || active instanceof Node && navbarSearchShell.value?.contains(active))) navbarSearchTrigger.value.focus({ preventScroll: true });
+	});
+}
+
+function searchFocusTargets(root: HTMLElement | null): HTMLElement[] {
+	return Array.from(root?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])') ?? []).filter(element => {
+		if (element.closest('[inert], [aria-hidden="true"], [hidden]')) return false;
+		for (let ancestor: HTMLElement | null = element; ancestor && ancestor !== root; ancestor = ancestor.parentElement) {
+			const style = window.getComputedStyle(ancestor);
+			if (style.display === 'none' || style.visibility === 'hidden') return false;
+		}
+		return true;
+	});
+}
+
+function onNavbarSearchKeydown(event: KeyboardEvent) {
+	if (!navbarSearchOpen.value || event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
+	if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeNavbarSearch(); return; }
+	if (event.key !== 'Tab') return;
+	const elements = searchFocusTargets(navbarSearchShell.value);
+	const index = elements.indexOf(window.document.activeElement as HTMLElement);
+	if (elements.length && (index < 0 || event.shiftKey && index === 0 || !event.shiftKey && index === elements.length - 1)) {
+		event.preventDefault();
+		elements[event.shiftKey ? elements.length - 1 : 0]?.focus({ preventScroll: true });
+	}
+}
+
 const goToHatask = () => { mainRouter.push('/hatask'); };
 const goToHatady = () => { mainRouter.push('/hatady'); };
 const goToHataFeed = () => { mainRouter.push('/hatafeed'); };
@@ -1670,6 +1769,16 @@ const navbarNewNotes = timelineNewNotes.notice;
 const newNotesMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const newNotesReducedMotion = ref(newNotesMotionQuery.matches);
 const newNotesMotionEnabled = computed(() => prefer.r.animation.value && !newNotesReducedMotion.value);
+const navbarPullEnabled = computed(() => prefer.r.enablePullToRefresh.value && nativeNavbarVisible.value && !navbarSearchOpen.value && !punchBusy.value && !timelinePickerKind.value);
+const pullRefresh = createNavbarPullRefresh(navbarPullEnabled, newNotesMotionEnabled);
+provide(navbarPullRefreshKey, pullRefresh);
+watch([mainRouter.currentRef, tab], () => pullRefresh.reset(), { flush: 'sync' });
+// The shared controller also resets immediately when navbarPullEnabled becomes false.
+const navbarPullPrompt = computed(() => {
+	if (!pullRefresh.active.value) return '';
+	if (pullRefresh.state.value.phase === 'refreshing') return i18n.ts.refreshing;
+	return pullRefresh.state.value.phase === 'ready' ? i18n.ts.releaseToRefresh : i18n.ts.pullDownToRefresh;
+});
 const navbarNewNotesContent = useRetainedHataskeyTimelineNewNotes(navbarNewNotes, newNotesMotionEnabled);
 const navbarNewNotesLabel = computed(() => {
 	const notice = navbarNewNotesContent.value;
@@ -1679,11 +1788,13 @@ const newNotesFlashEl = ref<HTMLElement | null>(null);
 const newNotesContentEl = ref<HTMLElement | null>(null);
 const newNotesAnimations = new Set<Animation>();
 let newNotesAnimationRevision = 0;
+
 function stopNewNotesAnimations() {
 	newNotesAnimationRevision++;
 	for (const animation of newNotesAnimations) animation.cancel();
 	newNotesAnimations.clear();
 }
+
 function animateNewNotes(el: HTMLElement | null, frames: Keyframe[], options: KeyframeAnimationOptions) {
 	if (!el?.animate) return;
 	const animation = el.animate(frames, options);
@@ -1695,6 +1806,7 @@ function animateNewNotes(el: HTMLElement | null, frames: Keyframe[], options: Ke
 		newNotesAnimations.delete(animation);
 	});
 }
+
 watch([() => navbarNewNotes.value != null, newNotesMotionEnabled], async ([active, animate]) => {
 	stopNewNotesAnimations();
 	if (!animate) return;
@@ -1710,7 +1822,9 @@ watch([() => navbarNewNotes.value != null, newNotesMotionEnabled], async ([activ
 });
 watch(navbarNewNotesContent, content => { if (content == null) stopNewNotesAnimations(); });
 onUnmounted(stopNewNotesAnimations);
+
 function onNewNotesMotionChange(event: MediaQueryListEvent) { newNotesReducedMotion.value = event.matches; }
+
 newNotesMotionQuery.addEventListener('change', onNewNotesMotionChange);
 onUnmounted(() => newNotesMotionQuery.removeEventListener('change', onNewNotesMotionChange));
 
@@ -1719,13 +1833,57 @@ function showNavbarNewNotes() {
 	return navbarNewNotes.value?.show();
 }
 
+const navbarLoadingVisible = ref(false);
+const navbarLoadingShown = computed(() => nativeNavbarVisible.value && navbarLoadingVisible.value);
 const notificationToasts = createHataskeyNotificationToasts(
 	computed(() => !isDesktop.value),
-	computed(() => nativeNavbarVisible.value && (showTopBar.value || navbarNewNotes.value != null || emojiVoteInNavbar.value)),
+	computed(() => nativeNavbarVisible.value && (pullRefresh.active.value || showTopBar.value || navbarNewNotes.value != null || emojiVoteInNavbar.value || navbarLoadingShown.value)),
 	nativeNavbarVisible,
 );
 const notificationTargetEl = notificationToasts.target;
 const notificationOutlineEl = notificationToasts.outline;
+const navbarPullPillEl = ref<HTMLElement | null>(null);
+const navbarPullFrameStyle = ref<Record<string, string>>({});
+const notificationPauseBeforePull = notificationToasts.paused.value;
+const stopNavbarPullWatch = watch(pullRefresh.active, active => {
+	notificationToasts.paused.value = active || notificationPauseBeforePull;
+	if (!active) {
+		navbarPullFrameStyle.value = {};
+		return;
+	}
+	const pill = navbarPullPillEl.value;
+	if (!pill) return;
+	// Read before Vue patches the first pull frame. Receipt and vote expiry keep
+	// running underneath; only the measured shell and its surface are held.
+	const bounds = pill.getBoundingClientRect();
+	const pillStyle = window.getComputedStyle(pill);
+	const style: Record<string, string> = {
+		width: `${bounds.width}px`,
+		'--navbar-pull-base-height': `${pill.offsetHeight}px`,
+		'--navbar-pull-base-color': pillStyle.backgroundColor,
+	};
+	const candidates = [
+		emojiVoteInNavbar.value ? ltlEmojiVoteNavbarTarget.value?.querySelector<HTMLElement>('[data-navbar="true"] > div > div') : null,
+		notificationToasts.integrated.value && !notificationToasts.surface.value ? notificationTargetEl.value?.querySelector<HTMLElement>('[data-integrated="true"][data-toast-id]') : null,
+		navbarNewNotes.value ? newNotesContentEl.value?.parentElement : null,
+	];
+	for (const candidate of candidates) {
+		if (!candidate || candidate.offsetHeight === 0) continue;
+		const surfaceStyle = window.getComputedStyle(candidate);
+		const color = surfaceStyle.backgroundColor;
+		if (color === 'transparent' || color.endsWith(', 0)') || color.endsWith('/ 0)')) continue;
+		style['--navbar-pull-surface-color'] = color;
+		style['--navbar-pull-surface-top'] = `${Math.max(0, candidate.getBoundingClientRect().top - bounds.top)}px`;
+		style['--navbar-pull-prompt-color'] = surfaceStyle.color;
+		break;
+	}
+	navbarPullFrameStyle.value = style;
+}, { flush: 'sync' });
+onUnmounted(() => {
+	stopNavbarPullWatch();
+	pullRefresh.dispose();
+	notificationToasts.paused.value = notificationPauseBeforePull;
+});
 useHataskeyNavbarNotices(notificationToasts, computed(() => !!$i && nativeNavbarVisible.value
 	&& !!notificationTargetEl.value && !notificationToasts.surface.value && !notificationToastsSuppressed.value));
 const emojiVoteNavbarStackStyle = computed(() => {
@@ -2139,7 +2297,19 @@ function onSimpleUserPanel(ev: Event) {
 // 旗鯖fork: デッキ初表示時にチュートリアルを出す監視(全変数定義後に登録)
 watch(deckActive, (v) => { if (v) maybeShowDeckTutorial(); }, { immediate: true });
 
+watch([mainRouter.currentRef, tab], () => closeNavbarSearch(false));
+watch([isDesktop, deckActive, simpleDrawerShowing, widgetsShowing, userPanelUserId, timelinePickerKind], ([desktop, deck, drawer, widgets, user, picker]) => {
+	if (desktop || deck || drawer || widgets || user || picker) closeNavbarSearch(false);
+});
+watch(visibleBottomNav, items => { if (!items.some(item => item.id === 'search')) closeNavbarSearch(false); });
+
+let stopViewportRecovery: (() => void) | undefined;
 onMounted(() => {
+	stopViewportRecovery = attachIOSViewportRecovery(mainRouter);
+	updateNavbarSearchViewport();
+	window.visualViewport?.addEventListener('resize', updateNavbarSearchViewport);
+	window.visualViewport?.addEventListener('scroll', updateNavbarSearchViewport);
+	window.addEventListener('pageshow', updateNavbarSearchViewport);
 	startAnnouncementsObserver();
 	cleanupStaleUiElements();
 	checkIsPageView();
@@ -2181,6 +2351,11 @@ onMounted(() => {
 	}
 });
 onUnmounted(() => {
+	stopViewportRecovery?.();
+	navbarSearchFocusVersion++;
+	window.visualViewport?.removeEventListener('resize', updateNavbarSearchViewport);
+	window.visualViewport?.removeEventListener('scroll', updateNavbarSearchViewport);
+	window.removeEventListener('pageshow', updateNavbarSearchViewport);
 	stopAnnouncementsObserver();
 	streamUnmounted = true;
 	if (streamRetryTimer !== null) {
@@ -3421,6 +3596,43 @@ onUnmounted(() => {
     pointer-events:auto; transition:background .3s,box-shadow .3s; overflow:hidden;
 }
 .topPill[data-notification='true'], .topPill[data-new-notes='true'] { min-width:min(360px,100%); }
+.navbarPullContent {
+    display:contents;
+}
+.navbarPullContent[inert] { pointer-events:none; user-select:none; }
+.topNavStack[data-pull-active='true'] { transition:none; }
+.topNavStack[data-pull-active='true'] .topPillFrame { width:100%; }
+.topNavStack[data-pull-active='true'] .topPill {
+    width:100%; min-width:0;
+    height:calc(var(--navbar-pull-base-height) + var(--navbar-pull-height,0px));
+    background:var(--navbar-pull-base-color); transition:none;
+}
+.topNavStack[data-pull-active='true'] .topPill::before {
+    content:''; position:absolute;
+    inset:calc(var(--navbar-pull-surface-top,0px) * var(--navbar-pull-nav-opacity,1)) 0 0;
+    background:var(--navbar-pull-surface-color,transparent); pointer-events:none;
+}
+.topNavStack[data-pull-active='true'] .navbarPullContent {
+    position:relative; display:flex; flex-direction:column; align-items:center; flex:none;
+    width:100%; max-width:100%; min-width:0; height:var(--navbar-pull-base-height); overflow:hidden;
+    opacity:var(--navbar-pull-nav-opacity,1);
+    transform:translateY(var(--navbar-pull-shift,0px));
+}
+.navbarPullPrompt {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:10px;
+    padding:0 16px; color:var(--navbar-pull-prompt-color,var(--MI_THEME-accent));
+    font-size:13px; font-weight:700; line-height:1.5;
+    opacity:var(--navbar-pull-prompt-opacity,0); pointer-events:none;
+}
+.navbarPullSymbol { font-size:19px; transform:rotate(var(--navbar-pull-turn,0deg)); }
+.topNavStack[data-pull-phase='refreshing'][data-pull-motion='true'] .navbarPullSymbol { animation:navbarPullSpin 1.6s linear infinite; }
+@keyframes navbarPullSpin {
+    from { transform:rotate(var(--navbar-pull-turn,0deg)); }
+    to { transform:rotate(calc(var(--navbar-pull-turn,0deg) + 360deg)); }
+}
+@media (prefers-reduced-motion:reduce) {
+    .topNavStack[data-pull-phase='refreshing'] .navbarPullSymbol { animation:none; }
+}
 .topPillNav {
     order:1; display:flex; align-items:center; gap:2px; padding:4px 6px;
     width:max-content; max-width:100%; min-width:0; box-sizing:border-box;
@@ -3627,6 +3839,30 @@ onUnmounted(() => {
 }
 
 // ===== ボトムバー =====
+.navbarSearchScrim { position:fixed; inset:0; z-index:199; background:#0002; touch-action:none; }
+.bottomBar.bottomSearchBar { bottom:var(--navbar-search-keyboard-inset,0px); align-items:flex-end; }
+.bottomSideSpacer { width:48px; flex:none; }
+.bottomSearchBar > .sideBtn, .bottomSideSpacer { transition:width .38s ease,opacity .2s ease,transform .38s ease; }
+.bottomSearchBar[data-search-open='true'] > .sideBtn, .bottomSearchBar[data-search-open='true'] > .bottomSideSpacer { width:0; min-width:0; padding:0; opacity:0; transform:scale(.55); pointer-events:none; }
+.bottomSearchBar .searchPill { position:relative; isolation:isolate; display:flex; flex-direction:column; gap:0; padding:0; min-width:0; border-radius:30px; overflow:hidden; transition:flex-grow .42s ease,border-radius .42s ease; }
+.bottomSearchBar[data-search-open='true'] .searchPill { flex:1; border-radius:26px; }
+.searchPill::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; box-shadow: inset 0 0 0 2px var(--MI_THEME-accent), 0 0 14px color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent); transition: opacity .2s ease; }
+.searchPill:has(:global([data-embedded-search] input[type='search']:focus))::after { opacity: 1; }
+.searchPill[data-search-open='false'] .navbarSearchBody { width:0; }
+.bottomNavRow { display:flex; justify-content:center; align-items:center; gap:4px; padding:6px 8px; flex:none; }
+.bottomNavRow > button:disabled { opacity:.38; cursor:default; }
+.navbarSearchBody { width:100%; min-height:0; overflow:hidden; transition:height .46s cubic-bezier(.22,1,.36,1),opacity .2s ease; }
+.navbarSearchBody[aria-hidden='true'] { opacity:0; pointer-events:none; }
+.searchPill[data-search-open='true'] .bottomNavRow { position:relative; }
+.searchPill[data-search-open='true'] .bottomNavRow::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px; background:var(--MI_THEME-divider); }
+.navbarSearchIcons { display:grid; place-items:center; }
+.navbarSearchIcon, .navbarSearchCloseIcon { grid-area:1/1; transition:opacity .2s ease,transform .25s ease; }
+.navbarSearchCloseIcon { opacity:0; transform:scale(.55) rotate(-35deg); }
+.navbarSearchIcons[data-open='true'] .navbarSearchIcon { opacity:0; transform:scale(.55) rotate(35deg); }
+.navbarSearchIcons[data-open='true'] .navbarSearchCloseIcon { opacity:1; transform:scale(1); }
+.bottomSearchBar[data-search-motion='false'], .bottomSearchBar[data-search-motion='false'] * { transition:none!important; }
+@media(prefers-reduced-motion:reduce) { .bottomSearchBar, .bottomSearchBar * { transition:none!important; } }
+
 .bottomBar {
     position:fixed; bottom:0; left:0; right:0; z-index:200;
     display:flex; justify-content:center; align-items:center; gap:8px;

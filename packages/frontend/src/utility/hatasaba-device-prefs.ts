@@ -6,6 +6,18 @@
 import { ref } from 'vue';
 import { miLocalStorage } from '@/local-storage.js';
 
+export type HataskeyUiSDisplaySize = 'standard' | 'small';
+
+function readHataskeyUiSDisplaySize(): HataskeyUiSDisplaySize {
+	return miLocalStorage.getItem('hataskeyUiSDisplaySize') === 'small' ? 'small' : 'standard';
+}
+
+export const hataskeyUiSDisplaySize = ref<HataskeyUiSDisplaySize>(readHataskeyUiSDisplaySize());
+export function setHataskeyUiSDisplaySize(size: HataskeyUiSDisplaySize): void {
+	miLocalStorage.setItem('hataskeyUiSDisplaySize', size);
+	hataskeyUiSDisplaySize.value = size;
+}
+
 export const HATAFEED_THEMES = ['light', 'dark', 'paper', 'espresso'] as const;
 export type HataFeedTheme = typeof HATAFEED_THEMES[number];
 

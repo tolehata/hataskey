@@ -5,13 +5,14 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 デッキ表示は既存の HataSaba デッキ、スマホは上タブ＋下ナビ＋ドロワーで構成する。
 -->
 <template>
-<div ref="rootEl" :class="$style.root" :style="themeStyle" :data-hk3-theme="themeMode" :data-mobile="isMobile ? 'true' : undefined" :data-reduce-motion="reduceMotionActive ? 'true' : undefined" @pointerdown.capture="onPress">
+<div ref="rootEl" :class="$style.root" :style="themeStyle" :data-hk3-theme="themeMode" :data-glass="prefer.r.hataskeyUi3TimelineBackground.value ? 'true' : undefined" :data-mobile="isMobile ? 'true' : undefined" :data-reduce-motion="reduceMotionActive ? 'true' : undefined" @pointerdown.capture="onPress">
+	<Hk3Backdrop v-if="backdropEnabled" :class="$style.backdrop" :bannerUrl="backdropUrls.bannerUrl" :avatarUrl="backdropUrls.avatarUrl" :motion="!reduceMotionActive"/>
 	<!-- 通信中の表示。短い通信ではちらつかないよう、少し続いたときだけ上端に細い帯で出す。 -->
 	<div :class="$style.busy" :data-on="busyShown ? 'true' : undefined" aria-hidden="true"><span></span></div>
 	<!-- ===== デスクトップ ===== -->
 	<div v-if="!isMobile" :class="$style.desktop" :style="{ gridTemplateColumns: desktopColumns }">
-		<div data-hata-collapse-part :class="$style.navCell" :style="{ width: `${sideNavExpanded ? navWidth : 64}px` }" @pointerenter="onSideNavEnter" @pointerleave="sideNavHovered = false" @focusin="onSideNavFocus" @focusout="onSideNavBlur" @keydown.esc="closeSideNav">
-			<Hk3SideNav :collapsed="!sideNavExpanded" :isDeck="deckActive" :deckAvailable="isHome" :postOpen="composeWindowOpen" :dark="themeMode === 'dark'" @post="toggleComposeWindow" @toggleTheme="toggleTheme" @mode="switchMode" @launchPadOpen="sideNavLaunchPadOpen = $event" @instanceMenuOpen="sideNavInstanceMenuOpen = $event"/>
+		<div data-hata-collapse-part :inert="confirmationActive" :class="$style.navCell" :style="{ width: `${sideNavExpanded ? navWidth : 64}px` }" :data-glass-seam="sideNavSeamless ? 'true' : undefined" :data-deck-seam="sideNavSeamless && deckActive ? 'true' : undefined" @pointerenter="onSideNavEnter" @pointerleave="sideNavHovered = false" @focusin="onSideNavFocus" @focusout="onSideNavBlur" @keydown.esc="closeSideNav" @keyup="onSideNavKeyUp">
+			<Hk3SideNav :collapsed="!sideNavExpanded" :seamless="sideNavSeamless" :isDeck="deckActive" :deckAvailable="isHome" :postOpen="composeWindowOpen" :dark="themeMode === 'dark'" @post="toggleComposeWindow" @toggleTheme="toggleTheme" @mode="switchMode" @navigate="onSideNavigate" @launchPadOpen="sideNavLaunchPadOpen = $event" @instanceMenuOpen="sideNavInstanceMenuOpen = $event"/>
 		</div>
 
 		<template v-if="deckActive">
@@ -25,64 +26,69 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 						<button type="button" :class="$style.windowBtn" :title="copy.resetWindow" @pointerdown.stop @click="windowPos = null"><PanelBottom :size="16"/></button>
 						<button type="button" :class="[$style.windowBtn, $style.windowClose]" :title="i18n.ts.close" @pointerdown.stop @click="composeWindowOpen = false"><X :size="16"/></button>
 					</div>
-					<Hk3Composer ref="composerRef" menuPlacement="down"/>
+					<Hk3Composer ref="composerRef" deck menuPlacement="down"/>
 				</div>
 			</div>
 		</template>
 		<template v-else>
-			<main data-hk3-stage :class="$style.main">
-				<template v-if="isHome">
-					<Hk3Timeline ref="timelineRef" @punchBusy="punchBusy = $event">
-						<Hk3Composer ref="composerRef" :menuPlacement="prefer.r.hataskeyUi3ComposerPosition.value === 'top' ? 'down' : 'up'"/>
-					</Hk3Timeline>
-				</template>
-				<div v-else :class="$style.page"><RouterView/></div>
+			<main data-hk3-stage :class="$style.main" :style="{ '--hk3-composer-left-inset': `${sideNavExpanded && isHome ? navWidth - 64 : 0}px` }">
+				<Hk3SideWorkspace :class="$style.workspace" :mode="workspaceMode" :pageActive="!isHome" :pageInert="confirmationActive" :timelineActive="timelineVisible" :controls="sidePageSession" :preservePageNavigation="preservePageNavigation" :title="props.pageMetadata?.title ?? ''" :reduceMotion="reduceMotionActive" :glass="prefer.r.hataskeyUi3TimelineBackground.value" :pageClass="$style.page" :expandLabel="copy.sidePageExpand" :restoreLabel="copy.sidePageRestore" :closeLabel="copy.sidePageClose" @toggle="toggleSidePage" @close="closeSidePage">
+					<template #page><RouterView v-if="!isHome"/></template>
+					<template #timeline>
+						<Hk3Timeline v-if="isHome || sidePageSession" ref="timelineRef" :active="timelineVisible" :narrow="sidePageSplit" :confirmationActive="confirmationActive" @punchBusy="punchBusy = $event">
+							<Hk3Composer ref="composerRef" :menuPlacement="prefer.r.hataskeyUi3ComposerPosition.value === 'top' ? 'down' : 'up'"/>
+						</Hk3Timeline>
+					</template>
+				</Hk3SideWorkspace>
 			</main>
-			<Hk3RightPane v-if="showRightPane" data-hk3-stage data-hata-collapse-part :class="$style.right"/>
+			<Hk3RightPane v-if="showRightPane" :inert="confirmationActive" data-hk3-stage data-hata-collapse-part :class="$style.right"/>
 		</template>
 	</div>
 
 	<!-- ===== スマホ ===== -->
-	<div v-else :class="$style.mobile">
+	<div v-else :class="$style.mobile" :data-page="!isHome ? 'true' : undefined">
 		<div :class="$style.safeTop"></div>
-		<div :class="$style.scrim" :data-open="drawerOpen ? 'true' : undefined" @click="drawerOpen = false"></div>
-		<div :class="$style.drawer" :data-open="drawerOpen ? 'true' : undefined" :data-hata-collapse-part="drawerOpen ? '' : undefined" :aria-hidden="!drawerOpen">
+		<div :class="$style.scrim" :data-open="drawerOpen ? 'true' : undefined" :inert="confirmationActive || mobileDockExpanded || mobilePane != null" @click="drawerOpen = false"></div>
+		<div :class="$style.drawer" :data-glass="prefer.r.hataskeyUi3SideMenuBackground.value ? 'true' : undefined" :data-open="drawerOpen ? 'true' : undefined" :data-hata-collapse-part="drawerOpen ? '' : undefined" :aria-hidden="!drawerOpen" :inert="confirmationActive || mobileDockExpanded || mobilePane != null">
 			<div :class="$style.safeTop"></div>
 			<div :class="$style.drawerBody">
-				<Hk3SideNav :dark="themeMode === 'dark'" :deckAvailable="false" @toggleTheme="toggleTheme" @mode="drawerOpen = false" @navigate="drawerOpen = false"/>
+				<Hk3SideNav :dark="themeMode === 'dark'" :deckAvailable="false" @toggleTheme="toggleTheme" @mode="drawerOpen = false" @navigate="onMobileSideNavigate"/>
 			</div>
 		</div>
 
-		<template v-if="isHome">
-			<Hk3Timeline ref="timelineRef" @punchBusy="punchBusy = $event" compact>
-				<Hk3Composer ref="composerRef" compact :menuPlacement="prefer.r.hataskeyUi3ComposerPosition.value === 'top' ? 'down' : 'up'"/>
-			</Hk3Timeline>
-		</template>
-		<div v-else :class="[$style.page, $style.mobilePage]"><RouterView/></div>
+		<Hk3SideWorkspace :class="$style.mobileWorkspace" :mode="isHome ? 'home' : 'full'" :pageActive="!isHome" :pageInert="confirmationActive" :timelineActive="timelineVisible" :controls="sidePageSession" :preservePageNavigation="preservePageNavigation" :title="props.pageMetadata?.title ?? ''" :inert="confirmationActive || drawerOpen || mobileDockExpanded || mobilePane != null" mobile :reduceMotion="reduceMotionActive" :glass="prefer.r.hataskeyUi3TimelineBackground.value" :pageClass="`${$style.page} ${$style.mobilePage}`" :expandLabel="copy.sidePageExpand" :restoreLabel="copy.sidePageRestore" :closeLabel="copy.sidePageClose" @close="closeSidePage">
+			<template #page><RouterView v-if="!isHome"/></template>
+			<template #timeline>
+				<Hk3Timeline v-if="isHome || sidePageSession" ref="timelineRef" compact :active="timelineVisible" :narrow="false" :confirmationActive="confirmationActive" :mobileComposerTarget="mobileDockRef?.composerTarget ?? null" :mobileDockHeight="mobileDockRef?.dockHeight ?? 0" :mobileMenuOpen="mobileDockExpanded || drawerOpen || mobilePane != null" @punchBusy="punchBusy = $event" @mobileCollection="mobileDockRef?.openCollection($event)">
+					<Hk3Composer ref="composerRef" compact menuPlacement="up"/>
+				</Hk3Timeline>
+			</template>
+		</Hk3SideWorkspace>
 
-		<TransitionGroup tag="nav" data-hata-collapse-group :class="$style.bottomNav" :css="!reduceMotionActive" :enterActiveClass="$style.bottomMotion" :leaveActiveClass="$style.bottomMotion" :enterFromClass="$style.bottomHidden" :leaveToClass="$style.bottomHidden">
-			<button key="menu" type="button" :class="$style.bottomBtn" :data-active="drawerOpen ? 'true' : undefined" :title="copy.menu" :aria-expanded="drawerOpen" @click="drawerOpen = !drawerOpen"><component :is="drawerOpen ? X : Menu" :size="22"/></button>
-			<button v-for="item in mobileNav" :key="item.path" type="button" :class="$style.bottomBtn" :data-active="item.active ? 'true' : undefined" :title="item.label" @click="goMobile(item.path)">
-				<component :is="item.icon" :size="22"/>
-				<span v-if="item.active" :class="$style.bottomLabel" :data-brand="item.brand ? 'true' : undefined">{{ item.label }}</span>
-				<span v-if="item.badge" :class="$style.bottomBadge">{{ item.badge }}</span>
-			</button>
-			<button v-if="!isHome" key="post" type="button" :class="[$style.bottomBtn, $style.bottomPost]" :title="copy.note" @click="openMobilePost"><Pencil :size="22"/></button>
-		</TransitionGroup>
+		<Hk3MobileDock ref="mobileDockRef" :confirmationActive="confirmationActive" :navigation="isHome ? timelineRef?.mobileNavigation ?? null : null" :items="mobileNav" :home="isHome" :drawerOpen="drawerOpen" :motion="!reduceMotionActive" :guideSeen="mobileGuideSeen" :pullState="isHome && timelineVisible ? timelineRef?.mobilePullState ?? null : null" :attachPullGesture="isHome && timelineVisible ? timelineRef?.attachMobilePullGesture ?? null : null" :inert="mobilePane != null" @navigate="goMobile" @menu="toggleMobileDrawer" @requestTimeline="requestMobileTimeline" @menuOpen="mobileMenuOpen = $event" @searchOpen="onMobileSearchOpen" @dismissGuide="dismissMobileGuide"/>
+		<Hk3MobileRightPane :pane="mobilePane" :glass="prefer.r.hataskeyUi3RightPaneBackground.value" :motion="!reduceMotionActive" @close="closeMobilePane" @tabChange="mobilePane = $event"/>
 	</div>
 </div>
 </template>
 
 <script lang="ts" setup>
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
-import { Bell, BookOpen, CalendarCheck, GripHorizontal, House, Menu, MessageSquareWarning, PanelBottom, Pencil, Search, X } from '@lucide/vue';
+import { Bell, BookOpen, CalendarCheck, GripHorizontal, House, LayoutGrid, MessageSquareWarning, PanelBottom, Pencil, Search, X } from '@lucide/vue';
+import Hk3Backdrop from './Hk3Backdrop.vue';
 import type * as Misskey from 'cherrypick-js';
 import type { Component } from 'vue';
 import type { PostFormProps } from '@/types/post-form.js';
+import type { PageMetadata } from '@/page.js';
 import Hk3SideNav from './Hk3SideNav.vue';
+import Hk3SideWorkspace from './Hk3SideWorkspace.vue';
+import { useHk3SidePage } from './use-hk3-side-page.js';
 import Hk3Timeline from './Hk3Timeline.vue';
 import Hk3Composer from './Hk3Composer.vue';
 import Hk3RightPane from './Hk3RightPane.vue';
+import Hk3MobileDock from './Hk3MobileDock.vue';
+import Hk3MobileRightPane from './Hk3MobileRightPane.vue';
+import { createHk3NoteConfirmationHost } from './hk3-note-confirmation-host.js';
+import { registerNoteActionConfirmation } from '@/utility/note-action-confirmation.js';
 import { hk3CanAdoptPostForm, pushHk3Toast } from './hk3-state.js';
 import type { Hk3Toast } from './hk3-state.js';
 import { HK3_THEME_CONTEXT, hk3ThemeStyle, readHk3ThemeBase } from './hk3-theme.js';
@@ -91,10 +97,13 @@ import RouterView from '@/components/global/RouterView.vue';
 import * as os from '@/os.js';
 import { useGlobalEvent } from '@/events.js';
 import { pendingApiRequestsCount } from '@/utility/misskey-api.js';
+import { getStaticImageUrl } from '@/utility/media-proxy.js';
 import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
 import { store } from '@/store.js';
 import { prefer } from '@/preferences.js';
+import { getInitialPrefValue } from '@/preferences/manager.js';
+import { normalizeUiSBottomNav, resolveUiSBottomNav } from '@/utility/hatasaba-navigation.js';
 import { mainRouter } from '@/router.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { createHataskeyNotificationToasts, getToastDuration, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
@@ -106,6 +115,7 @@ import { useStream } from '@/stream.js';
 
 const HatasabaDeck = defineAsyncComponent(() => import('@/ui/_common_/hatasaba-deck.vue'));
 
+const props = defineProps<{ pageMetadata?: PageMetadata | null }>();
 const copy = i18n.ts._hata._hataskeyUi3;
 const MOBILE_MAX = 700;
 const DECK_MIN = 1000;
@@ -117,6 +127,13 @@ const composeWindowEl = shallowRef<HTMLElement | null>(null);
 const punchBusy = ref(false);
 const timelineRef = shallowRef<InstanceType<typeof Hk3Timeline> | null>(null);
 const composerRef = shallowRef<InstanceType<typeof Hk3Composer> | null>(null);
+const confirmationActive = computed(() => composerRef.value?.confirmationActive ?? false);
+const mobileDockRef = shallowRef<InstanceType<typeof Hk3MobileDock> | null>(null);
+const mobileMenuOpen = ref(false);
+const mobileSearchOpen = ref(false);
+const mobileDockExpanded = computed(() => mobileMenuOpen.value || mobileSearchOpen.value);
+const mobileGuideKey = `hataskeyUi3MobileGuideShown:${$i?.id ?? 'guest'}` as const;
+const mobileGuideSeen = ref(miLocalStorage.getItem(mobileGuideKey) === 'true');
 
 // UI3 内のノートは、本体のリアルタイム設定に関係なく表示中の更新(リアクション等)を受け取る。
 provide('forceNoteRealtimeCapture', true);
@@ -124,46 +141,155 @@ provide('forceNoteRealtimeCapture', true);
 const width = ref(window.innerWidth);
 const isMobile = computed(() => width.value <= MOBILE_MAX);
 const path = computed(() => mainRouter.currentRoute.value.path);
+const preservePageNavigation = computed(() => ['/hatask', '/hatady', '/hatafeed', '/hata-side-studio', '/hata-docs']
+	.some(root => path.value === root || path.value.startsWith(`${root}/`)));
 const showRightPane = computed(() => width.value >= RIGHT_PANE_MIN && path.value !== '/hata-side-studio');
 const isHome = computed(() => path.value === '/');
 const deckMode = ref(miLocalStorage.getItem('hataskeyUi3DeckMode') === 'true');
 const deckActive = computed(() => deckMode.value && isHome.value && width.value >= DECK_MIN);
+const sidePage = useHk3SidePage({
+	router: mainRouter,
+	currentRoute: () => mainRouter.currentRef.value,
+	isHome: () => isHome.value,
+	isMobile: () => isMobile.value,
+	isDesktopDeck: () => deckMode.value && width.value >= DECK_MIN,
+});
+const sidePageSession = sidePage.session;
+const sidePageSplit = sidePage.split;
+const timelineVisible = sidePage.timelineVisible;
+const workspaceMode = sidePage.mode;
+let sidePageOpener: HTMLElement | null = null;
+
+function onSideNavigate(to?: string) {
+	if (to === '/' && isHome.value && !sidePageSession.value && !deckActive.value) {
+		timelineRef.value?.scrollHomeTop();
+	}
+	if (!sidePage.sidebarNavigated(to)) return;
+	const active = window.document.activeElement;
+	if (active instanceof HTMLElement && rootEl.value?.contains(active)) sidePageOpener = active;
+}
+
+function onMobileSideNavigate(to?: string) {
+	drawerOpen.value = false;
+	onSideNavigate(to);
+}
+
+function toggleSidePage() {
+	const timelineHadFocus = rootEl.value?.querySelector('[data-hk3-side-timeline]')?.contains(window.document.activeElement);
+	if (!sidePage.toggle()) return;
+	if (timelineHadFocus && sidePage.expanded.value) void nextTick(() => rootEl.value?.querySelector<HTMLElement>('[data-hk3-side-page] button')?.focus({ preventScroll: true }));
+}
+
+function closeSidePage() {
+	if (!sidePage.close()) return;
+	const opener = sidePageOpener;
+	sidePageOpener = null;
+	void nextTick(() => {
+		if (opener?.isConnected && !isMobile.value) opener.focus({ preventScroll: true });
+		else (rootEl.value?.querySelector<HTMLElement>('[data-hk3-side-timeline] button') ?? rootEl.value?.querySelector<HTMLElement>('[data-mobile-nav-path="/"]'))?.focus({ preventScroll: true });
+	});
+}
+
+const restoreSidePageOnPopstate = sidePage.restoreOnPopstate;
+
+const sideNavSeamless = computed(() => (isHome.value || sidePageSession.value)
+	&& prefer.r.hataskeyUi3TimelineBackground.value && prefer.r.hataskeyUi3SideMenuBackground.value);
 const drawerOpen = ref(false);
+const mobilePane = ref<'widgets' | 'hatask' | null>(null);
+let mobilePaneOpener: HTMLElement | null = null;
 
 const profile = computed(() => getActiveHataSideProfile(hataSideStudioStore.value));
 const navWidth = computed(() => profile.value.expanded.width === 'wide' ? 232 : 200);
 const sideNavHovered = ref(false);
 const sideNavFocused = ref(false);
+let sideNavFocusTransfer: symbol | null = null;
+let sideNavPointerInput = false;
 const sideNavLaunchPadOpen = ref(false);
 const sideNavInstanceMenuOpen = ref(false);
 const sideNavExpanded = computed(() => sideNavHovered.value || sideNavFocused.value || sideNavLaunchPadOpen.value || sideNavInstanceMenuOpen.value);
+
+function onDocumentPointerDown() {
+	if (isMobile.value) return;
+	sideNavPointerInput = true;
+	sideNavFocusTransfer = null;
+	sideNavFocused.value = false;
+}
+
+function onDocumentKeyDown() {
+	sideNavPointerInput = false;
+}
 
 function onSideNavEnter(event: PointerEvent) {
 	if (event.pointerType === 'mouse' || event.pointerType === 'pen') sideNavHovered.value = true;
 }
 
 async function onSideNavFocus(event: FocusEvent) {
-	const target = event.target as HTMLElement;
-	if (sideNavFocused.value || !target.matches(':focus-visible')) return;
+	const target = event.target;
+	if (sideNavPointerInput || !(target instanceof HTMLElement) || sideNavFocused.value || !target.matches(':focus-visible')) return;
+	await holdSideNavKeyboardFocus(target, event.currentTarget as HTMLElement);
+}
+
+function onSideNavKeyUp(event: KeyboardEvent) {
+	if (sideNavPointerInput || sideNavFocused.value || !['Tab', 'Enter', ' '].includes(event.key)) return;
+	const target = event.target;
 	const container = event.currentTarget as HTMLElement;
+	if (target instanceof HTMLElement && container.contains(target) && container.ownerDocument.activeElement === target) {
+		void holdSideNavKeyboardFocus(target, container);
+	}
+}
+
+async function holdSideNavKeyboardFocus(target: HTMLElement, container: HTMLElement) {
+	const transfer = Symbol();
+	sideNavFocusTransfer = transfer;
 	sideNavFocused.value = true;
-	await nextTick();
-	// 縮小・展開で項目のDOMが切り替わっても、キーボードの現在位置を保持する。
-	if (!target.isConnected) {
+	try {
+		await nextTick();
+		// Escapeや外部への移動、新しい移送が始まった場合はフォーカスを戻さない。
+		if (sideNavFocusTransfer !== transfer || !sideNavFocused.value) return;
+		const doc = container.ownerDocument;
+		const active = doc.activeElement;
+		if (!container.isConnected) {
+			sideNavFocused.value = false;
+			return;
+		}
+		if (container.contains(active)) return;
+		if (target.isConnected || (active && active !== doc.body && active !== doc.documentElement)) {
+			sideNavFocused.value = false;
+			return;
+		}
+		// DOM差し替えでbodyへ落ちた場合だけ、展開後の同じ項目へ移送する。
 		const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>('button'));
-		(buttons.find(button => button.title === target.title) ?? buttons[0])?.focus();
+		(buttons.find(button => button.title === target.title) ?? buttons[0])?.focus({ preventScroll: true });
+		if (sideNavFocusTransfer === transfer && !container.contains(doc.activeElement)) sideNavFocused.value = false;
+	} finally {
+		if (sideNavFocusTransfer === transfer) sideNavFocusTransfer = null;
 	}
 }
 
 function onSideNavBlur(event: FocusEvent) {
-	if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) sideNavFocused.value = false;
+	const related = event.relatedTarget;
+	if (related instanceof Node && (event.currentTarget as HTMLElement).contains(related)) return;
+	// v-ifによる元ボタンの削除中は、移送完了まで展開状態を保つ。
+	// Escapeは先にsideNavFocusedを解除するので、このガードには入らない。
+	if (related == null && sideNavFocusTransfer != null && sideNavFocused.value) return;
+	sideNavFocusTransfer = null;
+	sideNavFocused.value = false;
 }
 
 function closeSideNav(event: KeyboardEvent) {
 	sideNavHovered.value = false;
+	sideNavFocusTransfer = null;
 	sideNavFocused.value = false;
 	(event.target as HTMLElement).blur();
 }
+
+watch(isMobile, mobile => {
+	if (!mobile) return;
+	sideNavHovered.value = false;
+	sideNavFocusTransfer = null;
+	sideNavFocused.value = false;
+	sideNavPointerInput = false;
+});
 
 const desktopColumns = computed(() => {
 	if (deckActive.value) return '64px minmax(0, 1fr)';
@@ -180,11 +306,34 @@ function refreshThemeBase() {
 }
 
 useGlobalEvent('themeChanged', refreshThemeBase);
-const themeStyle = computed(() => hk3ThemeStyle(themeMode.value, themeBase.value));
+const themeStyle = computed(() => {
+	const dense = prefer.r.hataskeyUi3GlassDensity.value === 'dense';
+	return {
+		...hk3ThemeStyle(themeMode.value, themeBase.value),
+		'--hk3-glass-pane-alpha': dense ? '92%' : '76%',
+		'--hk3-glass-note-alpha': dense ? '86%' : '62%',
+		'--hk3-glass-soft-alpha': dense ? '60%' : '30%',
+		'--hk3-glass-overlay-alpha': dense ? '56%' : '36%',
+		'--hk3-glass-menu': `color-mix(in srgb, var(--hk3-bg) ${dense ? '76%' : '56%'}, transparent)`,
+		'--hk3-glass-control': `color-mix(in srgb, var(--hk3-bg) ${dense ? '46%' : '28%'}, transparent)`,
+		'--hk3-glass-control-tint-alpha': '12%',
+	};
+});
 provide(HK3_THEME_CONTEXT, themeStyle);
 // 「UIのアニメーションを減らす」と端末の動きを減らす設定の両方に従う。CSSの遷移も含めて止める。
 const systemReduceMotion = ref(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 const reduceMotionActive = computed(() => !prefer.r.animation.value || systemReduceMotion.value);
+const backdropEnabled = computed(() => prefer.r.hataskeyUi3TimelineBackground.value
+	|| prefer.r.hataskeyUi3SideMenuBackground.value
+	|| prefer.r.hataskeyUi3RightPaneBackground.value);
+const backdropUrls = computed(() => {
+	const staticImages = reduceMotionActive.value
+		|| prefer.r.disableShowingAnimatedImages.value
+		|| prefer.r.dataSaver.value.avatar
+		|| ['interaction', 'inactive'].includes(prefer.r.showingAnimatedImages.value);
+	const resolveUrl = (url: string | null | undefined) => url && staticImages ? getStaticImageUrl(url) : url;
+	return { bannerUrl: resolveUrl($i?.bannerUrl), avatarUrl: resolveUrl($i?.avatarUrl) };
+});
 const reduceMotion = () => reduceMotionActive.value;
 const reduceMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const timelineCollapseEffect = createHataTimelineCollapseEffect({
@@ -198,7 +347,7 @@ watch(punchBusy, busy => {
 });
 
 function onHataTimelineCollapse() {
-	if (punchBusy.value) return;
+	if (punchBusy.value || confirmationActive.value) return;
 	timelineCollapseEffect.play();
 }
 
@@ -282,10 +431,33 @@ onBeforeUnmount(() => {
 const composeWindowOpen = ref(false);
 const windowPos = ref<{ x: number; y: number } | null>(null);
 const windowDragging = ref(false);
+const windowBounds = ref<{ boxWidth: number; boxHeight: number; winWidth: number; winHeight: number } | null>(null);
+watch([deckBoxEl, composeWindowEl], ([box, win], _previous, onCleanup) => {
+	if (!box || !win) { windowBounds.value = null; return; }
+	const measure = () => {
+		windowBounds.value = { boxWidth: box.clientWidth, boxHeight: box.clientHeight, winWidth: win.offsetWidth, winHeight: win.offsetHeight };
+	};
+	const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+	observer?.observe(box);
+	observer?.observe(win);
+	measure();
+	onCleanup(() => observer?.disconnect());
+}, { flush: 'post' });
 // 既定の位置は画面中央より少し上。動かした後はその位置を保つ。
-const windowStyle = computed(() => windowPos.value
-	? { left: `${windowPos.value.x}px`, top: `${windowPos.value.y}px` }
-	: { left: '50%', top: '42%', transform: 'translate(-50%, -50%)' });
+const windowStyle = computed(() => {
+	const bounds = windowBounds.value;
+	if (!bounds) return windowPos.value
+		? { left: `${windowPos.value.x}px`, top: `${windowPos.value.y}px` }
+		: { left: '50%', top: '42%', transform: 'translate(-50%, -50%)' };
+	const desired = windowPos.value ?? { x: bounds.boxWidth * 0.5 - bounds.winWidth / 2, y: bounds.boxHeight * 0.42 - bounds.winHeight / 2 };
+	if (!windowPos.value && desired.x >= 8 && desired.y >= 8 && desired.x + bounds.winWidth <= bounds.boxWidth - 8 && desired.y + bounds.winHeight <= bounds.boxHeight - 8) {
+		return { left: '50%', top: '42%', transform: 'translate(-50%, -50%)' };
+	}
+	return {
+		left: `${Math.max(8, Math.min(bounds.boxWidth - bounds.winWidth - 8, desired.x))}px`,
+		top: `${Math.max(8, Math.min(bounds.boxHeight - bounds.winHeight - 8, desired.y))}px`,
+	};
+});
 
 function toggleComposeWindow() {
 	composeWindowOpen.value = !composeWindowOpen.value;
@@ -328,14 +500,26 @@ function startWindowDrag(ev: PointerEvent) {
 // 返信・引用などは、表示中の UI3 投稿欄へ移す。デッキ中は投稿ウィンドウを開いて受け取る。
 function interceptPostForm(request: PostFormProps): boolean {
 	if (!hk3CanAdoptPostForm(request)) return false;
+	if (isMobile.value) {
+		mobileDockRef.value?.closeMenu();
+		closeMobilePane();
+	}
 	// スマホでは、ほかの画面からの投稿要求もホームへ戻って下の投稿欄で受け取る(古い投稿モーダルは使わない)。
 	if (!isHome.value && isMobile.value) {
 		pendingAdopt = request;
 		drawerOpen.value = false;
 		mainRouter.pushByPath('/' as never);
+		if (!isHome.value) {
+			pendingAdopt = null;
+			return false;
+		}
 		return true;
 	}
-	if (!isHome.value) return false;
+	if (sidePageSession.value && !isMobile.value && !timelineVisible.value) {
+		const composer = composerRef.value;
+		return sidePage.restoreForComposer(() => composer?.adopt(request) ?? false);
+	}
+	if (!timelineVisible.value) return false;
 	if (composerRef.value) return composerRef.value.adopt(request);
 	if (!deckActive.value) return false;
 	composeWindowOpen.value = true;
@@ -343,11 +527,19 @@ function interceptPostForm(request: PostFormProps): boolean {
 	return true;
 }
 
+// Only the visible standard composer accepts confirmations; other UIs keep their existing dialog.
+const noteConfirmationHost = createHk3NoteConfirmationHost({
+	composer: () => composerRef.value,
+	available: () => !!$i && !deckActive.value && timelineVisible.value && !punchBusy.value
+		&& !drawerOpen.value && mobilePane.value == null && !mobileDockExpanded.value,
+	beforeOpen: () => { timelineCollapseEffect.cancel(); },
+});
+watch([path, () => $i?.id, isMobile, deckActive, timelineVisible], () => noteConfirmationHost.cancel(), { flush: 'sync' });
+
 // ===== スマホ =====
-// 下部ナビバーは設定の「下部ナビバー」(Hataskey UI と共通)の並びに従う。
-// 左端のメニューと右端のノートボタンで挟み、全5ボタンになるよう中央は最大3つ。
-// ウィジェットは UI3 のスマホ表示に置き場が無いため除く。
-const MOBILE_NAV_SLOTS = 3;
+// UI S 専用の並びを優先し、未保存なら従来のカスタム設定を引き継ぐ。
+// 左端のメニューと最大5項目。ホームは必ず表示する。
+const sharedBottomNavDefaults = getInitialPrefValue('simpleUi.bottomNav');
 const mobileNav = computed(() => {
 	const unread = $i?.unreadNotificationsCount ?? 0;
 	const catalog: Record<string, { path: string; label: string; icon: Component; badge: string | null; brand?: boolean }> = {
@@ -355,57 +547,103 @@ const mobileNav = computed(() => {
 		search: { path: '/search', label: i18n.ts.search, icon: Search, badge: null },
 		notifications: { path: '/my/notifications', label: i18n.ts.notifications, icon: Bell, badge: unread > 0 ? (unread > 99 ? '99+' : String(unread)) : null },
 		hatask: { path: '/hatask', label: 'Hatask', icon: CalendarCheck, badge: null, brand: true },
+		widgets: { path: '/widgets', label: copy.paneWidgets, icon: LayoutGrid, badge: null },
 		hatady: { path: '/hatady', label: 'Hatady', icon: BookOpen, badge: null, brand: true },
 		hatafeed: { path: '/hatafeed', label: 'HataFeed', icon: MessageSquareWarning, badge: null, brand: true },
 	};
-	return (prefer.r['simpleUi.bottomNav'].value as { id: string; visible?: boolean }[])
-		.filter(item => item.visible !== false && item.id in catalog)
-		.slice(0, MOBILE_NAV_SLOTS)
+	return normalizeUiSBottomNav(resolveUiSBottomNav(prefer.r.hataskeyUi3BottomNav.value, prefer.r['simpleUi.bottomNav'].value, sharedBottomNavDefaults))
 		.map(item => catalog[item.id])
-		.map(item => ({ ...item, active: item.path === '/' ? isHome.value : path.value.startsWith(item.path) }));
+		.map(item => ({ ...item, active: item.path === '/hatask' && mobilePane.value === 'hatask'
+			|| item.path === '/widgets' && mobilePane.value === 'widgets'
+			|| mobilePane.value == null && (item.path === '/' ? isHome.value : path.value.startsWith(item.path)) }));
 });
 
-// 右端のノートボタン: タイムライン(ホーム)以外の画面にだけ出し、押すとホームへ戻って下の投稿欄に入力できる状態にする。
-// ホームでは投稿欄が常に見えているため出さない。
-const pendingComposerFocus = ref(false);
+function dismissMobileGuide() {
+	mobileGuideSeen.value = true;
+	miLocalStorage.setItem(mobileGuideKey, 'true');
+}
 
-function openMobilePost() {
+function requestMobileTimeline() {
 	drawerOpen.value = false;
-	pendingComposerFocus.value = true;
-	mainRouter.pushByPath('/' as never);
+	if (!isHome.value) mainRouter.pushByPath('/' as never);
+}
+
+function toggleMobileDrawer() {
+	mobileDockRef.value?.closeSearch(false);
+	mobileDockRef.value?.closeMenu();
+	drawerOpen.value = !drawerOpen.value;
 }
 
 let pendingAdopt: PostFormProps | null = null;
-watch(composerRef, composer => {
-	if (composer && pendingAdopt) {
+// The retained composer ref does not change when a side page returns home.
+watch([composerRef, isHome], ([composer, home]) => {
+	if (!home || !composer) return;
+	if (pendingAdopt) {
 		const request = pendingAdopt;
 		pendingAdopt = null;
-		pendingComposerFocus.value = false;
 		void nextTick(() => composer.adopt(request));
-		return;
 	}
-	if (!composer || !pendingComposerFocus.value) return;
-	pendingComposerFocus.value = false;
-	void nextTick(() => composer.focus());
-});
+}, { flush: 'post' });
 
 function goMobile(to: string) {
+	mobileDockRef.value?.closeSearch(false);
+	mobileDockRef.value?.closeMenu();
 	drawerOpen.value = false;
+	if (to === '/hatask' || to === '/widgets') {
+		mobilePaneOpener = Array.from(rootEl.value?.querySelectorAll<HTMLButtonElement>('[data-mobile-nav-path]') ?? [])
+			.find(button => button.dataset.mobileNavPath === to) ?? null;
+		mobilePane.value = to === '/hatask' ? 'hatask' : 'widgets';
+		return;
+	}
+	closeMobilePane();
 	if (to === '/' && isHome.value) {
-		timelineRef.value?.scrollTop();
+		timelineRef.value?.scrollHomeTop();
 		return;
 	}
 	mainRouter.pushByPath(to as never);
 }
 
-watch(path, () => { drawerOpen.value = false; });
+function onMobileSearchOpen(open: boolean) {
+	mobileSearchOpen.value = open;
+	if (open) {
+		drawerOpen.value = false;
+		closeMobilePane();
+	}
+}
+
+function closeMobilePane() {
+	if (!mobilePane.value) return;
+	mobilePane.value = null;
+	const opener = mobilePaneOpener;
+	mobilePaneOpener = null;
+	void nextTick(() => {
+		const active = window.document.activeElement;
+		if (!mobileSearchOpen.value && opener?.isConnected && (active === window.document.body || active instanceof Node && rootEl.value?.contains(active))) opener.focus({ preventScroll: true });
+	});
+}
+
+watch(path, (_next, previous) => {
+	mobileDockRef.value?.closeSearch(false);
+	drawerOpen.value = false;
+	closeMobilePane();
+	// Keep the captured home button alive when its long press opens the timeline.
+	if (previous === '/') mobileDockRef.value?.closeMenu();
+});
+watch(mainRouter.currentRef, () => {
+	mobileDockRef.value?.closeSearch(false);
+	closeMobilePane();
+});
+watch([drawerOpen, mobilePane], ([drawer, pane]) => {
+	if (drawer || pane) mobileDockRef.value?.closeSearch(false);
+});
+watch(isMobile, mobile => { mobileMenuOpen.value = false; if (!mobile) { mobileDockRef.value?.closeSearch(false); mobileSearchOpen.value = false; closeMobilePane(); } });
 
 // ===== 通知・お知らせをバナーへ =====
 // Hataskey UI が上部ナビバーへ統合していた通知(通知・外部通知・時報・絵文字追加・お気に入り/クリップ/編集/削除など)を、
 // タイムライン表示中は同じ受け口で受け取り、新着バナーに流す。タイムライン以外では従来どおりの通知表示に戻る。
 const noticeContext = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
 let releaseNoticeContext: (() => void) | null = null;
-useHataskeyNavbarNotices(noticeContext, computed(() => $i != null && isHome.value));
+useHataskeyNavbarNotices(noticeContext, computed(() => $i != null && timelineVisible.value));
 
 function notificationToast(notification: Misskey.entities.Notification, host?: string): Omit<Hk3Toast, 'id'> {
 	const user = 'user' in notification ? (notification.user as Misskey.entities.UserLite | undefined) ?? null : null;
@@ -450,12 +688,12 @@ watch(noticeContext.items, items => {
 	if (items.length === 0) return;
 	const incoming = [...items].reverse();
 	noticeContext.clear();
-	if (!isHome.value || isMobile.value && drawerOpen.value) return;
+	if (!timelineVisible.value || isMobile.value && (drawerOpen.value || mobilePane.value != null)) return;
 	for (const item of incoming) pushHk3Toast(toastFromItem(item), getToastDuration(item));
 });
 
 function onExternalNotification(ev: Event) {
-	if (!isHome.value) return;
+	if (!timelineVisible.value) return;
 	const notification = (ev as CustomEvent<Misskey.entities.Notification>).detail;
 	if (notification) noticeContext.enqueue(notification, 'external', performance.now(), prefer.s['external.host'] || undefined);
 }
@@ -478,26 +716,36 @@ function onResize() {
 	width.value = window.innerWidth;
 }
 
+let releaseNoteConfirmation: (() => void) | null = null;
 let releasePostFormInterceptor: (() => void) | null = null;
 
 onMounted(() => {
 	timelineCollapseStream.on('hataTimelineCollapse', onHataTimelineCollapse);
+	window.document.addEventListener('pointerdown', onDocumentPointerDown, true);
+	window.document.addEventListener('keydown', onDocumentKeyDown, true);
 	window.addEventListener('resize', onResize, { passive: true });
+	window.addEventListener('popstate', restoreSidePageOnPopstate);
 	reduceMotionQuery.addEventListener('change', onReduceMotionChange);
 	startHataSideStudioSync();
 	releasePostFormInterceptor = os.registerPostFormInterceptor(interceptPostForm);
+	releaseNoteConfirmation = registerNoteActionConfirmation(noteConfirmationHost.offer);
 	// MkToast などが統合表示を選べるよう、受け口の表示先を持たせる。
 	noticeContext.target.value = rootEl.value;
-	releaseNoticeContext = registerNotificationPageContext(noticeContext, () => isHome.value && !(isMobile.value && drawerOpen.value));
+	releaseNoticeContext = registerNotificationPageContext(noticeContext, () => timelineVisible.value && !(isMobile.value && (drawerOpen.value || mobilePane.value != null)));
 	window.addEventListener('external-notification', onExternalNotification);
 });
 
 onBeforeUnmount(() => {
 	timelineCollapseStream.off('hataTimelineCollapse', onHataTimelineCollapse);
 	timelineCollapseEffect.destroy();
+	window.document.removeEventListener('pointerdown', onDocumentPointerDown, true);
+	window.document.removeEventListener('keydown', onDocumentKeyDown, true);
 	window.removeEventListener('resize', onResize);
+	window.removeEventListener('popstate', restoreSidePageOnPopstate);
 	reduceMotionQuery.removeEventListener('change', onReduceMotionChange);
 	stopHataSideStudioSync();
+	noteConfirmationHost.cancel();
+	releaseNoteConfirmation?.();
 	releasePostFormInterceptor?.();
 	releaseNoticeContext?.();
 	window.removeEventListener('external-notification', onExternalNotification);
@@ -507,11 +755,11 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .busy {
 	position: fixed;
-	top: 0;
+	top: var(--MI-fixed-top-inset, 0px);
 	left: 0;
 	right: 0;
 	z-index: 4000000;
-	height: 3px;
+	height: 10px;
 	overflow: hidden;
 	pointer-events: none;
 	opacity: 0;
@@ -522,10 +770,12 @@ onBeforeUnmount(() => {
 
 	> span {
 		position: absolute;
-		top: 0;
-		bottom: 0;
+		top: 1px;
+		height: 3px;
 		width: 40%;
 		background: var(--hk3-accent);
+		opacity: 0.85;
+		filter: blur(3px);
 		animation: hk3Busy 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 	}
 
@@ -538,7 +788,12 @@ onBeforeUnmount(() => {
 }
 
 .root {
+	--hk3-glass-pane: color-mix(in srgb, var(--hk3-bg) var(--hk3-glass-pane-alpha), transparent);
+	--hk3-glass-panel: var(--hk3-glass-pane);
+	--hk3-glass-note: color-mix(in srgb, var(--hk3-bg) var(--hk3-glass-note-alpha), transparent);
+	--hk3-glass-soft: color-mix(in srgb, var(--hk3-bg) var(--hk3-glass-soft-alpha), transparent);
 	position: relative;
+	isolation: isolate;
 	width: 100%;
 	height: var(--MI-viewport-height, 100dvh);
 	min-width: 0;
@@ -563,6 +818,27 @@ onBeforeUnmount(() => {
 	}
 }
 
+.backdrop {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+}
+
+@supports not ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
+	.root {
+		--hk3-glass-pane: color-mix(in srgb, var(--hk3-bg) 96%, transparent);
+		--hk3-glass-panel: color-mix(in srgb, var(--hk3-bg) 96%, transparent);
+		--hk3-glass-note: color-mix(in srgb, var(--hk3-bg) 94%, transparent);
+		--hk3-glass-soft: color-mix(in srgb, var(--hk3-bg) 90%, transparent);
+	}
+}
+
+.root:not([data-glass]) {
+	--hk3-glass-panel: var(--hk3-bg);
+	--hk3-glass-note: var(--hk3-bg);
+	--hk3-glass-soft: var(--hk3-bg);
+}
+
 .desktop {
 	display: grid;
 	width: 100%;
@@ -579,6 +855,43 @@ onBeforeUnmount(() => {
 	isolation: isolate;
 	overflow: hidden;
 	transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+
+	&[data-glass-seam] {
+		overflow: visible;
+
+		&::before, &::after {
+			content: '';
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			pointer-events: none;
+		}
+
+		// グリッドの予約幅だけにTLと同じ下地を敷き、展開部分で二重にしない。
+		&::before {
+			z-index: -2;
+			width: 64px;
+			background: var(--hk3-glass-note);
+		}
+
+		// 内容はSideNav内でクリップし、ガラスの右縁だけをTLへなじませる。
+		&::after {
+			z-index: -1;
+			right: -24px;
+			background: color-mix(in srgb, var(--hk3-bg) var(--hk3-glass-overlay-alpha), transparent);
+			-webkit-backdrop-filter: blur(20px);
+			backdrop-filter: blur(20px);
+			-webkit-mask-image: linear-gradient(to right, #000, #000 calc(100% - 40px), transparent);
+			mask-image: linear-gradient(to right, #000, #000 calc(100% - 40px), transparent);
+		}
+	}
+
+	// デッキの列間にはTLの下地がないため、1枚のガラスを直接背景へ溶かす。
+	&[data-deck-seam] {
+		&::before { background: transparent; }
+		&::after { background: var(--hk3-glass-pane); }
+	}
 }
 
 .main {
@@ -586,7 +899,12 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	min-width: 0;
 	min-height: 0;
-	border-right: 2px solid var(--hk3-divider);
+}
+
+.workspace, .mobileWorkspace {
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
 }
 
 // 各領域は独立した重なり順を持たせ、中のページの z-index(検索欄の固定ヘッダーなど)が
@@ -599,7 +917,7 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	overflow: auto;
 	overscroll-behavior: contain;
-	background: var(--MI_THEME-bg);
+	background: var(--hk3-glass-panel, var(--hk3-bg));
 	container-type: inline-size;
 }
 
@@ -608,6 +926,26 @@ onBeforeUnmount(() => {
 	isolation: isolate;
 	min-width: 0;
 	min-height: 0;
+
+	.root[data-glass] &[data-glass] {
+		background: var(--hk3-glass-note);
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+
+		// TLと下地を揃え、本文をマスクせず背景のガラスだけを左端でフェードする。
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			z-index: -1;
+			pointer-events: none;
+			background: color-mix(in srgb, var(--hk3-bg) var(--hk3-glass-overlay-alpha), transparent);
+			-webkit-backdrop-filter: blur(20px);
+			backdrop-filter: blur(20px);
+			-webkit-mask-image: linear-gradient(to right, transparent, #000 40px);
+			mask-image: linear-gradient(to right, transparent, #000 40px);
+		}
+	}
 }
 
 .deckCell {
@@ -616,7 +954,7 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	background: var(--hk3-neutral-200);
+	background: transparent;
 }
 
 .deck {
@@ -631,9 +969,13 @@ onBeforeUnmount(() => {
 	z-index: 30;
 	width: 560px;
 	max-width: calc(100% - 16px);
+	max-height: calc(100% - 16px);
 	display: flex;
 	flex-direction: column;
-	background: var(--hk3-bg);
+	overflow-y: auto;
+	background: var(--hk3-glass-panel, var(--hk3-bg));
+	-webkit-backdrop-filter: blur(16px);
+	backdrop-filter: blur(16px);
 	border: 2px solid var(--hk3-text);
 	box-shadow: var(--hk3-shadow-lg);
 	transition: box-shadow 200ms ease;
@@ -642,6 +984,9 @@ onBeforeUnmount(() => {
 }
 
 .windowBar {
+	position: sticky;
+	top: 0;
+	z-index: 1;
 	display: flex;
 	align-items: center;
 	gap: 10px;
@@ -697,6 +1042,48 @@ onBeforeUnmount(() => {
 
 .mobilePage {
 	flex: 1;
+	--hk3-page-dock-inset: calc(92px + env(safe-area-inset-bottom, 0px));
+	--MI-page-bottom-inset: var(--hk3-page-dock-inset);
+	// Fade only the page surface behind the floating dock; scrolling content stays opaque and clickable.
+	background: linear-gradient(to bottom, var(--hk3-glass-panel, var(--hk3-bg)) calc(100% - 122px), transparent 100%);
+
+	// RouterView's immediate page is the scrollport (PageWithHeader, Drive, etc.).
+	// Keep its viewport full height and reserve dock space inside the scrollable content.
+	> :global(._pageContainer) > :global(._pageScrollable),
+	> :global(._pageContainer) > :global(._pageScrollableReversed) {
+		box-sizing: border-box;
+		padding-bottom: var(--hk3-page-dock-inset);
+		scroll-padding-bottom: var(--hk3-page-dock-inset);
+	}
+
+	// Redesigned settings scroll within the main and category panes independently.
+	:global(#settings-redesign-main),
+	:global([data-nav-mode] > aside[aria-label]) {
+		padding-bottom: var(--hk3-page-dock-inset);
+		scroll-padding-bottom: var(--hk3-page-dock-inset);
+	}
+
+	// MkStickyContainer's footer follows its body; lift it above the dock.
+	> :global(._pageContainer) > :global(._pageScrollable) > :global(div) > :global([data-sticky-container-footer-height] + div),
+	> :global(._pageContainer) > :global(._pageScrollableReversed) > :global(div) > :global([data-sticky-container-footer-height] + div) {
+		bottom: var(--hk3-page-dock-inset);
+	}
+}
+
+// Blend page-owned frames into the floating dock without filtering its buttons.
+.mobile[data-page]::after {
+	content: '';
+	position: absolute;
+	inset-inline: 0;
+	bottom: 0;
+	height: calc(108px + env(safe-area-inset-bottom, 0px));
+	z-index: 104;
+	pointer-events: none;
+	background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--hk3-bg) 20%, transparent));
+	-webkit-backdrop-filter: blur(20px);
+	backdrop-filter: blur(20px);
+	-webkit-mask-image: linear-gradient(to bottom, transparent, #000 40%);
+	mask-image: linear-gradient(to bottom, transparent, #000 40%);
 }
 
 // 引き出しと背面の幕は、ページが body 直下に出す固定要素(検索欄など z-index 100 前後)より上、
@@ -723,99 +1110,61 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	background: var(--hk3-bg);
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
 	border-right: 2px solid var(--hk3-divider);
 	transform: translateX(-104%);
 	visibility: hidden;
 	transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 420ms ease, visibility 0s linear 420ms;
 
+	&[data-glass] {
+		background: transparent;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+		border-right: 0;
+
+		&::after {
+			content: '';
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			right: -24px;
+			z-index: 0;
+			left: 0;
+			pointer-events: none;
+			background: var(--hk3-glass-pane, var(--hk3-bg));
+			-webkit-backdrop-filter: blur(20px);
+			backdrop-filter: blur(20px);
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+		}
+	}
+
 	&[data-open] {
 		transform: translateX(0);
 		visibility: visible;
 		box-shadow: var(--hk3-shadow-lg);
+		&[data-glass] { box-shadow: none; }
 		transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 420ms ease, visibility 0s;
 	}
 }
 
 .drawerBody {
 	position: relative;
+	z-index: 1;
 	flex: 1;
 	min-height: 0;
-}
 
-.bottomNav {
-	display: flex;
-	height: 68px;
-	padding-bottom: env(safe-area-inset-bottom, 0px);
-	flex: none;
-	border-top: 2px solid var(--hk3-divider);
-	background: var(--hk3-bg);
-}
-
-.bottomBtn {
-	position: relative;
-	flex: 1 1 0;
-	min-width: 0;
-	overflow: hidden;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 4px;
-	padding: 0 8px;
-	border: 0;
-	border-right: 1px solid var(--hk3-divider);
-	background: transparent;
-	color: var(--hk3-text);
-	cursor: pointer;
-	font-size: 10px;
-	font-weight: 700;
-	transition: background 200ms ease, color 200ms ease;
-
-	&:last-child { border-right: 0; }
-	&[data-active] { background: var(--hk3-accent-100); color: var(--hk3-accent-800); }
-	&:first-child[data-active] { background: var(--hk3-text); color: var(--hk3-bg); }
-	&:active { background: var(--hk3-accent-200); }
-}
-
-.bottomMotion {
-	transition: flex-grow 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms ease, border-width 320ms ease, opacity 220ms ease;
-	pointer-events: none;
-}
-
-.bottomHidden {
-	flex-grow: 0;
-	padding-inline: 0;
-	border-right-width: 0;
-	opacity: 0;
-}
-
-.bottomPost {
-	background: var(--hk3-accent);
-	color: var(--hk3-bg);
-
-	&:active { background: var(--hk3-accent-600); }
-}
-
-.bottomLabel {
-	line-height: 1;
-	white-space: nowrap;
-
-	&[data-brand] { font-family: 'Righteous', system-ui, sans-serif; font-weight: 400; letter-spacing: 0.02em; }
-}
-
-.bottomBadge {
-	position: absolute;
-	top: 12px;
-	left: calc(50% + 6px);
-	padding: 0 5px;
-	background: var(--hk3-accent);
-	color: var(--hk3-bg);
-	font-size: 10px;
-	font-weight: 800;
+	// ドロワーが背景を描くため、内側のメニューには重ねない。
+	.drawer & > :global(nav) {
+		background: transparent;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.scrim, .drawer, .window, .bottomBtn { transition: none !important; }
+	.scrim, .drawer, .window { transition: none !important; }
 }
 </style>
 

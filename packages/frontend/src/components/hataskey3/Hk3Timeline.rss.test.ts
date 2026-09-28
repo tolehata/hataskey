@@ -1,18 +1,26 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, h, nextTick } from 'vue';
+import { createApp, h, inject, nextTick, reactive } from 'vue';
+import type { Component } from 'vue';
 import Hk3Timeline from './Hk3Timeline.vue';
 import { hk3Toasts, hk3PostedNote } from './hk3-state.js';
 import { prefer } from '@/preferences.js';
 import { tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
+import { hk3PostContextKey } from './hk3-post-context.js';
+import type { Hk3PostContext } from './hk3-post-context.js';
+import type * as Misskey from 'cherrypick-js';
 
 const mocks = vi.hoisted(() => ({
 	navigate: vi.fn(), sound: vi.fn(), api: vi.fn(), channel: vi.fn(), dispose: vi.fn(), lists: vi.fn(), antennas: vi.fn(),
 	note: null as null | ((note: unknown) => void), rssMounts: 0, live: false,
 	storage: new Map<string, string>(),
 	externalNotice: null as any,
+	externalReload: vi.fn(),
 	intersection: null as null | ((entries: { isIntersecting: boolean }[]) => void),
+	entrance: vi.fn(), stopEntrance: vi.fn(),
+	commit: vi.fn(),
 }));
+vi.mock('./hk3-post-entrance.js', () => ({ animateHk3PostEntrance: mocks.entrance }));
 vi.mock('@/cache.js', async () => {
 	const { ref } = await import('vue');
 	const lists = ref([]);
@@ -23,6 +31,7 @@ vi.mock('@/cache.js', async () => {
 	};
 });
 vi.mock('@/utility/sound.js', () => ({ playMisskeySfx: mocks.sound }));
+vi.mock('@/utility/haptic.js', () => ({ haptic: vi.fn() }));
 vi.mock('@/router.js', () => ({ mainRouter: { pushByPath: mocks.navigate } }));
 vi.mock('@/i.js', () => ({ $i: { id: 'me', mutedWords: [], hardMutedWords: [] } }));
 vi.mock('@/i18n.js', () => ({ i18n: { tsx: { newNoteRecivedCount: ({ n }: { n: number }) => `${n} new notes` }, ts: {
@@ -38,8 +47,8 @@ vi.mock('@/utility/hatasaba-device-prefs.js', async () => {
 });
 vi.mock('@/preferences.js', async () => {
 	const { ref } = await import('vue');
-	return { prefer: { r: {
-		animation: ref(false), hataskeyUi3RssEnabled: ref(true), ltlEmojiVoteEnabled: ref(false), hataskeyUi3ComposerPosition: ref('bottom'),
+	return { prefer: { commit: mocks.commit, r: {
+		animation: ref(false), enablePullToRefresh: ref(false), hataskeyUi3RssEnabled: ref(true), ltlEmojiVoteEnabled: ref(false), hataskeyUi3ComposerPosition: ref('bottom'),
 		'external.enabled': ref(false), 'external.token': ref(null), 'external.host': ref(''),
 		'external.enableOHTL': ref(false), 'external.enableOLTL': ref(false),
 		'simpleUi.topNav': ref([{ id: 'local', icon: '', label: 'Local', visible: true }]), 'simpleUi.showTrendingTab': ref(false),
@@ -47,7 +56,7 @@ vi.mock('@/preferences.js', async () => {
 });
 vi.mock('./hk3-state.js', async () => {
 	const { ref } = await import('vue');
-	return { hk3Toasts: ref([]), hk3ComposerLink: ref(null), hk3PostedNote: ref(null), pushHk3Toast: vi.fn(), dismissHk3Toast: vi.fn() };
+	return { hk3Toasts: ref([]), hk3ComposerLink: ref(null), hk3PostedNote: ref(null), pushHk3Toast: vi.fn(), dismissHk3Toast: vi.fn(), setHk3ToastsPaused: vi.fn() };
 });
 vi.mock('@/store.js', async () => {
 	const { ref } = await import('vue');
@@ -56,6 +65,10 @@ vi.mock('@/store.js', async () => {
 });
 vi.mock('@/stream.js', () => ({ useStream: () => ({ useChannel: mocks.channel }) }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api }));
+vi.mock('@/instance.js', async importOriginal => {
+	const original = await importOriginal<typeof import('@/instance.js')>();
+	return { ...original, instance: { ...original.instance, notesPerOneAd: 2 } };
+});
 vi.mock('@/local-storage.js', () => ({ miLocalStorage: {
 	getItem: (key: string) => key === 'hataskeyUi3Live' && mocks.live ? 'true' : mocks.storage.get(key) ?? null,
 	setItem: (key: string, value: string) => mocks.storage.set(key, value),
@@ -75,19 +88,24 @@ vi.mock('./Hk3RssReader.vue', () => ({ default: {
 	template: '<div data-rss-reader :data-interrupted="String(interrupted)" :data-paused="String(paused)">Reader</div>',
 } }));
 vi.mock('./Hk3Note.vue', () => ({ default: {
-	props: ['note', 'instanceBadgePosition', 'showAudienceIcons', 'showLocalOnlyIcon', 'size'],
-	template: '<div :data-rendered-note="note.id" :data-badge-position="instanceBadgePosition" :data-audience-enabled="String(showAudienceIcons)" :data-local-only-enabled="String(showLocalOnlyIcon)" :data-note-size="size" />',
+	props: ['note', 'instanceBadgePosition', 'showAudienceIcons', 'showLocalOnlyIcon', 'size', 'inLocal', 'inSocial'],
+	template: '<div :data-rendered-note="note.id" :data-badge-position="instanceBadgePosition" :data-audience-enabled="String(showAudienceIcons)" :data-local-only-enabled="String(showLocalOnlyIcon)" :data-note-size="size" :data-utage-local="String(inLocal)" :data-utage-social="String(inSocial)" />',
 } }));
 vi.mock('./Hk3PostSuccess.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/MkLtlPunch.vue', () => ({ default: {
+	props: ['active'],
+	template: '<div data-punch :data-punch-active="String(active)" />',
+} }));
 vi.mock('@/components/MkExternalTimeline.vue', async () => {
 	const { defineComponent, h, ref } = await import('vue');
 	const { useHataskeyTimelineNewNotes } = await import('@/utility/hataskey-timeline-new-notes.js');
 	mocks.externalNotice = ref(null);
 	return { default: defineComponent({
-		props: ['src', 'newNotesNavbarKey'],
-		setup(props) {
+		props: ['src', 'newNotesNavbarKey', 'sound'],
+		setup(props, { expose }) {
 			useHataskeyTimelineNewNotes(() => props.newNotesNavbarKey, mocks.externalNotice);
-			return () => h('div', { 'data-external-timeline': props.src });
+			expose({ reloadTimeline: mocks.externalReload });
+			return () => h('div', { 'data-external-timeline': props.src, 'data-sound': String(props.sound) });
 		},
 	}) };
 });
@@ -95,15 +113,18 @@ vi.mock('@/components/MkLtlEmojiVote.vue', () => ({ default: { render: () => nul
 vi.mock('@/components/MkNoteActionAnimation.vue', () => ({ default: { render: () => null } }));
 
 const cleanups: (() => void)[] = [];
+let timelineVm: InstanceType<typeof Hk3Timeline> | null = null;
 
 async function settle() { for (let i = 0; i < 10; i++) { await Promise.resolve(); await nextTick(); } }
 
-async function mount(compact = false) {
+async function mount(compact = false, composer?: Component, extraProps: Record<string, unknown> = {}) {
 	const host = window.document.createElement('div');
+	host.style.overflowY = 'auto';
 	host.dataset.hk3Theme = 'dark';
 	window.document.body.append(host);
-	const app = createApp({ render: () => h(Hk3Timeline, { compact }) });
+	const app = createApp({ render: () => h(Hk3Timeline, { compact, ...extraProps, ref: instance => { timelineVm = instance as InstanceType<typeof Hk3Timeline> | null; } }, composer ? { default: () => h(composer) } : undefined) });
 	app.component('MkLoading', { render: () => null });
+	app.component('MkAd', { props: ['preferForms'], template: '<div data-timeline-ad :data-forms="preferForms.join(\',\')" />' });
 	app.component('MkAvatar', { props: ['user', 'link', 'preview'], template: '<span :data-avatar-user="user?.id" :data-avatar-decorations="JSON.stringify(user?.avatarDecorations)" :data-avatar-link="String(link)" :data-avatar-preview="String(preview)" />' });
 	app.component('Mfm', { props: ['text', 'author', 'emojiUrls'], template: '<span :data-mfm-author="author?.host" :data-mfm-emojis="JSON.stringify(emojiUrls)">{{ text }}</span>' });
 	app.mount(host);
@@ -113,6 +134,11 @@ async function mount(compact = false) {
 }
 
 beforeEach(() => {
+	mocks.commit.mockReset().mockImplementation((key: keyof typeof prefer.r, value: unknown) => { (prefer.r[key] as { value: unknown }).value = value; });
+	mocks.entrance.mockReset().mockReturnValue(mocks.stopEntrance);
+	mocks.stopEntrance.mockClear();
+	prefer.r.animation.value = false;
+	prefer.r.enablePullToRefresh.value = false;
 	tabSwipeEnabled.value = true;
 	hk3Toasts.value = [];
 	prefer.r.hataskeyUi3RssEnabled.value = true;
@@ -130,6 +156,7 @@ beforeEach(() => {
 	mocks.live = false;
 	mocks.storage.clear();
 	mocks.api.mockReset().mockResolvedValue([]);
+	mocks.externalReload.mockReset().mockResolvedValue(undefined);
 	mocks.lists.mockReset().mockResolvedValue([]);
 	mocks.antennas.mockReset().mockResolvedValue([]);
 	mocks.dispose.mockReset();
@@ -150,6 +177,81 @@ function navButton(host: Element, title: string) {
 }
 
 describe('UI S collection navigation', () => {
+	it('loads mobile branch candidates without changing TL and routes settings directly to management', async () => {
+		mocks.lists.mockResolvedValue([{ id: 'one', name: 'First' }]);
+		await mount(true);
+		const navigation = timelineVm!.mobileNavigation;
+		const previousRequests = mocks.api.mock.calls.length;
+		expect(await navigation.load('list')).toEqual([{ id: 'one', name: 'First' }]);
+		expect(mocks.api.mock.calls).toHaveLength(previousRequests);
+		expect(timelineVm!.mobileNavigation.active).toBe('local');
+		navigation.selectCollection('list', 'one');
+		await settle();
+		expect(mocks.api).toHaveBeenLastCalledWith('notes/user-list-timeline', expect.objectContaining({ listId: 'one' }));
+		timelineVm!.mobileNavigation.settings('list');
+		expect(mocks.navigate).toHaveBeenLastCalledWith('/my/lists');
+		timelineVm!.mobileNavigation.settings('antenna');
+		expect(mocks.navigate).toHaveBeenLastCalledWith('/my/antennas');
+	});
+
+	it('restores a mobile collection without flashing the old popup and sends empty-list selection to the dock', async () => {
+		mocks.storage.set('hataskeyUi3Tab', 'list');
+		mocks.storage.set('hatasabaLastListId', 'deleted');
+		const target = window.document.createElement('div');
+		window.document.body.append(target);
+		cleanups.push(() => target.remove());
+		const openBranch = vi.fn();
+		const host = await mount(true, undefined, { mobileComposerTarget: target, onMobileCollection: openBranch });
+		expect(host.querySelector('[data-collection-picker]')).toBeNull();
+		expect(openBranch).not.toHaveBeenCalled();
+		const selection = [...host.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Select list');
+		expect(selection).toBeDefined();
+		selection!.click();
+		await settle();
+		expect(openBranch).toHaveBeenCalledWith('list');
+		expect(host.querySelector('[data-collection-picker]')).toBeNull();
+	});
+
+	it('keeps the composer mounted and its text intact while the mobile selector opens', async () => {
+		const target = window.document.createElement('div');
+		window.document.body.append(target);
+		cleanups.push(() => target.remove());
+		let mounts = 0;
+		const props = reactive({ mobileComposerTarget: target, mobileDockHeight: 180, mobileMenuOpen: false });
+		const host = await mount(true, { setup: () => { mounts++; return () => h('textarea', { 'aria-label': 'Draft' }); } }, props);
+		const input = target.querySelector('textarea')!;
+		input.value = 'Unsent draft';
+		props.mobileMenuOpen = true;
+		await settle();
+		expect(target.querySelector('textarea')).toBe(input);
+		expect(input.value).toBe('Unsent draft');
+		expect(input.closest('[inert]')).not.toBeNull();
+		expect(host.querySelector('[data-rss-reader]')).not.toBeNull();
+		props.mobileMenuOpen = false;
+		await settle();
+		expect(input.closest('[inert]')).toBeNull();
+		expect(mounts).toBe(1);
+	});
+
+	it('saves the mobile order without losing hidden navbar preferences and honours later settings changes', async () => {
+		prefer.r['simpleUi.topNav'].value = [
+			{ id: 'following', icon: 'home', label: 'Home', visible: true },
+			{ id: 'social', icon: 'users', label: 'Social', visible: false },
+			{ id: 'local', icon: 'planet', label: 'Local', visible: true },
+		];
+		await mount(true);
+		const ids = ['following', 'antenna', 'channel', 'list', 'local'];
+		timelineVm!.mobileNavigation.reorder(ids);
+		await settle();
+		expect(timelineVm!.mobileNavigation.choices.map(item => item.id)).toEqual(ids);
+		expect(prefer.r['simpleUi.topNav'].value.map(item => item.id)).toEqual(['local', 'social', 'following']);
+		expect(prefer.r['simpleUi.topNav'].value[1].visible).toBe(false);
+		expect(mocks.storage.has('hataskeyUi3MobileOrder')).toBe(true);
+		prefer.r['simpleUi.topNav'].value = [...prefer.r['simpleUi.topNav'].value].reverse();
+		await settle();
+		expect(timelineVm!.mobileNavigation.choices.map(item => item.id)).toEqual(['antenna', 'channel', 'list', 'local', 'following']);
+	});
+
 	it.each([false, true])('opens the remembered list with UI S notes and its own stream (compact=%s)', async compact => {
 		mocks.lists.mockResolvedValue([{ id: 'first', name: 'First list' }, { id: 'saved', name: 'Saved list' }]);
 		mocks.storage.set('hatasabaLastListId', 'saved');
@@ -280,7 +382,284 @@ describe('UI S streamed note sounds', () => {
 		expect(mocks.sound).toHaveBeenCalledExactlyOnceWith('noteMy');
 	});
 });
+
+describe('retained timeline visibility and narrow layout', () => {
+	const note = (id: string, userId = 'other') => ({ id, userId, user: { id: userId, username: userId }, text: id, files: [], visibility: 'public' }) as unknown as Misskey.entities.Note;
+
+	it('changes only note density for narrow split view, keeping the desktop rail and composer draft', async () => {
+		mocks.api.mockResolvedValue([note('original')]);
+		const props = reactive({ narrow: false });
+		let mounts = 0;
+		const host = await mount(false, { setup: () => { mounts++; return () => h('textarea', { 'aria-label': 'Draft' }); } }, props);
+		const input = host.querySelector('textarea')!;
+		input.value = 'unsent';
+		const renderedNote = host.querySelector('[data-rendered-note="original"]')!;
+		expect(renderedNote.getAttribute('data-note-size')).toBe('lg');
+		expect(host.querySelector('[data-desktop-rail]')).not.toBeNull();
+		props.narrow = true;
+		await settle();
+		expect(host.querySelector('[data-rendered-note="original"]')).toBe(renderedNote);
+		expect(renderedNote.getAttribute('data-note-size')).toBe('sm');
+		expect(host.querySelector('[data-desktop-rail]')).not.toBeNull();
+		expect(host.querySelector('textarea')).toBe(input);
+		expect(input.value).toBe('unsent');
+		expect(mounts).toBe(1);
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+	});
+
+	it('queues hidden LIVE arrivals without sound, scroll changes or reload, then resumes the retained stream', async () => {
+		mocks.live = true;
+		mocks.api.mockResolvedValue([note('original')]);
+		const props = reactive({ active: true });
+		const host = await mount(false, undefined, props);
+		const original = host.querySelector('[data-rendered-note="original"]');
+		const viewport = host.querySelector<HTMLElement>('[data-timeline-tab-gestures]')!;
+		viewport.scrollTop = 0;
+		const rss = host.querySelector('[data-rss-reader]');
+		const initialHandler = mocks.note;
+		props.active = false;
+		await settle();
+		expect(rss?.getAttribute('data-paused')).toBe('true');
+		expect(host.querySelector('[data-punch]')?.getAttribute('data-punch-active')).toBe('false');
+		mocks.note?.(note('hidden-at-top'));
+		expect(host.querySelectorAll('[data-rendered-note]')).toHaveLength(1);
+		viewport.scrollTop = 37;
+		mocks.note?.(note('hidden-while-reading'));
+		hk3PostedNote.value = note('posted');
+		await settle();
+		expect(mocks.sound).not.toHaveBeenCalled();
+		expect(host.querySelectorAll('[data-rendered-note]')).toHaveLength(1);
+		expect(host.querySelector('[data-kind="queue"]')?.getAttribute('aria-label')).toBe('3 new notes');
+		expect(viewport.scrollTop).toBe(37);
+		props.active = true;
+		await settle();
+		expect(rss?.getAttribute('data-paused')).toBe('false');
+		expect(host.querySelector('[data-punch]')?.getAttribute('data-punch-active')).toBe('true');
+		expect(host.querySelector('[data-rendered-note="original"]')).toBe(original);
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+		expect(mocks.note).toBe(initialHandler);
+		mocks.note?.(note('visible'));
+		expect(mocks.sound).toHaveBeenCalledExactlyOnceWith('note');
+	});
+
+	it('closes teleported collection and options menus without taking focus when hidden', async () => {
+		prefer.r.animation.value = true;
+		const props = reactive({ active: true });
+		const host = await mount(false, undefined, props);
+		navButton(host, 'Lists').click();
+		await settle();
+		expect(host.querySelector('[data-collection-picker]')).not.toBeNull();
+		const elsewhere = window.document.createElement('button');
+		window.document.body.append(elsewhere);
+		cleanups.push(() => elsewhere.remove());
+		elsewhere.focus();
+		props.active = false;
+		await settle();
+		expect(host.querySelector('[data-collection-picker]')).toBeNull();
+		expect(window.document.activeElement).toBe(elsewhere);
+		props.active = true;
+		await settle();
+		navButton(host, 'Options').click();
+		await settle();
+		expect(host.querySelector('[role="menu"]')).not.toBeNull();
+		props.active = false;
+		await settle();
+		expect(host.querySelector('[role="menu"]')).toBeNull();
+		expect(window.document.activeElement).toBe(elsewhere);
+	});
+
+	it('resets a pull gesture and ignores hidden tab gestures', async () => {
+		prefer.r.enablePullToRefresh.value = true;
+		prefer.r['simpleUi.topNav'].value = ['local', 'following'].map(id => ({ id, icon: '', label: id, visible: true }));
+		mocks.api.mockResolvedValue([note('original')]);
+		const props = reactive({ active: true });
+		const host = await mount(false, undefined, props);
+		const rendered = host.querySelector('[data-rendered-note]')!;
+		rendered.dispatchEvent(new MouseEvent('mousedown', { button: 1, screenY: 0, bubbles: true, cancelable: true }));
+		window.dispatchEvent(new MouseEvent('mousemove', { screenY: 180, cancelable: true }));
+		await settle();
+		expect(host.querySelector('[data-pulling]')).not.toBeNull();
+		props.active = false;
+		await settle();
+		expect(host.querySelector('[data-pulling]')).toBeNull();
+		window.dispatchEvent(new MouseEvent('mouseup'));
+		const viewport = host.querySelector('[data-timeline-tab-gestures]')!;
+		viewport.dispatchEvent(new WheelEvent('wheel', { deltaX: 120, bubbles: true, cancelable: true }));
+		await settle();
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+		props.active = true;
+		await settle();
+		viewport.dispatchEvent(new WheelEvent('wheel', { deltaX: 120, bubbles: true, cancelable: true }));
+		await settle();
+		expect(mocks.api).toHaveBeenLastCalledWith('notes/timeline', expect.anything());
+	});
+
+	it('keeps the external timeline mounted while its sound and punch activity follow visibility', async () => {
+		prefer.r['external.enabled'].value = true;
+		prefer.r['external.token'].value = 'token';
+		prefer.r['external.host'].value = 'remote.example';
+		prefer.r['external.enableOHTL'].value = true;
+		mocks.storage.set('hataskeyUi3Tab', 'ohtl');
+		const props = reactive({ active: true });
+		const host = await mount(false, undefined, props);
+		const external = host.querySelector('[data-external-timeline]')!;
+		expect(external.getAttribute('data-sound')).toBe('true');
+		props.active = false;
+		await settle();
+		expect(host.querySelector('[data-external-timeline]')).toBe(external);
+		expect(external.getAttribute('data-sound')).toBe('false');
+		props.active = true;
+		await settle();
+		expect(external.getAttribute('data-sound')).toBe('true');
+	});
+});
 afterEach(() => { cleanups.splice(0).forEach(fn => fn()); vi.unstubAllGlobals(); vi.useRealTimers(); });
+
+describe('composer to timeline arrival', () => {
+	async function withComposer(compact = false, extraProps: Record<string, unknown> = {}) {
+		let context: Hk3PostContext | undefined;
+		const probe = { setup() { context = inject(hk3PostContextKey)!; return () => null; } };
+		const host = await mount(compact, probe, extraProps);
+		return { host, context: context! };
+	}
+
+	const ownNote = (id = 'posted') => ({ id, userId: 'me', user: { id: 'me', username: 'me' }, text: 'new post', files: [], visibility: 'public' }) as unknown as Misskey.entities.Note;
+
+	it.each([false, true])('deduplicates a stream echo before the API result and animates once (compact=%s)', async compact => {
+		const { host, context } = await withComposer(compact);
+		const receipt = context.begin();
+		const note = ownNote();
+		mocks.note?.(note);
+		await settle();
+		expect(host.querySelector('[data-rendered-note="posted"]')).toBeNull();
+		const source = new DOMRect(10, compact ? 50 : 600, 320, 90);
+		receipt.complete(note, source);
+		await settle();
+		mocks.note?.(note);
+		receipt.complete(note, source);
+		await settle();
+		expect(host.querySelectorAll('[data-rendered-note="posted"]')).toHaveLength(1);
+		expect(mocks.entrance).toHaveBeenCalledTimes(1);
+		expect(mocks.entrance).toHaveBeenCalledWith(expect.objectContaining({ source, motion: false }));
+		expect(mocks.sound).toHaveBeenCalledTimes(1);
+	});
+
+	it('counts a pending own stream echo once and carries its ad onto the API result', async () => {
+		const { host, context } = await withComposer();
+		mocks.note?.({ id: 'other', userId: 'other', user: { id: 'other' }, text: 'hello' });
+		const receipt = context.begin();
+		const posted = ownNote();
+		mocks.note?.(posted);
+		mocks.note?.(posted);
+		receipt.complete(posted, null);
+		await settle();
+		mocks.note?.(posted);
+		expect(host.querySelector('[data-rendered-note="posted"]')?.nextElementSibling?.hasAttribute('data-timeline-ad')).toBe(true);
+		mocks.note?.({ id: 'third', userId: 'other', user: { id: 'other' }, text: 'hello' });
+		mocks.note?.({ id: 'fourth', userId: 'other', user: { id: 'other' }, text: 'hello' });
+		await settle();
+		host.querySelector<HTMLButtonElement>('[data-kind="queue"]')!.click();
+		await settle();
+		expect(host.querySelector('[data-rendered-note="third"]')?.nextElementSibling?.hasAttribute('data-timeline-ad')).toBe(false);
+		expect(host.querySelector('[data-rendered-note="fourth"]')?.nextElementSibling?.hasAttribute('data-timeline-ad')).toBe(true);
+	});
+
+	it('counts successful own posts even when no stream echo arrives', async () => {
+		const { host, context } = await withComposer();
+		context.begin().complete(ownNote('first'), null);
+		await settle();
+		context.begin().complete(ownNote('second'), null);
+		await settle();
+		const first = host.querySelector('[data-rendered-note="first"]');
+		expect(first).not.toBeNull();
+		expect(first?.nextElementSibling?.hasAttribute('data-timeline-ad') ?? false).toBe(false);
+		expect(host.querySelector('[data-rendered-note="second"]')?.nextElementSibling?.hasAttribute('data-timeline-ad')).toBe(true);
+		mocks.note?.(ownNote('second'));
+		mocks.note?.({ id: 'third', userId: 'other', user: { id: 'other' }, text: 'hello' });
+		await settle();
+		expect(host.querySelector('[data-kind="queue"]')?.getAttribute('aria-label')).toBe('1 new notes');
+	});
+
+	it('releases buffered stream notes on failure without a success animation', async () => {
+		mocks.live = true;
+		const { host, context } = await withComposer();
+		const receipt = context.begin();
+		mocks.note?.(ownNote('another-device'));
+		receipt.cancel();
+		await settle();
+		expect(host.querySelector('[data-rendered-note="another-device"]')).not.toBeNull();
+		expect(mocks.entrance).not.toHaveBeenCalled();
+	});
+
+	it('does not inject the result into another timeline after navigation', async () => {
+		prefer.r['simpleUi.topNav'].value = ['following', 'local'].map(id => ({ id, label: id, icon: '', visible: true }));
+		const { host, context } = await withComposer();
+		const receipt = context.begin();
+		mocks.note?.(ownNote());
+		navButton(host, 'Home').click();
+		await settle();
+		receipt.complete(ownNote(), new DOMRect(0, 500, 320, 90));
+		await settle();
+		expect(host.querySelector('[data-rendered-note="posted"]')).toBeNull();
+		expect(mocks.entrance).not.toHaveBeenCalled();
+	});
+
+	it('does not add a followers-only post to the local timeline', async () => {
+		const { host, context } = await withComposer();
+		const receipt = context.begin();
+		receipt.complete({ ...ownNote(), visibility: 'followers' }, new DOMRect(0, 500, 320, 90));
+		await settle();
+		expect(host.querySelector('[data-rendered-note="posted"]')).toBeNull();
+		expect(mocks.entrance).not.toHaveBeenCalled();
+	});
+
+	it('keeps a server-confirmed collection echo without forcing an unrelated arrival', async () => {
+		mocks.live = true;
+		mocks.lists.mockResolvedValue([{ id: 'saved', name: 'My list' }]);
+		const { host, context } = await withComposer();
+		navButton(host, 'Lists').click();
+		await settle();
+		const receipt = context.begin();
+		const note = ownNote();
+		mocks.note?.(note);
+		receipt.complete(note, new DOMRect(0, 500, 320, 90));
+		await settle();
+		expect(host.querySelectorAll('[data-rendered-note="posted"]')).toHaveLength(1);
+		expect(mocks.entrance).not.toHaveBeenCalled();
+		expect(mocks.sound).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops the in-flight animation when its timeline is unmounted', async () => {
+		const { context } = await withComposer();
+		context.begin().complete(ownNote(), new DOMRect(0, 500, 320, 90));
+		await settle();
+		cleanups.splice(0).forEach(fn => fn());
+		expect(mocks.stopEntrance).toHaveBeenCalledTimes(1);
+	});
+
+	it('cancels an entrance and queues a post completed while hidden without another sound', async () => {
+		const props = reactive({ active: true });
+		const { host, context } = await withComposer(false, props);
+		context.begin().complete(ownNote('visible-post'), new DOMRect(0, 500, 320, 90));
+		await settle();
+		expect(mocks.entrance).toHaveBeenCalledTimes(1);
+		expect(mocks.sound).toHaveBeenCalledTimes(1);
+		props.active = false;
+		await settle();
+		expect(mocks.stopEntrance).toHaveBeenCalledTimes(1);
+		context.begin().complete(ownNote('hidden-post'), new DOMRect(0, 500, 320, 90));
+		await settle();
+		expect(mocks.sound).toHaveBeenCalledTimes(1);
+		expect(mocks.entrance).toHaveBeenCalledTimes(1);
+		expect(host.querySelector('[data-rendered-note="hidden-post"]')).toBeNull();
+		props.active = true;
+		await settle();
+		host.querySelector<HTMLButtonElement>('[data-kind="queue"]')!.click();
+		await settle();
+		expect(host.querySelector('[data-rendered-note="hidden-post"]')).not.toBeNull();
+		expect(mocks.entrance).toHaveBeenCalledTimes(1);
+	});
+});
 
 describe('UI S shared RSS banner', () => {
 	it('keeps the reader mounted through a notice, queued notes, and their dismissal', async () => {
@@ -334,21 +713,23 @@ describe('UI S audience icon tab gating', () => {
 		mocks.antennas.mockResolvedValue([{ id: 'antenna', name: 'My antenna' }]);
 		mocks.api.mockResolvedValue([{ id: 'same-note', userId: 'other', user: { id: 'other' }, text: 'body' }]);
 		const host = await mount(compact);
-		const assertAudience = (enabled: boolean, localOnly = false) => {
+		const assertAudience = (enabled: boolean, localOnly = false, tab = '') => {
 			const rendered = host.querySelector('[data-rendered-note="same-note"]');
 			expect(rendered).not.toBeNull();
 			expect(rendered?.getAttribute('data-audience-enabled')).toBe(String(enabled));
 			expect(rendered?.getAttribute('data-local-only-enabled')).toBe(String(localOnly));
 			expect(rendered?.getAttribute('data-note-size')).toBe(compact ? 'sm' : 'lg');
+			expect(rendered?.getAttribute('data-utage-local')).toBe(String(tab === 'local'));
+			expect(rendered?.getAttribute('data-utage-social')).toBe(String(tab === 'social'));
 		};
-		assertAudience(true);
+		assertAudience(true, false, 'following');
 		for (const [label, enabled] of [
 			['Social', true], ['Local', false], ['Global', false], ['Trending', false],
 			['Lists', false], ['Antennas', false], ['Home', true],
 		] as const) {
 			navButton(host, label).click();
 			await settle();
-			assertAudience(enabled, label === 'Local' || label === 'Global');
+			assertAudience(enabled, label === 'Local' || label === 'Global', label.toLowerCase());
 		}
 		for (const [label, src] of [['External home', 'ohtl'], ['External local', 'oltl']] as const) {
 			navButton(host, label).click();
@@ -358,7 +739,7 @@ describe('UI S audience icon tab gating', () => {
 		}
 		navButton(host, 'Social').click();
 		await settle();
-		assertAudience(true);
+		assertAudience(true, false, 'social');
 	});
 
 	it.each(['following', 'social', 'local', 'mixed', 'trending', 'list', 'antenna'])('applies gating on a restored %s tab', async tab => {
@@ -371,6 +752,8 @@ describe('UI S audience icon tab gating', () => {
 		const host = await mount();
 		expect(host.querySelector('[data-rendered-note="restored-note"]')?.getAttribute('data-audience-enabled')).toBe(String(tab === 'following' || tab === 'social'));
 		expect(host.querySelector('[data-rendered-note="restored-note"]')?.getAttribute('data-local-only-enabled')).toBe(String(tab === 'local' || tab === 'mixed'));
+		expect(host.querySelector('[data-rendered-note="restored-note"]')?.getAttribute('data-utage-local')).toBe(String(tab === 'local'));
+		expect(host.querySelector('[data-rendered-note="restored-note"]')?.getAttribute('data-utage-social')).toBe(String(tab === 'social'));
 	});
 });
 
@@ -420,6 +803,159 @@ describe('UI S new notes shared content', () => {
 	});
 });
 
+describe('UI S navbar pull refresh', () => {
+	function makeNote(id: string) { return { id, userId: 'other', user: { id: 'other' }, text: 'body' }; }
+
+	it('reloads the external timeline through its exposed method on an upward dock pull', async () => {
+		vi.useFakeTimers();
+		prefer.r.enablePullToRefresh.value = true;
+		prefer.r['external.enabled'].value = true;
+		prefer.r['external.token'].value = 'test-token';
+		prefer.r['external.host'].value = 'external.example';
+		prefer.r['external.enableOHTL'].value = true;
+		mocks.storage.set('hataskeyUi3Tab', 'ohtl');
+		const target = window.document.createElement('div');
+		const dock = window.document.createElement('nav');
+		window.document.body.append(target, dock);
+		cleanups.push(() => { target.remove(); dock.remove(); });
+		const host = await mount(true, undefined, { mobileComposerTarget: target });
+		expect(host.querySelector('[data-external-timeline="ohtl"]')).not.toBeNull();
+		const gesture = timelineVm!.attachMobilePullGesture(dock, vi.fn(), () => true);
+		cleanups.push(() => gesture.dispose());
+		dock.dispatchEvent(new MouseEvent('mousedown', { button: 0, screenY: 600, bubbles: true }));
+		window.dispatchEvent(new MouseEvent('mousemove', { screenY: 420, cancelable: true }));
+		await settle();
+		expect(timelineVm!.mobilePullState.phase).toBe('ready');
+		window.dispatchEvent(new MouseEvent('mouseup'));
+		await settle();
+		expect(mocks.externalReload).toHaveBeenCalledOnce();
+		expect(mocks.api).not.toHaveBeenCalled();
+	});
+
+	it('routes upward dock feedback through the shared refresh owner while leaving top banners intact', async () => {
+		vi.useFakeTimers();
+		prefer.r.enablePullToRefresh.value = true;
+		const target = window.document.createElement('div');
+		window.document.body.append(target);
+		cleanups.push(() => target.remove());
+		const props = reactive({ mobileComposerTarget: target, mobileMenuOpen: false });
+		const host = await mount(true, undefined, props);
+		const rss = host.querySelector('[data-rss-reader]');
+		const dock = window.document.createElement('nav');
+		window.document.body.append(dock);
+		const gesture = timelineVm!.attachMobilePullGesture(dock, vi.fn(), () => true);
+		cleanups.push(() => { gesture.dispose(); dock.remove(); });
+		dock.dispatchEvent(new MouseEvent('mousedown', { button: 0, screenY: 600, bubbles: true }));
+		window.dispatchEvent(new MouseEvent('mousemove', { screenY: 420, cancelable: true }));
+		await settle();
+		expect(timelineVm!.mobilePullState).toMatchObject({ phase: 'ready', direction: 'up' });
+		expect(host.querySelector('[data-pulling]')).toBeNull();
+		expect(rss?.getAttribute('data-paused')).toBe('true');
+		props.mobileMenuOpen = true;
+		await settle();
+		window.dispatchEvent(new MouseEvent('mouseup'));
+		await vi.advanceTimersByTimeAsync(250);
+		expect(timelineVm!.mobilePullState.phase).toBe('idle');
+		expect(mocks.api).toHaveBeenCalledOnce();
+		expect(mocks.externalReload).not.toHaveBeenCalled();
+		expect(host.querySelector('[data-rss-reader]')).toBe(rss);
+		expect(rss?.getAttribute('data-paused')).toBe('false');
+	});
+
+	it('pauses RSS without remounting it and retains notes received during the refresh request', async () => {
+		vi.useFakeTimers();
+		prefer.r.enablePullToRefresh.value = true;
+		const original = { id: 'original', userId: 'other', user: { id: 'other' }, text: 'body' };
+		mocks.api.mockResolvedValue([original]);
+		const host = await mount(true);
+		const initialRssMounts = mocks.rssMounts;
+		const note = host.querySelector('[data-rendered-note]')!;
+		note.dispatchEvent(new MouseEvent('mousedown', { button: 1, screenY: 0, bubbles: true, cancelable: true }));
+		window.dispatchEvent(new MouseEvent('mousemove', { screenY: 180, cancelable: true }));
+		await settle();
+		expect(host.querySelector('[data-pulling]')).not.toBeNull();
+		expect(host.querySelector('[data-rss-reader]')?.getAttribute('data-paused')).toBe('true');
+		let finish!: (notes: unknown[]) => void;
+		mocks.api.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+		window.dispatchEvent(new MouseEvent('mouseup'));
+		await settle();
+		mocks.note?.({ id: 'during-refresh', userId: 'other', user: { id: 'other' }, text: 'new' });
+		finish([original]);
+		await settle();
+		await vi.advanceTimersByTimeAsync(250);
+		await settle();
+		expect(mocks.rssMounts).toBe(initialRssMounts);
+		expect(host.querySelector('[data-rss-reader]')?.getAttribute('data-paused')).toBe('false');
+		expect(host.querySelector('[data-kind="queue"]')?.getAttribute('aria-label')).toBe('1 new notes');
+		expect(host.querySelector('[data-rendered-note="original"]')).not.toBeNull();
+	});
+
+	it('retains displayed notes and old and incoming queues when pull refresh fails', async () => {
+		vi.useFakeTimers();
+		prefer.r.enablePullToRefresh.value = true;
+		mocks.api.mockResolvedValue([makeNote('original')]);
+		const host = await mount(true);
+		mocks.note?.(makeNote('old-only'));
+		mocks.note?.(makeNote('shared'));
+		await settle();
+		expect(host.querySelector('[data-kind="queue"]')?.getAttribute('aria-label')).toBe('2 new notes');
+		let fail!: (error: Error) => void;
+		mocks.api.mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject; }));
+		host.querySelector('[data-rendered-note]')!.dispatchEvent(new MouseEvent('mousedown', { button: 1, screenY: 0, bubbles: true, cancelable: true }));
+		window.dispatchEvent(new MouseEvent('mousemove', { screenY: 180, cancelable: true }));
+		window.dispatchEvent(new MouseEvent('mouseup'));
+		await settle();
+		expect(mocks.api).toHaveBeenCalledTimes(2);
+		expect(host.querySelector('[data-rendered-note="original"]')).not.toBeNull();
+		mocks.note?.(makeNote('shared'));
+		mocks.note?.(makeNote('during-refresh'));
+		fail(new Error('offline'));
+		await settle();
+		await vi.advanceTimersByTimeAsync(250);
+		await settle();
+		expect([...host.querySelectorAll('[data-rendered-note]')].map(el => el.getAttribute('data-rendered-note'))).toEqual(['original']);
+		const banner = host.querySelector<HTMLButtonElement>('[data-kind="queue"]')!;
+		expect(banner.getAttribute('aria-label')).toBe('3 new notes');
+		expect([...banner.querySelectorAll('[data-new-notes-face]')].map(el => el.getAttribute('data-new-notes-face'))).toEqual(['during-refresh', 'shared', 'old-only']);
+		banner.click();
+		await settle();
+		expect([...host.querySelectorAll('[data-rendered-note]')].map(el => el.getAttribute('data-rendered-note'))).toEqual(['during-refresh', 'shared', 'old-only', 'original']);
+	});
+
+	it('retains old and incoming queues outside the fetched page and removes fetched and shared duplicates', async () => {
+		vi.useFakeTimers();
+		prefer.r.enablePullToRefresh.value = true;
+		mocks.api.mockResolvedValue([makeNote('original')]);
+		const host = await mount(true);
+		mocks.note?.(makeNote('old-only'));
+		mocks.note?.(makeNote('old-fetched'));
+		mocks.note?.(makeNote('shared'));
+		await settle();
+		expect(host.querySelector('[data-kind="queue"]')?.getAttribute('aria-label')).toBe('3 new notes');
+		let finish!: (notes: unknown[]) => void;
+		mocks.api.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+		host.querySelector('[data-rendered-note]')!.dispatchEvent(new MouseEvent('mousedown', { button: 1, screenY: 0, bubbles: true, cancelable: true }));
+		window.dispatchEvent(new MouseEvent('mousemove', { screenY: 180, cancelable: true }));
+		window.dispatchEvent(new MouseEvent('mouseup'));
+		await settle();
+		expect(mocks.api).toHaveBeenLastCalledWith('notes/local-timeline', expect.objectContaining({ limit: 20 }));
+		mocks.note?.(makeNote('shared'));
+		mocks.note?.(makeNote('incoming-fetched'));
+		mocks.note?.(makeNote('during-refresh'));
+		const fetched = [makeNote('old-fetched'), makeNote('incoming-fetched'), ...Array.from({ length: 18 }, (_, i) => makeNote(`fetched-${i}`))];
+		finish(fetched);
+		await settle();
+		await vi.advanceTimersByTimeAsync(250);
+		await settle();
+		expect([...host.querySelectorAll('[data-rendered-note]')].map(el => el.getAttribute('data-rendered-note'))).toEqual(fetched.map(note => note.id));
+		const banner = host.querySelector<HTMLButtonElement>('[data-kind="queue"]')!;
+		expect(banner.getAttribute('aria-label')).toBe('3 new notes');
+		expect([...banner.querySelectorAll('[data-new-notes-face]')].map(el => el.getAttribute('data-new-notes-face'))).toEqual(['during-refresh', 'shared', 'old-only']);
+		banner.click();
+		await settle();
+		expect([...host.querySelectorAll('[data-rendered-note]')].map(el => el.getAttribute('data-rendered-note'))).toEqual(['during-refresh', 'shared', 'old-only', ...fetched.map(note => note.id)]);
+	});
+});
 
 describe('UI S timeline tab gestures', () => {
 	function sendTouch(target: Element, type: string, x: number, end = false) {
@@ -428,6 +964,7 @@ describe('UI S timeline tab gestures', () => {
 		Object.assign(event, { touches: end ? [] : [point], changedTouches: [point] });
 		target.dispatchEvent(event);
 	}
+
 	it('moves adjacent tabs with touch and keeps one trackpad gesture to one tab at compact width', async () => {
 		vi.useFakeTimers();
 		prefer.r['simpleUi.topNav'].value = ['following', 'local', 'social'].map(id => ({ id, label: id, icon: '', visible: true }));
@@ -458,5 +995,48 @@ describe('UI S timeline tab gestures', () => {
 		sendTouch(rss, 'touchstart', 100); sendTouch(rss, 'touchend', 0, true);
 		rss.dispatchEvent(new WheelEvent('wheel', { deltaX: 110, bubbles: true, cancelable: true }));
 		await settle(); expect(mocks.storage.get('hataskeyUi3Tab')).toBeUndefined();
+	});
+});
+
+describe('UI S timeline ads', () => {
+	const makeNote = (id: string) => ({ id, userId: 'other', user: { id: 'other' }, text: 'body' });
+	const rows = (host: Element) => [...host.querySelector('[data-hata-collapse-items]')!.children].map(el => el.getAttribute('data-rendered-note') ?? (el.hasAttribute('data-timeline-ad') ? 'ad' : '?'));
+
+	it('places page ads after the fourth and eleventh notes, retaining note-only API pagination', async () => {
+		const first = Array.from({ length: 20 }, (_, i) => Object.freeze(makeNote(`first-${i}`)));
+		const older = Array.from({ length: 20 }, (_, i) => Object.freeze(makeNote(`older-${i}`)));
+		mocks.api.mockResolvedValueOnce(first).mockResolvedValueOnce(older);
+		const host = await mount();
+		expect(rows(host).slice(0, 6)).toEqual(['first-0', 'first-1', 'first-2', 'first-3', 'ad', 'first-4']);
+		expect(host.querySelector('[data-timeline-ad]')?.getAttribute('data-forms')).toBe('horizontal,horizontal-big');
+		mocks.intersection?.([{ isIntersecting: true }]);
+		await settle();
+		expect(mocks.api).toHaveBeenLastCalledWith('notes/local-timeline', expect.objectContaining({ limit: 20, untilId: 'first-19' }));
+		expect(rows(host).slice(21, 34)).toEqual(['older-0', 'older-1', 'older-2', 'older-3', 'older-4', 'older-5', 'older-6', 'older-7', 'older-8', 'older-9', 'older-10', 'ad', 'older-11']);
+		expect(host.querySelectorAll('[data-rendered-note]')).toHaveLength(40);
+		expect(first[3]).not.toHaveProperty('_shouldInsertAd_');
+		expect(older[10]).not.toHaveProperty('_shouldInsertAd_');
+	});
+
+	it('counts unique streamed notes, keeps queued markers, and restarts cadence on reload', async () => {
+		mocks.api.mockResolvedValue([makeNote('base')]);
+		const host = await mount();
+		mocks.note?.(makeNote('new-1'));
+		mocks.note?.(makeNote('new-1'));
+		mocks.note?.(makeNote('new-2'));
+		mocks.note?.(makeNote('new-3'));
+		await settle();
+		expect(host.querySelector('[data-kind="queue"]')?.getAttribute('aria-label')).toBe('3 new notes');
+		host.querySelector<HTMLButtonElement>('[data-kind="queue"]')!.click();
+		await settle();
+		expect(rows(host).slice(0, 5)).toEqual(['new-3', 'new-2', 'ad', 'new-1', 'base']);
+		await timelineVm!.reload();
+		await settle();
+		mocks.note?.(makeNote('after-1'));
+		mocks.note?.(makeNote('after-2'));
+		await settle();
+		host.querySelector<HTMLButtonElement>('[data-kind="queue"]')!.click();
+		await settle();
+		expect(rows(host).slice(0, 4)).toEqual(['after-2', 'ad', 'after-1', 'base']);
 	});
 });

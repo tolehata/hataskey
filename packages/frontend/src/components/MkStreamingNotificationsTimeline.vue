@@ -294,4 +294,11 @@ defineExpose({
 	background: var(--MI_THEME-panel);
 	border-top: solid 0.5px var(--MI_THEME-divider);
 }
+
+:global(html[data-hk3-ui]) .notifications,
+:global(html[data-hk3-ui]) .more {
+	background: var(--hk3-notifications-bg, var(--hk3-glass-soft, var(--MI_THEME-panel)));
+	-webkit-backdrop-filter: var(--hk3-notifications-blur, var(--MI-blur, blur(16px)));
+	backdrop-filter: var(--hk3-notifications-blur, var(--MI-blur, blur(16px)));
+}
 </style>

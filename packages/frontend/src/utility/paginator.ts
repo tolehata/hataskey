@@ -6,17 +6,18 @@
 import { ref, shallowRef, triggerRef } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import type { ComputedRef, Ref, ShallowRef } from 'vue';
+import type { TimelineAdMarker } from '@/utility/timeline-ad.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { markTimelineAdPage } from '@/utility/timeline-ad.js';
 
 const MAX_ITEMS = 30;
 const MAX_QUEUE_ITEMS = 100;
 const FIRST_FETCH_LIMIT = 15;
 const SECOND_FETCH_LIMIT = 30;
 
-export type MisskeyEntity = {
+export type MisskeyEntity = TimelineAdMarker & {
 	id: string;
 	createdAt: string;
-	_shouldInsertAd_?: boolean;
 };
 
 type FilterByEpRes<E extends Record<string, any>> = {
@@ -225,12 +226,7 @@ export class Paginator<
 			apiRes.reverse();
 		}
 
-		for (let i = 0; i < apiRes.length; i++) {
-			const item = apiRes[i];
-			if (i === 3) item._shouldInsertAd_ = true;
-		}
-
-		this.pushItems(apiRes);
+		this.pushItems(markTimelineAdPage(apiRes, 'initial'));
 
 		if (this.canFetchDetection === 'limit') {
 			if (apiRes.length < FIRST_FETCH_LIMIT) {
@@ -280,15 +276,12 @@ export class Paginator<
 			return;
 		}
 
-		for (let i = 0; i < apiRes.length; i++) {
-			const item = apiRes[i];
-			if (i === 10) item._shouldInsertAd_ = true;
-		}
+		const markedRes = markTimelineAdPage(apiRes, 'older');
 
 		if (this.order.value === 'oldest') {
-			this.unshiftItems(apiRes.toReversed(), false);
+			this.unshiftItems(markedRes.toReversed(), false);
 		} else {
-			this.pushItems(apiRes);
+			this.pushItems(markedRes);
 		}
 
 		if (this.canFetchDetection === 'limit') {

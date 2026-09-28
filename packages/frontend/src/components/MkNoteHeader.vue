@@ -16,9 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 旗鯖fork: 承認制(フォロー許可制)アカウントを示す鍵アイコンはタイムラインのノートヘッダーでは非表示にする -->
 			<div v-if="note.user.isBot" :class="$style.userBadge"><i class="ti ti-robot"></i></div>
 			<div v-if="note.user.isProxy" :class="$style.userBadge"><i class="ti ti-ghost"></i></div>
-			<div v-if="badgeRoles.length > 0" :class="$style.badgeRoles">
-				<img v-for="(role, i) in badgeRoles" :key="i" v-tooltip="role.name" :class="$style.badgeRole" :src="role.iconUrl!"/>
-			</div>
+			<MkUserRoleBadges :user="note.user"/>
 			<div :class="[$style.username, $style.nameClickable]" @click.stop="emit('nameClick', note.user.id)"><MkAcct :user="note.user"/></div>
 		</div>
 	</div>
@@ -62,7 +60,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, inject } from 'vue';
+import { inject } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { i18n } from '@/i18n.js';
 import { notePage } from '@/filters/note.js';
@@ -71,6 +69,7 @@ import { DI } from '@/di.js';
 import { prefer } from '@/preferences.js';
 import { useRouter } from '@/router.js';
 import MkInstanceTicker from '@/components/MkInstanceTicker.vue';
+import MkUserRoleBadges from '@/components/MkUserRoleBadges.vue';
 
 const props = defineProps<{
 	note: Misskey.entities.Note;
@@ -85,7 +84,6 @@ const emit = defineEmits<{
 }>();
 
 const mock = inject(DI.mock, false);
-const badgeRoles = computed(() => props.note.user.badgeRoles?.filter(role => role.iconUrl) ?? []);
 
 const showTicker = (prefer.s.instanceTicker === 'always') || (prefer.s.instanceTicker === 'remote' && props.note.user.instance);
 const router = useRouter();
@@ -211,20 +209,6 @@ function showOnRemote() {
 
 	&:hover {
 		text-decoration: none;
-	}
-}
-
-.badgeRoles {
-	margin: 0 .5em 0 0;
-}
-
-.badgeRole {
-	height: 1.3em;
-	vertical-align: -20%;
-	border-radius: 0.4em;
-
-	& + .badgeRole {
-		margin-left: 0.2em;
 	}
 }
 

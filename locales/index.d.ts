@@ -5745,6 +5745,10 @@ export interface Locale extends ILocale {
      */
     "pullDownToRefresh": string;
     /**
+     * 引き上げてリロード
+     */
+    "pullUpToRefresh": string;
+    /**
      * 通知をグルーピング
      */
     "useGroupedNotifications": string;
@@ -17800,6 +17804,142 @@ export interface Locale extends ILocale {
             };
         };
         "_hataskeyUi3": {
+            "_displaySize": {
+                /**
+                 * 表示サイズ
+                 */
+                "title": string;
+                /**
+                 * UI S専用。文字と余白を小さくします。タップしやすさは維持します。変更はこの端末ですぐに反映されます。
+                 */
+                "caption": string;
+                /**
+                 * 標準（既定）
+                 */
+                "standard": string;
+                /**
+                 * 小さめ
+                 */
+                "small": string;
+            };
+            "_bottomNav": {
+                /**
+                 * 下部ナビバー (モバイル)
+                 */
+                "title": string;
+                /**
+                 * UI S専用の設定です。左端のメニューは固定で、ホームを含む最大5項目を選べます。ホームは常に表示され、並び替えできます。既定の右端はウィジェットです。PCからも編集でき、変更はすぐに反映されます。
+                 */
+                "caption": string;
+                /**
+                 * 取っ手をドラッグするか、取っ手にフォーカスして上下矢印キーで並び替えます。
+                 */
+                "keyboardHint": string;
+                /**
+                 * 並び替え
+                 */
+                "reorder": string;
+                /**
+                 * 表示
+                 */
+                "show": string;
+                /**
+                 * 並び順を初期化
+                 */
+                "resetOrder": string;
+                /**
+                 * 表示指定が5項目を超えています。ホームを含む最大5項目が並び順に沿って表示され、残りの設定は保持されます。
+                 */
+                "tooMany": string;
+                /**
+                 * 表示できる項目はホームを含む5つまでです。先に別の項目を非表示にしてください。
+                 */
+                "limitReached": string;
+                /**
+                 * 変更はすぐに保存されます。
+                 */
+                "saveHint": string;
+                /**
+                 * UI Sに表示される項目
+                 */
+                "preview": string;
+            };
+            "_mobileNavigation": {
+                /**
+                 * モバイルナビゲーション
+                 */
+                "navigation": string;
+                /**
+                 * タイムライン一覧
+                 */
+                "timelines": string;
+                /**
+                 * メニュー
+                 */
+                "menu": string;
+                /**
+                 * タイムライン上部へ。長押しで一覧
+                 */
+                "home": string;
+                /**
+                 * 一覧を閉じる
+                 */
+                "close": string;
+                /**
+                 * 投稿
+                 */
+                "post": string;
+                /**
+                 * 戻る
+                 */
+                "back": string;
+                /**
+                 * 設定
+                 */
+                "settings": string;
+                /**
+                 * オプション
+                 */
+                "options": string;
+                /**
+                 * 並び替え
+                 */
+                "reorder": string;
+                /**
+                 * 完了
+                 */
+                "done": string;
+                /**
+                 * 読み込み中…
+                 */
+                "loading": string;
+                /**
+                 * 候補を読み込めませんでした
+                 */
+                "loadError": string;
+                /**
+                 * 再試行
+                 */
+                "retry": string;
+                /**
+                 * 候補がありません
+                 */
+                "empty": string;
+                /**
+                 * タップで先頭へ · 長押しでTL一覧
+                 * 指を離さず滑らせて選択
+                 */
+                "guide": string;
+                /**
+                 * メニューを長押しでTL一覧
+                 * 指を離さず滑らせて選択
+                 */
+                "guideMenu": string;
+                /**
+                 * わかった
+                 */
+                "gotIt": string;
+            };
             "_rss": {
                 /**
                  * RSS
@@ -18055,7 +18195,7 @@ export interface Locale extends ILocale {
              */
             "cw": string;
             /**
-             * 注釈
+             * ここに注釈をつけます...
              */
             "cwPlaceholder": string;
             /**
@@ -18403,6 +18543,18 @@ export interface Locale extends ILocale {
              */
             "shortcutGuide": string;
             /**
+             * 閉じてタイムラインに戻る
+             */
+            "sidePageClose": string;
+            /**
+             * 全画面で表示
+             */
+            "sidePageExpand": string;
+            /**
+             * 左右表示に戻す
+             */
+            "sidePageRestore": string;
+            /**
              * 標準
              */
             "standardView": string;
@@ -18517,11 +18669,11 @@ export interface Locale extends ILocale {
              */
             "hint": string;
             /**
-             * Hataskeyの標準UI
+             * HataskeyのデフォルトUIで使う楽しさを追求します
              */
             "standardDescription": string;
             /**
-             * タイムラインを中心に、はっきりした区切りで情報を並べる新しいUI（ベータ版）
+             * 美しさと利便性を追求、S(Special)な体験を
              */
             "ui3Description": string;
             /**
@@ -41843,9 +41995,53 @@ export interface Locale extends ILocale {
                  */
                 "ui3ComposerEmojiBeforeVisibility": string;
                 /**
+                 * タイムライン背景
+                 */
+                "ui3TimelineBackground": string;
+                /**
+                 * 左サイドメニューの背景
+                 */
+                "ui3SideMenuBackground": string;
+                /**
+                 * 左サイドメニューにすりガラス風の背景を表示します。モバイルのメニューにも適用されます。
+                 */
+                "ui3SideMenuBackgroundCaption": string;
+                /**
+                 * ウィジェット・Hataskの背景
+                 */
+                "ui3RightPaneBackground": string;
+                /**
+                 * 右側のウィジェット・Hataskにすりガラス風の背景を表示します。
+                 */
+                "ui3RightPaneBackgroundCaption": string;
+                /**
+                 * ヘッダー画像をすりガラス風の背景に表示します。未設定の場合はアイコンを使用します。
+                 */
+                "ui3TimelineBackgroundCaption": string;
+                /**
+                 * すりガラスの濃さ
+                 */
+                "ui3GlassDensity": string;
+                /**
+                 * 背景の透け具合を調整します。
+                 */
+                "ui3GlassDensityCaption": string;
+                /**
+                 * 薄め（おすすめ）
+                 */
+                "ui3GlassDensityLight": string;
+                /**
+                 * 濃いめ
+                 */
+                "ui3GlassDensityDense": string;
+                /**
                  * Hataskey UI S の投稿フォームの位置
                  */
                 "ui3ComposerPosition": string;
+                /**
+                 * PC・タブレットに適用します。モバイルでは下部に固定されます。
+                 */
+                "ui3ComposerPositionCaption": string;
                 /**
                  * タイムラインの上
                  */
@@ -41855,7 +42051,7 @@ export interface Locale extends ILocale {
                  */
                 "ui3ComposerPositionBottom": string;
                 /**
-                 * Hataskey UI S では「投稿フォームの位置」で変更してください。
+                 * Hataskey UI S では「投稿フォームの位置」で変更してください。モバイルでは下部に固定されます。
                  */
                 "ui3ComposerUsePosition": string;
                 /**

@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { createApp, h, nextTick } from 'vue';
+import { createApp, h, nextTick, ref } from 'vue';
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { pullDownToRefresh: '引っ張って更新', releaseToRefresh: '離して更新', refreshing: '更新中' } } }));
 vi.mock('@/utility/touch.js', async () => ({ isHorizontalSwipeSwiping: (await import('vue')).ref(false) }));
 vi.mock('@/utility/haptic.js', () => ({ haptic: vi.fn() }));
 import MkPullToRefresh from './MkPullToRefresh.vue';
 import { isHorizontalSwipeSwiping } from '@/utility/touch.js';
+import { createNavbarPullRefresh, navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
 
 const cleanups: Array<() => void> = [];
 
@@ -17,11 +18,12 @@ function touch(target: EventTarget, type: string, x: number, y: number) {
 	target.dispatchEvent(event);
 }
 
-function mount(refresher = vi.fn().mockResolvedValue(undefined)) {
+function mount(refresher = vi.fn().mockResolvedValue(undefined), context?: ReturnType<typeof createNavbarPullRefresh>) {
 	const scroller = window.document.createElement('main');
 	scroller.style.overflowY = 'auto';
 	window.document.body.append(scroller);
 	const app = createApp({ render: () => h(MkPullToRefresh, { refresher }, () => h('p', '既存の一覧')) });
+	if (context) app.provide(navbarPullRefreshKey, context);
 	app.component('MkLoading', { template: '<span>更新中</span>' });
 	app.mount(scroller);
 	let active = true;
@@ -32,6 +34,21 @@ function mount(refresher = vi.fn().mockResolvedValue(undefined)) {
 
 beforeEach(() => { vi.useFakeTimers(); isHorizontalSwipeSwiping.value = false; });
 afterEach(() => { cleanups.splice(0).forEach(cleanup => cleanup()); vi.clearAllTimers(); vi.useRealTimers(); vi.restoreAllMocks(); });
+
+test('a navbar host receives pull feedback without mounting the legacy list indicator', async () => {
+	const context = createNavbarPullRefresh(ref(true), ref(false));
+	cleanups.push(context.dispose);
+	const { root, refresher } = mount(undefined, context);
+	touch(root, 'touchstart', 0, 0);
+	touch(window, 'touchmove', 0, 140);
+	await settle();
+	expect(context.state.value.phase).toBe('ready');
+	expect(root.textContent).toBe('既存の一覧');
+	touch(window, 'touchend', 0, 140);
+	await vi.advanceTimersByTimeAsync(250);
+	expect(refresher).toHaveBeenCalledOnce();
+	expect(context.active.value).toBe(false);
+});
 
 test('keeps standard threshold feedback, awaits refresh and prevents duplicate touch fetches', async () => {
 	let finish!: () => void;

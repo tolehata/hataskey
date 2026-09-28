@@ -7790,8 +7790,8 @@ _hata:
   _uiSetup:
     title: "切換介面"
     hint: "選擇要使用的介面"
-    standardDescription: "Hataskey 標準介面"
-    ui3Description: "以時間軸為中心、用清楚的分隔排列資訊的新介面（測試版）"
+    standardDescription: "Hataskey 的預設介面，追求使用的樂趣"
+    ui3Description: "追求美感與便利，帶來 S（Special）般的體驗"
     otherUis: "其他介面"
     conflictNote: "可能與 Hataskey 的自訂功能衝突"
     switchAction: "切換"

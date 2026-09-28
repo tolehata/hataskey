@@ -97,9 +97,10 @@ defineExpose({
 	container-type: inline-size;
 
 	&.noGap {
-		background: var(--MI_THEME-panel);
+		background: var(--MI-notes-canvas, var(--MI_THEME-panel));
 
 		.note {
+			background: var(--MI-notes-surface, transparent);
 			border-bottom: solid 0.5px var(--MI_THEME-divider);
 		}
 
@@ -112,12 +113,17 @@ defineExpose({
 	}
 
 	&:not(.noGap) {
-		background: var(--MI_THEME-bg);
+		background: var(--MI-notes-canvas, var(--MI_THEME-bg));
 
 		.note {
-			background: var(--MI_THEME-panel);
+			background: var(--MI-notes-surface, var(--MI_THEME-panel));
 			border-radius: var(--MI-radius);
 		}
+	}
+
+	.note {
+		-webkit-backdrop-filter: var(--MI-notes-backdrop-filter, none);
+		backdrop-filter: var(--MI-notes-backdrop-filter, none);
 	}
 }
 

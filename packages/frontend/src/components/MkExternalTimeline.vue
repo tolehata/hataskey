@@ -72,8 +72,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated, TransitionGroup, shallowRef } from 'vue';
+import { ref, computed, inject, watch, onMounted, onUnmounted, onActivated, onDeactivated, TransitionGroup, shallowRef } from 'vue';
 import MkPullToRefresh from '@/components/MkPullToRefresh.vue';
+import { navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
 import MkExternalNote from '@/components/MkExternalNote.vue';
 import { prefer } from '@/preferences.js';
 import { i18n } from '@/i18n.js';
@@ -121,6 +122,7 @@ const shortDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'nume
 const formatCount = (value: number): string => numberFormatter.format(value);
 
 const notes = shallowRef<any[]>([]);
+const navbarPull = inject(navbarPullRefreshKey, null);
 const queuedNotes = shallowRef<any[]>([]);
 const fetching = ref(true);
 const fetchingOlder = ref(false);
@@ -567,7 +569,7 @@ function connectStream() {
 						}
 
 						// スクロール最上部にいる場合はリアルタイムでTLに追加
-						if (isAtTop.value) {
+						if (isAtTop.value && !navbarPull?.active.value) {
 							notes.value = [note, ...notes.value];
 							captureTimelineNote(note);
 						} else {

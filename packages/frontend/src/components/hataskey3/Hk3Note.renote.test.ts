@@ -3,9 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 import Hk3Note from './Hk3Note.vue';
 import type * as Misskey from 'cherrypick-js';
+import { registerNoteActionConfirmation } from '@/utility/note-action-confirmation.js';
+import type { NoteActionConfirmation } from '@/utility/note-action-confirmation.js';
 
 const mocks = vi.hoisted(() => ({
 	apiWithDialog: vi.fn(),
+	api: vi.fn(),
+	alert: vi.fn(),
 	emit: vi.fn(),
 	popupMenu: vi.fn(),
 	copyLink: vi.fn(),
@@ -13,11 +17,11 @@ const mocks = vi.hoisted(() => ({
 	account: { id: 'me', isAdmin: false, isModerator: false },
 }));
 
-vi.mock('@/os.js', () => ({ apiWithDialog: mocks.apiWithDialog, popupMenu: mocks.popupMenu }));
+vi.mock('@/os.js', () => ({ apiWithDialog: mocks.apiWithDialog, popupMenu: mocks.popupMenu, alert: mocks.alert }));
 vi.mock('@/events.js', () => ({ globalEvents: { emit: mocks.emit } }));
 vi.mock('@/i.js', () => ({ $i: mocks.account }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: {
-	unrenote: 'Undo renote', cancel: 'Cancel',
+	unrenote: 'Undo renote', cancel: 'Cancel', error: 'Error',
 	renote: 'Renote', quote: 'Quote', more: 'More',
 	renoteDetails: 'Renote details', copyLinkRenote: 'Copy renote link', reportAbuseRenote: 'Report renote',
 	_hata: { _hataskeyUi3: {
@@ -39,7 +43,7 @@ vi.mock('@/composables/use-note-capture.js', () => ({
 	}),
 }));
 vi.mock('@/utility/reaction-picker.js', () => ({ reactionPicker: { show: vi.fn() } }));
-vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn() }));
+vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api }));
 vi.mock('@/utility/get-note-menu.js', () => ({ getNoteMenu: vi.fn(), getRenoteMenu: vi.fn(), getCopyNoteLinkMenu: mocks.copyLink, getAbuseNoteMenu: mocks.abuse }));
 vi.mock('@/utility/please-login.js', () => ({ pleaseLogin: vi.fn() }));
 vi.mock('@/utility/sound.js', () => ({ playMisskeySfx: vi.fn() }));
@@ -97,6 +101,7 @@ function renote(userId = 'me'): NoteFixture {
 }
 
 const cleanups: (() => void)[] = [];
+const confirmationCleanups: (() => void)[] = [];
 
 function mount(current: NoteFixture, size: 'lg' | 'sm' = 'sm') {
 	const target = window.document.createElement('div');
@@ -110,7 +115,8 @@ function mount(current: NoteFixture, size: 'lg' | 'sm' = 'sm') {
 	cleanups.push(() => { app.unmount(); target.remove(); });
 	return {
 		renoteMenu: () => target.querySelector<HTMLButtonElement>('button[data-renote-menu]'),
-		button: () => target.querySelector<HTMLButtonElement>('button[aria-label="Undo renote"]'),
+		renoteMenus: () => target.querySelectorAll('button[data-renote-menu]'),
+		directUndoButton: () => target.querySelector<HTMLButtonElement>('button[aria-label="Undo renote"]'),
 		confirmation: () => target.querySelector<HTMLElement>('[role="group"][aria-label="Undo this renote?"]'),
 	};
 }
@@ -121,11 +127,37 @@ function action(group: HTMLElement, label: string): HTMLButtonElement {
 	return button!;
 }
 
-async function openConfirmation(view: ReturnType<typeof mount>): Promise<HTMLElement> {
-	const opener = view.button();
+function openRenoteMenu(view: ReturnType<typeof mount>) {
+	let closeMenu!: () => void;
+	mocks.popupMenu.mockReturnValueOnce(new Promise<void>(resolve => { closeMenu = resolve; }));
+	const opener = view.renoteMenu();
 	expect(opener).not.toBeNull();
-	expect(opener!.textContent).toContain('Undo renote');
+	expect(opener!.title).toBe('More');
+	expect(opener!.getAttribute('aria-label')).toBe('More');
+	expect(opener!.getAttribute('aria-haspopup')).toBe('menu');
+	expect(view.directUndoButton()).toBeNull();
 	opener!.click();
+	expect(mocks.popupMenu).toHaveBeenLastCalledWith(expect.any(Array), opener);
+	const menu = mocks.popupMenu.mock.lastCall![0] as { text?: string; action?: () => void }[];
+	return { menu, closeMenu, opener: opener! };
+}
+
+async function openConfirmation(view: ReturnType<typeof mount>): Promise<HTMLElement> {
+	const { menu, closeMenu, opener } = openRenoteMenu(view);
+	await settle();
+	expect(view.confirmation()).toBeNull();
+	const undo = menu.find(item => item.text === 'Undo renote');
+	expect(undo?.action).toBeTypeOf('function');
+	undo!.action!();
+	// Selecting Undo must wait for the popup to close before showing the banner confirmation.
+	await settle();
+	expect(view.confirmation()).toBeNull();
+	expect(mocks.apiWithDialog).not.toHaveBeenCalled();
+	// Model the popup returning focus to its anchor before its Promise resolves.
+	opener.focus();
+	closeMenu();
+	expect(view.confirmation()).toBeNull();
+	// Flush popupMenu.finally, the confirmation render, and its nextTick focus transfer.
 	await settle();
 	expect(mocks.apiWithDialog).not.toHaveBeenCalled();
 	const group = view.confirmation();
@@ -143,7 +175,10 @@ async function settle() {
 
 beforeEach(() => {
 	mocks.apiWithDialog.mockReset();
+	mocks.api.mockReset();
+	mocks.alert.mockReset();
 	mocks.emit.mockReset();
+	mocks.account.id = 'me';
 	mocks.account.isAdmin = false;
 	mocks.account.isModerator = false;
 	mocks.popupMenu.mockReset().mockReturnValue(new Promise<void>(() => {}));
@@ -155,27 +190,51 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	confirmationCleanups.splice(0).forEach(cleanup => cleanup());
 	cleanups.splice(0).forEach(cleanup => cleanup());
 	vi.unstubAllGlobals();
 });
 
 describe('Hk3Note pure renote undo', () => {
+	it('delegates own wrapper confirmation and propagates API failure without a success event', async () => {
+		let request: NoteActionConfirmation | undefined;
+		confirmationCleanups.push(registerNoteActionConfirmation(next => { request = next; return true; }));
+		const view = mount(renote());
+		const { menu, closeMenu } = openRenoteMenu(view);
+		menu.find(item => item.text === 'Undo renote')!.action!();
+		closeMenu();
+		await settle();
+		expect(view.confirmation()).toBeNull();
+		expect(request).toMatchObject({ kind: 'unrenote', note: expect.objectContaining({ id: 'wrapper' }) });
+		expect(mocks.api).not.toHaveBeenCalled();
+		mocks.account.id = 'other';
+		await expect(request!.run()).rejects.toThrow();
+		expect(mocks.api).not.toHaveBeenCalled();
+		mocks.account.id = 'me';
+		mocks.api.mockRejectedValueOnce(new Error('failed'));
+		await expect(request!.run()).rejects.toThrow('failed');
+		expect(mocks.api).toHaveBeenCalledExactlyOnceWith('notes/delete', { noteId: 'wrapper' });
+		expect(mocks.emit).not.toHaveBeenCalled();
+		mocks.api.mockResolvedValueOnce(undefined);
+		await request!.run();
+		expect(mocks.emit).toHaveBeenCalledExactlyOnceWith('noteDeleted', 'wrapper');
+	});
+
 	it.each(['lg', 'sm'] as const)('confirms before deleting only the wrapper ID in %s and emits after success', async size => {
 		let finish!: () => void;
-		mocks.apiWithDialog.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
+		mocks.api.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
 		const view = mount(renote(), size);
-		expect(view.button()?.title).toBe('Undo renote');
 		const group = await openConfirmation(view);
 		action(group, 'Confirm undo').click();
-		expect(mocks.apiWithDialog).toHaveBeenCalledWith('notes/delete', { noteId: 'wrapper' });
-		expect(mocks.apiWithDialog).not.toHaveBeenCalledWith('notes/delete', { noteId: 'original' });
+		expect(mocks.api).toHaveBeenCalledWith('notes/delete', { noteId: 'wrapper' });
+		expect(mocks.api).not.toHaveBeenCalledWith('notes/delete', { noteId: 'original' });
 		expect(mocks.emit).not.toHaveBeenCalled();
 		finish();
 		await settle();
 		expect(mocks.emit).toHaveBeenCalledExactlyOnceWith('noteDeleted', 'wrapper');
 		expect(view.confirmation()).toBe(group);
 		expect(group.getAttribute('aria-busy')).toBe('true');
-		expect(view.button()?.disabled).toBe(true);
+		expect(view.renoteMenu()?.disabled).toBe(true);
 		expect(action(group, 'Cancel').disabled).toBe(true);
 		expect(action(group, 'Confirm undo').disabled).toBe(true);
 		action(group, 'Confirm undo').dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -183,13 +242,13 @@ describe('Hk3Note pure renote undo', () => {
 		group.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 		await settle();
 		expect(view.confirmation()).toBe(group);
-		expect(mocks.apiWithDialog).toHaveBeenCalledTimes(1);
+		expect(mocks.api).toHaveBeenCalledTimes(1);
 		expect(mocks.emit).toHaveBeenCalledTimes(1);
 	});
 
 	it('Cancel closes confirmation without deleting and returns focus to the opener', async () => {
 		const view = mount(renote());
-		const opener = view.button();
+		const opener = view.renoteMenu();
 		const group = await openConfirmation(view);
 		action(group, 'Cancel').click();
 		await settle();
@@ -201,7 +260,7 @@ describe('Hk3Note pure renote undo', () => {
 
 	it('Escape closes confirmation without deleting and returns focus to the opener', async () => {
 		const view = mount(renote());
-		const opener = view.button();
+		const opener = view.renoteMenu();
 		await openConfirmation(view);
 		window.document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 		await settle();
@@ -211,18 +270,31 @@ describe('Hk3Note pure renote undo', () => {
 		expect(mocks.emit).not.toHaveBeenCalled();
 	});
 
-	it('does not offer undo on own normal or quote notes, or another user’s pure renote', () => {
+	it('closing the menu without selecting Undo does not open confirmation or delete', async () => {
+		const view = mount(renote());
+		const { closeMenu } = openRenoteMenu(view);
+		closeMenu();
+		await settle();
+		expect(view.confirmation()).toBeNull();
+		expect(mocks.apiWithDialog).not.toHaveBeenCalled();
+		expect(mocks.emit).not.toHaveBeenCalled();
+	});
+
+	it('does not offer a wrapper menu on own normal or quote notes', () => {
 		const normal = note('normal');
 		const quote = { ...note('quote'), renoteId: 'original', renote: note('original', 'author') };
-		for (const candidate of [normal, quote, renote('someone-else')]) {
-			expect(mount(candidate).button()).toBeNull();
+		for (const candidate of [normal, quote]) {
+			const view = mount(candidate);
+			expect(view.renoteMenu()).toBeNull();
+			expect(view.directUndoButton()).toBeNull();
 		}
+		expect(mocks.popupMenu).not.toHaveBeenCalled();
 		expect(mocks.apiWithDialog).not.toHaveBeenCalled();
 	});
 
 	it('guards duplicate confirmation, disables Cancel and ignores Escape while pending, then allows retry after failure', async () => {
 		let fail!: (reason: Error) => void;
-		mocks.apiWithDialog
+		mocks.api
 			.mockImplementationOnce(() => new Promise<void>((_, reject) => { fail = reject; }))
 			.mockResolvedValueOnce(undefined);
 		const view = mount(renote());
@@ -231,24 +303,31 @@ describe('Hk3Note pure renote undo', () => {
 		const cancel = action(group, 'Cancel');
 		confirm.click();
 		confirm.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(mocks.apiWithDialog).toHaveBeenCalledTimes(1);
+		expect(mocks.api).toHaveBeenCalledTimes(1);
 		await nextTick();
+		expect(view.renoteMenu()?.disabled).toBe(true);
+		expect(confirm.disabled).toBe(true);
 		expect(cancel.disabled).toBe(true);
+		view.renoteMenu()!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(mocks.popupMenu).toHaveBeenCalledTimes(1);
 		cancel.click();
 		cancel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 		await settle();
 		expect(view.confirmation()).not.toBeNull();
-		expect(mocks.apiWithDialog).toHaveBeenCalledTimes(1);
+		expect(mocks.api).toHaveBeenCalledTimes(1);
 		fail(new Error('request failed'));
 		await settle();
 		expect(mocks.emit).not.toHaveBeenCalled();
 		expect(view.confirmation()).not.toBeNull();
+		expect(view.confirmation()?.getAttribute('aria-busy')).toBe('false');
+		expect(view.renoteMenu()?.disabled).toBe(false);
+		expect(action(view.confirmation()!, 'Confirm undo').disabled).toBe(false);
 		expect(action(view.confirmation()!, 'Cancel').disabled).toBe(false);
 		action(view.confirmation()!, 'Confirm undo').click();
 		await settle();
-		expect(mocks.apiWithDialog).toHaveBeenCalledTimes(2);
-		expect(mocks.apiWithDialog).toHaveBeenLastCalledWith('notes/delete', { noteId: 'wrapper' });
-		expect(mocks.apiWithDialog).not.toHaveBeenCalledWith('notes/delete', { noteId: 'original' });
+		expect(mocks.api).toHaveBeenCalledTimes(2);
+		expect(mocks.api).toHaveBeenLastCalledWith('notes/delete', { noteId: 'wrapper' });
+		expect(mocks.api).not.toHaveBeenCalledWith('notes/delete', { noteId: 'original' });
 		expect(mocks.emit).toHaveBeenCalledExactlyOnceWith('noteDeleted', 'wrapper');
 	});
 	it.each(['user', 'admin', 'moderator'] as const)('offers wrapper details/report to %s and limits delete to privileged roles', async role => {
@@ -256,7 +335,7 @@ describe('Hk3Note pure renote undo', () => {
 		mocks.account.isModerator = role === 'moderator';
 		const wrapper = renote('someone-else');
 		const view = mount(wrapper);
-		expect(view.button()).toBeNull();
+		expect(view.directUndoButton()).toBeNull();
 		view.renoteMenu()!.click();
 		const menu = mocks.popupMenu.mock.calls[0][0] as { text?: string; to?: string; action?: () => Promise<void> }[];
 		expect(menu[0]).toMatchObject({ text: 'Renote details', to: '/notes/wrapper' });
@@ -292,10 +371,19 @@ describe('Hk3Note pure renote undo', () => {
 		expect(mocks.emit).toHaveBeenCalledExactlyOnceWith('noteDeleted', 'wrapper');
 	});
 
-	it('keeps the own-renote confirmation without adding a duplicate wrapper menu', () => {
-		mocks.account.isAdmin = true;
-		const view = mount(renote());
-		expect(view.button()).not.toBeNull();
-		expect(view.renoteMenu()).toBeNull();
+	it.each(['user', 'admin', 'moderator'] as const)('keeps own-renote undo behind one menu and banner confirmation for %s', async role => {
+		mocks.account.isAdmin = role === 'admin';
+		mocks.account.isModerator = role === 'moderator';
+		const wrapper = renote();
+		const view = mount(wrapper);
+		expect(view.renoteMenus()).toHaveLength(1);
+		await openConfirmation(view);
+		const menu = mocks.popupMenu.mock.lastCall![0] as { text?: string; to?: string }[];
+		expect(menu[0]).toMatchObject({ text: 'Renote details', to: '/notes/wrapper' });
+		expect(menu.filter(item => item.text === 'Undo renote')).toHaveLength(1);
+		expect(mocks.copyLink).toHaveBeenCalledWith(wrapper, 'Copy renote link');
+		expect(mocks.abuse).not.toHaveBeenCalled();
+		expect(mocks.apiWithDialog).not.toHaveBeenCalled();
+		expect(mocks.emit).not.toHaveBeenCalled();
 	});
 });

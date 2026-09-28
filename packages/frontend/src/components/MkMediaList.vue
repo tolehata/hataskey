@@ -12,11 +12,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:class="[
 				$style.medias,
 				count === 1 ? [$style.n1, {
-					[$style.n116_9]: prefer.s.mediaListWithOneImageAppearance === '16_9',
-					[$style.n11_1]: prefer.s.mediaListWithOneImageAppearance === '1_1',
-					[$style.n12_3]: prefer.s.mediaListWithOneImageAppearance === '2_3',
+					[$style.n116_9]: singleImageRatio == null && prefer.s.mediaListWithOneImageAppearance === '16_9',
+					[$style.n11_1]: singleImageRatio == null && prefer.s.mediaListWithOneImageAppearance === '1_1',
+					[$style.n12_3]: singleImageRatio == null && prefer.s.mediaListWithOneImageAppearance === '2_3',
 				}] : count === 2 ? $style.n2 : count === 3 ? $style.n3 : count === 4 ? $style.n4 : $style.nMany,
+				singleImageRatio != null && $style.fitSingleImage,
 			]"
+			:style="galleryStyle"
 		>
 			<template v-for="media in medias.previewable">
 				<XAudio
@@ -55,7 +57,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, markRaw, onMounted, onUnmounted, useTemplateRef } from 'vue';
+import { computed, markRaw, onUnmounted, useTemplateRef } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import type { Content } from '@/components/MkLightbox.item.vue';
 import type { MediaComponentExposes } from '@/types/media-component.js';
@@ -73,6 +75,7 @@ const props = defineProps<{
 	user?: Misskey.entities.User | null; // DriveFileのuserはnullになることがある。その場合に使用する所有者情報
 	raw?: boolean;
 	disableRightClick?: boolean;
+	fitSingleImage?: boolean;
 }>();
 
 const gallery = useTemplateRef('gallery');
@@ -96,41 +99,28 @@ const mediaComponents = new Map<string, MediaComponentExposes | null>();
 const count = computed(() => medias.value.previewable.length);
 const markerId = genId();
 
-async function calcAspectRatio() {
-	if (!gallery.value) return;
+const singleImageRatio = computed(() => {
+	if (!props.fitSingleImage || props.mediaList.length !== 1) return null;
+	const image = props.mediaList[0];
+	if (!image.type.startsWith('image/') || !isPreviewable(image.type)) return null;
+	const { width, height } = image.properties;
+	if (typeof width !== 'number' || typeof height !== 'number' || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+	const ratio = width / height;
+	return Number.isFinite(ratio) && ratio > 0 ? ratio : null;
+});
 
-	const img = props.mediaList[0];
-
-	if (props.mediaList.length !== 1 || !(img.properties.width && img.properties.height)) {
-		gallery.value.style.aspectRatio = '';
-		return;
-	}
-
-	const ratioMax = (ratio: number) => {
-		if (img.properties.width == null || img.properties.height == null) return '';
-		return `${Math.max(ratio, img.properties.width / img.properties.height).toString()} / 1`;
-	};
-
+const galleryStyle = computed(() => {
+	if (singleImageRatio.value != null) return { '--media-ratio': singleImageRatio.value.toString() };
+	if (props.mediaList.length !== 1) return undefined;
+	const { width, height } = props.mediaList[0].properties;
+	if (!width || !height) return undefined;
+	const ratio = width / height;
 	switch (prefer.s.mediaListWithOneImageAppearance) {
-		case '16_9':
-			gallery.value.style.aspectRatio = ratioMax(16 / 9);
-			break;
-		case '1_1':
-			gallery.value.style.aspectRatio = ratioMax(1 / 1);
-			break;
-		case '2_3':
-			gallery.value.style.aspectRatio = ratioMax(2 / 3);
-			break;
-		default:
-			gallery.value.style.aspectRatio = '';
-			break;
+		case '16_9': return { aspectRatio: `${Math.max(16 / 9, ratio)} / 1` };
+		case '1_1': return { aspectRatio: `${Math.max(1, ratio)} / 1` };
+		case '2_3': return { aspectRatio: `${Math.max(2 / 3, ratio)} / 1` };
+		default: return undefined;
 	}
-}
-
-onMounted(() => {
-	calcAspectRatio();
-
-	if (gallery.value == null) return; // TSを黙らすため
 });
 
 onUnmounted(() => {
@@ -232,6 +222,14 @@ defineExpose({
 			max-height: initial;
 			aspect-ratio: 2 / 3; // fallback
 		}
+	}
+
+	&.fitSingleImage {
+		width: min(100%, calc(clamp(64px, 50cqh, min(360px, 50vh)) * var(--media-ratio)));
+		height: auto;
+		min-height: 0;
+		max-height: clamp(64px, 50cqh, min(360px, 50vh));
+		aspect-ratio: var(--media-ratio);
 	}
 
 	&.n2 {

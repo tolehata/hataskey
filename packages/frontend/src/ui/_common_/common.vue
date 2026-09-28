@@ -89,7 +89,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <XStreamIndicator/>
 
-<div v-if="pendingApiRequestsCount > 0" id="wait">
+<div v-if="pendingApiRequestsCount > 0 && !props.loadingIntegrated" id="wait">
 	<svg viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
 		<circle cx="25" cy="25" r="20" fill="none" stroke-width="6px" style="fill: none; stroke-width: 6px;"></circle>
 	</svg>
@@ -140,6 +140,8 @@ const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
 // 旗鯖fork: 外部通知トーストコンテナ (右下表示)
 const XExternalNotificationToastContainer = defineAsyncComponent(() => import('@/components/MkExternalNotificationToastContainer.vue'));
 const MkMascotFloating = defineAsyncComponent(() => import('@/components/MkMascotFloating.vue'));
+
+const props = withDefaults(defineProps<{ loadingIntegrated?: boolean }>(), { loadingIntegrated: false });
 
 const drawerMenuShowing = defineModel<boolean>('drawerMenuShowing');
 const widgetsShowing = defineModel<boolean>('widgetsShowing');

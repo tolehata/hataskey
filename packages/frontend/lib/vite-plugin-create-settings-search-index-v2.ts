@@ -908,8 +908,8 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'旧端末UI保存値。現行の正本または互換経路へ置換済み', ['src/local-storage.ts', 'src/pages/settings/preferences.vue']);
 	add('local', keys('hataPostDelayEnabled hataPostDelaySeconds hataSideStudio hataSideStudioUiS'), 'runtime',
 		'独立feature内の実行時設定で、settings catalog target外', ['src/local-storage.ts']);
-	add('local', keys('hataskeyUi3Tab hataskeyUi3Live hataskeyUi3DeckMode hataskeyUi3PaneTab'), 'runtime',
-		'Hataskey UI S の画面内操作(タブ・LIVE・デッキ表示・右ペインのタブ)が更新する端末ローカルの表示状態', ['src/components/hataskey3/Hk3Timeline.vue', 'src/components/hataskey3/Hk3App.vue', 'src/components/hataskey3/Hk3RightPane.vue']);
+	add('local', [...keys('hataskeyUi3Tab hataskeyUi3Live hataskeyUi3DeckMode hataskeyUi3PaneTab hataskeyUi3MobileOrder'), 'hataskeyUi3MobileGuideShown:' + dynamicKey], 'runtime',
+		'Hataskey UI S の画面内操作(タブ・LIVE・デッキ表示・右ペイン・モバイルTLの並びと初回案内)が更新する端末ローカルの表示状態', ['src/components/hataskey3/Hk3Timeline.vue', 'src/components/hataskey3/Hk3App.vue', 'src/components/hataskey3/Hk3RightPane.vue']);
 	add('local', ['hataRightWidgetsCollapsed'], 'runtime',
 		'右ウィジェットバーの開閉操作が更新する端末ローカルの表示状態', ['src/utility/hatasaba-device-prefs.ts']);
 	add('local', ['hataskAkatsukiUsage:' + dynamicKey], 'cache',
@@ -951,6 +951,8 @@ const REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2 = [
 	'src/pages/settings-redesign/settings-preferences-search-index.ts',
 	'src/pages/settings-redesign/SettingsPreferencesSurface.vue',
 	'src/pages/settings-redesign/HataskeyUiSRssSettings.vue',
+	'src/pages/settings-redesign/HataskeyUiSBottomNavSettings.vue',
+	'src/utility/hatasaba-device-prefs.ts',
 ] as const;
 
 /** These controls are owned by the redesigned surface, so they have no legacy
@@ -967,6 +969,11 @@ function redesignedPreferenceAuditDescriptorsV2(
 		hataskeyUi3ComposerShortcut2: 'hataskey-ui-s',
 		hataskeyUi3ComposerEmojiPosition: 'hataskey-ui-s',
 		hataskeyUi3ComposerPosition: 'hataskey-ui-s',
+		hataskeyUi3TimelineBackground: 'hataskey-ui-s',
+		hataskeyUi3SideMenuBackground: 'hataskey-ui-s',
+		hataskeyUi3RightPaneBackground: 'hataskey-ui-s',
+		hataskeyUi3GlassDensity: 'hataskey-ui-s',
+		hataskeyUi3BottomNav: 'hataskey-ui-s',
 		hataskeyUi3RssEnabled: 'hataskey-ui-s',
 		hataskeyUi3RssFeeds: 'hataskey-ui-s',
 		hataskeyUi3RssAutoSwitch: 'hataskey-ui-s',
@@ -974,7 +981,8 @@ function redesignedPreferenceAuditDescriptorsV2(
 		hataskeyUi3RssReadMode: 'hataskey-ui-s',
 	};
 	const keys = Object.keys(destinations).filter(key => registered.has(key));
-	if (keys.length === 0) return [];
+	const hasUiSDisplaySize = localStorageKeysForAuditV2(input.localStorageDefinition).includes('hataskeyUiSDisplaySize');
+	if (keys.length === 0 && !hasUiSDisplaySize) return [];
 	const evidenceFiles = new Set<string>(REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2);
 	const sources = new Map([...input.settingsSources, ...input.runtimeSources]
 		.filter(source => evidenceFiles.has(source.file))
@@ -984,6 +992,20 @@ function redesignedPreferenceAuditDescriptorsV2(
 	const search = sources.get(REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2[2]) ?? '';
 	const surface = sources.get(REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2[3]) ?? '';
 	const rssSurface = sources.get(REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2[4]) ?? '';
+	const bottomNavSurface = sources.get(REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2[5]) ?? '';
+	const devicePrefs = sources.get(REDESIGNED_PREFERENCE_AUDIT_SOURCE_FILES_V2[6]) ?? '';
+	const uiSDisplaySizeDescriptor = (() => {
+		if (!hasUiSDisplaySize) return [];
+		const connected = /:data-settings-search-id="uiSDisplaySizeSearchId"/u.test(surface)
+			&& /:modelValue="hataskeyUiSDisplaySize"/u.test(surface)
+			&& /@update:modelValue="setHataskeyUiSDisplaySize\(\$event\)"/u.test(surface)
+			&& /miLocalStorage\.getItem\('hataskeyUiSDisplaySize'\)/u.test(devicePrefs)
+			&& /miLocalStorage\.setItem\('hataskeyUiSDisplaySize', size\)/u.test(devicePrefs)
+			&& /storageRefs:\s*\[\{ kind: 'local', key: 'hataskeyUiSDisplaySize' \}\]/u.test(search)
+			&& /stableId:\s*uiSDisplaySizeSearchId/u.test(search);
+		if (!connected) throw new Error('settings key audit: UI S display size has invalid device control evidence');
+		return [{ stableId: 'settings.control.device.hataskey-ui-s-display-size', searchable: true, preferenceKeys: [], storageRefs: [{ kind: 'local' as const, key: 'hataskeyUiSDisplaySize' }] }];
+	})();
 	const inventory = /export\s+const\s+preferenceContainerKeys\s*=\s*\[([\s\S]*?)\]\s*as\s+const/u.exec(catalog)?.[1] ?? '';
 	const mountedControl = /v-for="control in visibleMountedControls"/u.test(surface)
 		&& /:data-settings-search-id="searchIdFor\(control\.key\)"/u.test(surface)
@@ -995,7 +1017,19 @@ function redesignedPreferenceAuditDescriptorsV2(
 		&& /preferenceControls\.map\(control\s*=>/u.test(search)
 		&& /const\s+stableId\s*=\s*generatedPreferenceSearchId\(entry\.key\)/u.test(search)
 		&& /preferenceKeys:\s*\[entry\.key\]/u.test(search);
-	return keys.map(key => {
+	return [...uiSDisplaySizeDescriptor, ...keys.map(key => {
+		if (key === 'hataskeyUi3BottomNav') {
+			const mounted = /<HataskeyUiSBottomNavSettings\s+v-if="destination\.id === 'hataskey-ui-s'"/u.test(surface);
+			const connected = /<MkPreferenceContainer\s+k="hataskeyUi3BottomNav"/u.test(bottomNavSurface)
+				&& /prefer\.commit\('hataskeyUi3BottomNav',/u.test(bottomNavSurface)
+				&& /resolveUiSBottomNav\(prefer\.r\.hataskeyUi3BottomNav\.value,/u.test(bottomNavSurface)
+				&& /v-model="items"/u.test(bottomNavSurface)
+				&& /computed\(\{ get: currentItems, set: commit \}\)/u.test(bottomNavSurface);
+			const indexed = /const uiSBottomNavSearchId = generatedPreferenceSearchId\('simpleUi\.bottomNav'\)/u.test(search)
+				&& /preferenceKeys:\s*\['hataskeyUi3BottomNav'\]/u.test(search);
+			if (!mounted || !connected || !indexed) throw new Error(`settings key audit: redesigned preference control has invalid evidence: ${key}`);
+			return { stableId: 'settings.control.preference.simpleui-bottomnav', searchable: true, preferenceKeys: [key], storageRefs: [{ kind: 'pref' as const, key }] };
+		}
 		const keyPattern = storageKeyMatcherSourceV2(key);
 		const quotedKey = `['"]${keyPattern}['"]`;
 		const hasInventory = new RegExp(quotedKey, 'u').test(inventory);
@@ -1015,7 +1049,7 @@ function redesignedPreferenceAuditDescriptorsV2(
 			preferenceKeys: [key],
 			storageRefs: [{ kind: 'pref', key }],
 		};
-	});
+	})];
 }
 
 /** Files whose content is evidence for a reviewed storage-key classification.
