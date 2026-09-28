@@ -38,10 +38,12 @@
     <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 9h.01M16 9h.01M8 14c2 4 6 4 8 0"/></symbol>
     <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22v-2a8 8 0 0 1 16 0v2"/></symbol>
     <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19C-1 6 12 3 21 3c0 9-3 22-16 16Zm0 0L16 8"/></symbol>
+    <symbol id="i-checklist" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="m7 12 2 2 4-5m1 6h3"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
     <symbol id="i-cup" viewBox="0 0 24 24"><path d="M4 8h13v7a6.5 6.5 0 0 1-13 0Zm13 1h2a3 3 0 0 1 0 6h-2M3 22h16M7 2v3m6-3v3"/></symbol>
   </defs></svg>
   <header class="toptoolbar">
-    <div class="intro"><span class="wordmark">Hataskey <small>UI / UI S</small></span><h1>引っ張ると、ナビがほどける。</h1><p>先頭から下へ。ナビの中で更新して、いつものタイムラインへ。</p></div>
+    <div class="intro"><span class="wordmark">Hataskey <small>UI / UI S</small></span><h1>引っ張ると、ナビがほどける。</h1><p>タイムラインの先頭から下へ。UI と UI S の更新表示を比べられます。</p></div>
     <div class="settings" aria-label="表示設定">
       <label for="theme">テーマ<select id="theme"><option value="dark" selected>Dark</option><option value="light">Light</option></select></label>
       <label for="size">画面<select id="size"><option value="mobile" selected>Mobile</option><option value="desktop">PC</option></select></label>
@@ -175,7 +177,7 @@
       </div>
     </section>
     <section class="preview" data-ui="s" data-state="idle" data-notice-visible="true" aria-labelledby="label-s">
-      <div class="preview-label"><h2 id="label-s">UI S</h2><span>角型・区切り線</span></div>
+      <div class="preview-label"><h2 id="label-s">UI S</h2><span>モバイルはバナーと下部ドック</span></div>
       <div class="screen" aria-busy="false">
         <div class="gesture-surface" aria-busy="false" tabindex="0" aria-label="UI S タイムライン・先頭から下に引っ張って更新">
           <header class="nav-shell">
@@ -185,9 +187,12 @@
                 <div class="tabs"><button type="button" class="tab" aria-label="ホーム" title="ホーム" aria-pressed="true" data-tab="home"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home"/></svg><span>ホーム</span></button><button type="button" class="tab" aria-label="ローカル" title="ローカル" aria-pressed="false" data-tab="planet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-planet"/></svg><span>ローカル</span></button><button type="button" class="tab" aria-label="ソーシャル" title="ソーシャル" aria-pressed="false" data-tab="users"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-users"/></svg><span>ソーシャル</span></button><button type="button" class="tab" aria-label="グローバル" title="グローバル" aria-pressed="false" data-tab="universe"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-universe"/></svg><span>グローバル</span></button><button type="button" class="tab" aria-label="トレンド" title="トレンド" aria-pressed="false" data-tab="flame"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flame"/></svg><span>トレンド</span></button><button type="button" class="tab" aria-label="リスト" title="リスト" aria-pressed="false" data-tab="list" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-list"/></svg><span>リスト</span></button><button type="button" class="tab" aria-label="チャンネル" title="チャンネル" aria-pressed="false" data-tab="channel" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-channel"/></svg><span>チャンネル</span></button><button type="button" class="tab" aria-label="アンテナ" title="アンテナ" aria-pressed="false" data-tab="antenna" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-antenna"/></svg><span>アンテナ</span></button></div>
                 <button type="button" class="nav-more" data-tab="options" disabled aria-label="タイムラインの表示オプション" title="タイムラインの表示オプション"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-more"/></svg></button>
               </nav>
-              <button type="button" class="notice" disabled aria-label="新しいノート3件を表示">
+              <div class="banner-stack">
+              <div class="notice" role="status" aria-label="新しいノート3件を表示">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg><span class="notice-avatars"><span class="notice-avatar" aria-hidden="true"><svg viewBox="0 0 44 44"><path fill="#cec0d5" d="M0 0h44v44H0z"/><path fill="#766482" d="M7 44v-3c0-13 30-13 30 0v3M10 25V17C10 1 34 1 34 17v8Z"/><ellipse cx="22" cy="21" rx="10" ry="12" fill="#f2d2c4"/><path fill="#766482" d="M11 18C9 2 36 2 33 19c-6-1-12-5-14-9-1 5-4 7-8 8Z"/><path d="M18 22h.1m7.9 0h.1m-7.1 6q3 2 6 0" fill="none" stroke="#766482" stroke-width="1.5" stroke-linecap="round"/></svg></span><span class="notice-avatar" aria-hidden="true"><svg viewBox="0 0 44 44"><path fill="#b4cbd5" d="M0 0h44v44H0z"/><path fill="#496c85" d="M7 44v-3c0-13 30-13 30 0v3M10 25V17C10 1 34 1 34 17v8Z"/><ellipse cx="22" cy="21" rx="10" ry="12" fill="#ead6ba"/><path fill="#496c85" d="M11 18C9 2 36 2 33 19c-6-1-12-5-14-9-1 5-4 7-8 8Z"/><path d="M18 22h.1m7.9 0h.1m-7.1 6q3 2 6 0" fill="none" stroke="#496c85" stroke-width="1.5" stroke-linecap="round"/></svg></span><span class="notice-avatar" aria-hidden="true"><svg viewBox="0 0 44 44"><path fill="#dec2ad" d="M0 0h44v44H0z"/><path fill="#9b6e61" d="M7 44v-3c0-13 30-13 30 0v3M10 25V17C10 1 34 1 34 17v8Z"/><ellipse cx="22" cy="21" rx="10" ry="12" fill="#fae4cd"/><path fill="#9b6e61" d="M11 18C9 2 36 2 33 19c-6-1-12-5-14-9-1 5-4 7-8 8Z"/><path d="M18 22h.1m7.9 0h.1m-7.1 6q3 2 6 0" fill="none" stroke="#9b6e61" stroke-width="1.5" stroke-linecap="round"/></svg></span></span><span>3件の新しいノート</span>
-              </button>
+              </div>
+              </div>
+              <div class="vote-navbar" hidden><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-smile"/></svg><span>絵文字投票 · ただいま受付中</span></div>
             </div>
             <div class="pull-content">
               <svg class="icon pull-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-refresh"/></svg>
@@ -278,12 +283,18 @@
           </div>
           <p class="timeline-end">ここまでのノートを表示しました</p>
         </div>
+        <div class="mobile-dock" aria-label="UI S 下部ドック">
+          <div class="dock-composer"><span class="dock-avatar" aria-hidden="true">H</span><span class="dock-placeholder">いまどうしてる？</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg></div>
+          <nav class="dock-nav" aria-label="UI S 下部ナビゲーション"><button type="button" class="dock-button" aria-label="メニュー" title="メニュー"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-menu"/></svg></button><button type="button" class="dock-button" aria-label="検索" title="検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg></button><button type="button" class="dock-button dock-home" aria-label="ホーム · 長押しでタイムライン選択" title="長押しでタイムライン選択" aria-pressed="true" aria-haspopup="dialog" aria-expanded="false" aria-controls="timeline-chooser-s"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home"/></svg></button><button type="button" class="dock-button" aria-label="通知" title="通知"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bell"/></svg></button><button type="button" class="dock-button" aria-label="Hatask" title="Hatask"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-checklist"/></svg></button><button type="button" class="dock-button" aria-label="ウィジェット" title="ウィジェット"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg></button></nav>
+          <div class="dock-pull-content" role="status" aria-live="polite"><svg class="icon dock-pull-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-refresh"/></svg><span class="dock-pull-label">引っ張ってリロード</span></div>
+          <div id="timeline-chooser-s" class="timeline-chooser" hidden role="dialog" aria-label="タイムラインを選択"><span>タイムラインを選択</span><button type="button" data-choose="home">ホーム</button><button type="button" data-choose="local">ローカル</button><button type="button" data-choose="social">ソーシャル</button><button type="button" data-choose="global">グローバル</button></div>
+        </div>
         <nav class="bottom-nav" aria-label="UI S 下部ナビゲーション"><button type="button" class="bottom-button" aria-label="メニュー" title="メニュー"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-menu"/></svg></button><button type="button" class="bottom-button" aria-label="ホーム" title="ホーム" aria-pressed="true" data-active="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home"/></svg><span>ホーム</span></button><button type="button" class="bottom-button" aria-label="検索" title="検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg></button><button type="button" class="bottom-button" aria-label="通知" title="通知"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bell"/></svg></button><button type="button" class="bottom-button compose" aria-label="ノート" title="ノート"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pencil"/></svg></button></nav>
       </div>
       <div class="preview-controls" aria-label="UI S 更新の操作">
         <div class="control-buttons"><button type="button" data-action="demo">演出を再生</button><button type="button" data-action="cancel">短く引っ張る</button><button type="button" data-action="release">離す</button></div>
         <label class="scrub-label" for="scrub-s"><span>進行度</span><input id="scrub-s" type="range" data-action="scrub" min="0" max="220" value="0"></label>
-        <output class="result" aria-live="polite">タイムラインの先頭から下へ引っ張ってください</output>
+        <output class="result" aria-live="polite">タイムライン先頭から下へ、またはドックを上へ引っ張ってください</output>
         <details class="overlap-controls" open>
           <summary>通知の重なりを試す</summary>
           <div class="overlap-buttons">

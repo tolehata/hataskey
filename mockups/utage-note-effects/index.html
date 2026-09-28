@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: Tolehata and hatasaba-project -->
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Hataskey · 宴ノートの面のエフェクト</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="mock.js" defer></script>
+</head>
+<body data-theme="light" data-layout="desktop" data-bubble="on" data-motion="full">
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10h-6v-7H9v7H3z"/></symbol>
+    <symbol id="local" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M5.7 7C1 7 .8 10.7 7.7 14.9s14.7 3.9 14.5.7c-.1-1.5-1.8-3.4-4.2-4.9"/></symbol>
+    <symbol id="social" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 5v1"/></symbol>
+    <symbol id="global" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-35 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(55 12 12)"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3Zm4 11h4"/></symbol>
+    <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="reply" viewBox="0 0 24 24"><path d="m9 5-6 6 6 6M3 11h10a7 7 0 0 1 7 7v2"/></symbol>
+    <symbol id="renote" viewBox="0 0 24 24"><path d="m4 9 4-4 4 4M8 5v11h8m4-1-4 4-4-4m4 4V8H8"/></symbol>
+    <symbol id="heart" viewBox="0 0 24 24"><path d="M12 20 4 12C-2 6 7 0 12 7c5-7 14-1 8 5Z"/></symbol>
+    <symbol id="more" viewBox="0 0 24 24"><circle cx="4" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="20" cy="12" r="1"/></symbol>
+  </defs></svg>
+  <main>
+    <header class="page-head"><div><p class="eyebrow">HATASKEY · UTAGE EFFECT STUDY</p><h1>宴ノートの色と明滅</h1><p class="intro">ノートの面に色がやさしく広がる案です。下の投稿はすべて架空の内容です。</p></div><span class="scope">通常の Hataskey UI</span></header>
+    <section class="controls" aria-label="モックの操作">
+      <div class="control-group"><span class="control-title">先頭ノートの状態</span><div class="segmented" role="group" aria-label="先頭ノートの状態"><button type="button" data-state-choice="flashing" aria-pressed="true">挑戦中</button><button type="button" data-state-choice="failed" aria-pressed="false">失敗</button><button type="button" data-state-choice="success" aria-pressed="false">成功</button></div></div>
+      <div class="control-group"><span class="control-title">流れを見る</span><button class="demo" type="button" data-demo="failed">挑戦 → 失敗</button><button class="demo" type="button" data-demo="success">挑戦 → 成功</button></div>
+      <div class="control-group settings"><label>吹き出し<select id="bubble"><option value="on">ON</option><option value="off">OFF</option></select></label><label>テーマ<select id="theme"><option value="light">ライト</option><option value="dark">ダーク</option></select></label><label>表示<select id="layout"><option value="desktop">PC</option><option value="mobile">スマホ</option></select></label><label class="motion-toggle"><input id="reduced" type="checkbox">動きを減らす</label></div>
+    </section>
+    <section class="preview" aria-label="通常のHataskey UIによる宴ノートのプレビュー">
+      <aside class="sidebar" aria-label="サイドナビゲーション"><span class="brand-mark">H</span><span class="side-current"><svg><use href="#home"/></svg></span><span><svg><use href="#search"/></svg></span><span><svg><use href="#bell"/></svg></span><span class="side-compose"><svg><use href="#plus"/></svg></span><span class="self-avatar" aria-hidden="true"></span></aside>
+      <div class="app-main"><header class="app-heading"><span class="wordmark">Hataskey</span><span class="date">ローカルタイムライン</span></header><div class="column"><nav class="timeline-nav" aria-label="タイムライン"><span class="mobile-self" aria-hidden="true"></span><span><svg><use href="#home"/></svg></span><span class="selected" aria-current="page"><svg><use href="#local"/></svg><b>ローカル</b></span><span><svg><use href="#social"/></svg></span><span><svg><use href="#global"/></svg></span></nav>
+        <div class="note-list">
+          <article id="live-note" class="note" data-utage-state="flashing" aria-label="先頭ノート: 挑戦中の宴ノート"><div class="note-surface"><span class="badge" aria-hidden="true"></span><div class="avatar avatar-akari" aria-hidden="true">あ</div><div class="note-main"><header class="note-meta"><b>あかり</b><span>@akari</span><time>いま</time></header><p>今夜は小さな宴をひらきます。<br>温かい飲み物を用意して、少しだけひと休み。</p><div class="note-actions" aria-hidden="true"><span><svg><use href="#reply"/></svg></span><span><svg><use href="#renote"/></svg></span><span><svg><use href="#heart"/></svg></span><svg><use href="#more"/></svg></div></div></div></article>
+          <article class="note" data-utage-state="failed" aria-label="失敗した宴ノート"><div class="note-surface"><span class="badge">失敗...</span><div class="avatar avatar-sora" aria-hidden="true">そ</div><div class="note-main"><header class="note-meta"><b>そら</b><span>@sora</span><time>4分前</time></header><p>夕焼けを見ながら宴の準備中。<br>お菓子を並べたら、もう誰かが来てくれました。</p><div class="note-actions" aria-hidden="true"><span><svg><use href="#reply"/></svg>1</span><span><svg><use href="#renote"/></svg></span><span><svg><use href="#heart"/></svg>8</span><svg><use href="#more"/></svg></div></div></div></article>
+          <article class="note" data-utage-state="success" aria-label="成功した宴ノート"><div class="note-surface"><span class="badge">成功</span><div class="avatar avatar-midori" aria-hidden="true">み</div><div class="note-main"><header class="note-meta"><b>みどり</b><span>@midori</span><time>18分前</time></header><p>静かな夜の宴。お気に入りの音楽と一緒に、ゆっくり過ごしました。</p><div class="note-actions" aria-hidden="true"><span><svg><use href="#reply"/></svg></span><span><svg><use href="#renote"/></svg></span><span><svg><use href="#heart"/></svg></span><svg><use href="#more"/></svg></div></div></div></article>
+          <article class="note" data-utage-state="none" aria-label="通常のノート"><div class="note-surface"><div class="avatar avatar-koharu" aria-hidden="true">こ</div><div class="note-main"><header class="note-meta"><b>こはる</b><span>@koharu</span><time>20分前</time></header><p>帰り道、秋の風が気持ちよかった。<br>明日は少し遠回りしてみようかな。</p><div class="note-actions" aria-hidden="true"><span><svg><use href="#reply"/></svg></span><span><svg><use href="#renote"/></svg></span><span><svg><use href="#heart"/></svg>2</span><svg><use href="#more"/></svg></div></div></div></article>
+        </div></div><nav class="mobile-bottom" aria-label="下部ナビゲーション"><span><svg><use href="#home"/></svg></span><span><svg><use href="#search"/></svg></span><span class="mobile-compose"><svg><use href="#plus"/></svg></span><span><svg><use href="#bell"/></svg></span><span>☰</span></nav></div>
+    </section>
+    <p class="preview-caption"><span id="status" role="status" aria-live="polite">先頭ノートは挑戦中です</span><span>ローカルのみで動作するデザインモック</span></p>
+  </main>
+</body>
+</html>

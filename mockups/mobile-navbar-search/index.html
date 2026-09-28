@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>検索モーフ · モバイルナビ</title>
+<link rel="stylesheet" href="./styles.css">
+<script src="./mock.js" defer></script>
+</head>
+<body data-theme="dark">
+<svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+ <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.7"/><path d="m16 16 4.5 4.5"/></symbol>
+ <symbol id="i-close" viewBox="0 0 24 24"><path d="M5 5 19 19M19 5 5 19"/></symbol>
+ <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9"/></symbol>
+ <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
+ <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+ <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20H4v-8L15 1l8 8-11 11M13 3l8 8"/></symbol>
+ <symbol id="i-rss" viewBox="0 0 24 24"><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M4 20h.1"/></symbol>
+ <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v1"/></symbol>
+ <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></symbol>
+ <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+ <symbol id="i-adjust" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="16" cy="17" r="2"/></symbol>
+ <symbol id="i-send" viewBox="0 0 24 24"><path d="m3 3 19 9-19 9 4-9-4-9ZM7 12h15"/></symbol>
+ <symbol id="i-hatask" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m7 12 3 3 7-7"/></symbol>
+ <symbol id="i-widgets" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></symbol>
+</svg>
+<header class="page-head">
+ <div><small>HATASKEY / SEARCH MORPH</small><h1>下のバーから、そのまま検索。</h1></div>
+ <div class="theme-switch" role="group" aria-label="外観"><button type="button" data-theme-button="dark" aria-pressed="true">ダーク</button><button type="button" data-theme-button="light" aria-pressed="false">ライト</button></div>
+</header>
+<main class="gallery">
+ <section class="variant" aria-labelledby="hata-title">
+  <div class="variant-head"><h2 id="hata-title">Hataskey UI</h2><span>floating pill</span></div>
+  <div class="phone hata" data-variant="hata" data-open="false" data-phase="idle">
+   <header class="app-head"><strong>Hataskey</strong><span><b class="self">S</b> @sora</span></header>
+   <div class="upper"><div class="rss"><svg><use href="#i-rss"/></svg><b>RSS</b><span>日々のデザイン通信 · 小さな発見</span></div><div class="notice"><svg><use href="#i-bell"/></svg><span>haruさんがリアクションしました</span></div></div>
+   <div class="feed" tabindex="0"><div class="feed-heading"><b>ホーム</b><span>フォロー中</span></div><article class="note"><b class="avatar a">花</b><div><div class="author"><strong>花</strong><span>@hana · 2分</span></div><p>窓辺のガラスに、午後の光が重なった。きれいな影を見つけた日。</p><small>♡ 18　↻ 3</small></div></article><article class="note"><b class="avatar b">律</b><div><div class="author"><strong>律</strong><span>@ritsu · 12分</span></div><p>帰り道に小さな喫茶店へ。読んでいた本の続きを開いた。</p><small>♡ 7　↻ 1</small></div></article><article class="note"><b class="avatar c">空</b><div><div class="author"><strong>空</strong><span>@sora · 28分</span></div><p>週末は海まで散歩したい。天気がよさそう。</p><small>♡ 4</small></div></article></div>
+   <div class="scrim" hidden></div>
+   <div class="hata-dock"><button type="button" class="outer-button mock-action" aria-label="メニュー（見本）"><svg><use href="#i-menu"/></svg></button><div class="morph-shell"><div class="search-body" aria-hidden="true" inert>
+    <form class="search-form" role="search">
+     <label class="sr-only" for="hata-target">検索対象</label><span class="target-field"><svg class="target-icon" aria-hidden="true"><use href="#i-pen"/></svg><select id="hata-target" name="target" aria-label="検索対象"><option value="note">ノート</option><option value="user">ユーザー</option><option value="event">イベント</option></select><svg class="target-chevron" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+     <input type="search" name="query" aria-label="検索語" placeholder="検索" autocomplete="off">
+     <button type="button" class="clear-button" aria-label="検索語をクリア" hidden><svg><use href="#i-close"/></svg></button>
+     <button type="submit" class="submit-button" aria-label="検索する"><svg><use href="#i-search"/></svg></button>
+     <button type="button" class="options-button" aria-label="条件設定" aria-expanded="false" aria-controls="hata-options"><svg><use href="#i-adjust"/></svg></button>
+    </form>
+    <div class="search-extra">
+     <div class="search-options" id="hata-options" hidden>
+      <div class="option-section" data-for="note">
+       <div class="select-control"><span>検索範囲</span><select aria-label="検索範囲" name="note-scope"><option value="all">すべて</option><option value="local">ローカル</option><option value="server">サーバー</option><option value="user">ユーザー</option></select></div>
+       <label class="server-condition" hidden>サーバー<input name="server-host" type="text" placeholder="remote.example" autocomplete="off"></label>
+       <div class="select-control user-condition" hidden><span>ユーザー</span><select aria-label="ユーザー" name="note-user"><option value="@hana">花 @hana</option><option value="@ritsu">律 @ritsu</option><option value="@sora">空 @sora</option><option value="@umi">海 @umi</option></select></div>
+       <label>投稿日時（開始）<input name="note-from" type="datetime-local"></label>
+       <label>投稿日時（終了）<input name="note-to" type="datetime-local"></label>
+      </div>
+      <div class="option-section" data-for="user" hidden><div class="select-control"><span>検索範囲</span><select aria-label="検索範囲" name="origin"><option value="combined">すべて</option><option value="local">ローカル</option><option value="remote">リモート</option></select></div></div>
+      <div class="option-section" data-for="event" hidden>
+       <div class="select-control"><span>検索範囲</span><select aria-label="検索範囲" name="origin"><option value="combined">すべて</option><option value="local">ローカル</option><option value="remote">リモート</option></select></div>
+       <div class="select-control"><span>並び順</span><select aria-label="並び順" name="event-sort"><option value="startDate">開催日</option><option value="createdAt">新着順</option></select></div>
+       <label>開催日（開始）<input name="event-from" type="date"></label>
+       <label>開催日（終了）<input name="event-to" type="date"></label>
+      </div>
+     </div>
+     <div class="results" role="region" aria-label="検索結果" aria-live="polite"></div>
+    </div>
+   </div><nav class="nav-row" aria-label="Hataskey UI ナビ"><button type="button" class="nav-button mock-action" aria-label="ホーム（見本）"><svg><use href="#i-home"/></svg></button><button type="button" class="nav-button mock-action" aria-label="通知（見本）"><svg><use href="#i-bell"/></svg><i class="dot"></i></button><button type="button" class="nav-button search-toggle" aria-label="検索を開く" aria-expanded="false"><svg class="search-glyph"><use href="#i-search"/></svg><svg class="close-glyph"><use href="#i-close"/></svg></button></nav></div><button type="button" class="outer-button mock-action" aria-label="ノートを書く（見本）"><svg><use href="#i-pen"/></svg></button></div>
+  </div>
+ </section>
+ <section class="variant" aria-labelledby="uis-title">
+  <div class="variant-head"><h2 id="uis-title">UI S</h2><span>glass capsule + composer</span></div>
+  <div class="phone uis" data-variant="uis" data-open="false" data-phase="idle">
+   <header class="app-head"><strong>Hataskey</strong><span><b class="self">S</b> @sora</span></header>
+   <div class="upper"><div class="rss"><svg><use href="#i-rss"/></svg><b>RSS</b><span>日々のデザイン通信 · 小さな発見</span></div><div class="notice"><svg><use href="#i-bell"/></svg><span>haruさんがリアクションしました</span></div></div>
+   <div class="feed" tabindex="0"><div class="feed-heading"><b>ホーム</b><span>フォロー中</span></div><article class="note"><b class="avatar a">花</b><div><div class="author"><strong>花</strong><span>@hana · 2分</span></div><p>窓辺のガラスに、午後の光が重なった。きれいな影を見つけた日。</p><small>♡ 18　↻ 3</small></div></article><article class="note"><b class="avatar b">律</b><div><div class="author"><strong>律</strong><span>@ritsu · 12分</span></div><p>帰り道に小さな喫茶店へ。読んでいた本の続きを開いた。</p><small>♡ 7　↻ 1</small></div></article><article class="note"><b class="avatar c">空</b><div><div class="author"><strong>空</strong><span>@sora · 28分</span></div><p>週末は海まで散歩したい。天気がよさそう。</p><small>♡ 4</small></div></article></div>
+   <div class="scrim" hidden></div>
+   <div class="uis-dock morph-shell"><div class="dock-body"><div class="composer"><textarea aria-label="ノートの下書き（投稿されません）" placeholder="いまどうしてる？"></textarea><div class="composer-tools"><span>◌</span><span>☺</span><span class="scope">公開</span><span class="send-mark"><svg><use href="#i-send"/></svg></span></div></div><div class="search-body" aria-hidden="true" inert>
+    <form class="search-form" role="search">
+     <label class="sr-only" for="uis-target">検索対象</label><span class="target-field"><svg class="target-icon" aria-hidden="true"><use href="#i-pen"/></svg><select id="uis-target" name="target" aria-label="検索対象"><option value="note">ノート</option><option value="user">ユーザー</option><option value="event">イベント</option></select><svg class="target-chevron" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+     <input type="search" name="query" aria-label="検索語" placeholder="検索" autocomplete="off">
+     <button type="button" class="clear-button" aria-label="検索語をクリア" hidden><svg><use href="#i-close"/></svg></button>
+     <button type="submit" class="submit-button" aria-label="検索する"><svg><use href="#i-search"/></svg></button>
+     <button type="button" class="options-button" aria-label="条件設定" aria-expanded="false" aria-controls="uis-options"><svg><use href="#i-adjust"/></svg></button>
+    </form>
+    <div class="search-extra">
+     <div class="search-options" id="uis-options" hidden>
+      <div class="option-section" data-for="note">
+       <div class="select-control"><span>検索範囲</span><select aria-label="検索範囲" name="note-scope"><option value="all">すべて</option><option value="local">ローカル</option><option value="server">サーバー</option><option value="user">ユーザー</option></select></div>
+       <label class="server-condition" hidden>サーバー<input name="server-host" type="text" placeholder="remote.example" autocomplete="off"></label>
+       <div class="select-control user-condition" hidden><span>ユーザー</span><select aria-label="ユーザー" name="note-user"><option value="@hana">花 @hana</option><option value="@ritsu">律 @ritsu</option><option value="@sora">空 @sora</option><option value="@umi">海 @umi</option></select></div>
+       <label>投稿日時（開始）<input name="note-from" type="datetime-local"></label>
+       <label>投稿日時（終了）<input name="note-to" type="datetime-local"></label>
+      </div>
+      <div class="option-section" data-for="user" hidden><div class="select-control"><span>検索範囲</span><select aria-label="検索範囲" name="origin"><option value="combined">すべて</option><option value="local">ローカル</option><option value="remote">リモート</option></select></div></div>
+      <div class="option-section" data-for="event" hidden>
+       <div class="select-control"><span>検索範囲</span><select aria-label="検索範囲" name="origin"><option value="combined">すべて</option><option value="local">ローカル</option><option value="remote">リモート</option></select></div>
+       <div class="select-control"><span>並び順</span><select aria-label="並び順" name="event-sort"><option value="startDate">開催日</option><option value="createdAt">新着順</option></select></div>
+       <label>開催日（開始）<input name="event-from" type="date"></label>
+       <label>開催日（終了）<input name="event-to" type="date"></label>
+      </div>
+     </div>
+     <div class="results" role="region" aria-label="検索結果" aria-live="polite"></div>
+    </div>
+   </div></div><nav class="nav-row" aria-label="UI S ナビ"><button type="button" class="nav-button mock-action" aria-label="メニュー（見本）"><svg><use href="#i-menu"/></svg></button><button type="button" class="nav-button search-toggle" aria-label="検索を開く" aria-expanded="false"><svg class="search-glyph"><use href="#i-search"/></svg><svg class="close-glyph"><use href="#i-close"/></svg></button><button type="button" class="nav-button home-hold" aria-label="ホーム。長押しでタイムラインを切替" aria-haspopup="menu"><svg><use href="#i-home"/></svg></button><button type="button" class="nav-button mock-action" aria-label="通知（見本）"><svg><use href="#i-bell"/></svg><i class="dot"></i></button><button type="button" class="nav-button mock-action" aria-label="Hatask（見本）"><svg><use href="#i-hatask"/></svg></button><button type="button" class="nav-button mock-action" aria-label="ウィジェット（見本）"><svg><use href="#i-widgets"/></svg></button></nav><div class="timeline-menu" hidden role="menu" aria-label="タイムライン"><button type="button" role="menuitem" data-timeline="ホーム">ホーム</button><button type="button" role="menuitem" data-timeline="ローカル">ローカル</button><button type="button" role="menuitem" data-timeline="ソーシャル">ソーシャル</button></div></div>
+  </div>
+ </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: Tolehata and hatasaba-project -->
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Hataskey · ナビの縁をめぐる読み込み</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="motion.js" defer></script>
+</head>
+<body data-theme="light" data-layout="desktop" data-motion="full">
+  <svg class="definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10h-6v-7H9v7H3z"/></symbol>
+    <symbol id="local" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M5.7 7C1 7 .8 10.7 7.7 14.9s14.7 3.9 14.5.7c-.1-1.5-1.8-3.4-4.2-4.9"/></symbol>
+    <symbol id="social" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 5v1"/></symbol>
+    <symbol id="global" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-35 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(55 12 12)"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3Zm4 11h4"/></symbol>
+    <symbol id="menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="arrow" viewBox="0 0 24 24"><path d="M12 20V4m-6 6 6-6 6 6"/></symbol>
+    <symbol id="heart" viewBox="0 0 24 24"><path d="M12 20 4 12C-2 6 7 0 12 7c5-7 14-1 8 5Z"/></symbol>
+    <symbol id="reply" viewBox="0 0 24 24"><path d="m9 5-6 6 6 6M3 11h10a7 7 0 0 1 7 7v2"/></symbol>
+    <symbol id="renote" viewBox="0 0 24 24"><path d="m4 9 4-4 4 4M8 5v11h8m4-1-4 4-4-4m4 4V8H8"/></symbol>
+    <symbol id="more" viewBox="0 0 24 24"><circle cx="4" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="20" cy="12" r="1"/></symbol>
+  </defs></svg>
+  <main>
+    <header class="intro">
+      <div><p class="eyebrow">HATASKEY · MOTION STUDY</p><h1>読み込みは、ナビの縁に。</h1><p class="description">テーマカラーの細い光が、丸いナビの外周を静かにめぐります。</p></div>
+      <span class="prototype">試作 · 通常のHataskey UI</span>
+    </header>
+    <section class="controls" aria-label="プレビューの操作">
+      <div class="play-controls"><button id="play" type="button">読み込みを再生</button><button id="short" type="button">短い読み込み</button><button id="continuous" type="button" aria-pressed="false">継続する</button></div>
+      <div class="view-controls">
+        <label>表示<select id="layout"><option value="desktop">PC</option><option value="mobile">スマートフォン</option></select></label>
+        <label>テーマ<select id="theme"><option value="light">ライト</option><option value="dark">ダーク</option></select></label>
+        <div class="palette" role="group" aria-label="テーマカラー">
+          <button type="button" class="swatch" data-color="#b77692" style="--swatch:#b77692" aria-label="ローズ" aria-pressed="true"></button>
+          <button type="button" class="swatch" data-color="#619787" style="--swatch:#619787" aria-label="セージ" aria-pressed="false"></button>
+          <button type="button" class="swatch" data-color="#8a81bd" style="--swatch:#8a81bd" aria-label="ラベンダー" aria-pressed="false"></button>
+          <label class="custom-color"><input id="color" type="color" value="#b77692" aria-label="テーマカラーを選ぶ"></label>
+        </div>
+        <label class="check"><input id="new-notes" type="checkbox">新着通知</label>
+        <label class="check"><input id="reduced" type="checkbox">動きを減らす</label>
+      </div>
+    </section>
+    <div class="preview-area">
+      <section class="screen" aria-label="Hataskey UIのプレビュー">
+        <aside class="sidebar" aria-label="サイドメニュー"><span class="brand-mark">H</span><button type="button" class="current" aria-label="ホーム"><svg><use href="#home"/></svg></button><button type="button" aria-label="検索"><svg><use href="#search"/></svg></button><button type="button" aria-label="通知"><svg><use href="#bell"/></svg></button><button type="button" aria-label="メニュー"><svg><use href="#menu"/></svg></button><button type="button" class="compose" aria-label="投稿"><svg><use href="#plus"/></svg></button><span class="sidebar-avatar avatar-self" aria-hidden="true"></span></aside>
+        <div class="timeline-area">
+          <header class="screen-heading"><div class="wordmark">Hataskey</div><span class="heading-date">9月27日 · 日曜日</span></header>
+          <div class="timeline-column">
+            <div id="pill" class="top-pill-frame" aria-busy="false" data-visible="false">
+              <nav class="timeline-tabs" aria-label="タイムライン">
+                <span class="mobile-avatar avatar-self" aria-hidden="true"></span>
+                <button type="button" class="selected" data-tab="ホーム" aria-label="ホーム" aria-current="page"><svg><use href="#home"/></svg><span>ホーム</span></button>
+                <button type="button" data-tab="ローカル" aria-label="ローカル"><svg><use href="#local"/></svg><span>ローカル</span></button>
+                <button type="button" data-tab="ソーシャル" aria-label="ソーシャル"><svg><use href="#social"/></svg><span>ソーシャル</span></button>
+                <button type="button" data-tab="グローバル" aria-label="グローバル"><svg><use href="#global"/></svg><span>グローバル</span></button>
+              </nav>
+              <div class="new-notes"><svg aria-hidden="true"><use href="#arrow"/></svg><span class="new-face" aria-hidden="true"></span><span class="new-face second" aria-hidden="true"></span><span>3</span></div>
+              <svg id="loading-ring" class="loading-ring" aria-hidden="true"><rect class="still-ring" pathLength="100"/><g id="trail"></g></svg>
+            </div>
+            <div class="timeline" aria-label="架空の投稿">
+              <article class="note"><div class="avatar avatar-koharu" aria-hidden="true">こ</div><div class="note-content"><header><b>こはる</b><span>@koharu</span><time>いま</time></header><p>秋の風が気持ちよくて、少し遠回り。<br>いつもの景色にも、新しい色がありました。</p><footer><span><svg><use href="#reply"/></svg>2</span><span><svg><use href="#renote"/></svg></span><span><svg><use href="#heart"/></svg>5</span><svg><use href="#more"/></svg></footer></div></article>
+              <article class="note"><div class="avatar avatar-aoi" aria-hidden="true">青</div><div class="note-content"><header><b>青井</b><span>@aoi</span><time>3分前</time></header><p>読みかけの本と、いつものコーヒー。<br>今日はゆっくりする日。</p><div class="landscape" role="img" aria-label="架空の夕景イラスト"><span></span></div><footer><span><svg><use href="#reply"/></svg></span><span><svg><use href="#renote"/></svg>1</span><span><svg><use href="#heart"/></svg>8</span><svg><use href="#more"/></svg></footer></div></article>
+              <article class="note"><div class="avatar avatar-natsume" aria-hidden="true">な</div><div class="note-content"><header><b>なつめ</b><span>@natsume</span><time>8分前</time></header><p>週末の小さな楽しみを、ひとつずつ。</p><footer><span><svg><use href="#reply"/></svg></span><span><svg><use href="#renote"/></svg></span><span><svg><use href="#heart"/></svg>3</span><svg><use href="#more"/></svg></footer></div></article>
+            </div>
+          </div>
+          <nav class="mobile-bottom" aria-label="下部メニュー"><button type="button" aria-label="ホーム"><svg><use href="#home"/></svg></button><button type="button" aria-label="検索"><svg><use href="#search"/></svg></button><button type="button" class="compose" aria-label="投稿"><svg><use href="#plus"/></svg></button><button type="button" aria-label="通知"><svg><use href="#bell"/></svg></button><button type="button" aria-label="メニュー"><svg><use href="#menu"/></svg></button></nav>
+        </div>
+        <aside class="widgets" aria-label="ウィジェット"><section class="widget-clock"><span>日曜日</span><strong>14:32</strong><small>2026 / 09 / 27</small></section><section class="widget-weather"><div class="weather-icon" aria-hidden="true">☀</div><div><b>晴れ、のち秋の風</b><p>24° <span> / 18°</span></p><small>すべて架空の表示です</small></div></section><section class="widget-calendar"><header><b>9月</b><span>2026</span></header><div class="weekdays">日　月　火　水　木　金　土</div><div class="calendar-grid" aria-hidden="true"><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><b>27</b><span>28</span><span>29</span><span>30</span></div></section><section class="widget-memo"><small>今日のひとこと</small><p>あわてず、ひと息。</p></section></aside>
+      </section>
+    </div>
+    <footer class="preview-caption"><span id="status" role="status" aria-live="polite">読み込みを準備しています</span><span>架空の投稿を使ったプレビュー · 実際の通信は行いません</span></footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <title>UI S · フォーム内の絵文字と添付</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="interaction.js" defer></script>
+</head>
+<body data-theme="dark" data-device="desktop" data-position="bottom">
+  <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-house" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3z"/></symbol>
+    <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m8 12 5-5a4 4 0 0 1 6 6l-8 8a6 6 0 0 1-8-8l9-9"/></symbol>
+    <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14c1 2 2 3 4 3s3-1 4-3M8 9h.01M16 9h.01"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4 6 4 9s-1 6-4 9c-3-3-4-6-4-9s1-6 4-9Z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m3 4 18 8-18 8 3-7 8-1-8-1z"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m14 5-7 7 7 7M7 12h13"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M10 2h4l.6 2.2 2 1.1 2.2-.7 2 3.4-1.6 1.6v2.4l1.6 1.6-2 3.4-2.2-.7-2 1.1L14 20h-4l-.6-2.2-2-1.1-2.2.7-2-3.4 1.6-1.6v-2.4L3.2 8.4l2-3.4 2.2.7 2-1.1z"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 16v4h16v-4"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M6 19a4 4 0 0 1-1-7.9A7 7 0 0 1 18.5 9a5 5 0 0 1-.5 10z"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M5 5 19 19M19 5 5 19"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18m-10 5 2 2 4-4"/></symbol>
+  </svg>
+
+  <header class="review-bar" aria-label="モック表示設定">
+    <div class="review-name"><b>UI S</b><span>フォーム内の絵文字と添付 <small>MOCK</small></span></div>
+    <div class="review-controls">
+      <div class="switch-set" aria-label="画面"><button type="button" data-set-device="desktop" aria-pressed="true">PC</button><button type="button" data-set-device="mobile" aria-pressed="false">モバイル</button></div>
+      <div class="switch-set position-switch" aria-label="PCの投稿欄位置"><button type="button" data-set-position="top" aria-pressed="false">上</button><button type="button" data-set-position="bottom" aria-pressed="true">下</button></div>
+      <div class="switch-set" aria-label="テーマ"><button type="button" data-set-theme="dark" aria-pressed="true">ダーク</button><button type="button" data-set-theme="light" aria-pressed="false">ライト</button></div>
+    </div>
+  </header>
+
+  <main class="preview" aria-label="UI S の操作モック">
+    <div class="app-top"><span class="brand">Hataskey <small>UI S</small></span><span class="account"><span class="avatar avatar-me">花</span>@hana</span></div>
+    <div class="app-main">
+      <nav class="side-rail" aria-label="サイドナビゲーション"><span class="rail-active"><svg><use href="#i-house"/></svg></span><span><svg><use href="#i-bell"/></svg></span><span><svg><use href="#i-grid"/></svg></span></nav>
+      <div class="workspace" id="workspace">
+        <div class="feed-head"><strong>ホーム</strong><span>タイムライン</span></div>
+        <section class="timeline" aria-label="ホームのノート">
+          <article class="note"><span class="avatar avatar-hana">花</span><div><div class="note-head"><b>花</b><span>@hana · 5分前</span></div><p>帰り道の空がきれいだった。少し遠回りして帰ろう。</p><div class="note-foot">♡　 ↪　 ◇</div></div></article>
+          <article class="note"><span class="avatar avatar-ritsu">律</span><div><div class="note-head"><b>律</b><span>@ritsu · 18分前</span></div><p>週末の喫茶店、窓際の席が空いていた。</p><div class="note-foot">♡　 ↪　 ◇</div></div></article>
+          <article class="note"><span class="avatar avatar-sora">空</span><div><div class="note-head"><b>空</b><span>@sora · 32分前</span></div><p>雨の音を聞きながら、次の旅のことを考えている。</p><div class="note-foot">♡　 ↪　 ◇</div></div></article>
+        </section>
+
+        <form class="composer" id="composer" aria-label="投稿フォーム" novalidate>
+          <label class="sr-only" for="draft">ノートを書く</label>
+          <textarea id="draft" rows="2" placeholder="いま、なにしてる？">窓辺でひと息。午後の光がちょうどいい。</textarea>
+          <div class="attachments" id="attachments" aria-label="添付した見本"></div>
+          <div class="menu-region" id="menu-region" data-menu="none">
+            <section class="menu-page emoji-page" id="emoji-page" aria-label="絵文字ピッカー" aria-hidden="true" inert>
+              <div class="emoji-search-row"><button class="back" type="button" data-close-menu aria-label="絵文字を閉じる"><svg><use href="#i-back"/></svg></button><svg class="search-icon"><use href="#i-search"/></svg><label class="sr-only" for="emoji-search">絵文字を検索</label><input id="emoji-search" type="search" placeholder="検索" autocomplete="off" autocapitalize="off"></div>
+              <div class="emoji-scroll" id="emoji-scroll"></div>
+            </section>
+            <section class="menu-page attach-page" id="attach-page" aria-label="添付メニュー" aria-hidden="true" inert>
+              <div class="attach-heading"><button class="back" type="button" data-close-menu aria-label="添付を閉じる"><svg><use href="#i-back"/></svg></button><span>添付</span></div>
+              <div class="attach-choices"><button type="button" data-add-attachment="upload"><svg><use href="#i-upload"/></svg><span>アップロード</span></button><button type="button" data-add-attachment="drive"><svg><use href="#i-cloud"/></svg><span>ドライブから</span></button><button type="button" data-add-attachment="url"><svg><use href="#i-link"/></svg><span>URLから</span></button></div>
+            </section>
+          </div>
+          <div class="composer-tools"><button type="button" class="tool" id="attach-trigger" aria-label="添付を開く" aria-controls="attach-page" aria-expanded="false"><svg><use href="#i-paperclip"/></svg></button><button type="button" class="tool" id="emoji-trigger" aria-label="絵文字を開く" aria-controls="emoji-page" aria-expanded="false"><svg><use href="#i-smile"/></svg></button><span class="tool-spacer"></span><span class="scope"><svg><use href="#i-globe"/></svg>パブリック</span><span class="count" id="draft-count">0</span><button type="button" class="send" id="mock-send" aria-label="投稿の見本"><svg><use href="#i-send"/></svg></button></div>
+          <nav class="mobile-nav" aria-label="モバイルナビゲーションの表示見本"><span role="img" aria-label="メニュー"><svg><use href="#i-menu"/></svg></span><span role="img" aria-label="検索"><svg><use href="#i-search"/></svg></span><span class="selected" role="img" aria-label="ホーム"><svg><use href="#i-house"/></svg></span><span role="img" aria-label="通知"><svg><use href="#i-bell"/></svg></span><span role="img" aria-label="Hatask"><svg><use href="#i-calendar"/></svg></span><span role="img" aria-label="ウィジェット"><svg><use href="#i-grid"/></svg></span></nav>
+        </form>
+      </div>
+      <aside class="right-pane"><b>見つける</b><p>今日の話題</p><span># いつもの景色</span><span># 週末の予定</span></aside>
+    </div>
+    <p class="toast" id="toast" role="status" aria-live="polite"></p>
+  </main>
+  <p class="outside-note">操作の見本です。絵文字・添付はこのページ内だけで動作します。</p>
+  <noscript><p class="outside-note">操作には JavaScript が必要です。</p></noscript>
+</body>
+</html>
