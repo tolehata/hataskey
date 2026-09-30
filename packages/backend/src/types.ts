@@ -48,6 +48,7 @@ export const notificationTypes = [
 	'createToken',
 	'app',
 	'hataFeed',
+	'hatady',
 	'hataskFlowerReady',
 	'hataskFlowerBloomed',
 	'hataskZukanUpdated',
@@ -64,6 +65,9 @@ export const notificationFilterTypes = [
 	'addedToPrivateChannel',
 	'removedFromPrivateChannel',
 ] as const;
+
+export const hatadyNotificationSubtypes = ['follow', 'comment', 'reaction', 'milestone', 'goalDone', 'mediaComment', 'mediaReply', 'mediaReaction'] as const;
+export type HatadyNotificationSubtype = typeof hatadyNotificationSubtypes[number];
 
 export const groupedNotificationTypes = [
 	...notificationFilterTypes,

@@ -11,6 +11,7 @@ import {
 	obsoleteNotificationTypes,
 	groupedNotificationTypes,
 	FilterUnionByProperty,
+	hatadyNotificationSubtypes,
 	notificationFilterTypes,
 } from '@/types.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
@@ -53,6 +54,11 @@ export const paramDef = {
 		untilDate: { type: 'integer' },
 		markAsRead: { type: 'boolean', default: true },
 		excludeBots: { type: 'boolean', default: false },
+		brand: { type: 'string', enum: ['all', 'standard', 'hatady', 'hatask', 'hataFeed'], default: 'all' },
+		includeBrands: { type: 'array', items: { type: 'string', enum: ['standard', 'hatady', 'hatask', 'hataFeed'] } },
+		includeHataskApp: { type: 'boolean' },
+		includeHatadySubtypes: { type: 'array', items: { type: 'string', enum: hatadyNotificationSubtypes } },
+		excludeHatadySubtypes: { type: 'array', items: { type: 'string', enum: hatadyNotificationSubtypes } },
 		// 後方互換のため、廃止された通知タイプも受け付ける
 		includeTypes: { type: 'array', items: {
 			type: 'string', enum: [...notificationFilterTypes, ...obsoleteNotificationTypes],
@@ -77,11 +83,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const sinceId = ps.sinceId ?? (ps.sinceDate ? this.idService.gen(ps.sinceDate!) : undefined);
 
 			// includeTypes が空の場合はクエリしない
-			if (ps.includeTypes && ps.includeTypes.length === 0) {
+			if ((ps.includeTypes && ps.includeTypes.length === 0 && ps.includeHataskApp !== true) || ps.includeBrands?.length === 0) {
 				return [];
 			}
 			// excludeTypes に全指定されている場合はクエリしない
-			if (notificationFilterTypes.every(type => ps.excludeTypes?.includes(type))) {
+			if (notificationFilterTypes.every(type => ps.excludeTypes?.includes(type)) && ps.includeHataskApp !== true) {
 				return [];
 			}
 
@@ -95,16 +101,16 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				limit: ps.limit + EXTRA_LIMIT,
 				includeTypes,
 				excludeTypes,
+				brand: ps.brand,
+				includeBrands: ps.includeBrands,
+				includeHataskApp: ps.includeHataskApp,
+				includeHatadySubtypes: ps.includeHatadySubtypes,
+				excludeHatadySubtypes: ps.excludeHatadySubtypes,
 				excludeBots: ps.excludeBots,
 			});
 
 			if (notifications.length === 0) {
 				return [];
-			}
-
-			// Mark all as read
-			if (ps.markAsRead) {
-				this.notificationService.readAllNotification(me.id);
 			}
 
 			// grouping
@@ -155,6 +161,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const emittedReactionNoteIds = new Set<string>();
 			const emittedByUserNotifierIds = new Set<string>();
 			const groupedNotifications: MiGroupedNotification[] = [];
+			const memberIds = new Map<MiGroupedNotification, string[]>();
+			const append = (group: MiGroupedNotification, ids: string[]) => { groupedNotifications.push(group); memberIds.set(group, ids); };
 
 			for (let i = 0; i < notifications.length; i++) {
 				const notification = notifications[i];
@@ -167,7 +175,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 						if (emittedReactionNoteIds.has(noteId)) continue; // 既に出力済みなのでスキップ (重複防止)
 						emittedReactionNoteIds.add(noteId);
 						const arr = reactionsByNote.get(noteId)!;
-						groupedNotifications.push({
+						append({
 							type: 'reaction:grouped',
 							id: arr[arr.length - 1].id, // 最新の通知IDを代表に
 							createdAt: arr[0].createdAt,
@@ -176,7 +184,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 								userId: r.notifierId!,
 								reaction: r.reaction!,
 							})),
-						});
+						}, arr.map(item => item.id));
 						continue;
 					}
 					// 同じユーザーが複数ノートにリアクション → reaction:groupedByUser
@@ -185,7 +193,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 						if (emittedByUserNotifierIds.has(notifierId)) continue; // 既に出力済みなのでスキップ
 						emittedByUserNotifierIds.add(notifierId);
 						const arr = reactionsByUser.get(notifierId)!;
-						groupedNotifications.push({
+						append({
 							type: 'reaction:groupedByUser',
 							id: arr[arr.length - 1].id,
 							createdAt: arr[0].createdAt,
@@ -195,11 +203,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 								reaction: r.reaction!,
 								createdAt: r.createdAt,
 							})),
-						});
+						}, arr.map(item => item.id));
 						continue;
 					}
 					// どちらにも属さない完全な単発リアクションはそのまま
-					groupedNotifications.push(notification);
+					append(notification, [notification.id]);
 					continue;
 				}
 
@@ -210,6 +218,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					if (prev.type === 'renote' && notification.type === 'renote' && prev.targetNoteId === notification.targetNoteId) {
 						let target = prevGroupedNotification;
 						if (target.type !== 'renote:grouped') {
+							const previousIds = memberIds.get(target) ?? [prev.id];
+							memberIds.delete(target);
 							groupedNotifications[groupedNotifications.length - 1] = {
 								type: 'renote:grouped',
 								id: '',
@@ -218,14 +228,18 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 								userIds: [prev.notifierId!],
 							};
 							target = groupedNotifications.at(-1)!;
+							memberIds.set(target, previousIds);
 						}
 						(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'renote:grouped'>).userIds.push(notification.notifierId!);
 						target.id = notification.id;
+						memberIds.get(target)!.push(notification.id);
 						continue;
 					}
 					if (prev.type === 'note' && notification.type === 'note') {
 						let target = prevGroupedNotification;
 						if (target.type !== 'note:grouped') {
+							const previousIds = memberIds.get(target) ?? [prev.id];
+							memberIds.delete(target);
 							groupedNotifications[groupedNotifications.length - 1] = {
 								type: 'note:grouped',
 								id: '',
@@ -234,22 +248,49 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 								notifierIds: [prev.notifierId!],
 							};
 							target = groupedNotifications.at(-1)!;
+							memberIds.set(target, previousIds);
 						}
 						if (!(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'note:grouped'>).notifierIds.includes(notification.notifierId)) {
 							(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'note:grouped'>).notifierIds.push(notification.notifierId!);
 						}
 						(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'note:grouped'>).noteIds.push(notification.noteId!);
 						target.id = notification.id;
+						memberIds.get(target)!.push(notification.id);
 						continue;
 					}
 				}
 
-				groupedNotifications.push(notification);
+				append(notification, [notification.id]);
 			}
 
 			const limitedGroupedNotifications = groupedNotifications.slice(0, ps.limit);
 
-			return await this.notificationEntityService.packGroupedMany(limitedGroupedNotifications, me.id);
+			const packed = await this.notificationEntityService.packGroupedMany(limitedGroupedNotifications, me.id);
+			const selected = new Map(limitedGroupedNotifications.map(group => [group.id, memberIds.get(group) ?? [group.id]]));
+			const selectedIds = [...new Set([...selected.values()].flat())];
+			const originalById = new Map(notifications.map(notification => [notification.id, notification]));
+			const firstPassIds = (group: (typeof packed)[number], ids: string[]): string[] => {
+				const display = group as { type: string; reactions?: { user?: { id: string }; note?: { id: string } }[]; users?: { id: string }[] };
+				if (display.type === 'reaction:grouped') {
+					const userIds = new Set((display.reactions ?? []).flatMap(reaction => reaction.user?.id ? [reaction.user.id] : []));
+					return ids.filter(id => { const original = originalById.get(id); return original != null && 'notifierId' in original && typeof original.notifierId === 'string' && userIds.has(original.notifierId); });
+				}
+				if (display.type === 'reaction:groupedByUser') {
+					const noteIds = new Set((display.reactions ?? []).flatMap(reaction => reaction.note?.id ? [reaction.note.id] : []));
+					return ids.filter(id => { const original = originalById.get(id); return original != null && 'noteId' in original && typeof original.noteId === 'string' && noteIds.has(original.noteId); });
+				}
+				if (display.type === 'renote:grouped' || display.type === 'note:grouped') {
+					const userIds = new Set((display.users ?? []).map(user => user.id));
+					return ids.filter(id => { const original = originalById.get(id); return original != null && 'notifierId' in original && typeof original.notifierId === 'string' && userIds.has(original.notifierId); });
+				}
+				return ids;
+			};
+			const current = await this.notificationService.findNotificationsByIds(me.id, selectedIds);
+			const visible = new Set((await this.notificationEntityService.packMany(current, me.id)).map(item => item.id));
+			const result = packed.map(group => ({ ...group, notificationIds: firstPassIds(group, selected.get(group.id) ?? []).filter(id => visible.has(id)) }))
+				.filter(group => group.notificationIds.length > 0);
+			if (ps.markAsRead) await this.notificationService.markNotificationsRead(me.id, result.flatMap(group => group.notificationIds));
+			return result;
 		});
 	}
 }

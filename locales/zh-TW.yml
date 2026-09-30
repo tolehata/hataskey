@@ -2553,6 +2553,7 @@ _weekday:
   friday: "星期五"
   saturday: "星期六"
 _widgets:
+  seasonalTree: "四季之樹"
   profile: "個人檔案"
   instanceInfo: "伺服器資訊"
   memo: "備忘錄"
@@ -2819,6 +2820,15 @@ _notification:
     createToken: "建立存取權杖"
     test: "通知測試"
     app: "應用程式通知"
+    hataFeed: "HataFeed 通知"
+    hatady: "Hatady 通知"
+    hataskFlowerReady: "Hatask 花朵"
+    hataskFlowerBloomed: "花朵已綻放"
+    hataskZukanUpdated: "花朵圖鑑已更新"
+    hataskFestivalBloomed: "花之祭典盛開"
+    earthquake: "地震與海嘯資訊"
+    addedToPrivateChannel: "已加入私人頻道"
+    removedFromPrivateChannel: "已從私人頻道移除"
   _actions:
     followBack: "追隨回去"
     reply: "回覆"
@@ -3421,6 +3431,46 @@ _qr:
   raw: "文字"
   mfm: "MFC"
 _hata:
+  _notificationFilter:
+    botNotifications: "來自機器人的通知"
+    botNotificationsDescription: "顯示來自標記為機器人的帳號的通知。"
+    types: "通知類型"
+    hatadyTypes: "Hatady 通知類型"
+    otherHatask: "其他 Hatask 通知"
+    selectAll: "全選"
+    clearSelection: "清除選取"
+  _notificationBrands:
+    all: "全部"
+    standard: "標準"
+    hatady: "Hatady"
+    hatask: "Hatask"
+    hataFeed: "HataFeed"
+  _notification:
+    standardFollowAction: "在{name}關注"
+    standardFollowingAction: "已在{name}關注"
+  _hataSideStudio:
+    _utility:
+      widgetLabels:
+        seasonalTree: "四季之樹"
+  _seasonalTree:
+    title: "四季之樹"
+    description: "隨季節與時刻變化的小小風景"
+    season: "季節"
+    timeOfDay: "時段"
+    automatic: "依照目前時間（日本時間）"
+    animation: "風與飄落動畫"
+    windStrength: "風力"
+    showCaption: "顯示季節與時段"
+    _seasons:
+      spring: "春"
+      summer: "夏"
+      autumn: "秋"
+      winter: "冬"
+    _times:
+      dawn: "早晨"
+      day: "白天"
+      dusk: "傍晚"
+      night: "夜晚"
   _hatady:
     _bookDetail:
       addMemo: "新增筆記"
@@ -3755,6 +3805,13 @@ _hata:
       recordStudy: "記錄學習"
       recordStudyDescription: "記錄學習或閱讀的內容及所用時間。"
       report: "舉報"
+      openInHatady: "在 Hatady 開啟"
+      hatadyProfile: "Hatady 個人檔案"
+      recordSaved: "已記錄"
+      recordDeleteBody: "刪除這條記錄及其回覆和回應？作品和雲端圖片將保留。"
+      recordDeleteOpenFailed: "無法開啟刪除確認"
+      recordDeleted: "記錄已刪除"
+      recordDeleteFailed: "無法刪除記錄"
       searchAll: "全局搜尋（記錄、書籍、筆記）"
       searchMore: "已載入的活動中沒有匹配項。可繼續載入以搜尋更多活動。"
       searchPlaceholder: "搜尋書籍、作品和領域"
@@ -4197,8 +4254,22 @@ _hata:
       update: "Hatady有新的通知。"
     _reactions:
       add: "新增回應"
+      peopleCount: "{count} 人"
+      morePeople: "另有 {count} 人"
       remove: "刪除回應"
       updateFailed: "無法變更回應"
+    _notification:
+      follow: "有人在 Hatady 關注了你"
+      comment: "你的記錄收到了評論"
+      reaction: "你的記錄收到了回應"
+      milestone: "連續記錄達到新階段"
+      goalDone: "你完成了目標"
+      mediaComment: "作品收到了評論"
+      mediaReply: "作品評論收到了回覆"
+      mediaReaction: "作品收到了回應"
+      followAction: "在 Hatady 關注"
+      followingAction: "已在 Hatady 關注"
+      unavailable: "無法確認關注狀態"
     _search:
       bookMemos: "內容筆記"
       bookmarks: "書籤"
@@ -7137,6 +7208,11 @@ _hata:
           unitSingular: "個"
           headingFirst: "頭像"
           headingSecond: "裝飾"
+        emojiRequestLimit:
+          name: "表情符號申請數量"
+          description: "提高任意連續7天內可提交的自訂表情符號申請數量上限"
+          unit: "次 / 7 天"
+          unitSingular: "次 / 7 天"
         hatadyBookLimit:
           name: "Hatady 書架"
           description: "可在書架中登記更多書籍"
@@ -7772,6 +7848,7 @@ _hata:
     tabLocal: "本地"
     tabSocial: "社交"
     tabTrending: "熱門"
+    tabHatady: "Hatady"
     toastFollow: "{name} 追蹤了你"
     toastFollowRequest: "{name} 傳送了追蹤請求"
     toastGeneric: "有新通知"

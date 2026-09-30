@@ -245,6 +245,8 @@ defineExpose({ focus });
 	transition: border-radius .24s var(--ease-smooth, ease), border-color .2s ease, box-shadow .24s ease;
 }
 
+.pill:has(.input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+
 .root[data-open="true"] .pill {
 	border-radius: 24px;
 	border-color: color-mix(in srgb, var(--accent) 42%, var(--rule));
@@ -288,8 +290,8 @@ defineExpose({ focus });
 
 .input::placeholder { color: var(--fg-3); font-weight: 560; }
 textarea.input { box-sizing: border-box; height: auto; min-height: 44px; max-height: 180px; field-sizing: content; padding-block: 12px; resize: vertical; line-height: 1.5; }
-// Keep the inset ring ahead of the layout's scoped focus rule.
-.root .inputRow .input:focus-visible { border-radius: 12px; outline: 2px solid var(--accent); outline-offset: -2px; }
+// The pill draws the input focus ring; override the layout's scoped input rule.
+.root .inputRow .input:focus-visible { outline: none; }
 .chip:disabled { cursor: default; opacity: .42; }
 
 .submit, .tool {

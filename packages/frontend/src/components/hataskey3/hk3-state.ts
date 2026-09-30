@@ -20,6 +20,8 @@ export type Hk3Toast = {
 	id: string;
 	icon: 'bell' | 'heart' | 'reply' | 'repeat' | 'quote' | 'userPlus' | 'mention' | 'poll' | 'zap' | 'zapOff' | 'sun' | 'moon' | 'send' | 'check' | 'filter' | 'star' | 'clip' | 'pencil' | 'trash' | 'clock' | 'smile';
 	text: string;
+	/** Standard notification ID, used to dismiss only the matching banner. */
+	notificationId?: string;
 	user?: Misskey.entities.UserLite | null;
 	/** 歓迎通知のアバターだけ丸く表示する。 */
 	welcome?: boolean;

@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div :class="$style.root" :data-content-visibility-auto="contentVisibilityAuto" :data-toast="toast">
+<div :class="$style.root" :data-content-visibility-auto="contentVisibilityAuto" :data-toast="toast" :data-notification-brand="brand">
 	<div :class="$style.head">
 		<MkAvatar v-if="['pollEnded', 'note'].includes(notification.type) && 'note' in notification" :class="$style.icon" :user="notification.note.user" link preview/>
 		<MkAvatar v-else-if="['roleAssigned', 'achievementEarned', 'exportCompleted', 'login', 'createToken', 'scheduledNotePosted', 'scheduledNotePostFailed'].includes(notification.type)" :class="$style.icon" :user="$i" link preview/>
@@ -14,6 +14,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkAvatar v-else-if="notification.type === 'reaction:groupedByUser'" :class="$style.icon" :user="notification.user" link preview/>
 		<div v-else-if="notification.type === 'renote:grouped'" :class="[$style.icon, $style.icon_renoteGroup]"><i class="ti ti-repeat" style="line-height: 1;"></i></div>
 		<div v-else-if="notification.type === 'note:grouped'" :class="[$style.icon, $style.icon_noteGroup]"><i class="ti ti-pencil" style="line-height: 1;"></i></div>
+		<button v-else-if="notification.type === 'hatady' && notification.user" type="button" :class="[$style.icon, $style.hatadyAvatarButton]" :aria-label="`${notification.user.name || notification.user.username} — ${i18n.ts.profile}`" @click="void hatadyActions.openProfile(notification.user.id)"><MkAvatar :class="$style.icon" :user="notification.user"/></button>
+		<div v-else-if="notification.type === 'hatady'" :class="[$style.icon, $style.icon_hatady]"><i class="ti ti-book-2"></i></div>
 		<MkAvatar v-else-if="'user' in notification" :class="$style.icon" :user="notification.user" link preview/>
 		<div v-else-if="notification.type === 'app' && notification.id === NOTIFICATION_FILTER_POLICY_NOTICE_ID" :class="[$style.icon, $style.icon_filterPolicy]"><i class="ti ti-filter-cog"></i></div>
 		<div v-else-if="notification.type === 'app' && notification.link === '/admin/registration-applications' && notification.icon == null" :class="[$style.icon, $style.icon_registrationApplication]"><i class="ti ti-user-plus" aria-hidden="true"></i></div>
@@ -32,6 +34,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else-if="notification.type === 'addedToPrivateChannel'" :class="[$style.icon, $style.icon_channelJoin]"><i class="ti ti-lock-square"></i></div>
 		<div v-else-if="notification.type === 'removedFromPrivateChannel'" :class="[$style.icon, $style.icon_channelLeave]"><i class="ti ti-door-exit"></i></div>
 		<img v-else-if="'icon' in notification && notification.icon != null" :class="[$style.icon, $style.icon_app]" :src="notification.icon" alt=""/>
+		<span v-if="brand !== 'standard'" :class="$style.brandCorner" :data-brand="brand"><i :class="notification.type === 'hatady' ? hatadySubtypeIcon(notification.subtype) : brand === 'hatask' ? 'ti ti-flower' : 'ti ti-message-report'"></i></span>
 		<div
 			v-if="!toast || notification.type !== 'reaction'"
 			:class="[$style.subIcon, {
@@ -86,6 +89,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 	<div :class="$style.tail">
 		<header :class="$style.header">
+			<span :class="$style.brandTag" :data-brand="brand">{{ i18n.ts._hata._notificationBrands[brand] }}</span>
 			<span v-if="notification.type === 'pollEnded'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.pollEnded" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'scheduledNotePosted'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.scheduledNotePosted" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'scheduledNotePostFailed'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.scheduledNotePostFailed" :wrap="toast"/></span>
@@ -98,6 +102,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-else-if="notification.type === 'test'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.testNotification" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'exportCompleted'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.exportOfXCompleted({ x: exportEntityName[notification.exportedEntity] })" :wrap="toast"/></span>
 			<MkA v-else-if="notification.type === 'follow' || notification.type === 'mention' || notification.type === 'reply' || notification.type === 'renote' || notification.type === 'quote' || notification.type === 'reaction' || notification.type === 'receiveFollowRequest' || notification.type === 'followRequestAccepted'" v-user-preview="notification.user.id" :class="$style.headerName" :to="userPage(notification.user)"><MkUserName :nowrap="!toast" :user="notification.user"/></MkA>
+			<button v-else-if="notification.type === 'hatady' && notification.user" type="button" :class="$style.hatadyUser" @click="void hatadyActions.openProfile(notification.user.id)"><MkUserName :nowrap="!toast" :user="notification.user"/></button>
+			<span v-else-if="notification.type === 'hatady'" :class="$style.headerText">{{ i18n.ts._hata._notificationBrands.hatady }}</span>
 			<I18n v-else-if="notification.type === 'groupInvited'" :class="$style.headerText" :src="i18n.ts._notification.youWereInvitedToGroup" textTag="span"><template #userName><MkUserName :nowrap="!toast" :user="notification.user"/></template></I18n>
 			<span v-else-if="notification.type === 'reaction:grouped' && notification.note.reactionAcceptance === 'likeOnly'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.likedBySomeUsers({ n: getActualReactedUsersCount(notification) })" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'reaction:grouped'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.reactedBySomeUsers({ n: getActualReactedUsersCount(notification) })" :wrap="toast"/></span>
@@ -169,7 +175,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkA>
 			<template v-else-if="notification.type === 'follow'">
 				<span :class="$style.text" style="opacity: 0.6;"><MkNotificationText :text="i18n.ts.youGotNewFollower" :wrap="toast"/></span>
-				<div v-if="full"><MkFollowButton :user="notification.user" :full="true" :disableIfFollowing="prefer.r.showFollowingMessageInsteadOfButtonEnabled.value"/></div>
+				<div v-if="full"><MkFollowButton :user="notification.user" :full="true" :notificationInstanceName="instance.name || host" :disableIfFollowing="prefer.r.showFollowingMessageInsteadOfButtonEnabled.value"/></div>
+			</template>
+			<template v-else-if="notification.type === 'hatady'">
+				<button type="button" :class="$style.hatadyContent" :disabled="!hatadyTargetAvailable(notification)" @click="openHatadyTarget(notification)">
+					<span>{{ i18n.ts._hata._hatady._notification[notification.subtype] }}</span>
+					<strong v-if="notification.title">{{ notification.title }}</strong>
+					<MkReactionIcon v-if="notification.reaction" :reaction="notification.reaction"/>
+				</button>
+				<button v-if="full && notification.subtype === 'follow' && notification.user && notification.user.id !== $i.id" type="button" :class="$style.hatadyFollow" :disabled="hatadyFollowBusy || hatadyFollowing == null" @click="toggleHatadyFollow(notification.user.id)">
+					{{ hatadyFollowing == null ? i18n.ts._hata._hatady._notification.unavailable : hatadyFollowing ? i18n.ts._hata._hatady._notification.followingAction : i18n.ts._hata._hatady._notification.followAction }}
+				</button>
 			</template>
 			<template v-else-if="notification.type === 'followRequestAccepted'">
 				<div :class="$style.text" style="opacity: 0.6;"><MkNotificationText :text="i18n.ts.followRequestAccepted" :wrap="toast"/></div>
@@ -261,7 +277,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import MkNotificationText from '@/components/MkNotificationText.js';
 import * as Misskey from 'cherrypick-js';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
@@ -279,6 +295,15 @@ import { NOTIFICATION_FILTER_POLICY_NOTICE_ID } from '@/utility/notification-fil
 import { hataFeedNotificationDisplayBody } from '@/utility/hatafeed-bell-group.js';
 import { privateChannelNotificationDisplayBody } from '@/utility/private-channel-notification-copy.js';
 import { versatileLang } from '@/utility/intl-const.js';
+import { notificationBrand } from '@/utility/notification-brand.js';
+import { useHatadyActivityActions } from '@/utility/hatady-activity-actions.js';
+import { instance } from '@/instance.js';
+import { host } from '@@/js/config.js';
+import * as os from '@/os.js';
+import { hatadyNotify } from '@/utility/hatady-ui.js';
+import { confirmHatadyAction } from '@/utility/hatady-record-delete.js';
+import { miLocalStorage } from '@/local-storage.js';
+import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 
 const $i = ensureSignin();
 
@@ -294,6 +319,81 @@ const props = withDefaults(defineProps<{
 	toast: false,
 	contentVisibilityAuto: true,
 });
+
+type HatadyNotification = Extract<Misskey.entities.Notification, { type: 'hatady' }>;
+const brand = computed(() => notificationBrand(props.notification));
+const currentUi = miLocalStorage.getItem('ui');
+const hatadyVariant: HatadySurfaceVariant = currentUi === 'hataskey3' ? 'uis' : currentUi === 'simple' ? 'ui' : 'hatady';
+const hatadyActions = useHatadyActivityActions({ variant: hatadyVariant });
+const hatadyFollowing = ref<boolean | null>(null);
+const hatadyFollowBusy = ref(false);
+let followRequest = 0;
+
+async function loadHatadyFollowing() {
+	const request = ++followRequest;
+	const notification = props.notification;
+	if (notification.type !== 'hatady' || notification.subtype !== 'follow' || !props.full || !notification.user) return;
+	hatadyFollowing.value = null;
+	try {
+		const profile = await misskeyApi('hata/hatady/users/show', { userId: notification.user.id }) as { isFollowing?: boolean };
+		if (request === followRequest) hatadyFollowing.value = typeof profile.isFollowing === 'boolean' ? profile.isFollowing : null;
+	} catch {
+		if (request === followRequest) hatadyFollowing.value = null;
+	}
+}
+
+onMounted(() => { void loadHatadyFollowing(); });
+watch(() => [props.notification.id, props.full, props.notification.type === 'hatady' ? props.notification.user?.id : null], () => {
+	hatadyFollowBusy.value = false;
+	void loadHatadyFollowing();
+});
+
+async function toggleHatadyFollow(userId: string) {
+	if (hatadyFollowing.value == null || hatadyFollowBusy.value) return;
+	const notification = props.notification;
+	if (notification.type !== 'hatady' || !notification.user || notification.user.id !== userId) return;
+	const notificationId = notification.id;
+	const request = followRequest;
+	const wasFollowing = hatadyFollowing.value;
+	hatadyFollowBusy.value = true;
+	const name = notification.user.name || notification.user.username;
+	const copy = i18n.tsx._hata._hatady._notifications;
+	try {
+		const confirmed = await confirmHatadyAction(hatadyVariant, wasFollowing ? copy.unfollowConfirm({ name }) : copy.followConfirm({ name }), wasFollowing ? 'warning' : 'question');
+		if (!confirmed || request !== followRequest || props.notification.id !== notificationId || props.notification.type !== 'hatady' || props.notification.user?.id !== userId) return;
+		const next = !wasFollowing;
+		await misskeyApi(next ? 'hata/hatady/following/create' : 'hata/hatady/following/delete', { userId });
+		if (request === followRequest && props.notification.id === notificationId && props.notification.type === 'hatady' && props.notification.user?.id === userId) hatadyFollowing.value = next;
+	} catch {
+		hatadyNotify(i18n.ts._hata._hatady._profileView.followFailed);
+	} finally {
+		if (request === followRequest && props.notification.id === notificationId) hatadyFollowBusy.value = false;
+	}
+}
+
+function hatadySubtypeIcon(subtype: HatadyNotification['subtype']): string {
+	if (subtype === 'follow') return 'ti ti-user-plus';
+	if (subtype === 'reaction' || subtype === 'mediaReaction') return 'ti ti-heart';
+	if (subtype === 'milestone') return 'ti ti-flame';
+	if (subtype === 'goalDone') return 'ti ti-target-arrow';
+	return 'ti ti-message-circle-2';
+}
+
+function hatadyTargetAvailable(notification: HatadyNotification): boolean {
+	return Boolean(notification.logId || notification.mediaSessionId || notification.mediaWorkId
+		|| (notification.targetType === 'log' || notification.targetType === 'session' || notification.targetType === 'work') && notification.targetId
+		|| notification.subtype === 'follow' && notification.user);
+}
+
+function openHatadyTarget(notification: HatadyNotification) {
+	if (notification.logId) void hatadyActions.openConversation(notification.logId);
+	else if (notification.mediaSessionId) void hatadyActions.openSession(notification.mediaSessionId, notification.mediaWorkId);
+	else if (notification.mediaWorkId) void hatadyActions.openMediaDetailById(notification.mediaWorkId);
+	else if (notification.subtype === 'follow' && notification.user) void hatadyActions.openProfile(notification.user.id);
+	else if (notification.targetType === 'log' && notification.targetId) void hatadyActions.openConversation(notification.targetId);
+	else if (notification.targetType === 'session' && notification.targetId) void hatadyActions.openSession(notification.targetId);
+	else if (notification.targetType === 'work' && notification.targetId) void hatadyActions.openMediaDetailById(notification.targetId);
+}
 
 type ExportCompletedNotification = Misskey.entities.Notification & { type: 'exportCompleted' };
 
@@ -363,13 +463,13 @@ function customNotificationBody(notification: Misskey.entities.Notification): st
 }
 
 const acceptFollowRequest = () => {
-	if (!('user' in props.notification)) return;
+	if (!('user' in props.notification) || !props.notification.user) return;
 	followRequestDone.value = true;
 	misskeyApi('following/requests/accept', { userId: props.notification.user.id });
 };
 
 const rejectFollowRequest = () => {
-	if (!('user' in props.notification)) return;
+	if (!('user' in props.notification) || !props.notification.user) return;
 	followRequestDone.value = true;
 	misskeyApi('following/requests/reject', { userId: props.notification.user.id });
 };
@@ -428,6 +528,96 @@ async function rejectPrivateChannelInvitation(invitationId: string) {
 	--eventOther: #88a6b7;
 }
 
+.root[data-notification-brand='hatady']:not([data-toast='true']) {
+	background: color-mix(in srgb, #a9d8bd 13%, var(--MI_THEME-panel));
+}
+.root[data-notification-brand='hataFeed']:not([data-toast='true']) {
+	background: color-mix(in srgb, #8fc0ff 13%, var(--MI_THEME-panel));
+}
+.root[data-notification-brand='hatask']:not([data-toast='true']) {
+	background: color-mix(in srgb, #f4c874 12%, var(--MI_THEME-panel));
+}
+:global(html[data-color-scheme=light]) .root[data-notification-brand='hataFeed']:not([data-toast='true']) {
+	background: color-mix(in srgb, #2e62a8 9%, var(--MI_THEME-panel));
+}
+.brandTag {
+	display: inline-flex;
+	align-items: center;
+	margin-right: 8px;
+	padding: 2px 7px;
+	border-radius: 999px;
+	background: var(--MI_THEME-accentedBg);
+	color: var(--MI_THEME-fg);
+	font-size: 11px;
+	font-weight: 700;
+}
+.brandTag[data-brand='hatady'] { color: #a9d8bd; }
+.brandTag[data-brand='hataFeed'] { color: #8fc0ff; }
+.brandTag[data-brand='hatask'] { color: #f4c874; }
+:global(html[data-color-scheme=light]) .brandTag[data-brand='hataFeed'] { color: #2e62a8; }
+.icon_hatady {
+	display: grid;
+	place-items: center;
+	background: #a9d8bd;
+	color: #17302a;
+	border-radius: 50%;
+}
+.brandCorner {
+	position: absolute;
+	right: -5px;
+	bottom: -5px;
+	display: grid;
+	place-items: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: #a9d8bd;
+	color: #17302a;
+	font-size: 12px;
+}
+.brandCorner[data-brand='hataFeed'] { background: #8fc0ff; color: #1b2d43; }
+.brandCorner[data-brand='hatask'] { background: #f4c874; color: #322713; }
+:global(html[data-color-scheme=light]) .brandCorner[data-brand='hataFeed'] { background: #2e62a8; color: #fff; }
+.hatadyAvatarButton {
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	cursor: pointer;
+}
+.hatadyUser {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	font-weight: 700;
+	cursor: pointer;
+}
+.hatadyContent {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	padding: 4px 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.hatadyContent strong { font-weight: 700; }
+.hatadyContent:disabled { cursor: default; }
+.hatadyFollow {
+	margin-top: 8px;
+	padding: 6px 12px;
+	border: 1px solid currentColor;
+	border-radius: 999px;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+}
+.hatadyFollow:disabled { opacity: .5; cursor: default; }
+
 /* 旗鯖fork(Hataskey UI 2): 通知カラム内の XNotification (reply/quote/mention 以外) にも
    --htk-glass-card-opacity を反映してカード面をガラス化。MkNote と同じ計算式。
    ダーク/ライトで accent tint 濃度を出し分け。 */
@@ -444,6 +634,19 @@ async function rejectPrivateChannelInvitation(invitationId: string) {
 		color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel))
 		var(--htk-glass-card-opacity, 55%),
 		transparent);
+}
+
+:global(html.hataGlassUi) .root[data-notification-brand='hatady']:not([data-toast='true']) {
+	background: color-mix(in srgb, color-mix(in srgb, #a9d8bd 18%, var(--MI_THEME-panel)) var(--htk-glass-card-opacity, 55%), transparent);
+}
+:global(html.hataGlassUi) .root[data-notification-brand='hataFeed']:not([data-toast='true']) {
+	background: color-mix(in srgb, color-mix(in srgb, #8fc0ff 18%, var(--MI_THEME-panel)) var(--htk-glass-card-opacity, 55%), transparent);
+}
+:global(html.hataGlassUi) .root[data-notification-brand='hatask']:not([data-toast='true']) {
+	background: color-mix(in srgb, color-mix(in srgb, #f4c874 18%, var(--MI_THEME-panel)) var(--htk-glass-card-opacity, 55%), transparent);
+}
+:global(html[data-color-scheme=light].hataGlassUi) .root[data-notification-brand='hataFeed']:not([data-toast='true']) {
+	background: color-mix(in srgb, color-mix(in srgb, #2e62a8 8%, var(--MI_THEME-panel)) var(--htk-glass-card-opacity, 55%), transparent);
 }
 
 .root[data-toast='true'] {

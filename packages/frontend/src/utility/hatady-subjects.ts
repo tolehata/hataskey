@@ -38,8 +38,8 @@ export async function loadHySubjects(): Promise<HySubjectRow[]> {
 	return hySubjects.value;
 }
 
-// 分野の色を保存(upsert)。color=null で自動割当に戻す。
-export async function saveHySubject(name: string, color: string | null): Promise<void> {
+// 分野の色を保存(upsert)。color=null で自動割当に戻し、省略時は現在の色を保つ。
+export async function saveHySubject(name: string, color?: string | null): Promise<void> {
 	await (misskeyApi as any)('hata/hatady/subjects/save', { name, color });
 	await loadHySubjects();
 }

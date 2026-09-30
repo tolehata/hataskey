@@ -1,12 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? copy.editRecord : copy.todayRecord" :label="type.label" :icon="type.icon" :pages="pages" :draftId="draftId" :embedded="embedded" :restore="restoreDraft" :save="save" :saveLabel="isEdit ? copy.saveChanges : copy.saveRecord" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
+<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? copy.editRecord : copy.todayRecord" :label="type.label" :icon="type.icon" :pages="pages" :draftId="draftId" :embedded="embedded" :variant="variant" :restore="restoreDraft" :save="save" :saveLabel="isEdit ? copy.saveChanges : copy.saveRecord" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
 </template>
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import type { HatadyFormPage, HatadyFormValues } from '@/utility/hatady-form.js';
 import type { HatadyMediaWork } from '@/utility/hatady-media.js';
 import HatadyFormWizard from '@/components/HatadyFormWizard.vue';
+import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { refreshHataskFlowerStateAfterUpdate, hataskDropRewardMessage } from '@/utility/hatask-flower-v2.js';
 import { enqueuePageStatusToast } from '@/utility/hataskey-notification-toast.js';
@@ -16,7 +17,7 @@ import { hySubjects, loadHySubjects, saveHySubject } from '@/utility/hatady-subj
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 const copy = i18n.ts._hata._hatady._wizardComposer;
-const props = withDefaults(defineProps<{ editLog?: any; kind?: 'study' | 'exercise' | 'work'; work?: HatadyMediaWork | null; embedded?: boolean }>(), { embedded: false, work: null });
+const props = withDefaults(defineProps<{ editLog?: any; kind?: 'study' | 'exercise' | 'work'; work?: HatadyMediaWork | null; embedded?: boolean; variant?: HatadySurfaceVariant }>(), { embedded: false, work: null, variant: 'hatady' });
 const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void; (event: 'back'): void }>();
 const wizard = useTemplateRef('wizard'), source = props.editLog, isEdit = source != null, kind = props.kind ?? source?.kind ?? 'study';
 const type = HATADY_ACTIVITY_CHOICES.find(choice => choice.value === kind) ?? HATADY_ACTIVITY_CHOICES[0];
@@ -35,7 +36,7 @@ const pages = computed<HatadyFormPage[]>(() => [
 	{ id: 'basics', title: kind === 'exercise' ? copy.exerciseQuestion : kind === 'work' ? copy.workQuestion : kind === 'cooking' ? copy.cookingQuestion : copy.studyQuestion, fields: [
 		...(kind === 'work' ? [f('mediaWorkId', copy.work, { type: 'select', options: [{ value: '', label: copy.chooseWork }, ...works.value.map(work => ({ value: work.id, label: work.title }))], action: { label: copy.addWork, run: addWork } })] : []),
 		f('title', kind === 'exercise' ? copy.exerciseType : kind === 'work' ? copy.workToday : kind === 'cooking' ? copy.cookedDish : copy.studiedOrRead, { required: true, maxlength: 512, placeholder: kind === 'exercise' ? copy.exerciseExample : kind === 'work' ? copy.workExample : copy.studyExample }),
-		...(kind !== 'exercise' ? [f('subject', kind === 'cooking' ? copy.category : i18n.ts._hata._hatady._composer.subjectLabel, { required: kind === 'study', maxlength: 64, suggestions: subjects.value, action: kind === 'study' ? { label: copy.manageSubjects, run: manageSubjects } : undefined })] : []),
+		...(kind !== 'exercise' ? [f('subject', kind === 'cooking' ? copy.category : i18n.ts._hata._hatady._composer.subjectLabel, { required: kind === 'study', maxlength: 128, suggestions: subjects.value, action: kind === 'study' ? { label: copy.manageSubjects, run: manageSubjects } : undefined })] : []),
 	] },
 	...(kind === 'study' ? [{ id: 'book', title: copy.bookQuestion, fields: [f('bookId', i18n.ts._hata._hatady._composer.bookLabel, { type: 'select', options: [{ value: '', label: copy.noBook }, ...books.value.map(book => ({ value: book.id, label: book.title }))], action: { label: copy.addBook, run: addBook } }), f('pageFrom', copy.pageFrom, { type: 'number', min: 0, max: 100000, when: data => !!data.bookId }), f('pageTo', copy.pageTo, { type: 'number', min: 0, max: 100000, when: data => !!data.bookId })] }] : []),
 	{ id: 'body', title: copy.bodyQuestion, fields: [f('body', copy.body, { type: 'textarea', maxlength: 4096, placeholder: copy.bodyPlaceholder }), f('files', copy.images, { type: 'images', maxItems: 16 }), f('spoiler', i18n.ts._hata._hatady._media.form.containsSpoiler, { type: 'checkbox' })] },
@@ -72,9 +73,9 @@ onMounted(async () => {
 
 async function manageSubjects() { const { dispose } = os.popup((await import('@/components/HatadySubjectManager.vue')).default, {}, { changed: () => loadHySubjects().catch(() => {}), closed: () => dispose() }); }
 
-async function addBook() { const { dispose } = os.popup((await import('@/components/HatadyBookForm.vue')).default, {}, { done: (book: any) => { books.value.unshift(book); values.value.selectedBook = book; values.value.bookId = book.id; }, closed: () => dispose() }); }
+async function addBook() { const { dispose } = os.popup((await import('@/components/HatadyBookForm.vue')).default, { variant: props.variant }, { done: (book: any) => { books.value.unshift(book); values.value.selectedBook = book; values.value.bookId = book.id; }, closed: () => dispose() }); }
 
-async function addWork() { const { dispose } = os.popup((await import('@/components/HatadyMediaWorkForm.vue')).default, { kind: 'work' }, { done: (work: HatadyMediaWork) => { works.value.unshift(work); values.value.mediaWorkId = work.id; if (!values.value.title) values.value.title = work.title; }, closed: () => dispose() }); }
+async function addWork() { const { dispose } = os.popup((await import('@/components/HatadyMediaWorkForm.vue')).default, { kind: 'work', variant: props.variant }, { done: (work: HatadyMediaWork) => { works.value.unshift(work); values.value.mediaWorkId = work.id; if (!values.value.title) values.value.title = work.title; }, closed: () => dispose() }); }
 
 async function save(data: HatadyFormValues) {
 	const tags = [...new Set<string>(data.tags)], legacyTag = tags.find(tag => ['strength', 'weak', 'interest', 'movie', 'game'].includes(tag)) ?? null;
@@ -92,7 +93,7 @@ async function save(data: HatadyFormValues) {
 		enqueuePageStatusToast(hataskDropRewardMessage(result.flowerReward), result.flowerReward.granted ? 'ti ti-droplet-filled' : 'ti ti-hourglass');
 		void refreshHataskFlowerStateAfterUpdate().catch(() => {});
 	}
-	if (kind === 'study') saveHySubject(data.subject.trim(), null).catch(() => {});
+	if (kind === 'study') saveHySubject(data.subject.trim()).catch(() => {});
 	return result;
 }
 

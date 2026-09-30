@@ -68,6 +68,9 @@ let dismissedId: string | null = null;
 let mounted = false;
 let frameId = 0;
 let syncTimer: number | null = null;
+let retryTimer: number | null = null;
+let retryDelay = 1000;
+let pageHidden = false;
 let burstTimer: number | null = null;
 let particleTime = 0;
 let resultHandled: string | null = null;
@@ -123,6 +126,7 @@ function runAnimation(element: Element, frames: Keyframe[], options: KeyframeAni
 	try {
 		const animation = element.animate(frames, options);
 		collection.add(animation);
+		void animation.finished.catch(() => {});
 		if (options.fill !== 'forwards' && options.fill !== 'both') animation.onfinish = () => { collection.delete(animation); };
 		return animation;
 	} catch { return null; }
@@ -286,11 +290,11 @@ function receive(incoming: LtlPunchState | null): void {
 	measure(); collectNotes(); scheduleFrame();
 }
 
-function scheduleFrame(): void { if (mounted && props.active && !window.document.hidden && !frameId) frameId = requestAnimationFrame(tick); }
+function scheduleFrame(): void { if (mounted && props.active && !pageHidden && !window.document.hidden && !frameId) frameId = requestAnimationFrame(tick); }
 
 function tick(): void {
 	frameId = 0;
-	if (!mounted || !props.active || window.document.hidden) return;
+	if (!mounted || !props.active || pageHidden || window.document.hidden) return;
 	clock.value = Date.now() + offset;
 	if (connection && current.value && dismissedId !== current.value.id) {
 		const previous = phase.value;
@@ -317,27 +321,55 @@ function tick(): void {
 	if (phase.value !== 'idle' || clock.value < guardUntil) scheduleFrame();
 }
 
-function stopConnection(): void {
+function stopConnection(preserveBackoff = false): void {
 	cancelAnimationFrame(frameId); frameId = 0;
-	connection?.dispose(); connection = null;
+	const previous = connection; connection = null; previous?.dispose();
 	if (syncTimer) window.clearInterval(syncTimer); syncTimer = null;
+	if (retryTimer) window.clearTimeout(retryTimer); retryTimer = null;
+	if (!preserveBackoff) retryDelay = 1000;
 	if (stream) { stream.off('_disconnected_', disconnected); stream.off('_connected_', connected); } stream = null;
 	returnFocus(); current.value = null; phase.value = 'idle'; guardUntil = 0; clearMotion(); notes = []; setBusy(false); restoreFrame();
 }
 
 function disconnected(): void { cancelAnimationFrame(frameId); frameId = 0; returnFocus(); current.value = null; phase.value = 'idle'; clearMotion(); guardUntil = 0; setBusy(false); restoreFrame(); }
 
-function connected(): void { connection?.send('sync', {}); }
+function connected(): void { lastAcknowledged = Date.now(); connection?.send('sync', {}); }
 
-function connect(): void {
-	if (!mounted || !props.active || window.document.hidden || connection) return;
-	stream = useStream(); connection = stream.useChannel('ltlPunch');
-	connection.on('state', receive); stream.on('_disconnected_', disconnected); stream.on('_connected_', connected);
-	lastAcknowledged = Date.now(); connection.send('sync', {});
-	syncTimer = window.setInterval(() => { if (!window.document.hidden) { if (Date.now() - lastAcknowledged >= 15000) disconnected(); connection?.send('sync', {}); } }, 5000);
+function retryConnection(): void {
+	if (retryTimer) return;
+	const delay = retryDelay;
+	retryDelay = Math.min(delay * 2, 60000);
+	retryTimer = window.setTimeout(() => { retryTimer = null; connect(); }, delay);
 }
 
-function visibility(): void { if (window.document.hidden) stopConnection(); else connect(); }
+function connect(): void {
+	if (!mounted || !props.active || pageHidden || window.document.hidden || connection || retryTimer) return;
+	stream = useStream(); connection = stream.useChannel('ltlPunch');
+	const thisConnection = connection;
+	thisConnection.on('state', state => {
+		if (!mounted || !props.active || pageHidden || window.document.hidden || connection !== thisConnection) return;
+		retryDelay = 1000;
+		receive(state);
+	});
+	stream.on('_disconnected_', disconnected); stream.on('_connected_', connected);
+	lastAcknowledged = Date.now();
+	if (stream.state === 'connected') thisConnection.send('sync', {});
+	syncTimer = window.setInterval(() => {
+		if (pageHidden || window.document.hidden || stream?.state !== 'connected') return;
+		if (Date.now() - lastAcknowledged >= 15000) {
+			stopConnection(true);
+			retryConnection();
+			return;
+		}
+		connection?.send('sync', {});
+	}, 5000);
+}
+
+function visibility(): void { if (pageHidden || window.document.hidden) stopConnection(); else connect(); }
+
+function pagehide(): void { pageHidden = true; stopConnection(); }
+
+function pageshow(): void { pageHidden = false; connect(); }
 
 function escape(event: KeyboardEvent): void { if (event.key === 'Escape' && phase.value !== 'idle') { event.preventDefault(); dismiss(); } }
 
@@ -356,10 +388,10 @@ watch(() => props.viewportTarget, () => { measure(); collectNotes(); scheduleFra
 watch(() => props.navbarFrame, () => { if (phase.value !== 'idle') updateFrame(); else restoreFrame(); });
 onMounted(() => {
 	mounted = true; media = matchMedia('(prefers-reduced-motion: reduce)'); osReduced.value = media.matches; media.addEventListener('change', mediaChanged);
-	window.document.addEventListener('visibilitychange', visibility); window.addEventListener('keydown', escape, true); window.addEventListener('resize', boundsChanged); window.addEventListener('scroll', boundsChanged, true); connect();
+	window.document.addEventListener('visibilitychange', visibility); window.addEventListener('pagehide', pagehide); window.addEventListener('pageshow', pageshow); window.addEventListener('keydown', escape, true); window.addEventListener('resize', boundsChanged); window.addEventListener('scroll', boundsChanged, true); connect();
 });
 onBeforeUnmount(() => {
-	mounted = false; cancelAnimationFrame(frameId); stopConnection(); media?.removeEventListener('change', mediaChanged); window.document.removeEventListener('visibilitychange', visibility); window.removeEventListener('keydown', escape, true); window.removeEventListener('resize', boundsChanged); window.removeEventListener('scroll', boundsChanged, true); emit('visible', false);
+	mounted = false; cancelAnimationFrame(frameId); stopConnection(); media?.removeEventListener('change', mediaChanged); window.document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pagehide); window.removeEventListener('pageshow', pageshow); window.removeEventListener('keydown', escape, true); window.removeEventListener('resize', boundsChanged); window.removeEventListener('scroll', boundsChanged, true); emit('visible', false);
 });
 </script>
 

@@ -7,7 +7,7 @@ import type { RolePolicies } from './RoleService.js';
 import type { MiRole } from '@/models/Role.js';
 
 export const HATASK_SUPPORT_POLICY_KEYS = [
-	'driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'avatarDecorationLimit',
+	'driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'avatarDecorationLimit', 'emojiRequestLimit',
 	'favoriteFolderLimit', 'canCreateFavoriteSubfolders',
 	'hatadyBookLimit', 'canUseHatadySync', 'canUseMascot', 'mascotMaxExpressions', 'mascotMaxPhrases',
 	'mascotMaxCharacters', 'rateLimitFactor',

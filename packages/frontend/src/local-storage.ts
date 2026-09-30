@@ -90,6 +90,7 @@ export type Keys = (
 	'hataskeyUi3MobileOrder' | // UI SのモバイルTLメニュー。上部ナビ設定が変わった場合はその並びを優先する。
 	`hataskeyUi3MobileGuideShown:${string}` | // UI Sの長押し案内。端末・アカウントごと。
 	`hataNotificationFilterPolicyNoticeShown:${string}` | // 旗鯖fork: 通知フィルタ方針変更の案内を表示済みか(端末・アカウントごと)
+	'hataNotificationView' | // 通知画面のブランド・種別フィルタ。端末ローカル。
 	`hatalyzeNoticeAcceptedV1:${string}` | // Hataskey fork: HATAlyzeの初回注意書きを確認済みか(端末・アカウントごと)
 	`hatalyzeNoticeSyncedV1:${string}` | // Hataskey fork: HATAlyze注意書き確認をアカウントのRegistryへ同期済みか
 	`hatalyzeCooldownV1:${string}` | // Hataskey fork: HATAlyzeの次回利用可能時刻(端末・アカウントごと)

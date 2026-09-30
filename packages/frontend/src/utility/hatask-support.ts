@@ -22,6 +22,7 @@ export const SUPPORT_POLICIES = [
 	{ key: 'favoriteFolderLimit', name: 'お気に入りフォルダ', icon: 'folders', type: 'count', unit: '個', description: 'お気に入りを整理できるフォルダ数が増えます。\n親フォルダと子フォルダを合わせた上限です' },
 	{ key: 'canCreateFavoriteSubfolders', name: 'お気に入りの子フォルダ', icon: 'folder-plus', type: 'boolean', enabledLabel: '作成できます', disabledLabel: '作成できません', description: 'お気に入りフォルダの中に子フォルダを作成できます。\n親・子の最大2階層まで整理できます' },
 	{ key: 'avatarDecorationLimit', name: 'アバターデコレーション', icon: 'sparkles', type: 'count', unit: '個', description: 'アバターに同時に付けられる飾りが増えます' },
+	{ key: 'emojiRequestLimit', name: '絵文字の申請可能数', icon: 'mood-smile', type: 'count', unit: '件 / 7日', description: '直近7日間のカスタム絵文字申請数の上限が増えます' },
 	{ key: 'hatadyBookLimit', name: 'Hatadyの本棚', icon: 'books', type: 'count', unit: '冊', description: '本棚に登録できる本の上限が増えます' },
 	{ key: 'canUseHatadySync', name: 'Hatadyの端末間データ同期', icon: 'devices', type: 'boolean', enabledLabel: '同期できます', disabledLabel: '同期できません', description: 'Hatadyの表示設定などを、\n同じアカウントの端末間で共有できます' },
 	{ key: 'canUseMascot', name: 'マスコット機能', icon: 'mood-smile', type: 'boolean', enabledLabel: '利用できます', disabledLabel: '利用できません', description: '好きな画像でマスコットを表示し、\n表情やセリフを設定できます' },

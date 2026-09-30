@@ -22,7 +22,9 @@ type PushNotificationDataSourceMap = {
 		antenna: { id: string; name: string };
 		note: Misskey.entities.Note;
 	};
-	readAllNotifications: undefined;
+	readAllNotifications: { ids: string[] };
+	readNotification: { id: string };
+	notificationChanged: { ids: string[] };
 	newChatMessage: Misskey.entities.ChatMessage;
 	hatadyNotification: {
 		id: string;

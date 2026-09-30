@@ -1,12 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? composerCopy.editRecord : composerCopy.todayRecord" :label="workKind === 'movie' ? i18n.ts._hata._hatady._profile.movie : i18n.ts._hata._hatady._profile.game" :icon="workKind === 'movie' ? 'ti ti-movie' : 'ti ti-device-gamepad-2'" :summaryTitle="workTitle" :pages="pages" :draftId="draftId" :embedded="embedded" :restore="restoreDraft" :save="save" :saveLabel="isEdit ? composerCopy.saveChanges : composerCopy.saveRecord" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
+<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? composerCopy.editRecord : composerCopy.todayRecord" :label="workKind === 'movie' ? i18n.ts._hata._hatady._profile.movie : i18n.ts._hata._hatady._profile.game" :icon="workKind === 'movie' ? 'ti ti-movie' : 'ti ti-device-gamepad-2'" :summaryTitle="workTitle" :pages="pages" :draftId="draftId" :embedded="embedded" :variant="variant" :restore="restoreDraft" :save="save" :saveLabel="isEdit ? composerCopy.saveChanges : composerCopy.saveRecord" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
 </template>
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import type { HatadyMediaWork, HatadyMediaSession, HatadyMediaSessionKind, HatadyMediaSuggestions } from '@/utility/hatady-media.js';
 import type { HatadyFormPage, HatadyFormValues } from '@/utility/hatady-form.js';
 import HatadyFormWizard from '@/components/HatadyFormWizard.vue';
+import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { refreshHataskFlowerStateAfterUpdate, hataskDropRewardMessage } from '@/utility/hatask-flower-v2.js';
 import { enqueuePageStatusToast } from '@/utility/hataskey-notification-toast.js';
@@ -17,7 +18,7 @@ import { initialSessionDetails, sessionDetailPages, sessionDetailsPayload, SESSI
 import { i18n } from '@/i18n.js';
 const composerCopy = i18n.ts._hata._hatady._wizardComposer;
 const sessionCopy = i18n.ts._hata._hatady._sessionWizard;
-const props = withDefaults(defineProps<{ work: HatadyMediaWork | null; editSession?: HatadyMediaSession; embedded?: boolean }>(), { embedded: false });
+const props = withDefaults(defineProps<{ work: HatadyMediaWork | null; editSession?: HatadyMediaSession; embedded?: boolean; variant?: HatadySurfaceVariant }>(), { embedded: false, variant: 'hatady' });
 const emit = defineEmits<{ (event: 'done', value: HatadyMediaSession): void; (event: 'closed'): void; (event: 'back'): void }>();
 const wizard = useTemplateRef('wizard'), source = props.editSession, isEdit = source != null;
 const workKind = props.work?.kind === 'movie' || source?.kind === 'movie_viewing' ? 'movie' : 'game';

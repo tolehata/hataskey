@@ -1101,39 +1101,6 @@ declare module '../api.js' {
     /**
      * No description provided.
      *
-     * **Credential required**: *Yes* / **Permission**: *write:admin:relays*
-     */
-    request<E extends 'admin/relays/add', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *Yes* / **Permission**: *read:admin:relays*
-     */
-    request<E extends 'admin/relays/list', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *Yes* / **Permission**: *write:admin:relays*
-     */
-    request<E extends 'admin/relays/remove', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-    /**
-     * No description provided.
-     *
      * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
      * **Credential required**: *Yes* / **Permission**: *write:admin:reset-password*
      */
@@ -4279,6 +4246,17 @@ declare module '../api.js' {
     /**
      * No description provided.
      *
+     * **Credential required**: *Yes* / **Permission**: *read:account*
+     */
+    request<E extends 'hata/hatady/media/reactions/list', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
      * **Credential required**: *Yes* / **Permission**: *write:account*
      */
     request<E extends 'hata/hatady/media/sessions/create', P extends Endpoints[E]['req']>(
@@ -4457,6 +4435,17 @@ declare module '../api.js' {
      *
      * **Credential required**: *Yes* / **Permission**: *write:account*
      */
+    request<E extends 'hata/hatady/notifications/mark-as-read', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *write:account*
+     */
     request<E extends 'hata/hatady/notifications/restore', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
@@ -4502,6 +4491,17 @@ declare module '../api.js' {
      * **Credential required**: *Yes* / **Permission**: *write:account*
      */
     request<E extends 'hata/hatady/reactions/delete', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *read:account*
+     */
+    request<E extends 'hata/hatady/reactions/list', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
@@ -4779,9 +4779,75 @@ declare module '../api.js' {
     /**
      * No description provided.
      *
+     * **Credential required**: *Yes* / **Permission**: *write:account*
+     */
+    request<E extends 'hatask/flowers/drops/pour', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *write:account*
+     */
+    request<E extends 'hatask/flowers/drops/show', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *write:account*
+     */
+    request<E extends 'hatask/flowers/festival/show', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *write:account*
+     */
+    request<E extends 'hatask/flowers/harvest', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
      * **Credential required**: *Yes* / **Permission**: *read:account*
      */
     request<E extends 'hatask/flowers/list', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *write:account*
+     */
+    request<E extends 'hatask/flowers/rename', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *write:account*
+     */
+    request<E extends 'hatask/flowers/state', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
@@ -4804,6 +4870,28 @@ declare module '../api.js' {
      * **Credential required**: *Yes* / **Permission**: *write:account*
      */
     request<E extends 'hatask/flowers/visibility/update', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *write:account*
+     */
+    request<E extends 'hatask/flowers/zukan/claim-seed', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *write:account*
+     */
+    request<E extends 'hatask/flowers/zukan/show', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
@@ -6358,7 +6446,40 @@ declare module '../api.js' {
      *
      * **Credential required**: *Yes* / **Permission**: *write:notifications*
      */
+    request<E extends 'notifications/mark-as-read', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *read:notifications*
+     */
+    request<E extends 'notifications/show', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *write:notifications*
+     */
     request<E extends 'notifications/test-notification', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+    /**
+     * No description provided.
+     *
+     * **Credential required**: *Yes* / **Permission**: *read:account*
+     */
+    request<E extends 'notifications/unread-count', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,

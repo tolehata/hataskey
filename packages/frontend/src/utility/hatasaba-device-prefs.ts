@@ -6,6 +6,54 @@
 import { ref } from 'vue';
 import { miLocalStorage } from '@/local-storage.js';
 
+export type HataNotificationBrand = 'all' | 'standard' | 'hatady' | 'hatask' | 'hataFeed';
+export const HATA_NOTIFICATION_CATEGORIES = ['standard', 'hatady', 'hatask', 'hataFeed'] as const;
+export type HataNotificationCategory = typeof HATA_NOTIFICATION_CATEGORIES[number];
+export type HataNotificationView = {
+	brand: HataNotificationBrand;
+	includeBrands: HataNotificationCategory[] | null;
+	includeTypes: string[] | null;
+	includeHatadySubtypes: string[] | null;
+	includeHataskApp: boolean;
+	excludeBots: boolean;
+};
+
+export function readHataNotificationView(): HataNotificationView {
+	let saved: Record<string, unknown> = {};
+	try {
+		const parsed: unknown = JSON.parse(miLocalStorage.getItem('hataNotificationView') ?? '{}');
+		if (parsed != null && typeof parsed === 'object' && !Array.isArray(parsed)) saved = parsed as Record<string, unknown>;
+	} catch { /* use defaults */ }
+	const brand = saved.brand;
+	const includeTypes = Array.isArray(saved.includeTypes) ? saved.includeTypes.filter((value): value is string => typeof value === 'string') : null;
+	const savedBrands = Array.isArray(saved.includeBrands) ? saved.includeBrands.filter((value): value is HataNotificationCategory => HATA_NOTIFICATION_CATEGORIES.some(category => category === value)) : null;
+	const includeBrands = savedBrands != null
+		? HATA_NOTIFICATION_CATEGORIES.filter(value => savedBrands.includes(value))
+		: !Object.prototype.hasOwnProperty.call(saved, 'includeBrands') && includeTypes != null && !includeTypes.includes('hatady')
+			? HATA_NOTIFICATION_CATEGORIES.filter(value => value !== 'hatady')
+			: null;
+	return {
+		brand: brand === 'standard' || brand === 'hatady' || brand === 'hatask' || brand === 'hataFeed' ? brand : 'all',
+		includeBrands,
+		includeTypes,
+		includeHatadySubtypes: Array.isArray(saved.includeHatadySubtypes) ? saved.includeHatadySubtypes.filter((value): value is string => typeof value === 'string') : null,
+		includeHataskApp: typeof saved.includeHataskApp === 'boolean' ? saved.includeHataskApp : includeTypes == null || includeTypes.includes('app'),
+		excludeBots: saved.excludeBots === true,
+	};
+}
+
+export const hataNotificationView = ref<HataNotificationView>(readHataNotificationView());
+export function setHataNotificationView(patch: Partial<HataNotificationView>): void {
+	const next = { ...hataNotificationView.value, ...patch };
+	let previous: Record<string, unknown> = {};
+	try {
+		const parsed: unknown = JSON.parse(miLocalStorage.getItem('hataNotificationView') ?? '{}');
+		if (parsed != null && typeof parsed === 'object' && !Array.isArray(parsed)) previous = parsed as Record<string, unknown>;
+	} catch { /* use defaults */ }
+	miLocalStorage.setItem('hataNotificationView', JSON.stringify({ ...previous, ...next }));
+	hataNotificationView.value = next;
+}
+
 export type HataskeyUiSDisplaySize = 'standard' | 'small';
 
 function readHataskeyUiSDisplaySize(): HataskeyUiSDisplaySize {

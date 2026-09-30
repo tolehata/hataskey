@@ -76,31 +76,32 @@ test('notification capsule filters preserve media groups and expose only the sel
 		expect(target.textContent?.includes('コメントの作品')).toBe(['すべて', 'コメント'].includes(label));
 	}
 	expect(fixtures.api.mock.calls.filter(([endpoint]) => endpoint === 'hata/hatady/notifications')).toEqual([['hata/hatady/notifications', { limit: 100 }]]);
-	expect(read).toHaveBeenCalledExactlyOnceWith(true);
+	expect(fixtures.api).toHaveBeenCalledWith('hata/hatady/notifications/mark-as-read', { notificationIds: ['reaction', 'comment', 'follow'] });
+	expect(read).toHaveBeenCalledExactlyOnceWith();
 	read.mockClear();
 	Array.from(target.querySelectorAll('button')).find(button => button.textContent?.includes('すべて既読'))!.click();
 	await settle();
 	expect(fixtures.api).toHaveBeenLastCalledWith('hata/hatady/notifications/mark-all-read', {});
-	expect(read).toHaveBeenCalledOnce();
+	expect(read).toHaveBeenCalledExactlyOnceWith(true);
 });
 
 test('opening the list acknowledges notifications only after the server confirms the read', async () => {
 	let finishRead!: () => void;
 	const original = fixtures.api.getMockImplementation()!;
-	fixtures.api.mockImplementation((endpoint: string, params: unknown) => endpoint.endsWith('/mark-all-read')
+	fixtures.api.mockImplementation((endpoint: string, params: unknown) => endpoint.endsWith('/mark-as-read')
 		? new Promise<void>(resolve => { finishRead = resolve; }) : original(endpoint, params));
 	const { target, read } = mountNotifications();
 	await settle();
 	expect(target.textContent).toContain('コメントの作品');
-	expect(fixtures.api).toHaveBeenLastCalledWith('hata/hatady/notifications/mark-all-read', {});
+	expect(fixtures.api).toHaveBeenLastCalledWith('hata/hatady/notifications/mark-as-read', { notificationIds: ['reaction', 'comment', 'follow'] });
 	expect(read).not.toHaveBeenCalled();
 	const mark = Array.from(target.querySelectorAll('button')).find(button => button.textContent?.includes('すべて既読'))!;
 	expect(mark.disabled).toBe(true);
 	mark.click();
-	expect(fixtures.api.mock.calls.filter(([endpoint]) => endpoint.endsWith('/mark-all-read'))).toHaveLength(1);
+	expect(fixtures.api.mock.calls.filter(([endpoint]) => endpoint.endsWith('/mark-as-read'))).toHaveLength(1);
 	finishRead();
 	await settle();
-	expect(read).toHaveBeenCalledExactlyOnceWith(true);
+	expect(read).toHaveBeenCalledExactlyOnceWith();
 	expect(mark.disabled).toBe(false);
 });
 
@@ -119,7 +120,7 @@ test('a failed automatic acknowledgement preserves unread state and permits an e
 	const original = fixtures.api.getMockImplementation()!;
 	let failed = false;
 	fixtures.api.mockImplementation((endpoint: string, params: unknown) => {
-		if (endpoint.endsWith('/mark-all-read') && !failed) { failed = true; return Promise.reject(new Error('offline')); }
+		if (endpoint.endsWith('/mark-as-read') && !failed) { failed = true; return Promise.reject(new Error('offline')); }
 		return original(endpoint, params);
 	});
 	const { target, read } = mountNotifications();

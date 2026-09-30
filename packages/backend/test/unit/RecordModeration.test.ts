@@ -27,6 +27,7 @@ function fixture(options: { denied?: boolean; failLog?: boolean; failWarning?: b
 					if (sql.startsWith('SELECT pg_advisory')) return [];
 					if (sql.startsWith('SELECT * FROM record_moderation_operation')) return working.operations.filter(row => row.requestId === params[1]);
 					if (sql.startsWith('SELECT to_jsonb')) return sql.includes('FROM "hatady_book"') && !working.deleted ? [{ data: root }] : [];
+					if (sql.startsWith('SELECT id FROM hatady_log')) return [];
 					if (sql.startsWith('WITH content')) return [{ userId: 'owner', title: root.title, contentVersion: 'a'.repeat(64), revision: 0 }];
 					if (sql.startsWith('SELECT username,name')) return [{ username: params[0] === 'owner' ? 'owner_name' : 'mod_name', name: '表示名' }];
 					if (sql.startsWith('INSERT INTO record_moderation_operation')) { working.operations.push({ id: params[0], requestId: params[2], requestHash: params[3], action: params[7], createdAt: params[8], info: JSON.parse(params[9]) }); return []; }
@@ -44,7 +45,7 @@ function fixture(options: { denied?: boolean; failLog?: boolean; failWarning?: b
 			return result;
 		}),
 	};
-	const service = new RecordModerationService(db as never, role as never, { gen: () => `operation${++sequence}` } as never, { pack: async (row: unknown) => row } as never, { publishMainStream: stream } as never);
+	const service = new RecordModerationService(db as never, role as never, { gen: () => `operation${++sequence}` } as never, { pack: async (row: unknown) => row } as never, { publishMainStream: stream } as never, { changed: () => {} } as never, { refreshSourceNotifications: async () => {} } as never);
 	return { service, db, role, stream, state: () => state, request: async (patch: Partial<RecordModerationRequest> = {}): Promise<RecordModerationRequest> => {
 		const preview = await service.preview(moderator, target);
 		return { ...target, action: 'delete', requestId: 'request-1234567890', version: preview.version, reason: '本人の同意がない情報を含むため', warning: '利用ルールをご確認ください', ...patch };
@@ -147,7 +148,7 @@ describe('Hatask record moderation locking', () => {
 			getRepository: () => ({ insert: async () => {} }),
 		};
 		const db = { getRepository: () => ({ findOneBy: async () => null }), transaction: async (...args: any[]) => args.at(-1)(manager) };
-		const service = new RecordModerationService(db as never, { isModerator: async () => true } as never, { gen: () => 'operation1' } as never, { pack: async (row: unknown) => row } as never, { publishMainStream: () => {} } as never);
+		const service = new RecordModerationService(db as never, { isModerator: async () => true } as never, { gen: () => 'operation1' } as never, { pack: async (row: unknown) => row } as never, { publishMainStream: () => {} } as never, { changed: () => {} } as never, { refreshSourceNotifications: async () => {} } as never);
 		return { service, steps };
 	}
 

@@ -3482,6 +3482,15 @@ export type paths = {
          */
         post: operations['hata___hatady___media___reactions___delete'];
     };
+    '/hata/hatady/media/reactions/list': {
+        /**
+         * hata/hatady/media/reactions/list
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hata___hatady___media___reactions___list'];
+    };
     '/hata/hatady/media/sessions/create': {
         /**
          * hata/hatady/media/sessions/create
@@ -3626,6 +3635,15 @@ export type paths = {
          */
         post: operations['hata___hatady___notifications___mark-all-read'];
     };
+    '/hata/hatady/notifications/mark-as-read': {
+        /**
+         * hata/hatady/notifications/mark-as-read
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hata___hatady___notifications___mark-as-read'];
+    };
     '/hata/hatady/notifications/restore': {
         /**
          * hata/hatady/notifications/restore
@@ -3670,6 +3688,15 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *write:account*
          */
         post: operations['hata___hatady___reactions___delete'];
+    };
+    '/hata/hatady/reactions/list': {
+        /**
+         * hata/hatady/reactions/list
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hata___hatady___reactions___list'];
     };
     '/hata/hatady/search': {
         /**
@@ -3892,6 +3919,42 @@ export type paths = {
          */
         post: operations['hatask___events___update'];
     };
+    '/hatask/flowers/drops/pour': {
+        /**
+         * hatask/flowers/drops/pour
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___flowers___drops___pour'];
+    };
+    '/hatask/flowers/drops/show': {
+        /**
+         * hatask/flowers/drops/show
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___flowers___drops___show'];
+    };
+    '/hatask/flowers/festival/show': {
+        /**
+         * hatask/flowers/festival/show
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___flowers___festival___show'];
+    };
+    '/hatask/flowers/harvest': {
+        /**
+         * hatask/flowers/harvest
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___flowers___harvest'];
+    };
     '/hatask/flowers/list': {
         /**
          * hatask/flowers/list
@@ -3900,6 +3963,24 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *read:account*
          */
         post: operations['hatask___flowers___list'];
+    };
+    '/hatask/flowers/rename': {
+        /**
+         * hatask/flowers/rename
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___flowers___rename'];
+    };
+    '/hatask/flowers/state': {
+        /**
+         * hatask/flowers/state
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___flowers___state'];
     };
     '/hatask/flowers/sync': {
         /**
@@ -3918,6 +3999,24 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *write:account*
          */
         post: operations['hatask___flowers___visibility___update'];
+    };
+    '/hatask/flowers/zukan/claim-seed': {
+        /**
+         * hatask/flowers/zukan/claim-seed
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___flowers___zukan___claim-seed'];
+    };
+    '/hatask/flowers/zukan/show': {
+        /**
+         * hatask/flowers/zukan/show
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___flowers___zukan___show'];
     };
     '/hatask/planner/commit': {
         /**
@@ -5189,6 +5288,24 @@ export type paths = {
          */
         post: operations['notifications___mark-all-as-read'];
     };
+    '/notifications/mark-as-read': {
+        /**
+         * notifications/mark-as-read
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:notifications*
+         */
+        post: operations['notifications___mark-as-read'];
+    };
+    '/notifications/show': {
+        /**
+         * notifications/show
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:notifications*
+         */
+        post: operations['notifications___show'];
+    };
     '/notifications/test-notification': {
         /**
          * notifications/test-notification
@@ -5197,6 +5314,15 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *write:notifications*
          */
         post: operations['notifications___test-notification'];
+    };
+    '/notifications/unread-count': {
+        /**
+         * notifications/unread-count
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['notifications___unread-count'];
     };
     '/page-push': {
         /**
@@ -6411,6 +6537,24 @@ export type components = {
                     /** Format: misskey:id */
                     userListId: string;
                 };
+                hataFeed?: {
+                    /** @enum {string} */
+                    type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                } | {
+                    /** @enum {string} */
+                    type: 'list';
+                    /** Format: misskey:id */
+                    userListId: string;
+                };
+                hatady?: {
+                    /** @enum {string} */
+                    type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                } | {
+                    /** @enum {string} */
+                    type: 'list';
+                    /** Format: misskey:id */
+                    userListId: string;
+                };
                 hataskFlowerReady?: {
                     /** @enum {string} */
                     type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
@@ -6793,6 +6937,7 @@ export type components = {
         Notification: {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6804,6 +6949,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6815,6 +6961,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6826,6 +6973,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6837,6 +6985,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6848,6 +6997,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6860,6 +7010,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6871,6 +7022,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6879,6 +7031,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6887,6 +7040,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6897,6 +7051,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6907,6 +7062,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6918,6 +7074,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6926,6 +7083,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6934,6 +7092,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6942,6 +7101,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6953,6 +7113,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6961,6 +7122,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6968,6 +7130,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6979,6 +7142,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -6987,9 +7151,43 @@ export type components = {
             header: string | null;
             icon: string | null;
             link: string | null;
+            sourceNotificationId?: string;
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            type: 'hatady';
+            sourceNotificationId: string;
+            /** @enum {string} */
+            subtype: 'follow' | 'comment' | 'reaction' | 'milestone' | 'goalDone' | 'mediaComment' | 'mediaReply' | 'mediaReaction';
+            /** @enum {string} */
+            targetType: 'none' | 'log' | 'comment' | 'work' | 'session' | 'mediaComment';
+            /** Format: id */
+            targetId: string | null;
+            user?: components['schemas']['UserLite'];
+            /** Format: id */
+            userId?: string;
+            title?: string;
+            /** Format: id */
+            logId?: string;
+            /** Format: id */
+            mediaWorkId?: string;
+            /** Format: id */
+            mediaSessionId?: string;
+            /** Format: id */
+            mediaCommentId?: string;
+            /** Format: id */
+            commentId?: string;
+            reaction?: string;
+            value?: number;
+            isRead: boolean;
+        } | {
+            /** Format: id */
+            id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -7001,6 +7199,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -7012,6 +7211,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -7025,6 +7225,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -7037,6 +7238,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -7053,6 +7255,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -7062,6 +7265,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -7071,6 +7275,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -7078,6 +7283,7 @@ export type components = {
         } | {
             /** Format: id */
             id: string;
+            notificationIds?: string[];
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
@@ -12941,7 +13147,7 @@ export interface operations {
                             enabled: boolean;
                             benefits: {
                                 /** @enum {string} */
-                                key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
+                                key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'emojiRequestLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
                                 title: string;
                                 description: string;
                                 /** Format: misskey:id */
@@ -12952,7 +13158,7 @@ export interface operations {
                         };
                         benefits: {
                             /** @enum {string} */
-                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
+                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'emojiRequestLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
                             baseline: {
                                 value: (number | null) | boolean;
                                 available: boolean;
@@ -12979,7 +13185,7 @@ export interface operations {
                             name: string;
                             benefits: {
                                 /** @enum {string} */
-                                key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
+                                key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'emojiRequestLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
                                 snapshot: {
                                     value: (number | null) | boolean;
                                     available: boolean;
@@ -13284,7 +13490,7 @@ export interface operations {
                         enabled: boolean;
                         benefits: {
                             /** @enum {string} */
-                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
+                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'emojiRequestLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
                             title: string;
                             description: string;
                             /** Format: misskey:id */
@@ -13570,6 +13776,7 @@ export interface operations {
                 };
                 content: {
                     'application/json': {
+                        hataskFlowerRules: Record<string, never>;
                         cacheRemoteFiles: boolean;
                         cacheRemoteSensitiveFiles: boolean;
                         emailRequiredForSignup: boolean;
@@ -13738,16 +13945,6 @@ export interface operations {
                         disablePublicNoteWhenInactive: boolean;
                         moderatorInactivityLimitDays: number;
                         bubbleInstances: string[];
-                        hataskFlowerRules: {
-                            todoMinAgeMinutes: number;
-                            todoMinLength: number;
-                            hatadyGapSeconds: number;
-                            pourMinutes: number;
-                            todoCap: number;
-                            hatadyCap: number;
-                            loginCap: number;
-                            festivalGoal: number;
-                        };
                         customRobotsTxt: string | null;
                         showRoleBadgesOfRemoteUsers: boolean;
                     };
@@ -15358,85 +15555,6 @@ export interface operations {
             };
         };
     };
-    'admin___resend-registration-rejection': {
-        requestBody: {
-            content: {
-                'application/json': {
-                    applicationId: string;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (with results) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': {
-                        success: boolean;
-                        emailSent: boolean;
-                        /** @enum {string|null} */
-                        notificationStatus: 'pending' | 'sending' | 'sent' | 'failed' | null;
-                    };
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Too many requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-        };
-    };
     admin___relays___list: {
         responses: {
             /** @description OK (with results) */
@@ -15549,6 +15667,85 @@ export interface operations {
             };
             /** @description I'm Ai */
             418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'admin___resend-registration-rejection': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    applicationId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        success: boolean;
+                        emailSent: boolean;
+                        /** @enum {string|null} */
+                        notificationStatus: 'pending' | 'sending' | 'sent' | 'failed' | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16797,6 +16994,24 @@ export interface operations {
                                 /** Format: misskey:id */
                                 userListId: string;
                             };
+                            hataFeed?: {
+                                /** @enum {string} */
+                                type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                            } | {
+                                /** @enum {string} */
+                                type: 'list';
+                                /** Format: misskey:id */
+                                userListId: string;
+                            };
+                            hatady?: {
+                                /** @enum {string} */
+                                type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                            } | {
+                                /** @enum {string} */
+                                type: 'list';
+                                /** Format: misskey:id */
+                                userListId: string;
+                            };
                             test?: {
                                 /** @enum {string} */
                                 type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
@@ -17758,6 +17973,16 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
+                    hataskFlowerRules?: {
+                        todoMinAgeMinutes?: number;
+                        todoMinLength?: number;
+                        hatadyGapSeconds?: number;
+                        pourMinutes?: number;
+                        todoCap?: number;
+                        hatadyCap?: number;
+                        loginCap?: number;
+                        festivalGoal?: number;
+                    };
                     disableRegistration?: boolean | null;
                     registrationClosed?: boolean | null;
                     pinnedUsers?: string[] | null;
@@ -17921,16 +18146,6 @@ export interface operations {
                     disablePublicNoteWhenInactive?: boolean | null;
                     moderatorInactivityLimitDays?: number;
                     bubbleInstances?: string[];
-                    hataskFlowerRules?: {
-                        todoMinAgeMinutes?: number;
-                        todoMinLength?: number;
-                        hatadyGapSeconds?: number;
-                        pourMinutes?: number;
-                        todoCap?: number;
-                        hatadyCap?: number;
-                        loginCap?: number;
-                        festivalGoal?: number;
-                    };
                     customRobotsTxt?: string | null;
                 };
             };
@@ -37103,6 +37318,95 @@ export interface operations {
             };
         };
     };
+    hata___hatady___media___reactions___list: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @enum {string} */
+                    targetType: 'work' | 'session' | 'comment';
+                    /** Format: misskey:id */
+                    targetId: string;
+                    reaction?: string;
+                    /** Format: misskey:id */
+                    untilId?: string;
+                    /** @default 10 */
+                    limit?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        /** Format: misskey:id */
+                        id: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        reaction: string;
+                        user: components['schemas']['UserLite'];
+                    }[];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
     hata___hatady___media___sessions___create: {
         requestBody: {
             content: {
@@ -37165,6 +37469,7 @@ export interface operations {
                         details: {
                             [key: string]: unknown;
                         };
+                        flowerReward: Record<string, never>;
                     };
                 };
             };
@@ -38713,6 +39018,77 @@ export interface operations {
             };
         };
     };
+    'hata___hatady___notifications___mark-as-read': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    notificationIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
     hata___hatady___notifications___restore: {
         requestBody: {
             content: {
@@ -39018,6 +39394,95 @@ export interface operations {
             204: {
                 headers: {
                     [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hata___hatady___reactions___list: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    logId?: string | null;
+                    /** Format: misskey:id */
+                    commentId?: string | null;
+                    reaction?: string;
+                    /** Format: misskey:id */
+                    untilId?: string;
+                    /** @default 10 */
+                    limit?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        /** Format: misskey:id */
+                        id: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        reaction: string;
+                        user: components['schemas']['UserLite'];
+                    }[];
                 };
             };
             /** @description Client error */
@@ -41137,6 +41602,308 @@ export interface operations {
             };
         };
     };
+    hatask___flowers___drops___pour: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @enum {string} */
+                    target: 'self' | 'festival';
+                    requestId: string;
+                    timezone?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___flowers___drops___show: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    timezone?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___flowers___festival___show: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    timezone?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___flowers___harvest: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    flowerId: string;
+                    /** @default  */
+                    nickname?: string;
+                    timezone?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
     hatask___flowers___list: {
         requestBody: {
             content: {
@@ -41179,6 +41946,157 @@ export interface operations {
                         /** @enum {string} */
                         myVisibility: 'public' | 'followers' | 'private';
                     };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___flowers___rename: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    flowerId: string;
+                    /** @default  */
+                    nickname?: string;
+                    timezone?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___flowers___state: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    timezone?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
                 };
             };
             /** @description Client error */
@@ -41340,6 +42258,156 @@ export interface operations {
                         /** @enum {string} */
                         visibility: 'public' | 'followers' | 'private';
                     };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hatask___flowers___zukan___claim-seed': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @enum {string} */
+                    season: 'spring' | 'summer' | 'autumn' | 'winter';
+                    timezone?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___flowers___zukan___show: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    timezone?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
                 };
             };
             /** @description Client error */
@@ -42933,7 +44001,7 @@ export interface operations {
                         supporterCount: number;
                         benefits: {
                             /** @enum {string} */
-                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
+                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'emojiRequestLimit' | 'favoriteFolderLimit' | 'canCreateFavoriteSubfolders' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'rateLimitFactor';
                             title: string;
                             description: string;
                             showBaseline: boolean;
@@ -45390,8 +46458,17 @@ export interface operations {
                     markAsRead?: boolean;
                     /** @default false */
                     excludeBots?: boolean;
-                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
-                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    /**
+                     * @default all
+                     * @enum {string}
+                     */
+                    brand?: 'all' | 'standard' | 'hatady' | 'hatask' | 'hataFeed';
+                    includeBrands?: ('standard' | 'hatady' | 'hatask' | 'hataFeed')[];
+                    includeHataskApp?: boolean;
+                    includeHatadySubtypes?: ('follow' | 'comment' | 'reaction' | 'milestone' | 'goalDone' | 'mediaComment' | 'mediaReply' | 'mediaReaction')[];
+                    excludeHatadySubtypes?: ('follow' | 'comment' | 'reaction' | 'milestone' | 'goalDone' | 'mediaComment' | 'mediaReply' | 'mediaReaction')[];
+                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hatady' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hatady' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
                 };
             };
         };
@@ -45477,8 +46554,17 @@ export interface operations {
                     markAsRead?: boolean;
                     /** @default false */
                     excludeBots?: boolean;
-                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
-                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    /**
+                     * @default all
+                     * @enum {string}
+                     */
+                    brand?: 'all' | 'standard' | 'hatady' | 'hatask' | 'hataFeed';
+                    includeBrands?: ('standard' | 'hatady' | 'hatask' | 'hataFeed')[];
+                    includeHataskApp?: boolean;
+                    includeHatadySubtypes?: ('follow' | 'comment' | 'reaction' | 'milestone' | 'goalDone' | 'mediaComment' | 'mediaReply' | 'mediaReaction')[];
+                    excludeHatadySubtypes?: ('follow' | 'comment' | 'reaction' | 'milestone' | 'goalDone' | 'mediaComment' | 'mediaReply' | 'mediaReaction')[];
+                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hatady' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hatady' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
                 };
             };
         };
@@ -46894,6 +47980,24 @@ export interface operations {
                             userListId: string;
                         };
                         app?: {
+                            /** @enum {string} */
+                            type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                        } | {
+                            /** @enum {string} */
+                            type: 'list';
+                            /** Format: misskey:id */
+                            userListId: string;
+                        };
+                        hataFeed?: {
+                            /** @enum {string} */
+                            type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                        } | {
+                            /** @enum {string} */
+                            type: 'list';
+                            /** Format: misskey:id */
+                            userListId: string;
+                        };
+                        hatady?: {
                             /** @enum {string} */
                             type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
                         } | {
@@ -52074,6 +53178,151 @@ export interface operations {
             };
         };
     };
+    'notifications___mark-as-read': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    notificationIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    notifications___show: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    notificationIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Notification'][];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
     'notifications___test-notification': {
         responses: {
             /** @description OK (without any results) */
@@ -52120,6 +53369,67 @@ export interface operations {
             };
             /** @description Too many requests */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'notifications___unread-count': {
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        unreadNotificationsCount: number;
+                        revision: string;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
                 headers: {
                     [name: string]: unknown;
                 };

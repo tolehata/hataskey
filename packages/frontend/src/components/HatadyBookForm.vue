@@ -1,17 +1,18 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? copy.editBook : copy.addBook" :label="i18n.ts._hata._hatady._composer.bookLabel" icon="ti ti-book" :pages="pages" :draftId="`hatady:book:${isEdit ? `edit:${source.id}` : 'create'}`" :embedded="embedded" :restore="restoreDraft" :save="save" :saveLabel="isEdit ? composerCopy.saveChanges : copy.addToCollection" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
+<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? copy.editBook : copy.addBook" :label="i18n.ts._hata._hatady._composer.bookLabel" icon="ti ti-book" :pages="pages" :draftId="`hatady:book:${isEdit ? `edit:${source.id}` : 'create'}`" :embedded="embedded" :variant="variant" :restore="restoreDraft" :save="save" :saveLabel="isEdit ? composerCopy.saveChanges : copy.addToCollection" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
 </template>
 <script setup lang="ts">
 import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
 import type { HatadyFormPage, HatadyFormValues } from '@/utility/hatady-form.js';
 import HatadyFormWizard from '@/components/HatadyFormWizard.vue';
+import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { HatadyFormPartialError, formField as f, formTimestamp, localDateTime, optionalPages, saveBookNotes } from '@/utility/hatady-form.js';
 import { i18n } from '@/i18n.js';
 const copy = i18n.ts._hata._hatady._bookWizard;
 const composerCopy = i18n.ts._hata._hatady._wizardComposer;
-const props = withDefaults(defineProps<{ editBook?: any; embedded?: boolean }>(), { embedded: false });
+const props = withDefaults(defineProps<{ editBook?: any; embedded?: boolean; variant?: HatadySurfaceVariant }>(), { embedded: false, variant: 'hatady' });
 const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void; (event: 'back'): void }>();
 const wizard = useTemplateRef('wizard'), source = props.editBook, isEdit = source != null;
 const api = misskeyApi as unknown as (endpoint: string, payload: Record<string, unknown>) => Promise<any>;
@@ -20,7 +21,7 @@ let notesReady = !isEdit || Array.isArray(source?.bookmarks) && Array.isArray(so
 const values = ref<HatadyFormValues>({
 	title: source?.title ?? '', author: source?.author ?? '', genre: source?.details?.genre ?? '', totalPages: source?.totalPages ?? '', currentPage: source?.currentPage ?? 0,
 	status: source?.status ?? 'want', colorIndex: source?.coverColorIndex ?? null, isFavorite: source?.isFavorite ?? false, isRecommended: source?.isRecommended ?? false,
-	visibility: source?.visibility ?? (isEdit ? 'public' : 'private'), description: source?.details?.description ?? '', memo: source?.details?.memo ?? '', finishedAt: source?.finishedAt ? localDateTime(source.finishedAt).slice(0, 10) : '',
+	visibility: source?.visibility ?? (isEdit ? 'public' : 'private'), description: source?.details?.description ?? '', memo: source?.details?.memo ?? '', finishedAt: source?.finishedAt ? localDateTime(source.finishedAt).slice(0, 10) : source?.status === 'finished' && source.finishedAt === null ? '' : undefined,
 	bookmarks: clone(source?.bookmarks ?? []), memos: clone(source?.memos ?? []), _bookmarksBaseline: clone(source?.bookmarks ?? []), _memosBaseline: clone(source?.memos ?? []),
 });
 const pages: HatadyFormPage[] = [
@@ -61,7 +62,7 @@ async function save(data: HatadyFormValues) {
 	const payload = {
 		title: data.title.trim(), author: data.author.trim() || null, totalPages: data.totalPages === '' || data.totalPages == null ? null : Number(data.totalPages), currentPage: Number(data.currentPage) || 0,
 		status: data.status, coverColorIndex: data.colorIndex, isFavorite: data.isFavorite, isRecommended: data.isRecommended, visibility: data.visibility,
-		finishedAt: data.finishedAt ? formTimestamp(data.finishedAt, source?.finishedAt) : null,
+		...(data.finishedAt === undefined ? {} : { finishedAt: data.finishedAt ? formTimestamp(data.finishedAt, source?.finishedAt) : null }),
 		details: { ...source?.details, genre: data.genre, description: data.description, memo: data.memo },
 	};
 	const book = await api(bookId ? 'hata/hatady/books/update' : 'hata/hatady/books/create', { ...payload, ...(bookId ? { bookId } : {}) });

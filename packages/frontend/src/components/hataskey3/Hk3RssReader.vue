@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: Tolehata and hatasaba-project -->
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<div :class="$style.root" :data-compact="compact ? 'true' : undefined" :data-motion="allowMotion ? 'true' : undefined" @keydown.esc="closeReader">
+<div :class="$style.root" :data-compact="compact ? 'true' : undefined" :data-motion="allowMotion ? 'true' : undefined" @keydown.esc="closeReader()">
 	<div :class="$style.bannerSlot">
 		<div :class="[$style.banner, interrupted && $style.interrupted, readerOpen && $style.bannerReading]" :inert="interrupted ? true : undefined" :aria-hidden="interrupted ? 'true' : undefined" @mouseenter="hovered = true" @mouseleave="hovered = false" @focusin="focused = true" @focusout="onFocusOut">
 			<span v-if="readerOpen">{{ copy.reading }}</span>
@@ -26,7 +26,7 @@
 	</div>
 	<div ref="detailsEl" :class="[$style.details, readerOpen && $style.detailsOpen]" :inert="readerOpen ? undefined : true" :aria-hidden="readerOpen ? undefined : 'true'">
 		<div :class="$style.detailsInner">
-			<div :class="$style.detailsHead"><div :class="$style.copyMeta"><Rss :size="15" aria-hidden="true"/> {{ article?.source }}<time v-if="article?.date" :datetime="article.date">{{ formatDate(article.date) }}</time></div><button type="button" :class="$style.close" :aria-label="copy.close" @click="closeReader"><X :size="18"/></button></div>
+			<div :class="$style.detailsHead"><div :class="$style.copyMeta"><Rss :size="15" aria-hidden="true"/> {{ article?.source }}<time v-if="article?.date" :datetime="article.date">{{ formatDate(article.date) }}</time></div><button type="button" :class="$style.close" :aria-label="copy.close" @click="closeReader()"><X :size="18"/></button></div>
 			<div ref="copyStageEl" :class="$style.copyStage">
 				<div :key="article?.id" :class="$style.copy">
 					<h3>{{ article?.title || copy.untitled }}</h3>
@@ -51,7 +51,7 @@ import type { RssArticle, RssFeed } from './hk3-rss.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 
-const props = withDefaults(defineProps<{ interrupted: boolean; paused: boolean; compact?: boolean; motion?: boolean }>(), { compact: false });
+const props = withDefaults(defineProps<{ interrupted: boolean; paused: boolean; compact?: boolean; motion?: boolean; composerPickerOpen?: boolean }>(), { compact: false, composerPickerOpen: false });
 const emit = defineEmits<{ settings: []; readerOpen: [value: boolean] }>();
 const copy = i18n.ts._hata._hataskeyUi3._rss;
 const feeds = computed<RssFeed[]>(() => prefer.r.hataskeyUi3RssFeeds.value.slice(0, 5));
@@ -255,15 +255,15 @@ function navigate(step: number) {
 	syncRotation();
 }
 
-function openReader() { stopRotation(); restoreReadFocus = false; readerOpen.value = true; emit('readerOpen', true); void nextTick(() => { if (readerOpen.value) detailsEl.value?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true }); }); }
+function openReader() { if (props.composerPickerOpen) return; stopRotation(); restoreReadFocus = false; readerOpen.value = true; emit('readerOpen', true); void nextTick(() => { if (readerOpen.value && !props.composerPickerOpen) detailsEl.value?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true }); }); }
 
-function closeReader() {
+function closeReader(restoreFocus = true) {
 	if (!readerOpen.value) return;
 	readerOpen.value = false;
 	cancelCopyAnimation();
 	emit('readerOpen', false);
-	restoreReadFocus = true;
-	void nextTick(restoreFocusToRead);
+	restoreReadFocus = restoreFocus;
+	if (restoreFocus) void nextTick(restoreFocusToRead);
 }
 
 function restoreFocusToRead() {
@@ -304,6 +304,7 @@ watch([() => props.interrupted, allowMotion, hidden, readerOpen], () => {
 	if (!allowMotion.value || hidden.value) cancelCopyAnimation();
 });
 watch(() => props.interrupted, value => { if (!value) void nextTick(restoreFocusToRead); });
+watch(() => props.composerPickerOpen, value => { if (value) { restoreReadFocus = false; closeReader(false); } });
 onMounted(() => {
 	mounted = true; hidden.value = window.document.hidden; osReduce.value = reduceQuery.matches;
 	window.document.addEventListener('visibilitychange', onVisibility);
@@ -322,16 +323,16 @@ onBeforeUnmount(() => {
 </script>
 
 <style module lang="scss">
+@use './hk3-glass';
 .root {
+	@include hk3-glass.banner-fade;
 	--hk3-banner-alpha: clamp(66%, calc(var(--hk3-glass-pane-alpha, 76%) - 10%), 82%);
 	--hk3-banner-radius: 16px;
-	--hk3-banner-edge: clamp(16px, 5vw, 36px);
-	--hk3-banner-mask: linear-gradient(to right, transparent, #000 var(--hk3-banner-edge), #000 calc(100% - var(--hk3-banner-edge)), transparent);
 	min-width: 0;
 }
 .bannerSlot { height: 48px; position: relative; }
 .root[data-compact="true"] .bannerSlot { height: 44px; }
-.banner { position: relative; isolation: isolate; height: 100%; display: flex; align-items: center; gap: calc(9px * var(--hk3-ui-scale, 1)); padding: 0 calc(20px * var(--hk3-ui-scale, 1)); overflow: hidden; border-radius: var(--hk3-banner-radius, 16px); background: transparent; color: var(--hk3-bg); font: 800 calc(15px * var(--hk3-ui-scale, 1)) 'LINE Seed JP', sans-serif; opacity: 1; transition: opacity 180ms ease; }
+.banner { position: relative; isolation: isolate; height: 100%; display: flex; align-items: center; gap: calc(9px * var(--hk3-ui-scale, 1)); padding: 0 calc(var(--hk3-banner-edge) + 4px); overflow: hidden; border-radius: var(--hk3-banner-radius, 16px); background: transparent; color: var(--hk3-bg); font: 800 calc(15px * var(--hk3-ui-scale, 1)) 'LINE Seed JP', sans-serif; opacity: 1; transition: opacity 180ms ease; }
 .banner::before { background: var(--hk3-rss-banner-background, color-mix(in srgb, var(--hk3-accent) var(--hk3-banner-alpha), transparent)); }
 .banner::before, .details::before {
 	content: '';
@@ -342,8 +343,7 @@ onBeforeUnmount(() => {
 	border-radius: inherit;
 	-webkit-backdrop-filter: var(--hk3-rss-backdrop-filter, blur(24px));
 	backdrop-filter: var(--hk3-rss-backdrop-filter, blur(24px));
-	-webkit-mask-image: var(--hk3-banner-mask);
-	mask-image: var(--hk3-banner-mask);
+	@include hk3-glass.banner-mask;
 	pointer-events: none;
 }
 .bannerReading { justify-content: center; text-align: center; }
@@ -364,9 +364,10 @@ onBeforeUnmount(() => {
 .read { flex: none; width: 28px; height: 30px; border: 1px solid currentColor; border-radius: 0; display: grid; place-items: center; background: transparent; color: inherit; cursor: pointer; font-size: calc(18px * var(--hk3-ui-scale, 1)); line-height: 1; }
 .read:hover, .smallAction:hover { background: var(--hk3-accent-300); }
 .smallAction { margin-left: auto; padding: calc(5px * var(--hk3-ui-scale, 1)) calc(9px * var(--hk3-ui-scale, 1)); border: 1px solid var(--hk3-divider); background: transparent; color: inherit; cursor: pointer; }
-.details { position: relative; isolation: isolate; display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows 260ms ease, visibility 260ms; border-radius: var(--hk3-banner-radius, 16px); background: transparent; border-bottom: 0 solid var(--hk3-divider); }
-.details::before { background: var(--hk3-rss-details-background, color-mix(in srgb, var(--hk3-surface) var(--hk3-banner-alpha), transparent)); }
+.details { position: relative; isolation: isolate; display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows 260ms ease, visibility 260ms; border-radius: var(--hk3-banner-radius, 16px); background: transparent; border-bottom: 0 solid transparent; }
+.details::before { background: var(--hk3-rss-details-background, color-mix(in srgb, var(--hk3-surface) var(--hk3-banner-alpha), transparent)); box-sizing: border-box; }
 .detailsOpen { grid-template-rows: 1fr; visibility: visible; border-bottom-width: 1px; }
+.detailsOpen::before { border-bottom: 1px solid var(--hk3-divider); }
 .detailsInner { min-height: 0; max-height: min(60dvh, 650px); overflow: hidden; padding: 0 calc(20px * var(--hk3-ui-scale, 1)); display: flex; flex-direction: column; }
 .detailsHead { display: flex; align-items: center; position: relative; min-height: 42px; padding-right: calc(36px * var(--hk3-ui-scale, 1)); font-size: calc(12px * var(--hk3-ui-scale, 1)); font-weight: 800; color: var(--hk3-accent); }
 .close { position: absolute; right: 0; top: 7px; width: 28px; height: 28px; border: 0; background: transparent; color: var(--hk3-text); cursor: pointer; }
@@ -381,7 +382,7 @@ onBeforeUnmount(() => {
 .controls { display: flex; gap: calc(8px * var(--hk3-ui-scale, 1)); padding-bottom: calc(14px * var(--hk3-ui-scale, 1)); }
 .controls button { flex: 1; display: flex; justify-content: center; align-items: center; gap: calc(4px * var(--hk3-ui-scale, 1)); min-height: 36px; border: 1px solid var(--hk3-divider); background: var(--hk3-neutral-200); color: var(--hk3-text); cursor: pointer; }
 .controls button:hover { border-color: var(--hk3-accent); }
-@media (max-width: 650px) { .bannerSlot { height: 44px; } .banner { padding: 0 calc(16px * var(--hk3-ui-scale, 1)); gap: calc(7px * var(--hk3-ui-scale, 1)); font-size: calc(14px * var(--hk3-ui-scale, 1)); } .source, .date { display: none; } .read { height: 28px; } .detailsInner { padding: 0 calc(16px * var(--hk3-ui-scale, 1)); } }
+@media (max-width: 650px) { .bannerSlot { height: 44px; } .banner { padding: 0 calc(var(--hk3-banner-edge) + 4px); gap: calc(7px * var(--hk3-ui-scale, 1)); font-size: calc(14px * var(--hk3-ui-scale, 1)); } .source, .date { display: none; } .read { height: 28px; } .detailsInner { padding: 0 calc(16px * var(--hk3-ui-scale, 1)); } }
 .root:not([data-motion]) .banner, .root:not([data-motion]) .banner > *, .root:not([data-motion]) .details { transition: none; }
 @media (prefers-reduced-motion: reduce) { .banner, .banner > *, .details { transition: none; } }
 </style>

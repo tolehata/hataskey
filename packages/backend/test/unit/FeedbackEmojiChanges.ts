@@ -48,7 +48,7 @@ describe('HataFeed emoji ownership, quota and review', () => {
 		const insert = vi.fn(async () => {});
 		const deliver = vi.fn(async () => {});
 		const service = Object.assign(Object.create(FeedbackService.prototype), {
-			idService: { gen: () => 'notification' }, notificationService: { createNotification: deliver },
+			idService: { gen: () => 'notification' }, notificationService: { createNotificationAsync: deliver },
 		}) as FeedbackService;
 		const tx: EmojiTransaction = { manager: { getRepository: () => ({ insert }) } as never, afterCommit: [], afterRollback: [] };
 		await service.notify('applicant', 'emojiApproved', { actorId: 'staff', emojiRequestId: 'original', emojiChangeRequestId: 'change' }, '画像更新申請が承認されました。', tx);

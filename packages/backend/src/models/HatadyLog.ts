@@ -54,7 +54,7 @@ export class MiHatadyLog {
 
 	@Index()
 	@Column('varchar', {
-		length: 64,
+		length: 128,
 		comment: 'Subject (free text, e.g. プログラミング).',
 	})
 	public subject: string;

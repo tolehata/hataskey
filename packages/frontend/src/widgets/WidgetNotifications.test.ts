@@ -7,7 +7,7 @@ import { createApp, defineComponent, h, nextTick, reactive } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import WidgetNotifications from './WidgetNotifications.vue';
 
-type Filter = { excludeTypes: string[]; knownTypes: string[]; excludeBots: boolean };
+type Filter = { excludeTypes: string[]; knownTypes: string[]; excludeBots: boolean; filterDetails: { includeBrands?: string[] | null; includeHataskApp?: boolean; excludeHatadySubtypes?: string[]; knownHatadySubtypes?: string[] } };
 const popup = vi.hoisted(() => vi.fn());
 vi.mock('@/os.js', () => ({ popupAsyncWithDialog: popup, form: vi.fn() }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { notifications: '通知', settings: '設定', markAllAsRead: '既読' } } }));
@@ -18,13 +18,18 @@ vi.mock('@/components/MkContainer.vue', async () => {
 });
 vi.mock('@/components/MkStreamingNotificationsTimeline.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
-	return { default: defineComponent({ props: { excludeBots: Boolean }, setup: props => () => render('div', { 'data-exclude-bots': String(props.excludeBots) }) }) };
+	return { default: defineComponent({ props: { excludeBots: Boolean, includeBrands: { type: Array, default: () => [] }, includeHataskApp: Boolean, excludeHatadySubtypes: { type: Array, default: () => [] } }, setup: props => () => render('div', {
+		'data-exclude-bots': String(props.excludeBots),
+		'data-include-brands': JSON.stringify(props.includeBrands),
+		'data-include-hatask-app': String(props.includeHataskApp),
+		'data-exclude-hatady-subtypes': JSON.stringify(props.excludeHatadySubtypes),
+	}) }) };
 });
 
 const cleanup: (() => void)[] = [];
 
-function mountWidget() {
-	let stored = JSON.stringify({ height: 300, showHeader: true, excludeBots: false, excludeTypes: [], notificationFilterKnownTypes: ['follow'] });
+function mountWidget(initialData: Record<string, unknown> = {}) {
+	let stored = JSON.stringify({ height: 300, showHeader: true, excludeBots: false, excludeTypes: [], notificationFilterKnownTypes: ['follow'], ...initialData });
 	const parent = reactive({ widget: { id: 'notifications-1', data: JSON.parse(stored) } });
 	const app = createApp(defineComponent({ setup: () => () => h(WidgetNotifications, {
 		widget: parent.widget,
@@ -87,5 +92,29 @@ describe('通知ウィジェットの設定確定', () => {
 		await nextTick();
 		await dialog.done({ ...dialog.initial, excludeBots: true });
 		expect(fixture.readSaved()).toMatchObject({ excludeBots: true, height: 480, excludeTypes: ['follow'] });
+	});
+
+	test('詳細フィルタを確定すると保存され、タイムラインと次のダイアログに反映される', async () => {
+		const fixture = mountWidget();
+		const dialog = fixture.openDialog();
+		const filterDetails = { ...dialog.initial.filterDetails, includeBrands: ['hatady'], includeHataskApp: false, excludeHatadySubtypes: ['reaction'] };
+		await dialog.done({ ...dialog.initial, filterDetails });
+		await nextTick();
+		expect(fixture.readSaved().notificationFilterDetails).toEqual(filterDetails);
+		const timeline = fixture.container.querySelector('[data-include-brands]');
+		expect(timeline?.getAttribute('data-include-brands')).toBe('["hatady"]');
+		expect(timeline?.getAttribute('data-include-hatask-app')).toBe('false');
+		expect(timeline?.getAttribute('data-exclude-hatady-subtypes')).toContain('reaction');
+		expect(fixture.openDialog().initial.filterDetails).toEqual(filterDetails);
+	});
+
+	test('詳細フィルタを触らない間に親が更新された場合は親の変更を残す', async () => {
+		const fixture = mountWidget();
+		const dialog = fixture.openDialog();
+		const updatedDetails = { includeBrands: ['hataFeed'], includeHataskApp: false };
+		fixture.parent.widget = { id: fixture.parent.widget.id, data: { ...fixture.parent.widget.data, notificationFilterDetails: updatedDetails } };
+		await nextTick();
+		await dialog.done({ ...dialog.initial, excludeBots: true });
+		expect(fixture.readSaved().notificationFilterDetails).toEqual(updatedDetails);
 	});
 });

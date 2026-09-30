@@ -8,6 +8,8 @@ import { RoleService } from '@/core/RoleService.js';
 import { IdService } from '@/core/IdService.js';
 import { AnnouncementEntityService } from '@/core/entities/AnnouncementEntityService.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
+import { HatadyStreamService } from '@/core/HatadyStreamService.js';
+import { NotificationService } from '@/core/NotificationService.js';
 import { HATADY_MODERATION_CTE } from '@/core/HatadyModerationService.js';
 import { HATASK_REVIEW_CTE } from '@/core/hatask-record-review.js';
 import { normalizeRecordModerationRequest, recordModerationErrors as errors, recordModerationHash, validateRecordModerationTarget } from '@/misc/record-moderation.js';
@@ -53,6 +55,8 @@ export class RecordModerationService {
 		@Inject(DI.db) private db: DataSource,
 		private roleService: RoleService, private idService: IdService,
 		private announcementEntityService: AnnouncementEntityService, private globalEventService: GlobalEventService,
+		private hatadyStreamService: HatadyStreamService,
+		private notificationService: NotificationService,
 	) {}
 
 	private async authorize(viewer: MiUser, token: unknown) {
@@ -197,6 +201,8 @@ export class RecordModerationService {
 		await this.authorize(viewer, token);
 		const request = normalizeRecordModerationRequest(input), hash = recordModerationHash(request);
 		let result: Operation;
+		let changedActivities: { source: 'log' | 'session'; id: string }[] = [];
+		let changedNotifications: { id: string; notifieeId: string }[] = [];
 		try {
 			result = await this.db.transaction(async manager => {
 				await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`record-moderation:request:${viewer.id}:${request.requestId}`]);
@@ -206,6 +212,29 @@ export class RecordModerationService {
 					return existing;
 				}
 				const snapshot = await this.snapshot(manager, request, true);
+				if (request.action === 'delete' && request.product === 'hatady') {
+					changedNotifications = snapshot.sources.filter(source => source.table === 'hatady_notification').flatMap(source => source.rows)
+						.filter(row => typeof row.id === 'string' && typeof row.notifieeId === 'string')
+						.map(row => ({ id: row.id as string, notifieeId: row.notifieeId as string }));
+					const row = snapshot.sources[0]?.rows[0];
+					if (request.targetType === 'book') {
+						const logs: { id: string }[] = await manager.query('SELECT id FROM hatady_log WHERE "bookId"=$1', [request.targetId]);
+						changedActivities.push(...logs.map(log => ({ source: 'log' as const, id: log.id })));
+					}
+					const logId = request.targetType === 'log' ? request.targetId : row?.logId ?? (request.targetType === 'reaction' && row?.commentId ? (await manager.query('SELECT "logId" FROM hatady_comment WHERE id=$1', [row.commentId]))[0]?.logId : null);
+					if (logId) changedActivities.push({ source: 'log', id: logId });
+					const sessionId = request.targetType === 'mediaSession' ? request.targetId : row?.sessionId ?? (request.targetType === 'mediaReaction' && row?.commentId ? (await manager.query('SELECT "sessionId" FROM hatady_media_comment WHERE id=$1', [row.commentId]))[0]?.sessionId : null);
+					if (sessionId) changedActivities.push({ source: 'session', id: sessionId });
+					const workId = request.targetType === 'mediaWork' ? request.targetId : row?.workId ?? (request.targetType === 'mediaReaction' && row?.commentId ? (await manager.query('SELECT "workId" FROM hatady_media_comment WHERE id=$1', [row.commentId]))[0]?.workId : null);
+					if (workId) {
+						const sessions: { id: string }[] = await manager.query('SELECT id FROM hatady_media_session WHERE "workId"=$1', [workId]);
+						changedActivities.push(...sessions.map(session => ({ source: 'session' as const, id: session.id })));
+						if (sessions.length > 0) {
+							const relatedNotifications: { id: string; notifieeId: string }[] = await manager.query('SELECT id,"notifieeId" FROM hatady_notification WHERE "mediaSessionId"=ANY($1::varchar[])', [sessions.map(session => session.id)]);
+							changedNotifications.push(...relatedNotifications);
+						}
+					}
+				}
 				if (snapshot.version !== request.version) throw new ApiError(errors.conflict);
 				// Recheck role immediately before mutations as well as at endpoint entry.
 				await this.authorize(viewer, token);
@@ -234,10 +263,16 @@ export class RecordModerationService {
 				return { id: operationId, action: request.action, createdAt: now, info, requestHash: hash };
 			});
 		} catch (error) {
+			changedActivities = [];
+			changedNotifications = [];
 			const code = (error as { driverError?: { code?: string } }).driverError?.code;
 			if (code === '40001' || code === '40P01') throw new ApiError(errors.conflict);
 			throw error;
 		}
+		for (const activity of changedActivities) this.hatadyStreamService?.changed(activity.source, activity.id);
+		const byOwner = new Map<string, string[]>();
+		for (const row of changedNotifications) byOwner.set(row.notifieeId, [...new Set([...(byOwner.get(row.notifieeId) ?? []), row.id])]);
+		await Promise.all([...byOwner].map(([userId, ids]) => this.notificationService.refreshSourceNotifications(userId, 'hatady', ids).catch(() => {})));
 		// Delivery is durable at commit. A failed realtime hint never turns a committed
 		// deletion into an error; getUnreadAnnouncements will still return the warning.
 		if (result.info.warningId) {

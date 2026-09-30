@@ -308,6 +308,26 @@ async function markAllRead() {
 	}
 }
 
+async function markLoadedRead() {
+	if (!active || markingRead.value) return;
+	const ids = items.value.filter(n => !n.isRead).map(n => n.id);
+	if (ids.length === 0) { emit('read'); return; }
+	markingRead.value = true;
+	try {
+		for (let index = 0; index < ids.length && active; index += 100) {
+			const batch = ids.slice(index, index + 100);
+			await misskeyApi('hata/hatady/notifications/mark-as-read', { notificationIds: batch });
+			const acknowledged = new Set(batch);
+			for (const item of items.value) if (acknowledged.has(item.id)) item.isRead = true;
+		}
+		if (active) emit('read');
+	} catch {
+		error.value = noticeCopy.readFailed;
+	} finally {
+		markingRead.value = false;
+	}
+}
+
 function onClickNotif(n: any) {
 	const mediaWorkId = n.mediaWorkId ?? mediaWork(n)?.id;
 	if (n.mediaSessionId) emit('openSession', n.mediaSessionId, mediaWorkId);
@@ -419,8 +439,7 @@ onMounted(async () => {
 	// that was closed while its notifications were still loading.
 	await nextTick();
 	if (!active) return;
-	if (items.value.some(n => !n.isRead)) await markAllRead();
-	else emit('read');
+	await markLoadedRead();
 });
 onBeforeUnmount(() => { active = false; });
 </script>

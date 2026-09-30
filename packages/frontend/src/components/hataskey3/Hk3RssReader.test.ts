@@ -38,14 +38,15 @@ async function settle() {
 	await nextTick();
 }
 
-function mountReader(options: { interrupted?: boolean; paused?: boolean; motion?: boolean } = {}) {
-	const props = ref({ interrupted: false, paused: false, motion: true, ...options });
+function mountReader(options: { interrupted?: boolean; paused?: boolean; motion?: boolean; composerPickerOpen?: boolean } = {}) {
+	const props = ref({ interrupted: false, paused: false, motion: true, composerPickerOpen: false, ...options });
+	const readerOpenEvents: boolean[] = [];
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
-	const app = createApp({ render: () => h(Hk3RssReader, props.value) });
+	const app = createApp({ render: () => h(Hk3RssReader, { ...props.value, onReaderOpen: (value: boolean) => readerOpenEvents.push(value) }) });
 	app.mount(target);
 	disposals.push(() => { app.unmount(); target.remove(); });
-	return { props, target,
+	return { props, target, readerOpenEvents,
 										banner: () => target.querySelector('[aria-hidden="true"][inert]') as HTMLElement | null,
 										read: () => target.querySelector<HTMLButtonElement>('button[aria-expanded]'),
 										details: () => target.querySelector<HTMLElement>('[aria-hidden="false"]') ?? target.querySelector<HTMLElement>('[class*="details"]'),
@@ -123,6 +124,28 @@ describe('Hk3RssReader lifecycle', () => {
 		view.target.querySelector<HTMLButtonElement>('button[aria-label="閉じる"]')?.click(); await settle();
 		view.props.value = { ...view.props.value, interrupted: false }; await settle();
 		expect(window.document.activeElement).toBe(view.read());
+	});
+
+	it('collapses details for the composer picker without stealing draft focus or losing the article', async () => {
+		const view = mountReader({ motion: false }); await settle();
+		view.read()?.click(); await settle();
+		expect(view.readerOpenEvents).toEqual([true]);
+		expect(view.details()?.hasAttribute('inert')).toBe(false);
+		const draft = window.document.createElement('textarea');
+		window.document.body.append(draft);
+		disposals.push(() => draft.remove());
+		draft.focus();
+		view.props.value = { ...view.props.value, composerPickerOpen: true }; await settle();
+		expect(view.readerOpenEvents).toEqual([true, false]);
+		expect(view.read()?.getAttribute('aria-expanded')).toBe('false');
+		expect(window.document.activeElement).toBe(draft);
+		showArticle(view.target, 'First article');
+		expect(view.read()).not.toBeNull();
+		view.read()?.click(); await settle();
+		expect(view.readerOpenEvents).toEqual([true, false]);
+		view.props.value = { ...view.props.value, composerPickerOpen: false }; await settle();
+		view.read()?.click(); await settle();
+		expect(view.readerOpenEvents).toEqual([true, false, true]);
 	});
 
 	it('aborts an old request and ignores its late response after feed settings change', async () => {

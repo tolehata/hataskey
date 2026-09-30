@@ -21,7 +21,7 @@ const fixture = vi.hoisted(() => {
 		prefer: {
 			r: {
 				'simpleUi.normalNoBannerBg': { value: false }, 'simpleUi.profileNoBannerBg': { value: false }, 'simpleUi.glassUiCardOpacity': { value: 55 },
-				'simpleUi.disableBubbleInHatasabaDeck': { value: false }, 'simpleUi.showTrendingTab': { value: true }, 'simpleUi.topNavMode': { value: false }, 'simpleUi.deckMode': { value: false },
+				'simpleUi.disableBubbleInHatasabaDeck': { value: false }, 'simpleUi.showTrendingTab': { value: true }, 'simpleUi.showHatadyTab': { value: true }, 'simpleUi.topNavMode': { value: false }, 'simpleUi.deckMode': { value: false },
 			},
 			s: {
 				'simpleUi.topNav': [{ id: 'home', visible: true }, { id: 'search', visible: true }],
@@ -36,7 +36,7 @@ const fixture = vi.hoisted(() => {
 vi.mock('@/preferences.js', () => ({ prefer: fixture.prefer }));
 vi.mock('@/preferences/def.js', () => ({ PREF_DEF: {
 	'simpleUi.normalNoBannerBg': { default: false }, 'simpleUi.profileNoBannerBg': { default: false }, 'simpleUi.glassUiCardOpacity': { default: 55 },
-	'simpleUi.disableBubbleInHatasabaDeck': { default: false }, 'simpleUi.showTrendingTab': { default: true }, 'simpleUi.topNavMode': { default: false },
+	'simpleUi.disableBubbleInHatasabaDeck': { default: false }, 'simpleUi.showTrendingTab': { default: true }, 'simpleUi.showHatadyTab': { default: true }, 'simpleUi.topNavMode': { default: false },
 } }));
 vi.mock('@/preferences/manager.js', () => ({ getInitialPrefValue: (key: string) => fixture.prefer.s[key as keyof typeof fixture.prefer.s] ?? [] }));
 vi.mock('@/utility/hatasaba-device-prefs.js', () => ({
@@ -79,6 +79,17 @@ afterEach(() => {
 });
 
 describe('useHatasabaUi2Draft', () => {
+	test('saves the Hatady tab visibility with the other basic settings', () => {
+		vi.useFakeTimers();
+		const { editor, unmount } = mountEditor();
+		editor.draft.editedShowHatadyTab = false;
+		expect(editor.changeCount).toBe(1);
+		expect(editor.save()).toBe(true);
+		expect(fixture.commits).toContainEqual(['simpleUi.showHatadyTab', false]);
+		unmount();
+		vi.clearAllTimers();
+		vi.useRealTimers();
+	});
 	test('editing and reset remain draft/preview-only until save', async () => {
 		const { editor, unmount } = mountEditor();
 		editor.setGlassUi(false);

@@ -7,7 +7,7 @@
 	v-bind="
 		embedded
 			? {}
-			: { preferType: floating ? 'popup' : 'dialog', anchorElement, disableBgBlur: floating, transparentBg: floating }
+			: { preferType: floating ? 'popup' : 'dialog', anchorElement, disableBgBlur: floating, transparentBg: floating, motionPreset: instantClose ? 'none' : undefined }
 	"
 	@click="onBackdrop"
 	@esc="requestClose"
@@ -16,6 +16,7 @@
 	<section
 		ref="panel"
 		:class="[$style.panel, 'hatady-scope']"
+		:data-hatady-variant="variant"
 		:data-hatady-theme="props.theme ?? theme"
 		:data-wide="wide"
 		:data-floating="floating"
@@ -71,6 +72,7 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef, watch } from 'vue';
 import type { HatadyTheme } from '@/utility/hatady-prefs.js';
+import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 import { i18n } from '@/i18n.js';
 import MkModal from '@/components/MkModal.vue';
 import { hatadyTheme as theme } from '@/utility/hatady-prefs.js';
@@ -81,6 +83,7 @@ const props = withDefaults(
 	defineProps<{
 		title?: string;
 		theme?: HatadyTheme;
+		variant?: HatadySurfaceVariant;
 		centerTitle?: boolean;
 		back?: boolean;
 		busy?: boolean;
@@ -91,10 +94,12 @@ const props = withDefaults(
 		scrollHint?: boolean;
 		anchorElement?: HTMLElement | null;
 		floating?: boolean;
+		instantClose?: boolean;
 	}>(),
 	{
 		title: '',
 		theme: undefined,
+		variant: 'hatady',
 		centerTitle: false,
 		back: false,
 		busy: false,
@@ -105,6 +110,7 @@ const props = withDefaults(
 		scrollHint: false,
 		anchorElement: null,
 		floating: false,
+		instantClose: false,
 	},
 );
 const emit = defineEmits<{ (event: 'close'): void; (event: 'closed'): void; (event: 'back'): void }>();
@@ -184,6 +190,30 @@ defineExpose({ close, bodyEl, panel });
 	box-shadow: 0 28px 100px #0b242b55;
 	overflow: hidden;
 	container: hy-dialog / inline-size;
+}
+.panel[data-hatady-variant='ui'] {
+	--hy-surface: var(--MI_THEME-panel);
+	--hy-ink: var(--MI_THEME-fg);
+	--hy-body: var(--MI_THEME-fg);
+	--hy-muted: color-mix(in srgb, var(--MI_THEME-fg) 66%, transparent);
+	--hy-accent: var(--MI_THEME-accent);
+	--hy-accent-ink: var(--MI_THEME-accent);
+	--hy-border: var(--MI_THEME-divider);
+	--hy-soft: var(--MI_THEME-accentedBg);
+	--hy-surface-2: var(--MI_THEME-bg);
+	border-radius: 16px;
+}
+.panel[data-hatady-variant='uis'] {
+	--hy-surface: var(--hk3-glass-menu, var(--hk3-surface, var(--MI_THEME-panel)));
+	--hy-ink: var(--hk3-text, var(--MI_THEME-fg));
+	--hy-body: var(--hy-ink);
+	--hy-muted: color-mix(in srgb, var(--hy-ink) 68%, transparent);
+	--hy-accent: var(--hk3-accent, var(--MI_THEME-accent));
+	--hy-accent-ink: var(--hy-accent);
+	--hy-border: color-mix(in srgb, var(--hy-ink) 16%, transparent);
+	--hy-soft: color-mix(in srgb, var(--hy-accent) 14%, transparent);
+	--hy-surface-2: color-mix(in srgb, var(--hy-surface) 86%, transparent);
+	backdrop-filter: blur(22px);
 }
 .panel[data-wide='true'] {
 	width: min(1100px, calc(100dvw - 32px));

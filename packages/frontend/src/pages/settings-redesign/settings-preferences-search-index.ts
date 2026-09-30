@@ -359,7 +359,7 @@ function materializePreferenceControl(
 		...(description ? { description } : {}),
 		aliases: [...new Set([
 			entry.key,
-			...(entry.key.startsWith('postFormVisibilityBorder.') ? ['公開範囲', '色分け', '投稿フォーム', 'ぼかし', 'visibility', 'border color', 'post form', 'blur', '可见范围', '颜色', '发帖框', '模糊'] : []),
+			...(entry.key.startsWith('postFormVisibilityBorder.') ? ['公開範囲', '色分け', '投稿フォーム', 'ぼかし', 'ノートの色', '左辺', 'タイムライン', 'visibility', 'border color', 'post form', 'blur', 'note color', 'timeline', '可见范围', '颜色', '发帖框', '模糊', '帖文左侧'] : []),
 			...(entry.key === 'hataskeyUi3TimelineBackground' ? ['背景', 'すりガラス', 'ヘッダー', 'アイコン', 'background', 'frosted glass', 'header', 'avatar', '磨砂玻璃', '头像'] : []),
 			...(entry.key === 'hataskeyUi3SideMenuBackground' ? ['左サイドメニュー', '左メニュー', 'サイドバー', '背景', 'すりガラス', 'side menu', 'sidebar', 'background', 'frosted glass', '左侧菜单', '磨砂玻璃'] : []),
 			...(entry.key === 'hataskeyUi3RightPaneBackground' ? ['右ペイン', 'ウィジェット', 'Hatask', '背景', 'すりガラス', 'right pane', 'widgets', 'background', 'frosted glass', '右侧面板', '小组件', '磨砂玻璃'] : []),

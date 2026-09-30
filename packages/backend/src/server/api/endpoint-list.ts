@@ -386,8 +386,11 @@ export * as 'notes/update' from './endpoints/notes/update.js';
 export * as 'notes/user-list-timeline' from './endpoints/notes/user-list-timeline.js';
 export * as 'notifications/create' from './endpoints/notifications/create.js';
 export * as 'notifications/flush' from './endpoints/notifications/flush.js';
+export * as 'notifications/mark-as-read' from './endpoints/notifications/mark-as-read.js';
 export * as 'notifications/mark-all-as-read' from './endpoints/notifications/mark-all-as-read.js';
+export * as 'notifications/show' from './endpoints/notifications/show.js';
 export * as 'notifications/test-notification' from './endpoints/notifications/test-notification.js';
+export * as 'notifications/unread-count' from './endpoints/notifications/unread-count.js';
 export * as 'page-push' from './endpoints/page-push.js';
 export * as 'pages/create' from './endpoints/pages/create.js';
 export * as 'pages/delete' from './endpoints/pages/delete.js';
@@ -589,12 +592,14 @@ export * as 'hata/hatady/comments/create' from './endpoints/hata/hatady/comments
 export * as 'hata/hatady/comments/delete' from './endpoints/hata/hatady/comments/delete.js';
 export * as 'hata/hatady/reactions/create' from './endpoints/hata/hatady/reactions/create.js';
 export * as 'hata/hatady/reactions/delete' from './endpoints/hata/hatady/reactions/delete.js';
+export * as 'hata/hatady/reactions/list' from './endpoints/hata/hatady/reactions/list.js';
 export * as 'hata/hatady/comments/update' from './endpoints/hata/hatady/comments/update.js';
 export * as 'hata/hatady/notifications/delete' from './endpoints/hata/hatady/notifications/delete.js';
 export * as 'hata/hatady/notifications/restore' from './endpoints/hata/hatady/notifications/restore.js';
 export * as 'hata/hatady/notifications' from './endpoints/hata/hatady/notifications.js';
 export * as 'hata/hatady/notifications/unread-count' from './endpoints/hata/hatady/notifications/unread-count.js';
 export * as 'hata/hatady/notifications/mark-all-read' from './endpoints/hata/hatady/notifications/mark-all-read.js';
+export * as 'hata/hatady/notifications/mark-as-read' from './endpoints/hata/hatady/notifications/mark-as-read.js';
 export * as 'hata/hatady/users/show' from './endpoints/hata/hatady/users/show.js';
 export * as 'hata/hatady/following/create' from './endpoints/hata/hatady/following/create.js';
 export * as 'hata/hatady/following/delete' from './endpoints/hata/hatady/following/delete.js';
@@ -634,6 +639,7 @@ export * as 'hata/hatady/media/comments/update' from './endpoints/hata/hatady/me
 export * as 'hata/hatady/media/comments/delete' from './endpoints/hata/hatady/media/comments/delete.js';
 export * as 'hata/hatady/media/reactions/create' from './endpoints/hata/hatady/media/reactions/create.js';
 export * as 'hata/hatady/media/reactions/delete' from './endpoints/hata/hatady/media/reactions/delete.js';
+export * as 'hata/hatady/media/reactions/list' from './endpoints/hata/hatady/media/reactions/list.js';
 export * as 'admin/hata/consent-list' from './endpoints/admin/hata/consent-list.js';
 
 export * as 'registration/apply' from './endpoints/registration/apply.js';

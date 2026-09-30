@@ -512,9 +512,10 @@ import {
 	requireHatadyActivityPage,
 	normalizeHatadyLogKinds,
 } from '@/utility/hatady-media.js';
-import { activityData, activityKind, localDateKey } from '@/utility/hatady-home.js';
+import { activityKind, localDateKey } from '@/utility/hatady-home.js';
 import { loadHatadyCollection } from '@/utility/hatady-collection.js';
-import { confirmHatadyRecordDeletion } from '@/utility/hatady-record-delete.js';
+import { useHatadyActivityActions } from '@/utility/hatady-activity-actions.js';
+import { openHatadyRecord } from '@/utility/hatady-record-launcher.js';
 import { HATADY_ACTIVITY_CHOICES, HATADY_RECORD_TAGS, hatadyDialogSurfaces, hatadyDuration, hatadyNotify } from '@/utility/hatady-ui.js';
 import '@/components/hatady-ui.css';
 
@@ -551,6 +552,8 @@ function remember(key: string, value: string): void {
 }
 
 function initialTab(): string {
+	const requested = new URLSearchParams(router.currentRef.value._parsedRoute.queryString ?? '').get('tab');
+	if (requested && tabs.value.some(tab => tab.value === requested)) return requested;
 	const old = saved('hatadyActiveTab');
 	return old === 'shelf'
 		? 'collection'
@@ -571,6 +574,39 @@ const moderationVisited = ref(activeTab.value === 'moderation');
 watch(activeTab, value => {
 	if (value === 'moderation') moderationVisited.value = true;
 }, { flush: 'sync' });
+watch(() => router.currentRef.value._parsedRoute.queryString, query => {
+	const requested = new URLSearchParams(query ?? '').get('tab');
+	if (requested && tabs.value.some(tab => tab.value === requested)) void setTab(requested);
+	void openNotificationLink(query);
+});
+
+let openedNotificationLink: string | null = null;
+async function openNotificationLink(query: string | null | undefined): Promise<void> {
+	const parameters = new URLSearchParams(query ?? '');
+	const notificationId = parameters.get('notificationId');
+	const ownerId = $i?.id;
+	if (!ownerId || !notificationId || !/^[a-zA-Z0-9]{1,80}$/.test(notificationId)) return;
+	const linkKey = `${ownerId}:${notificationId}`;
+	if (openedNotificationLink === linkKey) return;
+	openedNotificationLink = linkKey;
+	try {
+		const [notification] = await misskeyApi('notifications/show', { notificationIds: [notificationId] });
+		if ($i?.id !== ownerId || new URLSearchParams(router.currentRef.value._parsedRoute.queryString ?? '').get('notificationId') !== notificationId) return;
+		parameters.delete('notificationId');
+		const remainingQuery = parameters.toString();
+		router.replaceByPath(`/hatady${remainingQuery ? `?${remainingQuery}` : ''}`);
+		if (notification?.type !== 'hatady') return;
+		const logId = notification.logId ?? (notification.targetType === 'log' ? notification.targetId : null);
+		const sessionId = notification.mediaSessionId ?? (notification.targetType === 'session' ? notification.targetId : null);
+		const workId = notification.mediaWorkId ?? (notification.targetType === 'work' ? notification.targetId : null);
+		if (logId) await openConversation(logId);
+		else if (sessionId) await openSession(sessionId, notification.mediaWorkId);
+		else if (workId) await openMediaDetailById(workId);
+		else if (notification.subtype === 'follow' && notification.userId) await openProfile(notification.userId);
+	} catch {
+		openedNotificationLink = null;
+	}
+}
 watch(canModerate, allowed => {
 	if (!allowed) {
 		moderationVisited.value = false;
@@ -1011,11 +1047,7 @@ async function loadUnread(): Promise<void> {
 }
 
 async function openActivityComposer(_kind?: unknown): Promise<void> {
-	const { dispose } = os.popup(
-		(await import('@/components/HatadyActivityRecordChooser.vue')).default,
-		{},
-		{ done: refresh, closed: () => dispose() },
-	);
+	await openHatadyRecord({ onDone: refresh });
 }
 
 async function addCollectionWork(event?: MouseEvent, kind = collectionKind.value): Promise<void> {
@@ -1047,37 +1079,16 @@ function openWork(work: HatadyHomeWork): void {
 	else openMediaDetailById(work.id, work.kind);
 }
 
-function openActivity(activity: HatadyActivity): void {
-	if (activity.study) openConversation(activity.study.id);
-	else if (activity.media) openSession(activity.media.session.id, activity.media.session.workId || undefined);
-}
-
-async function editActivity(activity: HatadyActivity): Promise<void> {
-	if (!activity.isMine) return;
-	if (activity.study) {
-		const { dispose } = os.popup(
-			(await import('@/components/HatadyComposer.vue')).default,
-			{ editLog: activity.study },
-			{ done: refresh, closed: () => dispose() },
-		);
-	} else if (activity.media) {
-		const { dispose } = os.popup(
-			(await import('@/components/HatadyMediaSessionForm.vue')).default,
-			{ work: activity.media.work, editSession: activity.media.session },
-			{ done: refresh, closed: () => dispose() },
-		);
-	}
-}
-
-function openActivityMenu(activity: HatadyActivity, event: MouseEvent): void {
-	const items: any[] = [];
-	if (activity.isMine) items.push(
-		{ text: copy.edit, icon: 'ti ti-pencil', action: () => editActivity(activity) },
-		{ text: copy.delete, icon: 'ti ti-trash', danger: true, action: () => deleteActivity(activity) },
-	);
-	else if (activity.user) items.push({ text: copy.report, icon: 'ti ti-flag', action: () => reportActivity(activity) });
-	if (items.length) os.popupMenu(items, (event.currentTarget || event.target) as HTMLElement);
-}
+const activityActions = useHatadyActivityActions({
+	onChanged: refresh,
+	onDeleted: removeActivity,
+	onBookDeleted: removeCollectionWork,
+	onMediaDeleted: removeCollectionWork,
+	onOwnProfile: () => { void setTab('profile'); },
+});
+function openActivity(activity: HatadyActivity): void { activityActions.openActivity(activity); }
+function editActivity(activity: HatadyActivity): Promise<void> { return activityActions.editActivity(activity); }
+function openActivityMenu(activity: HatadyActivity, event: MouseEvent): void { activityActions.openActivityMenu(activity, event); }
 
 function removeActivity(activity: HatadyActivity): void {
 	activities.value = activities.value.filter(row => row.id !== activity.id);
@@ -1092,82 +1103,13 @@ function removeCollectionWork(id: string): void {
 	collectionWorks.value = collectionWorks.value.filter(work => work.id !== id);
 }
 
-const deletingActivities = new Set<string>();
-
-async function deleteActivity(activity: HatadyActivity): Promise<void> {
-	if (!activity.isMine || deletingActivities.has(activity.id)) return;
-	deletingActivities.add(activity.id);
-	try {
-		if (await confirmHatadyRecordDeletion(activity)) onActivityDeleted(activity);
-	} finally {
-		deletingActivities.delete(activity.id);
-	}
-}
-
-async function reportActivity(activity: HatadyActivity): Promise<void> {
-	if (!activity.user) return;
-	const data = activityData(activity);
-	const reference = activity.study
-		? `hatady:log:${activity.study.id}`
-		: activity.media ? `hatady:media:session:${activity.media.session.id}` : null;
-	if (!reference) return;
-	const { dispose } = await os.popupAsyncWithDialog(
-		import('@/components/HatadyReport.vue').then((module) => module.default),
-		{ user: activity.user, initialComment: `${reference}\n${data.title}\n${data.body}` },
-		{ closed: () => dispose() },
-	);
-}
-
-async function openConversation(value: any): Promise<void> {
-	const { dispose } = os.popup(
-		(await import('@/components/HatadyConversation.vue')).default,
-		{ logId: typeof value === 'string' ? value : value.id },
-		{ deleted: removeActivity, changed: refresh, closed: () => dispose() },
-	);
-}
-
-async function openSession(sessionId: string, workId?: string): Promise<void> {
-	const { dispose } = os.popup(
-		(await import('@/components/HatadyConversation.vue')).default,
-		{ sessionId, workId },
-		{ deleted: removeActivity, changed: refresh, closed: () => dispose() },
-	);
-}
-
-async function openBookDetail(bookId: string): Promise<void> {
-	const { dispose } = os.popup(
-		(await import('@/components/HatadyBookDetail.vue')).default,
-		{ bookId },
-		{ deleted: () => removeCollectionWork(bookId), changed: refresh, openLog: openConversation, closed: () => dispose() },
-	);
-}
-
-async function openMediaDetailById(workId: string, kind?: HatadyMediaKind): Promise<void> {
-	const { dispose } = os.popup(
-		(await import('@/components/HatadyMediaWorkDetail.vue')).default,
-		{ workId, kind },
-		{ deleted: () => removeCollectionWork(workId), changed: refresh, closed: () => dispose() },
-	);
-}
-
-async function openProfile(userId?: string | null): Promise<void> {
-	if (!userId || userId === $i?.id) {
-		setTab('profile');
-		return;
-	}
-	const { dispose } = os.popup(
-		(await import('@/components/HatadyProfile.vue')).default,
-		{ userId },
-		{
-			changed: refresh,
-			openLog: openConversation,
-			openProfile,
-			openBook: openBookDetail,
-			openMedia: openMediaDetailById,
-			closed: () => dispose(),
-		},
-	);
-}
+function deleteActivity(activity: HatadyActivity): Promise<void> { return activityActions.deleteActivity(activity); }
+function reportActivity(activity: HatadyActivity): Promise<void> { return activityActions.reportActivity(activity); }
+function openConversation(value: any): Promise<void> { return activityActions.openConversation(typeof value === 'string' ? value : value.id); }
+function openSession(sessionId: string, workId?: string): Promise<void> { return activityActions.openSession(sessionId, workId); }
+function openBookDetail(bookId: string): Promise<void> { return activityActions.openBookDetail(bookId); }
+function openMediaDetailById(workId: string, kind?: HatadyMediaKind): Promise<void> { return activityActions.openMediaDetailById(workId, kind); }
+function openProfile(userId?: string | null): Promise<void> { return activityActions.openProfile(userId); }
 
 async function openNotifications(event?: MouseEvent): Promise<void> {
 	const anchorElement = (event?.currentTarget as HTMLElement | null) || bell.value || menu.value;
@@ -1288,6 +1230,7 @@ function onFocus(): void {
 }
 
 onMounted(() => {
+	void openNotificationLink(router.currentRef.value._parsedRoute.queryString);
 	resetListEntrance();
 	loadHatadyDisplay();
 	loadHySubjects().catch(() => {});

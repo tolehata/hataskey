@@ -8,48 +8,79 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<!-- 旗鯖fork: 画面中央上部のピル型タブ (Hataskey UI 統一デザイン) -->
 	<div :class="$style.htkPillTabs">
 		<div :class="$style.htkPillTabsInner">
-			<button v-for="t in headerTabs" :key="t.key" :class="[$style.htkPillTab, { [$style.htkPillTabActive]: tab === t.key }]" @click="tab = t.key">
+			<button v-for="t in headerTabs" :key="t.key" :class="[$style.htkPillTab, { [$style.htkPillTabActive]: tab === t.key }]" :aria-label="t.title" :aria-current="tab === t.key ? 'page' : undefined" @click="tab = t.key">
 				<i v-if="t.icon" :class="t.icon"></i>
-				<span>{{ t.title }}</span>
+				<span v-if="tab === t.key">{{ t.title }}</span>
 			</button>
 		</div>
 	</div>
 	<div :class="{['_spacer']: !notification }" style="--MI_SPACER-w: 800px;">
-		<div v-if="tab === 'all'">
-			<MkStreamingNotificationsTimeline :class="[$style.notifications, { [$style.noRadius]: notification }]" :excludeTypes="excludeTypes" :excludeBots="excludeBots"/>
-		</div>
-		<div v-else-if="tab === 'mentions'">
-			<MkNotesTimeline :paginator="mentionsPaginator" :notification="notification"/>
-		</div>
-		<div v-else-if="tab === 'directNotes'">
-			<MkNotesTimeline :paginator="directNotesPaginator" :notification="true"/>
-		</div>
+		<MkStreamingNotificationsTimeline
+			v-if="isNotificationTab"
+			:key="notificationBrand"
+			:class="[$style.notifications, { [$style.noRadius]: notification }]"
+			:brand="notificationBrand"
+			:includeBrands="includeBrands"
+			:includeHataskApp="includeHataskApp"
+			:excludeTypes="excludeTypes"
+			:includeHatadySubtypes="includeHatadySubtypes"
+			:excludeBots="excludeBots"
+			:active="true"
+		/>
+		<MkNotesTimeline v-else-if="tab === 'mentions'" key="mentions" :paginator="mentionsPaginator" :notification="notification"/>
+		<MkNotesTimeline v-else-if="tab === 'directNotes'" key="directNotes" :paginator="directNotesPaginator" :notification="true"/>
 	</div>
 </PageWithHeader>
 </template>
 
 <script lang="ts" setup>
 import { computed, markRaw, onMounted, ref } from 'vue';
-import { notificationTypes } from 'cherrypick-js';
+import { notificationTypes, hatadyNotificationSubtypes } from 'cherrypick-js';
 import MkStreamingNotificationsTimeline from '@/components/MkStreamingNotificationsTimeline.vue';
 import MkNotesTimeline from '@/components/MkNotesTimeline.vue';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
-import { prefer } from '@/preferences.js';
-import { Paginator } from '@/utility/paginator.js';
 import { deviceKind } from '@/utility/device-kind.js';
 import { globalEvents } from '@/events.js';
-// 旗鯖fork: HataFeed通知は標準通知とは別カウンタなので、ここでも明示的に既読にする。
-import { markHataFeedNotificationsRead } from '@/utility/hatafeed.js';
+import { hataNotificationView, setHataNotificationView } from '@/utility/hatasaba-device-prefs.js';
+import { NOTIFICATION_FILTER_CATEGORIES, HATASK_NOTIFICATION_TYPES, STANDARD_NOTIFICATION_TYPES } from '@/utility/notification-filter.js';
+import type { HataNotificationBrand, HataNotificationCategory } from '@/utility/hatasaba-device-prefs.js';
+import { miLocalStorage } from '@/local-storage.js';
+import { prefer } from '@/preferences.js';
+import { Paginator } from '@/utility/paginator.js';
 
-const tab = ref('all');
-const includeTypes = ref<string[] | null>(null);
-const excludeBots = prefer.r.notificationExcludeBots;
-const excludeTypes = computed(() => includeTypes.value ? notificationTypes.filter(t => !includeTypes.value!.includes(t)) : null);
+onMounted(() => {
+	if (miLocalStorage.getItem('hataNotificationView') == null) {
+		setHataNotificationView({ excludeBots: prefer.r.notificationExcludeBots.value });
+	}
+});
+
+const noteTab = ref<'mentions' | 'directNotes' | null>(null);
+const notificationBrand = computed(() => hataNotificationView.value.brand);
+const tab = computed<HataNotificationBrand | 'mentions' | 'directNotes'>({
+	get: () => noteTab.value ?? notificationBrand.value,
+	set: value => {
+		if (value === 'mentions' || value === 'directNotes') {
+			noteTab.value = value;
+		} else {
+			noteTab.value = null;
+			setHataNotificationView({ brand: value });
+		}
+	},
+});
+const isNotificationTab = computed(() => noteTab.value === null);
+const mentionsPaginator = markRaw(new Paginator('notes/mentions', { limit: 10 }));
+const directNotesPaginator = markRaw(new Paginator('notes/mentions', { limit: 10, params: { visibility: 'specified' } }));
+const includeTypes = computed(() => hataNotificationView.value.includeTypes);
+const excludeTypes = computed(() => includeTypes.value == null ? null : notificationTypes.filter(t => t !== 'hatady' && !includeTypes.value!.includes(t)));
+const includeBrands = computed(() => hataNotificationView.value.includeBrands);
+const includeHataskApp = computed(() => hataNotificationView.value.includeHataskApp);
+const includeHatadySubtypes = computed(() => hataNotificationView.value.includeHatadySubtypes == null ? null : hatadyNotificationSubtypes.filter(t => hataNotificationView.value.includeHatadySubtypes!.includes(t)));
+const excludeBots = computed(() => hataNotificationView.value.excludeBots);
 const showBots = computed({
 	get: () => !excludeBots.value,
-	set: value => { prefer.commit('notificationExcludeBots', !value); },
+	set: value => setHataNotificationView({ excludeBots: !value }),
 });
 
 const props = defineProps<{
@@ -57,41 +88,77 @@ const props = defineProps<{
 	notification?: boolean;
 }>();
 
-const mentionsPaginator = markRaw(new Paginator('notes/mentions', {
-	limit: 10,
-}));
-
-const directNotesPaginator = markRaw(new Paginator('notes/mentions', {
-	limit: 10,
-	params: {
-		visibility: 'specified',
-	},
-}));
-
-function setFilter(ev) {
-	const typeItems = notificationTypes.map(t => ({
-		text: i18n.ts._notification._types[t],
-		active: (includeTypes.value && includeTypes.value.includes(t)) ?? false,
-		action: () => {
-			includeTypes.value = [t];
+function typeSwitch(type: string, choices: readonly string[], key: 'includeTypes' | 'includeHatadySubtypes') {
+	return computed({
+		get: () => hataNotificationView.value[key]?.includes(type) ?? true,
+		set: enabled => {
+			const selected = new Set(hataNotificationView.value[key] ?? choices);
+			if (enabled) selected.add(type);
+			else selected.delete(type);
+			if (key === 'includeTypes') setHataNotificationView({ includeTypes: [...selected] });
+			else setHataNotificationView({ includeHatadySubtypes: [...selected] });
 		},
-	}));
+	});
+}
+
+function categorySwitch(category: HataNotificationCategory) {
+	return computed({
+		get: () => includeBrands.value?.includes(category) ?? true,
+		set: enabled => {
+			const selected = new Set(includeBrands.value ?? NOTIFICATION_FILTER_CATEGORIES);
+			if (enabled) selected.add(category);
+			else selected.delete(category);
+			setHataNotificationView({ includeBrands: NOTIFICATION_FILTER_CATEGORIES.filter(value => selected.has(value)) });
+		},
+	});
+}
+
+const categoryIcons: Record<HataNotificationCategory, string> = { standard: 'ti ti-message', hatady: 'ti ti-book-2', hatask: 'ti ti-flower', hataFeed: 'ti ti-message-report' };
+const hataskAppSwitch = computed({
+	get: () => includeHataskApp.value,
+	set: enabled => setHataNotificationView({ includeHataskApp: enabled }),
+});
+
+function setFilter(ev: Event) {
+	const notificationTypeSwitch = (type: typeof notificationTypes[number]) => ({
+		type: 'switch' as const,
+		text: i18n.ts._notification._types[type],
+		ref: typeSwitch(type, notificationTypes, 'includeTypes'),
+	});
 	const filterItems = [{
 		type: 'switch' as const,
 		text: i18n.ts._hata._notificationFilter.botNotifications,
 		ref: showBots,
-	}, {
-		type: 'divider' as const,
-	}, ...typeItems];
-	const items = includeTypes.value != null || excludeBots.value ? [{
+	}, ...NOTIFICATION_FILTER_CATEGORIES.flatMap(category => [{ type: 'divider' as const }, {
+		type: 'switch' as const,
+		icon: categoryIcons[category],
+		text: i18n.ts._hata._notificationBrands[category],
+		ref: categorySwitch(category),
+	}, ...category === 'standard'
+		? STANDARD_NOTIFICATION_TYPES.map(notificationTypeSwitch)
+		: category === 'hatady'
+			? hatadyNotificationSubtypes.map(subtype => ({
+				type: 'switch' as const,
+				text: i18n.ts._hata._hatady._notification[subtype],
+				ref: typeSwitch(subtype, hatadyNotificationSubtypes, 'includeHatadySubtypes'),
+			}))
+			: category === 'hatask'
+				? [...HATASK_NOTIFICATION_TYPES.map(notificationTypeSwitch), { type: 'switch' as const, text: i18n.ts._hata._notificationFilter.otherHatask, ref: hataskAppSwitch }]
+				: [notificationTypeSwitch('hataFeed')]])];
+	const resetItems = [{
 		icon: 'ti ti-x',
-		text: i18n.ts.clear,
+		text: i18n.ts._hata._notificationFilter.selectAll,
 		action: () => {
-			includeTypes.value = null;
-			prefer.commit('notificationExcludeBots', false);
+			setHataNotificationView({ includeBrands: null, includeTypes: null, includeHatadySubtypes: null, includeHataskApp: true, excludeBots: false });
 		},
-	}, { type: 'divider' as const }, ...filterItems] : filterItems;
-	os.popupMenu(items, ev.currentTarget ?? ev.target);
+	}, {
+		icon: 'ti ti-square',
+		text: i18n.ts._hata._notificationFilter.clearSelection,
+		action: () => setHataNotificationView({ includeBrands: [], includeTypes: [], includeHatadySubtypes: [], includeHataskApp: false }),
+	}, { type: 'divider' as const }];
+	const items = [...resetItems, ...filterItems];
+	const appearance = miLocalStorage.getItem('ui') === 'hataskey3' ? { appearance: 'uiS-composer' as const, motionPreset: 'postform' as const } : undefined;
+	os.popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement, appearance);
 }
 
 const headerActions = computed(() => [deviceKind === 'desktop' && !props.disableRefreshButton ? {
@@ -100,12 +167,12 @@ const headerActions = computed(() => [deviceKind === 'desktop' && !props.disable
 	handler: (ev: Event) => {
 		globalEvents.emit('reloadNotification');
 	},
-} : undefined, tab.value === 'all' ? {
+} : undefined, isNotificationTab.value ? {
 	text: i18n.ts.filter,
 	icon: 'ti ti-filter',
-	highlighted: includeTypes.value != null || excludeBots.value,
+	highlighted: includeBrands.value != null || includeTypes.value != null || includeHatadySubtypes.value != null || !includeHataskApp.value || excludeBots.value,
 	handler: setFilter,
-} : undefined, tab.value === 'all' ? {
+} : undefined, isNotificationTab.value ? {
 	text: i18n.ts.markAllAsRead,
 	icon: 'ti ti-check',
 	handler: () => {
@@ -113,19 +180,15 @@ const headerActions = computed(() => [deviceKind === 'desktop' && !props.disable
 	},
 } : undefined].filter(x => x !== undefined));
 
-const headerTabs = computed(() => [{
-	key: 'all',
-	title: i18n.ts.all,
-	icon: 'ti ti-point',
-}, {
-	key: 'mentions',
-	title: i18n.ts.mentions,
-	icon: 'ti ti-at',
-}, {
-	key: 'directNotes',
-	title: i18n.ts.directNotes,
-	icon: 'ti ti-mail',
-}]);
+const headerTabs = computed(() => ([
+	{ key: 'all', icon: 'ti ti-bell' },
+	{ key: 'mentions', icon: 'ti ti-at' },
+	{ key: 'directNotes', icon: 'ti ti-mail' },
+	{ key: 'standard', icon: 'ti ti-message' },
+	{ key: 'hatady', icon: 'ti ti-book-2' },
+	{ key: 'hatask', icon: 'ti ti-flower' },
+	{ key: 'hataFeed', icon: 'ti ti-message-report' },
+] as const).map(item => ({ ...item, title: item.key === 'mentions' ? i18n.ts.mentions : item.key === 'directNotes' ? i18n.ts.directNotes : i18n.ts._hata._notificationBrands[item.key] })));
 
 definePage(() => !props.notification ? {
 	title: i18n.ts.notifications,
@@ -133,12 +196,6 @@ definePage(() => !props.notification ? {
 } : {
 	title: '',
 	icon: 'ti ti-bell',
-});
-
-// 旗鯖fork: 通知一覧を開いた時点で HataFeed のバッジも消す。
-//   ⚠️HataFeedのベルから開いた場合と挙動を揃えるため、ここでも必ず既読にする。
-onMounted(() => {
-	void markHataFeedNotificationsRead();
 });
 
 </script>
@@ -189,6 +246,7 @@ onMounted(() => {
 	align-items: center;
 	gap: 6px;
 	padding: 6px 16px;
+	min-width: 38px;
 	border: none;
 	background: transparent;
 	color: var(--MI_THEME-fg);

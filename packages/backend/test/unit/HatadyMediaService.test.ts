@@ -44,10 +44,13 @@ function service(overrides: Record<string, unknown> = {}): HatadyMediaService {
 			getTimelineExcludedUserIds: vi.fn().mockResolvedValue(new Set()),
 			canAppearInTimeline: vi.fn().mockResolvedValue(true),
 			pushHatadyNotification: vi.fn().mockResolvedValue(undefined),
+			mirrorHatadyNotification: vi.fn().mockResolvedValue(undefined),
+			refreshHatadyNotificationRows: vi.fn().mockResolvedValue(undefined),
 		},
 		...overrides,
 	};
 	return new HatadyMediaService(
+		{ onHatadyCreated: vi.fn() } as never,
 		defaults.db as never,
 		defaults.worksRepository as never,
 		defaults.sessionsRepository as never,
@@ -60,6 +63,7 @@ function service(overrides: Record<string, unknown> = {}): HatadyMediaService {
 		defaults.hatadyService as never,
 		defaults.hatadyEntityService as never,
 		{ validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) } as never,
+		{ changed: vi.fn() } as never,
 	);
 }
 
@@ -272,11 +276,13 @@ describe('Hatady media centralized visibility', () => {
 
 	test('deleting an own comment remains possible after the parent work becomes private', async () => {
 		const commentsRepository = {
-			findOneBy: vi.fn().mockResolvedValue({ id: 'comment-a', userId: 'viewer', workId: 'now-private' }),
+			findOne: vi.fn().mockResolvedValue({ id: 'comment-a', userId: 'viewer', workId: 'now-private' }),
 			delete: vi.fn(),
 		};
 		const worksRepository = { findOneBy: vi.fn() };
-		const sut = service({ commentsRepository, worksRepository });
+		const manager = { getRepository: vi.fn((entity: { name: string }) => entity.name === 'MiHatadyMediaComment' ? commentsRepository : { findBy: vi.fn().mockResolvedValue([]) }) };
+		const db = { transaction: vi.fn(async (callback: (manager: typeof manager) => unknown) => callback(manager)) };
+		const sut = service({ commentsRepository, worksRepository, db });
 		await sut.deleteComment('viewer', 'comment-a');
 		expect(commentsRepository.delete).toHaveBeenCalledWith({ id: 'comment-a', userId: 'viewer' });
 		expect(worksRepository.findOneBy).not.toHaveBeenCalled();
@@ -360,7 +366,28 @@ describe('Hatady media centralized visibility', () => {
 		await sut.createComment('viewer', 'work-a', null, 'comment', false);
 		expect(commentRepo.insert).toHaveBeenCalledOnce();
 		expect(notificationRepo.insert).toHaveBeenCalledOnce();
+		expect((sut as unknown as { hatadyService: { mirrorHatadyNotification: ReturnType<typeof vi.fn> } }).hatadyService.mirrorHatadyNotification)
+			.toHaveBeenCalledWith(expect.objectContaining({ sourceNotificationId: expect.any(String), subtype: 'mediaComment', targetType: 'mediaComment', targetId: 'generated' }));
 		expect(db.transaction).toHaveBeenCalledOnce();
+	});
+
+	test('a rolled-back comment never mirrors its source notification', async () => {
+		const createdAt = new Date();
+		const workRepo = { findOne: vi.fn().mockResolvedValue(work({ visibility: 'public' })) };
+		const commentRepo = {
+			insert: vi.fn(),
+			findOneByOrFail: vi.fn().mockResolvedValue({ id: 'generated', workId: 'work-a', userId: 'viewer', replyId: null, text: 'comment', spoiler: false, reactionsCount: 0, createdAt, updatedAt: createdAt }),
+		};
+		const notificationRepo = { insert: vi.fn() };
+		const manager = { getRepository: vi.fn((entity: { name: string }) => entity.name === 'MiHatadyMediaWork' ? workRepo : entity.name === 'MiHatadyMediaComment' ? commentRepo : notificationRepo) };
+		const db = { transaction: vi.fn(async (callback: (manager: typeof manager) => unknown) => {
+			await callback(manager);
+			throw new Error('commit failed');
+		}) };
+		const sut = service({ db });
+		await expect(sut.createComment('viewer', 'work-a', null, 'comment', false)).rejects.toThrow('commit failed');
+		expect(notificationRepo.insert).toHaveBeenCalledOnce();
+		expect((sut as unknown as { hatadyService: { mirrorHatadyNotification: ReturnType<typeof vi.fn> } }).hatadyService.mirrorHatadyNotification).not.toHaveBeenCalled();
 	});
 
 	test('a direct reply to the work owner is classified as mediaReply without a duplicate mediaComment', async () => {

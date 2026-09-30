@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, defineComponent, h, nextTick, shallowRef } from 'vue';
+import { computed, createApp, defineComponent, h, nextTick, ref, shallowRef } from 'vue';
+import { hk3ComposerEmojiHostKey } from './hk3-composer-emoji-host.js';
 import { hk3PostContextKey } from './hk3-post-context.js';
 import { hk3PostedNote } from './hk3-state.js';
 import type * as Misskey from 'cherrypick-js';
@@ -73,7 +74,7 @@ vi.mock('@/utility/achievements.js', () => ({ claimAchievement: vi.fn() }));
 vi.mock('@/components/MkPostFormAttaches.vue', () => ({ default: {
 	props: ['modelValue'],
 	setup(props: { modelValue: Misskey.entities.DriveFile[] }) { mocks.attachmentModels.push(props.modelValue); },
-	template: '<div data-attaches><span v-for="file in modelValue" :key="file.id" :data-file-id="file.id">{{ file.name }}</span></div>',
+	template: '<div data-attaches><span v-for="file in modelValue" :key="file.id" :data-file-id="file.id">{{ file.name }}<button data-detach-file @click="$emit(\'detach\', file.id)">Remove</button></span></div>',
 } }));
 vi.mock('@/components/MkEventEditor.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/MkHataPostDelayStatus.vue', () => ({ default: {
@@ -84,12 +85,12 @@ vi.mock('./Hk3ShortcutGuide.vue', () => ({ default: { render: () => null } }));
 vi.mock('./Hk3ComposerEmojiPicker.vue', async () => {
 	const { defineComponent, h, ref } = await import('vue');
 	return { __esModule: true, default: defineComponent({
-		props: ['maxHeight'], emits: ['done', 'closed'],
-		setup(_props, { emit, expose }) {
+		props: ['maxHeight', 'condensed'], emits: ['done', 'closed'],
+		setup(props, { emit, expose }) {
 			const search = ref<HTMLInputElement>();
 			mocks.pickers.push({ choose: emoji => emit('done', emoji), close: () => emit('closed') });
 			expose({ focus: () => search.value?.focus(), reset: vi.fn() });
-			return () => h('div', { 'data-embedded-picker': '' }, [h('input', { ref: search, 'aria-label': 'Emoji search' })]);
+			return () => h('div', { 'data-embedded-picker': '', 'data-picker-height': props.maxHeight, 'data-condensed': props.condensed ? 'true' : undefined }, [h('input', { ref: search, 'aria-label': 'Emoji search' })]);
 		},
 	}) };
 });
@@ -102,14 +103,25 @@ type Composer = {
 	cancelConfirmation: () => void;
 	confirmationActive: boolean;
 	canConfirm: boolean;
+	collapseBlocked: boolean;
 };
 
-function mount(draftId = 'uiS:composer:main', options: { postContext?: Hk3PostContext; deck?: boolean; compact?: boolean } = {}) {
+function mount(draftId = 'uiS:composer:main', options: { postContext?: Hk3PostContext; deck?: boolean; compact?: boolean; emojiHost?: boolean } = {}) {
 	const composer = shallowRef<Composer>();
 	const compact = shallowRef(options.compact ?? true);
+	const posted = vi.fn();
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
-	const app = createApp({ render: () => h(Hk3Composer, { ref: composer, compact: compact.value, draftId, deck: options.deck }) });
+	const hostTarget = options.emojiHost ? window.document.createElement('div') : null;
+	if (hostTarget) {
+		hostTarget.setAttribute('data-hk3-composer-overlay', '');
+		window.document.body.append(hostTarget);
+	}
+	const hostEnabled = ref(true);
+	const hostRef = shallowRef<HTMLElement | null>(hostTarget);
+	const hostOpen = ref(false);
+	const app = createApp({ render: () => h(Hk3Composer, { ref: composer, compact: compact.value, draftId, deck: options.deck, onPosted: posted }) });
+	if (options.emojiHost) app.provide(hk3ComposerEmojiHostKey, { target: hostRef, enabled: computed(() => hostEnabled.value), open: hostOpen });
 	if (options.postContext) app.provide(hk3PostContextKey, options.postContext);
 	for (const name of ['MkAvatar', 'MkUserName']) app.component(name, { render: () => null });
 	app.component('Mfm', defineComponent({
@@ -118,19 +130,20 @@ function mount(draftId = 'uiS:composer:main', options: { postContext?: Hk3PostCo
 	}));
 	app.mount(target);
 	let mounted = true;
-	const unmount = () => { if (mounted) app.unmount(); mounted = false; target.remove(); };
+	const unmount = () => { if (mounted) app.unmount(); mounted = false; target.remove(); hostTarget?.remove(); };
 	cleanups.push(unmount);
 	return {
-		target, unmount,
+		target, unmount, posted, hostTarget, hostEnabled, hostRef, hostOpen,
 		adopt: (request: PostFormProps) => composer.value!.adopt(request),
 		openConfirmation: (request: NoteActionConfirmation) => composer.value!.openConfirmation(request),
 		cancelConfirmation: () => composer.value!.cancelConfirmation(),
 		confirmationActive: () => composer.value!.confirmationActive,
 		canConfirm: () => composer.value!.canConfirm,
+		collapseBlocked: () => composer.value!.collapseBlocked,
 		setCompact: (value: boolean) => { compact.value = value; },
 		focus: () => composer.value!.focus(),
 		input: () => target.querySelector<HTMLTextAreaElement>('textarea')!,
-		send: () => target.querySelector<HTMLButtonElement>('button[data-state]')!,
+		send: () => target.querySelector<HTMLButtonElement>('[data-hk3-send]')!,
 		ids: () => [...target.querySelectorAll('[data-file-id]')].map(el => el.getAttribute('data-file-id')),
 	};
 }
@@ -251,6 +264,8 @@ describe('UI S composer post context receipts', () => {
 		keyboardSubmit(view);
 		await settle();
 		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({ text: 'draft' }));
+		expect(view.collapseBlocked()).toBe(true);
+		expect(view.posted).not.toHaveBeenCalled();
 		expect(context.receipt.complete).not.toHaveBeenCalled();
 		sending.resolve({ createdNote });
 		await settle();
@@ -260,6 +275,9 @@ describe('UI S composer post context receipts', () => {
 		expect(rectSpy).toHaveBeenCalledTimes(1);
 		expect(context.receipt.cancel).not.toHaveBeenCalled();
 		expect(hk3PostedNote.value).toBeNull();
+		expect(view.input().value).toBe('');
+		expect(view.posted).toHaveBeenCalledOnce();
+		expect(view.posted).toHaveBeenCalledWith();
 		view.unmount();
 		expect(context.receipt.complete).toHaveBeenCalledTimes(1);
 		expect(context.receipt.cancel).not.toHaveBeenCalled();
@@ -283,6 +301,7 @@ describe('UI S composer post context receipts', () => {
 		expect(context.receipt.complete).not.toHaveBeenCalled();
 		expect(hk3PostedNote.value).toBeNull();
 		expect(view.input().value).toBe('draft');
+		expect(view.posted).not.toHaveBeenCalled();
 	});
 
 	it('updates an editing note without beginning a new post receipt', async () => {
@@ -298,6 +317,8 @@ describe('UI S composer post context receipts', () => {
 		expect(context.begin).not.toHaveBeenCalled();
 		expect(context.receipt.complete).not.toHaveBeenCalled();
 		expect(context.receipt.cancel).not.toHaveBeenCalled();
+		expect(view.input().value).toBe('');
+		expect(view.posted).toHaveBeenCalledOnce();
 	});
 
 	it('cancels the post delay without beginning a receipt or calling the API', async () => {
@@ -308,6 +329,7 @@ describe('UI S composer post context receipts', () => {
 		keyboardSubmit(view);
 		await settle();
 		expect(view.send().dataset.state).toBe('countdown');
+		expect(view.collapseBlocked()).toBe(true);
 		expect(context.begin).not.toHaveBeenCalled();
 		view.send().click();
 		await settle();
@@ -318,6 +340,7 @@ describe('UI S composer post context receipts', () => {
 		expect(context.begin).not.toHaveBeenCalled();
 		expect(context.receipt.complete).not.toHaveBeenCalled();
 		expect(context.receipt.cancel).not.toHaveBeenCalled();
+		expect(view.posted).not.toHaveBeenCalled();
 	});
 
 	it('cancels on unmount before notes/create resolves and ignores the late created note', async () => {
@@ -337,6 +360,7 @@ describe('UI S composer post context receipts', () => {
 		expect(context.receipt.cancel).toHaveBeenCalledTimes(1);
 		expect(context.receipt.complete).not.toHaveBeenCalled();
 		expect(hk3PostedNote.value).toBeNull();
+		expect(view.posted).not.toHaveBeenCalled();
 	});
 
 	it('marks deck composers while keeping the mobile compact composer outside deck', () => {
@@ -345,6 +369,136 @@ describe('UI S composer post context receipts', () => {
 		expect(deck.target.querySelector('[data-compact="true"][data-deck="true"]')).not.toBeNull();
 		expect(mobile.target.querySelector('[data-compact="true"]')).not.toBeNull();
 		expect(mobile.target.querySelector('[data-deck]')).toBeNull();
+	});
+});
+
+describe('UI S composer in-flight draft ownership', () => {
+	it('captures edits made while a warning is open after confirmation', async () => {
+		const warning = deferred<{ canceled: boolean; result: string }>();
+		mocks.actions.mockReturnValue(warning.promise);
+		const view = mount();
+		view.adopt({ initialText: 'before warning', initialFiles: [{ ...driveFile('no-alt'), comment: null }] });
+		keyboardSubmit(view);
+		await settle();
+		setText(view, 'after warning');
+		warning.resolve({ canceled: false, result: 'post' });
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({ text: 'after warning', fileIds: ['no-alt'] }));
+		expect(view.input().value).toBe('');
+		expect(view.posted).toHaveBeenCalledOnce();
+	});
+
+	it('sends a fixed create payload while retaining later body, CW, attachment and visibility edits', async () => {
+		const sending = deferred<{ createdNote: null }>();
+		mocks.api.mockReturnValue(sending.promise);
+		const view = mount();
+		view.adopt({ initialText: 'sent body', initialFiles: [driveFile('sent')], initialVisibility: 'public' });
+		await settle();
+		keyboardSubmit(view);
+		await settle();
+		setText(view, 'new body');
+		view.target.querySelector<HTMLButtonElement>('button[title="Content warning"]')!.click();
+		await settle();
+		const cw = view.target.querySelector<HTMLInputElement>('input[aria-label="Content warning"]')!;
+		cw.value = 'new CW'; cw.dispatchEvent(new Event('input', { bubbles: true }));
+		view.target.querySelector<HTMLButtonElement>('[data-detach-file]')!.click();
+		view.target.querySelector<HTMLButtonElement>('button[title="Visibility"]')!.click();
+		await settle();
+		view.target.querySelectorAll<HTMLButtonElement>('[data-composer-menu="visibility"] [role="menuitemradio"]')[1].click();
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({ text: 'sent body', fileIds: ['sent'], visibility: 'public', cw: null }));
+		sending.resolve({ createdNote: null });
+		await settle();
+		expect(view.input().value).toBe('new body');
+		expect(cw.value).toBe('new CW');
+		expect(view.ids()).toEqual([]);
+		expect(view.target.querySelector<HTMLButtonElement>('button[title="Visibility"]')!.textContent).toContain('Home');
+		expect(view.posted).not.toHaveBeenCalled();
+	});
+
+	it('retains a draft changed and restored during create, but clears an unchanged draft', async () => {
+		const sending = deferred<{ createdNote: null }>();
+		mocks.api.mockReturnValueOnce(sending.promise);
+		const changed = mount();
+		setText(changed, 'same');
+		keyboardSubmit(changed);
+		await settle();
+		setText(changed, 'other'); setText(changed, 'same');
+		sending.resolve({ createdNote: null });
+		await settle();
+		expect(changed.input().value).toBe('same');
+		expect(changed.posted).not.toHaveBeenCalled();
+		changed.unmount();
+		const unchanged = mount();
+		setText(unchanged, 'same');
+		keyboardSubmit(unchanged);
+		await settle();
+		expect(unchanged.input().value).toBe('');
+		expect(unchanged.posted).toHaveBeenCalledOnce();
+	});
+
+	it('retains changes made during plugin processing and post delay', async () => {
+		const plugin = deferred<unknown>();
+		const sending = deferred<{ createdNote: null }>();
+		mocks.interruptors.push({ handler: () => plugin.promise });
+		mocks.api.mockReturnValue(sending.promise);
+		postSendDelayEnabled.value = true;
+		const view = mount();
+		setText(view, 'sent');
+		keyboardSubmit(view);
+		await settle();
+		setText(view, 'new during plugin');
+		plugin.resolve({ text: 'sent', visibility: 'public' });
+		await settle();
+		setText(view, 'new during delay');
+		view.target.querySelector<HTMLButtonElement>('[data-send-now]')!.click();
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({ text: 'sent' }));
+		sending.resolve({ createdNote: null });
+		await settle();
+		expect(view.input().value).toBe('new during delay');
+		expect(view.posted).not.toHaveBeenCalled();
+	});
+
+	it('retains editing changes after update and ignores an update response after unmount', async () => {
+		const sending = deferred<void>();
+		mocks.api.mockReturnValue(sending.promise);
+		const view = mount();
+		view.adopt({ initialNote: { id: 'edit', text: 'old', visibility: 'public', files: [driveFile('old')] } as Misskey.entities.Note, updateMode: true });
+		await settle();
+		setText(view, 'sent update');
+		keyboardSubmit(view);
+		await settle();
+		setText(view, 'new update');
+		view.target.querySelector<HTMLButtonElement>('[data-detach-file]')!.click();
+		expect(mocks.api).toHaveBeenCalledWith('notes/update', expect.objectContaining({ text: 'sent update', fileIds: ['old'] }));
+		sending.resolve();
+		await settle();
+		expect(view.input().value).toBe('new update');
+		expect(view.ids()).toEqual([]);
+		expect(view.posted).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(0);
+		await settle();
+		const late = deferred<void>();
+		mocks.api.mockReturnValue(late.promise);
+		keyboardSubmit(view);
+		await settle();
+		view.unmount();
+		late.resolve();
+		await settle();
+		expect(view.posted).not.toHaveBeenCalled();
+	});
+
+	it('rejects reply, quote and channel adoption while editing without changing the draft', async () => {
+		const view = mount();
+		view.adopt({ initialNote: { id: 'edit', text: 'editing', visibility: 'public', files: [driveFile('kept')] } as Misskey.entities.Note, updateMode: true });
+		await settle();
+		const note = { id: 'other', user: { username: 'other' } } as Misskey.entities.Note;
+		for (const request of [{ reply: note }, { renote: note }, { channel: { id: 'channel', name: 'Channel' } }]) {
+			expect(view.adopt(request as PostFormProps)).toBe(false);
+			expect(view.input().value).toBe('editing');
+			expect(view.ids()).toEqual(['kept']);
+		}
 	});
 });
 
@@ -436,6 +590,7 @@ describe('UI S composer clipboard attachment integration', () => {
 		pasteFile(view);
 		pasteFile(view);
 		await settle();
+		expect(view.collapseBlocked()).toBe(true);
 		expect(view.send().disabled).toBe(true);
 		keyboardSubmit(view);
 		expect(mocks.api).not.toHaveBeenCalled();
@@ -444,6 +599,7 @@ describe('UI S composer clipboard attachment integration', () => {
 		expect(view.send().disabled).toBe(true);
 		second.resolve([driveFile('two')]);
 		await settle();
+		expect(view.collapseBlocked()).toBe(false);
 		expect(view.send().disabled).toBe(false);
 		keyboardSubmit(view);
 		await settle();
@@ -460,6 +616,18 @@ describe('UI S composer clipboard attachment integration', () => {
 		await settle();
 		expect(view.send().disabled).toBe(false);
 		expect(view.ids()).toEqual([]);
+	});
+	it('blocks collapse while a file chooser is pending even when posting remains enabled', async () => {
+		const picking = deferred<Misskey.entities.DriveFile[]>();
+		mocks.pc.mockReturnValue(picking.promise);
+		const view = mount();
+		setText(view);
+		await (await attachmentAction(view, 0))();
+		expect(view.collapseBlocked()).toBe(true);
+		expect(view.send().disabled).toBe(false);
+		picking.resolve([]);
+		await settle();
+		expect(view.collapseBlocked()).toBe(false);
 	});
 	it('deduplicates IDs within/between upload results and caps concurrent results at 16', async () => {
 		const first = deferred<Misskey.entities.DriveFile[]>();
@@ -684,6 +852,30 @@ describe('automatic composer drafts', () => {
 });
 
 describe('UI S composer quote context', () => {
+	it.each([
+		{ name: 'public quote', kind: 'quote', explicitChannel: undefined, expectedChannelId: undefined },
+		{ name: 'private quote with explicit channel', kind: 'quote', explicitChannel: { id: 'private-channel', name: 'Private' }, expectedChannelId: 'private-channel' },
+		{ name: 'reply inheriting its channel', kind: 'reply', explicitChannel: undefined, expectedChannelId: 'source-channel' },
+		{ name: 'reply with explicit null channel', kind: 'reply', explicitChannel: null, expectedChannelId: undefined },
+	])('uses the requested channel for $name', async ({ kind, explicitChannel, expectedChannelId }) => {
+		const sourceChannel = { id: 'source-channel', name: 'Source' };
+		const note = { id: 'source-note', user: { id: 'author', username: 'author' }, channel: sourceChannel, text: 'original' } as Misskey.entities.Note;
+		const view = mount();
+		const request = {
+			...(kind === 'reply' ? { reply: note } : { renote: note }),
+			...(explicitChannel !== undefined ? { channel: explicitChannel } : {}),
+			initialText: 'new text',
+		} as PostFormProps;
+		expect(view.adopt(request)).toBe(true);
+		await settle();
+		view.send().click();
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({
+			channelId: expectedChannelId,
+			...(kind === 'reply' ? { replyId: 'source-note' } : { renoteId: 'source-note' }),
+		}));
+	});
+
 	it('keeps the draft and cursor when clearing a quote, then sends without renoteId', async () => {
 		const note = { id: 'quoted', user: { id: 'author', username: 'author' }, text: 'original' } as Misskey.entities.Note;
 		const view = mount();
@@ -736,6 +928,35 @@ describe('inline composer menus', () => {
 		const menu = panel.querySelector<HTMLElement>('[data-composer-menu]')!;
 		return { tools, visibility, panel, menu };
 	}
+
+	it('blocks collapse for an inline menu and composition in the input, CW, and picker', async () => {
+		const view = mount();
+		expect(view.collapseBlocked()).toBe(false);
+		const { tools } = controls(view);
+		tools.click();
+		await settle();
+		expect(view.collapseBlocked()).toBe(true);
+		tools.click();
+		await settle();
+		expect(view.collapseBlocked()).toBe(false);
+		const cw = view.target.querySelector<HTMLInputElement>('input[aria-label="Content warning"]')!;
+		for (const input of [view.input(), cw]) {
+			input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+			expect(view.collapseBlocked()).toBe(true);
+			input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+			expect(view.collapseBlocked()).toBe(false);
+		}
+		view.target.querySelector<HTMLButtonElement>('button[title="Emoji"]')!.click();
+		await vi.dynamicImportSettled();
+		await settle();
+		const picker = view.target.querySelector<HTMLInputElement>('input[aria-label="Emoji search"]')!;
+		picker.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+		expect(view.collapseBlocked()).toBe(true);
+		picker.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+		view.target.querySelector<HTMLButtonElement>('button[title="Emoji"]')!.click();
+		await settle();
+		expect(view.collapseBlocked()).toBe(false);
+	});
 
 	it('keeps CW text and input through rapid reversal, hides closed CW from focus, and leaves inline menus usable', async () => {
 		const view = mount();
@@ -975,6 +1196,146 @@ describe('embedded composer picker and attachments', () => {
 	});
 });
 
+describe('mobile hosted composer picker', () => {
+	it('fits a full emoji row below the search in a 128px header-to-composer gap', async () => {
+		const view = mount('uiS:composer:host:short', { emojiHost: true });
+		const root = view.target.querySelector<HTMLElement>('[data-hk3-composer-menus]')!;
+		vi.spyOn(root, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 180, 390, 120));
+		vi.spyOn(view.hostTarget!, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 44, 390, 0));
+		view.target.querySelector<HTMLButtonElement>('button[title="Emoji"]')!.click();
+		await vi.dynamicImportSettled();
+		await settle();
+		const menu = view.hostTarget!.querySelector<HTMLElement>('[data-composer-menu="emoji"]')!;
+		const picker = view.hostTarget!.querySelector<HTMLElement>('[data-embedded-picker]')!;
+		expect(menu.style.maxHeight).toBe('128px');
+		expect(menu.parentElement?.getAttribute('data-condensed')).toBe('true');
+		expect(picker.getAttribute('data-condensed')).toBe('true');
+		const pickerBudget = Number(picker.getAttribute('data-picker-height'));
+		expect(pickerBudget).toBe(90);
+		expect(pickerBudget - 40).toBeGreaterThanOrEqual(44);
+	});
+
+	it.each(['afterShortcuts', 'beforeVisibility'] as const)('keeps the %s trigger in the composer and moves only the picker', async position => {
+		prefer.r.hataskeyUi3ComposerEmojiPosition.value = position;
+		const view = mount(`uiS:composer:host:${position}`, { emojiHost: true });
+		const trigger = view.target.querySelector<HTMLButtonElement>('button[title="Emoji"]')!;
+		setText(view, 'draft');
+		view.input().focus();
+		const down = new PointerEvent('pointerdown', { bubbles: true, cancelable: true });
+		trigger.dispatchEvent(down);
+		expect(down.defaultPrevented).toBe(true);
+		trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+		await vi.dynamicImportSettled();
+		await settle();
+		expect(view.target.contains(trigger)).toBe(true);
+		expect(view.hostTarget?.querySelector('[data-embedded-picker]')).not.toBeNull();
+		expect(view.target.querySelector('[data-embedded-picker]')).toBeNull();
+		expect(view.hostOpen.value).toBe(true);
+		expect(window.document.activeElement).toBe(view.input());
+		const picker = mocks.pickers.at(-1)!;
+		view.input().setSelectionRange(0, 5);
+		picker.choose('👩🏽‍🚀');
+		await settle();
+		expect(window.document.activeElement).toBe(view.input());
+		view.hostTarget!.querySelector<HTMLInputElement>('[aria-label="Emoji search"]')!.focus();
+		view.input().setSelectionRange(0, '👩🏽‍🚀'.length);
+		picker.choose('🌸');
+		picker.choose(':flower:');
+		await settle();
+		expect(view.input().value).toBe('🌸:flower:');
+		expect(window.document.activeElement).toBe(view.hostTarget!.querySelector('[aria-label="Emoji search"]'));
+		view.hostTarget!.querySelector<HTMLButtonElement>('button[title="Close"]')!.click();
+		await settle();
+		expect(window.document.activeElement).toBe(view.input());
+		expect(view.hostOpen.value).toBe(false);
+	});
+
+	it('retains draft focus when the trigger closes and does not close during search composition', async () => {
+		const view = mount('uiS:composer:host:close', { emojiHost: true });
+		const trigger = view.target.querySelector<HTMLButtonElement>('button[title="Emoji"]')!;
+		view.input().focus();
+		trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+		trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+		await vi.dynamicImportSettled();
+		await settle();
+		const search = view.hostTarget!.querySelector<HTMLInputElement>('[aria-label="Emoji search"]')!;
+		search.focus();
+		search.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+		mocks.pickers.at(-1)!.close();
+		search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true, cancelable: true }));
+		expect(view.hostOpen.value).toBe(true);
+		search.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+		search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await settle();
+		expect(window.document.activeElement).toBe(view.input());
+		expect(view.hostOpen.value).toBe(false);
+		trigger.click();
+		await settle();
+		view.hostTarget!.querySelector<HTMLInputElement>('[aria-label="Emoji search"]')!.focus();
+		trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+		trigger.click();
+		await settle();
+		expect(window.document.activeElement).toBe(view.input());
+		expect(view.hostOpen.value).toBe(false);
+	});
+
+	it('stays local in deck and desktop even when a host is supplied', async () => {
+		for (const options of [{ compact: false }, { deck: true }]) {
+			const view = mount(`uiS:composer:local:${JSON.stringify(options)}`, { ...options, emojiHost: true });
+			view.target.querySelector<HTMLButtonElement>('button[title="Emoji"]')!.click();
+			await vi.dynamicImportSettled();
+			await settle();
+			expect(view.target.querySelector('[data-embedded-picker]')).not.toBeNull();
+			expect(view.hostTarget?.querySelector('[data-embedded-picker]')).toBeNull();
+			expect(view.hostOpen.value).toBe(false);
+		}
+	});
+
+	it('bounds height, closes outside, and ignores IME and stale host callbacks', async () => {
+		const view = mount('uiS:composer:host:bounds', { emojiHost: true });
+		const root = view.target.querySelector<HTMLElement>('[data-hk3-composer-menus]')!;
+		vi.spyOn(root, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 420, 320, 120));
+		vi.spyOn(view.hostTarget!, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 60, 320, 0));
+		const trigger = view.target.querySelector<HTMLButtonElement>('button[title="Emoji"]')!;
+		view.input().dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+		trigger.click();
+		await settle();
+		expect(view.hostOpen.value).toBe(false);
+		view.input().dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+		trigger.click();
+		await vi.dynamicImportSettled();
+		await settle();
+		const menu = view.hostTarget!.querySelector<HTMLElement>('[data-composer-menu="emoji"]')!;
+		expect(menu.style.maxHeight).toBe('352px');
+		const picker = mocks.pickers.at(-1)!;
+		view.input().dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+		picker.choose('⛔');
+		expect(view.input().value).toBe('');
+		view.input().dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+		view.hostEnabled.value = false;
+		await settle();
+		expect(view.hostOpen.value).toBe(false);
+		picker.choose('late');
+		expect(view.input().value).toBe('');
+		view.hostEnabled.value = true;
+		await settle();
+		expect(view.hostOpen.value).toBe(false);
+		trigger.click();
+		await settle();
+		expect(view.hostOpen.value).toBe(true);
+		view.hostRef.value = null;
+		await settle();
+		expect(view.hostOpen.value).toBe(false);
+		view.hostRef.value = view.hostTarget;
+		await settle();
+		trigger.click();
+		await settle();
+		window.document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+		await settle();
+		expect(view.hostOpen.value).toBe(false);
+	});
+});
+
 describe('UI S composer textarea width changes', () => {
 	let observers: ResizeObserverMock[];
 
@@ -1047,6 +1408,23 @@ describe('UI S composer textarea width changes', () => {
 		observers[0].notify(root, 300, baseHeight);
 		await settle();
 		expect(menu.style.maxHeight).toBe('174px');
+	});
+
+	it('recalculates hosted height when the header grows without resizing the target', async () => {
+		const view = mount('uiS:composer:host:header', { emojiHost: true });
+		const root = view.target.querySelector<HTMLElement>('[data-hk3-composer-menus]')!;
+		vi.spyOn(root, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 420, 320, 120));
+		let headerBottom = 60;
+		vi.spyOn(view.hostTarget!, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, headerBottom, 320, 0));
+		view.target.querySelector<HTMLButtonElement>('button[title="Emoji"]')!.click();
+		await vi.dynamicImportSettled();
+		await settle();
+		const menu = view.hostTarget!.querySelector<HTMLElement>('[data-composer-menu="emoji"]')!;
+		expect(menu.style.maxHeight).toBe('352px');
+		headerBottom = 100;
+		observers[0].notify(view.hostTarget!.parentElement!, 320, 100);
+		await settle();
+		expect(menu.style.maxHeight).toBe('312px');
 	});
 
 	it('shrinks the same textarea when a narrow pane returns to full width', async () => {
@@ -1128,8 +1506,10 @@ describe('UI S inline note confirmation', () => {
 		const input = view.input();
 		const action = request();
 		expect(view.canConfirm()).toBe(true);
+		expect(view.collapseBlocked()).toBe(false);
 		expect(view.openConfirmation(action)).toBe(true);
 		await settle();
+		expect(view.collapseBlocked()).toBe(true);
 		const dialog = view.target.querySelector<HTMLElement>('[role="dialog"]')!;
 		expect(dialog.getAttribute('aria-modal')).toBe('true');
 		expect(dialog.hasAttribute('data-reduced-motion')).toBe(true);
@@ -1139,6 +1519,7 @@ describe('UI S inline note confirmation', () => {
 		dialog.querySelector<HTMLButtonElement>('button[title="Cancel"]')!.click();
 		await settle();
 		expect(view.confirmationActive()).toBe(false);
+		expect(view.collapseBlocked()).toBe(false);
 		expect(view.input()).toBe(input);
 		expect(input.value).toBe('Unsent text');
 		expect(view.ids()).toEqual(['kept']);
@@ -1166,6 +1547,7 @@ describe('UI S inline note confirmation', () => {
 		button.click();
 		button.click();
 		await settle();
+		expect(view.collapseBlocked()).toBe(true);
 		expect(action.run).toHaveBeenCalledTimes(1);
 		const cancel = view.target.querySelector<HTMLButtonElement>('[role="dialog"] button[title="Cancel"]')!;
 		expect(cancel.getAttribute('aria-disabled')).toBe('true');
@@ -1176,6 +1558,7 @@ describe('UI S inline note confirmation', () => {
 		view.cancelConfirmation();
 		await settle();
 		expect(view.confirmationActive()).toBe(false);
+		expect(view.collapseBlocked()).toBe(true);
 		expect(view.openConfirmation(action)).toBe(true);
 		pending.resolve();
 		await settle();

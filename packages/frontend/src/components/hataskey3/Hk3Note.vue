@@ -32,6 +32,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 		<button type="button" :class="$style.mutedButton" @click="showMuted = true">{{ i18n.ts.show }}</button>
 	</div>
 	<article v-else ref="articleEl" :class="$style.article" :style="articleStyle">
+		<Hk3VisibilityRail :visibility="appearNote.visibility"/>
 		<span v-if="channelColor != null" :class="$style.channelRail" aria-hidden="true"></span>
 		<div v-if="hasTintImages && (appearNote.cw == null || showContent)" :class="$style.imageTint" :style="imageTintStyle" :data-tinted="imageEdgeTint && imageTintGeometry ? 'true' : undefined" aria-hidden="true" data-image-edge-tint>
 			<span v-for="side in IMAGE_EDGE_SIDES" :key="side" :class="$style.imageGlow" :data-edge="side" :style="{ backgroundColor: imageTintGeometry?.visibleEdges[side] && imageEdgeTint?.[side] ? `rgb(${imageEdgeTint[side]!.join(',')})` : 'transparent' }"></span>
@@ -110,14 +111,14 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 			<MkUtageStatus v-if="utageRevivalShown" :note="$appearNote"/>
 
 			<div v-if="!sideReactions && reactions.length > 0" :class="$style.rxInline">
-				<div ref="inlineEl" :class="$style.rxInlineList" :style="{ maxHeight: rxOpen && inlineOverflow ? `${inlineOverflow}px` : `${chipHeight}px` }">
+				<div ref="inlineEl" :class="$style.rxInlineList" :style="{ maxHeight: rxOpen && inlineOverflow ? `${inlineOverflow}px` : inlineCollapsedHeight ? `${inlineCollapsedHeight}px` : undefined }">
 					<XReaction v-for="r in reactions" :key="r.reaction" custom :noteId="appearNote.id" :note="appearNote" :reaction="r.reaction" :reactionEmojis="$appearNote.reactionEmojis" :myReaction="$appearNote.myReaction" :count="r.count" :isInitial="true" :class="$style.chip" :data-reaction="r.reaction" :data-mine="r.mine ? 'true' : undefined" :aria-label="r.title" @activate="toggleReaction(r.reaction, $event)">
 						<span :class="[$style.emojiBox, $style.chipEmoji]"><MkReactionIcon :reaction="r.reaction" :emojiUrl="$appearNote.reactionEmojis[emojiKey(r.reaction)]"/></span>{{ r.count }}
 					</XReaction>
 					<button v-if="canAddReaction" type="button" :class="$style.chipAdd" :title="copy.addReaction" @click="react($event)"><SmilePlus :size="18"/></button>
 				</div>
 				<button v-if="inlineOverflow" type="button" :class="$style.chipMore" :data-open="rxOpen ? 'true' : undefined" :title="copy.allReactions" @click="rxOpen = !rxOpen">
-					<component :is="rxOpen ? ChevronUp : ChevronDown" :size="16"/>{{ rxOpen ? '' : `+${inlineHidden}` }}
+					<component :is="rxOpen ? ChevronUp : ChevronDown" :size="16"/>{{ rxOpen || !inlineHidden ? '' : `+${inlineHidden}` }}
 				</button>
 			</div>
 
@@ -193,6 +194,7 @@ import Hk3ConfirmBubble from './Hk3ConfirmBubble.vue';
 import Hk3InstanceBadge from './Hk3InstanceBadge.vue';
 import Hk3AudienceIcons from './Hk3AudienceIcons.vue';
 import Hk3NoteContent from './Hk3NoteContent.vue';
+import Hk3VisibilityRail from './Hk3VisibilityRail.vue';
 import { IMAGE_EDGE_SIDES, observeImageEdgeTint } from './hk3-image-edge-tint.js';
 import type { ImageEdgeTint, ImageEdgeTintGeometry } from './hk3-image-edge-tint.js';
 import MkUtageStatus from '@/components/MkUtageStatus.vue';
@@ -270,6 +272,7 @@ const rxOpen = ref(false);
 const sideRows = ref(2);
 const inlineOverflow = ref(0);
 const inlineHidden = ref(0);
+const inlineCollapsedHeight = ref(0);
 const threadOpen = ref(false);
 const threadLoading = ref(false);
 const replies = ref<Misskey.entities.Note[]>([]);
@@ -321,7 +324,6 @@ const autoCollapseContent = computed(() => !!(appearNote.cw == null && (
 )));
 const hasThread = computed(() => !props.threadReply && (appearNote.repliesCount ?? 0) > 0);
 const sideReactions = computed(() => props.size === 'lg' && !props.threadReply);
-const chipHeight = computed(() => props.size === 'sm' ? 34 : 38);
 
 function emojiKey(reaction: string): string {
 	return reaction.replace(/:/g, '').replace(/@\.$/, '');
@@ -665,11 +667,32 @@ function measure() {
 	}
 	const inline = inlineEl.value;
 	if (inline && inline.children.length > 0) {
-		const first = inline.children[0] as HTMLElement;
-		const hidden = Array.from(inline.children).filter(child => (child as HTMLElement).offsetTop > first.offsetTop + 2).length;
-		const over = inline.scrollHeight > first.offsetHeight + 2;
-		inlineOverflow.value = over ? inline.scrollHeight : 0;
-		inlineHidden.value = hidden;
+		const children = Array.from(inline.children) as HTMLElement[];
+		const firstTop = children[0].offsetTop;
+		const visibleRows = props.size === 'sm' && rootEl.value?.closest('[data-mobile="true"]') ? 3 : 1;
+		let row = 1;
+		let rowTop = firstTop;
+		let collapsedHeight = 0;
+		let fullHeight = 0;
+		let hidden = 0;
+		let hiddenReactions = 0;
+		for (const child of children) {
+			if (child.offsetTop > rowTop + 2) {
+				row++;
+				rowTop = child.offsetTop;
+			}
+			const bottom = child.offsetTop - firstTop + child.offsetHeight;
+			fullHeight = Math.max(fullHeight, bottom);
+			if (row <= visibleRows) collapsedHeight = Math.max(collapsedHeight, bottom);
+			else {
+				hidden++;
+				if (child.hasAttribute('data-reaction')) hiddenReactions++;
+			}
+		}
+		inlineCollapsedHeight.value = collapsedHeight;
+		inlineOverflow.value = hidden ? Math.max(inline.scrollHeight, fullHeight) : 0;
+		inlineHidden.value = hiddenReactions;
+		if (!hidden) rxOpen.value = false;
 	}
 }
 
@@ -687,6 +710,8 @@ onMounted(() => {
 	scheduleMeasure();
 });
 watch(reactions, () => nextTick(scheduleMeasure));
+// The overflow control takes width from the list without resizing the note itself.
+watch([inlineOverflow, inlineHidden], () => nextTick(scheduleMeasure));
 
 onBeforeUnmount(() => {
 	stopImageTint?.();
@@ -834,6 +859,10 @@ onBeforeUnmount(() => {
 	pointer-events: none;
 
 	.root[data-size="sm"] & { top: 8px; bottom: 8px; left: 2px; width: 3px; }
+}
+
+.article:has(> [data-hk3-visibility-rail]) > .channelRail {
+	left: 8px;
 }
 
 .imageTint {
@@ -1244,6 +1273,7 @@ onBeforeUnmount(() => {
 }
 
 .rxInlineList {
+	max-height: 38px;
 	flex: 0 1 auto;
 	min-width: 0;
 	display: flex;
@@ -1251,6 +1281,8 @@ onBeforeUnmount(() => {
 	gap: 6px;
 	overflow: hidden;
 	transition: max-height 520ms cubic-bezier(0.22, 1, 0.36, 1);
+	.root[data-size="sm"] & { max-height: 34px; }
+	:global([data-mobile="true"]) .root[data-size="sm"] & { max-height: 114px; }
 }
 
 .chip, .chipAdd, .chipMore {

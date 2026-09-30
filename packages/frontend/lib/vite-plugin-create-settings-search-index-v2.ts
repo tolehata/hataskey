@@ -912,6 +912,8 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'Hataskey UI S の画面内操作(タブ・LIVE・デッキ表示・右ペイン・モバイルTLの並びと初回案内)が更新する端末ローカルの表示状態', ['src/components/hataskey3/Hk3Timeline.vue', 'src/components/hataskey3/Hk3App.vue', 'src/components/hataskey3/Hk3RightPane.vue']);
 	add('local', ['hataRightWidgetsCollapsed'], 'runtime',
 		'右ウィジェットバーの開閉操作が更新する端末ローカルの表示状態', ['src/utility/hatasaba-device-prefs.ts']);
+	add('local', ['hataNotificationView'], 'runtime',
+		'通知画面のブランド・種別・BOT除外フィルターを保持する端末ローカル表示状態', ['src/utility/hatasaba-device-prefs.ts', 'src/pages/notifications.vue']);
 	add('local', ['hataskAkatsukiUsage:' + dynamicKey], 'cache',
 		'暁ホームの優先表示に使う端末・アカウント別のツール利用履歴で、設定項目ではない', ['src/utility/hatask-akatsuki-usage.ts']);
 	add('local', [
@@ -1615,6 +1617,7 @@ const UI2_DRAFT_PREFERENCE_KEYS: Readonly<Record<string, readonly string[]>> = {
 	'editor.draft.editedOpacity': ['simpleUi.glassUiCardOpacity'],
 	'editor.draft.editedDisableBubbleInHatasabaDeck': ['simpleUi.disableBubbleInHatasabaDeck'],
 	'editor.draft.editedShowTrendingTab': ['simpleUi.showTrendingTab'],
+	'editor.draft.editedShowHatadyTab': ['simpleUi.showHatadyTab'],
 	'editor.draft.editedTopNavMode': ['simpleUi.topNavMode'],
 	'editor.draft.editedTopNav': ['simpleUi.topNav'],
 	'editor.draft.editedBottomNav': ['simpleUi.bottomNav'],
@@ -3481,7 +3484,7 @@ function explicitFeatureSemanticGroupV2(
 		if (/\bedited(?:GlassUiBubble|NormalNoBannerBg|ProfileNoBannerBg)\b/u.test(modelExpression ?? '')) {
 			return 'settings.semantic.feature.hatasaba-ui2-glass-appearance';
 		}
-		if (/\bedited(?:ShowTrendingTab|TopNavMode|DeckIgnoreWidth|TabSwipeEnabled|DisableBubbleInHatasabaDeck)\b/u.test(modelExpression ?? '')) {
+		if (/\bedited(?:ShowTrendingTab|ShowHatadyTab|TopNavMode|DeckIgnoreWidth|TabSwipeEnabled|DisableBubbleInHatasabaDeck)\b/u.test(modelExpression ?? '')) {
 			return 'settings.semantic.feature.hatasaba-ui2-navigation-deck';
 		}
 	}

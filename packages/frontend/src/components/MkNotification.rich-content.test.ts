@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import notificationSource from './MkNotification.vue?raw';
+import externalToastSource from './MkExternalNotificationToast.vue?raw';
 import { compileStyleAsync, parse } from '@vue/compiler-sfc';
 import { createApp, h, nextTick } from 'vue';
 import type { App, Component } from 'vue';
@@ -17,22 +17,24 @@ vi.mock('@/preferences.js', () => ({ prefer: { s: {
 	showingAnimatedImages: 'always', 'external.host': 'connected.test',
 }, r: {} } }));
 vi.mock('@/router.js', () => ({ mainRouter: { push: vi.fn() } }));
-vi.mock('@/i.js', () => ({ ensureSignin: () => ({ id: 'self', username: 'self', avatarDecorations: [] }) }));
+vi.mock('@/i.js', () => ({ $i: { id: 'self', policies: { canSearchNotes: true, canSearchUsers: true } }, ensureSignin: () => ({ id: 'self', username: 'self', policies: { canSearchNotes: true, canSearchUsers: true }, avatarDecorations: [] }) }));
+vi.mock('@/utility/hatady-activity-actions.js', () => ({ useHatadyActivityActions: () => ({ openProfile: vi.fn(), openConversation: vi.fn(), openSession: vi.fn(), openMediaDetailById: vi.fn() }) }));
+vi.mock('@/utility/hatady-record-delete.js', () => ({ confirmHatadyAction: vi.fn() }));
+vi.mock('@/utility/hatady-ui.js', () => ({ hatadyNotify: vi.fn() }));
+vi.mock('@/instance.js', () => ({ instance: { name: 'example.test' } }));
 vi.mock('@/utility/external-api.js', () => ({ getExternalEmojiUrlMapForHost: () => ({ cached: 'https://connected.test/cached.webp' }) }));
 vi.mock('@/utility/media-proxy.js', () => ({ getStaticImageUrl: (url: string) => url }));
 vi.mock('@/utility/scroll-to-visibility.js', async () => {
 	const { ref } = await import('vue');
 	return { scrollToVisibility: () => ({ showEl: ref(false) }) };
 });
-vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn() }));
+vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn(async (endpoint: string) => endpoint === 'i/registry/keys' ? [] : endpoint === 'i/registry/get-all' ? {} : undefined) }));
 vi.mock('@/utility/notification-filter.js', () => ({ NOTIFICATION_FILTER_POLICY_NOTICE_ID: 'policy' }));
 vi.mock('@/utility/hatafeed-bell-group.js', () => ({ hataFeedNotificationDisplayBody: () => '' }));
 vi.mock('@/utility/private-channel-notification-copy.js', () => ({ privateChannelNotificationDisplayBody: () => '' }));
 vi.mock('@/i18n.js', async () => {
-	const { readFileSync } = await import('node:fs');
-	const { resolve } = await import('node:path');
-	const { load } = await import('js-yaml');
-	return { i18n: { ts: load(readFileSync(resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')) } };
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	return { i18n: createTestHataskI18n() };
 });
 
 // The real MFM parser selects emoji names, authors and URLs; the image leaf does not fetch during this DOM test.
@@ -89,8 +91,8 @@ async function mount(component: Component, notification: unknown, popup = true) 
 
 describe('notification custom emoji and avatar decorations', () => {
 	it.each(['MkNotification.vue', 'MkExternalNotificationToast.vue'])('%s: compiles the reaction image size rule to a browser selector', async (name) => {
-		const filename = resolve(process.cwd(), 'src/components', name);
-		const source = readFileSync(filename, 'utf8');
+		const filename = `src/components/${name}`;
+		const source = name === 'MkNotification.vue' ? notificationSource : externalToastSource;
 		const style = parse(source, { filename }).descriptor.styles.find(block => block.module);
 		if (!style) throw new Error(`Missing notification CSS module: ${name}`);
 		const compile = (content: string) => compileStyleAsync({

@@ -20,6 +20,7 @@ function fixture(durationSeconds: number | null = 61) {
 	const service = Object.create(HatadyService.prototype) as HatadyService;
 	Object.assign(service, {
 		hatadyLogsRepository: { ...repository, manager: { transaction } },
+		hatadyNotificationsRepository: { findBy: vi.fn().mockResolvedValue([]) },
 		hatadyAttachmentService: { validate: vi.fn().mockResolvedValue([]) },
 		idService: { gen: vi.fn().mockReturnValue('log') },
 		flowerService: { onHatadyCreated: vi.fn().mockResolvedValue({}) },

@@ -7,6 +7,7 @@ import { Injectable } from '@nestjs/common';
 import { bindThis } from '@/decorators.js';
 import { HybridTimelineChannelService } from './channels/hybrid-timeline.js';
 import { LtlPunchChannelService } from './channels/ltl-punch.js';
+import { HatadyTimelineChannelService } from './channels/hatady-timeline.js';
 import { LocalTimelineChannelService } from './channels/local-timeline.js';
 import { HomeTimelineChannelService } from './channels/home-timeline.js';
 import { GlobalTimelineChannelService } from './channels/global-timeline.js';
@@ -36,6 +37,7 @@ export class ChannelsService {
 		private homeTimelineChannelService: HomeTimelineChannelService,
 		private localTimelineChannelService: LocalTimelineChannelService,
 		private ltlPunchChannelService: LtlPunchChannelService,
+		private hatadyTimelineChannelService: HatadyTimelineChannelService,
 		private hybridTimelineChannelService: HybridTimelineChannelService,
 		private globalTimelineChannelService: GlobalTimelineChannelService,
 		private bubbleTimelineChannelService: BubbleTimelineChannelService,
@@ -64,6 +66,7 @@ export class ChannelsService {
 			case 'homeTimeline': return this.homeTimelineChannelService;
 			case 'localTimeline': return this.localTimelineChannelService;
 			case 'ltlPunch': return this.ltlPunchChannelService;
+			case 'hatadyTimeline': return this.hatadyTimelineChannelService;
 			case 'hybridTimeline': return this.hybridTimelineChannelService;
 			case 'globalTimeline': return this.globalTimelineChannelService;
 			case 'bubbleTimeline': return this.bubbleTimelineChannelService;

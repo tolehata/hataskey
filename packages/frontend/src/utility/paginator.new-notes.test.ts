@@ -53,4 +53,18 @@ describe('paginator new notes preview snapshot', () => {
 		finish([]);
 		await reloading;
 	});
+
+	it('removes and replaces queued notifications before they can be released', () => {
+		const paginator = new Paginator('i/notifications', {});
+		const first = { id: 'first', createdAt: '2026-09-27T00:00:00Z', type: 'app', body: 'old' } as entities.Notification;
+		const second = { id: 'second', createdAt: '2026-09-27T00:01:00Z', type: 'app', body: 'second' } as entities.Notification;
+		paginator.enqueue(first);
+		paginator.enqueue(second);
+		paginator.updateItem('first', item => ({ ...item, body: 'new' }));
+		paginator.removeItem('second');
+		expect(paginator.queuedAheadItemsCount.value).toBe(1);
+		expect(paginator.queuedAheadItems.value.map(item => [item.id, item.type === 'app' ? item.body : null])).toEqual([['first', 'new']]);
+		paginator.releaseQueue();
+		expect(paginator.items.value.map(item => [item.id, item.type === 'app' ? item.body : null])).toEqual([['first', 'new']]);
+	});
 });

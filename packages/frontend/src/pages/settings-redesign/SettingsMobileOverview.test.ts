@@ -6,6 +6,11 @@
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
 import type { App } from 'vue';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+const config = vi.hoisted(() => ({ ui: 'simple' }));
+vi.mock('@@/js/config.js', async importOriginal => ({
+	...await importOriginal<typeof import('@@/js/config.js')>(),
+	get ui() { return config.ui; },
+}));
 vi.mock('@/i18n.js', async () => {
 	const fs = await import('node:fs');
 	const path = await import('node:path');
@@ -17,6 +22,7 @@ vi.mock('@/i18n.js', async () => {
 import overviewSource from './SettingsMobileOverview.vue?raw';
 import shellSource from './index.vue?raw';
 import SettingsMobileOverview from './SettingsMobileOverview.vue';
+import { destinationForId } from './settings-destinations.js';
 
 const mounted: Array<{ app: App<Element>; container: HTMLDivElement }> = [];
 
@@ -25,6 +31,7 @@ afterEach(() => {
 		item.app.unmount();
 		item.container.remove();
 	}
+	config.ui = 'simple';
 });
 
 describe('settings mobile overview', () => {
@@ -98,9 +105,40 @@ describe('settings mobile overview', () => {
 	test('mobileカテゴリはmanifestのHataskey UIを重複させず、Misskey UIを互換行へ分ける', () => {
 		expect(shellSource).toContain('const mobileOverviewSections = computed<SettingsOverviewSection[]>(() => navSections.filter(section => section.id !== \'hataskey-ui\' && section.id !== \'misskey-ui\'));');
 		expect(shellSource).toContain('const mobileDeprecatedSections = computed<SettingsOverviewSection[]>(() => navSections.filter(section => section.id === \'misskey-ui\'));');
-		expect(overviewSource).toContain('<h2 id="settings-mobile-feature"><span class=\"settingsBrand\">Hataskey UI</span></h2>');
+		expect(overviewSource).toContain('id="settings-mobile-feature"');
+		expect(shellSource).toContain("const hataCustomGlassUiItem = destinationForId('hataskey-ui')!;");
+		expect(shellSource).toContain("const mobileFeatureItem = ui === 'hataskey3' ? destinationForId('hataskey-ui-s')! : hataCustomGlassUiItem;");
+		expect(shellSource).toContain(':featureItem="mobileFeatureItem"');
 		expect(overviewSource).toContain('settingsBrand');
 		expect(overviewSource).toContain('.deprecated .categories');
+	});
+
+	test.each([
+		{ ui: 'simple', title: 'Hataskey UI', badge: '使用中・推奨', description: 'ナビ・透過率・吹き出し・デッキの表示をまとめて調整します', destinationId: 'hataskey-ui', preview: true },
+		{ ui: 'hataskey3', title: 'Hataskey UI S', badge: '使用中', description: 'Hataskey UIの良さはそのまま、シンプルで遊び心のあるUIです。', destinationId: 'hataskey-ui-s', preview: false },
+		{ ui: 'deck', title: 'Hataskey UI', badge: '推奨', description: 'ナビ・透過率・吹き出し・デッキの表示をまとめて調整します', destinationId: 'hataskey-ui', preview: true },
+	])('mobile feature card follows the current $ui UI', async ({ ui, title, badge, description, destinationId, preview }) => {
+		config.ui = ui;
+		const select = vi.fn();
+		const featureItem = destinationForId(destinationId)!;
+		const app = createApp(defineComponent({
+			setup() {
+				return () => h(SettingsMobileOverview, { quickItems: [], featureItem, sections: [], onSelect: select });
+			},
+		}));
+		const container = window.document.createElement('div');
+		window.document.body.append(container);
+		app.mount(container);
+		mounted.push({ app, container });
+		await nextTick();
+		const card = container.querySelector<HTMLElement>('#settings-mobile-feature')?.closest('section');
+		expect(card?.querySelector('h2')?.textContent).toBe(title);
+		expect(card?.querySelector('[class*="featureBadge"]')?.textContent).toBe(badge);
+		expect(card?.querySelector('p')?.textContent).toBe(description);
+		expect(card?.querySelector('[class*="featurePreview"]') != null).toBe(preview);
+		card?.querySelector<HTMLButtonElement>('[class*="featureLink"]')?.click();
+		await nextTick();
+		expect(select).toHaveBeenCalledWith(expect.objectContaining({ id: destinationId, route: featureItem.route }));
 	});
 	test('active category keeps a softer hierarchy while ordinary action rows use 48px targets', () => {
 		expect(overviewSource).toContain('.category.itemActive, .category.itemActive:hover');

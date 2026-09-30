@@ -68,7 +68,7 @@ function makeService(opts: {
 		gen: () => 'notification1',
 	};
 	const notificationService: Stub = {
-		createNotification: (userId: string) => {
+		createNotificationAsync: async (userId: string) => {
 			opts.bellNotificationUserIds?.push(userId);
 		},
 	};

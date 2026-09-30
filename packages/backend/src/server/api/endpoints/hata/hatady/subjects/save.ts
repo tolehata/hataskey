@@ -31,7 +31,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private hatadyService: HatadyService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			return this.hatadyService.saveSubject(me.id, ps.name, ps.color ?? null, ps.originalName);
+			return this.hatadyService.saveSubject(me.id, ps.name, ps.color, ps.originalName);
 		});
 	}
 }

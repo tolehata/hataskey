@@ -4,13 +4,96 @@
  */
 
 import { describe, expect, test, vi } from 'vitest';
-import { notificationTypes } from 'cherrypick-js';
-import { hasConfiguredNotificationFilter, isNotificationFromBot, migrateNotificationFilterSnapshot, resolveNotificationFilter, serializeNotificationFilter } from './notification-filter.js';
+import { notificationTypes, hatadyNotificationSubtypes } from 'cherrypick-js';
+import { hasConfiguredNotificationFilter, isNotificationFromBot, migrateNotificationFilterSnapshot, resolveNotificationFilter, resolveNotificationFilterDetails, serializeNotificationFilter, serializeNotificationFilterDetails } from './notification-filter.js';
+import { effectiveNotificationType, matchesNotificationView, notificationBrand } from './notification-brand.js';
 import type * as Misskey from 'cherrypick-js';
 
 vi.mock('@/i18n.js', () => ({ i18n: {} }));
 
+describe('notification brands and live filters', () => {
+	test('app classifications match backend path boundary and known HataFeed header', () => {
+		expect(notificationBrand({ type: 'app', link: '/hatask/tasks' })).toBe('hatask');
+		expect(notificationBrand({ type: 'app', link: '/hatasker' })).toBe('standard');
+		expect(notificationBrand({ type: 'app', header: 'HataFeed' })).toBe('hataFeed');
+		expect(notificationBrand({ type: 'app', header: 'HataFeed counterfeit' })).toBe('standard');
+		expect(notificationBrand({ type: 'app', customHeader: 'HataFeed' })).toBe('hataFeed');
+		expect(notificationBrand({ type: 'app', customLink: '/hatask?notice=calendar' })).toBe('hatask');
+	});
+
+	test('legacy HataFeed app uses the backend effective type in both packed and live filters', () => {
+		for (const item of [{ type: 'app', header: 'HataFeed' }, { type: 'app', customHeader: 'HataFeed' }]) {
+			const notification = item as Misskey.entities.Notification;
+			expect(effectiveNotificationType(notification)).toBe('hataFeed');
+			expect(matchesNotificationView(notification, { excludeTypes: ['hataFeed'] })).toBe(false);
+			expect(matchesNotificationView(notification, { excludeTypes: ['app'] })).toBe(true);
+		}
+	});
+
+	test('brand and Hatady subtype are applied to live events together', () => {
+		const reaction = { id: '1', type: 'hatady', subtype: 'reaction', createdAt: '2026-09-30T00:00:00Z' } as Misskey.entities.Notification;
+		const comment = { ...reaction, id: '2', subtype: 'comment' } as Misskey.entities.Notification;
+		expect(matchesNotificationView(reaction, { brand: 'hatady', includeHatadySubtypes: ['comment'] })).toBe(false);
+		expect(matchesNotificationView(comment, { brand: 'hatady', includeHatadySubtypes: ['comment'] })).toBe(true);
+		expect(matchesNotificationView(comment, { brand: 'standard' })).toBe(false);
+	});
+
+	test('category parent gate is independent of its remembered Hatady child selection', () => {
+		const comment = { id: 'comment', type: 'hatady', subtype: 'comment' } as Misskey.entities.Notification;
+		const selected = { includeBrands: ['standard'] as const, includeHatadySubtypes: ['comment'] };
+		expect(matchesNotificationView(comment, selected)).toBe(false);
+		expect(matchesNotificationView(comment, { ...selected, includeBrands: ['standard', 'hatady'] as const })).toBe(true);
+		expect(matchesNotificationView(comment, { ...selected, includeBrands: ['standard', 'hatady'] as const, includeHatadySubtypes: [] })).toBe(false);
+	});
+
+	test('explicit other-Hatask switch owns only legacy Hatask app rows', () => {
+		const hataskApp = { id: 'old', type: 'app', header: 'Hatask', link: '/hatask/tasks' } as Misskey.entities.Notification;
+		const ordinaryApp = { id: 'standard', type: 'app', header: 'Other', link: '/other' } as Misskey.entities.Notification;
+		const flower = { id: 'flower', type: 'hataskFlowerReady' } as Misskey.entities.Notification;
+		const filter = { includeBrands: ['standard', 'hatask'] as const, excludeTypes: ['app'] };
+		expect(matchesNotificationView(hataskApp, { ...filter, includeHataskApp: true })).toBe(true);
+		expect(matchesNotificationView(hataskApp, { ...filter, includeHataskApp: false })).toBe(false);
+		expect(matchesNotificationView(ordinaryApp, { ...filter, includeHataskApp: true })).toBe(false);
+		expect(matchesNotificationView(flower, { ...filter, includeHataskApp: false })).toBe(true);
+		expect(matchesNotificationView(hataskApp, filter)).toBe(false);
+	});
+});
+
 describe('notification filter persistence', () => {
+	test('旧appとHatady親の除外をカテゴリで勝手に有効化せず、新しいHatady細分類はOFFにする', () => {
+		const excluded = resolveNotificationFilter(['app', 'hatady'], []);
+		const details = resolveNotificationFilterDetails(undefined, excluded.excludeTypes);
+		expect(details).toMatchObject({ includeBrands: null, includeHataskApp: false, excludeHatadySubtypes: [] });
+		const saved = serializeNotificationFilterDetails(details);
+		expect(resolveNotificationFilterDetails(saved, excluded.excludeTypes).includeHataskApp).toBe(false);
+		const oldSubtypes = hatadyNotificationSubtypes.filter(subtype => subtype !== hatadyNotificationSubtypes.at(-1));
+		const migrated = resolveNotificationFilterDetails({ knownHatadySubtypes: oldSubtypes });
+		expect(migrated.excludeHatadySubtypes).toEqual([hatadyNotificationSubtypes.at(-1)]);
+	});
+
+	test('カテゴリとHatady細分類を保存して再読込し、未知の将来値を保持する', () => {
+		const previous = {
+			includeBrands: ['standard', 'futureBrand'],
+			excludeHatadySubtypes: ['futureSubtype'],
+			knownHatadySubtypes: ['futureSubtype'],
+		};
+		const selected = resolveNotificationFilterDetails(previous);
+		const saved = serializeNotificationFilterDetails({
+			...selected,
+			includeBrands: ['hatady', 'hatask'],
+			includeHataskApp: false,
+			excludeHatadySubtypes: [hatadyNotificationSubtypes[0]],
+		}, previous);
+		expect(saved.includeBrands).toEqual(['hatady', 'hatask', 'futureBrand']);
+		expect(saved.excludeHatadySubtypes).toEqual(['futureSubtype', hatadyNotificationSubtypes[0]]);
+		expect(saved.knownHatadySubtypes).toEqual(['futureSubtype', ...hatadyNotificationSubtypes]);
+		expect(resolveNotificationFilterDetails(saved)).toEqual({
+			includeBrands: ['hatady', 'hatask'],
+			includeHataskApp: false,
+			excludeHatadySubtypes: [hatadyNotificationSubtypes[0]],
+		});
+		expect(serializeNotificationFilterDetails({ ...selected, includeBrands: null }).includeBrands).toEqual(['standard', 'hatady', 'hatask', 'hataFeed', 'futureBrand']);
+	});
 	test('Hataskのお花を個別に選択でき、保存済みフィルタには勝手に追加しない', () => {
 		const oldTypes = notificationTypes.filter(type => type !== 'hataskFlowerReady');
 		expect(resolveNotificationFilter([], oldTypes).excludeTypes).toContain('hataskFlowerReady');

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<HyDialog ref="dialog" :title="title" :back="currentIndex > 0 || embedded" :busy="saving" :embedded="embedded" :inert="closePrompt" @close="requestClose" @back="back" @closed="emit('closed')">
+<HyDialog ref="dialog" :title="title" :variant="variant" :back="currentIndex > 0 || embedded" :busy="saving" :embedded="embedded" :inert="closePrompt" @close="requestClose" @back="back" @closed="emit('closed')">
 	<div :class="$style.progress"><div><span><i :class="icon" aria-hidden="true"></i>{{ label }}</span><small>{{ currentIndex + 1 }} / {{ route.length }}</small></div><progress :value="currentIndex + 1" :max="route.length" :aria-label="copy.progress"></progress></div>
 	<p v-if="error" ref="errorBox" role="alert" tabindex="-1" :class="$style.error">{{ error }}</p>
 	<form ref="form" novalidate @submit.prevent="next">
@@ -25,12 +25,13 @@
 		<button type="button" class="hy-primary" :disabled="saving" @click="next">{{ saving ? copy.saving : currentIndex === route.length - 1 ? saveLabel : copy.next }}<i :class="currentIndex === route.length - 1 ? 'ti ti-check' : 'ti ti-arrow-right'" aria-hidden="true"></i></button>
 	</template>
 </HyDialog>
-<HatadyDraftPrompt v-if="closePrompt" :busy="saving" :error="draftError" @save="closeWithDraft(true)" @discard="closeWithDraft(false)" @return="returnToEditing"/>
+<HatadyDraftPrompt v-if="closePrompt" :variant="variant" :busy="saving" :error="draftError" @save="closeWithDraft(true)" @discard="closeWithDraft(false)" @return="returnToEditing"/>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useId, useTemplateRef } from 'vue';
 import type { HatadyFormPage, HatadyFormValues } from '@/utility/hatady-form.js';
+import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 import HyDialog from '@/components/HyDialog.vue';
 import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
 import MkMediaList from '@/components/MkMediaList.vue';
@@ -42,7 +43,7 @@ import { i18n } from '@/i18n.js';
 const copy = i18n.ts._hata._hatady._formWizard;
 
 const values = defineModel<HatadyFormValues>({ required: true });
-const props = withDefaults(defineProps<{ title: string; label: string; icon: string; pages: HatadyFormPage[]; draftId: string; embedded?: boolean; saveLabel?: string; summaryTitle?: string; restore?: (draft: HatadyFormValues) => HatadyFormValues; save: (values: HatadyFormValues) => Promise<any> }>(), { embedded: false, saveLabel: i18n.ts._hata._hatady._formWizard.saveDefault, summaryTitle: '' });
+const props = withDefaults(defineProps<{ title: string; label: string; icon: string; pages: HatadyFormPage[]; draftId: string; embedded?: boolean; variant?: HatadySurfaceVariant; saveLabel?: string; summaryTitle?: string; restore?: (draft: HatadyFormValues) => HatadyFormValues; save: (values: HatadyFormValues) => Promise<any> }>(), { embedded: false, variant: 'hatady', saveLabel: i18n.ts._hata._hatady._formWizard.saveDefault, summaryTitle: '' });
 const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void; (event: 'back'): void }>();
 const dialog = useTemplateRef('dialog'), form = useTemplateRef('form'), errorBox = useTemplateRef('errorBox'), id = useId();
 const currentPage = ref(props.pages[0]?.id ?? ''), selectedGroups = ref(initialFormGroups(props.pages, values.value));

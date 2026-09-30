@@ -4,6 +4,7 @@ import { createApp, h, nextTick, ref } from 'vue';
 import HyCategorySelect from './HyCategorySelect.vue';
 
 vi.mock('@/os.js', () => ({ claimZIndex: () => 100 }));
+vi.mock('@/i18n.js', () => ({ i18n: { ts: { close: '閉じる', _hata: { _hatady: { _controls: { back: '戻る' } } } } } }));
 vi.mock('@/preferences.js', () => ({ prefer: { s: { animation: false, useBlurEffectForModal: false } } }));
 vi.mock('@/utility/touch.js', () => ({ isTouchUsing: false }));
 vi.mock('@/utility/device-kind.js', () => ({ deviceKind: 'desktop' }));

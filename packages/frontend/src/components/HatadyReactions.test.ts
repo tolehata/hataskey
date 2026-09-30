@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
+import * as os from '@/os.js';
 
 const fixture = vi.hoisted(() => ({ api: vi.fn(), notify: vi.fn(), picker: vi.fn() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api, misskeyApiGet: fixture.api }));
@@ -39,7 +40,7 @@ type ReactionTarget = { logId?: string; commentId?: string; sessionId?: string; 
 const cleanups: Array<() => void> = [];
 
 async function settle() {
-	await Promise.resolve();
+	for (let step = 0; step < 8; step++) await Promise.resolve();
 	await nextTick();
 }
 
@@ -63,9 +64,10 @@ function pill(host: HTMLElement, index = 0) {
 
 beforeEach(() => {
 	vi.useFakeTimers();
-	fixture.api.mockReset().mockResolvedValue(undefined);
+	fixture.api.mockReset().mockImplementation(async (endpoint: string) => endpoint.endsWith('/list') ? [] : undefined);
 	fixture.notify.mockReset();
 	fixture.picker.mockReset();
+	vi.mocked(os.popup).mockReset().mockReturnValue({ dispose: vi.fn() } as never);
 });
 
 afterEach(() => {
@@ -92,13 +94,13 @@ describe('Hatady reaction pills', () => {
 		expect(window.document.activeElement).toBe(button);
 		button.click();
 		await settle();
-		expect(fixture.api.mock.calls).toEqual([[`${prefix}/reactions/create`, { ...payload, reaction: emoji }]]);
+		expect(fixture.api).toHaveBeenCalledWith(`${prefix}/reactions/create`, { ...payload, reaction: emoji });
 		expect(button.getAttribute('aria-pressed')).toBe('true');
 		expect(changed).toHaveBeenLastCalledWith({ reactions: { [emoji]: 3 }, myReaction: emoji });
 		button.querySelector<HTMLElement>('span')!.click();
 		await settle();
 		expect(fixture.api.mock.calls.at(-1)).toEqual([`${prefix}/reactions/delete`, payload]);
-		expect(fixture.api).toHaveBeenCalledTimes(2);
+		expect(fixture.api.mock.calls.filter(([endpoint]) => !String(endpoint).endsWith('/list'))).toHaveLength(2);
 		expect(button.getAttribute('aria-pressed')).toBe('false');
 		expect(changed).toHaveBeenLastCalledWith({ reactions: { [emoji]: 2 }, myReaction: null });
 	});
@@ -146,5 +148,145 @@ describe('Hatady reaction pills', () => {
 		await settle();
 		expect(fixture.api).toHaveBeenCalledWith('hata/hatady/media/reactions/create', { targetType: 'session', targetId: 'session', reaction: ':hatady_yatta:' });
 		expect(changed).toHaveBeenLastCalledWith({ reactions: { '👍': 1, ':hatady_yatta:': 4 }, myReaction: ':hatady_yatta:' });
+	});
+
+	test('hover waits 100ms, reuses the user list, and invalidates it after a reaction', async () => {
+		fixture.api.mockImplementation(async (endpoint: string) => endpoint.endsWith('/list') ? [{ user: { id: 'u1', username: 'user' } }] : undefined);
+		const { host } = await mountReactions({ logId: 'hover-log' }, { '👍': 2 });
+		const button = pill(host);
+		button.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+		vi.advanceTimersByTime(99);
+		await settle();
+		expect(fixture.api).not.toHaveBeenCalled();
+		vi.advanceTimersByTime(1);
+		await settle();
+		expect(fixture.api).toHaveBeenCalledWith('hata/hatady/reactions/list', { logId: 'hover-log', reaction: '👍', limit: 10 });
+		expect(os.popup).toHaveBeenCalledTimes(1);
+		button.dispatchEvent(new MouseEvent('mouseleave'));
+		button.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+		vi.advanceTimersByTime(100);
+		await settle();
+		expect(fixture.api.mock.calls.filter(([endpoint]) => String(endpoint).endsWith('/list'))).toHaveLength(1);
+		button.click();
+		await settle();
+		button.dispatchEvent(new MouseEvent('mouseleave'));
+		button.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+		vi.advanceTimersByTime(100);
+		await settle();
+		expect(fixture.api.mock.calls.filter(([endpoint]) => String(endpoint).endsWith('/list'))).toHaveLength(2);
+	});
+
+	test('touch hold opens after 450ms, closes on release, and consumes the synthetic click', async () => {
+		const { host, changed } = await mountReactions({ sessionId: 'touch-session' }, { '👍': 2 });
+		const button = pill(host);
+		const touch = (type: string, x = 4) => {
+			const event = new Event(type, { bubbles: true });
+			const point = { clientX: x, clientY: 4 };
+			Object.defineProperty(event, 'touches', { value: { length: type === 'touchend' ? 0 : 1, item: () => point } });
+			Object.defineProperty(event, 'changedTouches', { value: { length: 1, item: () => point } });
+			button.dispatchEvent(event);
+		};
+		touch('touchstart');
+		vi.advanceTimersByTime(450);
+		await settle();
+		expect(fixture.api).toHaveBeenCalledWith('hata/hatady/media/reactions/list', { targetType: 'session', targetId: 'touch-session', reaction: '👍', limit: 10 });
+		expect(os.popup).toHaveBeenCalledTimes(1);
+		const showing = (vi.mocked(os.popup).mock.calls[0][1] as unknown as { showing: { value: boolean } }).showing;
+		touch('touchend');
+		expect(showing.value).toBe(false);
+		button.click();
+		await settle();
+		expect(changed).not.toHaveBeenCalled();
+		expect(fixture.api.mock.calls.filter(([endpoint]) => String(endpoint).endsWith('/create'))).toHaveLength(0);
+	});
+
+	test('a list response arriving after touch release does not reopen details', async () => {
+		let resolveList!: (rows: unknown[]) => void;
+		fixture.api.mockImplementation((endpoint: string) => endpoint.endsWith('/list') ? new Promise(resolve => { resolveList = resolve; }) : Promise.resolve());
+		const { host } = await mountReactions({ commentId: 'comment-late' }, { '👍': 3 });
+		const button = pill(host);
+		const dispatch = (type: string, x: number) => {
+			const point = { clientX: x, clientY: 10 };
+			const event = new Event(type, { bubbles: true });
+			Object.defineProperty(event, 'touches', { value: { length: type === 'touchend' ? 0 : 1, item: () => point } });
+			Object.defineProperty(event, 'changedTouches', { value: { length: 1, item: () => point } });
+			button.dispatchEvent(event);
+		};
+		dispatch('touchstart', 10);
+		vi.advanceTimersByTime(450);
+		await settle();
+		dispatch('touchend', 10);
+		resolveList([{ user: { id: 'u1', username: 'user' } }]);
+		await settle();
+		expect(os.popup).not.toHaveBeenCalled();
+
+		dispatch('touchstart', 10);
+		dispatch('touchmove', 23);
+		vi.advanceTimersByTime(450);
+		await settle();
+		expect(os.popup).not.toHaveBeenCalled();
+	});
+
+	test('a list response for a previous target does not open details on a reused pill', async () => {
+		let resolveList!: (rows: unknown[]) => void;
+		fixture.api.mockImplementation((endpoint: string) => endpoint.endsWith('/list') ? new Promise(resolve => { resolveList = resolve; }) : Promise.resolve());
+		const target = { logId: 'old-log' };
+		const { host } = await mountReactions(target, { '👍': 2 });
+		pill(host).dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+		vi.advanceTimersByTime(100);
+		await settle();
+		target.logId = 'new-log';
+		resolveList([{ user: { id: 'u1', username: 'user' } }]);
+		await settle();
+		expect(os.popup).not.toHaveBeenCalled();
+	});
+
+	test('keyboard focus opens one detail popup, including when hover overlaps, and blur closes it', async () => {
+		const { host } = await mountReactions({ logId: 'keyboard-log' }, { '👍': 2 });
+		const button = pill(host);
+		const originalMatches = button.matches.bind(button);
+		vi.spyOn(button, 'matches').mockImplementation(selector => selector === ':focus-visible' || originalMatches(selector));
+		button.dispatchEvent(new FocusEvent('focus'));
+		button.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+		vi.advanceTimersByTime(100);
+		await settle();
+		expect(os.popup).toHaveBeenCalledTimes(1);
+		const showing = (vi.mocked(os.popup).mock.calls[0][1] as unknown as { showing: { value: boolean } }).showing;
+		button.dispatchEvent(new MouseEvent('mouseleave'));
+		expect(showing.value).toBe(true);
+		button.dispatchEvent(new FocusEvent('blur'));
+		expect(showing.value).toBe(false);
+	});
+
+	test('hover detail remains open when the pointer leaves while keyboard focus continues', async () => {
+		const { host } = await mountReactions({ logId: 'hover-focus' }, { '👍': 2 });
+		const button = pill(host);
+		const originalMatches = button.matches.bind(button);
+		vi.spyOn(button, 'matches').mockImplementation(selector => selector === ':focus-visible' || originalMatches(selector));
+		button.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+		vi.advanceTimersByTime(100); await settle();
+		expect(os.popup).toHaveBeenCalledTimes(1);
+		const showing = (vi.mocked(os.popup).mock.calls[0][1] as unknown as { showing: { value: boolean } }).showing;
+		button.dispatchEvent(new FocusEvent('focus'));
+		button.dispatchEvent(new MouseEvent('mouseleave'));
+		expect(showing.value).toBe(true);
+		button.dispatchEvent(new FocusEvent('blur'));
+		expect(showing.value).toBe(false);
+		expect(os.popup).toHaveBeenCalledTimes(1);
+	});
+
+	test('a list response after keyboard blur cannot reopen details', async () => {
+		let resolveList!: (rows: unknown[]) => void;
+		fixture.api.mockImplementation((endpoint: string) => endpoint.endsWith('/list') ? new Promise(resolve => { resolveList = resolve; }) : Promise.resolve());
+		const { host } = await mountReactions({ logId: 'blurred-log' }, { '👍': 2 });
+		const button = pill(host);
+		const originalMatches = button.matches.bind(button);
+		vi.spyOn(button, 'matches').mockImplementation(selector => selector === ':focus-visible' || originalMatches(selector));
+		button.dispatchEvent(new FocusEvent('focus'));
+		await settle();
+		button.dispatchEvent(new FocusEvent('blur'));
+		resolveList([{ user: { id: 'u1', username: 'user' } }]);
+		await settle();
+		expect(os.popup).not.toHaveBeenCalled();
 	});
 });

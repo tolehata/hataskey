@@ -33,6 +33,7 @@ export const notificationTypes = [
 	'groupInvited',
 	'app',
 	'hataFeed',
+	'hatady',
 	'hataskFlowerReady',
 	'hataskFlowerBloomed',
 	'hataskZukanUpdated',
@@ -49,6 +50,8 @@ export const notificationTypes = [
 	'login',
 	'createToken',
 ] as const;
+
+export const hatadyNotificationSubtypes = ['follow', 'comment', 'reaction', 'milestone', 'goalDone', 'mediaComment', 'mediaReply', 'mediaReaction'] as const;
 
 export const noteVisibilities = ['public', 'home', 'followers', 'specified'] as const;
 

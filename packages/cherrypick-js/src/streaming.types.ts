@@ -24,6 +24,7 @@ import {
 	ServerStatsLog,
 	ReversiGameDetailed,
 } from './entities.js';
+import type { HataHatadyActivitiesResponse } from './autogen/entities.js';
 import {
 	ReversiUpdateKey,
 } from './consts.js';
@@ -48,6 +49,16 @@ export type LtlPunchState = {
 };
 
 export type Channels = {
+	hatadyTimeline: {
+		params: { scope: 'mine' | 'recent' | 'following'; kind?: 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking' };
+		events: {
+			activity: (payload: { seq: number; key: string; activity: HataHatadyActivitiesResponse['items'][number] }) => void;
+			removed: (payload: { seq: number; key: string; id: string }) => void;
+			synced: (payload: { seq: number; requestId: number }) => void;
+			resyncRequired: (payload: { seq: number; requestId?: number }) => void;
+		};
+		receives: { sync: { ids: string[]; seenThrough: number; requestId: number } };
+	};
 	ltlPunch: {
 		params: null;
 		events: {
@@ -71,9 +82,11 @@ export type Channels = {
 			meUpdated: (payload: UserDetailed) => void;
 			pageEvent: (payload: PageEvent) => void;
 			urlUploadFinished: (payload: { marker: string; file: DriveFile; }) => void;
-			readAllNotifications: () => void;
-			unreadNotification: (payload: Notification) => void;
-			notificationFlushed: () => void;
+			readAllNotifications: (payload: { ids: string[]; unreadNotificationsCount: number; revision: string }) => void;
+			readNotification: (payload: { id: string; unreadNotificationsCount: number; revision: string }) => void;
+			notificationChanged: (payload: { ids: string[]; unreadNotificationsCount: number; revision: string }) => void;
+			unreadNotification: (payload: Notification & { unreadNotificationsCount: number; revision: string }) => void;
+			notificationFlushed: (payload: { unreadNotificationsCount: number; revision: string }) => void;
 			unreadAntenna: (payload: Antenna) => void;
 			newChatMessage: (payload: ChatMessage) => void;
 			readAllAnnouncements: () => void;

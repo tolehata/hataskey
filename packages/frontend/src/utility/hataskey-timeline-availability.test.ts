@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { runInNewContext } from 'node:vm';
 import { parse } from '@vue/compiler-sfc';
 import * as ts from 'typescript';
 import { computed, effectScope, ref, watch } from 'vue';
@@ -13,6 +10,10 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { isHataskeyTimelineAllowed } from './hataskey-timeline-availability.js';
 import type { ComputedRef, Ref } from 'vue';
 import { $i } from '@/i.js';
+
+const readFileSync = process.getBuiltinModule('fs')!.readFileSync;
+const resolve = process.getBuiltinModule('path')!.resolve;
+const runInNewContext = process.getBuiltinModule('vm')!.runInNewContext;
 
 vi.mock('@/i.js', async () => {
 	const { reactive } = await import('vue');
@@ -52,11 +53,11 @@ function normal(saved = 'local') {
 	const state = setupState<{
 		tab: Ref<string>;
 		visibleTopTabs: ComputedRef<{ id: string }[]>;
-		orderedWheelTabs: ComputedRef<string[]>;
 		tabOrder: ComputedRef<string[]>;
 		switchTab: (tab: string) => void;
-	}>('src/ui/simple.vue', ['getInitialTab', 'tab', 'visibleTopTabs', 'orderedWheelTabs', 'tabOrder', 'switchTab'], {
-				prefer: { r: { 'simpleUi.topNav': topNav, 'simpleUi.showTrendingTab': ref(true) } },
+	}>('src/ui/simple.vue', ['getInitialTab', 'tab', 'visibleTopTabs', 'tabOrder', 'switchTab'], {
+				prefer: { r: { 'simpleUi.topNav': topNav, 'simpleUi.showTrendingTab': ref(true), 'simpleUi.showHatadyTab': ref(true) } },
+				i18n: { ts: { _hata: { _hataskeyUi3: { tabTrending: 'Trending', tabHatady: 'Hatady' } } } },
 				miLocalStorage: storage, showOHTL: ref(true), showOLTL: ref(true),
 				isCollectionTimelinePage: ref(false), timelinePickerKind: ref(null), contentEl: ref(null),
 			}, true);
@@ -99,16 +100,15 @@ describe('Hataskey UI role-based timeline availability', () => {
 		Object.assign(policies, { ltlAvailable: ltl, gtlAvailable: gtl });
 		for (const type of ['local', 'social', 'media']) expect(isHataskeyTimelineAllowed(type)).toBe(ltl);
 		for (const type of ['mixed', 'global']) expect(isHataskeyTimelineAllowed(type)).toBe(gtl);
-		for (const type of ['home', 'following', 'trending', 'ohtl', 'oltl', 'list', 'antenna', 'notifications']) expect(isHataskeyTimelineAllowed(type)).toBe(true);
+		for (const type of ['home', 'following', 'trending', 'hatady', 'ohtl', 'oltl', 'list', 'antenna', 'notifications']) expect(isHataskeyTimelineAllowed(type)).toBe(true);
 	});
 
 	test.each(['local', 'social', 'mixed'])('does not restore denied saved tab %s or include it in swipe/wheel navigation', saved => {
 		Object.assign(policies, { ltlAvailable: false, gtlAvailable: false });
 		const state = normal(saved);
 		expect(state.tab.value).toBe('following');
-		expect(state.visibleTopTabs.value.map(t => t.id)).toEqual(['following', 'trending']);
-		expect(state.tabOrder.value).toEqual(['following', 'trending', 'ohtl', 'oltl']);
-		expect(state.orderedWheelTabs.value).toEqual(state.tabOrder.value);
+		expect(state.visibleTopTabs.value.map(t => t.id)).toEqual(['following', 'trending', 'hatady']);
+		expect(state.tabOrder.value).toEqual(['following', 'trending', 'hatady', 'ohtl', 'oltl']);
 		state.switchTab(saved);
 		expect(state.tab.value).toBe('following');
 		expect(state.storage.setItem).not.toHaveBeenCalled();
@@ -120,9 +120,9 @@ describe('Hataskey UI role-based timeline availability', () => {
 		expect(state.tab.value).toBe('local');
 		policies.ltlAvailable = false;
 		expect(state.tab.value).toBe('following');
-		expect(state.visibleTopTabs.value.map(t => t.id)).toEqual(['following', 'mixed', 'trending']);
+		expect(state.visibleTopTabs.value.map(t => t.id)).toEqual(['following', 'mixed', 'trending', 'hatady']);
 		policies.ltlAvailable = true;
-		expect(state.visibleTopTabs.value.map(t => t.id)).toEqual(['following', 'local', 'social', 'mixed', 'trending']);
+		expect(state.visibleTopTabs.value.map(t => t.id)).toEqual(['following', 'local', 'social', 'mixed', 'trending', 'hatady']);
 		expect(JSON.stringify(state.topNav.value)).toBe(saved);
 	});
 
@@ -165,5 +165,7 @@ describe('Hataskey UI role-based timeline availability', () => {
 		}
 		expect(menu).toContain('home');
 		expect(choices).toContain('home');
+		expect(menu).toContain('hatady');
+		expect(choices).toContain('hatady');
 	});
 });

@@ -22,14 +22,15 @@ function mount(refresher = vi.fn().mockResolvedValue(undefined), context?: Retur
 	const scroller = window.document.createElement('main');
 	scroller.style.overflowY = 'auto';
 	window.document.body.append(scroller);
-	const app = createApp({ render: () => h(MkPullToRefresh, { refresher }, () => h('p', '既存の一覧')) });
+	const onRefresh = vi.fn();
+	const app = createApp({ render: () => h(MkPullToRefresh, { refresher, onRefresh }, () => h('p', '既存の一覧')) });
 	if (context) app.provide(navbarPullRefreshKey, context);
 	app.component('MkLoading', { template: '<span>更新中</span>' });
 	app.mount(scroller);
 	let active = true;
 	const unmount = () => { if (active) app.unmount(); active = false; scroller.remove(); };
 	cleanups.push(unmount);
-	return { scroller, root: scroller.firstElementChild as HTMLElement, refresher, unmount };
+	return { scroller, root: scroller.firstElementChild as HTMLElement, refresher, onRefresh, unmount };
 }
 
 beforeEach(() => { vi.useFakeTimers(); isHorizontalSwipeSwiping.value = false; });
@@ -38,7 +39,7 @@ afterEach(() => { cleanups.splice(0).forEach(cleanup => cleanup()); vi.clearAllT
 test('a navbar host receives pull feedback without mounting the legacy list indicator', async () => {
 	const context = createNavbarPullRefresh(ref(true), ref(false));
 	cleanups.push(context.dispose);
-	const { root, refresher } = mount(undefined, context);
+	const { root, refresher, onRefresh } = mount(undefined, context);
 	touch(root, 'touchstart', 0, 0);
 	touch(window, 'touchmove', 0, 140);
 	await settle();
@@ -47,12 +48,50 @@ test('a navbar host receives pull feedback without mounting the legacy list indi
 	touch(window, 'touchend', 0, 140);
 	await vi.advanceTimersByTimeAsync(250);
 	expect(refresher).toHaveBeenCalledOnce();
+	expect(onRefresh).toHaveBeenCalledOnce();
+	expect(context.active.value).toBe(false);
+});
+
+test('a disabled navbar context never starts the legacy touch or mouse pull', async () => {
+	const context = createNavbarPullRefresh(ref(false), ref(false));
+	cleanups.push(context.dispose);
+	const { root, refresher, onRefresh } = mount(undefined, context);
+	touch(root, 'touchstart', 0, 0);
+	touch(window, 'touchmove', 0, 240);
+	root.dispatchEvent(new MouseEvent('mousedown', { button: 1, screenY: 0, bubbles: true }));
+	window.dispatchEvent(new MouseEvent('mousemove', { screenY: 240 }));
+	await settle();
+	expect(root.textContent).toBe('既存の一覧');
+	expect(context.state.value.phase).toBe('idle');
+	touch(window, 'touchend', 0, 240);
+	window.dispatchEvent(new MouseEvent('mouseup'));
+	await vi.advanceTimersByTimeAsync(250);
+	expect(refresher).not.toHaveBeenCalled();
+	expect(onRefresh).not.toHaveBeenCalled();
+});
+
+test('a navbar context uses its refresher and waits for it before finishing', async () => {
+	let finish!: () => void;
+	const contextRefresher = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));
+	const context = createNavbarPullRefresh(ref(true), ref(false), { refresher: contextRefresher });
+	cleanups.push(context.dispose);
+	const { root, refresher, onRefresh } = mount(undefined, context);
+	touch(root, 'touchstart', 0, 0);
+	touch(window, 'touchmove', 0, 140);
+	touch(window, 'touchend', 0, 140);
+	await vi.advanceTimersByTimeAsync(250);
+	expect(contextRefresher).toHaveBeenCalledOnce();
+	expect(refresher).not.toHaveBeenCalled();
+	expect(onRefresh).toHaveBeenCalledOnce();
+	expect(context.active.value).toBe(true);
+	finish();
+	await vi.advanceTimersByTimeAsync(1);
 	expect(context.active.value).toBe(false);
 });
 
 test('keeps standard threshold feedback, awaits refresh and prevents duplicate touch fetches', async () => {
 	let finish!: () => void;
-	const { root, refresher } = mount(vi.fn(() => new Promise<void>(resolve => { finish = resolve; })));
+	const { root, refresher, onRefresh } = mount(vi.fn(() => new Promise<void>(resolve => { finish = resolve; })));
 	touch(root, 'touchstart', 0, 0);
 	touch(window, 'touchmove', 0, 199);
 	await settle();
@@ -63,6 +102,7 @@ test('keeps standard threshold feedback, awaits refresh and prevents duplicate t
 	touch(window, 'touchend', 0, 200);
 	await settle();
 	expect(refresher).toHaveBeenCalledOnce();
+	expect(onRefresh).toHaveBeenCalledOnce();
 	expect(root.textContent).toContain('更新中');
 	touch(root, 'touchstart', 0, 0);
 	touch(window, 'touchmove', 0, 240);

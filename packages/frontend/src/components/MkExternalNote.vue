@@ -12,6 +12,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:data-external-note-embedded="embedded ? 'on' : undefined"
 	:data-external-note-pure-renote="isPureRenote ? 'on' : undefined"
 >
+	<Hk3VisibilityRail v-if="ui === 'hataskey3' && !embedded" :visibility="appearNote.visibility"/>
 	<div v-if="isPureRenote" :class="$style.renoteAttribution">
 		<i class="ti ti-repeat"></i>
 		<span :class="$style.renoteAttributionName">{{ note.user?.name || note.user?.username }}</span>
@@ -168,6 +169,8 @@ import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { getExternalEmojiUrlMap, getExternalAccount, addExternalRecentReaction, lookupExternalEmojiUrl } from '@/utility/external-api.js';
 import { resolveExternalNotePresentation } from '@/utility/external-note-presentation.js';
+import Hk3VisibilityRail from '@/components/hataskey3/Hk3VisibilityRail.vue';
+import { ui } from '@@/js/config.js';
 
 const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components/MkExternalReactionPicker.vue'));
 const MkExternalUserPopup = defineAsyncComponent(() => import('@/components/MkExternalUserPopup.vue'));
@@ -846,6 +849,10 @@ function showNoteMenu(ev: MouseEvent) {
 	padding: 10px 10px 6px;
 	font-size: 0.95em;
 	display: block;
+}
+
+.root:has(> [data-hk3-visibility-rail]) {
+	position: relative;
 }
 
 /* 旗鯖fork(Hataskey UI 2): 外部TL (ohtl/oltl) のノートにも --htk-glass-card-opacity を反映。

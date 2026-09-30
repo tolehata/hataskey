@@ -7,10 +7,10 @@ import { createHash } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 import * as Redis from 'ioredis';
 import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
-import { In } from 'typeorm';
+import { In, IsNull } from 'typeorm';
 import { ReplyError } from 'ioredis';
 import { DI } from '@/di-symbols.js';
-import type { UsersRepository } from '@/models/_.js';
+import type { FeedbackNotificationsRepository, HatadyNotificationsRepository, UsersRepository } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiNotification } from '@/models/Notification.js';
 import { bindThis } from '@/decorators.js';
@@ -36,6 +36,100 @@ redis.call('SET', KEYS[2], id, 'EX', ARGV[4])
 return id
 `;
 const notificationDedupRetentionSeconds = 7 * 24 * 60 * 60;
+const createSourceNotificationScript = `
+local existing = redis.call('HGET', KEYS[2], ARGV[3])
+if existing then
+	if #redis.call('XRANGE', KEYS[1], existing, existing, 'COUNT', 1) > 0 then return false end
+	redis.call('HDEL', KEYS[2], ARGV[3])
+end
+local id = redis.call('XADD', KEYS[1], 'MAXLEN', '~', ARGV[1], ARGV[2], 'data', ARGV[4])
+redis.call('HSET', KEYS[2], ARGV[3], id)
+return id
+`;
+const advanceReadCursorScript = `
+local function compareDecimal(a, b)
+	if #a ~= #b then return #a < #b and -1 or 1 end
+	if a == b then return 0 end
+	return a < b and -1 or 1
+end
+local current = redis.call('GET', KEYS[1])
+if current then
+	local currentMs, currentSeq = string.match(current, '^(%d+)%-(%d+)$')
+	local nextMs, nextSeq = string.match(ARGV[1], '^(%d+)%-(%d+)$')
+	local msOrder = compareDecimal(currentMs, nextMs)
+	if msOrder > 0 or (msOrder == 0 and compareDecimal(currentSeq, nextSeq) >= 0) then return false end
+end
+redis.call('SET', KEYS[1], ARGV[1])
+return true
+`;
+const removeMatchingHashFieldsScript = `
+local removed = 0
+for i = 1, #ARGV, 2 do
+	if redis.call('HGET', KEYS[1], ARGV[i]) == ARGV[i + 1] then
+		removed = removed + redis.call('HDEL', KEYS[1], ARGV[i])
+	end
+end
+return removed
+`;
+const repairSourceIndexScript = `
+local indexed = redis.call('HGET', KEYS[2], ARGV[1])
+if indexed then return indexed end
+if #redis.call('XRANGE', KEYS[1], ARGV[2], ARGV[2], 'COUNT', 1) == 0 then return false end
+redis.call('HSETNX', KEYS[2], ARGV[1], ARGV[2])
+return redis.call('HGET', KEYS[2], ARGV[1])
+`;
+const flushNotificationsScript = `
+for i = 1, 4 do redis.call('DEL', KEYS[i]) end
+redis.call('INCR', KEYS[5])
+return true
+`;
+
+type LinkedNotification = Extract<MiNotification, { type: 'hatady' | 'hataFeed' }>;
+export type NotificationBrand = 'all' | 'standard' | 'hatady' | 'hatask' | 'hataFeed';
+export function notificationBrand(notification: MiNotification | { type: string; header?: string | null; link?: string | null }): Exclude<NotificationBrand, 'all'> {
+	const fields = notification as { customHeader?: string | null; customLink?: string | null; header?: string | null; link?: string | null };
+	const header = fields.customHeader ?? fields.header;
+	const link = fields.customLink ?? fields.link;
+	if (notification.type === 'hatady') return 'hatady';
+	if (notification.type === 'hataFeed' || (notification.type === 'app' && header === 'HataFeed')) return 'hataFeed';
+	if (notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed') return 'hatask';
+	if (notification.type === 'app' && ((link != null && /^\/hatask(?:\/|[?#]|$)/.test(link))
+		|| (link == null && ['Hatask', 'Hataskのお花'].includes(header ?? '')))) return 'hatask';
+	return 'standard';
+}
+
+export function matchesNotificationListFilter(notification: MiNotification, options: {
+	includeTypes?: readonly string[];
+	excludeTypes?: readonly string[];
+	brand?: NotificationBrand;
+	includeBrands?: readonly Exclude<NotificationBrand, 'all'>[];
+	includeHataskApp?: boolean;
+}): boolean {
+	const selectedBrand = notificationBrand(notification);
+	if (options.brand != null && options.brand !== 'all' && selectedBrand !== options.brand) return false;
+	if (options.includeBrands != null && !options.includeBrands.includes(selectedBrand)) return false;
+	if (notification.type === 'app' && selectedBrand === 'hatask' && options.includeHataskApp !== undefined) return options.includeHataskApp;
+	const effectiveType = notification.type === 'app' && selectedBrand === 'hataFeed' ? 'hataFeed' : notification.type;
+	if (options.includeTypes != null && !options.includeTypes.includes(effectiveType)) return false;
+	if (options.excludeTypes?.includes(effectiveType)) return false;
+	return true;
+}
+
+function sourceOf(notification: MiNotification): { type: 'hatady' | 'hataFeed'; id: string } | null {
+	return (notification.type === 'hatady' || notification.type === 'hataFeed') && notification.sourceNotificationId != null
+		? { type: notification.type, id: notification.sourceNotificationId }
+		: null;
+}
+
+function compareStreamIds(a: string, b: string): number {
+	const [aMilliseconds = '0', aNumber = '0'] = a.split('-');
+	const [bMilliseconds = '0', bNumber = '0'] = b.split('-');
+	const aMs = BigInt(aMilliseconds);
+	const aSequence = BigInt(aNumber);
+	const bMs = BigInt(bMilliseconds);
+	const bSequence = BigInt(bNumber);
+	return aMs === bMs ? (aSequence < bSequence ? -1 : aSequence > bSequence ? 1 : 0) : aMs < bMs ? -1 : 1;
+}
 
 export function filterNotificationsFromBotIds(
 	notifications: MiNotification[],
@@ -49,6 +143,20 @@ export function filterNotificationsFromBotIds(
 @Injectable()
 export class NotificationService implements OnApplicationShutdown {
 	#shutdownController = new AbortController();
+	private revisionKey(userId: string): string { return `notificationRevision:${userId}`; }
+	private async bumpRevision(userId: string): Promise<void> { await this.redisClient.incr(this.revisionKey(userId)); }
+	private async getRevision(userId: string): Promise<string> { return await this.redisClient.get(this.revisionKey(userId)) ?? '0'; }
+	private async getCurrentUnreadState(userId: string): Promise<{ unreadNotificationsCount: number; revision: string }> {
+		for (;;) {
+			const revision = await this.getRevision(userId);
+			const unreadNotificationsCount = await this.getUnreadNotificationsCount(userId);
+			if (revision === await this.getRevision(userId)) return { unreadNotificationsCount, revision };
+		}
+	}
+	@bindThis
+	public async getUnreadNotificationState(userId: string): Promise<{ unreadNotificationsCount: number; revision: string }> {
+		return this.getCurrentUnreadState(userId);
+	}
 
 	constructor(
 		@Inject(DI.config)
@@ -59,6 +167,12 @@ export class NotificationService implements OnApplicationShutdown {
 
 		@Inject(DI.usersRepository)
 		private usersRepository: UsersRepository,
+
+		@Inject(DI.hatadyNotificationsRepository)
+		private hatadyNotificationsRepository: HatadyNotificationsRepository,
+
+		@Inject(DI.feedbackNotificationsRepository)
+		private feedbackNotificationsRepository: FeedbackNotificationsRepository,
 
 		private notificationEntityService: NotificationEntityService,
 		private idService: IdService,
@@ -74,8 +188,6 @@ export class NotificationService implements OnApplicationShutdown {
 		userId: MiUser['id'],
 		force = false,
 	) {
-		const latestReadNotificationId = await this.redisClient.get(`latestReadNotification:${userId}`);
-
 		const latestNotificationIdsRes = await this.redisClient.xrevrange(
 			`notificationTimeline:${userId}`,
 			'+',
@@ -85,17 +197,253 @@ export class NotificationService implements OnApplicationShutdown {
 
 		if (latestNotificationId == null) return;
 
-		this.redisClient.set(`latestReadNotification:${userId}`, latestNotificationId);
-
-		if (force || latestReadNotificationId == null || (latestReadNotificationId < latestNotificationId)) {
-			return this.postReadAllNotifications(userId);
+		const snapshot = await this.redisClient.xrange(`notificationTimeline:${userId}`, '-', latestNotificationId);
+		const snapshotNotifications = snapshot.map(([, fields]) => this.parseEntry(fields)).filter((x): x is MiNotification => x != null);
+		const visible = await this.notificationEntityService.packMany(snapshotNotifications, userId);
+		const visibleIds = new Set(visible.map(x => x.id));
+		const linkedChanged = await this.markLinkedSourcesRead(userId, snapshotNotifications.filter(x => visibleIds.has(x.id)));
+		const advanced = await this.redisClient.eval(advanceReadCursorScript, 1, `latestReadNotification:${userId}`, latestNotificationId) as number;
+		await this.cleanupIndividualReads(userId, latestNotificationId);
+		if (force || advanced === 1 || linkedChanged) {
+			await this.bumpRevision(userId);
+			const state = await this.getCurrentUnreadState(userId);
+			this.postReadAllNotifications(userId, [...visibleIds], state);
 		}
 	}
 
+	private parseEntry(fields: string[]): MiNotification | null {
+		const dataIndex = fields.indexOf('data');
+		if (dataIndex < 0) return null;
+		try { return JSON.parse(fields[dataIndex + 1]) as MiNotification; } catch { return null; }
+	}
+
+	private sourceIndexKey(userId: string): string { return `notificationSourceIndex:${userId}`; }
+	private individualReadKey(userId: string): string { return `individualReadNotification:${userId}`; }
+	private sourceField(type: 'hatady' | 'hataFeed', id: string): string { return `${type}:${id}`; }
+	private async removeMatchingHashFields(key: string, entries: [string, string][]): Promise<void> {
+		if (entries.length > 0) await this.redisClient.eval(removeMatchingHashFieldsScript, 1, key, ...entries.flat());
+	}
+
+	private async cleanupIndividualReads(userId: string, cursor: string): Promise<void> {
+		const reads = await this.redisClient.hgetall(this.individualReadKey(userId));
+		const expired = Object.entries(reads).filter(([, entryId]) => compareStreamIds(entryId, cursor) <= 0);
+		await this.removeMatchingHashFields(this.individualReadKey(userId), expired);
+	}
+
+	private async cleanupSourceIndexAfterTrim(userId: string): Promise<void> {
+		const indexKey = this.sourceIndexKey(userId);
+		if (await this.redisClient.hlen(indexKey) <= this.config.perUserNotificationsMaxCount * 2) return;
+		const [index, retained] = await Promise.all([
+			this.redisClient.hgetall(indexKey),
+			this.redisClient.xrange(`notificationTimeline:${userId}`, '-', '+'),
+		]);
+		const retainedIds = new Set(retained.map(([entryId]) => entryId));
+		const latestSnapshotId = retained.at(-1)?.[0];
+		if (latestSnapshotId == null) return;
+		const staleFields = Object.entries(index).filter(([, entryId]) =>
+			compareStreamIds(entryId, latestSnapshotId) <= 0 && !retainedIds.has(entryId));
+		await this.removeMatchingHashFields(indexKey, staleFields);
+	}
+
+	private async markLinkedSourcesRead(userId: string, notifications: MiNotification[]): Promise<boolean> {
+		const hatadyIds = notifications.flatMap(n => n.type === 'hatady' ? [n.sourceNotificationId] : []);
+		const hataFeedIds = notifications.flatMap(n => n.type === 'hataFeed' && n.sourceNotificationId != null ? [n.sourceNotificationId] : []);
+		const hatadyChanged = hatadyIds.length > 0 ? await this.hatadyNotificationsRepository.update({ notifieeId: userId, id: In(hatadyIds), isRead: false, deletedAt: IsNull() }, { isRead: true }) : null;
+		const hataFeedChanged = hataFeedIds.length > 0 ? await this.feedbackNotificationsRepository.update({ userId, id: In(hataFeedIds), isRead: false }, { isRead: true }) : null;
+		return (hatadyChanged?.affected ?? 0) > 0 || (hataFeedChanged?.affected ?? 0) > 0;
+	}
+
+	/** A standard notification ID can only be marked read in its owner's stream. */
 	@bindThis
-	private postReadAllNotifications(userId: MiUser['id']) {
-		this.globalEventService.publishMainStream(userId, 'readAllNotifications');
-		this.pushNotificationService.pushNotification(userId, 'readAllNotifications', undefined);
+	public async markNotificationRead(userId: string, notificationId: string): Promise<boolean> {
+		return (await this.markNotificationsRead(userId, [notificationId])).length > 0;
+	}
+
+	@bindThis
+	public async findNotificationsByIds(userId: string, notificationIds: string[]): Promise<MiNotification[]> {
+		const entries = await Promise.all([...new Set(notificationIds)].map(async notificationId => {
+			let entryId: string;
+			try { entryId = this.toXListId(notificationId); } catch { return null; }
+			const rows = await this.redisClient.xrange(`notificationTimeline:${userId}`, entryId, entryId, 'COUNT', 1);
+			const notification = rows[0] == null ? null : this.parseEntry(rows[0][1]);
+			return notification?.id === notificationId ? notification : null;
+		}));
+		return entries.filter((entry): entry is MiNotification => entry != null);
+	}
+
+	/** Batched reads publish one authoritative count while validating every ID in the owner's stream. */
+	@bindThis
+	public async markNotificationsRead(userId: string, notificationIds: string[]): Promise<string[]> {
+		const retained = await this.findNotificationsByIds(userId, notificationIds);
+		const packed = await this.notificationEntityService.packMany(retained, userId);
+		const visibleIds = new Set(packed.map(notification => notification.id));
+		const notifications = retained.filter(notification => visibleIds.has(notification.id));
+		if (notifications.length === 0) return [];
+		await this.markLinkedSourcesRead(userId, notifications);
+		await Promise.all(notifications.map(notification => this.redisClient.hset(this.individualReadKey(userId), notification.id, this.toXListId(notification.id))));
+		await this.bumpRevision(userId);
+		const state = await this.getCurrentUnreadState(userId);
+		for (const notification of notifications) {
+			this.globalEventService.publishMainStream(userId, 'readNotification', { id: notification.id, ...state });
+			void Promise.resolve(this.pushNotificationService.pushNotification(userId, 'readNotification', { id: notification.id })).catch(() => {});
+		}
+		return notifications.map(notification => notification.id);
+	}
+
+	/** The source-side bulk action passes its own snapshot; unknown legacy entries are untouched. */
+	@bindThis
+	public async markSourceNotificationsRead(userId: string, type: 'hatady' | 'hataFeed', sourceIds: string[]): Promise<void> {
+		const notifications: LinkedNotification[] = [];
+		for (const sourceId of new Set(sourceIds)) {
+			const notification = await this.findNotificationBySource(userId, type, sourceId);
+			if (notification != null) notifications.push(notification);
+		}
+		if (notifications.length === 0) return;
+		await this.markLinkedSourcesRead(userId, notifications);
+		await Promise.all(notifications.map(notification => this.redisClient.hset(this.individualReadKey(userId), notification.id, this.toXListId(notification.id))));
+		await this.bumpRevision(userId);
+		const state = await this.getCurrentUnreadState(userId);
+		for (const notification of notifications) {
+			this.globalEventService.publishMainStream(userId, 'readNotification', { id: notification.id, ...state });
+			void Promise.resolve(this.pushNotificationService.pushNotification(userId, 'readNotification', { id: notification.id })).catch(() => {});
+		}
+	}
+
+	/** Tell live clients to re-fetch affected retained entries after source delete/restore or access changes. */
+	@bindThis
+	public async refreshSourceNotifications(userId: string, type: 'hatady' | 'hataFeed', sourceIds: string[]): Promise<void> {
+		const ids: string[] = [];
+		for (const sourceId of new Set(sourceIds)) {
+			const notification = await this.findNotificationBySource(userId, type, sourceId);
+			if (notification != null) ids.push(notification.id);
+		}
+		await this.publishNotificationChanged(userId, ids);
+	}
+
+	/** Re-evaluate the owner's retained Hatady entries after follow, mute or block changes. */
+	@bindThis
+	public async refreshHatadyNotificationsForViewer(userId: string): Promise<void> {
+		const entries = await this.redisClient.xrange(`notificationTimeline:${userId}`, '-', '+');
+		const ids = entries.flatMap(([, fields]) => {
+			const notification = this.parseEntry(fields);
+			return notification?.type === 'hatady' ? [notification.id] : [];
+		});
+		await this.publishNotificationChanged(userId, ids);
+	}
+
+	private async publishNotificationChanged(userId: string, ids: string[]): Promise<void> {
+		if (ids.length === 0) return;
+		await this.bumpRevision(userId);
+		const state = await this.getCurrentUnreadState(userId);
+		this.globalEventService.publishMainStream(userId, 'notificationChanged', { ids, ...state });
+		this.pushIdBatches(userId, 'notificationChanged', ids);
+	}
+
+	@bindThis
+	public async findNotificationBySource(userId: string, type: 'hatady' | 'hataFeed', sourceId: string): Promise<LinkedNotification | null> {
+		const streamKey = `notificationTimeline:${userId}`;
+		const indexKey = this.sourceIndexKey(userId);
+		const field = this.sourceField(type, sourceId);
+		const indexed = await this.redisClient.hget(indexKey, field);
+		if (indexed != null) {
+			const entry = await this.redisClient.xrange(streamKey, indexed, indexed, 'COUNT', 1);
+			const notification = entry[0] == null ? null : this.parseEntry(entry[0][1]);
+			if (notification != null && sourceOf(notification)?.type === type && sourceOf(notification)?.id === sourceId) return notification as LinkedNotification;
+			await this.removeMatchingHashFields(indexKey, [[field, indexed]]);
+		}
+		const entries = await this.redisClient.xrange(streamKey, '-', '+');
+		for (const [entryId, fields] of entries) {
+			const notification = this.parseEntry(fields);
+			if (notification != null && sourceOf(notification)?.type === type && sourceOf(notification)?.id === sourceId) {
+				const currentId = await this.redisClient.eval(repairSourceIndexScript, 2, streamKey, indexKey, field, entryId) as string | null;
+				if (currentId == null) return null;
+				if (currentId === entryId) return notification as LinkedNotification;
+				const current = await this.redisClient.xrange(streamKey, currentId, currentId, 'COUNT', 1);
+				const currentNotification = current[0] == null ? null : this.parseEntry(current[0][1]);
+				return currentNotification != null && sourceOf(currentNotification)?.type === type && sourceOf(currentNotification)?.id === sourceId
+					? currentNotification as LinkedNotification : null;
+			}
+		}
+		return null;
+	}
+
+	private async isRead(userId: string, notification: MiNotification, entryId: string, cursor?: string | null, individualReads?: Record<string, string>, sourceReads?: { hatady: ReadonlyMap<string, boolean>; hataFeed: ReadonlyMap<string, boolean> }): Promise<boolean> {
+		const source = sourceOf(notification);
+		if (source?.type === 'hatady') {
+			if (sourceReads) {
+				const read = sourceReads.hatady.get(source.id);
+				if (read !== undefined) return read;
+			} else {
+				const row = await this.hatadyNotificationsRepository.findOneBy({ id: source.id, notifieeId: userId });
+				if (row != null) return row.isRead;
+			}
+		}
+		if (source?.type === 'hataFeed') {
+			if (sourceReads) {
+				const read = sourceReads.hataFeed.get(source.id);
+				if (read !== undefined) return read;
+			} else {
+				const row = await this.feedbackNotificationsRepository.findOneBy({ id: source.id, userId });
+				if (row != null) return row.isRead;
+			}
+		}
+		if (cursor != null && compareStreamIds(entryId, cursor) <= 0) return true;
+		if (individualReads != null
+			? individualReads[notification.id] != null
+			: await this.redisClient.hexists(this.individualReadKey(userId), notification.id) === 1) return true;
+		return false;
+	}
+
+	@bindThis
+	public async getUnreadNotificationsCount(userId: string): Promise<number> {
+		const [entries, cursor, individualReads] = await Promise.all([
+			this.redisClient.xrevrange(`notificationTimeline:${userId}`, '+', '-'),
+			this.redisClient.get(`latestReadNotification:${userId}`),
+			this.redisClient.hgetall(this.individualReadKey(userId)),
+		]);
+		const candidates = entries.map(([entryId, fields]) => ({ entryId, notification: this.parseEntry(fields) }))
+			.filter((x): x is { entryId: string; notification: MiNotification } => x.notification != null);
+		const retainedIds = new Set(candidates.map(x => x.entryId));
+		const latestSnapshotId = candidates[0]?.entryId;
+		const staleIndividualIds = latestSnapshotId == null ? [] : Object.entries(individualReads).filter(([, entryId]) =>
+			compareStreamIds(entryId, latestSnapshotId) <= 0 && !retainedIds.has(entryId));
+		await this.removeMatchingHashFields(this.individualReadKey(userId), staleIndividualIds);
+		const visible = await this.notificationEntityService.packMany(candidates.map(x => x.notification), userId);
+		const visibleIds = new Set(visible.map(x => x.id));
+		const visibleCandidates = candidates.filter(({ notification }) => visibleIds.has(notification.id));
+		const hatadyIds = [...new Set(visibleCandidates.flatMap(({ notification }) => {
+			const source = sourceOf(notification);
+			return source?.type === 'hatady' ? [source.id] : [];
+		}))];
+		const hataFeedIds = [...new Set(visibleCandidates.flatMap(({ notification }) => {
+			const source = sourceOf(notification);
+			return source?.type === 'hataFeed' ? [source.id] : [];
+		}))];
+		const [hatadyRows, hataFeedRows] = await Promise.all([
+			hatadyIds.length ? this.hatadyNotificationsRepository.findBy({ id: In(hatadyIds), notifieeId: userId }) : [],
+			hataFeedIds.length ? this.feedbackNotificationsRepository.findBy({ id: In(hataFeedIds), userId }) : [],
+		]);
+		const sourceReads = {
+			hatady: new Map(hatadyRows.map(row => [row.id, row.isRead])),
+			hataFeed: new Map(hataFeedRows.map(row => [row.id, row.isRead])),
+		};
+		let count = 0;
+		for (const { entryId, notification } of visibleCandidates) {
+			if (!(await this.isRead(userId, notification, entryId, cursor, individualReads, sourceReads))) count++;
+		}
+		return count;
+	}
+
+	@bindThis
+	private postReadAllNotifications(userId: MiUser['id'], ids: string[], state: { unreadNotificationsCount: number; revision: string }) {
+		this.globalEventService.publishMainStream(userId, 'readAllNotifications', { ids, ...state });
+		this.pushIdBatches(userId, 'readAllNotifications', ids);
+	}
+
+	private pushIdBatches(userId: string, type: 'readAllNotifications' | 'notificationChanged', ids: string[]): void {
+		for (let index = 0; index < ids.length; index += 50) {
+			void Promise.resolve(this.pushNotificationService.pushNotification(userId, type, { ids: ids.slice(index, index + 50) })).catch(() => {});
+		}
 	}
 
 	@bindThis
@@ -192,6 +540,10 @@ export class NotificationService implements OnApplicationShutdown {
 		}
 
 		const createdAt = new Date();
+		const sourceId = 'sourceNotificationId' in data ? data.sourceNotificationId : null;
+		const sourceType: 'hatady' | 'hataFeed' | null = type === 'hatady' ? 'hatady' : type === 'hataFeed' ? 'hataFeed' : null;
+		const source = sourceType !== null && typeof sourceId === 'string' ? { type: sourceType, id: sourceId } : null;
+		if (source != null && await this.findNotificationBySource(notifieeId, source.type, source.id) != null) return null;
 		const dedupKey = idempotencyKey === undefined ? null
 			: `notificationDedup:${notifieeId}:${createHash('sha256').update(idempotencyKey).digest('hex')}`;
 		let notification: FilterUnionByProperty<MiNotification, 'type', T>;
@@ -209,7 +561,16 @@ export class NotificationService implements OnApplicationShutdown {
 			} as unknown as FilterUnionByProperty<MiNotification, 'type', T>;
 
 			try {
-				if (dedupKey === null) {
+				if (source != null) {
+					const result = await this.redisClient.eval(
+						createSourceNotificationScript, 2,
+						`notificationTimeline:${notifieeId}`, this.sourceIndexKey(notifieeId),
+						this.config.perUserNotificationsMaxCount.toString(),
+						this.toXListId(notification.id), this.sourceField(source.type, source.id), JSON.stringify(notification),
+					) as string | null;
+					if (result === null) return null;
+					redisId = result;
+				} else if (dedupKey === null) {
 					redisId = (await this.redisClient.xadd(
 						`notificationTimeline:${notifieeId}`,
 						'MAXLEN', '~', this.config.perUserNotificationsMaxCount.toString(),
@@ -229,7 +590,7 @@ export class NotificationService implements OnApplicationShutdown {
 			} catch (e) {
 				// The ID specified in XADD is equal or smaller than the target stream top item で失敗することがあるのでリトライ
 				// Keep legacy retries unchanged, but do not spin on permanent Lua/permission errors.
-				if (e instanceof ReplyError && (dedupKey === null
+				if (e instanceof ReplyError && ((source === null && dedupKey === null)
 					|| (e instanceof Error && e.message.includes('The ID specified in XADD is equal or smaller than the target stream top item')))) continue;
 				throw e;
 			}
@@ -238,7 +599,9 @@ export class NotificationService implements OnApplicationShutdown {
 			// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 		} while (true);
 
+		await this.bumpRevision(notifieeId);
 		const packed = await this.notificationEntityService.pack(notification, notifieeId, {});
+		if (source != null) await this.cleanupSourceIndexAfterTrim(notifieeId);
 
 		if (packed == null) return null;
 
@@ -249,11 +612,31 @@ export class NotificationService implements OnApplicationShutdown {
 		// テスト通知の場合は即時発行
 		const interval = notification.type === 'test' ? 0 : 2000;
 		setTimeout(interval, 'unread notification', { signal: this.#shutdownController.signal }).then(async () => {
+			const retained = await this.redisClient.xrange(`notificationTimeline:${notifieeId}`, redisId, redisId, 'COUNT', 1);
+			if (retained[0] == null) return;
 			const latestReadNotificationId = await this.redisClient.get(`latestReadNotification:${notifieeId}`);
-			if (latestReadNotificationId && (latestReadNotificationId >= redisId)) return;
+			if (await this.isRead(notifieeId, notification, redisId, latestReadNotificationId)) return;
+			const current = await this.notificationEntityService.pack(notification, notifieeId, {});
+			if (current == null) return;
+			const state = await this.getCurrentUnreadState(notifieeId);
+			if (await this.isRead(notifieeId, notification, redisId, await this.redisClient.get(`latestReadNotification:${notifieeId}`))) return;
 
-			this.globalEventService.publishMainStream(notifieeId, 'unreadNotification', packed);
-			this.pushNotificationService.pushNotification(notifieeId, 'notification', packed);
+			this.globalEventService.publishMainStream(notifieeId, 'unreadNotification', { ...current, ...state });
+			let pushPayload = current;
+			if (notification.type === 'hatady') {
+				const linked = notification as Extract<MiNotification, { type: 'hatady' }>;
+				pushPayload = {
+					id: current.id,
+					createdAt: current.createdAt,
+					type: 'hatady',
+					sourceNotificationId: linked.sourceNotificationId,
+					subtype: linked.subtype,
+					targetType: linked.targetType,
+					targetId: linked.targetId,
+					isRead: false,
+				} as unknown as typeof current;
+			}
+			this.pushNotificationService.pushNotification(notifieeId, 'notification', pushPayload);
 
 			if (type === 'follow') this.emailNotificationFollow(notifieeId, await this.usersRepository.findOneByOrFail({ id: notifierId! }));
 			if (type === 'receiveFollowRequest') this.emailNotificationReceiveFollowRequest(notifieeId, await this.usersRepository.findOneByOrFail({ id: notifierId! }));
@@ -295,11 +678,10 @@ export class NotificationService implements OnApplicationShutdown {
 
 	@bindThis
 	public async flushAllNotifications(userId: MiUser['id']) {
-		await Promise.all([
-			this.redisClient.del(`notificationTimeline:${userId}`),
-			this.redisClient.del(`latestReadNotification:${userId}`),
-		]);
-		this.globalEventService.publishMainStream(userId, 'notificationFlushed');
+		await this.redisClient.eval(flushNotificationsScript, 5,
+			`notificationTimeline:${userId}`, `latestReadNotification:${userId}`,
+			this.individualReadKey(userId), this.sourceIndexKey(userId), this.revisionKey(userId));
+		this.globalEventService.publishMainStream(userId, 'notificationFlushed', await this.getCurrentUnreadState(userId));
 	}
 
 	@bindThis
@@ -344,6 +726,11 @@ export class NotificationService implements OnApplicationShutdown {
 			limit = 20,
 			includeTypes,
 			excludeTypes,
+			brand = 'all',
+			includeBrands,
+			includeHataskApp,
+			includeHatadySubtypes,
+			excludeHatadySubtypes,
 			excludeBots = false,
 		}: {
 			sinceId?: string,
@@ -352,13 +739,19 @@ export class NotificationService implements OnApplicationShutdown {
 			// any extra types are allowed, those are no-op
 			includeTypes?: (MiNotification['type'] | string)[],
 			excludeTypes?: (MiNotification['type'] | string)[],
+			brand?: NotificationBrand,
+			includeBrands?: Exclude<NotificationBrand, 'all'>[],
+			includeHataskApp?: boolean,
+			includeHatadySubtypes?: Extract<MiNotification, { type: 'hatady' }>['subtype'][],
+			excludeHatadySubtypes?: Extract<MiNotification, { type: 'hatady' }>['subtype'][],
 			excludeBots?: boolean,
 		},
 	): Promise<MiNotification[]> {
+		if (includeBrands?.length === 0) return [];
 		let sinceTime = sinceId ? this.toXListId(sinceId) : null;
 		let untilTime = untilId ? this.toXListId(untilId) : null;
 
-		let notifications: MiNotification[];
+		const accepted: MiNotification[] = [];
 		for (;;) {
 			let notificationsRes: [id: string, fields: string[]][];
 
@@ -377,16 +770,14 @@ export class NotificationService implements OnApplicationShutdown {
 					'COUNT', limit);
 			}
 
-			if (notificationsRes.length === 0) {
-				return [];
-			}
+			if (notificationsRes.length === 0) break;
 
-			notifications = notificationsRes.map(x => JSON.parse(x[1][1])) as MiNotification[];
-
-			if (includeTypes && includeTypes.length > 0) {
-				notifications = notifications.filter(notification => includeTypes.includes(notification.type));
-			} else if (excludeTypes && excludeTypes.length > 0) {
-				notifications = notifications.filter(notification => !excludeTypes.includes(notification.type));
+			let notifications = notificationsRes.map(([, fields]) => this.parseEntry(fields)).filter((x): x is MiNotification => x != null);
+			notifications = notifications.filter(notification => matchesNotificationListFilter(notification, { includeTypes, excludeTypes, brand, includeBrands, includeHataskApp }));
+			if (includeHatadySubtypes !== undefined || excludeHatadySubtypes !== undefined) {
+				notifications = notifications.filter(notification => notification.type !== 'hatady'
+					|| ((includeHatadySubtypes === undefined || includeHatadySubtypes.includes(notification.subtype))
+						&& !excludeHatadySubtypes?.includes(notification.subtype)));
 			}
 
 			if (excludeBots && notifications.length > 0) {
@@ -402,20 +793,21 @@ export class NotificationService implements OnApplicationShutdown {
 				}
 			}
 
-			if (notifications.length !== 0) {
-				// 通知が１件以上ある場合は返す
-				break;
-			}
+			const visible = await this.notificationEntityService.packMany(notifications, userId);
+			const visibleIds = new Set(visible.map(x => x.id));
+			accepted.push(...notifications.filter(x => visibleIds.has(x.id)).slice(0, limit - accepted.length));
+			if (accepted.length >= limit) break;
 
-			// フィルタしたことで通知が0件になった場合、次のページを取得する
+			// Continue from the raw cursor even when every candidate is hidden.
 			if (sinceId && !untilId) {
 				sinceTime = notificationsRes[notificationsRes.length - 1][0];
 			} else {
 				untilTime = notificationsRes[notificationsRes.length - 1][0];
 			}
+			if (notificationsRes.length < limit) break;
 		}
 
-		return notifications;
+		return accepted;
 	}
 
 	@bindThis

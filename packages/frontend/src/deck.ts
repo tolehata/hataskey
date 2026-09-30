@@ -8,6 +8,7 @@ import { i18n } from './i18n.js';
 import type { BasicTimelineType } from '@/timelines.js';
 import type { SoundStore } from '@/preferences/def.js';
 import type { MenuItem } from '@/types/menu.js';
+import type { NotificationFilterDetails } from '@/utility/notification-filter.js';
 import { genId } from '@/utility/id.js';
 import { deepClone } from '@/utility/clone.js';
 import { deepEqual } from '@/utility/deep-equal.js';
@@ -60,6 +61,7 @@ export type Column = {
 	roleId?: string;
 	excludeTypes?: string[];
 	notificationFilterKnownTypes?: string[];
+	notificationFilterDetails?: NotificationFilterDetails;
 	excludeBots?: boolean;
 	tl?: BasicTimelineType | 'ohtl' | 'oltl' | 'trending';
 	withRenotes?: boolean;

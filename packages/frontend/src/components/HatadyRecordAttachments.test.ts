@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createApp, h, nextTick, toRaw } from 'vue';
 import HatadyComposer from './HatadyComposer.vue';
+import HatadyBookForm from './HatadyBookForm.vue';
 import HatadyMediaSessionForm from './HatadyMediaSessionForm.vue';
 import HatadyActivityCard from './HatadyActivityCard.vue';
 import type { Component } from 'vue';
@@ -9,6 +10,7 @@ import type { entities } from 'cherrypick-js';
 import type { HatadyFormPage, HatadyFormValues } from '@/utility/hatady-form.js';
 import type { HatadyActivity, HatadyMediaSessionKind } from '@/utility/hatady-media.js';
 import { formField, formValidation } from '@/utility/hatady-form.js';
+import { saveHySubject } from '@/utility/hatady-subjects.js';
 
 interface WizardProps {
 	modelValue: HatadyFormValues;
@@ -153,6 +155,58 @@ describe('Hatady exercise duration', () => {
 			...(mode === 'edit' ? { logId: source.id } : {}),
 		}));
 		expect(source.durationSeconds).toBe(initialDuration);
+	});
+});
+
+describe('Hatady subject and finished date inputs', () => {
+	test('ensures a study subject without sending a color change and accepts 128 characters', async () => {
+		const form = await mountForm(HatadyComposer, { kind: 'study' });
+		const field = form.pages.flatMap(page => page.fields).find(item => item.key === 'subject')!;
+		expect(field.maxlength).toBe(128);
+		form.modelValue.title = '学習';
+		form.modelValue.subject = 'あ'.repeat(128);
+		await form.save(form.modelValue);
+		await settle();
+		expect(saveHySubject).toHaveBeenCalledWith('あ'.repeat(128));
+		expect(formValidation(field, form.modelValue)).toBeNull();
+		form.modelValue.subject = 'あ'.repeat(129);
+		expect(formValidation(field, form.modelValue)).not.toBeNull();
+	});
+
+	test('omits an untouched date for a newly finished book and on savedBookId retry', async () => {
+		const form = await mountForm(HatadyBookForm, {});
+		const values = form.modelValue;
+		values.title = '読了した本'; values.status = 'finished';
+		expect(values.finishedAt).toBeUndefined();
+		expect(JSON.stringify(values)).not.toContain('finishedAt');
+		await form.save(values);
+		const create = fixture.api.mock.calls.find(([endpoint]) => endpoint === 'hata/hatady/books/create')![1];
+		expect(create).not.toHaveProperty('finishedAt');
+		expect(values.savedBookId).toBe('saved');
+		await form.save(values);
+		const retry = fixture.api.mock.calls.findLast(([endpoint]) => endpoint === 'hata/hatady/books/update')![1];
+		expect(retry).not.toHaveProperty('finishedAt');
+	});
+
+	test('keeps explicit empty dates from a finished book or an old draft, and preserves an unchanged timestamp', async () => {
+		const source = { id: 'book1', title: '本', status: 'finished', finishedAt: null, bookmarks: [], memos: [] };
+		const editor = await mountForm(HatadyBookForm, { editBook: source });
+		expect(editor.modelValue.finishedAt).toBe('');
+		editor.modelValue.title = '改題';
+		await editor.save(editor.modelValue);
+		const updated = fixture.api.mock.calls.findLast(([endpoint]) => endpoint === 'hata/hatady/books/update')![1];
+		expect(updated.finishedAt).toBeNull();
+		const fresh = await mountForm(HatadyBookForm, {});
+		Object.assign(fresh.modelValue, fresh.restore({ finishedAt: '' }));
+		fresh.modelValue.title = '旧下書き';
+		await fresh.save(fresh.modelValue);
+		const legacy = fixture.api.mock.calls.findLast(([endpoint]) => endpoint === 'hata/hatady/books/create')![1];
+		expect(legacy.finishedAt).toBeNull();
+		const dated = await mountForm(HatadyBookForm, { editBook: { ...source, finishedAt: timestamp } });
+		dated.modelValue.title = '日付維持';
+		await dated.save(dated.modelValue);
+		const withDate = fixture.api.mock.calls.findLast(([endpoint]) => endpoint === 'hata/hatady/books/update')![1];
+		expect(withDate.finishedAt).toBe(timestamp);
 	});
 });
 

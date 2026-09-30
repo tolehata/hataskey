@@ -8,7 +8,18 @@ export function restoreHk3MobileOrder(choices: Hk3MobileChoice[], raw: string | 
 		const saved: unknown = raw ? JSON.parse(raw) : null;
 		if (!saved || typeof saved !== 'object' || !('base' in saved) || saved.base !== base || !('ids' in saved) || !Array.isArray(saved.ids)) return choices;
 		const ids = [...new Set(saved.ids.filter((id): id is string => typeof id === 'string'))];
-		return [...ids.flatMap(id => choices.find(item => item.id === id) ?? []), ...choices.filter(item => !ids.includes(item.id))];
+		const ordered = [...ids.flatMap(id => choices.find(item => item.id === id) ?? []), ...choices.filter(item => !ids.includes(item.id))];
+		// The picker order is reversed for the capsule. Insert before Trending here
+		// so a newly available Hatady tab appears immediately after it there.
+		if (!ids.includes('hatady')) {
+			const hatady = ordered.find(item => item.id === 'hatady');
+			const trending = ordered.findIndex(item => item.id === 'trending');
+			if (hatady && trending >= 0) {
+				ordered.splice(ordered.indexOf(hatady), 1);
+				ordered.splice(ordered.findIndex(item => item.id === 'trending'), 0, hatady);
+			}
+		}
+		return ordered;
 	} catch {
 		return choices;
 	}

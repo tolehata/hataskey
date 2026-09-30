@@ -15,7 +15,7 @@ vi.mock('@/preferences.js', async () => {
 	const { ref } = await import('vue');
 	return { prefer: {
 		s: { animation: true, collapseLongNoteContent: true, collapseDefault: true, allMediaNoteCollapse: false },
-		r: { animation: ref(true), disableNyaize: ref(false), collapseLongNoteContent: ref(true), collapseDefault: ref(true), allMediaNoteCollapse: ref(false) },
+		r: { animation: ref(true), disableNyaize: ref(false), 'postFormVisibilityBorder.enabled': ref(false), collapseLongNoteContent: ref(true), collapseDefault: ref(true), allMediaNoteCollapse: ref(false) },
 	} };
 });
 vi.mock('@/i.js', () => ({ $i: null }));

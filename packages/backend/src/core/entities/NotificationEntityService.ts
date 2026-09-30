@@ -7,7 +7,14 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { In } from 'typeorm';
 import { DI } from '@/di-symbols.js';
-import type { ChannelInvitationsRepository, FollowRequestsRepository, NotesRepository, MiUser, UsersRepository, UserGroupInvitationsRepository } from '@/models/_.js';
+import type { ChannelInvitationsRepository, FollowRequestsRepository, HatadyNotificationsRepository, NotesRepository, MiUser, UsersRepository, UserGroupInvitationsRepository } from '@/models/_.js';
+import { MiHatadyLog } from '@/models/HatadyLog.js';
+import { MiHatadyComment } from '@/models/HatadyComment.js';
+import { MiHatadyMediaWork } from '@/models/HatadyMediaWork.js';
+import { MiHatadyMediaSession } from '@/models/HatadyMediaSession.js';
+import { MiHatadyMediaComment } from '@/models/HatadyMediaComment.js';
+import type { HatadyService } from '@/core/HatadyService.js';
+import type { HatadyMediaService } from '@/core/HatadyMediaService.js';
 import { awaitAll } from '@/misc/prelude/await-all.js';
 import type { MiGroupedNotification, MiNotification } from '@/models/Notification.js';
 import type { MiNote } from '@/models/Note.js';
@@ -42,6 +49,8 @@ export class NotificationEntityService implements OnModuleInit {
 	private roleEntityService: RoleEntityService;
 	private chatEntityService: ChatEntityService;
 	private userGroupInvitationEntityService: UserGroupInvitationEntityService;
+	private hatadyService: HatadyService;
+	private hatadyMediaService: HatadyMediaService;
 
 	constructor(
 		private moduleRef: ModuleRef,
@@ -61,6 +70,9 @@ export class NotificationEntityService implements OnModuleInit {
 		@Inject(DI.channelInvitationsRepository)
 		private channelInvitationsRepository: ChannelInvitationsRepository,
 
+		@Inject(DI.hatadyNotificationsRepository)
+		private hatadyNotificationsRepository: HatadyNotificationsRepository,
+
 		private cacheService: CacheService,
 	) {
 	}
@@ -71,6 +83,87 @@ export class NotificationEntityService implements OnModuleInit {
 		this.roleEntityService = this.moduleRef.get('RoleEntityService');
 		this.chatEntityService = this.moduleRef.get('ChatEntityService');
 		this.userGroupInvitationEntityService = this.moduleRef.get('UserGroupInvitationEntityService');
+		this.hatadyService = this.moduleRef.get<HatadyService>('HatadyService', { strict: false });
+		this.hatadyMediaService = this.moduleRef.get<HatadyMediaService>('HatadyMediaService', { strict: false });
+	}
+
+	/** Resolve the current target before exposing its title or stable ID. */
+	@bindThis
+	private async packHatady(notification: Extract<MiNotification, { type: 'hatady' }>, meId: MiUser['id']): Promise<Packed<'Notification'> | null> {
+		const source = await this.hatadyNotificationsRepository.findOneBy({ id: notification.sourceNotificationId, notifieeId: meId });
+		if (source == null || source.deletedAt != null || source.type !== notification.subtype) return null;
+		if (source.notifierId !== (notification.notifierId ?? null)) return null;
+		if (source.notifierId != null && !(await this.hatadyService.canAppearInTimeline(source.notifierId, meId))) return null;
+		const repository = this.hatadyNotificationsRepository.manager;
+		let title: string | undefined;
+		let logId: string | undefined;
+		let commentId: string | undefined;
+		let mediaWorkId: string | undefined;
+		let mediaSessionId: string | undefined;
+		let mediaCommentId: string | undefined;
+		if (notification.targetType === 'log' || notification.targetType === 'comment') {
+			if (notification.targetId == null) return null;
+			const comment = notification.targetType === 'comment'
+				? await repository.getRepository(MiHatadyComment).findOneBy({ id: notification.targetId })
+				: null;
+			if (notification.targetType === 'comment' && comment == null) return null;
+			const targetLogId = notification.targetType === 'log' ? notification.targetId : comment!.logId;
+			const log = await repository.getRepository(MiHatadyLog).findOneBy({ id: targetLogId });
+			if (log == null || !(await this.hatadyService.canViewLog(log, meId))) return null;
+			title = log.title;
+			logId = log.id;
+			commentId = comment?.id;
+		} else if (notification.targetType === 'work' || notification.targetType === 'session' || notification.targetType === 'mediaComment') {
+			if (notification.targetId == null) return null;
+			const comment = notification.targetType === 'mediaComment'
+				? await repository.getRepository(MiHatadyMediaComment).findOneBy({ id: notification.targetId })
+				: null;
+			if (notification.targetType === 'mediaComment' && comment == null) return null;
+			const sessionId = notification.targetType === 'session' ? notification.targetId : comment?.sessionId ?? source.mediaSessionId;
+			let visibleTarget = false;
+			let session: MiHatadyMediaSession | null = null;
+			if (sessionId != null) {
+				session = await repository.getRepository(MiHatadyMediaSession).findOneBy({ id: sessionId });
+				if (session == null || !(await this.hatadyMediaService.canViewSession(session, null, meId))) return null;
+				mediaSessionId = session.id;
+				visibleTarget = true;
+			}
+			const workId = notification.targetType === 'work' ? notification.targetId : comment?.workId ?? session?.workId ?? source.mediaWorkId;
+			if (workId != null) {
+				const work = await repository.getRepository(MiHatadyMediaWork).findOneBy({ id: workId });
+				if (work != null && await this.hatadyMediaService.canViewWork(work, meId)) {
+					title = work.title;
+					mediaWorkId = work.id;
+					visibleTarget = true;
+				} else if (notification.targetType === 'work' || (notification.targetType === 'mediaComment' && comment?.workId != null)) return null;
+			}
+			if (!visibleTarget) return null;
+			mediaCommentId = comment?.id;
+		} else if (notification.targetType !== 'none' || notification.targetId != null
+			|| !['follow', 'milestone', 'goalDone'].includes(notification.subtype)) {
+			return null;
+		}
+		const user = source.notifierId == null ? undefined : await this.userEntityService.pack(source.notifierId, { id: meId });
+		if (source.notifierId != null && user == null) return null;
+		return {
+			id: notification.id,
+			createdAt: new Date(notification.createdAt).toISOString(),
+			type: 'hatady',
+			sourceNotificationId: source.id,
+			subtype: notification.subtype,
+			targetType: notification.targetType,
+			targetId: notification.targetId,
+			...(source.notifierId != null ? { userId: source.notifierId, user } : {}),
+			...(title != null ? { title } : {}),
+			...(logId != null ? { logId } : {}),
+			...(commentId != null ? { commentId } : {}),
+			...(mediaWorkId != null ? { mediaWorkId } : {}),
+			...(mediaSessionId != null ? { mediaSessionId } : {}),
+			...(mediaCommentId != null ? { mediaCommentId } : {}),
+			...(source.reaction != null ? { reaction: source.reaction } : {}),
+			...(source.value != null ? { value: source.value } : {}),
+			isRead: source.isRead,
+		} as unknown as Packed<'Notification'>;
 	}
 
 	/**
@@ -89,6 +182,10 @@ export class NotificationEntityService implements OnModuleInit {
 		},
 	): Promise<Packed<'Notification'> | null> {
 		const notification = src;
+		if (notification.type === 'hatady') {
+			if (options.checkValidNotifier !== false && !(await this.#isValidNotifier(notification, meId))) return null;
+			return this.packHatady(notification, meId);
+		}
 
 		if (options.checkValidNotifier !== false && !(await this.#isValidNotifier(notification, meId))) return null;
 		if (options.checkValidChannelInvitation !== false
@@ -236,7 +333,7 @@ export class NotificationEntityService implements OnModuleInit {
 		return await awaitAll({
 			id: notification.id,
 			createdAt: new Date(notification.createdAt).toISOString(),
-			type: notification.type,
+			type: notification.type === 'app' && notification.customHeader === 'HataFeed' ? 'hataFeed' : notification.type,
 			userId: 'notifierId' in notification ? notification.notifierId : undefined,
 			...(userIfNeed != null ? { user: userIfNeed } : {}),
 			...(noteIfNeed != null ? { note: noteIfNeed } : {}),
@@ -272,6 +369,7 @@ export class NotificationEntityService implements OnModuleInit {
 				icon: notification.customIcon,
 				// 旗鯖fork: クリック時の遷移先 (相対パス)
 				link: notification.customLink,
+				...(notification.type === 'hataFeed' && notification.sourceNotificationId != null ? { sourceNotificationId: notification.sourceNotificationId } : {}),
 				...(notification.type === 'addedToPrivateChannel' && notification.channelInvitationId != null ? { invitationId: notification.channelInvitationId } : {}),
 			} : {}),
 		});

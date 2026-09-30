@@ -61,7 +61,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:quickItems="quickItems"
 					:sections="mobileOverviewSections"
 					:deprecatedSections="mobileDeprecatedSections"
-					:featureItem="hataCustomGlassUiItem"
+					:featureItem="mobileFeatureItem"
 					:profileItem="profileNavigationItem"
 					:profileName="$i?.name ?? null"
 					:profileUsername="$i?.username ?? null"
@@ -408,6 +408,7 @@ const indexInfo = {
 };
 
 const hataCustomGlassUiItem = destinationForId('hataskey-ui')!;
+const mobileFeatureItem = ui === 'hataskey3' ? destinationForId('hataskey-ui-s')! : hataCustomGlassUiItem;
 const profileNavigationItem = destinationForId('account-profile')!;
 
 const quickItems: NavItem[] = [

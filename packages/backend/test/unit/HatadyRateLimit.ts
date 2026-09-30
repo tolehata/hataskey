@@ -11,6 +11,9 @@ import { RateLimiterService } from '@/server/api/RateLimiterService.js';
 import { meta as activitiesMeta } from '@/server/api/endpoints/hata/hatady/activities.js';
 import { meta as adminBooksMeta } from '@/server/api/endpoints/hata/hatady/admin/books.js';
 import { meta as adminDeleteBookMeta } from '@/server/api/endpoints/hata/hatady/admin/delete-book.js';
+import { meta as adminModerationListMeta } from '@/server/api/endpoints/hata/hatady/admin/moderation/list.js';
+import { meta as adminModerationShowMeta } from '@/server/api/endpoints/hata/hatady/admin/moderation/show.js';
+import { meta as adminModerationReviewMeta } from '@/server/api/endpoints/hata/hatady/admin/moderation/review.js';
 import { meta as bookmarkCreateMeta } from '@/server/api/endpoints/hata/hatady/bookmarks/create.js';
 import { meta as bookmarkDeleteMeta } from '@/server/api/endpoints/hata/hatady/bookmarks/delete.js';
 import { meta as bookmarkUpdateMeta } from '@/server/api/endpoints/hata/hatady/bookmarks/update.js';
@@ -42,6 +45,7 @@ import { meta as mediaCommentListMeta } from '@/server/api/endpoints/hata/hatady
 import { meta as mediaCommentUpdateMeta } from '@/server/api/endpoints/hata/hatady/media/comments/update.js';
 import { meta as mediaReactionCreateMeta } from '@/server/api/endpoints/hata/hatady/media/reactions/create.js';
 import { meta as mediaReactionDeleteMeta } from '@/server/api/endpoints/hata/hatady/media/reactions/delete.js';
+import { meta as mediaReactionListMeta } from '@/server/api/endpoints/hata/hatady/media/reactions/list.js';
 import { meta as mediaSessionCreateMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/create.js';
 import { meta as mediaSessionDeleteMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/delete.js';
 import { meta as mediaSessionListMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/list.js';
@@ -59,10 +63,12 @@ import { meta as notificationsMeta } from '@/server/api/endpoints/hata/hatady/no
 import { meta as notificationDeleteMeta } from '@/server/api/endpoints/hata/hatady/notifications/delete.js';
 import { meta as notificationRestoreMeta } from '@/server/api/endpoints/hata/hatady/notifications/restore.js';
 import { meta as notificationsMarkAllReadMeta } from '@/server/api/endpoints/hata/hatady/notifications/mark-all-read.js';
+import { meta as notificationsMarkReadMeta } from '@/server/api/endpoints/hata/hatady/notifications/mark-as-read.js';
 import { meta as notificationsUnreadCountMeta } from '@/server/api/endpoints/hata/hatady/notifications/unread-count.js';
 import { meta as profileUpdateMeta } from '@/server/api/endpoints/hata/hatady/profile/update.js';
 import { meta as reactionCreateMeta } from '@/server/api/endpoints/hata/hatady/reactions/create.js';
 import { meta as reactionDeleteMeta } from '@/server/api/endpoints/hata/hatady/reactions/delete.js';
+import { meta as reactionListMeta } from '@/server/api/endpoints/hata/hatady/reactions/list.js';
 import { meta as searchMeta } from '@/server/api/endpoints/hata/hatady/search.js';
 import { meta as statsDetailMeta } from '@/server/api/endpoints/hata/hatady/stats-detail.js';
 import { meta as statsMeta } from '@/server/api/endpoints/hata/hatady/stats.js';
@@ -103,12 +109,16 @@ const endpointGroups = [
 			['記録一覧', mediaSessionListMeta],
 			['記録詳細', mediaSessionShowMeta],
 			['作品コメント一覧', mediaCommentListMeta],
+			['リアクション一覧', reactionListMeta],
+			['作品リアクション一覧', mediaReactionListMeta],
 		],
 	},
 	{
 		profile: HATADY_RATE_LIMITS.heavyRead,
 		endpoints: [
 			['管理用本棚一覧', adminBooksMeta],
+			['管理用モデレーション一覧', adminModerationListMeta],
+			['管理用モデレーション詳細', adminModerationShowMeta],
 			['本の詳細', bookShowMeta],
 			['フォロー一覧', followingListMeta],
 			['学習記録の詳細', logShowMeta],
@@ -125,6 +135,7 @@ const endpointGroups = [
 		profile: HATADY_RATE_LIMITS.write,
 		endpoints: [
 			['しおり作成', bookmarkCreateMeta],
+			['管理用モデレーション審査', adminModerationReviewMeta],
 			['しおり更新', bookmarkUpdateMeta],
 			['本の作成', bookCreateMeta],
 			['本の更新', bookUpdateMeta],
@@ -142,6 +153,7 @@ const endpointGroups = [
 			['メモ作成', memoCreateMeta],
 			['メモ更新', memoUpdateMeta],
 			['通知をすべて既読', notificationsMarkAllReadMeta],
+			['通知を個別に既読', notificationsMarkReadMeta],
 			['プロフィール更新', profileUpdateMeta],
 			['リアクション作成', reactionCreateMeta],
 			['リアクション解除', reactionDeleteMeta],
@@ -180,14 +192,14 @@ const endpointGroups = [
 ] as const;
 
 describe('Hatady API のレート制限', () => {
-	test('全64エンドポイントに用途別の基準値が設定されている', () => {
+	test('全70エンドポイントに用途別の基準値が設定されている', () => {
 		const endpoints = endpointGroups.flatMap(group => group.endpoints);
 		const endpointDirectory = resolve(process.cwd(), 'src/server/api/endpoints/hata/hatady');
 		const endpointFiles = readdirSync(endpointDirectory, { recursive: true })
 			// _ で始まるのは共有スキーマ等でエンドポイントではない(_schemas.ts / _shared.ts)。
 			.filter(path => typeof path === 'string' && path.endsWith('.ts') && !path.split('/').pop()!.startsWith('_'));
 
-		expect(endpoints).toHaveLength(64);
+		expect(endpoints).toHaveLength(70);
 		expect(endpointFiles).toHaveLength(endpoints.length);
 		for (const group of endpointGroups) {
 			for (const [name, meta] of group.endpoints) {

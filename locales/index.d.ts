@@ -11703,6 +11703,10 @@ export interface Locale extends ILocale {
          * Hataskのお花
          */
         "hataskFlowers": string;
+        /**
+         * 季節の木
+         */
+        "seasonalTree": string;
     };
     "_cw": {
         /**
@@ -12655,6 +12659,10 @@ export interface Locale extends ILocale {
              * HataFeed通知
              */
             "hataFeed": string;
+            /**
+             * Hatady通知
+             */
+            "hatady": string;
             /**
              * Hataskのお花
              */
@@ -15337,6 +15345,76 @@ export interface Locale extends ILocale {
         "hasDeliveryTargets": string;
     };
     "_hata": {
+        "_seasonalTree": {
+            /**
+             * 季節の木
+             */
+            "title": string;
+            /**
+             * 季節と時刻に寄り添う、小さな景色
+             */
+            "description": string;
+            /**
+             * 季節
+             */
+            "season": string;
+            /**
+             * 時間帯
+             */
+            "timeOfDay": string;
+            /**
+             * 現在に合わせる（日本時間）
+             */
+            "automatic": string;
+            /**
+             * 風と舞い落ちる演出
+             */
+            "animation": string;
+            /**
+             * 風の強さ
+             */
+            "windStrength": string;
+            /**
+             * 季節と時間帯を表示
+             */
+            "showCaption": string;
+            "_seasons": {
+                /**
+                 * 春
+                 */
+                "spring": string;
+                /**
+                 * 夏
+                 */
+                "summer": string;
+                /**
+                 * 秋
+                 */
+                "autumn": string;
+                /**
+                 * 冬
+                 */
+                "winter": string;
+            };
+            "_times": {
+                /**
+                 * 朝
+                 */
+                "dawn": string;
+                /**
+                 * 昼
+                 */
+                "day": string;
+                /**
+                 * 夕
+                 */
+                "dusk": string;
+                /**
+                 * 夜
+                 */
+                "night": string;
+            };
+        };
         "_navbarNotice": {
             /**
              * 絵文字追加通知
@@ -18599,6 +18677,10 @@ export interface Locale extends ILocale {
              */
             "tabTrending": string;
             /**
+             * Hatady
+             */
+            "tabHatady": string;
+            /**
              * {name}にフォローされました
              */
             "toastFollow": ParameterizedString<"name">;
@@ -18669,7 +18751,7 @@ export interface Locale extends ILocale {
              */
             "hint": string;
             /**
-             * HataskeyのデフォルトUIで使う楽しさを追求します
+             * HataskeyのデフォルトUIで、使う楽しさを追求します
              */
             "standardDescription": string;
             /**
@@ -20402,6 +20484,34 @@ export interface Locale extends ILocale {
                  */
                 "report": string;
                 /**
+                 * Hatady で開く
+                 */
+                "openInHatady": string;
+                /**
+                 * Hatady のプロフィール
+                 */
+                "hatadyProfile": string;
+                /**
+                 * 記録しました
+                 */
+                "recordSaved": string;
+                /**
+                 * この記録と、その返信・リアクションを削除します。作品とドライブの画像は残ります。
+                 */
+                "recordDeleteBody": string;
+                /**
+                 * 削除の確認を開けませんでした
+                 */
+                "recordDeleteOpenFailed": string;
+                /**
+                 * 記録を削除しました
+                 */
+                "recordDeleted": string;
+                /**
+                 * 記録を削除できませんでした
+                 */
+                "recordDeleteFailed": string;
+                /**
                  * この学習記録を削除しますか？
                  */
                 "deleteConfirm": string;
@@ -21642,6 +21752,14 @@ export interface Locale extends ILocale {
                  */
                 "add": string;
                 /**
+                 * {count}人
+                 */
+                "peopleCount": ParameterizedString<"count">;
+                /**
+                 * ほか {count}人
+                 */
+                "morePeople": ParameterizedString<"count">;
+                /**
                  * リアクションを削除
                  */
                 "remove": string;
@@ -21649,6 +21767,52 @@ export interface Locale extends ILocale {
                  * リアクションを変更できませんでした
                  */
                 "updateFailed": string;
+            };
+            "_notification": {
+                /**
+                 * Hatadyでフォローされました
+                 */
+                "follow": string;
+                /**
+                 * 記録にコメントが届きました
+                 */
+                "comment": string;
+                /**
+                 * 記録にリアクションが届きました
+                 */
+                "reaction": string;
+                /**
+                 * 継続の節目を迎えました
+                 */
+                "milestone": string;
+                /**
+                 * 目標を達成しました
+                 */
+                "goalDone": string;
+                /**
+                 * 作品にコメントが届きました
+                 */
+                "mediaComment": string;
+                /**
+                 * 作品のコメントに返信が届きました
+                 */
+                "mediaReply": string;
+                /**
+                 * 作品にリアクションが届きました
+                 */
+                "mediaReaction": string;
+                /**
+                 * Hatadyでフォロー
+                 */
+                "followAction": string;
+                /**
+                 * Hatadyでフォロー中
+                 */
+                "followingAction": string;
+                /**
+                 * フォロー状態を確認できません
+                 */
+                "unavailable": string;
             };
             "_tags": {
                 /**
@@ -30278,6 +30442,24 @@ export interface Locale extends ILocale {
                          */
                         "headingSecond": string;
                     };
+                    "emojiRequestLimit": {
+                        /**
+                         * 絵文字の申請可能数
+                         */
+                        "name": string;
+                        /**
+                         * 直近7日間のカスタム絵文字申請数の上限が増えます
+                         */
+                        "description": string;
+                        /**
+                         * 件 / 7日
+                         */
+                        "unit": string;
+                        /**
+                         * 件 / 7日
+                         */
+                        "unitSingular": string;
+                    };
                     "hatadyBookLimit": {
                         /**
                          * Hatadyの本棚
@@ -37067,6 +37249,58 @@ export interface Locale extends ILocale {
              * Botフラグが付いたアカウントからの通知を表示します。
              */
             "botNotificationsDescription": string;
+            /**
+             * 通知の種類
+             */
+            "types": string;
+            /**
+             * Hatady通知の種類
+             */
+            "hatadyTypes": string;
+            /**
+             * その他のHatask通知
+             */
+            "otherHatask": string;
+            /**
+             * すべて選択
+             */
+            "selectAll": string;
+            /**
+             * 選択を解除
+             */
+            "clearSelection": string;
+        };
+        "_notificationBrands": {
+            /**
+             * すべて
+             */
+            "all": string;
+            /**
+             * 標準
+             */
+            "standard": string;
+            /**
+             * Hatady
+             */
+            "hatady": string;
+            /**
+             * Hatask
+             */
+            "hatask": string;
+            /**
+             * HataFeed
+             */
+            "hataFeed": string;
+        };
+        "_notification": {
+            /**
+             * {name}でフォロー
+             */
+            "standardFollowAction": ParameterizedString<"name">;
+            /**
+             * {name}でフォロー中
+             */
+            "standardFollowingAction": ParameterizedString<"name">;
         };
         "_hiddenReactions": {
             /**
@@ -38297,6 +38531,10 @@ export interface Locale extends ILocale {
                  */
                 "note": string;
                 /**
+                 * 記録する
+                 */
+                "record": string;
+                /**
                  * 通常表示
                  */
                 "standardView": string;
@@ -39085,6 +39323,10 @@ export interface Locale extends ILocale {
                  */
                 "columnTrending": string;
                 /**
+                 * Hatady
+                 */
+                "columnHatady": string;
+                /**
                  * 外部ホーム
                  */
                 "columnExternalHome": string;
@@ -39466,6 +39708,14 @@ export interface Locale extends ILocale {
                  * 上部ナビバーの最右に「トレンド」タブを表示します。過去 7 日間で反応が多かった投稿をランダム順で表示する発見系タイムラインです。
                  */
                 "showTrendingTabCaption": string;
+                /**
+                 * Hatadyタブを表示する
+                 */
+                "showHatadyTab": string;
+                /**
+                 * トレンドの右側にHatadyの記録タイムラインを表示します。
+                 */
+                "showHatadyTabCaption": string;
                 /**
                  * メニューを画面上部に表示する
                  */
@@ -40299,6 +40549,10 @@ export interface Locale extends ILocale {
                      * Hatask お花
                      */
                     "hataskFlowers": string;
+                    /**
+                     * 季節の木
+                     */
+                    "seasonalTree": string;
                     /**
                      * 連合
                      */
@@ -42123,7 +42377,7 @@ export interface Locale extends ILocale {
                  */
                 "colorByVisibility": string;
                 /**
-                 * 公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変え、誤爆を防ぎやすくします。
+                 * 公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変えます。UI Sでは、自分と他のユーザーのノートの左辺にも公開範囲に応じた色を表示します。色とオン・オフは投稿フォームと共通です。
                  */
                 "colorByVisibilityCaption": string;
                 /**

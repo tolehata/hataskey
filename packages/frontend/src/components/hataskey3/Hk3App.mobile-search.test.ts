@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const filename = 'src/components/hataskey3/Hk3App.vue';
 const descriptor = parse(readFileSync(resolve(process.cwd(), filename), 'utf8'), { filename }).descriptor;
 const setup = ts.createSourceFile(`${filename}.ts`, descriptor.scriptSetup!.content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-const names = ['mobileMenuOpen', 'mobileSearchOpen', 'mobileDockExpanded', 'drawerOpen', 'mobilePane', 'mobilePaneOpener', 'onMobileSearchOpen', 'closeMobilePane'];
+const names = ['mobileMenuOpen', 'mobileSearchOpen', 'mobileDockExpanded', 'mobileDockSuspended', 'drawerOpen', 'mobilePane', 'mobilePaneOpener', 'onMobileSearchOpen', 'closeMobilePane'];
 const statements = setup.statements.filter(statement => {
 	if (ts.isFunctionDeclaration(statement)) return statement.name != null && names.includes(statement.name.text);
 	if (ts.isVariableStatement(statement)) return statement.declarationList.declarations.some(item => ts.isIdentifier(item.name) && names.includes(item.name.text));
@@ -24,20 +24,21 @@ async function mount() {
 	const { watch } = await import('vue');
 	const path = ref('/');
 	const currentRef = ref({ path: '/' });
-	const closeSearch = vi.fn(); const closeMenu = vi.fn();
+	const closeSearch = vi.fn(); const closeMenu = vi.fn(); const closeComposer = vi.fn();
 	const isMobile = ref(true);
-	const bindings = { ref, shallowRef, computed, nextTick, watch, path, mainRouter: { currentRef }, isMobile, mobileDockRef: ref({ closeSearch, closeMenu }), rootEl: ref<HTMLElement | null>(null) };
+	const bindings = { ref, shallowRef, computed, nextTick, watch, path, mainRouter: { currentRef }, isMobile, mobileDockRef: ref({ closeSearch, closeMenu, closeComposer }), rootEl: ref<HTMLElement | null>(null) };
 	const scope = effectScope();
 	const state = scope.run(() => new Function(...Object.keys(bindings), code)(...Object.values(bindings))) as {
 		mobileMenuOpen: ReturnType<typeof ref<boolean>>;
 		mobileSearchOpen: ReturnType<typeof ref<boolean>>;
 		mobileDockExpanded: ReturnType<typeof computed<boolean>>;
+		mobileDockSuspended: ReturnType<typeof computed<boolean>>;
 		drawerOpen: ReturnType<typeof ref<boolean>>;
 		mobilePane: ReturnType<typeof ref<'hatask' | 'widgets' | null>>;
 		onMobileSearchOpen: (open: boolean) => void;
 	};
 	cleanups.push(() => scope.stop());
-	return { state, path, currentRef, isMobile, closeSearch, closeMenu };
+	return { state, path, currentRef, isMobile, closeSearch, closeMenu, closeComposer };
 }
 
 describe('UI S mobile search parent integration', () => {
@@ -52,6 +53,7 @@ describe('UI S mobile search parent integration', () => {
 		const template = descriptor.template!.content;
 		expect(template).toContain(':inert="confirmationActive || drawerOpen || mobileDockExpanded || mobilePane != null"');
 		expect(template).toContain(':mobileMenuOpen="mobileDockExpanded || drawerOpen || mobilePane != null"');
+		expect(template).toContain(':mobileComposerOpen="mobileDockRef?.composerOpened ?? false"');
 		expect(template).toContain('@searchOpen="onMobileSearchOpen"');
 	});
 
@@ -59,6 +61,7 @@ describe('UI S mobile search parent integration', () => {
 		const view = await mount();
 		view.path.value = '/search'; await nextTick();
 		expect(view.closeSearch).toHaveBeenLastCalledWith(false);
+		expect(view.closeComposer).toHaveBeenLastCalledWith(true);
 		view.closeMenu.mockClear(); view.closeSearch.mockClear();
 		view.path.value = '/'; view.currentRef.value = { path: '/?q=next' }; await nextTick();
 		expect(view.closeSearch).toHaveBeenCalledWith(false);
@@ -71,9 +74,29 @@ describe('UI S mobile search parent integration', () => {
 		const view = await mount();
 		view.state.drawerOpen.value = true; await nextTick(); expect(view.closeSearch).toHaveBeenLastCalledWith(false);
 		view.closeSearch.mockClear(); view.state.mobilePane.value = 'hatask'; await nextTick(); expect(view.closeSearch).toHaveBeenLastCalledWith(false);
+		expect(view.closeComposer).toHaveBeenLastCalledWith(true);
 		view.state.onMobileSearchOpen(true); await nextTick();
 		view.isMobile.value = false; await nextTick();
 		expect(view.state.mobileSearchOpen.value).toBe(false); expect(view.state.mobileDockExpanded.value).toBe(false);
 		expect(view.closeSearch).toHaveBeenLastCalledWith(false);
+	});
+
+	it('suspends the dock only on Hatask and Hata Docs routes, including nested paths', async () => {
+		const view = await mount();
+		view.state.mobileMenuOpen.value = true;
+		for (const route of ['/hatask', '/hatask/', '/hatask/task/1', '/hata-docs', '/hata-docs/guide']) {
+			view.path.value = route; await nextTick();
+			expect(view.state.mobileDockSuspended.value).toBe(true);
+			expect(view.state.mobileDockExpanded.value).toBe(false);
+		}
+		for (const route of ['/hataskey', '/hata-documents', '/']) {
+			view.path.value = route; await nextTick();
+			expect(view.state.mobileDockSuspended.value).toBe(false);
+		}
+		view.state.mobilePane.value = 'hatask';
+		expect(view.state.mobileDockSuspended.value).toBe(false);
+		const template = descriptor.template!.content;
+		expect(template).toContain(':suspended="mobileDockSuspended"');
+		expect(template).toContain(':data-dock-suspended="mobileDockSuspended');
 	});
 });

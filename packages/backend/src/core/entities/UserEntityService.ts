@@ -50,6 +50,7 @@ import { FederatedInstanceService } from '@/core/FederatedInstanceService.js';
 import { IdService } from '@/core/IdService.js';
 import type { AnnouncementService } from '@/core/AnnouncementService.js';
 import type { CustomEmojiService } from '@/core/CustomEmojiService.js';
+import type { NotificationService } from '@/core/NotificationService.js';
 import { AvatarDecorationService } from '@/core/AvatarDecorationService.js';
 import { ChatService } from '@/core/ChatService.js';
 import type { OnModuleInit } from '@nestjs/common';
@@ -98,6 +99,7 @@ export class UserEntityService implements OnModuleInit {
 	private idService: IdService;
 	private avatarDecorationService: AvatarDecorationService;
 	private chatService: ChatService;
+	private notificationService: NotificationService;
 
 	constructor(
 		private moduleRef: ModuleRef,
@@ -161,6 +163,7 @@ export class UserEntityService implements OnModuleInit {
 		this.idService = this.moduleRef.get('IdService');
 		this.avatarDecorationService = this.moduleRef.get('AvatarDecorationService');
 		this.chatService = this.moduleRef.get('ChatService');
+		this.notificationService = this.moduleRef.get('NotificationService');
 	}
 
 	//#region Validators
@@ -367,30 +370,8 @@ export class UserEntityService implements OnModuleInit {
 		hasUnread: boolean;
 		unreadCount: number;
 	}> {
-		const response = {
-			hasUnread: false,
-			unreadCount: 0,
-		};
-
-		const latestReadNotificationId = await this.redisClient.get(`latestReadNotification:${userId}`);
-
-		if (!latestReadNotificationId) {
-			response.unreadCount = await this.redisClient.xlen(`notificationTimeline:${userId}`);
-		} else {
-			const latestNotificationIdsRes = await this.redisClient.xrevrange(
-				`notificationTimeline:${userId}`,
-				'+',
-				latestReadNotificationId,
-			);
-
-			response.unreadCount = (latestNotificationIdsRes.length - 1 >= 0) ? latestNotificationIdsRes.length - 1 : 0;
-		}
-
-		if (response.unreadCount > 0) {
-			response.hasUnread = true;
-		}
-
-		return response;
+		const unreadCount = await this.notificationService.getUnreadNotificationsCount(userId);
+		return { hasUnread: unreadCount > 0, unreadCount };
 	}
 
 	@bindThis

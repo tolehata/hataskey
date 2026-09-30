@@ -12,8 +12,9 @@ describe('FeedbackService notification reads', () => {
 		const update = vi.fn().mockResolvedValue(undefined);
 		const service = Object.create(FeedbackService.prototype) as FeedbackService;
 		Object.defineProperty(service, 'feedbackNotificationsRepository', {
-			value: { update },
+			value: { update, existsBy: vi.fn().mockResolvedValue(true) },
 		});
+		Object.defineProperty(service, 'notificationService', { value: { markSourceNotificationsRead: vi.fn().mockResolvedValue(undefined) } });
 
 		await service.markNotificationRead('user-a', 'notification-a');
 
@@ -29,16 +30,14 @@ describe('FeedbackService notification reads', () => {
 		const update = vi.fn().mockResolvedValue(undefined);
 		const service = Object.create(FeedbackService.prototype) as FeedbackService;
 		Object.defineProperty(service, 'feedbackNotificationsRepository', {
-			value: { update },
+			value: { update, findBy: vi.fn().mockResolvedValue([{ id: 'notification-a' }]) },
 		});
+		Object.defineProperty(service, 'notificationService', { value: { markSourceNotificationsRead: vi.fn().mockResolvedValue(undefined) } });
 
 		await service.markAllNotificationsRead('user-a');
 
 		expect(update).toHaveBeenCalledOnce();
-		expect(update).toHaveBeenCalledWith({
-			userId: 'user-a',
-			isRead: false,
-		}, { isRead: true });
+		expect(update).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-a', isRead: false }), { isRead: true });
 	});
 });
 

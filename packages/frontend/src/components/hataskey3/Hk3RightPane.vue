@@ -583,8 +583,8 @@ onBeforeUnmount(() => {
 	}
 }
 
-// モバイルのガラス背景は外側の1枚だけにし、カードの背景と見出しの段差をなくす。
-.root[data-mobile][data-glass] .widgets {
+// ガラス背景は外側の1枚だけにし、カードの背景と見出しの段差をなくす。
+.root[data-glass] .widgets {
 	:global(._panel), :global(._panel > header), :global(._panel > div) {
 		background: transparent !important;
 	}

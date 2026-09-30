@@ -7,12 +7,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <HyDialog
 	ref="dialog"
+	:variant="variant"
 	scrollHint
 	:title="t('title')"
 	:inert="closePrompt"
 	:busy="saving"
 	@close="requestClose"
-	@closed="emit('closed')"
+	@closed="onClosed"
 >
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
 		<div v-if="loading" :class="$style.loading">{{ t('loading') }}</div>
@@ -303,12 +304,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 					v-for="log in logs"
 					:key="log.id"
 					:activity="logActivity(log)"
+					:variant="variant"
 					@openLog="openLog"
 					@openBook="() => {}"
 					@openProfile="openProfile"
 					@edit="editRelated"
 					@deleted="recordDeleted(log.id)"
-					@menu="(activity) => emit('openLog', activity.id)"
+					@menu="(activity, event) => variant === 'hatady' ? emit('openLog', activity.id) : timelineActions.openActivityMenu(activity, event)"
 				/>
 			</div>
 		</template>
@@ -321,12 +323,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 </HyDialog>
 <HatadyDraftPrompt
 	v-if="closePrompt"
+	:variant="variant"
 	:title="bookExtra.draftQuestion"
 	:description="bookExtra.draftDescription"
 	:error="draftError"
 	@save="leave(true)"
 	@discard="leave(false)"
-	@return="closePrompt = false"
+	@return="cancelClose"
 />
 </template>
 
@@ -341,14 +344,21 @@ import HyBookCover from '@/components/HyBookCover.vue';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import { $i } from '@/i.js';
 import * as os from '@/os.js';
+import { confirmHatadyAction } from '@/utility/hatady-record-delete.js';
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { openRecordModeration } from '@/utility/record-moderation.js';
+import { isOwnHatadyProfile, openOwnHatadyProfileIfNeeded, useHatadyActivityActions } from '@/utility/hatady-activity-actions.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { hySubjectPalette, HY_BOOKMARK_COLORS, hyBookmarkColor } from '@/utility/hatady.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
-const props = defineProps<{ bookId: string }>();
+const props = withDefaults(defineProps<{ bookId: string; variant?: 'hatady' | 'ui' | 'uis' }>(), { variant: 'hatady' });
+const timelineActions = useHatadyActivityActions({
+	variant: props.variant,
+	onChanged: () => { void reload(); emit('changed'); },
+	onDeleted: activity => removeLocalRecord(activity.id),
+});
 const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'deleted'): void; (ev: 'openLog', logId: string): void; (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
@@ -480,6 +490,18 @@ function requestClose() {
 	else dialog.value?.close();
 }
 
+let navigateToOwnProfile = false;
+
+function cancelClose() {
+	navigateToOwnProfile = false;
+	closePrompt.value = false;
+}
+
+function onClosed() {
+	emit('closed');
+	if (navigateToOwnProfile) openOwnHatadyProfileIfNeeded(undefined, props.variant);
+}
+
 function leave(save: boolean) {
 	if (!(save ? inlineDraft.saveDraft() : inlineDraft.clearDraft())) {
 		draftError.value = bookExtra.draftUpdateFailed;
@@ -546,8 +568,7 @@ async function saveMemo(m: any) {
 }
 
 async function removeMemo(m: any) {
-	const { canceled } = await os.confirm({ type: 'warning', text: t('memoDeleteConfirm') });
-	if (canceled) return;
+	if (!(await confirmHatadyAction(props.variant, t('memoDeleteConfirm')))) return;
 	await misskeyApi('hata/hatady/memos/delete', { memoId: m.id });
 	memos.value = memos.value.filter((x) => x.id !== m.id);
 	emit('changed');
@@ -690,7 +711,7 @@ async function openEdit() {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyBookForm.vue')).default,
 		{
-			editBook: { ...book.value, bookmarks: bookmarks.value, memos: memos.value },
+			editBook: { ...book.value, bookmarks: bookmarks.value, memos: memos.value }, variant: props.variant,
 		},
 		{
 			done: () => {
@@ -706,8 +727,7 @@ async function removeBook() {
 	if (!book.value || !isMine.value || saving.value) return;
 	saving.value = true;
 	try {
-		const { canceled } = await os.confirm({ type: 'warning', text: bookExtra.deleteConfirm });
-		if (canceled) return;
+		if (!(await confirmHatadyAction(props.variant, bookExtra.deleteConfirm))) return;
 		await misskeyApi('hata/hatady/books/delete', { bookId: book.value.id });
 		hatadyNotify(bookExtra.deleted);
 		emit('deleted');
@@ -754,7 +774,7 @@ function logActivity(log: any) {
 async function editRelated(activity: any) {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyComposer.vue')).default,
-		{ editLog: activity.study },
+		{ editLog: activity.study, variant: props.variant },
 		{
 			done: () => {
 				void reload();
@@ -768,7 +788,7 @@ async function editRelated(activity: any) {
 async function openLog(logId: string) {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyConversation.vue')).default,
-		{ logId },
+		{ logId, variant: props.variant },
 		{
 			deleted: () => removeLocalRecord(logId),
 			changed: () => {
@@ -781,9 +801,15 @@ async function openLog(logId: string) {
 }
 
 async function openProfile(userId: string) {
+	if (isOwnHatadyProfile(userId, props.variant)) {
+		if (saving.value) return;
+		navigateToOwnProfile = true;
+		requestClose();
+		return;
+	}
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyProfile.vue')).default,
-		{ userId },
+		{ userId, variant: props.variant },
 		{ closed: () => dispose() },
 	);
 }

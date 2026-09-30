@@ -68,8 +68,8 @@ function responseFixture() {
 		settings: settingsFixture(),
 		benefits: SUPPORT_POLICIES.map(policy => ({
 			key: policy.key,
-			baseline: policy.key === 'driveCapacityMb' ? snapshot(879) : policy.key === 'favoriteFolderLimit' ? snapshot(2) : policy.key === 'mascotMaxPhrases' ? snapshot(10, { available: false, condition: 'mascotUnavailable' }) : snapshot(false),
-			offered: (policy.key === 'driveCapacityMb' ? snapshot(5120) : policy.key === 'favoriteFolderLimit' ? snapshot(5) : snapshot(true)) as SupportSnapshot | null,
+			baseline: policy.key === 'driveCapacityMb' ? snapshot(879) : policy.key === 'favoriteFolderLimit' ? snapshot(2) : policy.key === 'emojiRequestLimit' ? snapshot(10) : policy.key === 'mascotMaxPhrases' ? snapshot(10, { available: false, condition: 'mascotUnavailable' }) : snapshot(false),
+			offered: (policy.key === 'driveCapacityMb' ? snapshot(5120) : policy.key === 'favoriteFolderLimit' ? snapshot(5) : policy.key === 'emojiRequestLimit' ? snapshot(30) : snapshot(true)) as SupportSnapshot | null,
 		})),
 		roles: [{ id: 'role-standard', name: '標準特典' }, { id: 'role-extra', name: '追加特典' }],
 		rolePreview: null as { id: string; name: string; benefits: { key: string; snapshot: SupportSnapshot }[] } | null,
@@ -141,7 +141,7 @@ beforeEach(() => {
 	api.mockImplementation(async (endpoint: string, params: Record<string, unknown> = {}) => {
 		if (endpoint === 'admin/hatask/support/show') {
 			const result = structuredClone(initialResponse);
-			if (params.previewRoleId) result.rolePreview = { id: String(params.previewRoleId), name: '追加特典', benefits: SUPPORT_POLICIES.map(policy => ({ key: policy.key, snapshot: policy.key === 'driveCapacityMb' ? snapshot(params.previewRoleId === 'role-standard' ? 5120 : 10240) : policy.key === 'favoriteFolderLimit' ? snapshot(5) : snapshot(true) })) };
+			if (params.previewRoleId) result.rolePreview = { id: String(params.previewRoleId), name: '追加特典', benefits: SUPPORT_POLICIES.map(policy => ({ key: policy.key, snapshot: policy.key === 'driveCapacityMb' ? snapshot(params.previewRoleId === 'role-standard' ? 5120 : 10240) : policy.key === 'favoriteFolderLimit' ? snapshot(5) : policy.key === 'emojiRequestLimit' ? snapshot(30) : snapshot(true) })) };
 			return result;
 		}
 		if (endpoint === 'admin/hatask/support/supporters') return { users: serverUsers, total: serverUsers.length, hasMore: false };
@@ -159,18 +159,40 @@ afterEach(() => {
 });
 
 describe('コンパネのHatask支援管理', () => {
-	test('初期OFF・未設定でも13項目を非公開の編集行として用意し、実際の標準値を読み取り専用で表示する', async () => {
+	test('初期OFF・未設定でも14項目を非公開の編集行として用意し、実際の標準値を読み取り専用で表示する', async () => {
 		initialResponse.settings.benefits = [];
 		const { container } = await mount();
 		expect(find<HTMLInputElement>(container, '[data-support-field="enabled"] input').checked).toBe(false);
-		expect(container.querySelectorAll('[data-support-benefit]')).toHaveLength(13);
+		expect(container.querySelectorAll('[data-support-benefit]')).toHaveLength(14);
 		for (const element of container.querySelectorAll<HTMLInputElement>('[data-benefit-field="visible"] input')) expect(element.checked).toBe(false);
 		for (const element of container.querySelectorAll<HTMLSelectElement>('[data-benefit-field="roleId"] select')) expect(element.value).toBe('');
 		expect(find<HTMLElement>(container, '[data-baseline-preview="driveCapacityMb"]').textContent).toBe('879 MB');
+		expect(find<HTMLElement>(container, '[data-baseline-preview="emojiRequestLimit"]').textContent).toBe('10 件 / 7日');
 		expect(find<HTMLElement>(container, '[data-baseline-preview="mascotMaxPhrases"]').parentElement?.textContent).toContain('マスコット機能は利用できません');
 		expect(container.querySelector('[data-baseline-preview] input')).toBeNull();
 		expect(find<HTMLButtonElement>(container, '[data-save-support]').disabled).toBe(true);
 		expect(callsTo('admin/hatask/support/update')).toHaveLength(0);
+	});
+
+	test('旧設定に絵文字申請の特典を非公開で補完し、管理者が選んだ場合だけ保存する', async () => {
+		initialResponse.settings.benefits = initialResponse.settings.benefits.filter(benefit => benefit.key !== 'emojiRequestLimit');
+		const existingBenefits = structuredClone(initialResponse.settings.benefits);
+		const { container } = await mount();
+		const row = find<HTMLElement>(container, '[data-support-benefit="emojiRequestLimit"]');
+		expect(find<HTMLInputElement>(row, '[data-benefit-field="visible"] input').checked).toBe(false);
+		expect(find<HTMLSelectElement>(row, '[data-benefit-field="roleId"] select').value).toBe('');
+		expect(callsTo('admin/hatask/support/update')).toHaveLength(0);
+		await chooseRole(container, 'emojiRequestLimit', 'role-extra');
+		expect(find<HTMLElement>(container, '[data-offered-preview="emojiRequestLimit"]').textContent).toBe('30 件 / 7日');
+		const visible = find<HTMLInputElement>(row, '[data-benefit-field="visible"] input');
+		visible.checked = true;
+		visible.dispatchEvent(new Event('change', { bubbles: true }));
+		await settle();
+		find<HTMLButtonElement>(container, '[data-save-support]').click();
+		await settle();
+		const saved = callsTo('admin/hatask/support/update')[0][1].settings as ReturnType<typeof settingsFixture>;
+		expect(saved.benefits.slice(0, -1)).toEqual(existingBenefits);
+		expect(saved.benefits.at(-1)).toMatchObject({ key: 'emojiRequestLimit', roleId: 'role-extra', visible: true, showBaseline: true });
 	});
 
 	test('旧設定にお気に入り特典を非公開で補完し、参照ロールのプレビューと保存でも既存設定・利用権限を保つ', async () => {
@@ -437,7 +459,7 @@ describe('コンパネのHatask支援管理', () => {
 		expect(container.querySelector('[data-preview-title] img')).toBeNull();
 		expect(find<HTMLElement>(container, '[data-preview-message]').textContent).toBe('みなさんのご支援が、\nこの場所を支えています');
 		expect(find<HTMLElement>(container, '[data-preview-enabled]').textContent).toBe('有効');
-		expect(find<HTMLElement>(container, '[data-preview-benefits]').textContent).toBe('13件');
+		expect(find<HTMLElement>(container, '[data-preview-benefits]').textContent).toBe('14件');
 		expect(find<HTMLElement>(container, '[data-preview-supporters]').textContent).toBe('2人');
 		expect(find<HTMLAnchorElement>(container, '[data-open-saved-support]').getAttribute('href')).toBe('/hatask?tab=support');
 		expect(callsTo('admin/hatask/support/update')).toHaveLength(0);

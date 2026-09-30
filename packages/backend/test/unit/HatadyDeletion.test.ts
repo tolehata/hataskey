@@ -18,6 +18,8 @@ function repository(initial: Row[]) {
 	return {
 		rows,
 		findOneBy: vi.fn(async (where: Where) => [...rows.values()].find(row => matches(row, where)) ?? null),
+		findOne: vi.fn(async ({ where }: { where: Where }) => [...rows.values()].find(row => matches(row, where)) ?? null),
+		findBy: vi.fn(async (where: Partial<Row>) => [...rows.values()].filter(row => Object.entries(where).every(([key, value]) => row[key as keyof Row] === value))),
 		delete: vi.fn(async (where: Where | string) => {
 			const filter = typeof where === 'string' ? { id: where } : where;
 			let affected = 0;
@@ -44,12 +46,19 @@ function fixture(kind: Kind) {
 	};
 	const drive = repository([{ id: 'imageOwn', userId: 'owner' }, { id: 'imageOther', userId: 'other' }]);
 	const attachments = new HatadyAttachmentService(drive as never, {} as never);
+	const notifications = { findBy: vi.fn().mockResolvedValue([]) };
+	const manager = { getRepository: (entity: { name: string }) => entity.name === 'MiHatadyLog' ? records.log
+		: entity.name === 'MiHatadyMediaWork' ? records.work
+			: entity.name === 'MiHatadyMediaSession' ? records.session : notifications };
+	const db = { transaction: async (action: (manager: unknown) => Promise<unknown>) => action(manager) };
+	Object.assign(records.log, { manager: db });
 	const learning = Object.create(HatadyService.prototype) as HatadyService;
 	Object.assign(learning, {
 		hatadyBooksRepository: records.book,
 		hatadyLogsRepository: records.log,
 		hatadyMediaSessionsRepository: records.session,
 		hatadyAttachmentService: attachments,
+		notificationService: { refreshSourceNotifications: vi.fn().mockResolvedValue(undefined) },
 	});
 	const media = Object.create(HatadyMediaService.prototype) as HatadyMediaService;
 	Object.assign(media, {
@@ -57,6 +66,7 @@ function fixture(kind: Kind) {
 		sessionsRepository: records.session,
 		hatadyService: learning,
 		hatadyAttachmentService: attachments,
+		db,
 	});
 	const endpoint = kind === 'log' ? new LogDeleteEndpoint(learning)
 		: kind === 'book' ? new BookDeleteEndpoint(learning)

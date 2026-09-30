@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 UI S composer appearance for the shared emoji picker.
 -->
 <template>
-	<MkEmojiPicker ref="picker" data-hk3-composer-menus :class="$style.picker" :showPinned="true" :pinnedEmojis="pinnedEmojis" :asReactionPicker="false" :asDrawer="true" :maxHeight="maxHeight" @chosen="emoji => emit('done', emoji)" @esc="emit('closed')"/>
+	<MkEmojiPicker ref="picker" data-hk3-composer-menus :class="$style.picker" :data-condensed="condensed ? 'true' : undefined" :showPinned="true" :pinnedEmojis="pinnedEmojis" :asReactionPicker="false" :asDrawer="true" :autofocus="!hosted" :maxHeight="maxHeight" @chosen="emoji => emit('done', emoji)" @esc="emit('closed')"/>
 </template>
 
 <script lang="ts" setup>
@@ -12,7 +12,7 @@ import { computed, useTemplateRef } from 'vue';
 import MkEmojiPicker from '@/components/MkEmojiPicker.vue';
 import { prefer } from '@/preferences.js';
 
-defineProps<{ maxHeight: number }>();
+defineProps<{ maxHeight: number; hosted?: boolean; condensed?: boolean }>();
 const emit = defineEmits<{ (ev: 'done', emoji: string): void; (ev: 'closed'): void }>();
 const picker = useTemplateRef('picker');
 const pinnedEmojis = computed(() => prefer.r.emojiPaletteForMain.value == null
@@ -20,7 +20,7 @@ const pinnedEmojis = computed(() => prefer.r.emojiPaletteForMain.value == null
 	: prefer.r.emojiPalettes.value.find(palette => palette.id === prefer.r.emojiPaletteForMain.value)?.emojis ?? []);
 
 defineExpose({
-	focus: () => picker.value?.focus(),
+	focus: (force = false) => picker.value?.focus(force),
 	reset: () => picker.value?.reset(),
 });
 </script>
@@ -48,6 +48,33 @@ defineExpose({
 		order: -1 !important;
 		margin-bottom: 0 !important;
 		box-shadow: 0 1px 0 var(--hk3-divider) !important;
+	}
+	&[data-condensed] {
+		:global(.search) {
+			flex: 0 0 40px;
+			height: 40px;
+			min-height: 40px;
+			padding: 8px 12px !important;
+			font-size: 16px !important;
+			line-height: 24px !important;
+		}
+		:global(.emojis) { min-height: 0; }
+		:global(.emojis .group.index section > header) {
+			height: 0 !important;
+			line-height: 0 !important;
+			padding: 0 !important;
+			overflow: hidden;
+		}
+		:global(.emojis section > .body) {
+			padding: 0 4px !important;
+			grid-template-columns: repeat(auto-fill, 44px) !important;
+		}
+		:global(.emojis section > .body > .item), :global(.emojis section > .body > .config) {
+			width: 44px !important;
+			height: 44px !important;
+			aspect-ratio: auto !important;
+			padding: 0 !important;
+		}
 	}
 	:global(.emojis header) {
 		background: var(--hk3-bg, var(--MI_THEME-panel));

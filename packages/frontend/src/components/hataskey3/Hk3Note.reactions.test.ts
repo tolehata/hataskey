@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, inject, nextTick } from 'vue';
 import type { entities } from 'cherrypick-js';
 import Hk3Note from './Hk3Note.vue';
+import externalNoteSource from '@/components/MkExternalNote.vue?raw';
 import { DI } from '@/di.js';
+import { prefer } from '@/preferences.js';
 
 const mocks = vi.hoisted(() => ({
 	me: { id: 'me' } as { id: string } | null,
@@ -18,7 +20,14 @@ vi.mock('@/preferences.js', async () => {
 	const { ref } = await import('vue');
 	return { prefer: {
 		s: { animation: false, confirmOnReact: false, get reactableRemoteReactionEnabled() { return mocks.remoteEnabled; } },
-		r: { disableNyaize: ref(false) },
+		r: {
+			disableNyaize: ref(false),
+			'postFormVisibilityBorder.enabled': ref(false),
+			'postFormVisibilityBorder.color.public': ref('#336699'),
+			'postFormVisibilityBorder.color.home': ref('#228855'),
+			'postFormVisibilityBorder.color.followers': ref('#aa7711'),
+			'postFormVisibilityBorder.color.specified': ref('#bb4455'),
+		},
 	} };
 });
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api }));
@@ -64,8 +73,9 @@ function note(id: string, reactions: Record<string, number> = {}) {
 
 const cleanups: (() => void)[] = [];
 
-function mount(current: entities.Note, threadReply = false) {
+function mount(current: entities.Note, threadReply = false, mobile = false) {
 	const host = window.document.createElement('div');
+	if (mobile) host.dataset.mobile = 'true';
 	window.document.body.append(host);
 	const app = createApp({ render: () => h(Hk3Note, { note: current, size: 'sm', threadReply }) });
 	app.component('Mfm', defineComponent({
@@ -85,6 +95,23 @@ function mount(current: entities.Note, threadReply = false) {
 
 async function settle() { for (let n = 0; n < 5; n++) { await Promise.resolve(); await nextTick(); } }
 
+let measureFrame: FrameRequestCallback | undefined;
+let resizeCallback: ResizeObserverCallback | undefined;
+
+async function layoutReactionRows(host: Element, columns: number) {
+	const list = host.querySelector<HTMLElement>('button[data-reaction]')!.parentElement!;
+	const children = Array.from(list.children) as HTMLElement[];
+	children.forEach((child, index) => {
+		Object.defineProperty(child, 'offsetTop', { configurable: true, value: Math.floor(index / columns) * 40 });
+		Object.defineProperty(child, 'offsetHeight', { configurable: true, value: 34 });
+	});
+	Object.defineProperty(list, 'scrollHeight', { configurable: true, value: Math.ceil(children.length / columns) * 40 - 6 });
+	resizeCallback?.([], {} as ResizeObserver);
+	measureFrame?.(0);
+	await nextTick();
+	return list;
+}
+
 function chip(host: Element, reaction: string) {
 	const button = [...host.querySelectorAll<HTMLButtonElement>('button[data-reaction]')].find(el => el.dataset.reaction === reaction);
 	expect(button).toBeDefined();
@@ -93,14 +120,120 @@ function chip(host: Element, reaction: string) {
 
 beforeEach(() => {
 	vi.clearAllMocks(); mocks.me = { id: 'me' }; mocks.remoteEnabled = true;
+	prefer.r['postFormVisibilityBorder.enabled'].value = false;
+	prefer.r['postFormVisibilityBorder.color.public'].value = '#336699';
+	prefer.r['postFormVisibilityBorder.color.home'].value = '#228855';
+	prefer.r['postFormVisibilityBorder.color.followers'].value = '#aa7711';
+	prefer.r['postFormVisibilityBorder.color.specified'].value = '#bb4455';
 	mocks.emojis.clear(); mocks.callbacks.clear();
 	mocks.dialog.mockResolvedValue(undefined); mocks.confirm.mockResolvedValue({ canceled: false }); mocks.api.mockResolvedValue([]);
-	vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
-	vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', () => {});
+	resizeCallback = undefined;
+	vi.stubGlobal('ResizeObserver', class { constructor(callback: ResizeObserverCallback) { resizeCallback = callback; } observe() {} disconnect() {} });
+	measureFrame = undefined;
+	vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { measureFrame = callback; return 1; }); vi.stubGlobal('cancelAnimationFrame', () => {});
 });
 afterEach(() => { cleanups.splice(0).forEach(cleanup => cleanup()); vi.unstubAllGlobals(); });
 
+describe('UI S visibility rail', () => {
+	it.each([
+		['public', '#336699'], ['home', '#228855'], ['followers', '#aa7711'], ['specified', '#bb4455'],
+	])('uses the shared %s color and reacts to setting changes', async (visibility, expectedColor) => {
+		const current = note('target');
+		current.visibility = visibility as entities.Note['visibility'];
+		const host = mount(current);
+		const rail = () => host.querySelector<HTMLElement>('[data-hk3-visibility-rail]');
+		expect(rail()).toBeNull();
+		prefer.r['postFormVisibilityBorder.enabled'].value = true;
+		await nextTick();
+		expect(rail()?.style.getPropertyValue('--hk3-visibility-color')).toBe(expectedColor);
+		prefer.r[`postFormVisibilityBorder.color.${visibility}` as 'postFormVisibilityBorder.color.public'].value = '#123456';
+		await nextTick();
+		expect(rail()?.style.getPropertyValue('--hk3-visibility-color')).toBe('#123456');
+		prefer.r['postFormVisibilityBorder.enabled'].value = false;
+		await nextTick();
+		expect(rail()).toBeNull();
+	});
+
+	it('keeps unknown visibility colorless', async () => {
+		prefer.r['postFormVisibilityBorder.enabled'].value = true;
+		const current = note('unknown');
+		current.visibility = 'unknown' as entities.Note['visibility'];
+		expect(mount(current).querySelector('[data-hk3-visibility-rail]')).toBeNull();
+	});
+
+	it('uses the displayed pure renote body and each thread reply visibility', () => {
+		prefer.r['postFormVisibilityBorder.enabled'].value = true;
+		const body = note('body');
+		body.visibility = 'followers';
+		const renote = { ...note('renote'), text: null, visibility: 'public', renoteId: body.id, renote: body } as entities.Note;
+		const host = mount(renote);
+		expect(host.querySelector<HTMLElement>('[data-hk3-visibility-rail]')?.style.getPropertyValue('--hk3-visibility-color')).toBe('#aa7711');
+		const reply = note('reply');
+		reply.visibility = 'specified';
+		expect(mount(reply, true).querySelector<HTMLElement>('[data-hk3-visibility-rail]')?.style.getPropertyValue('--hk3-visibility-color')).toBe('#bb4455');
+	});
+
+	it('uses the same body visibility in external notes only on UI S', () => {
+		expect(externalNoteSource).toContain('<Hk3VisibilityRail v-if="ui === \'hataskey3\' && !embedded" :visibility="appearNote.visibility"/>');
+		expect(externalNoteSource).toContain('.root:has(> [data-hk3-visibility-rail]) {');
+		expect(externalNoteSource).toContain(': resolveExternalNotePresentation(props.note));');
+	});
+});
+
 describe('UI S note reaction actions', () => {
+	it('shows three mobile rows without an expand button when all chips fit', async () => {
+		const host = mount(note('target', Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`reaction-${i}`, 1]))), false, true);
+		const list = await layoutReactionRows(host, 2);
+		expect(list.style.maxHeight).toBe('114px');
+		expect(list.parentElement!.children.length).toBe(1);
+	});
+
+	it('counts only the fourth mobile row onward and can expand, collapse, and remeasure', async () => {
+		const host = mount(note('target', Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`reaction-${i}`, 1]))), false, true);
+		const list = await layoutReactionRows(host, 2);
+		const more = list.parentElement!.querySelector<HTMLButtonElement>(':scope > button')!;
+		expect(list.style.maxHeight).toBe('114px');
+		expect(more.textContent).toContain('+1');
+		more.click(); await nextTick();
+		expect(list.style.maxHeight).toBe('154px');
+		more.click(); await nextTick();
+		expect(list.style.maxHeight).toBe('114px');
+		await layoutReactionRows(host, 3);
+		expect(list.style.maxHeight).toBe('114px');
+		expect(list.parentElement!.children.length).toBe(1);
+		await layoutReactionRows(host, 2);
+		expect(list.style.maxHeight).toBe('114px');
+		expect(list.parentElement!.querySelector<HTMLButtonElement>(':scope > button')!.textContent).toContain('+1');
+	});
+
+	it('shows the expand arrow when only the add button reaches the fourth mobile row', async () => {
+		const host = mount(note('target', Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`reaction-${i}`, 1]))), false, true);
+		const list = await layoutReactionRows(host, 2);
+		const more = list.parentElement!.querySelector<HTMLButtonElement>(':scope > button')!;
+		expect(list.parentElement!.children.length).toBe(2);
+		expect(more.textContent).not.toContain('+0');
+		expect(more.textContent).toBe('');
+		more.click(); await nextTick();
+		expect(list.style.maxHeight).toBe('154px');
+	});
+
+	it('uses three rows for a mobile thread reply and remeasures after it narrows', async () => {
+		const host = mount(note('reply', Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`reaction-${i}`, 1]))), true, true);
+		const list = await layoutReactionRows(host, 2);
+		expect(list.style.maxHeight).toBe('114px');
+		expect(list.parentElement!.children.length).toBe(1);
+		await layoutReactionRows(host, 1);
+		expect(list.style.maxHeight).toBe('114px');
+		expect(list.parentElement!.querySelector<HTMLButtonElement>(':scope > button')!.textContent).toContain('+2');
+	});
+
+	it('keeps the one-row limit for S notes outside the mobile app', async () => {
+		const host = mount(note('target', Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`reaction-${i}`, 1]))));
+		const list = await layoutReactionRows(host, 2);
+		expect(list.style.maxHeight).toBe('34px');
+		expect(list.parentElement!.querySelector<HTMLButtonElement>(':scope > button')!.textContent).toContain('+3');
+	});
+
 	it.each(['create', 'change', 'delete'] as const)('suppresses the success dialog for %s while retaining reaction events and sound', async operation => {
 		const current = note('target', { '👍': 1 });
 		if (operation !== 'create') current.myReaction = operation === 'delete' ? '👍' : ':old@.:';

@@ -28,7 +28,9 @@ type PushNotificationsTypes = {
 		antenna: { id: string, name: string };
 		note: Packed<'Note'>;
 	};
-	'readAllNotifications': undefined;
+	'readAllNotifications': { ids: string[] };
+	'readNotification': { id: string };
+	'notificationChanged': { ids: string[] };
 	newChatMessage: Packed<'ChatMessage'>;
 	hatadyNotification: HatadyPushNotificationBody;
 };
@@ -93,7 +95,7 @@ export class PushNotificationService implements OnApplicationShutdown {
 
 		for (const subscription of subscriptions) {
 			if ([
-				'readAllNotifications',
+				'readAllNotifications', 'readNotification', 'notificationChanged',
 			].includes(type) && !subscription.sendReadMessage) continue;
 
 			const pushSubscription = {

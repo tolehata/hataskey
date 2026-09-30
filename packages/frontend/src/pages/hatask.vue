@@ -487,6 +487,10 @@
 <!-- ========== GARDEN ========== -->
 <div v-if="activeTab==='garden'" class="htk-tabpage htk-garden-page htk-panels" data-garden-layout="streams">
   <HataskFlowerCare ref="flowerCare" :todos="todos" :folders="folders" :animations="flowerAnimations" :theme="plannerTheme" :mode="themeMode" :readOnly="plannerReadOnly" :completeTodo="completeGardenTodo" @state="applyFlowerState" @harvested="onFlowerHarvested" @hatady="routeRouter.push('/hatady')"/>
+  <section class="htk-lg htk-anim htk-seasonal-tree-panel" data-garden-group="seasonal-tree"><div class="htk-gc">
+    <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{seasonalTreeCopy.title}}</h3><p class="htk-flower-summary">{{seasonalTreeCopy.description}}</p></div></header>
+    <div class="htk-seasonal-tree-scene"><SeasonalTreeScene :animated="flowerAnimations" :windStrength="60" :showCaption="true"/></div>
+  </div></section>
   <div class="htk-garden-collections">
     <section class="htk-lg htk-anim" data-garden-group="community"><div class="htk-gc">
       <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{copy.communityFlowerGallery}}</h3><p class="htk-flower-summary">{{copyx.flowerCount({count:communityFlowerTotal.toString()})}} · {{seasonFlowerLabel}}</p></div><button type="button" class="htk-flower-icon-button" data-flower-collection-button="community" :aria-label="flowerCollectionLabel('community')" :title="flowerCollectionLabel('community')" aria-haspopup="dialog" :aria-expanded="flowerCollectionKind==='community'" @click="openFlowerCollection('community', $event)"><i class="ti ti-layout-grid" aria-hidden="true"></i></button><button type="button" class="htk-flower-icon-button" :aria-label="flowerPauseLabel('community')" :title="flowerPauseLabel('community')" :aria-pressed="flowerStreamPaused.community" :disabled="!flowerAnimations" @click="toggleFlowerStream('community')"><i :class="flowerStreamPaused.community?'ti ti-player-play':'ti ti-player-pause'" aria-hidden="true"></i></button></header>
@@ -724,6 +728,8 @@ import { expandHataskEventOccurrences } from '@/utility/hatask-planner-recurrenc
 import { completeHataskTodos } from '@/utility/hatask-todo-completion.js';
 import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive, currentExpression as mascotCurrentExpression, currentPhrase as mascotCurrentPhrase, pickRandomPhrase as mascotPickRandomPhrase, displaySettings as mascotDisplaySettings, loadDisplaySettings as loadMascotDisplaySettings, nextIdleDelayMs as mascotNextIdleDelayMs, escapeText as mascotEscapeText } from '@/utility/mascot-store.js';
 const copy = i18n.ts._hata._hatask._main;
+const SeasonalTreeScene = defineAsyncComponent(() => import('@/components/MkSeasonalTree.vue'));
+const seasonalTreeCopy = i18n.ts._hata._seasonalTree;
 const copyx = i18n.tsx._hata._hatask._main;
 const plannerCopy = i18n.ts._hata._hatask._planner;
 const plannerCopyx = i18n.tsx._hata._hatask._planner;
@@ -4619,6 +4625,8 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-garden-page .htk-gc { padding: 14px 18px 16px; }
 .htk-garden-page .htk-lg:hover { transform: none; }
 .htk-garden-collections { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; min-width: 0; }
+.htk-seasonal-tree-panel .htk-flower-heading { margin-bottom: 8px; }
+.htk-seasonal-tree-scene { width: min(100%, 560px); height: clamp(220px, 45cqw, 380px); margin-inline: auto; }
 .htk-flower-heading { position: relative; display: flex; align-items: center; gap: 4px; min-height: 44px; margin-bottom: 4px; }
 .htk-flower-heading > :first-child { flex: 1; min-width: 0; }
 .htk-flower-heading .htk-sec-title { margin: 0; font-size: 1rem; line-height: 1.5; overflow-wrap: anywhere; }

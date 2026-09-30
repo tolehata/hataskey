@@ -7,19 +7,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <span :class="$style.root">
-	<button
+	<HatadyReactionPill
 		v-for="(count, emoji) in reactionsLocal"
 		:key="emoji"
+		:target="target"
+		:reaction="String(emoji)"
+		:count="count"
+		:pressed="myReactionLocal === emoji"
+		:actionLabel="myReactionLocal === emoji ? copy.remove : copy.add"
+		:variant="variant"
 		:disabled="busy"
-		:aria-pressed="myReactionLocal === emoji"
 		:class="[$style.pill, myReactionLocal === emoji && $style.pillOn]"
-		:title="myReactionLocal === emoji ? copy.remove : copy.add"
-		:aria-label="myReactionLocal === emoji ? copy.remove : copy.add"
-		@click="toggle(emoji)"
-	>
-		<MkReactionIcon style="pointer-events: none;" :class="$style.icon" :reaction="String(emoji)"/>
-		<span :class="$style.count">{{ count }}</span>
-	</button>
+		@activate="toggle(String(emoji))"
+	/>
 	<button
 		ref="addEl"
 		:disabled="busy"
@@ -35,24 +35,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, watch, useTemplateRef } from 'vue';
-import MkReactionIcon from '@/components/MkReactionIcon.vue';
+import HatadyReactionPill from '@/components/HatadyReactionPill.vue';
 import { i18n } from '@/i18n.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
+import { invalidateHatadyReactionUsers } from '@/utility/hatady-reaction-details.js';
+import type { HatadyReactionTarget } from '@/utility/hatady-reaction-details.js';
+import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 
 const copy = i18n.ts._hata._hatady._reactions;
 
-const props = defineProps<{
-	target: {
-		logId?: string | null;
-		commentId?: string | null;
-		sessionId?: string | null;
-		mediaCommentId?: string | null;
-	};
+const props = withDefaults(defineProps<{
+	target: HatadyReactionTarget;
 	reactions: Record<string, number>;
 	myReaction: string | null;
-}>();
+	variant?: HatadySurfaceVariant;
+}>(), { variant: 'hatady' });
 
 const emit = defineEmits<{
 	(ev: 'changed', v: { reactions: Record<string, number>; myReaction: string | null }): void;
@@ -114,6 +113,7 @@ async function toggle(emoji: string) {
 			...payload,
 			...(!remove ? { reaction: emoji } : {}),
 		});
+		invalidateHatadyReactionUsers(props.target);
 		if (remove) localApplyUnreact();
 		else localApplyReact(emoji);
 	} catch {
@@ -167,12 +167,6 @@ function cleanTarget(): Record<string, string> {
 	background: color-mix(in srgb, var(--hy-accent) 18%, transparent);
 	border-color: var(--hy-accent);
 	color: var(--hy-accent-ink);
-}
-.icon {
-	height: 1.3em;
-}
-.count {
-	line-height: 1;
 }
 .add {
 	display: inline-flex;

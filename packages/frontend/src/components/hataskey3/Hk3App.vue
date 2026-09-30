@@ -12,7 +12,7 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 	<!-- ===== デスクトップ ===== -->
 	<div v-if="!isMobile" :class="$style.desktop" :style="{ gridTemplateColumns: desktopColumns }">
 		<div data-hata-collapse-part :inert="confirmationActive" :class="$style.navCell" :style="{ width: `${sideNavExpanded ? navWidth : 64}px` }" :data-glass-seam="sideNavSeamless ? 'true' : undefined" :data-deck-seam="sideNavSeamless && deckActive ? 'true' : undefined" @pointerenter="onSideNavEnter" @pointerleave="sideNavHovered = false" @focusin="onSideNavFocus" @focusout="onSideNavBlur" @keydown.esc="closeSideNav" @keyup="onSideNavKeyUp">
-			<Hk3SideNav :collapsed="!sideNavExpanded" :seamless="sideNavSeamless" :isDeck="deckActive" :deckAvailable="isHome" :postOpen="composeWindowOpen" :dark="themeMode === 'dark'" @post="toggleComposeWindow" @toggleTheme="toggleTheme" @mode="switchMode" @navigate="onSideNavigate" @launchPadOpen="sideNavLaunchPadOpen = $event" @instanceMenuOpen="sideNavInstanceMenuOpen = $event"/>
+			<Hk3SideNav :collapsed="!sideNavExpanded" :seamless="sideNavSeamless" :isDeck="deckActive" :deckAvailable="isHome" :postOpen="composeWindowOpen" :dark="themeMode === 'dark'" @post="isHatadyTimeline ? launchHatadyRecord() : toggleComposeWindow()" @toggleTheme="toggleTheme" @mode="switchMode" @navigate="onSideNavigate" @launchPadOpen="sideNavLaunchPadOpen = $event" @instanceMenuOpen="sideNavInstanceMenuOpen = $event"/>
 		</div>
 
 		<template v-if="deckActive">
@@ -36,7 +36,8 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 					<template #page><RouterView v-if="!isHome"/></template>
 					<template #timeline>
 						<Hk3Timeline v-if="isHome || sidePageSession" ref="timelineRef" :active="timelineVisible" :narrow="sidePageSplit" :confirmationActive="confirmationActive" @punchBusy="punchBusy = $event">
-							<Hk3Composer ref="composerRef" :menuPlacement="prefer.r.hataskeyUi3ComposerPosition.value === 'top' ? 'down' : 'up'"/>
+							<Hk3Composer v-show="!isHatadyTimeline" ref="composerRef" :inert="isHatadyTimeline" :aria-hidden="isHatadyTimeline" :menuPlacement="prefer.r.hataskeyUi3ComposerPosition.value === 'top' ? 'down' : 'up'"/>
+							<button v-if="isHatadyTimeline" type="button" :class="$style.hatadyRecordBar" @click="launchHatadyRecord"><BookOpen :size="18"/>{{ i18n.ts._hata._hatasabaUi._simple.record }}</button>
 						</Hk3Timeline>
 					</template>
 				</Hk3SideWorkspace>
@@ -46,7 +47,7 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 	</div>
 
 	<!-- ===== スマホ ===== -->
-	<div v-else :class="$style.mobile" :data-page="!isHome ? 'true' : undefined">
+	<div v-else :class="$style.mobile" :data-page="!isHome ? 'true' : undefined" :data-dock-suspended="mobileDockSuspended ? 'true' : undefined">
 		<div :class="$style.safeTop"></div>
 		<div :class="$style.scrim" :data-open="drawerOpen ? 'true' : undefined" :inert="confirmationActive || mobileDockExpanded || mobilePane != null" @click="drawerOpen = false"></div>
 		<div :class="$style.drawer" :data-glass="prefer.r.hataskeyUi3SideMenuBackground.value ? 'true' : undefined" :data-open="drawerOpen ? 'true' : undefined" :data-hata-collapse-part="drawerOpen ? '' : undefined" :aria-hidden="!drawerOpen" :inert="confirmationActive || mobileDockExpanded || mobilePane != null">
@@ -59,13 +60,13 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 		<Hk3SideWorkspace :class="$style.mobileWorkspace" :mode="isHome ? 'home' : 'full'" :pageActive="!isHome" :pageInert="confirmationActive" :timelineActive="timelineVisible" :controls="sidePageSession" :preservePageNavigation="preservePageNavigation" :title="props.pageMetadata?.title ?? ''" :inert="confirmationActive || drawerOpen || mobileDockExpanded || mobilePane != null" mobile :reduceMotion="reduceMotionActive" :glass="prefer.r.hataskeyUi3TimelineBackground.value" :pageClass="`${$style.page} ${$style.mobilePage}`" :expandLabel="copy.sidePageExpand" :restoreLabel="copy.sidePageRestore" :closeLabel="copy.sidePageClose" @close="closeSidePage">
 			<template #page><RouterView v-if="!isHome"/></template>
 			<template #timeline>
-				<Hk3Timeline v-if="isHome || sidePageSession" ref="timelineRef" compact :active="timelineVisible" :narrow="false" :confirmationActive="confirmationActive" :mobileComposerTarget="mobileDockRef?.composerTarget ?? null" :mobileDockHeight="mobileDockRef?.dockHeight ?? 0" :mobileMenuOpen="mobileDockExpanded || drawerOpen || mobilePane != null" @punchBusy="punchBusy = $event" @mobileCollection="mobileDockRef?.openCollection($event)">
-					<Hk3Composer ref="composerRef" compact menuPlacement="up"/>
+				<Hk3Timeline v-if="isHome || sidePageSession" ref="timelineRef" compact :active="timelineVisible" :narrow="false" :confirmationActive="confirmationActive" :mobileComposerTarget="mobileDockRef?.composerTarget ?? null" :mobileComposerOpen="mobileDockRef?.composerOpened ?? false" :mobileDockHeight="mobileDockRef?.dockHeight ?? 0" :mobileMenuOpen="mobileDockExpanded || drawerOpen || mobilePane != null" @punchBusy="punchBusy = $event" @mobileCollection="mobileDockRef?.openCollection($event)" @revealComposer="mobileDockRef?.openComposer()">
+					<Hk3Composer v-show="!isHatadyTimeline" ref="composerRef" :inert="isHatadyTimeline" :aria-hidden="isHatadyTimeline" compact menuPlacement="up" @posted="mobileDockRef?.closeComposer(true)"/>
 				</Hk3Timeline>
 			</template>
 		</Hk3SideWorkspace>
 
-		<Hk3MobileDock ref="mobileDockRef" :confirmationActive="confirmationActive" :navigation="isHome ? timelineRef?.mobileNavigation ?? null : null" :items="mobileNav" :home="isHome" :drawerOpen="drawerOpen" :motion="!reduceMotionActive" :guideSeen="mobileGuideSeen" :pullState="isHome && timelineVisible ? timelineRef?.mobilePullState ?? null : null" :attachPullGesture="isHome && timelineVisible ? timelineRef?.attachMobilePullGesture ?? null : null" :inert="mobilePane != null" @navigate="goMobile" @menu="toggleMobileDrawer" @requestTimeline="requestMobileTimeline" @menuOpen="mobileMenuOpen = $event" @searchOpen="onMobileSearchOpen" @dismissGuide="dismissMobileGuide"/>
+		<Hk3MobileDock ref="mobileDockRef" :confirmationActive="confirmationActive" :composerBlocked="composerRef?.collapseBlocked ?? false" :composeKind="isHatadyTimeline ? 'hatady' : 'note'" :navigation="isHome ? timelineRef?.mobileNavigation ?? null : null" :items="mobileNav" :home="isHome" :drawerOpen="drawerOpen" :motion="!reduceMotionActive" :guideSeen="mobileGuideSeen" :suspended="mobileDockSuspended" :pullState="isHome && timelineVisible ? timelineRef?.mobilePullState ?? null : null" :attachPullGesture="isHome && timelineVisible ? timelineRef?.attachMobilePullGesture ?? null : null" :inert="mobilePane != null" @compose="onMobileCompose" @navigate="goMobile" @menu="toggleMobileDrawer" @requestTimeline="requestMobileTimeline" @menuOpen="mobileMenuOpen = $event" @searchOpen="onMobileSearchOpen" @dismissGuide="dismissMobileGuide"/>
 		<Hk3MobileRightPane :pane="mobilePane" :glass="prefer.r.hataskeyUi3RightPaneBackground.value" :motion="!reduceMotionActive" @close="closeMobilePane" @tabChange="mobilePane = $event"/>
 	</div>
 </div>
@@ -89,14 +90,14 @@ import Hk3MobileDock from './Hk3MobileDock.vue';
 import Hk3MobileRightPane from './Hk3MobileRightPane.vue';
 import { createHk3NoteConfirmationHost } from './hk3-note-confirmation-host.js';
 import { registerNoteActionConfirmation } from '@/utility/note-action-confirmation.js';
-import { hk3CanAdoptPostForm, pushHk3Toast } from './hk3-state.js';
+import { dismissHk3Toast, hk3CanAdoptPostForm, hk3Toasts, pushHk3Toast } from './hk3-state.js';
 import type { Hk3Toast } from './hk3-state.js';
 import { HK3_THEME_CONTEXT, hk3ThemeStyle, readHk3ThemeBase } from './hk3-theme.js';
 import type { Hk3ThemeBase, Hk3ThemeMode } from './hk3-theme.js';
 import RouterView from '@/components/global/RouterView.vue';
 import * as os from '@/os.js';
 import { useGlobalEvent } from '@/events.js';
-import { pendingApiRequestsCount } from '@/utility/misskey-api.js';
+import { misskeyApi, pendingApiRequestsCount } from '@/utility/misskey-api.js';
 import { getStaticImageUrl } from '@/utility/media-proxy.js';
 import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
@@ -112,6 +113,8 @@ import { useHataskeyNavbarNotices } from '@/composables/use-hataskey-navbar-noti
 import { getActiveHataSideProfile, hataSideStudioStore, startHataSideStudioSync, stopHataSideStudioSync } from '@/utility/hata-side-studio.js';
 import { createHataTimelineCollapseEffect } from '@/utility/hata-timeline-collapse-effect.js';
 import { useStream } from '@/stream.js';
+import { openHatadyRecord } from '@/utility/hatady-record-launcher.js';
+import { acceptNotificationUnreadState } from '@/utility/notification-unread-state.js';
 
 const HatasabaDeck = defineAsyncComponent(() => import('@/ui/_common_/hatasaba-deck.vue'));
 
@@ -126,12 +129,18 @@ const deckBoxEl = shallowRef<HTMLElement | null>(null);
 const composeWindowEl = shallowRef<HTMLElement | null>(null);
 const punchBusy = ref(false);
 const timelineRef = shallowRef<InstanceType<typeof Hk3Timeline> | null>(null);
+const isHatadyTimeline = computed(() => isHome.value && timelineRef.value?.mobileNavigation.active === 'hatady' && !deckActive.value);
+function launchHatadyRecord() { void openHatadyRecord({ variant: 'uis', onDone: () => timelineRef.value?.reload() }); }
+function onMobileCompose() {
+	if (isHatadyTimeline.value) launchHatadyRecord();
+	else composerRef.value?.focus();
+}
 const composerRef = shallowRef<InstanceType<typeof Hk3Composer> | null>(null);
 const confirmationActive = computed(() => composerRef.value?.confirmationActive ?? false);
 const mobileDockRef = shallowRef<InstanceType<typeof Hk3MobileDock> | null>(null);
 const mobileMenuOpen = ref(false);
 const mobileSearchOpen = ref(false);
-const mobileDockExpanded = computed(() => mobileMenuOpen.value || mobileSearchOpen.value);
+const mobileDockExpanded = computed(() => !mobileDockSuspended.value && (mobileMenuOpen.value || mobileSearchOpen.value));
 const mobileGuideKey = `hataskeyUi3MobileGuideShown:${$i?.id ?? 'guest'}` as const;
 const mobileGuideSeen = ref(miLocalStorage.getItem(mobileGuideKey) === 'true');
 
@@ -141,6 +150,8 @@ provide('forceNoteRealtimeCapture', true);
 const width = ref(window.innerWidth);
 const isMobile = computed(() => width.value <= MOBILE_MAX);
 const path = computed(() => mainRouter.currentRoute.value.path);
+const mobileDockSuspended = computed(() => ['/hatask', '/hata-docs']
+	.some(root => path.value === root || path.value.startsWith(`${root}/`)));
 const preservePageNavigation = computed(() => ['/hatask', '/hatady', '/hatafeed', '/hata-side-studio', '/hata-docs']
 	.some(root => path.value === root || path.value.startsWith(`${root}/`)));
 const showRightPane = computed(() => width.value >= RIGHT_PANE_MIN && path.value !== '/hata-side-studio');
@@ -186,7 +197,7 @@ function closeSidePage() {
 	sidePageOpener = null;
 	void nextTick(() => {
 		if (opener?.isConnected && !isMobile.value) opener.focus({ preventScroll: true });
-		else (rootEl.value?.querySelector<HTMLElement>('[data-hk3-side-timeline] button') ?? rootEl.value?.querySelector<HTMLElement>('[data-mobile-nav-path="/"]'))?.focus({ preventScroll: true });
+		else (rootEl.value?.querySelector<HTMLElement>('[data-hk3-side-timeline] button') ?? (!mobileDockSuspended.value ? rootEl.value?.querySelector<HTMLElement>('[data-mobile-nav-path="/"]') : null))?.focus({ preventScroll: true });
 	});
 }
 
@@ -215,8 +226,14 @@ function onDocumentPointerDown() {
 	sideNavFocused.value = false;
 }
 
-function onDocumentKeyDown() {
+function onDocumentKeyDown(event: KeyboardEvent) {
 	sideNavPointerInput = false;
+	if (!isHatadyTimeline.value || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing || !['p', 'n'].includes(event.key.toLowerCase())) return;
+	const target = event.target;
+	if (!(target instanceof HTMLElement) || !rootEl.value?.contains(target) || target.closest('input, textarea, [contenteditable="true"], [role="dialog"]')) return;
+	event.preventDefault();
+	event.stopImmediatePropagation();
+	launchHatadyRecord();
 }
 
 function onSideNavEnter(event: PointerEvent) {
@@ -523,7 +540,9 @@ function interceptPostForm(request: PostFormProps): boolean {
 	if (composerRef.value) return composerRef.value.adopt(request);
 	if (!deckActive.value) return false;
 	composeWindowOpen.value = true;
-	void nextTick(() => composerRef.value?.adopt(request));
+	void nextTick(() => {
+		if (composerRef.value?.adopt(request) !== true) void os.postDirect(request);
+	});
 	return true;
 }
 
@@ -581,7 +600,9 @@ watch([composerRef, isHome], ([composer, home]) => {
 	if (pendingAdopt) {
 		const request = pendingAdopt;
 		pendingAdopt = null;
-		void nextTick(() => composer.adopt(request));
+		void nextTick(() => {
+			if (composerRef.value?.adopt(request) !== true) void os.postDirect(request);
+		});
 	}
 }, { flush: 'post' });
 
@@ -618,23 +639,28 @@ function closeMobilePane() {
 	mobilePaneOpener = null;
 	void nextTick(() => {
 		const active = window.document.activeElement;
-		if (!mobileSearchOpen.value && opener?.isConnected && (active === window.document.body || active instanceof Node && rootEl.value?.contains(active))) opener.focus({ preventScroll: true });
+		if (!mobileDockSuspended.value && !mobileSearchOpen.value && opener?.isConnected && (active === window.document.body || active instanceof Node && rootEl.value?.contains(active))) opener.focus({ preventScroll: true });
 	});
 }
 
 watch(path, (_next, previous) => {
+	mobileDockRef.value?.closeComposer(true);
 	mobileDockRef.value?.closeSearch(false);
 	drawerOpen.value = false;
 	closeMobilePane();
 	// Keep the captured home button alive when its long press opens the timeline.
-	if (previous === '/') mobileDockRef.value?.closeMenu();
+	if (previous === '/') mobileDockRef.value?.closeMenu(!mobileDockSuspended.value);
 });
 watch(mainRouter.currentRef, () => {
+	mobileDockRef.value?.closeComposer(true);
 	mobileDockRef.value?.closeSearch(false);
 	closeMobilePane();
 });
 watch([drawerOpen, mobilePane], ([drawer, pane]) => {
-	if (drawer || pane) mobileDockRef.value?.closeSearch(false);
+	if (drawer || pane) {
+		mobileDockRef.value?.closeComposer(true);
+		mobileDockRef.value?.closeSearch(false);
+	}
 });
 watch(isMobile, mobile => { mobileMenuOpen.value = false; if (!mobile) { mobileDockRef.value?.closeSearch(false); mobileSearchOpen.value = false; closeMobilePane(); } });
 
@@ -648,9 +674,16 @@ useHataskeyNavbarNotices(noticeContext, computed(() => $i != null && timelineVis
 function notificationToast(notification: Misskey.entities.Notification, host?: string): Omit<Hk3Toast, 'id'> {
 	const user = 'user' in notification ? (notification.user as Misskey.entities.UserLite | undefined) ?? null : null;
 	const name = user ? (user.name || user.username) : '';
-	const open = () => mainRouter.pushByPath((host ? '/my/external-notifications' : '/my/notifications') as never);
-	const base = { user, emojiHost: host, onClick: open };
+	const open = () => mainRouter.pushByPath((host !== undefined ? '/my/external-notifications' : '/my/notifications') as never);
+	const base = { user, emojiHost: host, onClick: open, notificationId: host === undefined ? notification.id : undefined };
 	switch (notification.type) {
+		case 'hatady': {
+			const copy = i18n.ts._hata._hatady._push;
+			const text = notification.subtype === 'follow' ? copy.follow
+				: notification.subtype === 'comment' || notification.subtype === 'mediaComment' || notification.subtype === 'mediaReply' ? copy.comment
+				: notification.subtype === 'reaction' || notification.subtype === 'mediaReaction' ? copy.reaction : copy.update;
+			return { ...base, icon: 'bell', text, onClick: host === undefined ? () => mainRouter.pushByPath(`/hatady?notificationId=${encodeURIComponent(notification.id)}`) : open };
+		}
 		case 'reaction': return { ...base, icon: 'heart', text: i18n.tsx._hata._hataskeyUi3.toastReaction({ name }) };
 		case 'reply': return { ...base, icon: 'reply', text: i18n.tsx._hata._hataskeyUi3.toastReply({ name }) };
 		case 'renote': return { ...base, icon: 'repeat', text: i18n.tsx._hata._hataskeyUi3.toastRenote({ name }) };
@@ -698,6 +731,43 @@ function onExternalNotification(ev: Event) {
 	if (notification) noticeContext.enqueue(notification, 'external', performance.now(), prefer.s['external.host'] || undefined);
 }
 
+let releaseNotificationChannel: (() => void) | null = null;
+function watchNotificationReads(): void {
+	if (!store.s.realtimeMode || !$i) return;
+	const ownerId = $i.id;
+	const channel = timelineCollapseStream.useChannel('main');
+	const accept = (state: { unreadNotificationsCount: number; revision: string }) =>
+		$i?.id === ownerId && acceptNotificationUnreadState(ownerId, state) !== null;
+	const dismiss = (ids: readonly string[]) => {
+		const readIds = new Set(ids);
+		for (const toast of hk3Toasts.value) {
+			if (toast.notificationId && readIds.has(toast.notificationId)) dismissHk3Toast(toast.id);
+		}
+	};
+	channel.on('readNotification', event => { if ($i?.id === ownerId) dismiss([event.id]); accept(event); });
+	channel.on('notificationChanged', event => { if ($i?.id === ownerId) dismiss(event.ids); accept(event); });
+	channel.on('readAllNotifications', event => { if ($i?.id === ownerId) dismiss(event.ids); accept(event); });
+	channel.on('notificationFlushed', event => {
+		accept(event);
+		if ($i?.id !== ownerId) return;
+		const ids = [...new Set(hk3Toasts.value.flatMap(toast => toast.notificationId ? [toast.notificationId] : []))];
+		if (ids.length === 0) return;
+		void (async () => {
+			for (let offset = 0; offset < ids.length; offset += 100) {
+				const batch = ids.slice(offset, offset + 100);
+				try {
+					const retained = await misskeyApi('notifications/show', { notificationIds: batch });
+					if ($i?.id !== ownerId) return;
+					const retainedIds = new Set(retained.map(notification => notification.id));
+					dismiss(batch.filter(id => !retainedIds.has(id)));
+				} catch { /* Preserve this batch on a failed reconciliation. */ }
+			}
+		})();
+	});
+	channel.on('unreadNotification', accept);
+	releaseNotificationChannel = () => channel.dispose();
+}
+
 // ===== 押下時のアイコン演出 =====
 function onPress(ev: PointerEvent) {
 	if (reduceMotion()) return;
@@ -720,6 +790,7 @@ let releaseNoteConfirmation: (() => void) | null = null;
 let releasePostFormInterceptor: (() => void) | null = null;
 
 onMounted(() => {
+	watchNotificationReads();
 	timelineCollapseStream.on('hataTimelineCollapse', onHataTimelineCollapse);
 	window.document.addEventListener('pointerdown', onDocumentPointerDown, true);
 	window.document.addEventListener('keydown', onDocumentKeyDown, true);
@@ -736,6 +807,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	releaseNotificationChannel?.();
 	timelineCollapseStream.off('hataTimelineCollapse', onHataTimelineCollapse);
 	timelineCollapseEffect.destroy();
 	window.document.removeEventListener('pointerdown', onDocumentPointerDown, true);
@@ -942,8 +1014,8 @@ onBeforeUnmount(() => {
 			background: color-mix(in srgb, var(--hk3-bg) var(--hk3-glass-overlay-alpha), transparent);
 			-webkit-backdrop-filter: blur(20px);
 			backdrop-filter: blur(20px);
-			-webkit-mask-image: linear-gradient(to right, transparent, #000 40px);
-			mask-image: linear-gradient(to right, transparent, #000 40px);
+			-webkit-mask-image: linear-gradient(to right, transparent 0, rgba(0, 0, 0, 0.02) 8px, rgba(0, 0, 0, 0.1) 20px, rgba(0, 0, 0, 0.3) 36px, rgba(0, 0, 0, 0.55) 52px, rgba(0, 0, 0, 0.78) 68px, rgba(0, 0, 0, 0.94) 84px, #000 96px);
+			mask-image: linear-gradient(to right, transparent 0, rgba(0, 0, 0, 0.02) 8px, rgba(0, 0, 0, 0.1) 20px, rgba(0, 0, 0, 0.3) 36px, rgba(0, 0, 0, 0.55) 52px, rgba(0, 0, 0, 0.78) 68px, rgba(0, 0, 0, 0.94) 84px, #000 96px);
 		}
 	}
 }
@@ -1070,6 +1142,11 @@ onBeforeUnmount(() => {
 	}
 }
 
+.mobile[data-dock-suspended] .mobilePage {
+	--hk3-page-dock-inset: 0px;
+	background: none;
+}
+
 // Blend page-owned frames into the floating dock without filtering its buttons.
 .mobile[data-page]::after {
 	content: '';
@@ -1085,6 +1162,8 @@ onBeforeUnmount(() => {
 	-webkit-mask-image: linear-gradient(to bottom, transparent, #000 40%);
 	mask-image: linear-gradient(to bottom, transparent, #000 40%);
 }
+
+.mobile[data-dock-suspended]::after { display: none; }
 
 // 引き出しと背面の幕は、ページが body 直下に出す固定要素(検索欄など z-index 100 前後)より上、
 // メニュー・ダイアログなどのポップアップ(z-index 100万台)より下に置く。
@@ -1161,6 +1240,21 @@ onBeforeUnmount(() => {
 		-webkit-backdrop-filter: none;
 		backdrop-filter: none;
 	}
+}
+
+.hatadyRecordBar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	width: 100%;
+	min-height: 56px;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 12px;
+	background: var(--MI_THEME-panel);
+	color: var(--MI_THEME-fg);
+	font-weight: 700;
+	cursor: pointer;
 }
 
 @media (prefers-reduced-motion: reduce) {

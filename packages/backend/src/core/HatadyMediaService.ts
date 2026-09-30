@@ -39,13 +39,13 @@ import { MiHatadyNotification } from '@/models/HatadyNotification.js';
 import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { HatadyAttachmentService } from '@/core/HatadyAttachmentService.js';
-import { HatadyService } from '@/core/HatadyService.js';
+import { HatadyService, type HatadyMirrorNotification } from '@/core/HatadyService.js';
+import { HatadyStreamService } from '@/core/HatadyStreamService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import { bindThis } from '@/decorators.js';
 import { mergeHatadyDetails, normalizeHatadyDuration, normalizeHatadyStartedAt, normalizeHatadyTags, packHatadyDetails } from '@/core/HatadyRecordData.js';
-import type { HatadyPushNotificationBody } from '@/core/PushNotificationService.js';
 
 const MOVIE_FIELDS = ['runtimeMinutes', 'genres', 'origin', 'viewingMode', 'primaryLanguage', 'highlights', 'highlightsSpoiler'] as const;
 const GAME_FIELDS = ['platforms', 'developer', 'publisher'] as const;
@@ -371,7 +371,15 @@ export class HatadyMediaService {
 		private hatadyService: HatadyService,
 		private hatadyEntityService: HatadyEntityService,
 		private hatadyAttachmentService: HatadyAttachmentService,
+		private hatadyStreamService: HatadyStreamService,
 	) {}
+
+	private async publishWorkSessions(workId: string): Promise<void> {
+		try {
+			const sessions = await this.sessionsRepository.findBy({ workId });
+			for (const session of sessions) this.hatadyStreamService?.changed('session', session.id);
+		} catch { /* A committed write must not fail because its realtime hint failed. */ }
+	}
 
 	@bindThis
 	public async canViewWork(work: MiHatadyMediaWork, viewerId: MiUser['id'], staffAccess = false): Promise<boolean> {
@@ -484,13 +492,33 @@ export class HatadyMediaService {
 			const patch = this.normalizeWork(locked.kind, { ...input, title: input.title ?? locked.title }, locked);
 			await manager.getRepository(MiHatadyMediaWork).update({ id: workId, userId }, { ...patch, updatedAt: new Date() });
 		});
-		return this.getOwnedWork(workId, userId);
+		const work = await this.getOwnedWork(workId, userId);
+		await this.publishWorkSessions(workId);
+		const sessions = await this.sessionsRepository.findBy({ workId });
+		const sources = await this.db.getRepository(MiHatadyNotification).findBy([
+			{ mediaWorkId: workId },
+			...(sessions.length > 0 ? [{ mediaSessionId: In(sessions.map(session => session.id)) }] : []),
+		]);
+		await this.hatadyService.refreshHatadyNotificationRows(sources);
+		return work;
 	}
 
 	@bindThis
 	public async deleteWork(userId: string, workId: string): Promise<void> {
-		await this.getOwnedWork(workId, userId);
-		await this.worksRepository.delete({ id: workId, userId });
+		let sessions: MiHatadyMediaSession[] = [];
+		let sources: MiHatadyNotification[] = [];
+		await this.db.transaction(async manager => {
+			const owned = await manager.getRepository(MiHatadyMediaWork).findOne({ where: { id: workId, userId }, lock: { mode: 'pessimistic_write' } });
+			if (owned == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+			sessions = await manager.getRepository(MiHatadyMediaSession).findBy({ workId });
+			sources = await manager.getRepository(MiHatadyNotification).findBy([
+				{ mediaWorkId: workId },
+				...(sessions.length > 0 ? [{ mediaSessionId: In(sessions.map(session => session.id)) }] : []),
+			]);
+			await manager.getRepository(MiHatadyMediaWork).delete({ id: workId, userId });
+		});
+		for (const session of sessions) this.hatadyStreamService?.changed('session', session.id);
+		await this.hatadyService.refreshHatadyNotificationRows(sources);
 	}
 
 	@bindThis
@@ -710,6 +738,7 @@ export class HatadyMediaService {
 		});
 		// 旗鯖fork(Hatady次期: ゲーム/映画記録): 映画・ゲームの記録も連続記録に数えるため、
 		//   学習ログ作成時と同じ節目通知の判定をここでも行う。
+		this.hatadyStreamService?.changed('session', session.id);
 		await this.hatadyService.notifyMilestoneIfReached(userId);
 		return session;
 	}
@@ -781,14 +810,23 @@ export class HatadyMediaService {
 			await repo.update({ id: sessionId, userId }, { ...values, updatedAt: new Date() });
 			if (work && input.tags?.includes('recommend')) await manager.getRepository(MiHatadyMediaWork).update({ id: work.id, userId }, { isRecommended: true });
 		});
-		return this.sessionsRepository.findOneByOrFail({ id: sessionId, userId });
+		const updated = await this.sessionsRepository.findOneByOrFail({ id: sessionId, userId });
+		this.hatadyStreamService?.changed('session', sessionId);
+		await this.hatadyService.refreshHatadyNotificationRows(await this.db.getRepository(MiHatadyNotification).findBy({ mediaSessionId: sessionId }));
+		return updated;
 	}
 
 	@bindThis
 	public async deleteSession(userId: string, sessionId: string): Promise<void> {
-		const session = await this.sessionsRepository.findOneBy({ id: sessionId, userId });
-		if (session == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
-		await this.sessionsRepository.delete({ id: sessionId, userId });
+		let sources: MiHatadyNotification[] = [];
+		await this.db.transaction(async manager => {
+			const session = await manager.getRepository(MiHatadyMediaSession).findOne({ where: { id: sessionId, userId }, lock: { mode: 'pessimistic_write' } });
+			if (session == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+			sources = await manager.getRepository(MiHatadyNotification).findBy({ mediaSessionId: sessionId });
+			await manager.getRepository(MiHatadyMediaSession).delete({ id: sessionId, userId });
+		});
+		this.hatadyStreamService?.changed('session', sessionId);
+		await this.hatadyService.refreshHatadyNotificationRows(sources);
 	}
 
 	@bindThis
@@ -845,7 +883,7 @@ export class HatadyMediaService {
 		if (normalized.length === 0 || normalized.length > 2048) throw new Error('invalid comment');
 		const now = new Date();
 		const commentId = this.idService.gen(now.getTime());
-		const pushes: { userId: string; body: HatadyPushNotificationBody }[] = [];
+		const mirrors: HatadyMirrorNotification[] = [];
 		const comment = await this.db.transaction(async manager => {
 			const target = await this.resolveReactionTarget(manager, userId, sessionId ? 'session' : 'work', sessionId ?? workId!);
 			const where = sessionId ? { sessionId } : { workId: workId! };
@@ -858,11 +896,13 @@ export class HatadyMediaService {
 			const recipients = new Set([target.ownerId, ...(parent ? [parent.userId] : [])]);
 			for (const notifieeId of recipients) {
 				const push = await this.insertMediaNotification(manager, { notifieeId, notifierId: userId, type: parent?.userId === notifieeId ? 'mediaReply' : 'mediaComment', mediaWorkId: workId, mediaSessionId: sessionId, mediaCommentId: commentId });
-				if (push) pushes.push(push);
+				if (push) mirrors.push(push);
 			}
 			return manager.getRepository(MiHatadyMediaComment).findOneByOrFail({ id: commentId });
 		});
-		await Promise.all(pushes.map(push => this.hatadyService.pushHatadyNotification(push.userId, push.body)));
+		if (sessionId) this.hatadyStreamService?.changed('session', sessionId);
+		else if (workId) await this.publishWorkSessions(workId);
+		await Promise.all(mirrors.map(record => this.hatadyService.mirrorHatadyNotification(record)));
 		return this.packComment(comment, userId);
 	}
 
@@ -879,10 +919,19 @@ export class HatadyMediaService {
 
 	@bindThis
 	public async deleteComment(userId: string, commentId: string): Promise<void> {
-		const comment = await this.commentsRepository.findOneBy({ id: commentId, userId });
-		if (comment == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
-		// 公開後に作品が非公開化された場合も、投稿者本人の撤回権を失わせない。
-		await this.commentsRepository.delete({ id: commentId, userId });
+		let comment: MiHatadyMediaComment | null = null;
+		let sources: MiHatadyNotification[] = [];
+		await this.db.transaction(async manager => {
+			comment = await manager.getRepository(MiHatadyMediaComment).findOne({ where: { id: commentId, userId }, lock: { mode: 'pessimistic_write' } });
+			if (comment == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+			sources = await manager.getRepository(MiHatadyNotification).findBy({ mediaCommentId: commentId });
+			await manager.getRepository(MiHatadyMediaComment).delete({ id: commentId, userId });
+		});
+		const deleted = comment as MiHatadyMediaComment | null;
+		if (deleted == null) return;
+		if (deleted.sessionId) this.hatadyStreamService?.changed('session', deleted.sessionId);
+		else if (deleted.workId) await this.publishWorkSessions(deleted.workId);
+		await this.hatadyService.refreshHatadyNotificationRows(sources);
 	}
 
 	private async packComment(comment: MiHatadyMediaComment, viewerId: string) {
@@ -950,14 +999,15 @@ export class HatadyMediaService {
 	public async createReaction(userId: string, targetType: 'work' | 'session' | 'comment', targetId: string, reaction: string): Promise<void> {
 		const normalized = reaction.trim();
 		if (normalized.length === 0 || normalized.length > 260) throw new Error('invalid reaction');
-		const pushes: { userId: string; body: HatadyPushNotificationBody }[] = [];
-		await this.db.transaction(async manager => {
+		const mirrors: HatadyMirrorNotification[] = [];
+		const changed = await this.db.transaction(async manager => {
 			await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatady-media-reaction:${userId}:${targetType}:${targetId}`]);
 			const target = await this.resolveReactionTarget(manager, userId, targetType, targetId);
+			const targetIds = { workId: target.workId ?? target.comment?.workId ?? null, sessionId: target.sessionId ?? target.comment?.sessionId ?? null };
 			const repo = manager.getRepository(MiHatadyMediaReaction);
 			const existing = await repo.findOneBy(target.workId ? { userId, workId: target.workId } : target.sessionId ? { userId, sessionId: target.sessionId } : { userId, commentId: target.commentId! });
 			if (existing != null) {
-				if (existing.reaction === normalized) return;
+				if (existing.reaction === normalized) return targetIds;
 				await repo.update(existing.id, { reaction: normalized, createdAt: new Date() });
 				const push = await this.insertMediaNotification(manager, {
 					notifieeId: target.ownerId,
@@ -968,8 +1018,8 @@ export class HatadyMediaService {
 					mediaCommentId: target.comment?.id ?? null,
 					reaction: normalized,
 				});
-				if (push) pushes.push(push);
-				return;
+				if (push) mirrors.push(push);
+				return targetIds;
 			}
 			const now = new Date();
 			await repo.insert({ id: this.idService.gen(now.getTime()), createdAt: now, userId, workId: target.workId, sessionId: target.sessionId, commentId: target.commentId, reaction: normalized });
@@ -983,25 +1033,36 @@ export class HatadyMediaService {
 				mediaCommentId: target.comment?.id ?? null,
 				reaction: normalized,
 			});
-			if (push) pushes.push(push);
+			if (push) mirrors.push(push);
+			return targetIds;
 		});
-		await Promise.all(pushes.map(push => this.hatadyService.pushHatadyNotification(push.userId, push.body)));
+		if (changed?.sessionId) this.hatadyStreamService?.changed('session', changed.sessionId);
+		else if (changed?.workId) await this.publishWorkSessions(changed.workId);
+		await Promise.all(mirrors.map(record => this.hatadyService.mirrorHatadyNotification(record)));
 	}
 
 	@bindThis
 	public async deleteReaction(userId: string, targetType: 'work' | 'session' | 'comment', targetId: string): Promise<void> {
 		// 非公開化・Hatadyフォロー解除後も、自分が付けたリアクションは撤回できる。
 		// 本人の行だけをキーにして冪等削除し、対象の存在や公開範囲はレスポンスへ漏らさない。
-		await this.db.transaction(async manager => {
+		const changed = await this.db.transaction(async manager => {
 			await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatady-media-reaction:${userId}:${targetType}:${targetId}`]);
 			const repo = manager.getRepository(MiHatadyMediaReaction);
 			const reaction = await repo.findOneBy(targetType === 'work' ? { userId, workId: targetId } : targetType === 'session' ? { userId, sessionId: targetId } : { userId, commentId: targetId });
-			if (reaction == null) return;
+			if (reaction == null) return null;
+			let targetIds: { workId: string | null; sessionId: string | null };
+			if (reaction.commentId) {
+				const comment = await manager.getRepository(MiHatadyMediaComment).findOneBy({ id: reaction.commentId });
+				targetIds = { workId: comment?.workId ?? null, sessionId: comment?.sessionId ?? null };
+			} else targetIds = { workId: reaction.workId, sessionId: reaction.sessionId };
 			await repo.delete(reaction.id);
 			if (reaction.commentId != null) {
 				await manager.query('UPDATE "hatady_media_comment" SET "reactionsCount" = GREATEST(0, "reactionsCount" - 1) WHERE "id" = $1', [reaction.commentId]);
 			}
+			return targetIds;
 		});
+		if (changed?.sessionId) this.hatadyStreamService?.changed('session', changed.sessionId);
+		else if (changed?.workId) await this.publishWorkSessions(changed.workId);
 	}
 
 	private async insertMediaNotification(manager: EntityManager, params: {
@@ -1012,7 +1073,7 @@ export class HatadyMediaService {
 		mediaSessionId?: string | null;
 		mediaCommentId?: string | null;
 		reaction?: string | null;
-	}): Promise<{ userId: string; body: HatadyPushNotificationBody } | null> {
+	}): Promise<HatadyMirrorNotification | null> {
 		if (params.notifieeId === params.notifierId) return null;
 		const now = new Date();
 		const notificationId = this.idService.gen(now.getTime());
@@ -1033,7 +1094,11 @@ export class HatadyMediaService {
 		});
 		return {
 			userId: params.notifieeId,
-			body: { id: notificationId, notificationType: params.type, reaction: params.reaction ?? null, value: null },
+			notifierId: params.notifierId,
+			sourceNotificationId: notificationId,
+			subtype: params.type,
+			targetType: params.mediaCommentId ? 'mediaComment' : params.mediaSessionId ? 'session' : params.mediaWorkId ? 'work' : 'none',
+			targetId: params.mediaCommentId ?? params.mediaSessionId ?? params.mediaWorkId ?? null,
 		};
 	}
 }

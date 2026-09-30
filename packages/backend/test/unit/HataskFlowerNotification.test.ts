@@ -85,6 +85,7 @@ function fixture() {
 	const notification = { createNotificationAsync: vi.fn().mockResolvedValue(null) };
 	const logger = { error: vi.fn() };
 	const createService = () => new CheckHataskFlowersProcessorService(
+		{ checkNotifications: vi.fn().mockResolvedValue(undefined) } as never,
 		{ ...repository, manager: { transaction } } as never,
 		{ gen: () => `marker-${++nextId}` } as never, notification as never, { logger } as never,
 	);
@@ -178,7 +179,8 @@ describe('standard flower notifications', () => {
 		const redis = { xrevrange: vi.fn().mockResolvedValue([
 			['2000-0', ['data', JSON.stringify(flowerNotice)]], ['1000-0', ['data', JSON.stringify(appNotice)]],
 		]) };
-		const service = new NotificationService({} as never, redis as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+		const entity = { packMany: vi.fn(async (notifications: unknown[]) => notifications) };
+		const service = new NotificationService({} as never, redis as never, {} as never, {} as never, {} as never, entity as never, {} as never, {} as never, {} as never, {} as never, {} as never);
 		expect(await service.getNotifications('alice', { includeTypes: ['hataskFlowerReady'], excludeBots: true })).toEqual([flowerNotice]);
 		expect(await service.getNotifications('alice', { excludeTypes: ['hataskFlowerReady'] })).toEqual([appNotice]);
 		expect(redis.xrevrange).toHaveBeenCalledWith('notificationTimeline:alice', '+', '-', 'COUNT', 20);
@@ -186,12 +188,12 @@ describe('standard flower notifications', () => {
 
 	test('専用typeを標準通知としてpackし、受信拒否はRedisへの保存前に反映する', async () => {
 		const profile = { notificationRecieveConfig: {} as Record<string, { type: string }> };
-		const redis = { xadd: vi.fn().mockResolvedValue('1000-0'), get: vi.fn().mockResolvedValue(null) };
+		const redis = { xadd: vi.fn().mockResolvedValue('1000-0'), get: vi.fn().mockResolvedValue(null), incr: vi.fn().mockResolvedValue(1) };
 		const cache = { userProfileCache: { fetch: async () => ({ ...profile, mutedInstances: [] }) }, userMutingsCache: { fetch: async () => new Set() } };
-		const entity = new NotificationEntityService({} as never, {} as never, {} as never, {} as never, {} as never, {} as never, cache as never);
+		const entity = new NotificationEntityService({} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, cache as never);
 		const stream = { publishMainStream: vi.fn() };
 		const service = new NotificationService(
-			{ perUserNotificationsMaxCount: 50 } as never, redis as never, {} as never, entity,
+			{ perUserNotificationsMaxCount: 50 } as never, redis as never, {} as never, {} as never, {} as never, entity,
 			{ gen: () => 'notice', parseFull: () => ({ date: 1000, additional: 0n }) } as never,
 			stream as never, { pushNotification: vi.fn() } as never,
 			cache as never, {} as never,

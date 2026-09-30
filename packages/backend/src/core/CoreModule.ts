@@ -67,6 +67,7 @@ import { HataskRecordReviewService } from './HataskRecordReviewService.js';
 import { FeedbackService } from './FeedbackService.js';
 import { FeedbackEmojiService } from './FeedbackEmojiService.js';
 import { HatadyService } from './HatadyService.js';
+import { HatadyStreamService } from './HatadyStreamService.js';
 import { HatadyMediaService } from './HatadyMediaService.js';
 import { HatadyActivityService } from './HatadyActivityService.js';
 import { HatadyAttachmentService } from './HatadyAttachmentService.js';
@@ -241,6 +242,7 @@ const $LtlPunchService: Provider = { provide: 'LtlPunchService', useExisting: Lt
 const $LtlEmojiVoteService: Provider = { provide: 'LtlEmojiVoteService', useExisting: LtlEmojiVoteService };
 const $FeedbackService: Provider = { provide: 'FeedbackService', useExisting: FeedbackService };
 const $HatadyService: Provider = { provide: 'HatadyService', useExisting: HatadyService };
+const $HatadyStreamService: Provider = { provide: 'HatadyStreamService', useExisting: HatadyStreamService };
 const $HatadyMediaService: Provider = { provide: 'HatadyMediaService', useExisting: HatadyMediaService };
 const $HatadyActivityService: Provider = { provide: 'HatadyActivityService', useExisting: HatadyActivityService };
 const $HatadyAttachmentService: Provider = { provide: 'HatadyAttachmentService', useExisting: HatadyAttachmentService };
@@ -429,6 +431,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		FeedbackService,
 		FeedbackEmojiService,
 		HatadyService,
+		HatadyStreamService,
 		HatadyMediaService,
 		HatadyActivityService,
 		HatadyModerationService,
@@ -606,6 +609,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$LtlEmojiVoteService,
 		$FeedbackService,
 		$HatadyService,
+		$HatadyStreamService,
 		$HatadyMediaService,
 		$HatadyActivityService,
 		$HatadyModerationService,
@@ -790,6 +794,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		FeedbackService,
 		FeedbackEmojiService,
 		HatadyService,
+		HatadyStreamService,
 		HatadyMediaService,
 		HatadyActivityService,
 		HatadyModerationService,

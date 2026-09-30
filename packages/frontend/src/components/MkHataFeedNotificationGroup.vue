@@ -7,9 +7,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 <div :class="$style.root">
 	<div :class="$style.head">
 		<div :class="$style.icon"><i class="ti ti-message-report"></i></div>
+		<span :class="$style.corner"><i class="ti ti-message-report"></i></span>
 	</div>
 	<div :class="$style.tail">
 		<header :class="$style.header">
+			<span :class="$style.brandTag">{{ i18n.ts._hata._notificationBrands.hataFeed }}</span>
 			<span :class="$style.headerText">HataFeed</span>
 			<MkTime v-if="withTime" :time="group.createdAt" :class="$style.headerTime" :mode="prefer.s.enableAbsoluteTime ? 'absolute' : 'relative'"/>
 		</header>
@@ -17,7 +19,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			type="button"
 			:class="$style.summary"
 			:aria-expanded="expanded"
-			@click="expanded = !expanded"
+			@click="toggleExpanded"
 		>
 			<span :class="$style.summaryText">{{ copy.multipleNotifications }}</span>
 			<span :class="$style.count">{{ copyx.itemCount({ count: group.items.length.toString() }) }}</span>
@@ -27,6 +29,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkA
 				v-for="item in group.items"
 				:key="item.id"
+				:data-notification-ids="JSON.stringify([item.id])"
 				:to="item.link ?? '/hatafeed'"
 				:class="$style.item"
 			>
@@ -54,6 +57,13 @@ withDefaults(defineProps<{
 });
 
 const expanded = ref(false);
+const emit = defineEmits<{ (ev: 'expanded'): void }>();
+
+function toggleExpanded() {
+	expanded.value = !expanded.value;
+	emit('expanded');
+}
+
 const copy = i18n.ts._hata._hatafeed._notificationGroup;
 const copyx = i18n.tsx._hata._hatafeed._notificationGroup;
 </script>
@@ -68,11 +78,16 @@ const copyx = i18n.tsx._hata._hatafeed._notificationGroup;
 	contain: content;
 	content-visibility: auto;
 	contain-intrinsic-size: 0 100px;
+	background: color-mix(in srgb, #8fc0ff 13%, var(--MI_THEME-panel));
+}
+
+:global(html[data-color-scheme=light]) .root {
+	background: color-mix(in srgb, #2e62a8 9%, var(--MI_THEME-panel));
 }
 
 :global(html.hataGlassUi) .root {
 	background: color-mix(in srgb,
-		color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel))
+		color-mix(in srgb, #8fc0ff 18%, var(--MI_THEME-panel))
 		var(--htk-glass-card-opacity, 55%),
 		transparent);
 	-webkit-backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
@@ -81,7 +96,7 @@ const copyx = i18n.tsx._hata._hatafeed._notificationGroup;
 
 :global(html[data-color-scheme=light].hataGlassUi) .root {
 	background: color-mix(in srgb,
-		color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel))
+		color-mix(in srgb, #2e62a8 8%, var(--MI_THEME-panel))
 		var(--htk-glass-card-opacity, 55%),
 		transparent);
 }
@@ -95,6 +110,37 @@ const copyx = i18n.tsx._hata._hatafeed._notificationGroup;
 	margin-right: 8px;
 }
 
+.corner {
+	position: absolute;
+	right: -5px;
+	bottom: -5px;
+	display: grid;
+	place-items: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: #8fc0ff;
+	color: #1b2d43;
+	font-size: 12px;
+}
+
+:global(html[data-color-scheme=light]) .corner {
+	background: #2e62a8;
+	color: #fff;
+}
+
+.brandTag {
+	margin-right: 8px;
+	padding: 2px 7px;
+	border-radius: 999px;
+	background: var(--MI_THEME-accentedBg);
+	color: #8fc0ff;
+	font-size: 11px;
+	font-weight: 700;
+}
+
+:global(html[data-color-scheme=light]) .brandTag { color: #2e62a8; }
+
 .icon {
 	display: grid;
 	align-items: center;
@@ -102,10 +148,12 @@ const copyx = i18n.tsx._hata._hatafeed._notificationGroup;
 	width: 100%;
 	height: 100%;
 	border-radius: 100%;
-	background: var(--MI_THEME-accent);
-	color: var(--MI_THEME-fgOnAccent);
+	background: #8fc0ff;
+	color: #1b2d43;
 	font-size: 22px;
 }
+
+:global(html[data-color-scheme=light]) .icon { background: #2e62a8; color: #fff; }
 
 .tail {
 	flex: 1;

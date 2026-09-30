@@ -61,21 +61,23 @@ describe('Hatady additive record compatibility', () => {
 		const repo = { findOne: vi.fn().mockResolvedValue(stored), findOneByOrFail: vi.fn(async () => stored), update: vi.fn(async (_where: unknown, patch: Record<string, unknown>) => Object.assign(stored, patch)) };
 		const manager = { getRepository: vi.fn(() => repo) };
 		const service = Object.create(HatadyMediaService.prototype) as HatadyMediaService;
-		Object.assign(service, { db: { transaction: async (callback: (manager: unknown) => unknown) => callback(manager) }, sessionsRepository: repo });
+		Object.assign(service, { db: { transaction: async (callback: (manager: unknown) => unknown) => callback(manager), getRepository: () => ({ findBy: vi.fn().mockResolvedValue([]) }) }, sessionsRepository: repo, hatadyService: { refreshHatadyNotificationRows: vi.fn().mockResolvedValue(undefined) } });
 		await service.updateSession('owner', 'session', { note: 'new' });
 		expect(stored).toMatchObject({ id: 'session', workId: null, durationSeconds: 61, startedAt: '09:00:01.125', tags: ['interest'], details: { future: { value: 2 } }, note: 'new' });
 	});
 
 	test('deletes and restores only the fixed notification IDs belonging to the recipient', async () => {
-		const update = vi.fn();
+		const update = vi.fn(), refreshSourceNotifications = vi.fn().mockResolvedValue(undefined);
 		const service = Object.create(HatadyService.prototype) as HatadyService;
-		Object.assign(service, { hatadyNotificationsRepository: { update } });
+		Object.assign(service, { hatadyNotificationsRepository: { update, findBy: vi.fn(async ({ id }: { id: { _value: string[] } }) => id._value.map(value => ({ id: value, notifieeId: 'recipient' }))) }, notificationService: { refreshSourceNotifications } });
 		await service.setNotificationsDeleted('recipient', ['n1', 'n2'], true);
 		expect(update.mock.calls[0][0]).toMatchObject({ notifieeId: 'recipient', id: expect.objectContaining({ _value: ['n1', 'n2'] }) });
 		expect(update.mock.calls[0][1].deletedAt).toBeInstanceOf(Date);
 		await service.setNotificationsDeleted('recipient', ['n1'], false);
 		expect(update.mock.calls[1][0]).toMatchObject({ notifieeId: 'recipient', id: expect.objectContaining({ _value: ['n1'] }) });
 		expect(update.mock.calls[1][1]).toEqual({ deletedAt: null });
+		expect(refreshSourceNotifications).toHaveBeenNthCalledWith(1, 'recipient', 'hatady', ['n1', 'n2']);
+		expect(refreshSourceNotifications).toHaveBeenNthCalledWith(2, 'recipient', 'hatady', ['n1']);
 		await expect(service.setNotificationsDeleted('recipient', [], true)).rejects.toThrow('invalid notification IDs');
 	});
 
@@ -121,7 +123,7 @@ describe('Hatady additive record compatibility', () => {
 		const manager = { getRepository: vi.fn((entity: { name: string }) => entity.name === 'MiHatadySubject' ? subjects : { update: updateLog }) };
 		const transaction = vi.fn(async (callback: (manager: unknown) => unknown) => callback(manager));
 		const service = Object.create(HatadyService.prototype) as HatadyService;
-		Object.assign(service, { hatadySubjectsRepository: { manager: { transaction } } });
+		Object.assign(service, { hatadySubjectsRepository: { manager: { transaction }, findOneBy: vi.fn().mockResolvedValue({ name: 'new', color: '#abc' }) } });
 		await service.saveSubject('owner', 'new', '#abc', 'old');
 		expect(transaction).toHaveBeenCalledOnce();
 		expect(updateSubject).toHaveBeenCalledWith({ id: 'saved-id', userId: 'owner' }, expect.objectContaining({ name: 'new', color: '#abc' }));
@@ -131,12 +133,61 @@ describe('Hatady additive record compatibility', () => {
 		expect(updateSubject).not.toHaveBeenCalled(); expect(updateLog).not.toHaveBeenCalled();
 	});
 
-	test('aggregates all five categories with exact seconds, untimed counts, and kind-filtered detail', async () => {
+	test('ensures an existing subject without changing its color, including concurrent first use', async () => {
+		let saved: { name: string; color: string | null } | null = { name: '数学', color: '#abc' };
+		const execute = vi.fn(async () => { saved ??= { name: '数学', color: null }; });
+		const builder = { insert: vi.fn().mockReturnThis(), into: vi.fn().mockReturnThis(), values: vi.fn().mockReturnThis(), orIgnore: vi.fn().mockReturnThis(), execute };
+		const findOneBy = vi.fn(async () => saved);
+		const update = vi.fn();
+		const service = Object.create(HatadyService.prototype) as HatadyService;
+		Object.assign(service, { hatadySubjectsRepository: { createQueryBuilder: () => builder, findOneBy, update }, idService: { gen: () => 'new-id' } });
+		expect(await service.saveSubject('owner', '数学')).toEqual({ name: '数学', color: '#abc' });
+		expect(update).not.toHaveBeenCalled();
+		expect(builder.orIgnore).toHaveBeenCalledOnce();
+		saved = null;
+		const firstUses = await Promise.all([service.saveSubject('owner', '数学'), service.saveSubject('owner', '数学')]);
+		expect(firstUses).toEqual([{ name: '数学', color: null }, { name: '数学', color: null }]);
+		expect(execute).toHaveBeenCalledTimes(3);
+	});
+
+	test('keeps the saved color on a rename without a color parameter and clears it on explicit null', async () => {
+		const row = { id: 'subject-id', userId: 'owner', name: 'old', color: '#abc' as string | null };
+		const subjects = {
+			findOne: vi.fn().mockResolvedValue(row), existsBy: vi.fn().mockResolvedValue(false),
+			update: vi.fn(async (_where: unknown, patch: Partial<typeof row>) => Object.assign(row, patch)),
+		};
+		const manager = { getRepository: vi.fn((entity: { name: string }) => entity.name === 'MiHatadySubject' ? subjects : { update: vi.fn() }) };
+		const service = Object.create(HatadyService.prototype) as HatadyService;
+		const findOneBy = vi.fn(async () => row);
+		Object.assign(service, { hatadySubjectsRepository: { manager: { transaction: async (callback: (manager: unknown) => unknown) => callback(manager) }, findOneBy, update: subjects.update }, idService: { gen: () => 'new-id' } });
+		expect(await service.saveSubject('owner', 'new', undefined, 'old')).toEqual({ name: 'new', color: '#abc' });
+		expect(subjects.update.mock.calls[0][1]).not.toHaveProperty('color');
+		expect(await service.saveSubject('owner', 'new', null)).toEqual({ name: 'new', color: null });
+		expect(subjects.update).toHaveBeenLastCalledWith({ id: 'subject-id', userId: 'owner' }, expect.objectContaining({ color: null }));
+	});
+
+	test('computes minute goals from measured seconds without rounding or a legacy minute fallback', async () => {
+		const builder = { select: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), andWhere: vi.fn().mockReturnThis(), getRawOne: vi.fn().mockResolvedValue({ sum: '61' }) };
+		const service = Object.create(HatadyService.prototype) as HatadyService;
+		Object.assign(service, { hatadyLogsRepository: { createQueryBuilder: vi.fn().mockReturnValue(builder) } });
+		const goal = { metricType: 'minutes', metricTarget: 2, userId: 'owner', createdAt: new Date('2026-09-01'), targetDate: new Date('2026-09-30') };
+		expect(await service.getGoalProgress(goal as never)).toEqual({ current: 61 / 60, target: 2, percent: 51 });
+		expect(builder.select).toHaveBeenCalledWith('COALESCE(SUM(log.durationSeconds), 0)', 'sum');
+		for (const [seconds, minutes] of [[60, 1], [180, 3]] as const) {
+			builder.getRawOne.mockResolvedValue({ sum: String(seconds) });
+			expect((await service.getGoalProgress(goal as never)).current).toBe(minutes);
+		}
+		builder.getRawOne.mockResolvedValue({ sum: '0' });
+		expect(await service.getGoalProgress(goal as never)).toMatchObject({ current: 0, percent: 0 });
+	});
+
+	test('aggregates all six categories with exact seconds, untimed counts, and kind-filtered detail', async () => {
 		const now = new Date();
 		const logs = [
 			{ id: 'study', kind: 'study', studiedAt: now, durationSeconds: 61, startedAt: '12:34:56.789', subject: '本', tags: ['interest'] },
 			{ id: 'exercise', kind: 'exercise', studiedAt: now, durationSeconds: 37, startedAt: null, subject: '散歩', tags: ['effort'] },
 			{ id: 'work', kind: 'work', studiedAt: now, durationSeconds: null, startedAt: null, subject: '制作', tags: ['progress'] },
+			{ id: 'cooking', kind: 'cooking', studiedAt: now, durationSeconds: null, startedAt: null, subject: '料理', tags: [] },
 		];
 		const sessions = [
 			{ id: 'movie', kind: 'movie_viewing', occurredAt: now, durationSeconds: 0, startedAt: null, tags: [], workSnapshot: { genre: '映画' } },
@@ -147,8 +198,8 @@ describe('Hatady additive record compatibility', () => {
 		Object.assign(service, { hatadyLogsRepository: { findBy: vi.fn().mockResolvedValue(logs) }, hatadyMediaSessionsRepository: { findBy: vi.fn().mockResolvedValue(sessions) }, hatadyBooksRepository: { createQueryBuilder: () => bookQuery } });
 		const all = await service.getStatsDetail('owner', 1, 0, 'all');
 		expect(all.totalSeconds).toBe(3699);
-		expect(all.activityKinds.map(row => row.kind)).toEqual(['study', 'movie', 'game', 'exercise', 'work']);
-		expect(all.monthlyTotals[0]).toMatchObject({ seconds: 3699, count: 5, timedCount: 4 });
+		expect(all.activityKinds.map(row => row.kind)).toEqual(['study', 'movie', 'game', 'exercise', 'work', 'cooking']);
+		expect(all.monthlyTotals[0]).toMatchObject({ seconds: 3699, count: 6, timedCount: 4 });
 		expect(all.hourlyCounts[12]).toBe(1); expect(all.hourlyCounts[13]).toBe(1);
 		const exercise = await service.getStatsDetail('owner', 1, 0, 'exercise');
 		expect(exercise.monthlyTotals[0]).toMatchObject({ seconds: 37, count: 1, timedCount: 1 });
@@ -165,7 +216,7 @@ describe('Hatady additive record compatibility', () => {
 			page = pendingPage; saved = pendingRecord; return value;
 		};
 		const service = Object.create(HatadyService.prototype) as HatadyService;
-		Object.assign(service, { hatadyAttachmentService: { validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) }, hatadyLogsRepository: { manager: { transaction } }, idService: { gen: () => 'record' } });
+		Object.assign(service, { hatadyAttachmentService: { validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) }, hatadyLogsRepository: { manager: { transaction } }, idService: { gen: () => 'record' }, flowerService: { onHatadyCreated: vi.fn().mockResolvedValue({}) } });
 		Object.defineProperty(service, 'notifyMilestoneIfReached', { value: vi.fn().mockResolvedValue(undefined) });
 		const input = { title: 'record', subject: 'subject', bookId: 'book', pageTo: 10, durationSeconds: 61, durationMinutes: 0 };
 		await service.createLog({ id: 'owner' } as never, input);

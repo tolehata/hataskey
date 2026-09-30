@@ -8,6 +8,7 @@ export {
 
 export const permissions = consts.permissions;
 export const notificationTypes = consts.notificationTypes;
+export const hatadyNotificationSubtypes = consts.hatadyNotificationSubtypes;
 export const noteVisibilities = consts.noteVisibilities;
 export const mutedNoteReasons = consts.mutedNoteReasons;
 export const followingVisibilities = consts.followingVisibilities;

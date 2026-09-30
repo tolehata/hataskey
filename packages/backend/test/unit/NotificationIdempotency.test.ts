@@ -26,8 +26,14 @@ function fixture() {
 	const markers = new Map<string, { id: string; expiresAt: number }>();
 	let clock = 0;
 	let sequence = 0;
+	let revision = 0;
 	const redis = {
-		get: vi.fn().mockResolvedValue(null),
+		get: vi.fn(async (key: string) => key.startsWith('notificationRevision:') ? String(revision) : null),
+		incr: vi.fn(async () => ++revision),
+		hexists: vi.fn().mockResolvedValue(0),
+		xrange: vi.fn(async (timeline: string, start: string, end: string) => records
+			.filter(record => record.timeline === timeline && record.streamId === start && record.streamId === end)
+			.map(record => [record.streamId, ['data', record.value]])),
 		xadd: vi.fn(async (_timeline: string, _maxlen: string, _approximate: string, _limit: string, streamId: string) => streamId),
 		// Model Redis's atomic script contract; assertions below also check the Lua
 		// operations and arguments. This unit fixture does not execute a Redis server.
@@ -43,18 +49,21 @@ function fixture() {
 	const id = { gen: vi.fn(() => `notice-${++sequence}`), parseFull: vi.fn(() => ({ date: 1000 + sequence, additional: 0n })) };
 	const stream = { publishMainStream: vi.fn() };
 	const push = { pushNotification: vi.fn() };
-	const createService = () => new NotificationService(
-		{ perUserNotificationsMaxCount: 50 } as never, redis as never, {} as never, entity as never,
-		id as never, stream as never, push as never,
-		{ userProfileCache: { fetch: vi.fn().mockResolvedValue(profile) } } as never, {} as never,
-	);
+	const createService = () => {
+		const service = new NotificationService(
+			{ perUserNotificationsMaxCount: 50 } as never, redis as never, {} as never, {} as never, {} as never, entity as never,
+			id as never, stream as never, push as never,
+			{ userProfileCache: { fetch: vi.fn().mockResolvedValue(profile) } } as never, {} as never,
+		);
+		vi.spyOn(service, 'getUnreadNotificationsCount').mockResolvedValue(1);
+		return service;
+	};
 	return { service: createService(), createService, profile, redis, records, markers, entity, id, stream, push, advance: (ms: number) => { clock += ms; } };
 }
 
-async function deliverUnread() {
+async function deliverUnread(push: { pushNotification: ReturnType<typeof vi.fn> }) {
 	for (const resolve of timers.resolve.splice(0)) resolve();
-	await Promise.resolve();
-	await Promise.resolve();
+	await vi.waitFor(() => expect(push.pushNotification).toHaveBeenCalledTimes(1));
 }
 
 afterEach(() => {
@@ -71,14 +80,14 @@ describe('opt-in notification idempotency', () => {
 		]);
 		expect(results.filter(Boolean)).toHaveLength(1);
 		expect(results).toContain(null);
-		await deliverUnread();
+		await deliverUnread(f.push);
 		expect(f.records).toHaveLength(1);
-		expect(f.entity.pack).toHaveBeenCalledTimes(1);
+		expect(f.entity.pack).toHaveBeenCalledTimes(2);
 		expect(f.stream.publishMainStream.mock.calls.map(call => call[1])).toEqual(['notification', 'unreadNotification']);
 		expect(f.push.pushNotification).toHaveBeenCalledTimes(1);
 		expect(await f.createService().createNotificationAsync('alice', 'app', data, undefined, key)).toBeNull();
 		expect(timers.resolve).toHaveLength(0);
-		expect(f.entity.pack).toHaveBeenCalledTimes(1);
+		expect(f.entity.pack).toHaveBeenCalledTimes(2);
 		expect(f.stream.publishMainStream).toHaveBeenCalledTimes(2);
 		expect(f.push.pushNotification).toHaveBeenCalledTimes(1);
 		expect(f.redis.xadd).not.toHaveBeenCalled();

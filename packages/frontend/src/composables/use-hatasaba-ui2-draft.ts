@@ -55,6 +55,7 @@ export function useHatasabaUi2Draft() {
 		opacity: prefer.r['simpleUi.glassUiCardOpacity'].value as number,
 		disableBubbleInHatasabaDeck: prefer.r['simpleUi.disableBubbleInHatasabaDeck'].value,
 		showTrendingTab: prefer.r['simpleUi.showTrendingTab'].value,
+		showHatadyTab: prefer.r['simpleUi.showHatadyTab'].value,
 		topNavMode: prefer.r['simpleUi.topNavMode'].value,
 		deckIgnoreWidth: deckIgnoreWidth.value,
 		tabSwipeEnabled: tabSwipeEnabled.value,
@@ -76,6 +77,7 @@ export function useHatasabaUi2Draft() {
 		editedOpacity: snapshot.opacity,
 		editedDisableBubbleInHatasabaDeck: snapshot.disableBubbleInHatasabaDeck,
 		editedShowTrendingTab: snapshot.showTrendingTab,
+		editedShowHatadyTab: snapshot.showHatadyTab,
 		editedTopNavMode: snapshot.topNavMode,
 		editedDeckIgnoreWidth: snapshot.deckIgnoreWidth,
 		editedTabSwipeEnabled: snapshot.tabSwipeEnabled,
@@ -93,6 +95,7 @@ export function useHatasabaUi2Draft() {
 		|| draft.editedOpacity !== snapshot.opacity
 		|| draft.editedDisableBubbleInHatasabaDeck !== snapshot.disableBubbleInHatasabaDeck
 		|| draft.editedShowTrendingTab !== snapshot.showTrendingTab
+		|| draft.editedShowHatadyTab !== snapshot.showHatadyTab
 		|| draft.editedTopNavMode !== snapshot.topNavMode
 		|| draft.editedDeckIgnoreWidth !== snapshot.deckIgnoreWidth
 		|| draft.editedTabSwipeEnabled !== snapshot.tabSwipeEnabled
@@ -107,6 +110,7 @@ export function useHatasabaUi2Draft() {
 		if (draft.editedOpacity !== snapshot.opacity) count++;
 		if (draft.editedDisableBubbleInHatasabaDeck !== snapshot.disableBubbleInHatasabaDeck) count++;
 		if (draft.editedShowTrendingTab !== snapshot.showTrendingTab) count++;
+		if (draft.editedShowHatadyTab !== snapshot.showHatadyTab) count++;
 		if (draft.editedTopNavMode !== snapshot.topNavMode) count++;
 		if (draft.editedDeckIgnoreWidth !== snapshot.deckIgnoreWidth) count++;
 		if (draft.editedTabSwipeEnabled !== snapshot.tabSwipeEnabled) count++;
@@ -155,6 +159,7 @@ export function useHatasabaUi2Draft() {
 		draft.editedOpacity = snapshot.opacity;
 		draft.editedDisableBubbleInHatasabaDeck = snapshot.disableBubbleInHatasabaDeck;
 		draft.editedShowTrendingTab = snapshot.showTrendingTab;
+		draft.editedShowHatadyTab = snapshot.showHatadyTab;
 		draft.editedTopNavMode = snapshot.topNavMode;
 		draft.editedDeckIgnoreWidth = snapshot.deckIgnoreWidth;
 		draft.editedTabSwipeEnabled = snapshot.tabSwipeEnabled;
@@ -172,6 +177,7 @@ export function useHatasabaUi2Draft() {
 		draft.editedOpacity = PREF_DEF['simpleUi.glassUiCardOpacity'].default as number;
 		draft.editedDisableBubbleInHatasabaDeck = PREF_DEF['simpleUi.disableBubbleInHatasabaDeck'].default as boolean;
 		draft.editedShowTrendingTab = PREF_DEF['simpleUi.showTrendingTab'].default as boolean;
+		draft.editedShowHatadyTab = PREF_DEF['simpleUi.showHatadyTab'].default as boolean;
 		draft.editedTopNavMode = PREF_DEF['simpleUi.topNavMode'].default as boolean;
 		draft.editedDeckIgnoreWidth = false;
 		draft.editedTabSwipeEnabled = true;
@@ -269,6 +275,7 @@ export function useHatasabaUi2Draft() {
 			if (draft.editedOpacity !== snapshot.opacity) prefer.commit('simpleUi.glassUiCardOpacity', Math.max(0, Math.min(100, Math.round(draft.editedOpacity))));
 			if (draft.editedDisableBubbleInHatasabaDeck !== snapshot.disableBubbleInHatasabaDeck) prefer.commit('simpleUi.disableBubbleInHatasabaDeck', draft.editedDisableBubbleInHatasabaDeck);
 			if (draft.editedShowTrendingTab !== snapshot.showTrendingTab) prefer.commit('simpleUi.showTrendingTab', draft.editedShowTrendingTab);
+			if (draft.editedShowHatadyTab !== snapshot.showHatadyTab) prefer.commit('simpleUi.showHatadyTab', draft.editedShowHatadyTab);
 			if (draft.editedTopNavMode !== snapshot.topNavMode) prefer.commit('simpleUi.topNavMode', draft.editedTopNavMode);
 			if (draft.editedDeckIgnoreWidth !== snapshot.deckIgnoreWidth) setDeckIgnoreWidth(draft.editedDeckIgnoreWidth);
 			if (draft.editedTabSwipeEnabled !== snapshot.tabSwipeEnabled) setTabSwipeEnabled(draft.editedTabSwipeEnabled);

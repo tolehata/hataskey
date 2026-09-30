@@ -5,8 +5,12 @@ import HatadyBookDetail from './HatadyBookDetail.vue';
 import HatadyMediaWorkDetail from './HatadyMediaWorkDetail.vue';
 
 const fixture = vi.hoisted(() => ({ api: vi.fn(), confirm: vi.fn(), notify: vi.fn(), popup: vi.fn(), mine: true, kind: 'movie', deletedRecord: false }));
-vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
+vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: (endpoint: string, params: unknown) => {
+	const result = fixture.api(endpoint, params);
+	return Promise.resolve(result === undefined ? endpoint === 'i/registry/keys' ? [] : endpoint === 'i/registry/get-all' ? {} : undefined : result);
+} }));
 vi.mock('@/os.js', () => ({ confirm: fixture.confirm, popup: fixture.popup }));
+vi.mock('@/router.js', () => ({ mainRouter: { pushByPath: vi.fn() }, useRouter: () => ({ pushByPath: vi.fn() }) }));
 vi.mock('@/i.js', () => ({ $i: { id: 'owner', isAdmin: false, isModerator: false } }));
 vi.mock('@/i18n.js', async () => {
 	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');

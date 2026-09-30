@@ -13,7 +13,7 @@ vi.mock('@/i18n.js', () => {
 	});
 	return {
 		i18n: {
-			ts: { _hata: { _hatafeed: { _shared: shared, _notificationGroup: { newIssue: 'New issue.' } } } },
+			ts: { _hata: { _hatafeed: { _shared: shared, _emojiChangeCommon: shared, _notificationGroup: { newIssue: 'New issue.' } } } },
 			tsx: { _hata: { _hatafeed: { _shared: sharedx, _notificationGroup: {
 				issuePosted: ({ title }: { title: string }) => `Issue “${title}” was posted.`,
 			} } } },

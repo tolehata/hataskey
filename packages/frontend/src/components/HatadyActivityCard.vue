@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示する活動カード。
 -->
 <template>
-<article :class="$style.card" :data-kind="activity.type">
+<article :class="$style.card" :data-kind="activity.type" :data-hatady-variant="variant">
 	<header :class="$style.head">
 		<button
 			v-if="showAuthor && activity.user"
@@ -107,6 +107,7 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 	</template>
 	<footer v-if="showActions" :class="$style.foot">
 		<HatadyReactions
+			:variant="variant"
 			:target="study ? { logId: study.id } : { sessionId: media?.session?.id || activity.id }"
 			:reactions="recordReactions"
 			:myReaction="sourceRecord.myReaction ?? null"
@@ -116,8 +117,9 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 				<i class="ti ti-message-circle-2"></i>
 				<span>{{ sourceRecord.commentsCount ?? 0 }}</span>
 			</button>
+			<button v-if="variant !== 'hatady'" type="button" class="hy-icon-button" :aria-label="i18n.ts.options" @click="emit('menu', activity, $event)"><i class="ti ti-dots"></i></button>
 			<button
-				v-if="activity.isMine"
+				v-else-if="activity.isMine"
 				type="button"
 				class="hy-icon-button"
 				:aria-label="i18n.ts._hata._hatady._wizardComposer.editRecord"
@@ -127,11 +129,11 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 			>
 				<i class="ti ti-pencil"></i>
 			</button>
-			<button v-if="activity.isMine" type="button" class="hy-icon-button" :aria-label="i18n.ts._hata._recordModeration.deleteRecord" :title="i18n.ts._hata._recordModeration.deleteRecord" :disabled="deleting" :aria-busy="deleting" @click="deleteRecord">
+			<button v-if="variant === 'hatady' && activity.isMine" type="button" class="hy-icon-button" :aria-label="i18n.ts._hata._recordModeration.deleteRecord" :title="i18n.ts._hata._recordModeration.deleteRecord" :disabled="deleting" :aria-busy="deleting" @click="deleteRecord">
 				<i class="ti ti-trash" aria-hidden="true"></i>
 			</button>
 			<button
-				v-else
+				v-else-if="variant === 'hatady' && !activity.isMine"
 				type="button"
 				class="hy-icon-button"
 				:aria-label="i18n.ts.reportAbuse"
@@ -155,10 +157,11 @@ import { hyTagLabel } from '@/utility/hatady.js';
 import { HATADY_RECORD_TAGS, hatadyDuration as secondsLabel } from '@/utility/hatady-ui.js';
 import { HATADY_STAT_FIELDS, hatadyMediaCopy, mediaSessionDisplayFacts } from '@/utility/hatady-media.js';
 import { confirmHatadyRecordDeletion } from '@/utility/hatady-record-delete.js';
+import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 
 const props = withDefaults(
-	defineProps<{ activity: HatadyActivity; showAuthor?: boolean; showActions?: boolean; detailed?: boolean }>(),
-	{ showAuthor: true, showActions: true, detailed: false },
+	defineProps<{ activity: HatadyActivity; showAuthor?: boolean; showActions?: boolean; detailed?: boolean; variant?: HatadySurfaceVariant }>(),
+	{ showAuthor: true, showActions: true, detailed: false, variant: 'hatady' },
 );
 const emit = defineEmits<{
 	(ev: 'openLog', logId: string): void;
@@ -178,7 +181,7 @@ async function deleteRecord(): Promise<void> {
 	if (deleting.value) return;
 	deleting.value = true;
 	try {
-		if (await confirmHatadyRecordDeletion(props.activity)) emit('deleted');
+		if (await confirmHatadyRecordDeletion(props.activity, props.variant)) emit('deleted');
 	} finally { deleting.value = false; }
 }
 
@@ -415,6 +418,31 @@ const ActivityMediaDetail = defineComponent({
 	color: var(--hy-body);
 	container-type: inline-size;
 }
+.card[data-hatady-variant='ui'] {
+	--hy-surface: var(--MI_THEME-panel);
+	--hy-ink: var(--MI_THEME-fg);
+	--hy-body: var(--MI_THEME-fg);
+	--hy-muted: color-mix(in srgb, var(--MI_THEME-fg) 65%, transparent);
+	--hy-accent: var(--MI_THEME-accent);
+	--hy-accent-ink: var(--MI_THEME-accent);
+	--hy-border: var(--MI_THEME-divider);
+	--hy-soft: var(--MI_THEME-accentedBg);
+	--hy-surface-2: color-mix(in srgb, var(--MI_THEME-fg) 6%, transparent);
+	border-radius: 12px;
+}
+.card[data-hatady-variant='uis'] {
+	--hy-surface: color-mix(in srgb, var(--hk3-surface, var(--MI_THEME-panel)) 80%, transparent);
+	--hy-ink: var(--hk3-text, var(--MI_THEME-fg));
+	--hy-body: var(--hy-ink);
+	--hy-muted: color-mix(in srgb, var(--hy-ink) 68%, transparent);
+	--hy-accent: var(--hk3-accent, var(--MI_THEME-accent));
+	--hy-accent-ink: var(--hy-accent);
+	--hy-border: color-mix(in srgb, var(--hy-ink) 14%, transparent);
+	--hy-soft: color-mix(in srgb, var(--hy-accent) 13%, transparent);
+	--hy-surface-2: color-mix(in srgb, var(--hy-surface) 85%, transparent);
+	border-radius: 18px;
+	backdrop-filter: blur(14px);
+}
 .head {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto;
@@ -507,6 +535,9 @@ const ActivityMediaDetail = defineComponent({
 	font-size: 12px;
 	color: var(--hy-muted);
 	margin: 14px 0;
+}
+.card[data-hatady-variant='ui'] .meta {
+	background: none;
 }
 .meta > span {
 	display: flex;

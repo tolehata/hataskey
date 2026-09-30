@@ -1,8 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<HyDialog ref="dialog" :title="copy.title" :bare="hasForm" :back="stage === 'works' || stage === 'cooking'" @close="requestClose" @back="back" @closed="emit('closed')">
-	<div v-if="stage === 'categories'" :class="$style.types" :data-direction="direction">
-		<button v-for="option in recordChoices" :key="option.value" type="button" :class="$style.type" @click="selectKind(option.value)"><i :class="option.icon" aria-hidden="true"></i><span><strong>{{ option.label }}</strong><small>{{ descriptions[option.value] }}</small></span></button>
+<HyDialog ref="dialog" :title="chooserTitle" :variant="variant" :instantClose="closing" :centerTitle="variant !== 'hatady' && stage === 'categories'" :bare="hasForm" :back="stage === 'works' || stage === 'cooking'" @close="requestClose" @back="back" @closed="emit('closed')">
+	<template v-if="variant !== 'hatady' && stage === 'categories'" #header><span :class="$style.chooserTitle"><i class="ti ti-book-2" aria-hidden="true"></i>{{ chooserTitle }}</span></template>
+	<div v-if="stage === 'categories'" :class="$style.types" :data-direction="direction" :data-closing="closing">
+		<button v-for="option in recordChoices" :key="option.value" type="button" :class="$style.type" :data-variant="variant" @click="selectKind(option.value)"><i :class="option.icon" aria-hidden="true"></i><span><strong>{{ option.label }}</strong><small v-if="variant === 'hatady'">{{ descriptions[option.value] }}</small></span></button>
 	</div>
 	<section v-else-if="stage === 'cooking'" :class="$style.cooking">
 		<h3>{{ copy.cookingQuestion }}</h3>
@@ -19,13 +20,14 @@
 		<div :class="$style.workList"><button v-for="work in works" :key="work.id" type="button" :class="$style.work" @click="selectWork(work)"><HyMediaCover :kind="work.kind" :title="work.title" :subtitle="work.creator || work.developer" :colorIndex="work.coverColorIndex" :width="48"/><span><strong>{{ work.title }}</strong><small>{{ work.creator || work.developer || work.publisher }}</small></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button></div>
 		<button v-if="hasMore && !loading" type="button" class="hy-secondary" @click="loadWorks(true)">{{ copy.showMore }}</button>
 	</section>
-	<HatadyComposer v-else-if="stage === 'composer'" ref="composer" :kind="composerKind" embedded @done="emit('done', $event)" @back="back" @closed="dialog?.close()"/>
-	<HatadyMediaSessionForm v-else-if="stage === 'session' && selectedWork" ref="session" :work="selectedWork" embedded @done="emit('done', $event)" @back="back" @closed="dialog?.close()"/>
-	<HatadyMediaWorkForm v-else-if="stage === 'create'" ref="workForm" :kind="mediaKind" embedded @done="createdWork = $event" @back="back" @closed="finishWorkCreation"/>
+	<HatadyComposer v-else-if="stage === 'composer'" ref="composer" :kind="composerKind" :variant="variant" embedded @done="emit('done', $event)" @back="back" @closed="dialog?.close()"/>
+	<HatadyMediaSessionForm v-else-if="stage === 'session' && selectedWork" ref="session" :work="selectedWork" :variant="variant" embedded @done="emit('done', $event)" @back="back" @closed="dialog?.close()"/>
+	<HatadyMediaWorkForm v-else-if="stage === 'create'" ref="workForm" :kind="mediaKind" :variant="variant" embedded @done="createdWork = $event" @back="back" @closed="finishWorkCreation"/>
 </HyDialog>
 </template>
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef } from 'vue';
+import type { HatadyRecordKind, HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 import type { HatadyMediaWork } from '@/utility/hatady-media.js';
 import HyDialog from '@/components/HyDialog.vue';
 import HyMediaCover from '@/components/HyMediaCover.vue';
@@ -38,13 +40,18 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import { i18n } from '@/i18n.js';
 const copy = i18n.ts._hata._hatady._activityChooser;
+const props = withDefaults(defineProps<{ initialKind?: HatadyRecordKind; variant?: HatadySurfaceVariant }>(), { variant: 'hatady' });
 const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void }>();
 const routeRouter = useRouter();
 const dialog = useTemplateRef('dialog'), composer = useTemplateRef('composer'), session = useTemplateRef('session'), workForm = useTemplateRef('workForm');
 const stage = ref<'categories' | 'works' | 'composer' | 'session' | 'create' | 'cooking'>('categories'), selectedKind = ref('study'), selectedWork = ref<HatadyMediaWork | null>(null), createdWork = ref<HatadyMediaWork | null>(null);
+const variant = computed(() => props.variant);
+const chooserTitle = computed(() => props.variant === 'hatady' ? copy.title : i18n.ts._hata._hatady._home.chooseRecordType);
 const direction = ref(1), works = ref<HatadyMediaWork[]>([]), queryDraft = ref(''), query = ref(''), loading = ref(false), hasMore = ref(false), error = ref('');
 let requestId = 0;
 let cookingNavigationPending = false;
+const closing = ref(false);
+let closeTimer: number | null = null;
 const hasForm = computed(() => ['composer', 'session', 'create'].includes(stage.value));
 const recordChoices = HATADY_ACTIVITY_CHOICES;
 const composerKind = computed(() => selectedKind.value === 'exercise' ? 'exercise' : selectedKind.value === 'work' ? 'work' : 'study');
@@ -52,6 +59,8 @@ const mediaKind = computed(() => selectedKind.value === 'movie' ? 'movie' : 'gam
 const descriptions: Record<string, string> = { study: copy.studyDescription, movie: copy.movieDescription, game: copy.gameDescription, exercise: copy.exerciseDescription, work: copy.workDescription, cooking: copy.cookingChoiceDescription };
 
 function selectKind(kind: string) { selectedKind.value = kind; direction.value = 1; if (kind === 'cooking') stage.value = 'cooking'; else if (kind === 'movie' || kind === 'game') { stage.value = 'works'; works.value = []; query.value = ''; queryDraft.value = ''; loadWorks(); } else stage.value = 'composer'; }
+
+if (props.initialKind) selectKind(props.initialKind);
 
 function confirmCooking() {
 	if (cookingNavigationPending) return;
@@ -78,21 +87,43 @@ async function loadWorks(append = false) {
 
 function back() { direction.value = -1; if (stage.value === 'session' || stage.value === 'create') stage.value = 'works'; else stage.value = 'categories'; }
 
-function requestClose() { if (stage.value === 'composer') composer.value?.requestClose(); else if (stage.value === 'session') session.value?.requestClose(); else if (stage.value === 'create') workForm.value?.requestClose(); else dialog.value?.close(); }
+function requestClose() {
+	if (stage.value === 'composer') composer.value?.requestClose();
+	else if (stage.value === 'session') session.value?.requestClose();
+	else if (stage.value === 'create') workForm.value?.requestClose();
+	else if (stage.value === 'categories' && props.variant !== 'hatady' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		if (closing.value) return;
+		closing.value = true;
+		closeTimer = window.setTimeout(() => { closeTimer = null; dialog.value?.close(); }, 320);
+	} else if (stage.value === 'categories' && props.variant !== 'hatady') {
+		closing.value = true;
+		void nextTick(() => dialog.value?.close());
+	} else dialog.value?.close();
+}
 
 function finishWorkCreation() { if (createdWork.value) { works.value.unshift(createdWork.value); selectWork(createdWork.value); createdWork.value = null; } else dialog.value?.close(); }
 
-onBeforeUnmount(() => { requestId++; });
+onBeforeUnmount(() => { requestId++; if (closeTimer) window.clearTimeout(closeTimer); });
 </script>
 <style lang="scss" module>
 .types { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; animation: enter .2s ease-out; }
+.chooserTitle { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .type { display: flex; align-items: center; gap: 14px; min-width: 0; min-height: 94px; padding: 16px; border: 1px solid var(--hy-border); border-radius: 20px; background: var(--hy-surface); color: var(--hy-ink); text-align: left; cursor: pointer; }
+.type[data-variant='ui'], .type[data-variant='uis'] { flex-direction: column; justify-content: center; min-height: 104px; text-align: center; }
 .type:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .type > i { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--hy-soft); color: var(--hy-accent); font-size: 23px; }
 .type > span { display: grid; gap: 5px; }
 .type strong { font-size: 16px; }
 .type small { color: var(--hy-muted); font-size: 12px; line-height: 1.5; }
 .type:hover, .work:hover { background: var(--hy-soft); border-color: var(--hy-accent); }
+.types[data-closing='true'] { pointer-events: none; }
+.types[data-closing='true'] .type { animation: chooser-leave 240ms ease-in both; }
+.types[data-closing='true'] .type:nth-child(2) { animation-delay: 16ms; }
+.types[data-closing='true'] .type:nth-child(3) { animation-delay: 32ms; }
+.types[data-closing='true'] .type:nth-child(4) { animation-delay: 48ms; }
+.types[data-closing='true'] .type:nth-child(5) { animation-delay: 64ms; }
+.types[data-closing='true'] .type:nth-child(6) { animation-delay: 80ms; }
+@keyframes chooser-leave { to { opacity: 0; transform: translateY(12px); } }
 .type:focus-visible, .work:focus-visible { outline: 3px solid var(--hy-accent); outline-offset: 3px; }
 .works { display: grid; gap: 18px; animation: enter .2s ease-out; }
 .cooking { display: grid; gap: 14px; }

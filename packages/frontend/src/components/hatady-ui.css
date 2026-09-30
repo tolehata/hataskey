@@ -404,3 +404,26 @@ textarea.hy-input {
 		scroll-behavior: auto !important;
 	}
 }
+/* Timeline dialogs inherit the active UI palette, including nested Hatady surfaces. */
+[data-hatady-variant='ui'] .hatady-scope {
+	--hy-surface: var(--MI_THEME-panel);
+	--hy-ink: var(--MI_THEME-fg);
+	--hy-body: var(--MI_THEME-fg);
+	--hy-muted: color-mix(in srgb, var(--MI_THEME-fg) 66%, transparent);
+	--hy-accent: var(--MI_THEME-accent);
+	--hy-accent-ink: var(--MI_THEME-accent);
+	--hy-border: var(--MI_THEME-divider);
+	--hy-soft: var(--MI_THEME-accentedBg);
+	--hy-surface-2: var(--MI_THEME-bg);
+}
+[data-hatady-variant='uis'] .hatady-scope {
+	--hy-surface: var(--hk3-glass-menu, var(--hk3-surface, var(--MI_THEME-panel)));
+	--hy-ink: var(--hk3-text, var(--MI_THEME-fg));
+	--hy-body: var(--hy-ink);
+	--hy-muted: color-mix(in srgb, var(--hy-ink) 68%, transparent);
+	--hy-accent: var(--hk3-accent, var(--MI_THEME-accent));
+	--hy-accent-ink: var(--hy-accent);
+	--hy-border: color-mix(in srgb, var(--hy-ink) 16%, transparent);
+	--hy-soft: color-mix(in srgb, var(--hy-accent) 14%, transparent);
+	--hy-surface-2: color-mix(in srgb, var(--hy-surface) 86%, transparent);
+}

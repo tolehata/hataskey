@@ -257,6 +257,11 @@ export const HATA_SIDE_NATIVE_WIDGET_REGISTRY = {
 		normal: { minHeight: 132, data: { showHeader: false, maxItems: '3' } },
 		large: { minHeight: 190, data: { showHeader: true, maxItems: '5' } },
 	} }),
+	seasonalTree: defineWidget('季節の木', 'ti ti-tree', { sizes: {
+		small: { minHeight: 180, data: { showHeader: false, height: 180, season: 'auto', timeOfDay: 'auto', animated: true, windStrength: 60, showCaption: true } },
+		normal: { minHeight: 240, data: { showHeader: true, height: 240, season: 'auto', timeOfDay: 'auto', animated: true, windStrength: 60, showCaption: true } },
+		large: { minHeight: 320, data: { showHeader: true, height: 320, season: 'auto', timeOfDay: 'auto', animated: true, windStrength: 60, showCaption: true } },
+	} }),
 	federation: defineWidget('連合', 'ti ti-whirl', { requiresFederation: true, sizes: {
 		small: { minHeight: 126, data: { showHeader: false } },
 		normal: { minHeight: 220, data: { showHeader: true } },

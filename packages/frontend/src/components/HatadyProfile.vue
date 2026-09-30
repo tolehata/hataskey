@@ -8,11 +8,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <HyDialog
 	ref="dialog"
+	:variant="variant"
 	:title="copy.title"
 	:embedded="inline"
 	:bare="inline"
 	@close="dialog?.close()"
-	@closed="emit('closed')"
+	@closed="onClosed"
 >
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.surface" :style="designStyle">
 		<div v-if="!previewData" :class="$style.toolbar">
@@ -196,6 +197,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								v-for="activity in recent.slice(0, 3)"
 								:key="activity.id"
 								:activity="activity"
+								:variant="variant"
 								@openLog="openLog($event)"
 								@openBook="openBook($event)"
 								@openMedia="openMedia($event)"
@@ -234,11 +236,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@saved="saveDesign"
 	@closed="designOpen = false"
 />
-<HyDialog v-if="selectedDay" :title="i18n.tsx._hata._hatady._statsView.dayRecords({ date: selectedDay.date })" @close="selectedDay = null">
+<HyDialog v-if="selectedDay" :variant="variant" :title="i18n.tsx._hata._hatady._statsView.dayRecords({ date: selectedDay.date })" @close="selectedDay = null">
 	<HatadyActivityCard
 		v-for="activity in selectedDay.logs"
 		:key="activity.id"
 		:activity="activity"
+		:variant="variant"
 		@openLog="openLog($event)"
 		@openMedia="openMedia($event)"
 		@openBook="openBook($event)"
@@ -268,16 +271,24 @@ import HyMediaCover from '@/components/HyMediaCover.vue';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import * as os from '@/os.js';
+import { confirmHatadyAction } from '@/utility/hatady-record-delete.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { HY_BANNER_PRESETS } from '@/utility/hatady.js';
 import { hatadyTheme, hatadyTzOffset } from '@/utility/hatady-prefs.js';
+import { isOwnHatadyProfile, openOwnHatadyProfileIfNeeded, useHatadyActivityActions } from '@/utility/hatady-activity-actions.js';
 
 const props = defineProps<{
 	userId?: string | null;
+	variant?: 'hatady' | 'ui' | 'uis';
 	inline?: boolean;
 	previewData?: any;
 	previewDesign?: Record<string, any>;
 }>();
+const timelineActions = useHatadyActivityActions({
+	variant: props.variant,
+	onChanged: () => { void reload(); emit('changed'); },
+	onDeleted: removeActivity,
+});
 const emit = defineEmits<{
 	(ev: 'changed'): void;
 	(ev: 'openLog', logId: string): void;
@@ -503,11 +514,7 @@ async function toggleFollow() {
 	if (!profile.value || profile.value.isMe) return;
 	const uname = profile.value.user.name || profile.value.user.username;
 	// フォロー / 解除の前に確認する。
-	const { canceled } = await os.confirm({
-		type: following.value ? 'warning' : 'question',
-		text: following.value ? copyx.unfollowConfirm({ name: uname }) : copyx.followConfirm({ name: uname }),
-	});
-	if (canceled) return;
+	if (!(await confirmHatadyAction(props.variant ?? 'hatady', following.value ? copyx.unfollowConfirm({ name: uname }) : copyx.followConfirm({ name: uname }), following.value ? 'warning' : 'question'))) return;
 	followBusy.value = true;
 	const target = profile.value.user.id;
 	try {
@@ -644,7 +651,7 @@ function openDay(day: any) {
 async function openMediaSession(sessionId: string, workId: string) {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyConversation.vue')).default,
-		{ sessionId, workId },
+		{ sessionId, workId, variant: props.variant },
 		{
 			deleted: removeActivity,
 			changed: () => {
@@ -673,7 +680,7 @@ async function editActivity(activity: any) {
 	if (activity.study) {
 		const { dispose } = os.popup(
 			(await import('@/components/HatadyComposer.vue')).default,
-			{ editLog: activity.study },
+			{ editLog: activity.study, variant: props.variant },
 			{
 				done: () => {
 					void reload();
@@ -685,7 +692,7 @@ async function editActivity(activity: any) {
 	} else if (activity.media?.work) {
 		const { dispose } = os.popup(
 			(await import('@/components/HatadyMediaSessionForm.vue')).default,
-			{ work: activity.media.work, editSession: activity.media.session },
+			{ work: activity.media.work, editSession: activity.media.session, variant: props.variant },
 			{
 				done: () => {
 					void reload();
@@ -698,6 +705,7 @@ async function editActivity(activity: any) {
 }
 
 function activityMenu(activity: any, event: MouseEvent) {
+	if (props.variant && props.variant !== 'hatady') { timelineActions.openActivityMenu(activity, event); return; }
 	os.popupMenu(
 		[
 			{
@@ -722,7 +730,7 @@ function activityMenu(activity: any, event: MouseEvent) {
 async function openLog(logId: string) {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyConversation.vue')).default,
-		{ logId },
+		{ logId, variant: props.variant },
 		{
 			deleted: removeActivity,
 			changed: () => {
@@ -737,7 +745,7 @@ async function openLog(logId: string) {
 async function openBook(bookId: string) {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyBookDetail.vue')).default,
-		{ bookId },
+		{ bookId, variant: props.variant },
 		{
 			deleted: () => {
 				profileRequest++;
@@ -755,7 +763,7 @@ async function openBook(bookId: string) {
 async function openMedia(workId: string) {
 	const { dispose } = os.popup(
 		(await import('@/components/HatadyMediaWorkDetail.vue')).default,
-		{ workId },
+		{ workId, variant: props.variant },
 		{
 			deleted: () => {
 				profileRequest++;
@@ -770,10 +778,22 @@ async function openMedia(workId: string) {
 	);
 }
 
+let navigateToOwnProfile = false;
+
+function onClosed() {
+	emit('closed');
+	if (navigateToOwnProfile) openOwnHatadyProfileIfNeeded(undefined, props.variant ?? 'hatady');
+}
+
 async function openProfile(userId: string) {
+	if (isOwnHatadyProfile(userId, props.variant ?? 'hatady')) {
+		navigateToOwnProfile = true;
+		dialog.value?.close();
+		return;
+	}
 	const { dispose } = os.popup(
 		defineAsyncComponent(() => import('@/components/HatadyProfile.vue')),
-		{ userId },
+		{ userId, variant: props.variant },
 		{
 			changed: () => {
 				void reload();

@@ -13,7 +13,6 @@ import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { IdService } from '@/core/IdService.js';
 import { FanoutTimelineService } from '@/core/FanoutTimelineService.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
-import { trackPromise } from '@/misc/promise-tracker.js';
 import { ApiError } from '../../error.js';
 
 export const meta = {
@@ -86,12 +85,20 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			// falseだった場合はアンテナの配信先が増えたことを通知したい
 			const needPublishEvent = !antenna.isActive;
 
-			antenna.isActive = true;
-			antenna.lastUsedAt = new Date();
-			trackPromise(this.antennasRepository.update(antenna.id, antenna));
+			await this.antennasRepository.update({
+				id: antenna.id,
+				userId: me.id,
+			}, {
+				isActive: true,
+				lastUsedAt: new Date(),
+			});
 
 			if (needPublishEvent) {
-				this.globalEventService.publishInternalEvent('antennaUpdated', antenna);
+				const current = await this.antennasRepository.findOneBy({
+					id: antenna.id,
+					userId: me.id,
+				});
+				if (current?.isActive) this.globalEventService.publishInternalEvent('antennaUpdated', current);
 			}
 
 			let noteIds = await this.fanoutTimelineService.get(`antennaTimeline:${antenna.id}`, untilId, sinceId);

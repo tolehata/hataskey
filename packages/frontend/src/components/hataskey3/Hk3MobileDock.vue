@@ -1,10 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<div v-if="expanded" :class="$style.scrim" data-mobile-scrim @pointerdown.stop.prevent @click.stop.prevent="closeOverlay" @wheel.prevent @contextmenu.prevent></div>
-<section ref="dock" :class="$style.dock" :data-open="opened" :data-search-open="searchOpened" :data-motion="motion" :data-home="home" :data-pull-active="pullVisible" :data-pull-phase="pullVisible ? pullState?.phase : undefined" :data-overflow="composerOverflow" :data-composer-resizing="composerGeometryAnimating" :data-picker-morphing="pickerMorphing" :style="{ '--keyboard-inset': `${keyboardInset}px`, '--guide-height': `${guideHeight}px`, ...pullDockStyle }" :role="expanded ? 'dialog' : undefined" :aria-modal="expanded ? true : undefined" :aria-label="searchOpened ? i18n.ts.search : copy.timelines" @keydown="keydown" @click.capture="consumeClick">
+<div v-if="expanded && !suspended" :class="$style.scrim" data-mobile-scrim @pointerdown.stop.prevent @click.stop.prevent="closeOverlay" @wheel.prevent @contextmenu.prevent></div>
+<section v-show="!suspended" ref="dock" :class="$style.dock" :inert="suspended" :aria-hidden="suspended ? true : undefined" :data-open="opened" :data-search-open="searchOpened" :data-composer-open="composerOpened || confirmationActive" :data-motion="motion" :data-home="home" :data-pull-active="pullVisible" :data-pull-phase="pullVisible ? pullState?.phase : undefined" :data-overflow="composerOverflow" :data-composer-resizing="composerGeometryAnimating" :data-picker-morphing="pickerMorphing" :style="{ '--keyboard-inset': `${keyboardInset}px`, '--guide-height': `${guideHeight}px`, '--dock-clip': `url(#${instanceId}-shape)`, '--compose-right': `${composeRight}px`, '--compose-bottom': `${composeBottom}px`, ...pullDockStyle }" :role="expanded ? 'dialog' : undefined" :aria-modal="expanded ? true : undefined" :aria-label="searchOpened ? i18n.ts.search : copy.timelines" @keydown="keydown" @click.capture="consumeClick">
+	<svg :class="$style.clipDefinition" aria-hidden="true"><defs><clipPath :id="`${instanceId}-shape`" clipPathUnits="userSpaceOnUse"><path ref="dockShape"/></clipPath></defs></svg>
 	<div :class="$style.body" :style="{ height: `${bodyHeight + pullExtension}px` }">
 		<!-- Never conditionally mount: the Timeline owns the teleported composer and its draft. -->
-		<div ref="composerTarget" :class="$style.composer" :data-hidden="expanded || !home" :inert="expanded || !home || pullVisible" :aria-hidden="expanded || !home || pullVisible" @focusin="dismissGuide" @transitionrun.capture="composerTransitionStarted" @transitionend.capture="composerTransitionFinished" @transitioncancel.capture="composerTransitionFinished"></div>
+		<div :id="`${instanceId}-composer`" ref="composerTarget" :class="$style.composer" :data-hidden="expanded || !home || !composerOpened && !confirmationActive" :inert="expanded || !home || !composerOpened && !confirmationActive || pullBusy || suspended" :aria-hidden="expanded || !home || !composerOpened && !confirmationActive || pullBusy || suspended" @focusin="dismissGuide" @transitionrun.capture="composerTransitionStarted" @transitionend.capture="composerTransitionFinished" @transitioncancel.capture="composerTransitionFinished"></div>
+		<button v-if="home" ref="composeButton" type="button" :class="$style.composeButton" data-compose-opener :data-compose-kind="composeKind ?? 'note'" :data-hidden="expanded || pullVisible || composerOpened || confirmationActive" :inert="expanded || pullBusy || composerOpened || confirmationActive" :aria-hidden="expanded || pullVisible || composerOpened || confirmationActive" :aria-label="composeKind === 'hatady' ? i18n.ts._hata._hatasabaUi._simple.record : i18n.ts._hata._hataskeyUi3.note" :aria-controls="composeKind === 'hatady' ? undefined : `${instanceId}-composer`" :aria-expanded="composeKind === 'hatady' ? undefined : composerOpened || confirmationActive" @click="emit('compose')"><BookOpen v-if="composeKind === 'hatady'" :size="20"/><Pencil v-else :size="20"/></button>
 		<div :class="$style.searchSurface" :data-active="searchOpened" :inert="!searchOpened" :aria-hidden="!searchOpened">
 			<MkMobileNavbarSearch ref="searchContent" :active="searchOpened" :maxHeight="searchMaxHeight" :motion="motion" @height="updateSearchHeight" @close="closeSearch()"/>
 		</div>
@@ -51,7 +53,7 @@
 		</Transition>
 	</div>
 	<div ref="navShell" :class="$style.navShell" data-mobile-pull-target @click.capture="blockPullClick">
-	<TransitionGroup tag="nav" :class="$style.nav" :moveClass="$style.navMove" :enterActiveClass="$style.navEnter" :leaveActiveClass="$style.navLeave" :enterFromClass="$style.navHidden" :leaveToClass="$style.navHidden" :css="motion" :aria-label="copy.navigation" :inert="pullVisible || confirmationActive" :aria-hidden="pullVisible">
+	<TransitionGroup tag="nav" :class="$style.nav" :moveClass="$style.navMove" :enterActiveClass="$style.navEnter" :leaveActiveClass="$style.navLeave" :enterFromClass="$style.navHidden" :leaveToClass="$style.navHidden" :css="motion" :aria-label="copy.navigation" :inert="pullBusy || confirmationActive || composerBlocked" :aria-hidden="pullVisible">
 		<div key="menu" :class="$style.navSlot">
 			<button :ref="!hasHome ? setHomeButton : undefined" type="button" :data-timeline-opener="!hasHome ? '' : undefined" :class="[$style.navButton, { [$style.menuHold]: !hasHome }]" :aria-label="!hasHome && opened ? copy.close : copy.menu" :aria-expanded="!hasHome && opened || drawerOpen" :aria-haspopup="!hasHome ? 'dialog' : undefined" :aria-keyshortcuts="!hasHome ? 'ArrowUp Shift+F10' : undefined" :disabled="searchOpened || opened && hasHome" @pointerdown="!hasHome && startHold($event)" @lostpointercapture="!hasHome && lostCapture($event)" @pointerleave="!hasHome && leaveHome()" @blur="!hasHome && leaveHome()" @contextmenu.prevent @click="menuClick"><component :is="!hasHome && opened ? X : Menu" :size="20"/></button>
 		</div>
@@ -64,9 +66,9 @@
 		</template>
 	</TransitionGroup>
 	</div>
-	<div :class="$style.pullPrompt" role="status" :aria-hidden="!pullVisible"><i :class="[displayPullDirection === 'up' ? 'ti ti-arrow-up' : 'ti ti-arrow-down', $style.pullIcon]" aria-hidden="true"></i><span>{{ displayPullPhase === 'refreshing' ? i18n.ts.refreshing : displayPullPhase === 'ready' ? i18n.ts.releaseToRefresh : displayPullDirection === 'up' ? i18n.ts.pullUpToRefresh : i18n.ts.pullDownToRefresh }}</span></div>
+	<div :class="$style.pullPrompt" role="status" :aria-hidden="!pullVisible"><i :class="[displayPullPhase === 'success' ? 'ti ti-check' : displayPullPhase === 'error' ? 'ti ti-exclamation-circle' : displayPullPhase === 'refreshing' ? 'ti ti-refresh' : displayPullDirection === 'up' ? 'ti ti-arrow-up' : 'ti ti-arrow-down', $style.pullIcon]" aria-hidden="true"></i><span>{{ displayPullPhase === 'success' ? i18n.ts.done : displayPullPhase === 'error' ? i18n.ts._hata._hataskeyUi3.loadFailed : displayPullPhase === 'refreshing' ? i18n.ts.refreshing : displayPullPhase === 'ready' ? i18n.ts.releaseToRefresh : displayPullDirection === 'up' ? i18n.ts.pullUpToRefresh : i18n.ts.pullDownToRefresh }}</span></div>
 	<Transition appear :css="motion" :enterActiveClass="$style.guideEnter" :leaveActiveClass="$style.guideLeave" :enterFromClass="$style.guideAbove" :leaveToClass="$style.guideBelow" @beforeLeave="leaveView">
-		<div v-if="!confirmationActive && !guideSeen && !guideDismissed && !expanded && home && !pullVisible" :class="$style.guide" data-guide>
+		<div v-if="!confirmationActive && !guideSeen && !guideDismissed && !expanded && home && !pullBusy" :class="$style.guide" data-guide>
 			<div :class="$style.guideDemo" aria-hidden="true">
 				<div :class="$style.guideChoices"><i class="ti ti-list"></i><i class="ti ti-antenna"></i></div>
 				<span :class="$style.guidePath"></span>
@@ -83,7 +85,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
-import { ArrowLeft, Check, ChevronRight, Ellipsis, GripVertical, House, Menu, Pencil, Pointer, Settings, X } from '@lucide/vue';
+import { ArrowLeft, BookOpen, Check, ChevronRight, Ellipsis, GripVertical, House, Menu, Pencil, Pointer, Settings, X } from '@lucide/vue';
 import { containsPoint, mobileArrowOffset, mobileEdgeScroll, moveMobileChoice } from './hk3-mobile-dock-helpers.js';
 import type { Hk3MobileCollectionKind, Hk3MobileNavigation, Hk3MobileNavItem } from './hk3-mobile-navigation.js';
 import { i18n } from '@/i18n.js';
@@ -92,8 +94,8 @@ import { UI_S_BOTTOM_NAV_MAX } from '@/utility/hatasaba-navigation.js';
 import type { NavbarPullState } from '@/utility/navbar-pull-refresh.js';
 
 type MobilePullGestureAttacher = (root: HTMLElement, onClaim: () => void, canStart: () => boolean) => { dispose: () => void };
-const props = defineProps<{ navigation: Hk3MobileNavigation | null; items: Hk3MobileNavItem[]; home: boolean; drawerOpen: boolean; motion: boolean; guideSeen: boolean; confirmationActive?: boolean; pullState?: Readonly<NavbarPullState> | null; attachPullGesture?: MobilePullGestureAttacher | null }>();
-const emit = defineEmits<{ navigate: [path: string]; menu: []; requestTimeline: []; menuOpen: [open: boolean]; searchOpen: [open: boolean]; dismissGuide: [] }>();
+const props = defineProps<{ navigation: Hk3MobileNavigation | null; items: Hk3MobileNavItem[]; home: boolean; drawerOpen: boolean; motion: boolean; guideSeen: boolean; suspended?: boolean; confirmationActive?: boolean; composerBlocked?: boolean; composeKind?: 'note' | 'hatady'; pullState?: Readonly<NavbarPullState> | null; attachPullGesture?: MobilePullGestureAttacher | null }>();
+const emit = defineEmits<{ navigate: [path: string]; menu: []; requestTimeline: []; menuOpen: [open: boolean]; searchOpen: [open: boolean]; compose: []; dismissGuide: [] }>();
 const copy = i18n.ts._hata._hataskeyUi3._mobileNavigation;
 const MOBILE_NAV_ITEMS_MAX = UI_S_BOTTOM_NAV_MAX;
 const dock = ref<HTMLElement | null>(null);
@@ -121,6 +123,10 @@ function setHomeButton(element: unknown) {
 }
 
 const composerTarget = ref<HTMLElement | null>(null);
+const composeButton = ref<HTMLButtonElement | null>(null);
+const dockShape = ref<SVGPathElement | null>(null);
+const composeRight = ref(14);
+const composeBottom = ref(2);
 const dockHeight = ref(0);
 const composerHeight = ref(120);
 const composerGeometryAnimating = ref(false);
@@ -131,8 +137,10 @@ const guideHeight = ref(180);
 const viewportHeight = ref(typeof window === 'undefined' ? 640 : window.innerHeight);
 const opened = ref(false);
 const searchOpened = ref(false);
+const composerOpened = ref(false);
 const expanded = computed(() => opened.value || searchOpened.value);
-const pullVisible = computed(() => props.home && !props.drawerOpen && !expanded.value && props.pullState != null && props.pullState.phase !== 'idle');
+const pullBusy = computed(() => !props.suspended && props.home && props.pullState != null && props.pullState.phase !== 'idle');
+const pullVisible = computed(() => pullBusy.value && !props.drawerOpen && !expanded.value && props.pullState?.presentation !== 'navbar');
 const displayPullPhase = ref<NavbarPullState['phase']>('pulling');
 const displayPullDirection = ref<'up' | 'down'>('down');
 watch(() => props.pullState, state => {
@@ -175,7 +183,7 @@ const choices = computed(() => order.value.flatMap(id => props.navigation?.choic
 const branchLabel = computed(() => props.navigation?.choices.find(item => item.branch === branch.value)?.label ?? '');
 const viewKey = computed(() => optionsOpen.value ? 'options' : branch.value ?? 'root');
 const branchIcon = computed(() => props.navigation?.choices.find(item => item.branch === branch.value)?.icon ?? '');
-const bodyHeight = computed(() => searchOpened.value ? Math.min(searchHeight.value, searchMaxHeight.value) : opened.value ? Math.max(72, Math.min((optionsOpen.value ? props.navigation?.options.length ?? 0 : branch.value ? Math.max(1, collections.value.length) : Math.ceil(choices.value.length / 2)) * 58 + 64, viewportHeight.value - 150)) : props.home ? Math.min(composerHeight.value, Math.max(0, viewportHeight.value - 150)) : 0);
+const bodyHeight = computed(() => searchOpened.value ? Math.min(searchHeight.value, searchMaxHeight.value) : opened.value ? Math.max(72, Math.min((optionsOpen.value ? props.navigation?.options.length ?? 0 : branch.value ? Math.max(1, collections.value.length) : Math.ceil(choices.value.length / 2)) * 58 + 64, viewportHeight.value - 150)) : props.home ? composerOpened.value || props.confirmationActive ? Math.min(composerHeight.value, Math.max(0, viewportHeight.value - 150)) : 44 : 0);
 // Stable names are useful to parent integrations and DOM inspection, without global IDs.
 const instanceId = useId();
 let opener: HTMLElement | null = null;
@@ -198,10 +206,11 @@ let hold: { id: number; x: number; y: number; timer: number } | null = null;
 let slide: { id: number; x: number; y: number; originX: number; originY: number; armed: boolean } | null = null;
 const reordering = ref<{ id: number; choice: string; order: string[]; x: number; y: number; originX: number; originY: number; started: boolean } | null>(null);
 let pullGesture: ReturnType<MobilePullGestureAttacher> | null = null;
+let outsideComposerPointer: { id: number; x: number; y: number } | null = null;
 
 watch([navShell, () => props.attachPullGesture], ([shell, attach]) => {
 	pullGesture?.dispose();
-	pullGesture = shell && attach ? attach(shell, () => { clearHold(); suppressClick = true; }, () => props.home && !props.drawerOpen && !expanded.value && !slide && !reordering.value) : null;
+	pullGesture = shell && attach ? attach(shell, () => { clearHold(); suppressClick = true; }, () => !props.suspended && props.home && !props.drawerOpen && !expanded.value && !slide && !reordering.value) : null;
 }, { immediate: true, flush: 'post' });
 
 watch(() => props.navigation?.choices.map(item => item.id), (ids, previous) => {
@@ -211,13 +220,45 @@ watch(() => props.navigation, navigation => {
 	if (navigation && pendingOpen.value) reveal();
 	else if (!navigation && opened.value) closeMenu();
 });
-watch(() => props.drawerOpen, value => { if (value) { closeSearch(false); closeMenu(); } });
+watch(() => props.drawerOpen, value => { if (value) { closeComposer(true); closeSearch(false); closeMenu(); } });
+watch(() => props.home, value => { if (!value) closeComposer(true); });
+watch(() => props.composeKind, value => { if (value === 'hatady') closeComposer(true); });
+watch(() => props.confirmationActive, value => { if (value) openComposer(); });
+watch(() => props.suspended, suspended => {
+	if (suspended) {
+		closeComposer(true);
+		closeSearch(false);
+		closeMenu(false);
+		window.clearTimeout(searchReturnTimer);
+		searchLayoutHeight = null;
+		window.clearTimeout(pickerMorphTimer);
+		pickerMorphing.value = false;
+	} else void nextTick(() => { if (mounted && !props.suspended) measureGeometry(); });
+}, { immediate: true, flush: 'sync' });
 watch(() => props.items.slice(0, MOBILE_NAV_ITEMS_MAX).some(item => item.path === '/search'), visible => { if (!visible) closeSearch(false); });
 
 function dismissGuide() {
 	if (guideDismissed.value || props.guideSeen) return;
 	guideDismissed.value = true;
 	emit('dismissGuide');
+}
+
+function openComposer() {
+	if (props.suspended || !props.home || pullBusy.value) return;
+	closeSearch(false);
+	closeMenu(false);
+	composerOpened.value = true;
+	void nextTick(measureGeometry);
+}
+
+function closeComposer(force = false) {
+	if (!force && (props.composerBlocked || props.confirmationActive || pullBusy.value)) return false;
+	if (!composerOpened.value) return true;
+	const active = window.document.activeElement;
+	if (active instanceof HTMLElement && composerTarget.value?.contains(active)) active.blur();
+	composerOpened.value = false;
+	void nextTick(measureGeometry);
+	return true;
 }
 
 function clearDwell() {
@@ -272,7 +313,9 @@ function focusChoice(id?: string) {
 }
 
 function reveal() {
-	if (pullVisible.value || opened.value || !props.navigation) return;
+	if (props.suspended || pullBusy.value || opened.value || !props.navigation) return;
+	if (props.confirmationActive || props.composerBlocked) return;
+	closeComposer(true);
 	pendingOpen.value = false;
 	opener = window.document.activeElement instanceof HTMLElement ? window.document.activeElement : homeButton.value;
 	branch.value = null;
@@ -287,7 +330,8 @@ function reveal() {
 }
 
 function openMenu() {
-	if (pullVisible.value) return;
+	if (props.suspended || pullBusy.value || props.confirmationActive || props.composerBlocked) return;
+	closeComposer(true);
 	closeSearch(false);
 	if (opened.value || pendingOpen.value) return;
 	if (!props.navigation) {
@@ -298,10 +342,10 @@ function openMenu() {
 }
 
 async function openCollection(kind: Hk3MobileCollectionKind) {
-	if (pullVisible.value || !props.home || !props.navigation) return;
+	if (props.suspended || pullBusy.value || !props.home || !props.navigation) return;
 	openMenu();
 	await nextTick();
-	if (!mounted || !props.home || !props.navigation || !opened.value) return;
+	if (!mounted || props.suspended || !props.home || !props.navigation || !opened.value) return;
 	finishReorder(true);
 	editing.value = false;
 	await enterBranch(kind);
@@ -322,7 +366,7 @@ function closeMenu(restoreFocus = true) {
 	if (wasOpen) {
 		startPickerMorph();
 		emit('menuOpen', false);
-		if (restoreFocus && opener?.isConnected) opener.focus({ preventScroll: true });
+		if (restoreFocus && !props.suspended && opener?.isConnected) opener.focus({ preventScroll: true });
 	}
 }
 
@@ -335,7 +379,8 @@ function updateSearchHeight(height: number) {
 }
 
 function openSearch() {
-	if (pullVisible.value || searchOpened.value) return;
+	if (props.suspended || pullBusy.value || searchOpened.value || props.confirmationActive || props.composerBlocked) return;
+	closeComposer(true);
 	searchFocusVersion++;
 	const focusOrigin = window.document.activeElement;
 	window.clearTimeout(searchReturnTimer);
@@ -348,7 +393,7 @@ function openSearch() {
 	emit('searchOpen', true);
 	void nextTick(() => {
 		const active = window.document.activeElement;
-		if (searchOpened.value && !dock.value?.closest('[inert]') && (active === focusOrigin || active === window.document.body || active instanceof Node && dock.value?.contains(active))) searchContent.value?.focus();
+		if (!props.suspended && searchOpened.value && !dock.value?.closest('[inert]') && (active === focusOrigin || active === window.document.body || active instanceof Node && dock.value?.contains(active))) searchContent.value?.focus();
 	});
 }
 
@@ -367,14 +412,14 @@ function closeSearch(restoreFocus = true) {
 	else if (mounted) void nextTick(releaseHeight);
 	if (restoreFocus) void nextTick(() => {
 		const active = window.document.activeElement;
-		if (mounted && version === searchFocusVersion && !searchOpened.value && searchButton.value?.isConnected && (active === window.document.body || active instanceof Node && dock.value?.contains(active))) searchButton.value.focus({ preventScroll: true });
+		if (mounted && !props.suspended && version === searchFocusVersion && !searchOpened.value && searchButton.value?.isConnected && (active === window.document.body || active instanceof Node && dock.value?.contains(active))) searchButton.value.focus({ preventScroll: true });
 	});
 }
 
-function toggleSearch() { if (pullVisible.value) return; if (searchOpened.value) closeSearch(); else openSearch(); }
+function toggleSearch() { if (pullBusy.value) return; if (searchOpened.value) closeSearch(); else openSearch(); }
 
 function blockPullClick(event: MouseEvent) {
-	if (!pullVisible.value) return;
+	if (!pullBusy.value) return;
 	event.preventDefault();
 	event.stopImmediatePropagation();
 }
@@ -455,15 +500,19 @@ function toggleEditing() {
 }
 
 function homeClick() {
-	if (pullVisible.value || suppressClick || slide) return;
+	if (pullBusy.value || suppressClick || slide) return;
+	if (props.confirmationActive || props.composerBlocked) return;
 	clearHold(false);
+	closeComposer(true);
 	if (opened.value) closeMenu();
 	else emit('navigate', '/');
 }
 
 function menuClick() {
-	if (pullVisible.value || suppressClick || slide) return;
+	if (pullBusy.value || suppressClick || slide) return;
+	if (props.confirmationActive || props.composerBlocked) return;
 	clearHold(false);
+	closeComposer(true);
 	if (opened.value) closeMenu();
 	else emit('menu');
 }
@@ -475,7 +524,7 @@ function consumeClick(event: MouseEvent) {
 }
 
 function startHold(event: PointerEvent) {
-	if (pullVisible.value || event.button !== 0 || event.isPrimary === false || opened.value) return;
+	if (props.suspended || pullBusy.value || event.button !== 0 || event.isPrimary === false || opened.value) return;
 	clearHold(false);
 	suppressClick = false;
 	hold = { id: event.pointerId, x: event.clientX, y: event.clientY, timer: window.setTimeout(() => {
@@ -589,11 +638,42 @@ function finishReorder(cancel: boolean) {
 }
 
 function pointerDown(event: PointerEvent) {
+	outsideComposerPointer = null;
+	if (pullBusy.value) return;
 	if ((hold && hold.id !== event.pointerId) || (slide && slide.id !== event.pointerId) || (reordering.value && reordering.value.id !== event.pointerId)) { interrupt(); return; }
 	if (!slide && !reordering.value) suppressClick = false;
+	if (!composerOpened.value || !props.home || props.composerBlocked || props.confirmationActive) return;
+	const target = event.target;
+	if (!(target instanceof Element) || !target.closest('[data-hk3-theme]') || composerTarget.value?.contains(target) || composeButton.value?.contains(target) || target.closest('[data-mobile-scrim], [role="dialog"], [role="menu"], [data-popup], [data-emoji-picker]')) return;
+	// Let the TL gesture sample the open composer before an outside tap closes it.
+	if (props.attachPullGesture && target.closest('[data-timeline-tab-gestures]') && !target.closest('button,a,input,textarea,select')) {
+		outsideComposerPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+		return;
+	}
+	closeComposer();
+}
+
+function timelineWheel(event: WheelEvent) {
+	if (Math.abs(event.deltaY) < 4 || !(event.target instanceof Element) || !event.target.closest('[data-timeline-tab-gestures]')) return;
+	closeComposer();
+}
+
+function timelineKey(event: KeyboardEvent) {
+	if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || !composerOpened.value) return;
+	if (event.key === 'Escape' && (composerTarget.value?.contains(event.target as Node) || composeButton.value?.contains(event.target as Node))) {
+		if (closeComposer()) { event.preventDefault(); event.stopPropagation(); void nextTick(() => composeButton.value?.focus({ preventScroll: true })); }
+		return;
+	}
+	if (!(event.target instanceof Element) || !event.target.closest('[data-timeline-tab-gestures]')) return;
+	if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) closeComposer();
 }
 
 function pointerMove(event: PointerEvent) {
+	if (outsideComposerPointer?.id === event.pointerId) {
+		const dx = Math.abs(event.clientX - outsideComposerPointer.x);
+		const dy = event.clientY - outsideComposerPointer.y;
+		if (dy < -7 || dx > 7 && dx > Math.abs(dy)) { outsideComposerPointer = null; closeComposer(); }
+	}
 	if (hold?.id === event.pointerId && Math.hypot(event.clientX - hold.x, event.clientY - hold.y) > 10) clearHold();
 	const gesture = reordering.value ?? slide;
 	if (!gesture || gesture.id !== event.pointerId) return;
@@ -607,6 +687,7 @@ function pointerMove(event: PointerEvent) {
 }
 
 function pointerUp(event: PointerEvent) {
+	if (outsideComposerPointer?.id === event.pointerId) { outsideComposerPointer = null; closeComposer(); }
 	if (reordering.value?.id === event.pointerId) {
 		pointerMove(event);
 		finishReorder(!reordering.value?.started || !order.value.includes(reorderHit(event.clientX, event.clientY) ?? ''));
@@ -627,12 +708,14 @@ function pointerUp(event: PointerEvent) {
 }
 
 function pointerCancel(event: PointerEvent) {
+	if (outsideComposerPointer?.id === event.pointerId) outsideComposerPointer = null;
 	if (hold?.id === event.pointerId || slide?.id === event.pointerId || reordering.value?.id === event.pointerId) interrupt();
 }
 
 function lostCapture(event: PointerEvent) { pointerCancel(event); }
 
 function interrupt() {
+	outsideComposerPointer = null;
 	stopViewportSettle();
 	clearHold();
 	stopSlide();
@@ -709,6 +792,7 @@ function scheduleGeometrySettle() {
 }
 
 function measureGeometry() {
+	if (props.suspended) return;
 	if (geometryTransitions.size) {
 		for (const target of geometryTransitions.keys()) {
 			if (!composerTarget.value?.contains(target)) geometryTransitions.delete(target);
@@ -721,14 +805,54 @@ function measureGeometry() {
 	// The zero-height auto-collapsed Timeline wrapper is authoritative.
 	const naturalHeight = child?.getBoundingClientRect().height;
 	composerHeight.value = naturalHeight === undefined ? 120 : naturalHeight > 0 ? naturalHeight + 14 : 0;
+	const dockRect = dock.value?.getBoundingClientRect();
+	const composerRect = composerTarget.value?.getBoundingClientRect();
+	const send = composerTarget.value?.querySelector<HTMLElement>('[data-hk3-send]');
+	const sendRect = send?.getBoundingClientRect();
+	if (dockRect && composerRect && sendRect?.width && sendRect.height && composerHeight.value > 0) {
+		composeRight.value = Math.max(0, dockRect.right - sendRect.right);
+		// Both rects share the same reveal transform, so closed content cannot shift the opener.
+		composeBottom.value = Math.max(0, composerHeight.value - (sendRect.bottom - composerRect.top));
+	}
+	updateDockShape();
 	const top = dock.value?.getBoundingClientRect().top ?? viewportHeight.value - bodyHeight.value - 70;
 	guideHeight.value = Math.max(0, Math.min(180, top - (window.visualViewport?.offsetTop ?? 0) - 24));
 }
 
-function visibility() {
-	if (window.document.hidden) interrupt();
-	else resumeViewport();
+function updateDockShape() {
+	const bounds = dock.value?.getBoundingClientRect();
+	if (!bounds || !dockShape.value || bounds.width <= 0) return;
+	const w = bounds.width;
+	const h = bounds.height || bodyHeight.value + 70;
+	const body = composerTarget.value?.parentElement;
+	const animatedHeight = body?.getBoundingClientRect().height || parseFloat(body?.style.height ?? '') || bodyHeight.value;
+	const openHeight = Math.max(44, Math.min(composerHeight.value, Math.max(0, viewportHeight.value - 150)));
+	const normal = !props.home || opened.value || searchOpened.value;
+	const progress = normal ? 1 : openHeight > 44 ? Math.max(0, Math.min(1, (animatedHeight - 44) / (openHeight - 44))) : composerOpened.value || props.confirmationActive ? 1 : 0;
+	const offset = 44; // The backdrop begins above the dock to hold a raised send button.
+	const buttonWidth = 44;
+	const buttonLeft = Math.max(36, w - composeRight.value - buttonWidth);
+	const buttonRight = w - composeRight.value;
+	const plateau = (44 - composeBottom.value - 40) * (1 - progress);
+	const y = offset + (plateau + 44 * (1 - progress));
+	const capY = offset + plateau - 6 * (1 - progress);
+	const r = 28 + 3 * progress;
+	const shoulder = Math.max(r, buttonLeft - 26);
+	const rightRadius = (w - buttonRight) * (1 - progress) + 31 * progress;
+	const bottom = offset + h;
+	dockShape.value.setAttribute('d', `M ${r} ${y} H ${shoulder} C ${shoulder + 8} ${y} ${buttonLeft - 12} ${capY} ${buttonLeft} ${capY} H ${w - rightRadius} Q ${w} ${capY} ${w} ${capY + rightRadius} V ${bottom - r} Q ${w} ${bottom} ${w - r} ${bottom} H ${r} Q 0 ${bottom} 0 ${bottom - r} V ${y + r} Q 0 ${y} ${r} ${y} Z`);
 }
+
+function visibility() {
+	if (window.document.hidden) {
+		interrupt();
+		closeComposer();
+	} else {
+		resumeViewport();
+	}
+}
+
+function pageHidden() { interrupt(); closeComposer(); }
 
 function revealRow(button: HTMLElement) {
 	if (!list.value || !list.value.contains(button)) return;
@@ -825,21 +949,26 @@ onMounted(() => {
 		observer = new ResizeObserver(measureGeometry);
 		composerMutation = new MutationObserver(() => {
 			if (composerTarget.value?.firstElementChild) observer?.observe(composerTarget.value.firstElementChild);
+			const send = composerTarget.value?.querySelector('[data-hk3-send]');
+			if (send) observer?.observe(send);
 			measureGeometry();
 		});
 		if (composerTarget.value) composerMutation.observe(composerTarget.value, { childList: true });
 		measureGeometry();
 		if (dock.value) observer.observe(dock.value);
+		if (composerTarget.value?.parentElement) observer.observe(composerTarget.value.parentElement);
 		if (composerTarget.value) observer.observe(composerTarget.value);
 	}
 	window.addEventListener('pointerdown', pointerDown, true);
+	window.addEventListener('wheel', timelineWheel, { passive: true });
+	window.addEventListener('keydown', timelineKey, true);
 	window.addEventListener('pointermove', pointerMove, { passive: true });
 	window.addEventListener('pointerup', pointerUp);
 	window.addEventListener('pointercancel', pointerCancel);
 	window.addEventListener('resize', resized);
 	window.addEventListener('blur', interrupt);
 	window.addEventListener('pageshow', resumeViewport);
-	window.addEventListener('pagehide', interrupt);
+	window.addEventListener('pagehide', pageHidden);
 	window.visualViewport?.addEventListener('resize', resized);
 	window.visualViewport?.addEventListener('scroll', viewportChanged);
 	window.document.addEventListener('visibilitychange', visibility);
@@ -859,39 +988,36 @@ onBeforeUnmount(() => {
 	window.clearTimeout(pickerMorphTimer);
 	geometryTransitions.clear();
 	window.removeEventListener('pointerdown', pointerDown, true);
+	window.removeEventListener('wheel', timelineWheel);
+	window.removeEventListener('keydown', timelineKey, true);
 	window.removeEventListener('pointermove', pointerMove);
 	window.removeEventListener('pointerup', pointerUp);
 	window.removeEventListener('pointercancel', pointerCancel);
 	window.removeEventListener('resize', resized);
 	window.removeEventListener('blur', interrupt);
 	window.removeEventListener('pageshow', resumeViewport);
-	window.removeEventListener('pagehide', interrupt);
+	window.removeEventListener('pagehide', pageHidden);
 	window.visualViewport?.removeEventListener('resize', resized);
 	window.visualViewport?.removeEventListener('scroll', viewportChanged);
 	window.document.removeEventListener('visibilitychange', visibility);
 });
-defineExpose({ composerTarget, dockHeight, navShell, openMenu, closeMenu, openCollection, openSearch, closeSearch });
+defineExpose({ composerTarget, composerOpened, dockHeight, navShell, openComposer, closeComposer, openMenu, closeMenu, openCollection, openSearch, closeSearch });
 </script>
 
 <style module>
 .dock { position: fixed; left: 10px; right: 10px; bottom: calc(12px + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset, 0px)); z-index: 105; isolation: isolate; border-radius: 34px; color: var(--MI_THEME-fg); }
+.clipDefinition { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
 .dock::before {
 	content: '';
 	position: absolute;
-	inset: -4px;
+	inset: -44px 0 0;
 	z-index: -1;
 	pointer-events: none;
-	border-radius: 38px;
 	background: linear-gradient(180deg, var(--hk3-glass-note, var(--MI_THEME-panel)), var(--hk3-glass-pane, var(--MI_THEME-panel)) 45%, var(--hk3-glass-note, var(--MI_THEME-panel)));
-	box-shadow: 0 10px 28px rgb(0 0 0 / 12%);
 	-webkit-backdrop-filter: blur(24px) saturate(1.15);
 	backdrop-filter: blur(24px) saturate(1.15);
-	/* Feather rounded corners as well as straight edges; content stays crisp. */
-	filter: blur(3px);
-	-webkit-mask-image: linear-gradient(to bottom, transparent, #000 12px, #000 calc(100% - 12px), transparent), linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent);
-	-webkit-mask-composite: source-in;
-	mask-image: linear-gradient(to bottom, transparent, #000 12px, #000 calc(100% - 12px), transparent), linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent);
-	mask-composite: intersect;
+	-webkit-clip-path: var(--dock-clip);
+	clip-path: var(--dock-clip);
 }
 .dock::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-accent) 75%, transparent), 0 0 14px color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent); filter: blur(1.5px); transition: opacity .2s ease; }
 .dock:has(:global([data-embedded-search] input[type='search']:focus))::after { opacity: 1; }
@@ -901,10 +1027,15 @@ defineExpose({ composerTarget, dockHeight, navShell, openMenu, closeMenu, openCo
 .body { position: relative; overflow: hidden; border-radius: 34px 34px 0 0; transition: height .46s cubic-bezier(.22,1,.36,1); }
 .dock[data-pull-active='true'] .body { transition: none; }
 .dock[data-open='false'][data-search-open='false'][data-home='true'][data-composer-resizing='true'][data-picker-morphing='false'] .body { transition: none; }
-.composer { position: absolute; inset: 0 0 var(--dock-pull-extension, 0px); padding: calc(12px * var(--hk3-ui-scale, 1)) calc(14px * var(--hk3-ui-scale, 1)) 2px; overflow: visible; opacity: var(--dock-pull-content-opacity, 1); transform: translateY(0); transition: opacity .22s ease .08s, transform .38s cubic-bezier(.22,1,.36,1); box-sizing: border-box; }
+.composer { position: absolute; top: 0; left: 0; right: 0; min-height: calc(100% - var(--dock-pull-extension, 0px)); padding: calc(12px * var(--hk3-ui-scale, 1)) calc(14px * var(--hk3-ui-scale, 1)) 2px; overflow: visible; opacity: var(--dock-pull-content-opacity, 1); transform: translateY(0); transition: opacity .22s ease .08s, transform .38s cubic-bezier(.22,1,.36,1); box-sizing: border-box; }
 .dock[data-pull-active='true'] .composer { transition: none; }
 .dock[data-open='false'][data-search-open='false'] .body { overflow: visible; }
 .composer[data-hidden='true'] { opacity: 0; transform: translateY(-14px); pointer-events: none; }
+.composeButton { position: absolute; right: var(--compose-right, 14px); bottom: var(--compose-bottom, 2px); z-index: 1; display: grid; place-items: center; width: 44px; height: 40px; padding: 0; border: 0; border-radius: 12px; background: transparent; color: var(--MI_THEME-accent); cursor: pointer; opacity: 1; transform: translateY(0); transition: opacity .18s ease, transform .32s cubic-bezier(.22,1,.36,1); }
+.composeButton[data-hidden='true'] { opacity: 0; transform: translateY(-10px); pointer-events: none; }
+.composeButton > svg { transform: translateY(-3px); transition: opacity .18s ease; }
+.composeButton:hover:not([data-hidden='true']) > svg { opacity: .72; }
+.composeButton:focus-visible { outline: 2px solid var(--MI_THEME-accent); outline-offset: -2px; }
 .searchSurface { position: absolute; inset: 0; min-height: 0; opacity: 0; transform: translateY(14px); pointer-events: none; transition: opacity .2s ease, transform .38s cubic-bezier(.22,1,.36,1); }
 .searchSurface[data-active='true'] { opacity: 1; transform: translateY(0); pointer-events: auto; }
 .searchIcons { display: grid; place-items: center; width: 24px; height: 24px; }
@@ -917,17 +1048,16 @@ defineExpose({ composerTarget, dockHeight, navShell, openMenu, closeMenu, openCo
 .pullPrompt { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: calc(9px * var(--hk3-ui-scale, 1)); padding: 0 calc(12px * var(--hk3-ui-scale, 1)); box-sizing: border-box; color: var(--MI_THEME-fg); font-size: calc(13px * var(--hk3-ui-scale, 1)); font-weight: 700; text-align: center; opacity: var(--dock-pull-prompt-opacity, 0); pointer-events: none; }
 .dock[data-pull-active='false'] .nav, .dock[data-pull-active='false'] .pullPrompt { transition: opacity .2s ease; }
 .pullIcon { display: inline-block; flex: none; transform: rotate(var(--dock-pull-turn, 0deg)); }
+.dock[data-pull-phase='success'] .pullIcon, .dock[data-pull-phase='error'] .pullIcon { transform: none; }
 .dock[data-motion='true'][data-pull-phase='refreshing'] .pullIcon { animation: hk3DockPullSpin .9s linear infinite; }
 @keyframes hk3DockPullSpin { to { transform: rotate(360deg); } }
 .nav { position: relative; display: flex; align-items: center; width: 100%; min-height: 62px; padding: 3px 0 calc(5px * var(--hk3-ui-scale, 1)); opacity: var(--dock-pull-content-opacity, 1); }
-.nav::before { content: ''; position: absolute; left: 24px; right: 24px; top: 0; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--MI_THEME-fg) 12%, transparent), transparent); }
 .navButton { position: relative; width: 100%; height: 52px; min-width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 26px; }
 .nav > * { flex: 1; min-width: 44px; transition: flex .24s ease; }
 .nav > .homeSlot { flex: 1.2; min-width: 44px; }
 .navSlot { display: flex; }
 .menuHold { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .homeSlot { display: flex; justify-content: center; min-width: 44px; position: relative; color: var(--MI_THEME-accent); }
-.homeSlot::before { content: ''; position: absolute; inset: 9px 10px; z-index: -1; border-radius: 22px; filter: blur(9px); background: color-mix(in srgb, var(--MI_THEME-accent) 13%, transparent); }
 .homeButton { width: 100%; flex: none; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .homeIcons { position: relative; display: grid; place-items: center; width: 24px; height: 24px; }
 .activeIcon, .closeIcon { grid-area: 1 / 1; transition: opacity .22s ease, transform .22s ease; }
@@ -987,7 +1117,7 @@ defineExpose({ composerTarget, dockHeight, navShell, openMenu, closeMenu, openCo
 .navMove, .navEnter, .navLeave { transition: transform .24s ease, opacity .24s ease; }
 .navHidden { opacity: 0; transform: scale(.8); }
 .navLeave { position: absolute; pointer-events: none; }
-.dock[data-overflow='true'] .composer { overflow-y: auto; overscroll-behavior: contain; }
+.dock[data-overflow='true'] .composer { height: calc(100% - var(--dock-pull-extension, 0px)); overflow-y: auto; overscroll-behavior: contain; }
 .dock[data-home='false'] .composer { visibility: hidden; }
 .dock[data-motion='false'] *, .dock[data-motion='false'] { animation: none !important; transition: none !important; }
 @media (prefers-reduced-motion: reduce) { .dock, .dock * { animation: none !important; transition: none !important; } }

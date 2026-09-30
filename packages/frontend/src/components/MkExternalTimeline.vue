@@ -488,7 +488,22 @@ function stopPolling() {
 	}
 }
 
-async function reload() {
+async function reload(preserveIncoming = false) {
+	if (preserveIncoming) {
+		// UI S keeps the visible page and live queue until the request succeeds.
+		const endpoint = props.src === 'ohtl' ? 'notes/timeline' : 'notes/local-timeline';
+		const result = await fetchFromExternal(endpoint, { limit: 20 });
+		if (!isActive.value) return;
+		const known = new Set(result.map((note: any) => note.id));
+		queuedNotes.value = queuedNotes.value.filter(note => !known.has(note.id));
+		for (const id of capturedNoteIds) uncaptureNote(id);
+		capturedNoteIds.clear();
+		notes.value = result;
+		canFetchOlder.value = result.length >= 20;
+		error.value = false;
+		captureDisplayedNotes();
+		return;
+	}
 	queuedNotes.value = [];
 	// 全キャプチャ解除
 	for (const id of capturedNoteIds) {

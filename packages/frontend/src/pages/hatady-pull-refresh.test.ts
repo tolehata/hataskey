@@ -4,16 +4,19 @@ import { createApp, h, nextTick } from 'vue';
 
 const fixture = vi.hoisted(() => ({ api: vi.fn() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
-vi.mock('@/router.js', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('@/router.js', async () => {
+	const { ref } = await import('vue');
+	return { useRouter: () => ({ push: vi.fn(), currentRef: ref({ _parsedRoute: { queryString: '' } }) }) };
+});
 vi.mock('@/page.js', () => ({ definePage: vi.fn() }));
 vi.mock('@/i.js', () => ({ $i: { id: 'viewer' } }));
 vi.mock('@/os.js', () => ({ popup: vi.fn(), popupMenu: vi.fn() }));
 vi.mock('@/preferences.js', async () => ({ prefer: { r: { enablePullToRefresh: (await import('vue')).ref(true) } } }));
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: {
-	pullDownToRefresh: '引っ張って更新', releaseToRefresh: '離して更新', refreshing: '更新中',
-	_hata: { _hatady: { _home: { period: '期間', apply: '適用', loading: '読込中' }, _media: { loadMore: 'さらに読む' } } },
-} } }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	return { i18n: createTestHataskI18n() };
+});
 vi.mock('@/utility/hatady.js', () => ({ hyBookmarkColor: () => '' }));
 vi.mock('@/utility/hatady-subjects.js', () => ({ loadHySubjects: vi.fn().mockResolvedValue([]) }));
 vi.mock('@/utility/hatady-prefs.js', async () => ({ hatadyTheme: (await import('vue')).ref('light'), hatadyTzOffset: () => 0, loadHatadyDisplay: vi.fn() }));
@@ -45,7 +48,9 @@ vi.mock('@/components/HatadyProfile.vue', () => ({ default: { template: '<sectio
 vi.mock('@/components/HatadyModeration.vue', () => ({ default: { template: '<section/>' } }));
 vi.mock('@/components/HatadyActivityCard.vue', () => ({ default: { props: ['activity'], emits: ['deleted'], template: '<article>{{ activity.id }}<button data-delete-record @click="$emit(\'deleted\')">削除</button></article>' } }));
 import Hatady from './hatady.vue';
+import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
+import { hatadyMediaCopy } from '@/utility/hatady-media.js';
 
 const cleanups: Array<() => void> = [];
 const row = (id: string) => ({ id, type: 'study', occurredAt: '2026-09-18T00:00:00Z', study: { id, title: id, kind: 'study' } });
@@ -67,6 +72,19 @@ async function pull(target: HTMLElement, dx = 0, dy = 200) {
 	await settle();
 	await vi.advanceTimersByTimeAsync(230);
 	await settle();
+}
+
+async function chooseRecordKind(target: HTMLElement, value: string) {
+	const mocked = target.querySelector<HTMLButtonElement>(`[aria-label="活動の種類"] [data-value="${value}"]`);
+	if (mocked) { mocked.click(); return; }
+	const trigger = target.querySelector<HTMLButtonElement>('button[aria-label^="活動の種類:"]');
+	expect(trigger).not.toBeNull();
+	trigger!.click();
+	await settle();
+	const options = window.document.querySelector<HTMLElement>('[role="listbox"][aria-label="活動の種類"]');
+	const choice = [...(options?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])].find(button => button.textContent?.trim() === value);
+	expect(choice).toBeDefined();
+	choice!.click();
 }
 
 async function mount() {
@@ -114,9 +132,9 @@ test.each(['mine', 'recent', 'following'])('refreshes the selected %s scope with
 	expect(main.style.touchAction).toContain('pan-x');
 	target.querySelector<HTMLButtonElement>(`[aria-label="記録の範囲"] [data-value="${scope}"]`)!.click();
 	await settle();
-	target.querySelector<HTMLButtonElement>('[aria-label="活動の種類"] [data-value="game"]')!.click();
+	await chooseRecordKind(target, 'game');
 	await settle();
-	target.querySelector<HTMLButtonElement>('[aria-label="期間"]')!.click();
+	target.querySelector<HTMLButtonElement>(`button[aria-label="${i18n.ts._hata._hatady._home.period}"]`)!.click();
 	await settle();
 	for (const [label, value] of [['開始日', '2026-09-01'], ['終了日', '2026-09-18']]) {
 		const input = target.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!;
@@ -150,7 +168,9 @@ test('a failed pull retains entries and pagination, and a pending refresh cannot
 	await vi.advanceTimersByTimeAsync(230);
 	expect(target.textContent).toContain('記録を読み込めませんでした');
 	expect(target.textContent).toContain('kept');
-	[...target.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'さらに読む')!.click();
+	const loadMore = [...target.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.trim() === hatadyMediaCopy().loadMore);
+	expect(loadMore).toBeDefined();
+	loadMore!.click();
 	await settle();
 	expect(calls().at(-1)![1]).toMatchObject({ cursor: 'old-cursor' });
 });

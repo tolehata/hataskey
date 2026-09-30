@@ -44,13 +44,13 @@ function fixture() {
 function standardNotificationFixture() {
 	const profile = { notificationRecieveConfig: {} as Record<string, { type: string }> };
 	const cache = { userProfileCache: { fetch: vi.fn().mockResolvedValue(profile) } };
-	const redis = { xadd: vi.fn().mockResolvedValue('1000-0'), get: vi.fn().mockResolvedValue(null) };
+	const redis = { xadd: vi.fn().mockResolvedValue('1000-0'), get: vi.fn().mockResolvedValue(null), incr: vi.fn().mockResolvedValue(1) };
 	const packed = { id: 'notice', type: 'app', header: genericData.customHeader, body: genericData.customBody, link };
 	const entity = { pack: vi.fn().mockResolvedValue(packed) };
 	const id = { gen: vi.fn().mockReturnValue('notice'), parseFull: vi.fn().mockReturnValue({ date: 1000, additional: 0n }) };
 	const stream = { publishMainStream: vi.fn() };
 	const push = { pushNotification: vi.fn() };
-	const service = new NotificationService({ perUserNotificationsMaxCount: 50 } as never, redis as never, {} as never, entity as never, id as never, stream as never, push as never, cache as never, {} as never);
+	const service = new NotificationService({ perUserNotificationsMaxCount: 50 } as never, redis as never, {} as never, {} as never, {} as never, entity as never, id as never, stream as never, push as never, cache as never, {} as never);
 	return { service, profile, cache, redis, entity, stream, push };
 }
 

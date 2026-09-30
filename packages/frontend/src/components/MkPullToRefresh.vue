@@ -88,7 +88,7 @@ function cancelPull() {
 
 // When at the top of the page, disable vertical overscroll so passive touch listeners can take over.
 function lockDownScroll() {
-	if (navbarPull?.enabled.value) return;
+	if (navbarPull) return;
 	if (scrollEl == null) return;
 	scrollEl.style.touchAction = 'pan-x pan-down pinch-zoom';
 	scrollEl.style.overscrollBehavior = 'auto none';
@@ -101,7 +101,7 @@ function unlockDownScroll() {
 }
 
 function moveStartByMouse(event: MouseEvent) {
-	if (navbarPull?.enabled.value) return;
+	if (navbarPull) return;
 	if (event.button !== 1) return;
 	if (isRefreshing.value || isPulling.value || scrollEl == null) return;
 
@@ -126,7 +126,7 @@ function moveStartByMouse(event: MouseEvent) {
 }
 
 function moveStartByTouch(event: TouchEvent) {
-	if (navbarPull?.enabled.value) return;
+	if (navbarPull) return;
 	if (isRefreshing.value) return;
 	if (event.touches.length !== 1) {
 		if (isPulling.value) cancelPull();
@@ -268,7 +268,7 @@ onMounted(() => {
 	scrollEl = getScrollContainer(rootEl.value);
 	if (navbarPull && scrollEl) navbarGesture = attachNavbarPullGesture(rootEl.value, scrollEl, navbarPull, async () => {
 		emit('refresh');
-		await props.refresher();
+		await (navbarPull.refresher ?? props.refresher)();
 	});
 	lockDownScroll();
 	rootEl.value.addEventListener('mousedown', moveStartByMouse, { passive: false }); // preventDefaultするため

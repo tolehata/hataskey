@@ -160,7 +160,7 @@ describe('Hatady learning reaction authorization', () => {
 		};
 		reactions.manager = { transaction: vi.fn(async (callback: (tx: typeof manager) => unknown) => callback(manager)) };
 		(comments as any).manager = reactions.manager;
-		return { service: new HatadyService(defaults.books as never, defaults.logs as never, defaults.comments as never, defaults.reactions as never, defaults.notifications as never, defaults.followings as never, defaults.profiles as never, defaults.bookmarks as never, defaults.memos as never, defaults.subjects as never, defaults.goals as never, defaults.mediaSessions as never, defaults.id as never, defaults.role as never, defaults.cache as never, defaults.blocking as never, defaults.push as never, { validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) } as never), defaults };
+		return { service: new HatadyService({ onHatadyCreated: vi.fn() } as never, defaults.books as never, defaults.logs as never, defaults.comments as never, defaults.reactions as never, defaults.notifications as never, defaults.followings as never, defaults.profiles as never, defaults.bookmarks as never, defaults.memos as never, defaults.subjects as never, defaults.goals as never, defaults.mediaSessions as never, defaults.id as never, defaults.role as never, defaults.cache as never, defaults.blocking as never, defaults.push as never, { validate: vi.fn(async (_user: string, ids: string[]) => ids), packRecords: vi.fn().mockResolvedValue(new Map()) } as never, { changed: vi.fn() } as never, { createNotificationAsync: vi.fn().mockResolvedValue({}) } as never), defaults };
 	}
 
 	test('rejects a known private log ID before reading or writing a reaction row', async () => {
@@ -243,6 +243,8 @@ describe('Hatady learning reaction authorization', () => {
 		expect(reactions.insert).toHaveBeenCalledOnce();
 		expect(logs.update).toHaveBeenCalledWith('public-log', { reactionsCount: 1 });
 		expect(notifications.insert).toHaveBeenCalledWith(expect.objectContaining({ notifieeId: 'owner', logId: 'public-log', reaction: ':x:' }));
+		expect((service as unknown as { notificationService: { createNotificationAsync: ReturnType<typeof vi.fn> } }).notificationService.createNotificationAsync)
+			.toHaveBeenCalledWith('owner', 'hatady', expect.objectContaining({ sourceNotificationId: expect.any(String), subtype: 'reaction', targetType: 'log', targetId: 'public-log' }), 'viewer');
 		expect(((defaults.reactions as { manager: { transaction: ReturnType<typeof vi.fn> } }).manager).transaction).toHaveBeenCalledOnce();
 	});
 });

@@ -37,7 +37,8 @@ describe('Hataskey UI permanent surface shell integration', () => {
 
 	test('mobile root stays an overview and its Hataskey UI selection enters the shared draft surface', () => {
 		expect(shellSource).toContain('v-if="compact && currentPage?.route.name == null"');
-		expect(shellSource).toContain(':featureItem="hataCustomGlassUiItem"');
+		expect(shellSource).toContain(':featureItem="mobileFeatureItem"');
+		expect(shellSource).toContain("const mobileFeatureItem = ui === 'hataskey3' ? destinationForId('hataskey-ui-s')! : hataCustomGlassUiItem;");
 		expect(shellSource).toContain('@select="goToSetting"');
 		expect(shellSource).toContain('const hataCustomGlassUiItem = destinationForId(\'hataskey-ui\')!');
 		expect(surfaceSource).toContain('const editor = useHatasabaUi2Draft();');

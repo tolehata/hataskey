@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const local = new Map<string, string>();
 const commits: [string, unknown][] = [];
+const preferenceValues = new Map<string, unknown>();
 const api = vi.fn();
 const settingsTransferLocale = vi.hoisted(() => ({
 	ts: {
@@ -63,8 +64,8 @@ vi.mock('@/local-storage.js', () => ({
 }));
 vi.mock('@/preferences.js', () => ({
 	prefer: {
-		s: new Proxy({}, { get: (_target, key) => `value:${String(key)}` }),
-		commit: (key: string, value: unknown) => commits.push([key, value]),
+		s: new Proxy({}, { get: (_target, key) => preferenceValues.has(String(key)) ? preferenceValues.get(String(key)) : `value:${String(key)}` }),
+		commit: (key: string, value: unknown) => { commits.push([key, value]); preferenceValues.set(key, value); },
 	},
 }));
 vi.mock('@/preferences/manager.js', () => ({
@@ -92,6 +93,7 @@ describe('旗鯖独自設定の入出力', () => {
 	beforeEach(() => {
 		local.clear();
 		commits.length = 0;
+		preferenceValues.clear();
 		api.mockReset();
 		api.mockRejectedValue(new Error('未設定'));
 	});
@@ -169,7 +171,7 @@ describe('旗鯖独自設定の入出力', () => {
 			categories: {
 				hatasabaUi: {
 					device: { hatasabaTabSwipeEnabled: 'false', hatasabaLastListId: 123 },
-					preferences: { 'simpleUi.showTrendingTab': false },
+					preferences: { 'simpleUi.showTrendingTab': false, 'simpleUi.showHatadyTab': false },
 				},
 			},
 		})).file;
@@ -177,7 +179,8 @@ describe('旗鯖独自設定の入出力', () => {
 		expect(local.get('hatasabaTabSwipeEnabled')).toBe('false');
 		expect(local.has('hatasabaLastListId')).toBe(false);
 		expect(commits).toContainEqual(['simpleUi.showTrendingTab', false]);
-		expect(result.applied).toBe(2);
+		expect(commits).toContainEqual(['simpleUi.showHatadyTab', false]);
+		expect(result.applied).toBe(3);
 		expect(result.skipped).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'hatasabaLastListId' })]));
 	});
 
@@ -246,6 +249,63 @@ describe('旗鯖独自設定の入出力', () => {
 		expect(result.skipped).toEqual(expect.arrayContaining([
 			expect.objectContaining({ key: 'simpleUi.deckProfilesV2[0].futureProfileField' }),
 			expect.objectContaining({ key: 'simpleUi.deckProfilesV2[0].slots[0].frames[0].tabs[1].type' }),
+		]));
+	});
+
+	test('通知詳細フィルタを旧カラム・旧プロファイル・新デッキで書き出し→復元→再書き出しする', async () => {
+		const column = {
+			id: 'column-1', type: 'notifications', width: 340, excludeTypes: ['reaction'], notificationFilterKnownTypes: ['reaction', 'mention'], excludeBots: true,
+			notificationFilterDetails: { includeBrands: null, includeHataskApp: false, excludeHatadySubtypes: ['future-subtype'], knownHatadySubtypes: ['future-subtype'] },
+		};
+		const profileColumn = {
+			...column, id: 'column-2', notificationFilterDetails: {
+				includeBrands: ['hatady', 'future-brand'], includeHataskApp: true,
+				excludeHatadySubtypes: ['note', 'future-subtype'], knownHatadySubtypes: ['note', 'future-subtype'],
+			},
+		};
+		const tab = {
+			id: 'tab-1', type: 'notifications', tabColor: '#336699', excludeTypes: ['mention'], notificationFilterKnownTypes: ['mention'], excludeBots: false,
+			notificationFilterDetails: { includeBrands: [], includeHataskApp: false, excludeHatadySubtypes: ['future-subtype'], knownHatadySubtypes: ['future-subtype'] },
+		};
+		const values = {
+			'simpleUi.deckColumns': [column],
+			'simpleUi.deckProfiles': [{ id: 'profile-old', name: '旧デッキ', layout: 'row', columns: [profileColumn] }],
+			'simpleUi.deckProfilesV2': [{ id: 'profile-new', name: '新デッキ', layout: 'row', slots: [{ id: 'slot-1', width: 380, frames: [{ id: 'frame-1', tabs: [tab] }] }] }],
+		};
+		for (const [key, value] of Object.entries(values)) preferenceValues.set(key, value);
+		const exported = await createHataSettingsTransfer(['hatasabaUi']);
+		const imported = parseHataSettingsTransfer(JSON.stringify(exported)).file;
+		const result = await applyHataSettingsTransfer(imported, ['hatasabaUi']);
+		const exportedAgain = await createHataSettingsTransfer(['hatasabaUi']);
+		for (const [key, value] of Object.entries(values)) {
+			expect(commits).toContainEqual([key, value]);
+			expect(exportedAgain.categories.hatasabaUi?.preferences?.[key]).toEqual(exported.categories.hatasabaUi?.preferences?.[key]);
+		}
+		expect(result.skipped.filter(item => Object.hasOwn(values, item.key))).toEqual([]);
+	});
+
+	test('通知詳細フィルタの不正な値だけをスキップし、未知の文字列は保持する', async () => {
+		const file = parseHataSettingsTransfer(JSON.stringify({
+			format: HATA_SETTINGS_TRANSFER_FORMAT, formatVersion: HATA_SETTINGS_TRANSFER_VERSION,
+			categories: { hatasabaUi: { preferences: { 'simpleUi.deckColumns': [{
+				id: 'column-1', type: 'notifications', width: 340,
+				notificationFilterDetails: {
+					includeBrands: ['hatady', 42, 'future-brand'], includeHataskApp: 'false',
+					excludeHatadySubtypes: ['future-subtype', false], knownHatadySubtypes: ['future-subtype'],
+				},
+			}] } } },
+		})).file;
+		const result = await applyHataSettingsTransfer(file, ['hatasabaUi']);
+		expect(commits).toContainEqual(['simpleUi.deckColumns', [{
+			id: 'column-1', type: 'notifications', width: 340,
+			notificationFilterDetails: {
+				includeBrands: ['hatady', 'future-brand'], excludeHatadySubtypes: ['future-subtype'], knownHatadySubtypes: ['future-subtype'],
+			},
+		}]]);
+		expect(result.skipped).toEqual(expect.arrayContaining([
+			expect.objectContaining({ key: 'simpleUi.deckColumns[0].notificationFilterDetails.includeBrands[1]' }),
+			expect.objectContaining({ key: 'simpleUi.deckColumns[0].notificationFilterDetails.includeHataskApp' }),
+			expect.objectContaining({ key: 'simpleUi.deckColumns[0].notificationFilterDetails.excludeHatadySubtypes[1]' }),
 		]));
 	});
 

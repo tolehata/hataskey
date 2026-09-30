@@ -7,6 +7,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
+import { In } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type {
 	FeedbackProjectsRepository,
@@ -223,7 +224,7 @@ export class FeedbackService {
 		const body = (message ?? NOTIFY_MESSAGE[type]).slice(0, 1024);
 		const now = new Date();
 		const repository = transaction?.manager.getRepository(MiFeedbackNotification) ?? this.feedbackNotificationsRepository;
-		await repository.insert(uniqueUserIds.map(uid => ({
+		const rows = uniqueUserIds.map(uid => ({
 			id: this.idService.gen(),
 			createdAt: now,
 			userId: uid,
@@ -235,17 +236,19 @@ export class FeedbackService {
 			emojiRequestId: refs.emojiRequestId ?? null,
 			emojiChangeRequestId: refs.emojiChangeRequestId ?? null,
 			commentId: refs.commentId ?? null,
-		})));
+		}));
+		await repository.insert(rows);
 		const linkRef = refs.feedbackId ? `/hatafeed/${refs.feedbackId}` : refs.emojiChangeRequestId ? `/hatafeed?emojiChangeRequestId=${refs.emojiChangeRequestId}` : refs.emojiRequestId ? `/hatafeed?emojiRequestId=${refs.emojiRequestId}` : '/hatafeed';
 		const publish = async () => {
-			for (const uid of uniqueUserIds) {
-				await this.notificationService.createNotification(uid, 'hataFeed', {
+			const results = await Promise.allSettled(rows.map(row => this.notificationService.createNotificationAsync(row.userId, 'hataFeed', {
+					sourceNotificationId: row.id,
 					customBody: body,
 					customHeader: 'HataFeed',
 					customIcon: null,
 					customLink: linkRef,
-				});
-			}
+				})));
+			const failed = results.flatMap((result, index) => result.status === 'rejected' ? [{ id: rows[index].id, reason: result.reason }] : []);
+			if (failed.length > 0) throw new AggregateError(failed.map(item => item.reason), `hataFeed standard notification mirror failed: ${failed.map(item => item.id).join(',')}`);
 		};
 		if (transaction) transaction.afterCommit.push(publish);
 		else await publish();
@@ -258,13 +261,19 @@ export class FeedbackService {
 
 	@bindThis
 	public async markAllNotificationsRead(userId: MiUser['id']): Promise<void> {
-		await this.feedbackNotificationsRepository.update({ userId, isRead: false }, { isRead: true });
+		const rows = await this.feedbackNotificationsRepository.findBy({ userId, isRead: false });
+		if (rows.length === 0) return;
+		const ids = rows.map(row => row.id);
+		await this.feedbackNotificationsRepository.update({ userId, id: In(ids), isRead: false }, { isRead: true });
+		await this.notificationService.markSourceNotificationsRead(userId, 'hataFeed', ids);
 	}
 
 	@bindThis
 	public async markNotificationRead(userId: MiUser['id'], notificationId: string): Promise<void> {
 		// 通知IDだけでは更新しない。必ず所有者も条件に含め、他人の通知を既読にできないようにする。
+		if (!(await this.feedbackNotificationsRepository.existsBy({ id: notificationId, userId }))) return;
 		await this.feedbackNotificationsRepository.update({ id: notificationId, userId, isRead: false }, { isRead: true });
+		await this.notificationService.markSourceNotificationsRead(userId, 'hataFeed', [notificationId]);
 	}
 
 	//#endregion

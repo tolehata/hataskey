@@ -224,6 +224,8 @@ export const paramDef = {
 				chatRoomInvitationReceived: notificationRecieveConfig,
 				achievementEarned: notificationRecieveConfig,
 				app: notificationRecieveConfig,
+				hataFeed: notificationRecieveConfig,
+				hatady: notificationRecieveConfig,
 				hataskFlowerReady: notificationRecieveConfig,
 				hataskFlowerBloomed: notificationRecieveConfig,
 				hataskZukanUpdated: notificationRecieveConfig,

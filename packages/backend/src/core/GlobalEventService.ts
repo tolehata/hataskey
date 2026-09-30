@@ -78,9 +78,11 @@ export interface MainEventTypes {
 		marker?: string | null;
 		file: Packed<'DriveFile'>;
 	};
-	readAllNotifications: undefined;
-	notificationFlushed: undefined;
-	unreadNotification: Packed<'Notification'>;
+	readAllNotifications: { ids: string[]; unreadNotificationsCount: number; revision: string };
+	readNotification: { id: string; unreadNotificationsCount: number; revision: string };
+	notificationChanged: { ids: string[]; unreadNotificationsCount: number; revision: string };
+	notificationFlushed: { unreadNotificationsCount: number; revision: string };
+	unreadNotification: Packed<'Notification'> & { unreadNotificationsCount: number; revision: string };
 	unreadAntenna: MiAntenna;
 	newChatMessage: Packed<'ChatMessage'>;
 	readAllAnnouncements: undefined;
@@ -172,6 +174,12 @@ export interface AntennaEventTypes {
 
 export interface RoleTimelineEventTypes {
 	note: Packed<'Note'>;
+}
+
+export type HatadyTimelineSource = 'log' | 'session';
+export interface HatadyTimelineEventTypes {
+	changed: { source: HatadyTimelineSource; id: string };
+	refresh: { viewerId: MiUser['id'] };
 }
 
 export interface AdminEventTypes {
@@ -297,6 +305,7 @@ export type EventTypesToEventPayload<T> = EventUnionFromDictionary<UndefinedAsNu
 // name/messages(spec) pairs dictionary
 export type GlobalEvents = {
 	ltlPunch: { name: 'ltlPunchStream'; payload: { type: 'state'; body: LtlPunchState | null }; };
+	hatadyTimeline: { name: 'hatadyTimelineStream'; payload: EventTypesToEventPayload<HatadyTimelineEventTypes>; };
 	internal: {
 		name: 'internal';
 		payload: EventTypesToEventPayload<InternalEventTypes>;
@@ -485,6 +494,14 @@ export class GlobalEventService {
 
 	public publishLtlPunchStream(state: LtlPunchState | null): Promise<number> {
 		return this.publish('ltlPunchStream', 'state', state);
+	}
+
+	public publishHatadyActivityStream(source: HatadyTimelineSource, id: string): void {
+		this.publish('hatadyTimelineStream', 'changed', { source, id });
+	}
+
+	public publishHatadyTimelineRefresh(viewerId: MiUser['id']): void {
+		this.publish('hatadyTimelineStream', 'refresh', { viewerId });
 	}
 
 	public publishReversiGameStream<K extends keyof ReversiGameEventTypes>(gameId: MiReversiGame['id'], type: K, value?: ReversiGameEventTypes[K]): void {

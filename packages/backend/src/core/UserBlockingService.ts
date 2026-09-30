@@ -20,6 +20,7 @@ import { UserWebhookService } from '@/core/UserWebhookService.js';
 import { bindThis } from '@/decorators.js';
 import { CacheService } from '@/core/CacheService.js';
 import { UserFollowingService } from '@/core/UserFollowingService.js';
+import type { NotificationService } from '@/core/NotificationService.js';
 
 @Injectable()
 export class UserBlockingService implements OnModuleInit {
@@ -77,8 +78,17 @@ export class UserBlockingService implements OnModuleInit {
 
 		await this.blockingsRepository.insert(blocking);
 
-		this.cacheService.userBlockingCache.refresh(blocker.id);
-		this.cacheService.userBlockedCache.refresh(blockee.id);
+		await Promise.all([
+			this.cacheService.userBlockingCache.refresh(blocker.id),
+			this.cacheService.userBlockedCache.refresh(blockee.id),
+		]);
+		this.globalEventService.publishHatadyTimelineRefresh(blocker.id);
+		this.globalEventService.publishHatadyTimelineRefresh(blockee.id);
+		const notificationService = this.moduleRef.get<NotificationService>('NotificationService', { strict: false });
+		await Promise.all([
+			notificationService.refreshHatadyNotificationsForViewer(blocker.id),
+			notificationService.refreshHatadyNotificationsForViewer(blockee.id),
+		]);
 
 		this.globalEventService.publishInternalEvent('blockingCreated', {
 			blockerId: blocker.id,
@@ -168,8 +178,17 @@ export class UserBlockingService implements OnModuleInit {
 
 		await this.blockingsRepository.delete(blocking.id);
 
-		this.cacheService.userBlockingCache.refresh(blocker.id);
-		this.cacheService.userBlockedCache.refresh(blockee.id);
+		await Promise.all([
+			this.cacheService.userBlockingCache.refresh(blocker.id),
+			this.cacheService.userBlockedCache.refresh(blockee.id),
+		]);
+		this.globalEventService.publishHatadyTimelineRefresh(blocker.id);
+		this.globalEventService.publishHatadyTimelineRefresh(blockee.id);
+		const notificationService = this.moduleRef.get<NotificationService>('NotificationService', { strict: false });
+		await Promise.all([
+			notificationService.refreshHatadyNotificationsForViewer(blocker.id),
+			notificationService.refreshHatadyNotificationsForViewer(blockee.id),
+		]);
 
 		this.globalEventService.publishInternalEvent('blockingDeleted', {
 			blockerId: blocker.id,

@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 Hataskey UI 3: 画面下の投稿欄。返信・引用・チャンネルの文脈、注釈、投票、添付、公開範囲を扱う。
 -->
 <template>
-<div ref="rootEl" data-hk3-composer-menus :class="$style.root" :data-compact="compact ? 'true' : undefined" :data-deck="deck ? 'true' : undefined" :data-menu="menuPlacement" :data-position="composerPosition" :data-busy="submitting || postDelay.active.value || popupMenuCount > 0 || guideAnchor != null || inlineMenuOpen ? 'true' : undefined" :data-reduced-motion="reducedMotion ? 'true' : undefined">
+<div ref="rootEl" data-hk3-composer-menus :class="$style.root" :data-compact="compact ? 'true' : undefined" :data-deck="deck ? 'true' : undefined" :data-menu="menuPlacement" :data-position="composerPosition" :data-busy="submitting || postDelay.active.value || popupMenuCount > 0 || guideAnchor != null || inlineMenuOpen ? 'true' : undefined" :data-reduced-motion="reducedMotion ? 'true' : undefined" @compositionstart.capture="composing = true" @compositionend.capture="composing = false">
 	<div :class="$style.confirmationStage" :style="confirmationStageHeight == null ? undefined : { height: `${confirmationStageHeight}px` }" :data-confirmation="confirmationActive ? 'true' : undefined">
 	<div ref="draftLayerEl" :class="$style.draftLayer" :data-inactive="confirmationActive ? 'true' : undefined" :inert="confirmationActive" :aria-hidden="confirmationActive">
 	<div :class="$style.ctxWrap" :data-open="context ? 'true' : undefined" :inert="!context" :aria-hidden="!context">
@@ -104,9 +104,9 @@ Hataskey UI 3: 画面下の投稿欄。返信・引用・チャンネルの文�
 					<button v-else :ref="el => setSlotRef(index, el)" type="button" :class="[$style.shortcut, $style.shortcutEmpty]" :title="copy.addShortcut" :aria-label="copy.addShortcut" @click="chooseShortcut(index, $event)"><Plus :size="15"/></button>
 				</template>
 			</template>
-			<button v-if="emojiPosition === 'afterShortcuts'" ref="emojiTriggerEl" type="button" :class="$style.iconBtn" :data-active="emojiOpen ? 'true' : undefined" :title="copy.emoji" :aria-expanded="emojiOpen" @click="openEmojiPicker"><Smile :size="18"/></button>
+			<button v-if="emojiPosition === 'afterShortcuts'" ref="emojiTriggerEl" type="button" :class="$style.iconBtn" :data-active="emojiOpen ? 'true' : undefined" :title="copy.emoji" :aria-expanded="emojiOpen" @pointerdown="preserveHostedTextFocus" @click="openEmojiPicker"><Smile :size="18"/></button>
 			<span :class="$style.spacer"></span>
-			<button v-if="emojiPosition === 'beforeVisibility'" ref="emojiTriggerEl" type="button" :class="$style.iconBtn" :data-active="emojiOpen ? 'true' : undefined" :title="copy.emoji" :aria-expanded="emojiOpen" @click="openEmojiPicker"><Smile :size="18"/></button>
+			<button v-if="emojiPosition === 'beforeVisibility'" ref="emojiTriggerEl" type="button" :class="$style.iconBtn" :data-active="emojiOpen ? 'true' : undefined" :title="copy.emoji" :aria-expanded="emojiOpen" @pointerdown="preserveHostedTextFocus" @click="openEmojiPicker"><Smile :size="18"/></button>
 			<div :class="$style.visWrap">
 				<button ref="visTriggerEl" type="button" :class="$style.visBtn" :data-open="visMenuOpen ? 'true' : undefined" :title="copy.visibility" :aria-expanded="visMenuOpen" aria-haspopup="menu" :disabled="composerChannel != null" @click="toggleInlineMenu('visibility', $event)">
 					<component :is="currentVisibility.icon" :size="15"/><span v-if="!compact" :class="$style.btnLabel">{{ currentVisibility.label }}</span><ChevronUp :size="13" :class="$style.visChevron"/>
@@ -121,7 +121,7 @@ Hataskey UI 3: 画面下の投稿欄。返信・引用・チャンネルの文�
 					<span v-for="(d, i) in odometer" :key="i" :class="$style.odoDigit" :style="{ opacity: d.visible ? 1 : 0 }"><span :class="$style.odoReel" :style="{ transform: `translateY(${-d.value * 14}px)`, transitionDelay: `${(odometer.length - 1 - i) * 40}ms` }"><span v-for="g in 10" :key="g">{{ g - 1 }}</span></span></span>
 				</span>
 			</div>
-			<button type="button" :class="$style.send" :data-state="sendState" :title="postDelay.active.value ? copy.cancelWait : copy.post" :disabled="!postDelay.active.value && !canSubmit" @click="postDelay.active.value ? cancelPostDelay() : submit()">
+			<button type="button" data-hk3-send :class="$style.send" :data-state="sendState" :title="postDelay.active.value ? copy.cancelWait : copy.post" :disabled="!postDelay.active.value && !canSubmit" @click="postDelay.active.value ? cancelPostDelay() : submit()">
 				<LoaderCircle v-if="sendState === 'sending'" :size="19" :class="$style.spin"/>
 				<Check v-else-if="sendState === 'success'" :size="19"/>
 				<span v-else-if="sendState === 'countdown'" :class="$style.sendCount" :style="{ '--hk3-delay-progress': postDelay.progress.value }">
@@ -132,7 +132,8 @@ Hataskey UI 3: 画面下の投稿欄。返信・引用・チャンネルの文�
 			</button>
 		</div>
 	</div>
-	<div ref="inlineMenuPanelEl" data-composer-menu-panel :class="$style.inlineMenuPanel" :data-open="inlineMenuOpen ? 'true' : undefined" :style="{ height: `${inlineMenuOpen ? inlineMenuHeight : 0}px` }" :inert="!inlineMenuOpen" :aria-hidden="!inlineMenuOpen">
+	<Teleport :to="emojiHost?.target.value ?? 'body'" :disabled="!hostedEmojiPanel">
+	<div ref="inlineMenuPanelEl" data-composer-menu-panel :class="$style.inlineMenuPanel" :data-hosted="hostedEmojiPanel ? 'true' : undefined" :data-condensed="hostedEmojiCondensed ? 'true' : undefined" :data-reduced-motion="reducedMotion ? 'true' : undefined" :data-open="inlineMenuOpen ? 'true' : undefined" :style="{ height: `${inlineMenuOpen ? inlineMenuHeight : 0}px` }" :inert="!inlineMenuOpen" :aria-hidden="!inlineMenuOpen" @pointerdown="preserveHostedPanelFocus" @compositionstart.capture="composing = true" @compositionend.capture="composing = false">
 		<div ref="inlineMenuEl" :class="$style.inlineMenu" :style="{ maxHeight: `${inlineMenuMaxHeight}px` }" :data-composer-menu="inlineMenuKind" :role="inlineMenuKind === 'emoji' ? undefined : 'menu'" :aria-label="inlineMenuLabel" @keydown="onInlineMenuKeydown(inlineMenuKind, $event)">
 			<div :key="inlineMenuKind" :class="$style.inlineMenuItems">
 				<template v-if="inlineMenuKind === 'tools'">
@@ -149,11 +150,12 @@ Hataskey UI 3: 画面下の投稿欄。返信・引用・チャンネルの文�
 				</template>
 				<template v-else>
 					<div :class="$style.menuHead"><button type="button" :class="$style.menuBack" :title="i18n.ts.close" @click="closeInlineMenu(true)"><ChevronLeft :size="18"/></button><span>{{ copy.emoji }}</span></div>
-					<Hk3ComposerEmojiPicker v-if="emojiOpen || retainEmojiForOutro" ref="emojiPickerEl" :maxHeight="Math.max(1, inlineMenuMaxHeight - 54)" @done="onEmojiChosen" @closed="closeInlineMenu(true)"/>
+					<Hk3ComposerEmojiPicker v-if="emojiOpen || retainEmojiForOutro" ref="emojiPickerEl" :hosted="hostedEmojiPanel" :condensed="hostedEmojiCondensed" :maxHeight="Math.max(1, inlineMenuMaxHeight - (hostedEmojiCondensed ? 38 : 54))" @done="onEmojiChosen" @closed="onEmojiPickerClosed"/>
 				</template>
 			</div>
 		</div>
 	</div>
+	</Teleport>
 	<Hk3ShortcutGuide v-if="guideAnchor" :anchor="guideAnchor" :text="copy.shortcutGuide" :okLabel="i18n.ts.ok" @close="guideAnchor = null"/>
 	</div>
 	<Hk3ComposerConfirmation v-if="shownConfirmation" ref="confirmationEl" :request="shownConfirmation" :active="confirmationActive && confirmationVisible" :busy="confirmationRunPending" :error="confirmationError" :reducedMotion="reducedMotion" @cancel="cancelConfirmation" @confirm="confirmConfirmation" @height="onConfirmationHeight"/>
@@ -200,6 +202,7 @@ import { HK3_THEME_CONTEXT } from './hk3-theme.js';
 import { captureHk3ComposerMenu, registerHk3ComposerMenus, useHk3ComposerMenuReducedMotion } from './hk3-composer-menu.js';
 import type { NoteActionConfirmation } from '@/utility/note-action-confirmation.js';
 import Hk3ComposerConfirmation from './Hk3ComposerConfirmation.vue';
+import { hk3ComposerEmojiHostKey } from './hk3-composer-emoji-host.js';
 
 const props = withDefaults(defineProps<{
 	compact?: boolean;
@@ -213,6 +216,7 @@ const props = withDefaults(defineProps<{
 	draftId: 'uiS:composer:main',
 	menuPlacement: 'up',
 });
+const emit = defineEmits<{ posted: [] }>();
 
 const composerPosition = computed(() => props.compact && !props.deck ? 'bottom' : prefer.r.hataskeyUi3ComposerPosition.value);
 
@@ -231,6 +235,7 @@ const draftLayerEl = shallowRef<HTMLElement | null>(null);
 const confirmationEl = shallowRef<{ focusCancel: () => void; measureHeight: () => number } | null>(null);
 const pillEl = shallowRef<HTMLElement | null>(null);
 const postContext = inject(hk3PostContextKey, null);
+const emojiHost = inject(hk3ComposerEmojiHostKey, null);
 const themeContext = inject(HK3_THEME_CONTEXT, undefined);
 const popupMenuCount = ref(0);
 let unregisterMenus: (() => void) | undefined;
@@ -244,7 +249,7 @@ const toolsTriggerEl = shallowRef<HTMLButtonElement | null>(null);
 const attachTriggerEl = shallowRef<HTMLButtonElement | null>(null);
 const emojiTriggerEl = shallowRef<HTMLButtonElement | null>(null);
 const visTriggerEl = shallowRef<HTMLButtonElement | null>(null);
-const emojiPickerEl = shallowRef<{ focus: () => void; reset: () => void } | null>(null);
+const emojiPickerEl = shallowRef<{ focus: (force?: boolean) => void; reset: () => void } | null>(null);
 const ctxEl = shallowRef<HTMLElement | null>(null);
 const draftText = ref('');
 const draftFiles = ref<Misskey.entities.DriveFile[]>([]);
@@ -315,11 +320,15 @@ const visMenuOpen = computed(() => inlineMenuOpen.value && inlineMenuKind.value 
 const attachOpen = computed(() => inlineMenuOpen.value && inlineMenuKind.value === 'attachment');
 const emojiOpen = computed(() => inlineMenuOpen.value && inlineMenuKind.value === 'emoji');
 const retainEmojiForOutro = ref(false);
+const emojiHostEligible = computed(() => !!(props.compact && !props.deck && emojiHost?.enabled.value && emojiHost.target.value));
+const hostedEmojiPanel = computed(() => emojiHostEligible.value && inlineMenuKind.value === 'emoji' && (inlineMenuOpen.value || retainEmojiForOutro.value));
+const hostedEmojiCondensed = computed(() => hostedEmojiPanel.value && inlineMenuMaxHeight.value < 200);
 let emojiOutroTimer: number | undefined;
 const inlineMenuLabel = computed(() => ({ tools: copy.postTools, visibility: copy.visibility, attachment: copy.attach, emoji: copy.emoji })[inlineMenuKind.value]);
 const inlineMenuHeight = ref(0);
 const inlineMenuMaxHeight = ref(240);
 const focused = ref(false);
+const composing = ref(false);
 const submitting = ref(false);
 const pendingAttachments = ref(0);
 const activeAttachmentOperations = ref(0);
@@ -427,6 +436,7 @@ const shortcuts = computed(() => normalizeHk3ComposerShortcuts(prefer.r.hataskey
 const shortcutSlots = computed(() => shortcuts.value.map(id => id == null ? null : tools.value.find(tool => tool.id === id) ?? null));
 const slotEls: (HTMLElement | null)[] = [];
 const guideAnchor = shallowRef<HTMLElement | null>(null);
+const collapseBlocked = computed(() => submitting.value || postDelay.active.value || pendingAttachments.value > 0 || activeAttachmentOperations.value > 0 || popupMenuCount.value > 0 || guideAnchor.value != null || inlineMenuOpen.value || confirmationActive.value || confirmationRunPending.value || composing.value);
 
 function setSlotRef(index: number, el: unknown) {
 	slotEls[index] = el instanceof HTMLElement ? el : null;
@@ -552,9 +562,17 @@ function persistRememberedVisibility() {
 }
 
 let emojiSelection = { start: 0, end: 0, generation: 0 };
+let hostedFocusOnOpen: HTMLInputElement | HTMLTextAreaElement | null = null;
+let keyboardEmojiOpen = false;
 
 function openEmojiPicker(ev: MouseEvent) {
-	if (emojiOpen.value) { closeInlineMenu(); return; }
+	if (composing.value) return;
+	if (emojiOpen.value) {
+		closeInlineMenu(hostedEmojiPanel.value && !!(window.document.activeElement && inlineMenuPanelEl.value?.contains(window.document.activeElement)));
+		return;
+	}
+	hostedFocusOnOpen = emojiHostEligible.value && isFocusedTextControl(window.document.activeElement) ? window.document.activeElement : null;
+	keyboardEmojiOpen = ev.detail === 0;
 	const input = inputEl.value;
 	emojiSelection = {
 		start: input?.selectionStart ?? draftText.value.length,
@@ -565,7 +583,8 @@ function openEmojiPicker(ev: MouseEvent) {
 }
 
 function onEmojiChosen(emoji: string) {
-	if (!emojiOpen.value || unmounted || emojiSelection.generation !== draftGeneration) return;
+	if (!emojiOpen.value || composing.value || unmounted || emojiSelection.generation !== draftGeneration) return;
+	const hostedAtPick = hostedEmojiPanel.value;
 	const input = inputEl.value;
 	let { start, end } = emojiSelection;
 	// A user-moved selection wins; a stale DOM value after rapid picks does not.
@@ -578,9 +597,23 @@ function onEmojiChosen(emoji: string) {
 	emojiSelection = { start: caret, end: caret, generation: draftGeneration };
 	void nextTick(() => {
 		if (unmounted || emojiSelection.generation !== draftGeneration || emojiSelection.start !== caret) return;
-		inputEl.value?.focus({ preventScroll: true });
+		if (!hostedAtPick) inputEl.value?.focus({ preventScroll: true });
 		inputEl.value?.setSelectionRange(caret, caret);
 	});
+}
+
+function isFocusedTextControl(element: Element | null): element is HTMLInputElement | HTMLTextAreaElement {
+	return element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement;
+}
+
+function preserveHostedTextFocus(ev: PointerEvent) {
+	if (emojiHostEligible.value && isFocusedTextControl(window.document.activeElement)) ev.preventDefault();
+}
+
+function preserveHostedPanelFocus(ev: PointerEvent) {
+	if (!hostedEmojiPanel.value || !isFocusedTextControl(window.document.activeElement)) return;
+	const target = ev.target;
+	if (target instanceof Element && target.closest('button, summary')) ev.preventDefault();
 }
 
 function canAttach() {
@@ -892,7 +925,7 @@ async function submitDraft() {
 		await os.alert({ type: 'warning', text: copy.recipientRequired });
 		return;
 	}
-	const choices = pollChoices.value.map(value => value.trim()).filter(Boolean);
+	let choices = pollChoices.value.map(value => value.trim()).filter(Boolean);
 	if (pollEnabled.value && choices.length < 2) {
 		await os.alert({ type: 'warning', text: copy.pollNeedsTwo });
 		return;
@@ -900,10 +933,16 @@ async function submitDraft() {
 	if (!await confirmWarnings()) return;
 	if (unmounted || generation !== draftGeneration || pendingAttachments.value > 0) return;
 
-	const submittedContext = context.value;
-	let postData: Record<string, any> | null = {
+	// Warnings may change the draft. Capture exactly what this submission will send.
+	const submittedRevision = fullComposerDraftRevision;
+	const submittedGeneration = draftGeneration;
+	const submittedContext = deepClone(context.value as any) as typeof context.value;
+	const editing = deepClone(editingNote.value as any) as typeof editingNote.value;
+	const submittedFiles = deepClone(draftFiles.value as any) as Misskey.entities.DriveFile[];
+	choices = pollChoices.value.map(value => value.trim()).filter(Boolean);
+	let postData: Record<string, any> | null = deepClone({
 		text: draftText.value === '' ? null : draftText.value,
-		fileIds: draftFiles.value.length > 0 ? draftFiles.value.map(file => file.id) : undefined,
+		fileIds: submittedFiles.length > 0 ? submittedFiles.map(file => file.id) : undefined,
 		visibility: effectiveVisibility.value,
 		visibleUserIds: !composerChannel.value && visibility.value === 'specified' ? visibleUsers.value.map(user => user.id) : undefined,
 		localOnly: effectiveLocalOnly.value,
@@ -914,7 +953,8 @@ async function submitDraft() {
 		poll: currentPoll(choices) ?? undefined,
 		event: event.value,
 		reactionAcceptance: reactionAcceptance.value,
-	};
+	});
+	const submittedDraftIsCurrent = () => !unmounted && submittedGeneration === draftGeneration && submittedRevision === fullComposerDraftRevision;
 
 	for (const interruptor of getPluginHandlers('note_post_interruptor')) {
 		try {
@@ -929,7 +969,6 @@ async function submitDraft() {
 		return;
 	}
 
-	const editing = editingNote.value;
 	if (postSendDelayEnabled.value && !editing) {
 		sendState.value = 'countdown';
 		if (!await postDelay.begin(postSendDelaySeconds.value)) {
@@ -942,7 +981,7 @@ async function submitDraft() {
 	sendState.value = 'sending';
 	try {
 		if (editing) {
-			const fileIds = Array.isArray(postData.fileIds) ? postData.fileIds : draftFiles.value.map(file => file.id);
+			const fileIds = Array.isArray(postData.fileIds) ? postData.fileIds : submittedFiles.map(file => file.id);
 			const originalPoll = editing.poll ? {
 				choices: editing.poll.choices.map(choice => choice.text),
 				multiple: editing.poll.multiple,
@@ -959,9 +998,13 @@ async function submitDraft() {
 				event: postData.event ?? null,
 				disableRightClick: editing.disableRightClick ?? false,
 			} as any);
+			if (unmounted || submittedGeneration !== draftGeneration) return;
 			sendState.value = 'success';
 			pushHk3Toast({ icon: 'pencil', text: i18n.ts.noteEdited });
-			clearComposer();
+			if (submittedDraftIsCurrent()) {
+				clearComposer();
+				emit('posted');
+			}
 			await wait(900);
 			return;
 		}
@@ -1005,9 +1048,12 @@ async function submitDraft() {
 		sendState.value = 'success';
 		pushHk3Toast({
 			icon: submittedContext?.kind === 'reply' ? 'reply' : submittedContext?.kind === 'quote' ? 'quote' : 'send',
-			text: (submittedContext?.kind === 'reply' ? copy.replied : submittedContext?.kind === 'quote' ? copy.quoted : copy.posted) + (effectiveLocalOnly.value && !composerChannel.value ? copy.localOnlySuffix : ''),
+			text: (submittedContext?.kind === 'reply' ? copy.replied : submittedContext?.kind === 'quote' ? copy.quoted : copy.posted) + (postData.localOnly && !postData.channelId ? copy.localOnlySuffix : ''),
 		});
-		clearComposer();
+		if (submittedDraftIsCurrent()) {
+			clearComposer();
+			emit('posted');
+		}
 		await wait(900);
 	} catch (error) {
 		cancelPostReceipt();
@@ -1021,12 +1067,12 @@ async function submitDraft() {
 /** MkNote・ノート詳細などからの返信・引用要求を、この投稿欄で受け取る。 */
 function adopt(request: PostFormProps): boolean {
 	if (!hk3CanAdoptPostForm(request)) return false;
+	if (editingNote.value && !request.initialNote) return false;
 	if (confirmationActive.value) focusAfterConfirmation = true;
 	if (request.initialNote) clearComposer();
 	else invalidateDraft();
 
-	const source = request.reply ?? request.renote ?? null;
-	const channel = (request.channel ?? source?.channel ?? null) as Channel | null;
+	const channel = (request.channel !== undefined ? request.channel : request.reply?.channel ?? null) as Channel | null;
 	if (request.reply) context.value = { kind: 'reply', note: request.reply, channel };
 	else if (request.renote) context.value = { kind: 'quote', note: request.renote, channel };
 	else if (channel) context.value = { kind: 'channel', channel };
@@ -1144,20 +1190,29 @@ async function confirmConfirmation(): Promise<void> {
 function onDocumentPointerDown(ev: PointerEvent) {
 	if (!inlineMenuOpen.value) return;
 	const target = ev.target as Node | null;
-	if (target && rootEl.value?.contains(target)) return;
+	if (target && (rootEl.value?.contains(target) || inlineMenuPanelEl.value?.contains(target) || emojiHost?.target.value?.contains(target))) return;
 	closeInlineMenu();
 }
 
 function closeInlineMenu(restoreFocus = false) {
 	if (!inlineMenuOpen.value) return;
 	const kind = inlineMenuKind.value;
+	const hosted = kind === 'emoji' && hostedEmojiPanel.value;
+	const focusedSearch = hosted && !!(window.document.activeElement && inlineMenuPanelEl.value?.contains(window.document.activeElement));
 	if (kind === 'emoji' && emojiPickerEl.value && !reducedMotion.value && !unmounted) {
 		retainEmojiForOutro.value = true;
 		window.clearTimeout(emojiOutroTimer);
 		emojiOutroTimer = window.setTimeout(() => { retainEmojiForOutro.value = false; }, 330);
 	}
 	inlineMenuOpen.value = false;
-	if (restoreFocus) ({ tools: toolsTriggerEl, visibility: visTriggerEl, attachment: attachTriggerEl, emoji: emojiTriggerEl })[kind].value?.focus({ preventScroll: true });
+	if (restoreFocus) {
+		if (focusedSearch && window.document.activeElement instanceof HTMLInputElement) inputEl.value?.focus({ preventScroll: true });
+		else ({ tools: toolsTriggerEl, visibility: visTriggerEl, attachment: attachTriggerEl, emoji: emojiTriggerEl })[kind].value?.focus({ preventScroll: true });
+	}
+}
+
+function onEmojiPickerClosed() {
+	if (!composing.value) closeInlineMenu(true);
 }
 
 function toggleInlineMenu(kind: InlineMenuKind, ev: MouseEvent) {
@@ -1175,10 +1230,25 @@ function toggleInlineMenu(kind: InlineMenuKind, ev: MouseEvent) {
 watch([emojiPickerEl, emojiOpen], ([picker, open]) => {
 	if (!picker || !open) return;
 	picker.reset();
-	picker.focus();
+	if (!hostedEmojiPanel.value || keyboardEmojiOpen) picker.focus(hostedEmojiPanel.value && keyboardEmojiOpen);
+	else if (hostedFocusOnOpen?.isConnected && window.document.activeElement !== hostedFocusOnOpen) hostedFocusOnOpen.focus({ preventScroll: true });
+	hostedFocusOnOpen = null;
 }, { flush: 'post' });
 
+watch(hostedEmojiPanel, hosted => {
+	if (emojiHost) emojiHost.open.value = hosted;
+	void nextTick(updateInlineMenuViewport);
+}, { immediate: true });
+
+watch(emojiHostEligible, eligible => {
+	if (eligible || !emojiOpen.value) return;
+	closeInlineMenu();
+	window.clearTimeout(emojiOutroTimer);
+	retainEmojiForOutro.value = false;
+}, { flush: 'sync' });
+
 function onInlineMenuKeydown(kind: InlineMenuKind, ev: KeyboardEvent) {
+	if (composing.value || ev.isComposing || ev.key === 'Process' || ev.keyCode === 229) return;
 	if (ev.key === 'Escape') {
 		ev.preventDefault();
 		ev.stopPropagation();
@@ -1206,10 +1276,17 @@ function measureInlineMenu() {
 function updateInlineMenuViewport() {
 	const viewport = window.visualViewport;
 	const viewportHeight = viewport?.height ?? window.innerHeight;
-	const panelHeight = inlineMenuPanelEl.value?.offsetHeight ?? 0;
+	const panelHeight = hostedEmojiPanel.value ? 0 : inlineMenuPanelEl.value?.offsetHeight ?? 0;
 	const composerBaseHeight = (rootEl.value?.offsetHeight ?? 0) - panelHeight;
 	const rect = rootEl.value?.getBoundingClientRect();
 	const viewportTop = viewport?.offsetTop ?? 0;
+	if (hostedEmojiPanel.value) {
+		const targetTop = emojiHost?.target.value?.getBoundingClientRect().top ?? viewportTop;
+		const composerTop = rect?.top ?? viewportTop + viewportHeight;
+		inlineMenuMaxHeight.value = Math.max(0, Math.min(480, Math.min(composerTop, viewportTop + viewportHeight) - Math.max(targetTop, viewportTop) - 8));
+		void nextTick(measureInlineMenu);
+		return;
+	}
 	const spaceAtPanel = rect == null ? viewportHeight : props.deck || composerPosition.value !== 'bottom'
 		? viewportTop + viewportHeight - (rect.bottom - panelHeight) - 16
 		: rect.top + panelHeight - viewportTop - 16;
@@ -1226,6 +1303,18 @@ watch([inlineMenuKind, inlineMenuOpen], () => { void nextTick(measureInlineMenu)
 
 let menuResizeObserver: ResizeObserver | null = null;
 let lastInputWidth: number | null = null;
+let viewportMeasureFrame = 0;
+
+function scheduleInlineMenuViewport() {
+	updateInlineMenuViewport();
+	void nextTick(() => {
+		if (unmounted || viewportMeasureFrame) return;
+		viewportMeasureFrame = window.requestAnimationFrame(() => {
+			viewportMeasureFrame = 0;
+			if (!unmounted) updateInlineMenuViewport();
+		});
+	});
+}
 
 onMounted(() => {
 	if (rootEl.value) unregisterMenus = registerHk3ComposerMenus(rootEl.value, popupMenuCount, themeContext);
@@ -1233,13 +1322,14 @@ onMounted(() => {
 	resizeInput();
 	updateInlineMenuViewport();
 	window.document.addEventListener('pointerdown', onDocumentPointerDown, true);
-	window.addEventListener('resize', updateInlineMenuViewport, { passive: true });
-	window.visualViewport?.addEventListener('resize', updateInlineMenuViewport, { passive: true });
+	window.addEventListener('resize', scheduleInlineMenuViewport, { passive: true });
+	window.visualViewport?.addEventListener('resize', scheduleInlineMenuViewport, { passive: true });
+	window.visualViewport?.addEventListener('scroll', scheduleInlineMenuViewport, { passive: true });
 	if (typeof ResizeObserver !== 'undefined') {
 		menuResizeObserver = new ResizeObserver(entries => {
 			for (const entry of entries) {
 				if (entry.target === inlineMenuEl.value) measureInlineMenu();
-				if (entry.target === rootEl.value) updateInlineMenuViewport();
+				if (entry.target === rootEl.value || entry.target === emojiHost?.target.value || entry.target === emojiHost?.target.value?.parentElement) updateInlineMenuViewport();
 				if (entry.target !== inputEl.value) continue;
 				const width = entry.contentRect.width;
 				if (width === lastInputWidth) continue;
@@ -1250,7 +1340,17 @@ onMounted(() => {
 		if (inlineMenuEl.value) menuResizeObserver.observe(inlineMenuEl.value);
 		if (inputEl.value) menuResizeObserver.observe(inputEl.value);
 		if (rootEl.value) menuResizeObserver.observe(rootEl.value);
+		if (emojiHost?.target.value) menuResizeObserver.observe(emojiHost.target.value);
+		if (emojiHost?.target.value?.parentElement) menuResizeObserver.observe(emojiHost.target.value.parentElement);
 	}
+});
+
+watch(() => emojiHost?.target.value, (target, previous) => {
+	if (previous) menuResizeObserver?.unobserve(previous);
+	if (previous?.parentElement) menuResizeObserver?.unobserve(previous.parentElement);
+	if (target) menuResizeObserver?.observe(target);
+	if (target?.parentElement) menuResizeObserver?.observe(target.parentElement);
+	updateInlineMenuViewport();
 });
 
 onBeforeUnmount(() => {
@@ -1258,19 +1358,22 @@ onBeforeUnmount(() => {
 	confirmationEpoch++;
 	unregisterMenus?.();
 	unmounted = true;
+	if (emojiHost) emojiHost.open.value = false;
 	invalidateDraft();
 	window.clearTimeout(emojiOutroTimer);
+	window.cancelAnimationFrame(viewportMeasureFrame);
 	autocomplete?.detach();
 	autocomplete = null;
 	postDelay.cancel();
 	hk3ComposerLink.value = null;
 	window.document.removeEventListener('pointerdown', onDocumentPointerDown, true);
-	window.removeEventListener('resize', updateInlineMenuViewport);
-	window.visualViewport?.removeEventListener('resize', updateInlineMenuViewport);
+	window.removeEventListener('resize', scheduleInlineMenuViewport);
+	window.visualViewport?.removeEventListener('resize', scheduleInlineMenuViewport);
+	window.visualViewport?.removeEventListener('scroll', scheduleInlineMenuViewport);
 	menuResizeObserver?.disconnect();
 });
 
-defineExpose({ adopt, focus, openConfirmation, cancelConfirmation, confirmationActive, canConfirm });
+defineExpose({ adopt, focus, openConfirmation, cancelConfirmation, confirmationActive, canConfirm, collapseBlocked });
 </script>
 
 <style lang="scss" module>
@@ -1325,7 +1428,18 @@ defineExpose({ adopt, focus, openConfirmation, cancelConfirmation, confirmationA
 		&[data-open] { margin-bottom: 0; }
 	}
 
-	.root[data-reduced-motion] & { transition: none; }
+	.root[data-reduced-motion] &, &[data-reduced-motion] { transition: none; }
+
+	&[data-hosted] {
+		position: relative;
+		width: 100%;
+		margin: 0;
+		box-sizing: border-box;
+		background: transparent;
+		border: 0;
+		box-shadow: none;
+	}
+	&[data-hosted]:not([data-open]) { margin: 0; }
 }
 
 .inlineMenu {
@@ -1343,7 +1457,8 @@ defineExpose({ adopt, focus, openConfirmation, cancelConfirmation, confirmationA
 	transition: opacity 220ms ease, transform 330ms cubic-bezier(.22, 1, .36, 1);
 
 	.inlineMenuPanel[data-open] & { opacity: 1; transform: translateY(0); }
-	.root[data-reduced-motion] & { transition: none; }
+	.root[data-reduced-motion] &, .inlineMenuPanel[data-reduced-motion] & { transition: none; }
+	.inlineMenuPanel[data-condensed] & { padding: 0 4px 2px; gap: 0; }
 }
 
 .inlineMenuItems {
@@ -1352,7 +1467,8 @@ defineExpose({ adopt, focus, openConfirmation, cancelConfirmation, confirmationA
 	gap: 2px;
 	min-width: 0;
 	animation: hk3MenuItemsIn 220ms cubic-bezier(.22, 1, .36, 1) both;
-	.root[data-reduced-motion] & { animation: none; }
+	.root[data-reduced-motion] &, .inlineMenuPanel[data-reduced-motion] & { animation: none; }
+	.inlineMenuPanel[data-condensed] & { gap: 0; }
 }
 
 .menuHead {
@@ -1363,6 +1479,7 @@ defineExpose({ adopt, focus, openConfirmation, cancelConfirmation, confirmationA
 	color: var(--hk3-text);
 	font-size: calc(12px * var(--hk3-ui-scale, 1));
 	font-weight: 700;
+	.inlineMenuPanel[data-condensed] & { min-height: 36px; height: 36px; }
 }
 
 .menuBack {
@@ -2153,28 +2270,25 @@ defineExpose({ adopt, focus, openConfirmation, cancelConfirmation, confirmationA
 :global(html[data-hk3-size='small']) .root[data-compact] .cwInput,
 :global(html[data-hk3-size='small']) .root[data-compact] .pollInput { font-size: 16px; }
 
-// Mobile dock: keep the 44 × 40 tap target, with light carried by its background alone.
+// The mobile dock owns the shared inset; avoid stacking a second frame's padding.
+.root[data-compact]:not([data-deck]) {
+	padding: 0;
+	.pill { padding: 0; }
+}
+
+// Mobile dock: a plain 44 × 40 send target.
 .root[data-compact]:not([data-deck]) .send {
 	width: 44px;
 	height: 40px;
-	background: transparent;
+	background: color-mix(in srgb, var(--hk3-text) 5%, transparent);
 	background-image: none;
 	-webkit-backdrop-filter: none;
 	backdrop-filter: none;
-	border-radius: 50%;
-	isolation: isolate;
+	border-radius: 12px;
+	box-shadow: none;
 
-	&::before {
-		inset: -4px;
-		z-index: -1;
-		padding: 0;
-		border-radius: 50%;
-		background: radial-gradient(ellipse at center, color-mix(in srgb, currentColor 23%, transparent), color-mix(in srgb, currentColor 9%, transparent) 56%, transparent 78%);
-		-webkit-mask: none;
-		-webkit-mask-composite: source-over;
-		mask: none;
-		mask-composite: add;
-		filter: blur(5px);
-	}
+	&::before { content: none; }
+	&:hover:not(:disabled) { background: color-mix(in srgb, var(--hk3-text) 9%, transparent); box-shadow: none; }
+	&:active:not(:disabled) { background: color-mix(in srgb, var(--hk3-text) 13%, transparent); }
 }
 </style>

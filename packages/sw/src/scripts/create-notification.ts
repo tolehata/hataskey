@@ -53,6 +53,19 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 		*/
 		case 'notification':
 			switch (data.body.type) {
+				case 'hatady': {
+					const copy = i18n.ts._hata._hatady._push;
+					const subtype = data.body.subtype;
+					const body = subtype === 'follow' ? copy.follow
+						: subtype === 'comment' || subtype === 'mediaComment' || subtype === 'mediaReply' ? copy.comment
+						: subtype === 'reaction' || subtype === 'mediaReaction' ? copy.reaction : copy.update;
+					return [copy.title, {
+						body,
+						badge: iconUrl('bell'),
+						tag: `hatady:${data.body.id}`,
+						data,
+					}];
+				}
 				case 'follow': {
 					// users/showの型定義をswos.apiへ当てはめるのが困難なのでapiFetch.requestを直接使用
 					const account = await getAccountFromId(data.userId);

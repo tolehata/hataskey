@@ -78,7 +78,7 @@ describe('Hatask支援管理の権限境界と保持', () => {
 		expect(await ctx.service.show(me)).toEqual({ configured: false, settings: null, isSupporter: false, benefits: [], supporterCount: 0 });
 		expect(await ctx.service.supporters(me, 0, 30)).toEqual({ users: [], total: 0, hasMore: false });
 		expect(ctx.users.createQueryBuilder).not.toHaveBeenCalled();
-		expect((await ctx.service.adminShow()).settings.benefits).toHaveLength(16);
+		expect((await ctx.service.adminShow()).settings.benefits).toHaveLength(HATASK_SUPPORT_POLICY_KEYS.length);
 		await ctx.service.update(settings);
 		expect((await ctx.service.show(me)).configured).toBe(true);
 		await ctx.service.update({ ...settings, url: '' });
@@ -93,7 +93,7 @@ describe('Hatask支援管理の権限境界と保持', () => {
 		const ctx = setup(settings);
 		ctx.roles.findBy.mockResolvedValue([{ id: 'secretrole', name: 'SECRET NAME', policies: { canMakePrivateChannel: { value: true, useDefault: false, priority: 2 }, canManageCustomEmojis: { value: true } } } as unknown as MiRole]);
 		const result = await ctx.service.show(me);
-		expect(result.benefits).toHaveLength(15);
+		expect(result.benefits).toHaveLength(HATASK_SUPPORT_POLICY_KEYS.length - 1);
 		expect(result.benefits.find(b => b.key === 'driveCapacityMb')).toBeUndefined();
 		expect(result.benefits[0]).toMatchObject({ baseline: null, offered: { value: true } });
 		const serialized = JSON.stringify(result);
@@ -180,9 +180,26 @@ describe('Hatask支援管理の権限境界と保持', () => {
 });
 
 describe('支援特典の値と実効権限', () => {
-	test('13項目が実ポリシーに存在する', () => {
-		expect(HATASK_SUPPORT_POLICY_KEYS).toHaveLength(13);
+	test('14項目が実ポリシーに存在する', () => {
+		expect(HATASK_SUPPORT_POLICY_KEYS).toHaveLength(14);
 		for (const key of HATASK_SUPPORT_POLICY_KEYS) expect(DEFAULT_POLICIES).toHaveProperty(key);
+	});
+
+	test('絵文字申請の7日間上限は0件で利用不可、ロール値と既定値継承を反映する', async () => {
+		const key = 'emojiRequestLimit';
+		expect(supportSnapshot(key, { ...DEFAULT_POLICIES, emojiRequestLimit: 0 })).toMatchObject({ value: 0, available: false, unlimited: false });
+		expect(supportSnapshot(key, { ...DEFAULT_POLICIES, emojiRequestLimit: 10 })).toMatchObject({ value: 10, available: true, unlimited: false });
+		const offered = supportSnapshot(key, { ...DEFAULT_POLICIES, emojiRequestLimit: 30 });
+		expect(supportReflected(key, supportSnapshot(key, { ...DEFAULT_POLICIES, emojiRequestLimit: 10 }), offered)).toBe(false);
+		expect(supportReflected(key, supportSnapshot(key, { ...DEFAULT_POLICIES, emojiRequestLimit: 30 }), offered)).toBe(true);
+		const inherited = { policies: { emojiRequestLimit: { value: 30, useDefault: true } } } as unknown as MiRole;
+		expect(supportRolePolicies(DEFAULT_POLICIES, inherited, normalizeFavoriteFolderLimit).emojiRequestLimit).toBe(10);
+		const role = { policies: { emojiRequestLimit: { value: 30, useDefault: false } } } as unknown as MiRole;
+		expect(supportRolePolicies(DEFAULT_POLICIES, role, normalizeFavoriteFolderLimit).emojiRequestLimit).toBe(30);
+		const settings = configured();
+		const ctx = setup(settings);
+		await new AdminUpdate(ctx.service).exec({ settings }, me, null, null);
+		expect(ctx.meta.update).toHaveBeenCalledWith({ hataskSupport: settings });
 	});
 
 	test('お気に入り特典を既存設定と保存し、ロールの上限と子フォルダ権限を比較する', async () => {

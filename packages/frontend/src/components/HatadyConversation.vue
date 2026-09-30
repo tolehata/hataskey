@@ -4,16 +4,18 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 <HyDialog
 	ref="dialog"
 	:title="copy.title"
+	:variant="variant"
 	:inert="closePrompt"
 	:busy="sending"
 	@close="requestClose"
-	@closed="emit('closed')"
+	@closed="onClosed"
 >
 	<p v-if="loading" class="hy-empty">{{ copy.loading }}</p>
 	<p v-if="error && loading" class="hy-error" role="alert">{{ error }}</p>
 	<template v-if="!loading && activity">
 		<HatadyActivityCard
 			:activity="activity"
+			:variant="variant"
 			:showActions="false"
 			detailed
 			@openLog="() => {}"
@@ -23,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 			@openProfile="openProfile"
 		/>
 		<div :class="$style.recordActions">
-			<HatadyReactions :target="reactionTarget" :reactions="rootReactions" :myReaction="record?.myReaction ?? null"/>
+			<HatadyReactions :target="reactionTarget" :reactions="rootReactions" :myReaction="record?.myReaction ?? null" :variant="variant"/>
 			<span></span>
 			<button
 				v-if="activity.isMine"
@@ -67,6 +69,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					<Mfm v-else :text="c.text"/>
 					<div :class="$style.replyActions">
 						<HatadyReactions
+							:variant="variant"
 							:target="sessionId ? { mediaCommentId: c.id } : { commentId: c.id }"
 							:reactions="reactionMap(c.reactions)"
 							:myReaction="c.myReaction ?? null"
@@ -158,20 +161,23 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 </HyDialog>
 <HatadyDraftPrompt
 	v-if="closePrompt"
+	:variant="variant"
 	:title="conversationCopy.draftQuestion"
 	:error="error"
 	@save="leave(true)"
 	@discard="leave(false)"
-	@return="closePrompt = false"
+	@return="cancelClose"
 />
 </template>
 <script setup lang="ts">
 import type { HatadyActivity } from '@/utility/hatady-media.js';
+import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
+import { isOwnHatadyProfile, openOwnHatadyProfileIfNeeded } from '@/utility/hatady-activity-actions.js';
 import { computed, defineAsyncComponent, ref, onMounted, nextTick } from 'vue';
 import HyDialog from '@/components/HyDialog.vue';
 import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
 import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
-import { confirmHatadyRecordDeletion } from '@/utility/hatady-record-delete.js';
+import { confirmHatadyAction, confirmHatadyRecordDeletion } from '@/utility/hatady-record-delete.js';
 import HatadyReactions from '@/components/HatadyReactions.vue';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { emojiPicker } from '@/utility/emoji-picker.js';
@@ -180,7 +186,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
-const props = defineProps<{ logId?: string; initialLog?: any; sessionId?: string; workId?: string }>();
+const props = withDefaults(defineProps<{ logId?: string; initialLog?: any; sessionId?: string; workId?: string; variant?: HatadySurfaceVariant }>(), { variant: 'hatady' });
 const emit = defineEmits<{ (e: 'changed'): void; (e: 'deleted', activity: HatadyActivity): void; (e: 'closed'): void }>();
 const api = misskeyApi as unknown as (endpoint: string, payload: Record<string, unknown>) => Promise<any>;
 const copy = i18n.ts._hata._hatady._conversation,
@@ -202,6 +208,18 @@ const dialog = ref<any>(),
 	closePrompt = ref(false);
 let pendingLeave: (() => void) | null = null;
 let closing = true;
+let navigateToOwnProfile = false;
+
+function cancelClose() {
+	navigateToOwnProfile = false;
+	closePrompt.value = false;
+}
+
+function onClosed() {
+	emit('closed');
+	if (navigateToOwnProfile) openOwnHatadyProfileIfNeeded(undefined, props.variant);
+}
+
 const drafts = useHataFormDraft({
 	id: `hatady-reply:${props.sessionId ? 'session' : 'log'}:${props.sessionId || props.logId}`,
 	autoSave: false,
@@ -359,8 +377,7 @@ function leave(save: boolean) {
 }
 
 async function deleteComment(c: any) {
-	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteCommentConfirm });
-	if (canceled) return;
+	if (!(await confirmHatadyAction(props.variant, copy.deleteCommentConfirm))) return;
 	try {
 		await api(props.sessionId ? 'hata/hatady/media/comments/delete' : 'hata/hatady/comments/delete', {
 			commentId: c.id,
@@ -376,7 +393,7 @@ async function deleteComment(c: any) {
 function reportComment(c: any) {
 	const { dispose } = os.popup(
 		defineAsyncComponent(() => import('@/components/HatadyReport.vue')),
-		{ user: c.user, initialComment: `hatady:${props.sessionId ? 'media:comment' : 'comment'}:${c.id}\n${c.text}` },
+		{ user: c.user, initialComment: `hatady:${props.sessionId ? 'media:comment' : 'comment'}:${c.id}\n${c.text}`, variant: props.variant },
 		{ closed: () => dispose() },
 	);
 }
@@ -387,6 +404,7 @@ function reportRecord() {
 		{
 			user: activity.value.user,
 			initialComment: `hatady:${props.sessionId ? 'media:session' : 'log'}:${record.value.id}`,
+			variant: props.variant,
 		},
 		{ closed: () => dispose() },
 	);
@@ -399,7 +417,7 @@ async function editRecord() {
 			: (await import('@/components/HatadyComposer.vue')).default;
 		const { dispose } = os.popup(
 			component as any,
-			props.sessionId ? { work: work.value, editSession: record.value } : { editLog: record.value },
+			props.sessionId ? { work: work.value, editSession: record.value, variant: props.variant } : { editLog: record.value, variant: props.variant },
 			{
 				done: () => {
 					void reload();
@@ -415,7 +433,7 @@ async function deleteRecord() {
 	if (sending.value || !activity.value?.isMine) return;
 	sending.value = true;
 	try {
-		if (!await confirmHatadyRecordDeletion(activity.value)) return;
+		if (!await confirmHatadyRecordDeletion(activity.value, props.variant)) return;
 		emit('deleted', activity.value);
 		emit('changed');
 		dialog.value?.close();
@@ -432,7 +450,7 @@ function openWork() {
 		const component = media
 			? (await import('@/components/HatadyMediaWorkDetail.vue')).default
 			: (await import('@/components/HatadyBookDetail.vue')).default;
-		const { dispose } = os.popup(component as any, media ? { workId: id } : { bookId: id }, {
+		const { dispose } = os.popup(component as any, media ? { workId: id, variant: props.variant } : { bookId: id, variant: props.variant }, {
 			changed: () => {
 				void reload();
 				emit('changed');
@@ -443,10 +461,16 @@ function openWork() {
 }
 
 function openProfile(userId: string) {
+	if (isOwnHatadyProfile(userId, props.variant)) {
+		if (sending.value) return;
+		navigateToOwnProfile = true;
+		requestClose();
+		return;
+	}
 	requestClose(async () => {
 		const { dispose } = os.popup(
 			(await import('@/components/HatadyProfile.vue')).default,
-			{ userId },
+			{ userId, variant: props.variant },
 			{ closed: () => dispose() },
 		);
 	});

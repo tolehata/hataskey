@@ -152,9 +152,11 @@ const props = withDefaults(defineProps<{
 	asDrawer?: boolean;
 	asWindow?: boolean;
 	asReactionPicker?: boolean; // 今は使われてないが将来的に使いそう
+	autofocus?: boolean;
 	targetNote?: Misskey.entities.Note | null;
 }>(), {
 	showPinned: true,
+	autofocus: true,
 });
 
 const emit = defineEmits<{
@@ -383,8 +385,8 @@ function filterCategory(emoji: Misskey.entities.EmojiSimple, category: string): 
 	return category === '' ? (emoji.category === 'null' || !emoji.category) : emoji.category === category;
 }
 
-function focus() {
-	if (!['smartphone', 'tablet'].includes(deviceKind) && !isTouchUsing) {
+function focus(force = false) {
+	if (force || (!['smartphone', 'tablet'].includes(deviceKind) && !isTouchUsing)) {
 		searchEl.value?.focus({
 			preventScroll: true,
 		});
@@ -502,7 +504,7 @@ function settings() {
 }
 
 onMounted(() => {
-	focus();
+	if (props.autofocus) focus();
 });
 
 defineExpose({

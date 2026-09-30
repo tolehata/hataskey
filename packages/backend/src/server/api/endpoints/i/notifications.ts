@@ -7,7 +7,7 @@ import { In } from 'typeorm';
 import * as Redis from 'ioredis';
 import { Inject, Injectable } from '@nestjs/common';
 import type { NotesRepository } from '@/models/_.js';
-import { FilterUnionByProperty, notificationFilterTypes, obsoleteNotificationTypes } from '@/types.js';
+import { FilterUnionByProperty, hatadyNotificationSubtypes, notificationFilterTypes, obsoleteNotificationTypes } from '@/types.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { NotificationEntityService } from '@/core/entities/NotificationEntityService.js';
 import { NotificationService } from '@/core/NotificationService.js';
@@ -48,6 +48,11 @@ export const paramDef = {
 		untilDate: { type: 'integer' },
 		markAsRead: { type: 'boolean', default: true },
 		excludeBots: { type: 'boolean', default: false },
+		brand: { type: 'string', enum: ['all', 'standard', 'hatady', 'hatask', 'hataFeed'], default: 'all' },
+		includeBrands: { type: 'array', items: { type: 'string', enum: ['standard', 'hatady', 'hatask', 'hataFeed'] } },
+		includeHataskApp: { type: 'boolean' },
+		includeHatadySubtypes: { type: 'array', items: { type: 'string', enum: hatadyNotificationSubtypes } },
+		excludeHatadySubtypes: { type: 'array', items: { type: 'string', enum: hatadyNotificationSubtypes } },
 		// 後方互換のため、廃止された通知タイプも受け付ける
 		includeTypes: { type: 'array', items: {
 			type: 'string', enum: [...notificationFilterTypes, ...obsoleteNotificationTypes],
@@ -71,11 +76,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const sinceId = ps.sinceId ?? (ps.sinceDate ? this.idService.gen(ps.sinceDate!) : undefined);
 
 			// includeTypes が空の場合はクエリしない
-			if (ps.includeTypes && ps.includeTypes.length === 0) {
+			if ((ps.includeTypes && ps.includeTypes.length === 0 && ps.includeHataskApp !== true) || ps.includeBrands?.length === 0) {
 				return [];
 			}
 			// excludeTypes に全指定されている場合はクエリしない
-			if (notificationFilterTypes.every(type => ps.excludeTypes?.includes(type))) {
+			if (notificationFilterTypes.every(type => ps.excludeTypes?.includes(type)) && ps.includeHataskApp !== true) {
 				return [];
 			}
 
@@ -88,15 +93,16 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				limit: ps.limit,
 				includeTypes,
 				excludeTypes,
+				brand: ps.brand,
+				includeBrands: ps.includeBrands,
+				includeHataskApp: ps.includeHataskApp,
+				includeHatadySubtypes: ps.includeHatadySubtypes,
+				excludeHatadySubtypes: ps.excludeHatadySubtypes,
 				excludeBots: ps.excludeBots,
 			});
-
-			// Mark all as read
-			if (ps.markAsRead) {
-				this.notificationService.readAllNotification(me.id);
-			}
-
-			return await this.notificationEntityService.packMany(notifications, me.id);
+			const packed = await this.notificationEntityService.packMany(notifications, me.id);
+			if (ps.markAsRead) await this.notificationService.markNotificationsRead(me.id, packed.map(notification => notification.id));
+			return packed;
 		});
 	}
 }

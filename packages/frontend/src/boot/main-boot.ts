@@ -37,6 +37,7 @@ import { hideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
 import { enqueueHataDialog } from '@/utility/hata-dialog-queue.js';
 import { HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
 import { startHataskFlowerGrowthTracker } from '@/utility/hatask-flower-growth.js';
+import { acceptNotificationUnreadState } from '@/utility/notification-unread-state.js';
 
 export async function mainBoot() {
 	cleanupStaleUiElements();
@@ -428,26 +429,40 @@ export async function mainBoot() {
 			stream.on('announcementCreated', onAnnouncementCreated);
 
 			const main = markRaw(stream.useChannel('main', null, 'System'));
+			const notificationOwnerId = $i?.id;
+			const updateUnread = (state: { unreadNotificationsCount: number; revision: string }) => {
+				if ($i?.id !== notificationOwnerId) return;
+				const count = acceptNotificationUnreadState(notificationOwnerId, state);
+				if (count === null) return;
+				updateCurrentAccountPartial({ hasUnreadNotification: count > 0, unreadNotificationsCount: count });
+			};
+			let unreadSnapshotRequest = 0;
+			const refreshUnreadSnapshot = async () => {
+				const request = ++unreadSnapshotRequest;
+				if (!notificationOwnerId || $i?.id !== notificationOwnerId) return;
+				try {
+					const state = await misskeyApi('notifications/unread-count', {});
+					if (request === unreadSnapshotRequest && $i?.id === notificationOwnerId) updateUnread(state);
+				} catch { /* Live events remain authoritative until the next connection. */ }
+			};
+			stream.on('_connected_', refreshUnreadSnapshot);
+			if (stream.state === 'connected') void refreshUnreadSnapshot();
 
 			// 自分の情報が更新されたとき
 			main.on('meUpdated', i => {
-				updateCurrentAccountPartial(i);
+				if ($i?.id !== notificationOwnerId) return;
+				// 未読件数はrevision付き通知イベントだけから適用する。
+				const profile = { ...i } as typeof i & { hasUnreadNotification?: boolean; unreadNotificationsCount?: number };
+				delete profile.hasUnreadNotification;
+				delete profile.unreadNotificationsCount;
+				updateCurrentAccountPartial(profile);
 			});
 
-			main.on('readAllNotifications', () => {
-				updateCurrentAccountPartial({
-					hasUnreadNotification: false,
-					unreadNotificationsCount: 0,
-				});
-			});
-
-			main.on('unreadNotification', () => {
-				const unreadNotificationsCount = ($i?.unreadNotificationsCount ?? 0) + 1;
-				updateCurrentAccountPartial({
-					hasUnreadNotification: true,
-					unreadNotificationsCount,
-				});
-			});
+			main.on('readAllNotifications', updateUnread);
+			main.on('readNotification', updateUnread);
+			main.on('notificationChanged', updateUnread);
+			main.on('notificationFlushed', updateUnread);
+			main.on('unreadNotification', updateUnread);
 
 			main.on('newChatMessage', () => {
 				updateCurrentAccountPartial({ hasUnreadChatMessages: true });

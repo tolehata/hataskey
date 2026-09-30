@@ -91,6 +91,7 @@ import { i18n } from '@/i18n.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { hatadyDuration } from '@/utility/hatady-ui.js';
 import * as os from '@/os.js';
 
 const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'changed'): void }>();
@@ -231,11 +232,7 @@ function metricUnit(m: string): string {
 
 function fmtMetric(m: string | null, v: number): string {
 	if (m === 'minutes') {
-		const h = Math.floor(v / 60);
-		const mm = v % 60;
-		if (h > 0 && mm > 0) return i18n.tsx._hata._hatady._goals.durationHoursMinutes({ hours: h.toString(), minutes: mm.toString() });
-		if (h > 0) return i18n.tsx._hata._hatady._goals.durationHours({ hours: h.toString() });
-		return i18n.tsx._hata._hatady._goals.durationMinutes({ minutes: mm.toString() });
+		return hatadyDuration(Math.round(v * 60));
 	}
 	if (m === 'logs') return i18n.tsx._hata._hatady._goals.logCount({ count: v.toString() });
 	if (m === 'books') return i18n.tsx._hata._hatady._goals.bookCount({ count: v.toString() });

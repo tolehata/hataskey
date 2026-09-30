@@ -31,7 +31,7 @@ const database = { ...manager, transaction: async (...args) => {
 		return result;
 	} catch (error) { await query('ROLLBACK TO SAVEPOINT moderation_operation'); throw error; }
 } };
-const service = new RecordModerationService(database, { isModerator: async () => true }, { gen: () => `op${++sequence}` }, { pack: async data => data }, { publishMainStream() {} });
+const service = new RecordModerationService(database, { isModerator: async () => true }, { gen: () => `op${++sequence}` }, { pack: async data => data }, { publishMainStream() {} }, { changed() {} }, { refreshSourceNotifications: async () => {} });
 const moderator = { id: 'mod' };
 const target = (product, targetType, targetId) => ({ product, targetType, targetId });
 const request = async (value, patch = {}) => ({ ...value, version: (await service.preview(moderator, value)).version, requestId: `request-${String(++sequence).padStart(16, '0')}`, action: 'delete', reason: '対象記録の削除理由', warning: null, ...patch });

@@ -27,12 +27,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</section>
 
 	<section v-if="activeCategory == null" :class="[$style.section, $style.feature]" aria-labelledby="settings-mobile-feature">
-		<div :class="$style.featureBadge"><i class="ti ti-sparkles" aria-hidden="true"></i>{{ copy.mobile.recommendedInUse }}</div>
-		<h2 id="settings-mobile-feature"><span class="settingsBrand">Hataskey UI</span></h2>
-		<p>{{ copy.mobile.featureDescription }}</p>
+		<div :class="$style.featureBadge"><i class="ti ti-sparkles" aria-hidden="true"></i>{{ ui === 'hataskey3' ? i18n.ts.inUse : ui === 'simple' ? copy.mobile.recommendedInUse : i18n.ts.recommended }}</div>
+		<h2 id="settings-mobile-feature"><span class="settingsBrand">{{ ui === 'hataskey3' ? 'Hataskey UI S' : 'Hataskey UI' }}</span></h2>
+		<p v-if="ui === 'hataskey3'"><template v-for="(part, index) in i18n.ts._hata._uiSetup.ui3SettingsDescription.split(/(?<=そのまま、)/u)" :key="index"><br v-if="index > 0"/>{{ part }}</template></p>
+		<p v-else>{{ copy.mobile.featureDescription }}</p>
 		<div :class="$style.featureActions">
 			<button type="button" :class="[$style.featureLink, { [$style.itemActive]: activeItemId === props.featureItem.id }]" :aria-current="activeItemId === props.featureItem.id ? 'page' : undefined" @click="emit('select', props.featureItem)">{{ copy.mobile.openSettings }}<i class="ti ti-arrow-right" aria-hidden="true"></i></button>
-			<button type="button" :class="$style.featurePreview" :aria-label="copy.ui2.openPreview" @click="emit('preview')"><i class="ti ti-eye" aria-hidden="true"></i></button>
+			<button v-if="ui !== 'hataskey3'" type="button" :class="$style.featurePreview" :aria-label="copy.ui2.openPreview" @click="emit('preview')"><i class="ti ti-eye" aria-hidden="true"></i></button>
 		</div>
 	</section>
 
@@ -95,6 +96,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import type { SettingsSearchNavigationTargetV2 } from '@/utility/settings-search-v2-context.js';
 import { i18n } from '@/i18n.js';
+import { ui } from '@@/js/config.js';
 
 // 旗鯖fork: iconImage は Tabler の代わりに出す絵。⚠️あるときは icon を描かない。
 export type SettingsOverviewItem = SettingsSearchNavigationTargetV2 & { id: string; label: string; icon: string; iconImage?: string; brand?: string };

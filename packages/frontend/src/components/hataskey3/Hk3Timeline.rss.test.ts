@@ -3,10 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, h, inject, nextTick, reactive } from 'vue';
 import type { Component } from 'vue';
 import Hk3Timeline from './Hk3Timeline.vue';
-import { hk3Toasts, hk3PostedNote } from './hk3-state.js';
+import { hk3Toasts, hk3PostedNote, setHk3ToastsPaused } from './hk3-state.js';
 import { prefer } from '@/preferences.js';
 import { tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
 import { hk3PostContextKey } from './hk3-post-context.js';
+import { hk3ComposerEmojiHostKey } from './hk3-composer-emoji-host.js';
+import type { Hk3ComposerEmojiHost } from './hk3-composer-emoji-host.js';
 import type { Hk3PostContext } from './hk3-post-context.js';
 import type * as Misskey from 'cherrypick-js';
 
@@ -16,9 +18,11 @@ const mocks = vi.hoisted(() => ({
 	storage: new Map<string, string>(),
 	externalNotice: null as any,
 	externalReload: vi.fn(),
+	hatadyReload: vi.fn(), hatadyRefresh: vi.fn(),
 	intersection: null as null | ((entries: { isIntersecting: boolean }[]) => void),
 	entrance: vi.fn(), stopEntrance: vi.fn(),
 	commit: vi.fn(),
+	blockedTabs: new Set<string>(),
 }));
 vi.mock('./hk3-post-entrance.js', () => ({ animateHk3PostEntrance: mocks.entrance }));
 vi.mock('@/cache.js', async () => {
@@ -37,7 +41,7 @@ vi.mock('@/i.js', () => ({ $i: { id: 'me', mutedWords: [], hardMutedWords: [] } 
 vi.mock('@/i18n.js', () => ({ i18n: { tsx: { newNoteRecivedCount: ({ n }: { n: number }) => `${n} new notes` }, ts: {
 	options: 'Options', showRenotes: 'Renotes', fileAttachedOnly: 'Files', withSensitive: 'Sensitive', retry: 'Retry',
 	_hata: {
-		_hataskeyUi3: { tabHome: 'Home', tabLocal: 'Local', tabSocial: 'Social', tabGlobal: 'Global', tabTrending: 'Trending', tabExternalHome: 'External home', tabExternalLocal: 'External local', realtime: 'LIVE', retry: 'Retry', loadFailed: 'Load failed', _rss: { settings: 'RSS settings' } },
+		_hataskeyUi3: { tabHome: 'Home', tabLocal: 'Local', tabSocial: 'Social', tabGlobal: 'Global', tabTrending: 'Trending', tabHatady: 'Hatady', tabExternalHome: 'External home', tabExternalLocal: 'External local', realtime: 'LIVE', retry: 'Retry', loadFailed: 'Load failed', _rss: { settings: 'RSS settings' } },
 		_hatasabaUi: { _simple: { list: 'Lists', channel: 'Channels', antenna: 'Antennas', selectList: 'Select list', selectAntenna: 'Select antenna', switchList: 'Switch list', switchAntenna: 'Switch antenna', configureList: 'Configure list', configureAntenna: 'Configure antenna', noLists: 'No lists', noAntennas: 'No antennas', options: 'Options' } },
 	},
 } } }));
@@ -51,7 +55,7 @@ vi.mock('@/preferences.js', async () => {
 		animation: ref(false), enablePullToRefresh: ref(false), hataskeyUi3RssEnabled: ref(true), ltlEmojiVoteEnabled: ref(false), hataskeyUi3ComposerPosition: ref('bottom'),
 		'external.enabled': ref(false), 'external.token': ref(null), 'external.host': ref(''),
 		'external.enableOHTL': ref(false), 'external.enableOLTL': ref(false),
-		'simpleUi.topNav': ref([{ id: 'local', icon: '', label: 'Local', visible: true }]), 'simpleUi.showTrendingTab': ref(false),
+		'simpleUi.topNav': ref([{ id: 'local', icon: '', label: 'Local', visible: true }]), 'simpleUi.showTrendingTab': ref(false), 'simpleUi.showHatadyTab': ref(false),
 	} } };
 });
 vi.mock('./hk3-state.js', async () => {
@@ -76,7 +80,7 @@ vi.mock('@/local-storage.js', () => ({ miLocalStorage: {
 vi.mock('@/utility/external-api.js', () => ({ getExternalEmojiUrlMapForHost: () => ({}) }));
 vi.mock('@/events.js', () => ({ useGlobalEvent: vi.fn() }));
 vi.mock('@/composables/use-note-removal.js', () => ({ useNoteRemoval: () => ({ cancelAll: vi.fn(), remove: vi.fn() }) }));
-vi.mock('@/utility/hataskey-timeline-availability.js', () => ({ isHataskeyTimelineAllowed: () => true }));
+vi.mock('@/utility/hataskey-timeline-availability.js', () => ({ isHataskeyTimelineAllowed: (id: string) => !mocks.blockedTabs.has(id) }));
 vi.mock('@/utility/ltl-emoji-vote-anchor.js', () => ({ getLtlEmojiVoteAnchor: () => null }));
 vi.mock('@/utility/ltl-emoji-vote.js', async () => {
 	const { ref } = await import('vue');
@@ -106,6 +110,16 @@ vi.mock('@/components/MkExternalTimeline.vue', async () => {
 			useHataskeyTimelineNewNotes(() => props.newNotesNavbarKey, mocks.externalNotice);
 			expose({ reloadTimeline: mocks.externalReload });
 			return () => h('div', { 'data-external-timeline': props.src, 'data-sound': String(props.sound) });
+		},
+	}) };
+});
+vi.mock('@/components/MkHatadyTimeline.vue', async () => {
+	const { defineComponent, h } = await import('vue');
+	return { default: defineComponent({
+		props: ['variant', 'active', 'newNotesNavbarKey'],
+		setup(props, { expose }) {
+			expose({ reloadTimeline: mocks.hatadyReload, refreshFromPull: mocks.hatadyRefresh, releaseQueue: vi.fn() });
+			return () => h('div', { 'data-hatady-timeline': props.variant, 'data-active': String(props.active) });
 		},
 	}) };
 });
@@ -144,6 +158,7 @@ beforeEach(() => {
 	prefer.r.hataskeyUi3RssEnabled.value = true;
 	prefer.r['simpleUi.topNav'].value = [{ id: 'local', icon: '', label: 'Local', visible: true }];
 	prefer.r['simpleUi.showTrendingTab'].value = false;
+	prefer.r['simpleUi.showHatadyTab'].value = false;
 	prefer.r['external.enabled'].value = false;
 	prefer.r['external.token'].value = null;
 	prefer.r['external.host'].value = '';
@@ -155,8 +170,11 @@ beforeEach(() => {
 	mocks.sound.mockClear();
 	mocks.live = false;
 	mocks.storage.clear();
+	mocks.blockedTabs.clear();
 	mocks.api.mockReset().mockResolvedValue([]);
 	mocks.externalReload.mockReset().mockResolvedValue(undefined);
+	mocks.hatadyReload.mockReset().mockResolvedValue(undefined);
+	mocks.hatadyRefresh.mockReset().mockResolvedValue(undefined);
 	mocks.lists.mockReset().mockResolvedValue([]);
 	mocks.antennas.mockReset().mockResolvedValue([]);
 	mocks.dispose.mockReset();
@@ -525,6 +543,18 @@ describe('composer to timeline arrival', () => {
 
 	const ownNote = (id = 'posted') => ({ id, userId: 'me', user: { id: 'me', username: 'me' }, text: 'new post', files: [], visibility: 'public' }) as unknown as Misskey.entities.Note;
 
+	it.each([false, true])('opens the retained mobile composer for focus/confirmation and posting, without changing desktop behavior (compact=%s)', async compact => {
+		const target = window.document.createElement('div');
+		window.document.body.append(target);
+		cleanups.push(() => target.remove());
+		const reveal = vi.fn();
+		const { context } = await withComposer(compact, { mobileComposerTarget: target, onRevealComposer: reveal });
+		context.reveal?.();
+		const receipt = context.begin();
+		expect(reveal).toHaveBeenCalledTimes(compact ? 2 : 0);
+		receipt.cancel();
+	});
+
 	it.each([false, true])('deduplicates a stream echo before the API result and animates once (compact=%s)', async compact => {
 		const { host, context } = await withComposer(compact);
 		const receipt = context.begin();
@@ -662,6 +692,55 @@ describe('composer to timeline arrival', () => {
 });
 
 describe('UI S shared RSS banner', () => {
+	it('shows the header glow only at the measured scroll top and restores it on return', async () => {
+		const host = await mount();
+		const header = host.querySelector('header')!;
+		const viewport = host.querySelector<HTMLElement>('[data-timeline-tab-gestures]')!;
+		expect(header.hasAttribute('data-at-top')).toBe(true);
+		viewport.scrollTop = 2;
+		viewport.dispatchEvent(new Event('scroll'));
+		await settle();
+		expect(header.hasAttribute('data-at-top')).toBe(true);
+		viewport.scrollTop = 3;
+		viewport.dispatchEvent(new Event('scroll'));
+		await settle();
+		expect(header.hasAttribute('data-at-top')).toBe(false);
+		viewport.scrollTop = -4;
+		viewport.dispatchEvent(new Event('scroll'));
+		await settle();
+		expect(header.hasAttribute('data-at-top')).toBe(true);
+	});
+
+	it('gates the glow for hidden, confirming and collapsing timelines and empty desktop headers', async () => {
+		const props = reactive({ active: true, confirmationActive: false });
+		const host = await mount(false, undefined, props);
+		const header = host.querySelector('header')!;
+		const viewport = host.querySelector<HTMLElement>('[data-timeline-tab-gestures]')!;
+		expect(header.hasAttribute('data-at-top')).toBe(true);
+		props.active = false;
+		await settle();
+		expect(header.hasAttribute('data-at-top')).toBe(false);
+		viewport.scrollTop = 30;
+		props.active = true;
+		await settle();
+		expect(header.hasAttribute('data-at-top')).toBe(false);
+		viewport.scrollTop = 0;
+		viewport.dispatchEvent(new Event('scroll'));
+		await settle();
+		expect(header.hasAttribute('data-at-top')).toBe(true);
+		props.confirmationActive = true;
+		await settle();
+		expect(header.hasAttribute('data-at-top')).toBe(false);
+		props.confirmationActive = false;
+		host.setAttribute('data-hata-timeline-collapse-active', 'true');
+		await settle();
+		expect(header.hasAttribute('data-at-top')).toBe(false);
+		host.removeAttribute('data-hata-timeline-collapse-active');
+		prefer.r.hataskeyUi3RssEnabled.value = false;
+		await settle();
+		expect(header.hasAttribute('data-at-top')).toBe(false);
+	});
+
 	it('keeps the reader mounted through a notice, queued notes, and their dismissal', async () => {
 		const host = await mount();
 		const reader = host.querySelector('[data-rss-reader]');
@@ -696,6 +775,186 @@ describe('UI S shared RSS banner', () => {
 		await settle();
 		host.querySelector<HTMLButtonElement>('[role="menuitem"]')?.click();
 		expect(mocks.navigate).toHaveBeenCalledWith('/settings/preferences?destination=hataskey-ui-s#hataskey-ui-s-rss-heading');
+	});
+});
+
+describe('UI S mobile capsule navbar', () => {
+	function choices(host: Element) {
+		return [...host.querySelectorAll<HTMLButtonElement>('[data-mobile-choice]')];
+	}
+
+	function choice(host: Element, id: string) {
+		return host.querySelector<HTMLButtonElement>(`[data-mobile-choice="${id}"]`)!;
+	}
+
+	it('provides an always mounted header host and disables it during mobile interruptions', async () => {
+		let emojiHost: Hk3ComposerEmojiHost | undefined;
+		const props = reactive({ active: true, confirmationActive: false, mobileMenuOpen: false });
+		const host = await mount(true, { setup: () => { emojiHost = inject(hk3ComposerEmojiHostKey); return () => h('div'); } }, props);
+		const target = host.querySelector<HTMLElement>('[data-hk3-composer-emoji-host]');
+		expect(emojiHost?.target.value).toBe(target);
+		expect(emojiHost?.enabled.value).toBe(true);
+		emojiHost!.open.value = true;
+		await settle();
+		expect(target?.dataset.open).toBe('true');
+		navButton(host, 'Options').click(); await settle();
+		expect(emojiHost?.enabled.value).toBe(false);
+		expect(target?.dataset.open).toBeUndefined();
+		navButton(host, 'Options').click(); await settle();
+		props.mobileMenuOpen = true; await settle();
+		expect(emojiHost?.enabled.value).toBe(false);
+		expect(host.querySelector('[data-hk3-composer-emoji-host]')).toBe(target);
+		props.mobileMenuOpen = false;
+		props.confirmationActive = true; await settle();
+		expect(emojiHost?.enabled.value).toBe(false);
+	});
+
+	it('reverses the lower Home menu order while preserving its order and availability after updates', async () => {
+		prefer.r['simpleUi.topNav'].value = [
+			{ id: 'mixed', icon: 'ti ti-moon', label: 'Global', visible: true },
+			{ id: 'social', icon: 'ti ti-star', label: 'Social', visible: true },
+			{ id: 'local', icon: 'ti ti-sun', label: 'Local', visible: true },
+			{ id: 'following', icon: 'ti ti-home', label: 'Home', visible: false },
+		];
+		mocks.blockedTabs.add('social');
+		const host = await mount(true);
+		const ids = () => choices(host).map(button => button.dataset.mobileChoice);
+		const lowerIds = () => timelineVm!.mobileNavigation.choices.map(item => item.id);
+		expect(ids()).toEqual(lowerIds().reverse());
+		expect(ids()).not.toContain('social');
+		expect(ids()).not.toContain('following');
+		expect(choice(host, 'mixed').querySelector('.ti-moon')).not.toBeNull();
+		expect(choice(host, 'local').querySelector('.ti-sun')).not.toBeNull();
+		const reordered = lowerIds().reverse();
+		timelineVm!.mobileNavigation.reorder(reordered);
+		await settle();
+		expect(lowerIds()).toEqual(reordered);
+		expect(ids()).toEqual([...reordered].reverse());
+		prefer.r['simpleUi.topNav'].value = [{ id: 'local', icon: 'ti ti-sun', label: 'Local', visible: true }];
+		await settle();
+		expect(ids()).toEqual(lowerIds().reverse());
+		expect(ids()).not.toContain('mixed');
+	});
+
+	it('reveals an offscreen selected label within the capsule after dock selection and reorder', async () => {
+		prefer.r['simpleUi.topNav'].value = ['following', 'local'].map(id => ({ id, icon: '', label: id, visible: true }));
+		const host = await mount(true);
+		const capsule = host.querySelector<HTMLElement>('[data-mobile-capsule]')!;
+		const home = choice(host, 'following');
+		vi.spyOn(capsule, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 120, 44));
+		vi.spyOn(home, 'getBoundingClientRect').mockReturnValue(new DOMRect(180, 0, 80, 40));
+		timelineVm!.mobileNavigation.select('following'); await settle();
+		expect(capsule.scrollLeft).toBe(160);
+		capsule.scrollLeft = 0;
+		timelineVm!.mobileNavigation.reorder([...timelineVm!.mobileNavigation.choices.map(item => item.id)].reverse());
+		await settle();
+		expect(capsule.scrollLeft).toBe(160);
+	});
+
+	it('selects tabs, scrolls to top on a repeated tap, and keeps RSS and notices below the capsule', async () => {
+		prefer.r['simpleUi.topNav'].value = ['following', 'local'].map(id => ({ id, icon: '', label: id, visible: true }));
+		const host = await mount(true);
+		const capsule = host.querySelector('[data-mobile-capsule]')!;
+		const reader = host.querySelector('[data-rss-reader]')!;
+		expect(capsule.compareDocumentPosition(reader) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		const home = choice(host, 'following');
+		expect(home.getAttribute('aria-label')).toBe('Home');
+		home.click(); await settle();
+		expect(home.dataset.active).toBe('true');
+		expect(home.querySelector('span')?.textContent).toBe('Home');
+		expect(mocks.storage.get('hataskeyUi3Tab')).toBe('following');
+		const requests = mocks.api.mock.calls.length;
+		home.click(); await settle();
+		expect(mocks.api.mock.calls).toHaveLength(requests);
+		hk3Toasts.value = [{ id: 'notice', icon: 'star', text: 'Saved' }];
+		await settle();
+		expect(host.querySelector('[data-kind="toast"]')).not.toBeNull();
+		expect(host.querySelector('[data-rss-reader]')).toBe(reader);
+	});
+
+	it('includes trending and linked external timelines only when available', async () => {
+		prefer.r['simpleUi.showTrendingTab'].value = true;
+		prefer.r['external.enabled'].value = true;
+		prefer.r['external.token'].value = 'token';
+		prefer.r['external.enableOHTL'].value = true;
+		prefer.r['external.enableOLTL'].value = true;
+		const host = await mount(true);
+		for (const id of ['trending', 'ohtl', 'oltl']) expect(choice(host, id)).not.toBeNull();
+		choice(host, 'oltl').click(); await settle();
+		expect(choice(host, 'oltl').dataset.active).toBe('true');
+		prefer.r['external.token'].value = null;
+		await settle();
+		expect(choices(host).some(button => button.dataset.mobileChoice === 'oltl')).toBe(false);
+	});
+
+	it('shows Hatady after Trending without opening a note stream, and routes refresh to the Hatady timeline', async () => {
+		prefer.r['simpleUi.showTrendingTab'].value = true;
+		prefer.r['simpleUi.showHatadyTab'].value = true;
+		const host = await mount(true);
+		const ids = choices(host).map(button => button.dataset.mobileChoice);
+		expect(ids.indexOf('hatady')).toBe(ids.indexOf('trending') + 1);
+		const streams = mocks.channel.mock.calls.length;
+		choice(host, 'hatady').click(); await settle();
+		expect(host.querySelector('[data-hatady-timeline="uis"]')).not.toBeNull();
+		expect(mocks.channel.mock.calls).toHaveLength(streams);
+		expect(mocks.hatadyReload).toHaveBeenCalled();
+		await timelineVm?.reload();
+		expect(mocks.hatadyReload).toHaveBeenCalledTimes(2);
+	});
+
+	it('restores a saved Hatady tab on startup without requesting a note timeline', async () => {
+		prefer.r['simpleUi.showHatadyTab'].value = true;
+		mocks.storage.set('hataskeyUi3Tab', 'hatady');
+		const host = await mount(true);
+		expect(choice(host, 'hatady').dataset.active).toBe('true');
+		expect(host.querySelector('[data-hatady-timeline="uis"]')).not.toBeNull();
+		expect(mocks.channel).not.toHaveBeenCalled();
+		expect(mocks.api).not.toHaveBeenCalled();
+	});
+
+	it('opens collections and channel, and retains collection switch and settings controls', async () => {
+		mocks.lists.mockResolvedValue([{ id: 'saved', name: 'My list' }]);
+		const host = await mount(true);
+		choice(host, 'list').click(); await settle();
+		expect(choice(host, 'list').getAttribute('aria-label')).toBe('Lists · My list');
+		expect(choice(host, 'list').querySelector('span')?.textContent).toBe('Lists · My list');
+		navButton(host, 'Switch list').click(); await settle();
+		expect(host.querySelector('[data-collection-picker="list"]')).not.toBeNull();
+		navButton(host, 'Configure list').click();
+		expect(mocks.navigate).toHaveBeenLastCalledWith('/my/lists/saved');
+		choice(host, 'channel').click();
+		expect(mocks.navigate).toHaveBeenLastCalledWith('/channels');
+	});
+
+	it('keeps all filters, LIVE and RSS settings reachable from compact options', async () => {
+		const host = await mount(true);
+		navButton(host, 'Options').click(); await settle();
+		const menu = host.querySelector('[role="menu"]')!;
+		expect([...menu.querySelectorAll('button')].map(button => button.textContent)).toEqual(['Renotes', 'Files', 'Sensitive', 'LIVE', 'RSS settings']);
+		expect(menu.querySelectorAll('[role="menuitemcheckbox"]')).toHaveLength(4);
+		const rss = [...menu.querySelectorAll('button')].find(button => button.textContent === 'RSS settings')!;
+		rss.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+		expect(menu.isConnected).toBe(true);
+		rss.dispatchEvent(new MouseEvent('click', { bubbles: true })); await settle();
+		expect(mocks.navigate).toHaveBeenLastCalledWith('/settings/preferences?destination=hataskey-ui-s#hataskey-ui-s-rss-heading');
+		expect(menu.isConnected).toBe(false);
+	});
+
+	it('gates tabs while inactive, confirming or showing the mobile menu and omits capsule on desktop', async () => {
+		prefer.r['simpleUi.topNav'].value = ['following', 'local'].map(id => ({ id, icon: '', label: id, visible: true }));
+		const props = reactive({ active: true, confirmationActive: false, mobileMenuOpen: false });
+		const host = await mount(true, undefined, props);
+		for (const key of ['active', 'confirmationActive', 'mobileMenuOpen'] as const) {
+			if (key === 'active') props.active = false; else props[key] = true;
+			await settle();
+			expect(choice(host, 'following').disabled).toBe(true);
+			choice(host, 'following').click(); await settle();
+			expect(choice(host, 'local').dataset.active).toBe('true');
+			if (key === 'active') props.active = true; else props[key] = false;
+		}
+		const desktop = await mount();
+		expect(desktop.querySelector('[data-mobile-navbar]')).toBeNull();
+		expect(desktop.querySelector('[data-hk3-composer-emoji-host]')).toBeNull();
 	});
 });
 
@@ -805,6 +1064,58 @@ describe('UI S new notes shared content', () => {
 
 describe('UI S navbar pull refresh', () => {
 	function makeNote(id: string) { return { id, userId: 'other', user: { id: 'other' }, text: 'body' }; }
+
+	it.each([[false, false], [false, true], [true, false], [true, true]])('keeps feedback and deferred notices stable with composer open=%s, RSS=%s', async (open, rssEnabled) => {
+		vi.useFakeTimers();
+		prefer.r.enablePullToRefresh.value = true;
+		prefer.r.hataskeyUi3RssEnabled.value = rssEnabled;
+		mocks.api.mockResolvedValue([makeNote('original')]);
+		const target = window.document.createElement('div'); window.document.body.append(target);
+		cleanups.push(() => target.remove());
+		const props = reactive({ mobileComposerTarget: target, mobileComposerOpen: open });
+		const host = await mount(true, undefined, props);
+		const rss = host.querySelector('[data-rss-reader]');
+		const note = host.querySelector('[data-rendered-note]')!;
+		note.dispatchEvent(new MouseEvent('mousedown', { button: 1, screenY: 0, bubbles: true }));
+		props.mobileComposerOpen = !open; await settle();
+		window.dispatchEvent(new MouseEvent('mousemove', { screenY: 180, cancelable: true })); await settle();
+		expect(timelineVm!.mobilePullState).toMatchObject({ phase: 'ready', presentation: open ? 'dock' : 'navbar' });
+		expect(host.querySelector('[data-pulling]') != null).toBe(!open);
+		if (rssEnabled) expect(rss?.getAttribute('data-paused')).toBe('true');
+		let finish!: (notes: unknown[]) => void;
+		mocks.api.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+		window.dispatchEvent(new MouseEvent('mouseup')); await settle();
+		await vi.advanceTimersByTimeAsync(250);
+		expect(timelineVm!.mobilePullState).toMatchObject({ phase: 'refreshing', height: 56 });
+		hk3Toasts.value = [{ id: 'hourly-during-pull', icon: 'clock', text: 'Hourly notice' }];
+		mocks.note?.(makeNote('during-refresh')); await settle();
+		if (!open) expect(host.querySelector('[data-kind="toast"]')).toBeNull();
+		expect(setHk3ToastsPaused).toHaveBeenLastCalledWith(expect.any(Symbol), true);
+		finish([makeNote('original')]); await settle();
+		expect(timelineVm!.mobilePullState.phase).toBe('success');
+		await vi.advanceTimersByTimeAsync(1000); await settle();
+		expect(timelineVm!.mobilePullState.phase).toBe('idle');
+		expect(setHk3ToastsPaused).toHaveBeenLastCalledWith(expect.any(Symbol), false);
+		expect(host.querySelector('[data-rss-reader]')).toBe(rss);
+		if (rssEnabled) expect(rss?.getAttribute('data-paused')).toBe('false');
+		expect(host.textContent).toContain('Hourly notice');
+		hk3Toasts.value = []; await settle();
+		expect(host.querySelector('[data-kind="queue"]')?.getAttribute('aria-label')).toBe('1 new notes');
+	});
+
+	it('does not begin a pull while the composer emoji picker is open', async () => {
+		vi.useFakeTimers(); prefer.r.enablePullToRefresh.value = true;
+		mocks.api.mockResolvedValue([makeNote('original')]);
+		let emojiHost: Hk3ComposerEmojiHost | undefined;
+		const host = await mount(true, { setup: () => { emojiHost = inject(hk3ComposerEmojiHostKey); return () => h('div'); } });
+		emojiHost!.open.value = true; await settle();
+		host.querySelector('[data-rendered-note]')!.dispatchEvent(new MouseEvent('mousedown', { button: 1, screenY: 0, bubbles: true }));
+		window.dispatchEvent(new MouseEvent('mousemove', { screenY: 180 }));
+		window.dispatchEvent(new MouseEvent('mouseup')); await vi.advanceTimersByTimeAsync(1000); await settle();
+		expect(mocks.api).toHaveBeenCalledOnce();
+		expect(timelineVm!.mobilePullState.phase).toBe('idle');
+		expect(host.querySelector('[data-pulling]')).toBeNull();
+	});
 
 	it('reloads the external timeline through its exposed method on an upward dock pull', async () => {
 		vi.useFakeTimers();

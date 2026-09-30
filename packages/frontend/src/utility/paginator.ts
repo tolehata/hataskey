@@ -63,6 +63,7 @@ export interface IPaginator<T = unknown, _T = T & MisskeyEntity> {
 	releaseQueue(): void;
 	removeItem(id: string): void;
 	updateItem(id: string, updater: (item: _T) => _T): void;
+	insertItemAt(item: _T, index: number, queue?: boolean): void;
 }
 
 export class Paginator<
@@ -103,6 +104,7 @@ export class Paginator<
 	private searchParamName: keyof E['req'] | 'search';
 	private canFetchDetection: 'safe' | 'limit' | null = null;
 	private aheadQueue: T[] = [];
+	private requestGeneration = 0;
 	private useShallowRef: SRef;
 
 	// 配列内の要素をどのような順序で並べるか
@@ -172,6 +174,7 @@ export class Paginator<
 		this.releaseQueue = this.releaseQueue.bind(this);
 		this.removeItem = this.removeItem.bind(this);
 		this.updateItem = this.updateItem.bind(this);
+		this.insertItemAt = this.insertItemAt.bind(this);
 	}
 
 	private getNewestId(): string | null | undefined {
@@ -188,11 +191,14 @@ export class Paginator<
 	}
 
 	public async init(): Promise<void> {
+		const generation = ++this.requestGeneration;
 		this.items.value = [];
 		this.aheadQueue = [];
 		this.queuedAheadItems.value = [];
 		this.queuedAheadItemsCount.value = 0;
 		this.fetching.value = true;
+		this.fetchingOlder.value = false;
+		this.fetchingNewer.value = false;
 
 		const data: E['req'] = {
 			...(typeof this.params === 'function' ? this.params() : this.params),
@@ -212,12 +218,14 @@ export class Paginator<
 		};
 
 		const apiRes = (await misskeyApi<E['res'], Endpoint, E['req']>(this.endpoint, data).catch(err => {
-			this.error.value = true;
-			this.fetching.value = false;
+			if (generation === this.requestGeneration) {
+				this.error.value = true;
+				this.fetching.value = false;
+			}
 			return null;
 		})) as T[] | null;
 
-		if (apiRes == null) {
+		if (apiRes == null || generation !== this.requestGeneration) {
 			return;
 		}
 
@@ -252,6 +260,7 @@ export class Paginator<
 
 	public async fetchOlder(): Promise<void> {
 		if (!this.canFetchOlder.value || this.fetching.value || this.fetchingOlder.value || this.items.value.length === 0) return;
+		const generation = this.requestGeneration;
 		this.fetchingOlder.value = true;
 
 		const data: E['req'] = {
@@ -270,6 +279,7 @@ export class Paginator<
 			return null;
 		})) as T[] | null;
 
+		if (generation !== this.requestGeneration) return;
 		this.fetchingOlder.value = false;
 
 		if (apiRes == null) {
@@ -302,6 +312,8 @@ export class Paginator<
 	public async fetchNewer(options: {
 		toQueue?: boolean;
 	} = {}): Promise<void> {
+		if (this.fetchingNewer.value) return;
+		const generation = this.requestGeneration;
 		this.fetchingNewer.value = true;
 
 		const data: E['req'] = {
@@ -320,6 +332,7 @@ export class Paginator<
 			return null;
 		})) as T[] | null;
 
+		if (generation !== this.requestGeneration) return;
 		this.fetchingNewer.value = false;
 
 		if (apiRes == null || apiRes.length === 0) {
@@ -398,7 +411,9 @@ export class Paginator<
 	}
 
 	public removeItem(id: string): void {
-		// TODO: queueからも消す
+		this.aheadQueue = this.aheadQueue.filter(item => item.id !== id);
+		this.queuedAheadItems.value = this.aheadQueue.slice();
+		this.queuedAheadItemsCount.value = this.aheadQueue.length;
 
 		const index = this.items.value.findIndex(x => x.id === id);
 		if (index !== -1) {
@@ -408,12 +423,25 @@ export class Paginator<
 	}
 
 	public updateItem(id: string, updater: (item: T) => T): void {
-		// TODO: queueのも更新
+		this.aheadQueue = this.aheadQueue.map(item => item.id === id ? updater(item) : item);
+		this.queuedAheadItems.value = this.aheadQueue.slice();
 
 		const index = this.items.value.findIndex(x => x.id === id);
 		if (index !== -1) {
 			const item = this.items.value[index]!;
 			this.items.value[index] = updater(item);
+			if (this.useShallowRef) triggerRef(this.items);
+		}
+	}
+
+	public insertItemAt(item: T, index: number, queue = false): void {
+		if (this.items.value.some(existing => existing.id === item.id) || this.aheadQueue.some(existing => existing.id === item.id)) return;
+		if (queue) {
+			this.aheadQueue.splice(Math.max(0, Math.min(index, this.aheadQueue.length)), 0, item);
+			this.queuedAheadItems.value = this.aheadQueue.slice();
+			this.queuedAheadItemsCount.value = this.aheadQueue.length;
+		} else {
+			this.items.value.splice(Math.max(0, Math.min(index, this.items.value.length)), 0, item);
 			if (this.useShallowRef) triggerRef(this.items);
 		}
 	}

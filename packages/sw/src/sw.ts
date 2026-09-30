@@ -12,6 +12,19 @@ import { createEmptyNotification, createNotification } from '@/scripts/create-no
 import { swLang } from '@/scripts/lang.js';
 import * as swos from '@/scripts/operations.js';
 
+async function closeReadNotifications(userId: string, ids: readonly string[]): Promise<void> {
+	if (ids.length === 0) return;
+	const readIds = new Set(ids);
+	for (const notification of await globalThis.registration.getNotifications()) {
+		const data = notification.data as PushNotificationDataMap[keyof PushNotificationDataMap] | undefined;
+		if (data?.type === 'notification' && data.userId === userId && readIds.has(data.body.id)) notification.close();
+	}
+}
+
+async function markNotificationRead(userId: string, id: string): Promise<void> {
+	await swos.api('notifications/mark-as-read', userId, { notificationIds: [id] });
+}
+
 globalThis.addEventListener('install', (ev) => {
 	// 旗鯖fork: 新しいSWを即座に有効化する(待機フェーズをスキップ)。
 	//   これにより、オフライン画面など SW 由来の変更を既存ユーザーにも強制的に反映する。
@@ -86,9 +99,12 @@ globalThis.addEventListener('push', ev => {
 
 				return createNotification(data);
 			case 'readAllNotifications':
-				await globalThis.registration.getNotifications()
-					.then(notifications => notifications.forEach(n => n.tag !== 'read_notification' && n.close()));
-				break;
+			case 'notificationChanged':
+				await closeReadNotifications(data.userId, data.body?.ids ?? []);
+				return;
+			case 'readNotification':
+				await closeReadNotifications(data.userId, [data.body.id]);
+				return;
 		}
 
 		await createEmptyNotification();
@@ -111,10 +127,10 @@ globalThis.addEventListener('notificationclick', (ev: ServiceWorkerGlobalScopeEv
 			case 'notification':
 				switch (action) {
 					case 'follow':
-						if ('userId' in data.body) await swos.api('following/create', loginId, { userId: data.body.userId });
+						if ('userId' in data.body && data.body.userId != null) await swos.api('following/create', loginId, { userId: data.body.userId });
 						break;
 					case 'showUser':
-						if ('user' in data.body) client = await swos.openUser(Misskey.acct.toString(data.body.user), loginId);
+						if ('user' in data.body && data.body.user != null) client = await swos.openUser(Misskey.acct.toString(data.body.user), loginId);
 						break;
 					case 'reply':
 						if ('note' in data.body) client = await swos.openPost({ reply: data.body.note }, loginId);
@@ -168,6 +184,9 @@ globalThis.addEventListener('notificationclick', (ev: ServiceWorkerGlobalScopeEv
 								break;
 							case 'reaction':
 								client = await swos.openNote(data.body.note.id, loginId);
+								break;
+							case 'hatady':
+								client = await swos.openClient('push', `/hatady?notificationId=${encodeURIComponent(data.body.id)}`, loginId);
 								break;
 							case 'chatRoomInvitationReceived':
 								client = await swos.openClient('push', '/chat', loginId);
@@ -224,7 +243,7 @@ globalThis.addEventListener('notificationclick', (ev: ServiceWorkerGlobalScopeEv
 			client.focus();
 		}
 		if (data.type === 'notification') {
-			await swos.sendMarkAllAsRead(loginId);
+			await markNotificationRead(loginId, data.body.id);
 		}
 
 		notification.close();
@@ -236,7 +255,7 @@ globalThis.addEventListener('notificationclose', (ev: ServiceWorkerGlobalScopeEv
 
 	ev.waitUntil((async (): Promise<void> => {
 		if (data.type === 'notification') {
-			await swos.sendMarkAllAsRead(data.userId);
+			await markNotificationRead(data.userId, data.body.id);
 		}
 		return;
 	})());

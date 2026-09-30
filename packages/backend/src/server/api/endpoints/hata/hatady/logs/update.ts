@@ -37,7 +37,7 @@ export const paramDef = {
 		pageTo: { type: 'integer', minimum: 0, maximum: 100000, nullable: true },
 		studiedAt: { type: 'string', pattern: HATADY_MEDIA_DATE_TIME_PATTERN },
 		title: { type: 'string', minLength: 1, maxLength: 512 },
-		subject: { type: 'string', minLength: 1, maxLength: 64 },
+		subject: { type: 'string', minLength: 1, maxLength: 128 },
 		tag: { type: 'string', enum: ['strength', 'weak', 'interest', 'movie', 'game', null], nullable: true },
 		body: { type: 'string', maxLength: 4096, nullable: true },
 		durationMinutes: { type: 'integer', minimum: 0, maximum: 100000 },

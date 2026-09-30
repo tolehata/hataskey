@@ -93,7 +93,7 @@ const generalPreferenceKeys = [
 
 // お知らせ既読・チュートリアル完了などの進行状態は「設定」ではないため含めない。
 const hatasabaUiPreferenceKeys = [
-	'simpleUi.showTrendingTab', 'simpleUi.topNav', 'simpleUi.bottomNav', 'simpleUi.sidebar', 'simpleUi.widgetBorder',
+	'simpleUi.showTrendingTab', 'simpleUi.showHatadyTab', 'simpleUi.topNav', 'simpleUi.bottomNav', 'simpleUi.sidebar', 'simpleUi.widgetBorder',
 	'simpleUi.directProfile', 'simpleUi.glassEffect', 'simpleUi.showPageHeader', 'simpleUi.deckMode', 'simpleUi.sidebarCollapsed',
 	'simpleUi.topNavMode', 'simpleUi.deckNoBannerBg', 'simpleUi.normalNoBannerBg', 'simpleUi.profileNoBannerBg',
 	'simpleUi.deckLatestNoteText', 'simpleUi.glassUiCardOpacity', 'simpleUi.showLegacyChannelPostButton',
@@ -229,6 +229,16 @@ const sidebarItemSchema: NestedSchema = {
 	},
 };
 
+const notificationFilterDetailsSchema: NestedSchema = {
+	type: 'object',
+	fields: {
+		includeBrands: optional({ type: 'nullable', value: { type: 'array', item: stringSchema(128, 1), maxItems: 100 } }),
+		includeHataskApp: optional({ type: 'boolean' }),
+		excludeHatadySubtypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
+		knownHatadySubtypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
+	},
+};
+
 const deckColumnSchema: NestedSchema = {
 	type: 'object',
 	fields: {
@@ -244,6 +254,7 @@ const deckColumnSchema: NestedSchema = {
 		fullHeight: optional({ type: 'boolean' }),
 		excludeTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
 		notificationFilterKnownTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
+		notificationFilterDetails: optional(notificationFilterDetailsSchema),
 		excludeBots: optional({ type: 'boolean' }),
 	},
 };
@@ -260,6 +271,7 @@ const deckTabSchema: NestedSchema = {
 		tabColor: optional(nullableStringSchema),
 		excludeTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
 		notificationFilterKnownTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
+		notificationFilterDetails: optional(notificationFilterDetailsSchema),
 		excludeBots: optional({ type: 'boolean' }),
 	},
 };

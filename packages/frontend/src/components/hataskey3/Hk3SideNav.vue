@@ -459,15 +459,39 @@ function openAccountMenu(ev: MouseEvent) {
 
 .badge, .railBadge {
 	position: absolute;
-	background: var(--hk3-accent);
-	color: var(--hk3-bg);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	min-width: 18px;
+	min-height: 18px;
+	padding: 1px 5px;
+	border: 1px solid color-mix(in srgb, var(--hk3-text) 12%, transparent);
+	border-radius: 999px;
+	background: color-mix(in srgb, color-mix(in srgb, var(--hk3-bg, var(--MI_THEME-panel)) 94%, var(--hk3-accent)) 88%, transparent);
+	color: var(--hk3-text, var(--MI_THEME-fg));
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%), 0 2px 5px rgb(0 0 0 / 10%);
 	font-size: calc(11px * var(--hk3-ui-scale, 1));
 	font-weight: 800;
-	padding: 1px calc(5px * var(--hk3-ui-scale, 1));
-	line-height: 1.4;
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+	white-space: nowrap;
 }
 
-.badge { top: 8px; right: 8px; }
+.badge { top: 6px; right: 6px; }
+
+.item:is([data-menu-id="chat"], [data-menu-id="announcements"]) .badge,
+.railItem:is([data-menu-id="chat"], [data-menu-id="announcements"]) .railBadge {
+	min-width: 6px;
+	min-height: 6px;
+	padding: 0;
+	border: 0;
+	background: var(--hk3-accent);
+	box-shadow: none;
+	font-size: 0;
+}
 
 .item[data-brand] .itemLabel {
 	font-family: 'Righteous', system-ui, sans-serif;
@@ -522,9 +546,7 @@ function openAccountMenu(ev: MouseEvent) {
 
 .railBadge {
 	top: 9px;
-	left: calc(50% + 5px);
-	font-size: calc(10px * var(--hk3-ui-scale, 1));
-	padding: 0 calc(4px * var(--hk3-ui-scale, 1));
+	right: 5px;
 }
 
 .foot {

@@ -4,6 +4,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { In } from 'typeorm';
 import type { MutingsRepository, MiMuting } from '@/models/_.js';
 import { IdService } from '@/core/IdService.js';
@@ -11,6 +12,8 @@ import type { MiUser } from '@/models/User.js';
 import { DI } from '@/di-symbols.js';
 import { bindThis } from '@/decorators.js';
 import { CacheService } from '@/core/CacheService.js';
+import { GlobalEventService } from '@/core/GlobalEventService.js';
+import type { NotificationService } from '@/core/NotificationService.js';
 
 @Injectable()
 export class UserMutingService {
@@ -20,6 +23,8 @@ export class UserMutingService {
 
 		private idService: IdService,
 		private cacheService: CacheService,
+		private globalEventService: GlobalEventService,
+		private moduleRef: ModuleRef,
 	) {
 	}
 
@@ -32,7 +37,9 @@ export class UserMutingService {
 			muteeId: target.id,
 		});
 
-		this.cacheService.userMutingsCache.refresh(user.id);
+		await this.cacheService.userMutingsCache.refresh(user.id);
+		this.globalEventService.publishHatadyTimelineRefresh(user.id);
+		await this.moduleRef.get<NotificationService>('NotificationService', { strict: false }).refreshHatadyNotificationsForViewer(user.id);
 	}
 
 	@bindThis
@@ -45,7 +52,9 @@ export class UserMutingService {
 
 		const muterIds = [...new Set(mutings.map(m => m.muterId))];
 		for (const muterId of muterIds) {
-			this.cacheService.userMutingsCache.refresh(muterId);
+			await this.cacheService.userMutingsCache.refresh(muterId);
+			this.globalEventService.publishHatadyTimelineRefresh(muterId);
+			await this.moduleRef.get<NotificationService>('NotificationService', { strict: false }).refreshHatadyNotificationsForViewer(muterId);
 		}
 	}
 }

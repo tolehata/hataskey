@@ -67,6 +67,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<Mfm :text="getNoteSummary(appearNote)" :plain="true" :nowrap="true" :author="appearNote.user" :nyaize="'respect'" :class="[$style.collapsedRenoteTargetText, { [$style.showReplyTargetNoteInSemiTransparent]: prefer.s.showReplyTargetNoteInSemiTransparent }]" @click="renoteCollapsed ? renoteCollapsed = false : replyCollapsed ? replyCollapsed = false : ''"/>
 	</div>
 	<article v-else ref="utageArticle" :class="$style.article" :data-utage-square="(!utageOutsideFrame && utageState !== 'none') ? utageState : null" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
+		<Hk3VisibilityRail v-if="ui === 'hataskey3'" :visibility="appearNote.visibility"/>
 		<span v-if="!utageOutsideFrame && (utageState === 'flashing' || utageState === 'failed' || utageState === 'success')" :class="$style.utageSurface" :data-utage-surface="utageState" aria-hidden="true"></span>
 		<!-- 旗鯖fork: C7 宴チュートリアル (自分の宴ノート初回のみ) -->
 		<MkTip v-if="showUtageTip" k="note.utage" style="margin-bottom: 8px;">
@@ -362,7 +363,7 @@ import * as mfm from 'mfc-js';
 import * as Misskey from 'cherrypick-js';
 import { isLink } from '@@/js/is-link.js';
 import { shouldCollapsed, shouldMfmCollapsed } from '@@/js/collapsed.js';
-import { host } from '@@/js/config.js';
+import { host, ui } from '@@/js/config.js';
 import { concat } from '@@/js/array.js';
 import { toUnicode } from 'punycode.js';
 import type { Ref } from 'vue';
@@ -421,6 +422,7 @@ import { store } from '@/store.js';
 import { scrollToVisibility } from '@/utility/scroll-to-visibility.js';
 import detectLanguage from '@/utility/detect-language.js';
 import MkInfo from '@/components/MkInfo.vue';
+import Hk3VisibilityRail from '@/components/hataskey3/Hk3VisibilityRail.vue';
 
 const utageCopy = i18n.ts._hata._utage;
 const { showEl } = scrollToVisibility();
@@ -1530,6 +1532,10 @@ function emitUpdReaction(emoji: string, delta: number) {
 	border-radius: 20px;
 	-webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 90%);
 	mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 90%);
+}
+
+:global(html.hataGlassUi) .article:has(> [data-hk3-visibility-rail]) .bubbleBody .colorBar {
+	left: -2px;
 }
 
 .avatar {

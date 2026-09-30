@@ -5,10 +5,16 @@ import { isHorizontalSwipeSwiping } from '@/utility/touch.js';
 import { haptic } from '@/utility/haptic.js';
 
 export type NavbarPullState = {
-	phase: 'idle' | 'pulling' | 'ready' | 'returning' | 'refreshing';
+	phase: 'idle' | 'pulling' | 'ready' | 'returning' | 'refreshing' | 'success' | 'error';
 	height: number;
 	distance: number;
 	direction?: 'down' | 'up';
+	presentation?: 'navbar' | 'dock';
+};
+type NavbarPullOptions = {
+	presentation?: (direction: 'down' | 'up') => 'navbar' | 'dock';
+	feedback?: () => boolean;
+	refresher?: () => Promise<unknown>;
 };
 const idle = (): NavbarPullState => ({ phase: 'idle', height: 0, distance: 0 });
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
@@ -16,8 +22,9 @@ const smooth = (value: number) => { const t = clamp(value); return t * t * (3 - 
 export const navbarPullHeight = (distance: number) => 110 * (1 - Math.exp(-Math.max(0, distance) / 155));
 
 /** A navbar owns one gesture, even when several KeepAlive timelines share it. */
-export function createNavbarPullRefresh(enabled: Readonly<Ref<boolean>>, motion: Readonly<Ref<boolean>>) {
+export function createNavbarPullRefresh(enabled: Readonly<Ref<boolean>>, motion: Readonly<Ref<boolean>>, options: NavbarPullOptions = {}) {
 	const state = shallowRef<NavbarPullState>(idle());
+	const pending = shallowRef(false);
 	const active = computed(() => state.value.phase !== 'idle');
 	let owner: symbol | null = null;
 	let cancelOwner: (() => void) | undefined;
@@ -41,9 +48,14 @@ export function createNavbarPullRefresh(enabled: Readonly<Ref<boolean>>, motion:
 
 	const stop = watch(enabled, value => { if (!value) reset(); }, { flush: 'sync' });
 	return {
-		enabled, motion, state, active, style, reset,
+		enabled, motion, state, active, style, reset, pending,
+		...options,
+		async refresh(refresher: () => Promise<unknown>) {
+			pending.value = true;
+			try { return await refresher(); } finally { pending.value = false; }
+		},
 		claim(token: symbol, cancel: () => void) {
-			if (!enabled.value || owner != null) return false;
+			if (!enabled.value || pending.value || owner != null) return false;
 			owner = token;
 			cancelOwner = cancel;
 			return true;
@@ -77,9 +89,13 @@ export function attachNavbarPullGesture(root: HTMLElement, scroll: HTMLElement, 
 	let suppressClickUntil = 0;
 	let previousReady = false;
 	let oldOverscroll: string | undefined;
+	let presentation: NavbarPullState['presentation'];
+	let feedback = false;
+	let resultTimer: number | undefined;
+	let composing = false;
 
 	function publish(phase: NavbarPullState['phase']) {
-		context.update(token, { phase, height, distance, direction: upward ? 'up' : 'down' });
+		context.update(token, { phase, height, distance, direction: upward ? 'up' : 'down', presentation });
 	}
 
 	function detach() {
@@ -98,6 +114,7 @@ export function attachNavbarPullGesture(root: HTMLElement, scroll: HTMLElement, 
 	function reset() {
 		revision++;
 		cancelAnimationFrame(frame);
+		window.clearTimeout(resultTimer);
 		frame = 0;
 		detach();
 		restoreScroll();
@@ -110,10 +127,12 @@ export function attachNavbarPullGesture(root: HTMLElement, scroll: HTMLElement, 
 	}
 
 	function begin(event: Event, x: number, y: number) {
-		if (!context.enabled.value || context.active.value || start || refreshing || !upward && scroll.scrollTop > 1 || options.canStart?.() === false) return false;
+		if (composing || !context.enabled.value || context.active.value || context.pending.value || start || refreshing || !upward && scroll.scrollTop > 1 || options.canStart?.() === false) return false;
 		const excluded = upward ? 'input,textarea,select,[contenteditable="true"],[data-timeline-tab-gesture-ignore]' : 'button,a,input,textarea,select,[contenteditable="true"],[data-timeline-tab-gesture-ignore]';
 		if (event.target instanceof Element && event.target.closest(excluded)) return false;
 		start = { x, y };
+		presentation = context.presentation?.(upward ? 'up' : 'down');
+		feedback = context.feedback?.() ?? false;
 		distance = height = 0;
 		previousReady = false;
 		return true;
@@ -165,7 +184,7 @@ export function attachNavbarPullGesture(root: HTMLElement, scroll: HTMLElement, 
 		move(event, point.screenX, point.screenY);
 	}
 
-	function settle(phase: 'returning' | 'refreshing', done: () => void) {
+	function settle(phase: 'returning' | 'refreshing', done: () => void, target = 0) {
 		let velocity = 0;
 		let last = performance.now();
 		const began = last;
@@ -173,11 +192,11 @@ export function attachNavbarPullGesture(root: HTMLElement, scroll: HTMLElement, 
 		const tick = (now: number) => {
 			const dt = Math.min(Math.max((now - last) / 1000, 0.001), 0.025);
 			last = now;
-			if (!context.motion.value) height = initial * (1 - clamp((now - began) / 140));
-			else { velocity += (-205 * height - 26 * velocity) * dt; height = Math.max(0, height + velocity * dt); }
+			if (!context.motion.value) height = target + (initial - target) * (1 - clamp((now - began) / 140));
+			else { velocity += (205 * (target - height) - 26 * velocity) * dt; height = Math.max(0, height + velocity * dt); }
 			publish(phase);
-			if ((height < 0.12 && Math.abs(velocity) < 2) || now - began > 1100) {
-				height = 0;
+			if ((Math.abs(height - target) < 0.12 && Math.abs(velocity) < 2) || now - began > 1100) {
+				height = target;
 				frame = 0;
 				publish(phase);
 				done();
@@ -199,11 +218,19 @@ export function attachNavbarPullGesture(root: HTMLElement, scroll: HTMLElement, 
 		publish(phase);
 		let settled = false;
 		let fetched = !shouldRefresh;
-		const complete = () => { if (version === revision && settled && fetched) reset(); };
-		settle(phase, () => { settled = true; complete(); });
+		let failed = false;
+		const complete = () => {
+			if (version !== revision || !settled || !fetched) return;
+			if (!shouldRefresh || !feedback) { reset(); return; }
+			publish(failed ? 'error' : 'success');
+			resultTimer = window.setTimeout(() => {
+				if (version === revision) settle('returning', reset);
+			}, 650);
+		};
+		settle(phase, () => { settled = true; complete(); }, shouldRefresh && feedback ? 56 : 0);
 		if (shouldRefresh) {
-			Promise.resolve().then(() => version === revision ? refresher() : undefined)
-				.catch(error => { console.error('Timeline refresh failed', error); })
+			Promise.resolve().then(() => version === revision ? context.refresh(refresher) : undefined)
+				.catch(error => { failed = true; console.error('Timeline refresh failed', error); })
 				.finally(() => { fetched = true; complete(); });
 		}
 	}
@@ -214,6 +241,14 @@ export function attachNavbarPullGesture(root: HTMLElement, scroll: HTMLElement, 
 
 	function visibility() { if (window.document.hidden) reset(); }
 
+	function compositionStart() { composing = true; reset(); }
+
+	function compositionEnd() { composing = false; }
+
+	function keydown(event: KeyboardEvent) {
+		if (event.key === 'Escape' && !event.isComposing && owned) { event.preventDefault(); reset(); }
+	}
+
 	function suppressClick(event: MouseEvent) {
 		if (performance.now() < suppressClickUntil) { event.preventDefault(); event.stopPropagation(); }
 	}
@@ -223,6 +258,10 @@ export function attachNavbarPullGesture(root: HTMLElement, scroll: HTMLElement, 
 	root.addEventListener('click', suppressClick, true);
 	window.addEventListener('blur', cancel);
 	window.addEventListener('resize', reset);
+	window.addEventListener('keydown', keydown);
+	window.addEventListener('pagehide', reset);
+	window.addEventListener('compositionstart', compositionStart);
+	window.addEventListener('compositionend', compositionEnd);
 	window.document.addEventListener('visibilitychange', visibility);
 	return {
 		reset,
@@ -233,6 +272,10 @@ export function attachNavbarPullGesture(root: HTMLElement, scroll: HTMLElement, 
 			root.removeEventListener('click', suppressClick, true);
 			window.removeEventListener('blur', cancel);
 			window.removeEventListener('resize', reset);
+			window.removeEventListener('keydown', keydown);
+			window.removeEventListener('pagehide', reset);
+			window.removeEventListener('compositionstart', compositionStart);
+			window.removeEventListener('compositionend', compositionEnd);
 			window.document.removeEventListener('visibilitychange', visibility);
 		},
 	};

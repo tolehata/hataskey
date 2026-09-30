@@ -601,6 +601,8 @@ import type {
 	HataHatadyMediaCommentsUpdateResponse,
 	HataHatadyMediaReactionsCreateRequest,
 	HataHatadyMediaReactionsDeleteRequest,
+	HataHatadyMediaReactionsListRequest,
+	HataHatadyMediaReactionsListResponse,
 	HataHatadyMediaSessionsCreateRequest,
 	HataHatadyMediaSessionsCreateResponse,
 	HataHatadyMediaSessionsDeleteRequest,
@@ -627,11 +629,14 @@ import type {
 	HataHatadyNotificationsRequest,
 	HataHatadyNotificationsResponse,
 	HataHatadyNotificationsDeleteRequest,
+	HataHatadyNotificationsMarkAsReadRequest,
 	HataHatadyNotificationsRestoreRequest,
 	HataHatadyNotificationsUnreadCountResponse,
 	HataHatadyProfileUpdateRequest,
 	HataHatadyReactionsCreateRequest,
 	HataHatadyReactionsDeleteRequest,
+	HataHatadyReactionsListRequest,
+	HataHatadyReactionsListResponse,
 	HataHatadySearchRequest,
 	HataHatadySearchResponse,
 	HataHatadyStatsRequest,
@@ -673,12 +678,28 @@ import type {
 	HataskEventsRsvpRequest,
 	HataskEventsUpdateRequest,
 	HataskEventsUpdateResponse,
+	HataskFlowersDropsPourRequest,
+	HataskFlowersDropsPourResponse,
+	HataskFlowersDropsShowRequest,
+	HataskFlowersDropsShowResponse,
+	HataskFlowersFestivalShowRequest,
+	HataskFlowersFestivalShowResponse,
+	HataskFlowersHarvestRequest,
+	HataskFlowersHarvestResponse,
 	HataskFlowersListRequest,
 	HataskFlowersListResponse,
+	HataskFlowersRenameRequest,
+	HataskFlowersRenameResponse,
+	HataskFlowersStateRequest,
+	HataskFlowersStateResponse,
 	HataskFlowersSyncRequest,
 	HataskFlowersSyncResponse,
 	HataskFlowersVisibilityUpdateRequest,
 	HataskFlowersVisibilityUpdateResponse,
+	HataskFlowersZukanClaimSeedRequest,
+	HataskFlowersZukanClaimSeedResponse,
+	HataskFlowersZukanShowRequest,
+	HataskFlowersZukanShowResponse,
 	HataskPlannerCommitRequest,
 	HataskPlannerCommitResponse,
 	HataskPlannerCommitBatchRequest,
@@ -883,6 +904,10 @@ import type {
 	NotesUserListTimelineRequest,
 	NotesUserListTimelineResponse,
 	NotificationsCreateRequest,
+	NotificationsMarkAsReadRequest,
+	NotificationsShowRequest,
+	NotificationsShowResponse,
+	NotificationsUnreadCountResponse,
 	PagePushRequest,
 	PagesCreateRequest,
 	PagesCreateResponse,
@@ -1408,6 +1433,7 @@ export type Endpoints = {
 	'hata/hatady/media/comments/update': { req: HataHatadyMediaCommentsUpdateRequest; res: HataHatadyMediaCommentsUpdateResponse };
 	'hata/hatady/media/reactions/create': { req: HataHatadyMediaReactionsCreateRequest; res: EmptyResponse };
 	'hata/hatady/media/reactions/delete': { req: HataHatadyMediaReactionsDeleteRequest; res: EmptyResponse };
+	'hata/hatady/media/reactions/list': { req: HataHatadyMediaReactionsListRequest; res: HataHatadyMediaReactionsListResponse };
 	'hata/hatady/media/sessions/create': { req: HataHatadyMediaSessionsCreateRequest; res: HataHatadyMediaSessionsCreateResponse };
 	'hata/hatady/media/sessions/delete': { req: HataHatadyMediaSessionsDeleteRequest; res: EmptyResponse };
 	'hata/hatady/media/sessions/list': { req: HataHatadyMediaSessionsListRequest; res: HataHatadyMediaSessionsListResponse };
@@ -1424,11 +1450,13 @@ export type Endpoints = {
 	'hata/hatady/notifications': { req: HataHatadyNotificationsRequest; res: HataHatadyNotificationsResponse };
 	'hata/hatady/notifications/delete': { req: HataHatadyNotificationsDeleteRequest; res: EmptyResponse };
 	'hata/hatady/notifications/mark-all-read': { req: EmptyRequest; res: EmptyResponse };
+	'hata/hatady/notifications/mark-as-read': { req: HataHatadyNotificationsMarkAsReadRequest; res: EmptyResponse };
 	'hata/hatady/notifications/restore': { req: HataHatadyNotificationsRestoreRequest; res: EmptyResponse };
 	'hata/hatady/notifications/unread-count': { req: EmptyRequest; res: HataHatadyNotificationsUnreadCountResponse };
 	'hata/hatady/profile/update': { req: HataHatadyProfileUpdateRequest; res: EmptyResponse };
 	'hata/hatady/reactions/create': { req: HataHatadyReactionsCreateRequest; res: EmptyResponse };
 	'hata/hatady/reactions/delete': { req: HataHatadyReactionsDeleteRequest; res: EmptyResponse };
+	'hata/hatady/reactions/list': { req: HataHatadyReactionsListRequest; res: HataHatadyReactionsListResponse };
 	'hata/hatady/search': { req: HataHatadySearchRequest; res: HataHatadySearchResponse };
 	'hata/hatady/stats': { req: HataHatadyStatsRequest; res: HataHatadyStatsResponse };
 	'hata/hatady/stats-detail': { req: HataHatadyStatsDetailRequest; res: HataHatadyStatsDetailResponse };
@@ -1453,9 +1481,17 @@ export type Endpoints = {
 	'hatask/events/owned': { req: HataskEventsOwnedRequest; res: HataskEventsOwnedResponse };
 	'hatask/events/rsvp': { req: HataskEventsRsvpRequest; res: EmptyResponse };
 	'hatask/events/update': { req: HataskEventsUpdateRequest; res: HataskEventsUpdateResponse };
+	'hatask/flowers/drops/pour': { req: HataskFlowersDropsPourRequest; res: HataskFlowersDropsPourResponse };
+	'hatask/flowers/drops/show': { req: HataskFlowersDropsShowRequest; res: HataskFlowersDropsShowResponse };
+	'hatask/flowers/festival/show': { req: HataskFlowersFestivalShowRequest; res: HataskFlowersFestivalShowResponse };
+	'hatask/flowers/harvest': { req: HataskFlowersHarvestRequest; res: HataskFlowersHarvestResponse };
 	'hatask/flowers/list': { req: HataskFlowersListRequest; res: HataskFlowersListResponse };
+	'hatask/flowers/rename': { req: HataskFlowersRenameRequest; res: HataskFlowersRenameResponse };
+	'hatask/flowers/state': { req: HataskFlowersStateRequest; res: HataskFlowersStateResponse };
 	'hatask/flowers/sync': { req: HataskFlowersSyncRequest; res: HataskFlowersSyncResponse };
 	'hatask/flowers/visibility/update': { req: HataskFlowersVisibilityUpdateRequest; res: HataskFlowersVisibilityUpdateResponse };
+	'hatask/flowers/zukan/claim-seed': { req: HataskFlowersZukanClaimSeedRequest; res: HataskFlowersZukanClaimSeedResponse };
+	'hatask/flowers/zukan/show': { req: HataskFlowersZukanShowRequest; res: HataskFlowersZukanShowResponse };
 	'hatask/planner/commit': { req: HataskPlannerCommitRequest; res: HataskPlannerCommitResponse };
 	'hatask/planner/commit-batch': { req: HataskPlannerCommitBatchRequest; res: HataskPlannerCommitBatchResponse };
 	'hatask/planner/create-shadow': { req: HataskPlannerCreateShadowRequest; res: HataskPlannerCreateShadowResponse };
@@ -1593,7 +1629,10 @@ export type Endpoints = {
 	'notifications/create': { req: NotificationsCreateRequest; res: EmptyResponse };
 	'notifications/flush': { req: EmptyRequest; res: EmptyResponse };
 	'notifications/mark-all-as-read': { req: EmptyRequest; res: EmptyResponse };
+	'notifications/mark-as-read': { req: NotificationsMarkAsReadRequest; res: EmptyResponse };
+	'notifications/show': { req: NotificationsShowRequest; res: NotificationsShowResponse };
 	'notifications/test-notification': { req: EmptyRequest; res: EmptyResponse };
+	'notifications/unread-count': { req: EmptyRequest; res: NotificationsUnreadCountResponse };
 	'page-push': { req: PagePushRequest; res: EmptyResponse };
 	'pages/create': { req: PagesCreateRequest; res: PagesCreateResponse };
 	'pages/delete': { req: PagesDeleteRequest; res: EmptyResponse };

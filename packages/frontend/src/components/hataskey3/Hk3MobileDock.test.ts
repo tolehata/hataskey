@@ -5,9 +5,9 @@ import Hk3MobileDock from './Hk3MobileDock.vue';
 import type { Hk3MobileNavigation, Hk3MobileNavItem } from './hk3-mobile-navigation.js';
 import type { NavbarPullState } from '@/utility/navbar-pull-refresh.js';
 
-vi.mock('@/i18n.js', () => ({ i18n: { ts: { search: 'Search', close: 'Close', pullDownToRefresh: 'Pull down to refresh', pullUpToRefresh: 'Pull up to refresh', releaseToRefresh: 'Release to refresh', refreshing: 'Refreshing', _hata: { _hataskeyUi3: { _mobileNavigation: {
+vi.mock('@/i18n.js', () => ({ i18n: { ts: { search: 'Search', close: 'Close', done: 'Done', pullDownToRefresh: 'Pull down to refresh', pullUpToRefresh: 'Pull up to refresh', releaseToRefresh: 'Release to refresh', refreshing: 'Refreshing', _hata: { _hataskeyUi3: { note: 'Note', loadFailed: 'Failed', _mobileNavigation: {
 	navigation: 'Navigation', timelines: 'Timelines', menu: 'Menu', home: 'Home', close: 'Close', back: 'Back', settings: 'Settings', options: 'Options', reorder: 'Reorder', done: 'Done', loading: 'Loading', loadError: 'Failed', retry: 'Retry', empty: 'Empty', guide: 'Tap, hold, slide', guideMenu: 'Hold Menu for timelines\nKeep holding and slide to choose', gotIt: 'Got it',
-} } } } } }));
+} }, _hatasabaUi: { _simple: { record: 'Record' } } } } } }));
 vi.mock('@/components/MkMobileNavbarSearch.vue', async () => {
 	const { defineComponent, h, ref } = await import('vue');
 	return { default: defineComponent({
@@ -64,12 +64,12 @@ function navigation(): Hk3MobileNavigation {
 }
 
 type PullAttacher = (root: HTMLElement, onClaim: () => void, canStart: () => boolean) => { dispose: () => void };
-type Props = { confirmationActive?: boolean; navigation: Hk3MobileNavigation | null; items: Hk3MobileNavItem[]; home: boolean; drawerOpen: boolean; motion: boolean; guideSeen: boolean; pullState: NavbarPullState | null; attachPullGesture: PullAttacher | null };
+type Props = { confirmationActive?: boolean; composerBlocked?: boolean; suspended?: boolean; composeKind?: 'note' | 'hatady'; navigation: Hk3MobileNavigation | null; items: Hk3MobileNavItem[]; home: boolean; drawerOpen: boolean; motion: boolean; guideSeen: boolean; pullState: NavbarPullState | null; attachPullGesture: PullAttacher | null };
 
 function mount(overrides: Partial<Props> = {}) {
 	const controller = navigation();
 	const state = reactive<Props>({ navigation: controller, items: ['/', '/notifications', '/search'].map(path => ({ path, label: path, icon: Icon, badge: path === '/notifications' ? '1' : null, active: path === '/' })), home: true, drawerOpen: false, motion: false, guideSeen: false, pullState: null, attachPullGesture: null, ...overrides });
-	const events = { navigate: vi.fn(), menu: vi.fn(), requestTimeline: vi.fn(), menuOpen: vi.fn(), searchOpen: vi.fn(), dismissGuide: vi.fn() };
+	const events = { navigate: vi.fn(), menu: vi.fn(), requestTimeline: vi.fn(), menuOpen: vi.fn(), searchOpen: vi.fn(), compose: vi.fn(), dismissGuide: vi.fn() };
 	const target = window.document.createElement('div'); window.document.body.append(target);
 	let instance: InstanceType<typeof Hk3MobileDock>;
 	const app = createApp({ render: () => h(Hk3MobileDock, { ...state, ref: value => { instance = value as typeof instance; }, ...Object.fromEntries(Object.entries(events).map(([key, fn]) => [`on${key[0].toUpperCase()}${key.slice(1)}`, fn])) }) });
@@ -128,6 +128,208 @@ async function hold(view: ReturnType<typeof mount>) {
 function key(element: Element, name: string, extra: KeyboardEventInit = {}) { element.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true, ...extra })); }
 
 describe('Hk3MobileDock', () => {
+	it('changes the stable compose opener to Hatady without remounting the draft target', async () => {
+		const view = mount({ composeKind: 'note' });
+		const opener = view.button('[data-compose-opener]');
+		const target = view.instance().composerTarget!;
+		const draft = window.document.createElement('textarea'); draft.value = 'unfinished'; target.append(draft);
+		view.state.composeKind = 'hatady'; await flush();
+		expect(view.button('[data-compose-opener]')).toBe(opener);
+		expect(view.instance().composerTarget).toBe(target);
+		expect(target.querySelector('textarea')).toBe(draft);
+		expect(opener.getAttribute('aria-label')).toBe('Record');
+		expect(opener.getAttribute('aria-controls')).toBeNull();
+		await click(opener);
+		expect(view.events.compose).toHaveBeenCalledOnce();
+	});
+	it('starts with one mounted hidden composer and emits compose only from the stable Pencil opener', async () => {
+		const view = mount({ motion: false });
+		const target = view.instance().composerTarget!;
+		const opener = view.button('[data-compose-opener]');
+		const draft = window.document.createElement('textarea'); draft.value = 'unfinished'; target.append(draft);
+		expect(view.root().dataset.composerOpen).toBe('false');
+		expect(target.dataset.hidden).toBe('true');
+		expect(target.hasAttribute('inert')).toBe(true);
+		expect(target.parentElement!.style.height).toBe('44px');
+		expect(opener.getAttribute('aria-expanded')).toBe('false');
+		await click(opener);
+		expect(view.events.compose).toHaveBeenCalledOnce();
+		view.instance().openComposer(); await flush();
+		expect(view.events.compose).toHaveBeenCalledOnce();
+		expect(view.button('[data-compose-opener]')).toBe(opener);
+		expect(opener.dataset.hidden).toBe('true');
+		expect(target.dataset.hidden).toBe('false');
+		expect(target.hasAttribute('inert')).toBe(false);
+		view.instance().closeComposer(); await flush();
+		expect(target.querySelector('textarea')).toBe(draft);
+		expect(draft.value).toBe('unfinished');
+		expect(target.parentElement!.style.height).toBe('44px');
+	});
+
+	it('uses the send rect for the cap shoulder and opener offsets without hidden-content drift', async () => {
+		const view = mount();
+		const target = view.instance().composerTarget!;
+		const content = window.document.createElement('div');
+		const send = window.document.createElement('button'); send.dataset.hk3Send = '';
+		content.append(send); target.append(content);
+		rect(view.root(), 10, 300, 320, 114);
+		rect(target, 10, 286, 320, 194);
+		rect(content, 10, 300, 300, 180);
+		rect(send, 272, 440, 44, 40);
+		resizeCallbacks.forEach(callback => callback()); await flush();
+		expect(view.root().style.getPropertyValue('--compose-right')).toBe('14px');
+		expect(view.root().style.getPropertyValue('--compose-bottom')).toBe('0px');
+		// Moving both composer and send by 14px must not move the button within the dock.
+		rect(target, 10, 300, 320, 194);
+		rect(send, 272, 454, 44, 40);
+		resizeCallbacks.forEach(callback => callback()); await flush();
+		expect(view.root().style.getPropertyValue('--compose-bottom')).toBe('0px');
+		expect(view.root().querySelector('clipPath path')?.getAttribute('d')).toContain('H 236 C');
+	});
+
+	it('closes on app content and timeline scroll, but retains internal, popup, and unrelated focus', async () => {
+		const view = mount(); view.target.dataset.hk3Theme = 'light';
+		const draft = window.document.createElement('textarea'); view.instance().composerTarget!.append(draft);
+		const outside = window.document.createElement('div'); view.target.append(outside);
+		const popup = window.document.createElement('div'); popup.setAttribute('role', 'dialog'); view.target.append(popup);
+		const feed = window.document.createElement('div'); feed.dataset.timelineTabGestures = ''; view.target.append(feed);
+		view.instance().openComposer(); await flush();
+		pointer(draft, 'pointerdown'); pointer(popup, 'pointerdown'); await flush();
+		expect(view.root().dataset.composerOpen).toBe('true');
+		pointer(window.document.body, 'pointerdown'); await flush();
+		expect(view.root().dataset.composerOpen).toBe('true');
+		pointer(outside, 'pointerdown'); await flush();
+		expect(view.root().dataset.composerOpen).toBe('false');
+		view.instance().openComposer(); await flush();
+		feed.dispatchEvent(new WheelEvent('wheel', { deltaY: 3, bubbles: true }));
+		expect(view.root().dataset.composerOpen).toBe('true');
+		feed.dispatchEvent(new WheelEvent('wheel', { deltaY: 4, bubbles: true })); await flush();
+		expect(view.root().dataset.composerOpen).toBe('false');
+		view.instance().openComposer(); await flush();
+		key(feed, 'PageDown'); await flush();
+		expect(view.root().dataset.composerOpen).toBe('false');
+	});
+
+	it('keeps the composer through a downward timeline pull and busy pointerup, but closes on a later ordinary tap', async () => {
+		const view = mount({ attachPullGesture: () => ({ dispose: vi.fn() }) });
+		view.target.dataset.hk3Theme = 'light';
+		const feed = window.document.createElement('div'); feed.dataset.timelineTabGestures = ''; view.target.append(feed);
+		view.instance().openComposer(); await flush();
+		pointer(feed, 'pointerdown', 40, 100); await flush();
+		expect(view.instance().composerOpened).toBe(true);
+		pointer(window, 'pointermove', 40, 180); await flush();
+		expect(view.instance().composerOpened).toBe(true);
+		view.state.pullState = { phase: 'pulling', height: 40, distance: 80, presentation: 'navbar' }; await flush();
+		pointer(window, 'pointerup', 40, 180); await flush();
+		expect(view.instance().composerOpened).toBe(true);
+		expect(view.root().dataset.composerOpen).toBe('true');
+		view.state.pullState = { phase: 'idle', height: 0, distance: 0 }; await flush();
+		pointer(feed, 'pointerdown', 40, 100); await flush();
+		expect(view.instance().composerOpened).toBe(true);
+		pointer(window, 'pointerup', 40, 100); await flush();
+		expect(view.instance().composerOpened).toBe(false);
+		expect(view.root().dataset.composerOpen).toBe('false');
+	});
+
+	it.each([{ direction: 'upward', x: 40, y: 60 }, { direction: 'horizontal', x: 90, y: 100 }])('closes the composer on $direction timeline movement after deferring pointerdown', async ({ x, y }) => {
+		const view = mount({ attachPullGesture: () => ({ dispose: vi.fn() }) });
+		view.target.dataset.hk3Theme = 'light';
+		const feed = window.document.createElement('div'); feed.dataset.timelineTabGestures = ''; view.target.append(feed);
+		view.instance().openComposer(); await flush();
+		pointer(feed, 'pointerdown', 40, 100); await flush();
+		expect(view.instance().composerOpened).toBe(true);
+		pointer(window, 'pointermove', x, y); await flush();
+		expect(view.instance().composerOpened).toBe(false);
+		pointer(window, 'pointerup', x, y); await flush();
+		expect(view.root().dataset.composerOpen).toBe('false');
+	});
+
+	it('honors blocked close, opens from confirmation, and clears overlays for programmatic compose', async () => {
+		const view = mount();
+		view.instance().openSearch(); await flush();
+		view.instance().openComposer(); await flush();
+		expect(view.root().dataset.searchOpen).toBe('false');
+		expect(view.root().dataset.composerOpen).toBe('true');
+		view.state.composerBlocked = true; await flush();
+		expect(view.instance().closeComposer()).toBe(false);
+		expect(view.root().dataset.composerOpen).toBe('true');
+		view.instance().openMenu(); view.instance().openSearch(); await flush();
+		expect(view.root().dataset.open).toBe('false');
+		expect(view.root().dataset.searchOpen).toBe('false');
+		view.instance().closeComposer(true); await flush();
+		view.state.confirmationActive = true; await flush();
+		expect(view.root().dataset.composerOpen).toBe('true');
+		expect(view.instance().composerTarget!.hasAttribute('inert')).toBe(false);
+		expect(view.instance().closeComposer()).toBe(false);
+		view.state.confirmationActive = false; view.state.composerBlocked = false; await flush();
+		view.instance().closeComposer(); await flush();
+		view.instance().openMenu(); await flush();
+		view.instance().openComposer(); await flush();
+		expect(view.root().dataset.open).toBe('false');
+		expect(view.root().dataset.composerOpen).toBe('true');
+	});
+
+	it('starts hidden on a direct Hatask visit and reuses the composer target when Home returns', async () => {
+		const view = mount({ suspended: true, home: false });
+		const dock = view.root();
+		const composer = view.instance().composerTarget!;
+		expect(dock.style.display).toBe('none');
+		expect(dock.hasAttribute('inert')).toBe(true);
+		expect(view.target.querySelector('[data-mobile-scrim]')).toBeNull();
+		view.state.suspended = false;
+		view.state.home = true; await flush();
+		expect(dock.style.display).not.toBe('none');
+		expect(dock.hasAttribute('inert')).toBe(false);
+		expect(view.instance().composerTarget).toBe(composer);
+		expect(composer.dataset.hidden).toBe('true');
+	});
+
+	it('hides immediately on suspension, closes overlays, and retains the teleported draft', async () => {
+		const view = mount();
+		const dock = view.root();
+		const composer = view.instance().composerTarget!;
+		const draft = window.document.createElement('textarea');
+		draft.value = 'Unsent note';
+		composer.append(draft);
+		await flush();
+		view.instance().openSearch(); await flush();
+		expect(view.target.querySelector('[data-mobile-scrim]')).not.toBeNull();
+		view.state.suspended = true; await flush();
+		expect(dock.style.display).toBe('none');
+		expect(dock.hasAttribute('inert')).toBe(true);
+		expect(dock.getAttribute('aria-hidden')).toBe('true');
+		expect(view.target.querySelector('[data-mobile-scrim]')).toBeNull();
+		expect(dock.dataset.searchOpen).toBe('false');
+		expect(view.events.searchOpen).toHaveBeenLastCalledWith(false);
+		view.instance().openSearch(); view.instance().openMenu(); await flush();
+		expect(dock.dataset.searchOpen).toBe('false');
+		expect(dock.dataset.open).toBe('false');
+		view.state.suspended = false; await flush();
+		expect(dock.style.display).not.toBe('none');
+		expect(dock.hasAttribute('inert')).toBe(false);
+		expect(dock.dataset.searchOpen).toBe('false');
+		expect(view.instance().composerTarget).toBe(composer);
+		expect(composer.querySelector('textarea')).toBe(draft);
+		expect(draft.value).toBe('Unsent note');
+	});
+
+	it('cancels a pending menu and long press when suspended', async () => {
+		const view = mount({ navigation: null });
+		view.instance().openMenu(); await flush();
+		expect(view.events.requestTimeline).toHaveBeenCalledOnce();
+		view.state.suspended = true;
+		view.state.navigation = view.controller; await flush();
+		expect(view.root().dataset.open).toBe('false');
+		view.state.suspended = false; await flush();
+		const home = view.button('[data-home-button]');
+		pointer(home, 'pointerdown');
+		view.state.suspended = true; await flush();
+		await vi.advanceTimersByTimeAsync(600); await flush();
+		expect(view.root().dataset.open).toBe('false');
+		view.state.suspended = false; await flush();
+		expect(view.root().dataset.open).toBe('false');
+	});
+
 	it('moves the whole capsule through pull, ready, and refreshing at zero height without replacing the draft or buttons', async () => {
 		const view = mount();
 		const shell = view.target.querySelector<HTMLElement>('[data-mobile-pull-target]')!;
@@ -169,7 +371,7 @@ describe('Hk3MobileDock', () => {
 		expect(dock.style.getPropertyValue('--dock-pull-content-opacity')).toBe('1');
 		expect(dock.style.transform).toBe('');
 		expect(nav.hasAttribute('inert')).toBe(false);
-		expect(composer.hasAttribute('inert')).toBe(false);
+		expect(composer.hasAttribute('inert')).toBe(true);
 		expect(view.target.querySelector('[data-guide]')).not.toBeNull();
 		expect(view.events.dismissGuide).not.toHaveBeenCalled();
 		view.state.pullState = { phase: 'returning', height: 20, distance: 60 }; await flush();
@@ -177,6 +379,50 @@ describe('Hk3MobileDock', () => {
 		expect(dock.style.getPropertyValue('--dock-pull-extension')).toBe('10px');
 		view.state.pullState = { phase: 'idle', height: 0, distance: 0 }; await flush();
 		expect(dock.dataset.pullActive).toBe('false');
+	});
+
+	it('keeps navbar presentation geometry and draft unchanged while blocking dock operations until idle', async () => {
+		const view = mount();
+		const dock = view.root();
+		const nav = view.target.querySelector('[data-mobile-pull-target] nav')!;
+		const composer = view.instance().composerTarget!;
+		const draft = window.document.createElement('textarea'); draft.value = 'navbar pull draft'; composer.append(draft);
+		view.instance().openComposer(); await flush();
+		const body = composer.parentElement!;
+		const height = body.style.height;
+		const transform = dock.style.transform;
+		for (const phase of ['pulling', 'ready', 'refreshing', 'success', 'error', 'returning'] as const) {
+			view.state.pullState = { phase, height: 56, distance: 180, direction: 'down', presentation: 'navbar' }; await flush();
+			expect(body.style.height).toBe(height);
+			expect(dock.style.transform).toBe(transform);
+			expect(dock.style.getPropertyValue('--dock-pull-extension')).toBe('0px');
+			expect(dock.dataset.pullActive).toBe('false');
+			expect(dock.querySelector('[role="status"]')?.getAttribute('aria-hidden')).toBe('true');
+			expect(nav.hasAttribute('inert')).toBe(true);
+			expect(composer.hasAttribute('inert')).toBe(true);
+			expect(view.instance().closeComposer()).toBe(false);
+			view.instance().openMenu(); view.instance().openSearch(); await flush();
+			await click(view.button('[aria-label="Menu"]'));
+			await click(view.button('[data-mobile-nav-path="/search"]'));
+			await click(view.button('[data-mobile-nav-path="/notifications"]'));
+			expect(view.events.menu).not.toHaveBeenCalled();
+			expect(view.events.searchOpen).not.toHaveBeenCalled();
+			expect(view.events.navigate).not.toHaveBeenCalled();
+			expect(dock.dataset.open).toBe('false');
+			expect(dock.dataset.searchOpen).toBe('false');
+			expect(view.instance().composerOpened).toBe(true);
+			expect(view.instance().composerTarget).toBe(composer);
+			expect(composer.querySelector('textarea')).toBe(draft);
+			expect(draft.value).toBe('navbar pull draft');
+		}
+		view.state.pullState = { phase: 'idle', height: 0, distance: 0 }; await flush();
+		expect(nav.hasAttribute('inert')).toBe(false);
+		expect(composer.hasAttribute('inert')).toBe(false);
+		expect(view.instance().composerOpened).toBe(true);
+		await click(view.button('[data-mobile-nav-path="/notifications"]'));
+		expect(view.events.navigate).toHaveBeenCalledExactlyOnceWith('/notifications');
+		expect(composer.querySelector('textarea')).toBe(draft);
+		expect(draft.value).toBe('navbar pull draft');
 	});
 
 	it('blocks menu and search during pull and hides feedback behind overlays or off Home', async () => {
@@ -229,7 +475,7 @@ describe('Hk3MobileDock', () => {
 		view.state.pullState = { phase: 'refreshing', height: 0, distance: 150, direction: 'up' }; await flush();
 		expect(dock.dataset.pullPhase).toBe('refreshing');
 		expect(dock.querySelector('[role="status"]')?.textContent).toBe('Refreshing');
-		expect(dock.querySelector('[role="status"] .ti-arrow-up')).not.toBeNull();
+		expect(dock.querySelector('[role="status"] .ti-refresh')).not.toBeNull();
 		expect(dock.style.getPropertyValue('--dock-pull-extension')).toBe('0px');
 	});
 
@@ -432,6 +678,8 @@ describe('Hk3MobileDock', () => {
 		await open(view);
 		resizeCallbacks.forEach(callback => callback());
 		view.instance().closeMenu(); await flush();
+		expect(view.instance().composerTarget!.parentElement!.style.height).toBe('44px');
+		view.instance().openComposer(); await flush();
 		expect(view.instance().composerTarget!.parentElement!.style.height).toBe('194px');
 	});
 
@@ -446,6 +694,7 @@ describe('Hk3MobileDock', () => {
 		expect(view.root().dataset.composerResizing).toBe('false');
 		transition(content, 'transitionrun', 'grid-template-rows'); await flush();
 		expect(view.root().dataset.composerResizing).toBe('true');
+		view.instance().openComposer(); await flush();
 		height = 180;
 		resizeCallbacks.forEach(callback => callback()); await flush();
 		expect(view.instance().composerTarget!.parentElement!.style.height).toBe('194px');
@@ -728,9 +977,10 @@ describe('Hk3MobileDock', () => {
 		const view = mount();
 		const wrapper = window.document.createElement('div'); view.instance().composerTarget!.append(wrapper);
 		rect(wrapper, 0, 0, 300, 0); resizeCallbacks.forEach(callback => callback()); await flush();
-		expect(view.instance().composerTarget!.parentElement!.style.height).toBe('0px');
+		expect(view.instance().composerTarget!.parentElement!.style.height).toBe('44px');
 		rect(wrapper, 0, 0, 300, 900); resizeCallbacks.forEach(callback => callback()); await flush();
 		expect(view.root().dataset.overflow).toBe('true');
+		view.instance().openComposer(); await flush();
 		expect(parseInt(view.instance().composerTarget!.parentElement!.style.height)).toBeLessThan(900);
 	});
 
@@ -827,7 +1077,6 @@ describe('Hk3MobileDock', () => {
 		expect(view.root().dataset.open).toBe('false');
 	});
 });
-
 
 describe('inline confirmation interaction boundary', () => {
 	it('blocks dock navigation without blocking or remounting the teleported composer', async () => {

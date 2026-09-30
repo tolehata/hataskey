@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { setHySubjectColorOverrides } from '@/utility/hatady.js';
-import { hySubjects, hySubjectsLoaded, loadHySubjects } from '@/utility/hatady-subjects.js';
+import { hySubjects, hySubjectsLoaded, loadHySubjects, saveHySubject } from '@/utility/hatady-subjects.js';
 
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn() }));
 vi.mock('@/utility/hatady.js', () => ({ setHySubjectColorOverrides: vi.fn() }));
@@ -28,5 +28,13 @@ describe('subject palette reads', () => {
 		expect(setHySubjectColorOverrides).not.toHaveBeenCalled();
 		await expect(loadHySubjects()).resolves.toEqual([]);
 		expect(setHySubjectColorOverrides).toHaveBeenCalledWith({});
+	});
+
+	test('omits an unspecified color but keeps an explicit reset', async () => {
+		vi.mocked(misskeyApi).mockResolvedValue([{ name: '数学', color: '#abc', logCount: 1 }]);
+		await saveHySubject('数学');
+		expect(misskeyApi).toHaveBeenCalledWith('hata/hatady/subjects/save', { name: '数学', color: undefined });
+		await saveHySubject('数学', null);
+		expect(misskeyApi).toHaveBeenCalledWith('hata/hatady/subjects/save', { name: '数学', color: null });
 	});
 });

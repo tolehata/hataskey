@@ -307,6 +307,7 @@ const KNOWN_ALIASES: Array<[string, string[]]> = [
 	['showGapBetweenNotesInTimeline', ['間隔', '詰める', '余白']],
 	['simpleUi.glassUiCardOpacity', ['透過', 'opacity', '角丸カード']],
 	['simpleUi.hideBotsInTimeline', ['bot', '自動投稿', 'ノイズ']],
+	['simpleUi.showHatadyTab', ['Hatady', '記録', 'タイムライン', 'タブ']],
 	['simpleUi.bottomNav', ['ナビ', 'タブ', '下のバー']],
 	['nicknameEnabled', ['ニックネーム', 'ニャ']],
 	['chat.sendOnEnter', ['Enterで送信', 'エンターで送信']],

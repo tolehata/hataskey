@@ -22,7 +22,7 @@ vi.mock('@/i18n.js', () => ({ i18n: {
 	ts: {
 		close: '閉じる', recommended: '推奨', inUse: '使用中', goBack: '戻る',
 		_hata: { _uiSetup: {
-			title: 'UIを切り替える', hint: '使いたいUIを選んで切り替え', standardDescription: 'HataskeyのデフォルトUIで使う楽しさを追求します',
+			title: 'UIを切り替える', hint: '使いたいUIを選んで切り替え', standardDescription: 'HataskeyのデフォルトUIで、使う楽しさを追求します',
 			ui3Description: '美しさと利便性を追求、S(Special)な体験を', otherUis: 'その他のUI', conflictNote: '競合する場合があります',
 			notRecommended: '非推奨', legacyDeck: '従来のデッキUI', deprecatedWarning: 'このUIは非推奨です。',
 			switchAction: '切り替える',
@@ -125,7 +125,7 @@ describe('UI切り替えモーダル', () => {
 		await mount();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-glass')).toBe('true');
 		expect(host.querySelector('[data-modal]')?.getAttribute('data-disable-bg-blur')).toBe('false');
-		expect(host.textContent).toContain('HataskeyのデフォルトUIで使う楽しさを追求します');
+		expect(host.textContent).toContain('HataskeyのデフォルトUIで、使う楽しさを追求します');
 		expect(host.textContent).toContain('美しさと利便性を追求、S(Special)な体験を');
 		expect(host.textContent).not.toContain('Beta');
 		unmountCurrent();

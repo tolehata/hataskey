@@ -16,18 +16,97 @@ function touch(target: EventTarget, type: string, x: number, y: number, count = 
 	return event;
 }
 
-function setup(refresh = vi.fn().mockResolvedValue(undefined), motion = false) {
+function setup(refresh = vi.fn().mockResolvedValue(undefined), motion = false, options: Parameters<typeof createNavbarPullRefresh>[2] = {}, direction: 'down' | 'up' = 'down') {
 	const enabled = ref(true);
-	const context = createNavbarPullRefresh(enabled, ref(motion));
+	const context = createNavbarPullRefresh(enabled, ref(motion), options);
 	const root = window.document.createElement('main');
 	window.document.body.append(root);
-	const gesture = attachNavbarPullGesture(root, root, context, refresh);
+	const gesture = attachNavbarPullGesture(root, root, context, refresh, { direction });
 	cleanup.push(() => { gesture.dispose(); context.dispose(); root.remove(); });
 	return { root, context, enabled, gesture, refresh };
 }
 
 beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); isHorizontalSwipeSwiping.value = false; });
 afterEach(() => { cleanup.splice(0).forEach(fn => fn()); vi.clearAllTimers(); vi.useRealTimers(); vi.restoreAllMocks(); });
+
+test.each(['down', 'up'] as const)('fixes presentation at the start of a %s gesture and samples it again for the next gesture', async direction => {
+	let destination: 'navbar' | 'dock' = 'navbar';
+	const presentation = vi.fn(() => destination);
+	const { root, context } = setup(undefined, false, { presentation }, direction);
+	const endY = direction === 'down' ? 380 : 20;
+	touch(root, 'touchstart', 0, 200);
+	destination = 'dock';
+	touch(window, 'touchmove', 0, endY);
+	expect(presentation).toHaveBeenCalledExactlyOnceWith(direction);
+	expect(context.state.value.presentation).toBe('navbar');
+	touch(window, 'touchend', 0, endY, 0);
+	expect(context.state.value.presentation).toBe('navbar');
+	await vi.advanceTimersByTimeAsync(250);
+	touch(root, 'touchstart', 0, 200);
+	touch(window, 'touchmove', 0, endY);
+	expect(presentation).toHaveBeenCalledTimes(2);
+	expect(context.state.value.presentation).toBe('dock');
+});
+
+test.each(['success', 'error'] as const)('holds feedback at 56px during the request, then shows %s for 650ms before returning', async result => {
+	vi.spyOn(console, 'error').mockImplementation(() => {});
+	let resolve!: () => void;
+	let reject!: (error: Error) => void;
+	const refresh = vi.fn(() => new Promise<void>((done, fail) => { resolve = done; reject = fail; }));
+	const { root, context } = setup(refresh, false, { feedback: () => true });
+	touch(root, 'touchstart', 0, 0);
+	touch(window, 'touchmove', 0, 180);
+	touch(window, 'touchend', 0, 180, 0);
+	await vi.advanceTimersByTimeAsync(250);
+	expect(refresh).toHaveBeenCalledOnce();
+	expect(context.pending.value).toBe(true);
+	expect(context.state.value).toMatchObject({ phase: 'refreshing', height: 56 });
+	await vi.advanceTimersByTimeAsync(800);
+	expect(context.state.value).toMatchObject({ phase: 'refreshing', height: 56 });
+	if (result === 'success') resolve();
+	else reject(new Error('offline'));
+	await vi.advanceTimersByTimeAsync(0);
+	expect(context.pending.value).toBe(false);
+	expect(context.state.value).toMatchObject({ phase: result, height: 56 });
+	await vi.advanceTimersByTimeAsync(649);
+	expect(context.state.value).toMatchObject({ phase: result, height: 56 });
+	// Allow the first animation frame after the 650ms result timer.
+	await vi.advanceTimersByTimeAsync(20);
+	expect(context.state.value.phase).toBe('returning');
+	expect(context.state.value.height).toBeGreaterThan(0);
+	expect(context.state.value.height).toBeLessThan(56);
+	await vi.advanceTimersByTimeAsync(200);
+	expect(context.state.value).toMatchObject({ phase: 'idle', height: 0 });
+});
+
+test('reset retains the pending request lock and permits another refresh only after resolution', async () => {
+	let finish!: () => void;
+	const refresh = vi.fn().mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; })).mockResolvedValue(undefined);
+	const { root, context } = setup(refresh);
+	const pull = () => {
+		touch(root, 'touchstart', 0, 0);
+		touch(window, 'touchmove', 0, 180);
+		touch(window, 'touchend', 0, 180, 0);
+	};
+	pull();
+	await vi.advanceTimersByTimeAsync(250);
+	expect(refresh).toHaveBeenCalledOnce();
+	context.reset();
+	expect(context.active.value).toBe(false);
+	expect(context.pending.value).toBe(true);
+	pull();
+	await vi.advanceTimersByTimeAsync(250);
+	expect(refresh).toHaveBeenCalledOnce();
+	expect(context.state.value.phase).toBe('idle');
+	finish();
+	await vi.advanceTimersByTimeAsync(0);
+	expect(context.pending.value).toBe(false);
+	expect(context.state.value.phase).toBe('idle');
+	pull();
+	await vi.advanceTimersByTimeAsync(250);
+	expect(refresh).toHaveBeenCalledTimes(2);
+	expect(context.active.value).toBe(false);
+});
 
 test('replaces navigation gradually, refreshes once and restores while the request is pending', async () => {
 	let finish!: () => void;

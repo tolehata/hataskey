@@ -4,11 +4,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<section :class="$style.surface" :data-mode="mode" :data-motion-enabled="motionEnabled ? 'true' : 'false'" aria-labelledby="hatasaba-ui2-title">
+<section ref="surfaceEl" :class="$style.surface" :data-mode="mode" :data-motion-enabled="motionEnabled ? 'true' : 'false'" aria-labelledby="hatasaba-ui2-title">
 	<header v-if="mode === 'permanent'" :class="[$style.intro, $style.permanentIntro]">
 		<div :class="$style.titleRow">
 			<div>
-				<span :class="$style.recommended">{{ copy.ui2.recommendedInUse }}</span>
+				<span :class="$style.recommended">{{ ui === 'simple' ? copy.ui2.recommendedInUse : i18n.ts.recommended }}</span>
 				<h2 id="hatasaba-ui2-title"><span class="settingsBrand">Hataskey UI</span></h2>
 				<!-- 旗鯖fork: ⚠️2つの文を1行に流さないこと。「どんなUIか」と「いつ反映されるか」は
 					     別の話なので、文の切れ目で改行して読み分けられるようにする。
@@ -56,9 +56,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 
 	<section id="hatasaba-ui2-nav" :class="[$style.card, mode === 'permanent' && $style.basicCard]" aria-labelledby="hatasaba-ui2-basic" tabindex="-1">
-		<div :class="$style.basicTitle"><h3 id="hatasaba-ui2-basic">{{ editor.copy.basic }}</h3><span>{{ copyx.ui2.basicItemCount({ count: 4 }) }}</span></div>
+		<div :class="$style.basicTitle"><h3 id="hatasaba-ui2-basic">{{ editor.copy.basic }}</h3><span>{{ copyx.ui2.basicItemCount({ count: 5 }) }}</span></div>
 		<div :class="$style.basicRows" data-settings-ui2-basic-group>
 			<MkSwitch v-model="editor.draft.editedShowTrendingTab" :flat="mode === 'permanent'"><template #label>{{ editor.copy.showTrendingTab }}</template><template #caption>{{ editor.copy.showTrendingTabCaption }}</template></MkSwitch>
+			<MkSwitch v-model="editor.draft.editedShowHatadyTab" :flat="mode === 'permanent'"><template #label>{{ editor.copy.showHatadyTab }}</template><template #caption>{{ editor.copy.showHatadyTabCaption }}</template></MkSwitch>
 			<MkSwitch id="hatasaba-ui2-deck" v-model="editor.draft.editedTopNavMode" tabindex="-1" :flat="mode === 'permanent'"><template #label>{{ editor.copy.showMenuAtTop }}</template><template #caption>{{ editor.copy.showMenuAtTopCaption }}<b>{{ editor.copy.deckOnlyNote }}</b></template></MkSwitch>
 			<MkSwitch v-model="editor.draft.editedDeckIgnoreWidth" :flat="mode === 'permanent'"><template #label>{{ editor.copy.ignoreDeckWidth }}</template><template #caption>{{ editor.copy.ignoreDeckWidthCaption }}<b>{{ editor.copy.deviceSpecificSetting }}</b></template></MkSwitch>
 			<MkSwitch v-model="editor.draft.editedTabSwipeEnabled" :flat="mode === 'permanent'"><template #label>{{ editor.copy.swipeTabs }}</template><template #caption>{{ editor.copy.swipeTabsCaption }}<b>{{ editor.copy.thisDeviceOnly }}</b>{{ editor.copy.savedSuffix }}</template></MkSwitch>
@@ -129,6 +130,7 @@ import draggable from 'vuedraggable';
 import type { HatasabaUi2Draft } from '@/composables/use-hatasaba-ui2-draft.js';
 import MkSwitch from '@/components/MkSwitch.vue';
 import { i18n } from '@/i18n.js';
+import { ui } from '@@/js/config.js';
 
 const props = withDefaults(defineProps<{
 	editor: HatasabaUi2Draft;
@@ -141,6 +143,10 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ close: []; saved: []; sideStudio: []; preview: [] }>();
 const copy = i18n.ts._hata._settingsRedesign;
 const copyx = i18n.tsx._hata._settingsRedesign;
+const surfaceEl = useTemplateRef<HTMLElement>('surfaceEl');
+function sectionById(id: string): HTMLElement | null {
+	return surfaceEl.value?.querySelector<HTMLElement>(`#${id}`) ?? null;
+}
 /**
  * 旗鯖fork: 説明文を最初の句点で切り、2行に分けて出す。
  * ⚠️句点が無い言語では切らずにそのまま出す（改行が消えるだけで壊れない）。
@@ -202,7 +208,7 @@ function syncActiveCategoryFromScroll(): void {
 onMounted(() => {
 	if (typeof IntersectionObserver === 'undefined') return;
 	const targets = permanentCategoryChips
-		.map(chip => window.document.getElementById(chip.target))
+		.map(chip => sectionById(chip.target))
 		.filter((element): element is HTMLElement => element != null);
 	if (targets.length === 0) return;
 	sectionObserver = new IntersectionObserver(entries => {
@@ -269,7 +275,7 @@ function onCategoryWheel(event: WheelEvent): void {
 
 function focusCategory(targetId: string): void {
 	if (typeof window === 'undefined') return;
-	const target = window.document.getElementById(targetId);
+	const target = sectionById(targetId);
 	if (target == null) return;
 	activeCategoryTarget.value = targetId;
 	// ⚠️滑らかスクロールの途中で通過した節に反応させない。

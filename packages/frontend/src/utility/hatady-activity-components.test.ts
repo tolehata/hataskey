@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 const fixture = vi.hoisted(() => ({ api: vi.fn(), push: vi.fn(), closes: 0, mounts: 0 }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
-vi.mock('@/router.js', () => ({ useRouter: () => ({ push: fixture.push }) }));
+vi.mock('@/router.js', () => ({ useRouter: () => ({ pushByPath: fixture.push }) }));
 // The browser locale loader fetches at module initialization; these control-flow tests need no network.
 vi.mock('@/i18n.js', async () => {
 	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');

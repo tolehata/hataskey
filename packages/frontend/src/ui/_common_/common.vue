@@ -122,7 +122,7 @@ import { getNotificationPageContext, hataskeyNotificationToastsKey } from '@/uti
 import { popups } from '@/os.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { miLocalStorage } from '@/local-storage.js';
-import { pendingApiRequestsCount } from '@/utility/misskey-api.js';
+import { misskeyApi, pendingApiRequestsCount } from '@/utility/misskey-api.js';
 import * as sound from '@/utility/sound.js';
 import { $i } from '@/i.js';
 import { useStream } from '@/stream.js';
@@ -157,18 +157,11 @@ watch(notificationToastsSuppressed, (suppressed) => {
 	if (suppressed) notifications.value = [];
 });
 
-function onNotification(notification: Misskey.entities.Notification, isClient = false) {
+function onNotification(notification: Misskey.entities.Notification) {
 	// 旗鯖fork: マスコットに通知を伝える(設定ON時)
 	announceNotification(notification);
 
 	if (window.document.visibilityState === 'visible') {
-		if (!isClient && notification.type !== 'test') {
-			// サーバーサイドのテスト通知の際は自動で既読をつけない（テストできないので）
-			if (store.s.realtimeMode) {
-				useStream().send('readNotification');
-			}
-		}
-
 		// 旗鯖fork: マスコットが通知を伝える設定のときは標準トーストを出さない
 		if (!shouldSuppressStandardToast() && !shouldSuppressNotificationToasts()) {
 			const toastContext = getNotificationPageContext() ?? hataskeyToasts;
@@ -191,6 +184,37 @@ function onNotification(notification: Misskey.entities.Notification, isClient = 
 	haptic();
 }
 
+function dismissNotificationToasts(ids: readonly string[]): void {
+	if (ids.length === 0) return;
+	const dismissed = new Set(ids);
+	notifications.value = notifications.value.filter(notification => !dismissed.has(notification.id));
+	for (const context of [hataskeyToasts, getNotificationPageContext()]) {
+		if (!context) continue;
+		for (const item of context.items.value) {
+			if (item.source === 'local' && dismissed.has(item.notification.id)) context.dismiss(item.id);
+		}
+	}
+}
+
+async function flushNotificationToasts(): Promise<void> {
+	const ownerId = $i?.id;
+	if (!ownerId) return;
+	const ids = [...new Set([
+		...notifications.value.map(notification => notification.id),
+		...[hataskeyToasts, getNotificationPageContext()].flatMap(context => context?.items.value.flatMap(item => item.source === 'local' ? [item.notification.id] : []) ?? []),
+	])];
+	if (ids.length === 0) return;
+	for (let offset = 0; offset < ids.length; offset += 100) {
+		const batch = ids.slice(offset, offset + 100);
+		try {
+			const retained = await misskeyApi('notifications/show', { notificationIds: batch });
+			if ($i?.id !== ownerId) return;
+			const retainedIds = new Set(retained.map(notification => notification.id));
+			dismissNotificationToasts(batch.filter(id => !retainedIds.has(id)));
+		} catch { /* Keep this batch visible when reconciliation fails. */ }
+	}
+}
+
 function exitSafeMode() {
 	miLocalStorage.removeItem('isSafeMode');
 	const url = new URL(window.location.href);
@@ -206,8 +230,12 @@ if ($i) {
 	if (store.s.realtimeMode) {
 		const connection = useStream().useChannel('main');
 		connection.on('notification', onNotification);
+		connection.on('readNotification', event => dismissNotificationToasts([event.id]));
+		connection.on('notificationChanged', event => dismissNotificationToasts(event.ids));
+		connection.on('readAllNotifications', event => dismissNotificationToasts(event.ids));
+		connection.on('notificationFlushed', () => { void flushNotificationToasts(); });
 	}
-	globalEvents.on('clientNotification', notification => onNotification(notification, true));
+	globalEvents.on('clientNotification', onNotification);
 
 	if ('serviceWorker' in navigator) {
 		swInject();

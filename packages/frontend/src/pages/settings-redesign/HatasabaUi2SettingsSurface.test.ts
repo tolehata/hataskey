@@ -3,12 +3,21 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick } from 'vue';
 import type { HatasabaUi2Draft } from '@/composables/use-hatasaba-ui2-draft.js';
+import draftSource from '../../composables/use-hatasaba-ui2-draft.ts?raw';
+import popupSource from '../../components/MkHatasabaUi2EditWindow.vue?raw';
+import bodySource from '../../components/HatasabaUi2SettingsBody.vue?raw';
+import surfaceSource from './HatasabaUi2SettingsSurface.vue?raw';
+import previewSource from '../../components/MkHatasabaUi2PreviewWindow.vue?raw';
+import immediateSource from '../../components/HatasabaUi2ImmediateSettings.vue?raw';
 
+const config = vi.hoisted(() => ({ ui: 'simple' }));
+vi.mock('@@/js/config.js', async importOriginal => ({
+	...await importOriginal<typeof import('@@/js/config.js')>(),
+	get ui() { return config.ui; },
+}));
 vi.mock('vuedraggable', () => ({ default: defineComponent({
 	props: { modelValue: { type: Array, required: true } },
 	template: '<div><template v-for="(item, index) in modelValue" :key="item.id"><slot name="item" :element="item" :index="index"/></template></div>',
@@ -18,7 +27,7 @@ vi.mock('@/components/MkSwitch.vue', () => ({ default: defineComponent({
 	template: '<div :data-flat="flat"><slot name="label"/><slot name="caption"/></div>',
 }) }));
 vi.mock('@/i18n.js', () => ({ i18n: {
-	ts: { _hata: { _settingsRedesign: { ui2: {
+	ts: { recommended: '推奨', _hata: { _settingsRedesign: { ui2: {
 		recommendedInUse: '推奨・使用中', permanentDescriptionBefore: '通常表示とデッキ表示を1つで兼ねる、旗池2丁目の標準UIです。ここでの変更は', permanentDescriptionSave: '保存を押すまで反映されません', permanentDescriptionAfter: '。',
 		openPreview: 'プレビューを開く', livePreview: 'ライブプレビュー', categoryLabel: 'Hataskey UI の設定カテゴリ', chipNavigation: 'ナビ', chipGlass: 'ガラス', chipGlassAndBlur: 'ガラスとぼかし', chipNote: 'ノート', chipDeck: 'デッキ', chipSideMenu: 'サイドメニュー', chipFoldable: '折りたたみ端末', chipDevice: '端末', discard: '破棄', saveAndReload: '保存して再読み込み', reorderKeyboardHint: '上・下矢印キーで並べ替えできます',
 	} } } },
@@ -31,20 +40,12 @@ vi.mock('@/i18n.js', () => ({ i18n: {
 } }));
 import HatasabaUi2SettingsBody from '@/components/HatasabaUi2SettingsBody.vue';
 
-const source = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
-const draftSource = source('src/composables/use-hatasaba-ui2-draft.ts');
-const popupSource = source('src/components/MkHatasabaUi2EditWindow.vue');
-const bodySource = source('src/components/HatasabaUi2SettingsBody.vue');
-const surfaceSource = source('src/pages/settings-redesign/HatasabaUi2SettingsSurface.vue');
-const previewSource = source('src/components/MkHatasabaUi2PreviewWindow.vue');
-const immediateSource = source('src/components/HatasabaUi2ImmediateSettings.vue');
-
 function bodyEditorFixture() {
 	const action = vi.fn();
 	return {
 		copy: {
 			windowTitle: '編集ウィンドウ', hintBeforeCompare: '', hintCompare: '', hintAfterCompare: '', hintSave: '', hintAfterSave: '',
-			basic: '基本', showTrendingTab: 'トレンド', showTrendingTabCaption: '', showMenuAtTop: 'メニュー', showMenuAtTopCaption: '', deckOnlyNote: '',
+			basic: '基本', showTrendingTab: 'トレンド', showTrendingTabCaption: '', showHatadyTab: 'Hatady', showHatadyTabCaption: '', showMenuAtTop: 'メニュー', showMenuAtTopCaption: '', deckOnlyNote: '',
 			ignoreDeckWidth: '幅', ignoreDeckWidthCaption: '', deviceSpecificSetting: '', swipeTabs: 'スワイプ', swipeTabsCaption: '', thisDeviceOnly: '', savedSuffix: '',
 			replayDeckTutorial: 'チュートリアル', replayHintBefore: '', replayHintDeck: '', replayHintAfter: '', glassOpacity: '透過率', onlyWhenUi2Enabled: '', opacityDescriptionBefore: '', opacityTerm: '', opacityDescriptionAfter: '', restoreOpacity: '戻す',
 			ui2Name: 'UI2', ui2DescriptionBefore: '', alwaysEnabled: '', ui2DescriptionAfter: '', showBubbleDesign: '吹き出し', showBubbleDesignCaption: '', headerImageBlur: 'ぼかし', disableTimelineHeaderBlur: 'タイムライン', disableTimelineHeaderBlurCaption: '', noLivePreviewNote: '', disableProfileHeaderBlur: 'プロフィール', disableProfileHeaderBlurCaption: '',
@@ -52,7 +53,7 @@ function bodyEditorFixture() {
 			resetDefaults: '初期値に戻す', unsavedChanges: '未保存', close: '閉じる', save: '保存',
 		},
 		copyx: { bottomNavReorderHint: () => '', maxVisibleItems: () => '' },
-		draft: { editedShowTrendingTab: false, editedTopNavMode: false, editedDeckIgnoreWidth: false, editedTabSwipeEnabled: false, editedGlassUi: true, editedOpacity: 55, editedGlassUiBubble: false, editedNormalNoBannerBg: false, editedProfileNoBannerBg: false, editedDisableBubbleInHatasabaDeck: false, editedTopNav: [{ id: 'home', icon: 'ti ti-home', visible: true }, { id: 'search', icon: 'ti ti-search', visible: true }], editedBottomNav: [{ id: 'home', icon: 'ti ti-home', visible: true }, { id: 'search', icon: 'ti ti-search', visible: true }] },
+		draft: { editedShowTrendingTab: false, editedShowHatadyTab: false, editedTopNavMode: false, editedDeckIgnoreWidth: false, editedTabSwipeEnabled: false, editedGlassUi: true, editedOpacity: 55, editedGlassUiBubble: false, editedNormalNoBannerBg: false, editedProfileNoBannerBg: false, editedDisableBubbleInHatasabaDeck: false, editedTopNav: [{ id: 'home', icon: 'ti ti-home', visible: true }, { id: 'search', icon: 'ti ti-search', visible: true }], editedBottomNav: [{ id: 'home', icon: 'ti ti-home', visible: true }, { id: 'search', icon: 'ti ti-search', visible: true }] },
 		hasChanges: true, hasNavChanges: false, changeCount: 2, HATASABA_BOTTOM_NAV_MAX: 4, isHatasabaDeckActive: false, isBottomNavVisible: true,
 		onOpacityInput: action, setOpacity: action, setGlassUi: action, setGlassUiBubble: action, setProfileNoBannerBg: action, resetToDefault: action, resetTopNav: action, resetBottomNav: action, setTopNavVisible: action, setBottomNavVisible: action, moveTopNav: vi.fn(() => true), moveBottomNav: vi.fn(() => true), navDisplayLabel: () => 'ホーム', openSidebarEditDialog: action, onReplayDeckTutorial: action, save: () => false, discard: vi.fn(async () => true), resetDraftToSnapshot: action, restoreLivePreviewToSnapshot: action,
 	} as unknown as HatasabaUi2Draft;
@@ -105,7 +106,24 @@ describe('Hataskey UI editor shared draft contract', () => {
 		mounted.unmount();
 	});
 
-	test('permanent mode keeps its category chips outside the intro card and renders the basic four as one flat group', () => {
+	test.each([
+		['simple', '推奨・使用中'],
+		['hataskey3', '推奨'],
+		['deck', '推奨'],
+	])('shared PC/mobile permanent header shows the active UI accurately when ui is %s', (ui, expectedBadge) => {
+		config.ui = ui;
+		const mounted = mountPermanentBody();
+		try {
+			const badge = mounted.container.querySelector('header span[class*=recommended]');
+			expect(badge?.textContent).toBe(expectedBadge);
+			expect(mounted.container.textContent?.includes('使用中')).toBe(ui === 'simple');
+		} finally {
+			mounted.unmount();
+			config.ui = 'simple';
+		}
+	});
+
+	test('permanent mode keeps its category chips outside the intro card and renders the basic five as one flat group', () => {
 		const mounted = mountPermanentBody();
 		const intro = mounted.container.querySelector('header')!;
 		// 旗鯖fork: ⚠️タブはヘッダーの**外**に置くこと。
@@ -117,9 +135,9 @@ describe('Hataskey UI editor shared draft contract', () => {
 		expect(outsideChips!.closest('header')).toBeNull();
 		const basic = mounted.container.querySelector('#hatasaba-ui2-basic')!.closest('section')!;
 		expect(basic.textContent).toContain('基本');
-		expect(basic.textContent).toContain('4項目');
-		expect(basic.querySelectorAll('[data-flat="true"]')).toHaveLength(4);
-		expect(bodySource.match(/:flat="mode === 'permanent'"/gu)).toHaveLength(4);
+		expect(basic.textContent).toContain('5項目');
+		expect(basic.querySelectorAll('[data-flat="true"]')).toHaveLength(5);
+		expect(bodySource.match(/:flat="mode === 'permanent'"/gu)).toHaveLength(5);
 		expect(bodySource).toContain(':deep([data-settings-flat-row] + [data-settings-flat-row])');
 		mounted.unmount();
 	});

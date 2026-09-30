@@ -122,7 +122,7 @@ describe('redesigned preferences search index', () => {
 			expect(canonicalStableIdForCatalogV2(catalog, custom[index]!.stableId)).toBe(stableId);
 			expect(catalog.byStableId.get(stableId)).toMatchObject({ route: '/settings/preferences', destinationId: 'hataskey-ui-s', persistence: 'profile', saveMode: 'immediate', preferenceKeys: [key] });
 		}
-		for (const query of ['公開範囲', '色分け', '投稿フォーム', 'ぼかし']) {
+		for (const query of ['公開範囲', '色分け', '投稿フォーム', 'ぼかし', 'ノートの色', '左辺']) {
 			const results = searchSettingsV2(catalog, query).results;
 			expect(results.some(result => result.stableId === generatedPreferenceSearchId(keys[0]!)), query).toBe(true);
 			expect(results.some(result => custom.some(item => item.stableId === result.stableId)), query).toBe(false);

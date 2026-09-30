@@ -3,11 +3,29 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { notificationTypes } from 'cherrypick-js';
+import { notificationTypes, hatadyNotificationSubtypes } from 'cherrypick-js';
 import type * as Misskey from 'cherrypick-js';
+import type { HataNotificationCategory } from '@/utility/hatasaba-device-prefs.js';
 import { i18n } from '@/i18n.js';
 
 export type NotificationType = typeof notificationTypes[number];
+
+export const NOTIFICATION_FILTER_CATEGORIES = ['standard', 'hatady', 'hatask', 'hataFeed'] as const satisfies readonly HataNotificationCategory[];
+export const HATASK_NOTIFICATION_TYPES = ['hataskFlowerReady', 'hataskFlowerBloomed', 'hataskZukanUpdated', 'hataskFestivalBloomed'] as const satisfies readonly NotificationType[];
+export const STANDARD_NOTIFICATION_TYPES = notificationTypes.filter(type => type !== 'hatady' && type !== 'hataFeed' && !(HATASK_NOTIFICATION_TYPES as readonly string[]).includes(type));
+
+export type NotificationFilterDetails = {
+	includeBrands?: string[] | null;
+	includeHataskApp?: boolean;
+	excludeHatadySubtypes?: string[];
+	knownHatadySubtypes?: string[];
+};
+
+export type ResolvedNotificationFilterDetails = {
+	includeBrands: HataNotificationCategory[] | null;
+	includeHataskApp: boolean;
+	excludeHatadySubtypes: (typeof hatadyNotificationSubtypes[number])[];
+};
 
 export type NotificationFilterState = {
 	excludeTypes: NotificationType[];
@@ -31,6 +49,46 @@ function unique(values: readonly string[]): string[] {
 	return [...new Set(values)];
 }
 
+export function resolveNotificationFilterDetails(
+	details: NotificationFilterDetails | null | undefined,
+	resolvedExcludeTypes: readonly string[] = [],
+): ResolvedNotificationFilterDetails {
+	const knownSubtypes = new Set(details?.knownHatadySubtypes);
+	const excludedSubtypes = new Set(details?.excludeHatadySubtypes);
+	const hasSnapshot = details?.knownHatadySubtypes != null;
+	return {
+		includeBrands: details?.includeBrands == null ? null : NOTIFICATION_FILTER_CATEGORIES.filter(category => details.includeBrands?.includes(category)),
+		includeHataskApp: details?.includeHataskApp ?? !resolvedExcludeTypes.includes('app'),
+		excludeHatadySubtypes: hatadyNotificationSubtypes.filter(subtype => excludedSubtypes.has(subtype) || (hasSnapshot && !knownSubtypes.has(subtype))),
+	};
+}
+
+export function serializeNotificationFilterDetails(
+	selection: ResolvedNotificationFilterDetails,
+	previous?: NotificationFilterDetails | null,
+): NotificationFilterDetails {
+	const knownBrands = new Set<string>(NOTIFICATION_FILTER_CATEGORIES);
+	const unknownBrands = (previous?.includeBrands ?? []).filter(brand => !knownBrands.has(brand));
+	const requestedBrands = selection.includeBrands;
+	const selectedBrands = requestedBrands == null ? [...NOTIFICATION_FILTER_CATEGORIES] : NOTIFICATION_FILTER_CATEGORIES.filter(category => requestedBrands.includes(category));
+	const includeBrands = selectedBrands.length === NOTIFICATION_FILTER_CATEGORIES.length && unknownBrands.length === 0
+		? null
+		: unique([...selectedBrands, ...unknownBrands]);
+	const knownSubtypes = new Set<string>(hatadyNotificationSubtypes);
+	return {
+		includeBrands,
+		includeHataskApp: selection.includeHataskApp,
+		excludeHatadySubtypes: unique([
+			...(previous?.excludeHatadySubtypes ?? []).filter(subtype => !knownSubtypes.has(subtype)),
+			...selection.excludeHatadySubtypes.filter(subtype => knownSubtypes.has(subtype)),
+		]),
+		knownHatadySubtypes: unique([
+			...(previous?.knownHatadySubtypes ?? []).filter(subtype => !knownSubtypes.has(subtype)),
+			...hatadyNotificationSubtypes,
+		]),
+	};
+}
+
 export function isNotificationType(value: string): value is NotificationType {
 	return (notificationTypes as readonly string[]).includes(value);
 }
@@ -41,7 +99,7 @@ export function isNotificationType(value: string): value is NotificationType {
  * グループ通知も一瞬表示しないよう、全員が Bot のグループも判定する。
  */
 export function isNotificationFromBot(notification: Misskey.entities.Notification): boolean {
-	if ('user' in notification && notification.user.isBot === true) return true;
+	if ('user' in notification && notification.user?.isBot === true) return true;
 	if (notification.type === 'reaction:grouped') {
 		return notification.reactions.length > 0 && notification.reactions.every(reaction => reaction.user.isBot === true);
 	}

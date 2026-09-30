@@ -1,12 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? i18n.tsx._hata._hatady._workWizard.editTitle({ type: typeLabel }) : i18n.tsx._hata._hatady._workWizard.addTitle({ type: typeLabel })" :label="typeLabel" :icon="icon" :pages="pages" :draftId="`hatady:media-work:${kind}:${isEdit ? `edit:${source!.id}` : 'create'}`" :embedded="embedded" :save="save" :saveLabel="isEdit ? i18n.ts._hata._hatady._wizardComposer.saveChanges : i18n.ts._hata._hatady._bookWizard.addToCollection" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
+<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? i18n.tsx._hata._hatady._workWizard.editTitle({ type: typeLabel }) : i18n.tsx._hata._hatady._workWizard.addTitle({ type: typeLabel })" :label="typeLabel" :icon="icon" :pages="pages" :draftId="`hatady:media-work:${kind}:${isEdit ? `edit:${source!.id}` : 'create'}`" :embedded="embedded" :variant="variant" :save="save" :saveLabel="isEdit ? i18n.ts._hata._hatady._wizardComposer.saveChanges : i18n.ts._hata._hatady._bookWizard.addToCollection" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
 </template>
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue';
 import type { HatadyMediaKind, HatadyMediaWork } from '@/utility/hatady-media.js';
 import type { HatadyFormPage, HatadyFormValues } from '@/utility/hatady-form.js';
 import HatadyFormWizard from '@/components/HatadyFormWizard.vue';
+import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 import { hatadyMediaCopy, mediaStatusCopyKey, mediaStatusOptions, normalizeMediaList } from '@/utility/hatady-media.js';
 import { formField as f, optionalPages } from '@/utility/hatady-form.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -14,7 +15,7 @@ import { i18n } from '@/i18n.js';
 const wizardCopy = i18n.ts._hata._hatady._workWizard;
 const bookCopy = i18n.ts._hata._hatady._bookWizard;
 const mediaCopy = i18n.ts._hata._hatady._media;
-const props = withDefaults(defineProps<{ kind: HatadyMediaKind; editWork?: HatadyMediaWork | null; embedded?: boolean }>(), { editWork: null, embedded: false });
+const props = withDefaults(defineProps<{ kind: HatadyMediaKind; editWork?: HatadyMediaWork | null; embedded?: boolean; variant?: HatadySurfaceVariant }>(), { editWork: null, embedded: false, variant: 'hatady' });
 const emit = defineEmits<{ (event: 'done', value: HatadyMediaWork): void; (event: 'closed'): void; (event: 'back'): void }>();
 const wizard = useTemplateRef('wizard'), source = props.editWork, kind = props.kind, isEdit = source != null;
 const typeLabel = kind === 'movie' ? i18n.ts._hata._hatady._profile.movie : kind === 'game' ? i18n.ts._hata._hatady._profile.game : i18n.ts._hata._hatady._activityKinds.work, icon = kind === 'movie' ? 'ti ti-movie' : kind === 'game' ? 'ti ti-device-gamepad-2' : 'ti ti-briefcase';

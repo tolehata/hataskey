@@ -137,8 +137,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button v-if="deckActive" v-tooltip.right="sidebarFolded ? copy.reload : null" :class="$style.sbReloadBtn" @click="reloadPage($event)">
 					<i class="ti ti-refresh"></i>
 				</button>
-				<button v-tooltip.right="sidebarFolded ? copy.note : null" :class="$style.sbPostBtn" :style="studioPostButtonStyle" data-cy-open-post-form @click="playSimpleNavMotion($event, 'post'); onPostClick()">
-					<i :class="studioPostButtonIcon"></i>
+				<button v-tooltip.right="sidebarFolded ? composeLabel : null" :aria-label="composeLabel" :class="$style.sbPostBtn" :style="studioPostButtonStyle" data-cy-open-post-form @click="playSimpleNavMotion($event, 'post'); onPostClick()">
+					<i :class="composeIcon"></i>
 				</button>
 				<!-- 旗鯖fork: デッキモード切替トグル (アカウント表示の上) -->
 				<div :class="$style.sbModeToggle">
@@ -191,7 +191,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.topNavDivider"></div>
 				<button v-if="deckActive" v-tooltip="copy.deckSettings" :class="$style.topNavItem" @click="playSimpleNavMotion($event, 'deck'); globalEvents.emit('toggleDeckToolbar')"><i class="ti ti-layout-board"></i><span>{{ copy.deckShort }}</span></button>
 				<button v-tooltip="copy.settings" :class="$style.topNavItem" @click="playSimpleNavMotion($event, 'settings'); goToSettings()"><i class="ti ti-settings"></i><span>{{ copy.settings }}</span></button>
-				<button v-tooltip="copy.note" :class="$style.topNavPost" data-cy-open-post-form @click="playSimpleNavMotion($event, 'post'); onPostClick()"><i class="ti ti-pencil"></i><span>{{ copy.note }}</span></button>
+				<button v-tooltip="composeLabel" :aria-label="composeLabel" :class="$style.topNavPost" data-cy-open-post-form @click="playSimpleNavMotion($event, 'post'); onPostClick()"><i :class="composeIcon"></i><span>{{ composeLabel }}</span></button>
 				<button :class="$style.topNavAvatar" @click="openAccountMenu"><MkAvatar v-if="$i" :user="$i" :class="$style.topNavAvatarImg"/></button>
 			</nav>
 			<!-- Top pill navbar (timeline tabs) - scroll reactive -->
@@ -299,22 +299,24 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<img :src="$i.bannerUrl" :class="$style.timelineBannerImg"/>
 			</div>
 			<div ref="contentEl" :inert="navbarSearchOpen" data-timeline-tab-gestures :class="$style.content" @scroll="onContentScroll" @wheel="onContentWheel">
-				<Transition :css="newNotesMotionEnabled" :enterActiveClass="$style.timelineEnterActive" :leaveActiveClass="$style.timelineLeaveActive" :enterFromClass="$style.timelineEnterFrom" :enterToClass="$style.timelineEnterTo" :leaveFromClass="$style.timelineLeaveFrom" :leaveToClass="$style.timelineLeaveTo" mode="out-in" @beforeLeave="prepareTimelineLeave">
-					<div v-show="!isPageView && !deckActive" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="$style.timelineContainer" :style="{ '--timeline-slide-direction': timelineSlideDirection }" :data-timeline-motion="newNotesMotionEnabled" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart.passive="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" @touchcancel="onTouchCancel">
-						<!-- 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定がONのとき、外部TL以外でMkPostFormを表示 -->
-						<MkPostForm v-if="showFixedPostForm && !isExternalTab" :class="$style.fixedPostForm" class="_panel" fixed :autofocus="false"/>
-						<KeepAlive>
-							<MkStreamingNotesTimeline v-if="tab === 'mixed'" key="mixed" newNotesNavbarKey="main:mixed" src="global" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" ref="punchTimeline" :updatesPaused="punchBusy" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive && !punchBusy" :emojiVoteEffectTarget="ltlEmojiVoteEffects" :emojiVoteNavbar="normalLtlVoteActive && nativeNavbarVisible" :emojiVoteNavbarTarget="normalLtlVoteActive && nativeNavbarVisible ? ltlEmojiVoteNavbarTarget : null" @emojiVoteNavbarState="emojiVoteNavbarState = $event"/>
-							<MkStreamingNotesTimeline v-else-if="tab === 'social'" key="social" newNotesNavbarKey="main:social" src="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkStreamingNotesTimeline v-else-if="tab === 'following'" key="following" newNotesNavbarKey="main:following" src="home" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" key="ohtl" newNotesNavbarKey="main:ohtl" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
-							<MkExternalTimeline v-else-if="tab === 'oltl' && externalHost && externalToken" key="oltl" newNotesNavbarKey="main:oltl" src="oltl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
-							<!-- 旗鯖fork: トレンドタイムライン (TTL) -->
-							<MkTrendingTimeline v-else-if="tab === 'trending'" key="trending" newNotesNavbarKey="main:trending" :glassBg="timelineGlassBg"/>
-						</KeepAlive>
-					</div>
-				</Transition>
+				<div v-show="!isPageView && !deckActive" style="height: 100%;">
+					<div v-if="showFixedPostForm" v-show="!isExternalTab && !isHatadyTab" :inert="isExternalTab || isHatadyTab" :class="$style.fixedFormHost"><MkPostForm :class="$style.fixedPostForm" class="_panel" fixed :autofocus="false"/></div>
+					<Transition :css="newNotesMotionEnabled" :enterActiveClass="$style.timelineEnterActive" :leaveActiveClass="$style.timelineLeaveActive" :enterFromClass="$style.timelineEnterFrom" :enterToClass="$style.timelineEnterTo" :leaveFromClass="$style.timelineLeaveFrom" :leaveToClass="$style.timelineLeaveTo" mode="out-in" @beforeLeave="prepareTimelineLeave">
+						<div :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="[$style.timelineContainer, { [$style.timelineContainerWithFixedForm]: showFixedPostForm && !isExternalTab && !isHatadyTab }]" :style="{ '--timeline-slide-direction': timelineSlideDirection }" :data-timeline-motion="newNotesMotionEnabled" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart.passive="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" @touchcancel="onTouchCancel">
+							<KeepAlive>
+								<MkStreamingNotesTimeline v-if="tab === 'mixed'" key="mixed" newNotesNavbarKey="main:mixed" src="global" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
+								<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" ref="punchTimeline" :updatesPaused="punchBusy" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive && !punchBusy" :emojiVoteEffectTarget="ltlEmojiVoteEffects" :emojiVoteNavbar="normalLtlVoteActive && nativeNavbarVisible" :emojiVoteNavbarTarget="normalLtlVoteActive && nativeNavbarVisible ? ltlEmojiVoteNavbarTarget : null" @emojiVoteNavbarState="emojiVoteNavbarState = $event"/>
+								<MkStreamingNotesTimeline v-else-if="tab === 'social'" key="social" newNotesNavbarKey="main:social" src="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
+								<MkStreamingNotesTimeline v-else-if="tab === 'following'" key="following" newNotesNavbarKey="main:following" src="home" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
+								<!-- 旗鯖fork: トレンドタイムライン (TTL) -->
+								<MkTrendingTimeline v-else-if="tab === 'trending'" key="trending" newNotesNavbarKey="main:trending" :glassBg="timelineGlassBg"/>
+								<MkHatadyTimeline v-else-if="tab === 'hatady'" ref="hatadyTimeline" key="hatady" variant="ui" :active="!isPageView && !deckActive && isHatadyTab" newNotesNavbarKey="main:hatady"/>
+								<MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" key="ohtl" newNotesNavbarKey="main:ohtl" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
+								<MkExternalTimeline v-else-if="tab === 'oltl' && externalHost && externalToken" key="oltl" newNotesNavbarKey="main:oltl" src="oltl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
+							</KeepAlive>
+						</div>
+					</Transition>
+				</div>
 				<!-- 旗鯖fork: デッキモード (デスクトップのみ)。背景にヘッダー画像のぼかしを敷く(無効化可) -->
 				<div v-if="deckActive" data-hata-collapse-items :class="$style.deckArea">
 					<div v-if="glassEffect && !deckNoBannerBg && $i?.bannerUrl" :class="$style.deckBanner">
@@ -353,7 +355,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</template>
 					</div>
 				</div>
-				<button v-if="!isPageView || isCollectionTimelinePage" :class="$style.sideBtn" :inert="navbarSearchOpen" data-cy-open-post-form @click="playSimpleNavMotion($event, 'post'); onPostClick()"><i class="ti ti-pencil"></i></button>
+				<button v-if="!isPageView || isCollectionTimelinePage" :class="$style.sideBtn" :inert="navbarSearchOpen" :aria-label="composeLabel" data-cy-open-post-form @click="playSimpleNavMotion($event, 'post'); onPostClick()"><i :class="composeIcon"></i></button>
 				<div v-else :class="$style.bottomSideSpacer"></div>
 			</div>
 
@@ -455,8 +457,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</template>
 					</div>
 					<div :class="$style.sbBottom">
-						<button :class="$style.sbPostBtn" :style="studioPostButtonStyle" @click="playSimpleNavMotion($event, 'post'); onPostClick(); simpleDrawerShowing = false">
-							<i :class="studioPostButtonIcon"></i><span>{{ copy.note }}</span>
+						<button :class="$style.sbPostBtn" :style="studioPostButtonStyle" :aria-label="composeLabel" @click="playSimpleNavMotion($event, 'post'); onPostClick(); simpleDrawerShowing = false">
+							<i :class="composeIcon"></i><span>{{ composeLabel }}</span>
 						</button>
 						<div :class="$style.sbBottomRow">
 							<button :class="$style.sbAccount" @click="openAccountMenu">
@@ -518,6 +520,9 @@ import { getHataSideWidgetDisplayLabel, HATA_SIDE_WIDGET_REGISTRY } from '@/util
 import { useFoldableScrollAnchor, useFoldableWide } from '@/utility/hata-foldable.js';
 // 旗鯖fork: トレンドタイムライン (TTL)
 import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
+import MkHatadyTimeline from '@/components/MkHatadyTimeline.vue';
+import { openHatadyRecord } from '@/utility/hatady-record-launcher.js';
+import { acceptNotificationUnreadState } from '@/utility/notification-unread-state.js';
 import { provideMetadataReceiver, provideReactiveMetadata } from '@/page.js';
 import { mainRouter } from '@/router.js';
 import { DI } from '@/di.js';
@@ -934,6 +939,7 @@ const activeListName = computed(() => userListsCache.value.value?.find(item => i
 const activeAntennaName = computed(() => antennasCache.value.value?.find(item => item.id === activeAntennaId.value)?.name ?? String(pageMetadata.value?.title ?? ''));
 const timelinePickerItems = computed(() => timelinePickerKind.value === 'list' ? (userListsCache.value.value ?? []) : (antennasCache.value.value ?? []));
 const isExternalTab = computed(() => tab.value === 'ohtl' || tab.value === 'oltl');
+const isHatadyTab = computed(() => tab.value === 'hatady');
 const isHomeTL = computed(() => !isPageView.value && !isSearchPage.value && !isNotifPage.value && !isHataskPage.value);
 
 const checkIsPageView = () => { isPageView.value = !HOME_ROUTES.has(mainRouter.currentRoute.value.name as string); };
@@ -946,21 +952,20 @@ mainRouter.on('change', () => {
 	simpleDrawerShowing.value = false;
 	showBottomBar.value = true;
 	showTopBar.value = true;
-	if (mainRouter.currentRoute.value.path === '/my/notifications') { hasUnreadNotif.value = false; unreadNotifCount.value = 0; }
 	// テーマ再検出（ページ遷移でテーマが変わる場合）
 	window.setTimeout(detectThemeBrightness, 100);
 });
 
 // ===== タブ =====
 // 旗鯖fork: 'trending' を追加 (トレンドタイムライン (TTL))
-type TabType = 'following' | 'mixed' | 'local' | 'social' | 'ohtl' | 'oltl' | 'trending';
+type TabType = 'following' | 'mixed' | 'local' | 'social' | 'ohtl' | 'oltl' | 'trending' | 'hatady';
 
 // 旗鯖fork: 再読み込み時に最後のタブを復元する。
 // ただし外部TL(ohtl/oltl)はトークンが無いと表示できず空タブになるため復元対象から除外し、
 // 復元できない場合は 'following' にフォールバックする。
 function getInitialTab(): TabType {
 	const saved = miLocalStorage.getItem('hatasabaUiLastTab') as TabType | null;
-	const restorable: TabType[] = ['following', 'mixed', 'local', 'social', 'trending'];
+	const restorable: TabType[] = ['following', 'mixed', 'local', 'social', 'trending', 'hatady'];
 	if (saved != null && restorable.includes(saved) && isHataskeyTimelineAllowed(saved)) return saved;
 	return 'following';
 }
@@ -1005,14 +1010,11 @@ watch([normalLtlVoteActive, contentEl], ([active, content], _old, onCleanup) => 
 // 旗鯖fork: トレンドタブ (TTL) は専用トグル simpleUi.showTrendingTab で制御し、
 // 有効時は topNav 設定とは独立して最左に差し込む (既存ユーザーの topNav 設定を変更しないため)
 const visibleTopTabs = computed(() => {
-	const saved = (prefer.r['simpleUi.topNav'].value as any[]).filter((t: any) => t.visible && isHataskeyTimelineAllowed(t.id));
-	if (prefer.r['simpleUi.showTrendingTab'].value) {
-		// 旗鯖fork: トレンドタブは通常タブの右端に置く。
-		// tabOrder で後段に ohtl/oltl(外部TL)が push されるため、
-		// 結果の並びは「通常タブ... → トレンド → 外部ホーム → 外部ローカル」となる。
-		return [...saved, { id: 'trending', icon: 'ti ti-flame', label: 'トレンド', visible: true }];
-	}
-	return saved;
+	const saved = (prefer.r['simpleUi.topNav'].value as any[]).filter((t: any) => t.visible && t.id !== 'trending' && t.id !== 'hatady' && isHataskeyTimelineAllowed(t.id));
+	const tabs = [...saved];
+	if (prefer.r['simpleUi.showTrendingTab'].value) tabs.push({ id: 'trending', icon: 'ti ti-flame', label: i18n.ts._hata._hataskeyUi3.tabTrending, visible: true });
+	if (prefer.r['simpleUi.showHatadyTab'].value) tabs.push({ id: 'hatady', icon: 'ti ti-book-2', label: i18n.ts._hata._hataskeyUi3.tabHatady, visible: true });
+	return tabs;
 });
 const tabOrder = computed<TabType[]>(() => {
 	const tabs: TabType[] = visibleTopTabs.value.map((t: any) => t.id as TabType);
@@ -1057,6 +1059,9 @@ const sidebarOrder = computed(() => prefer.r['simpleUi.sidebar'].value as any[])
 ensureHataSideStudioInitialized(sidebarOrder.value);
 const studioProfile = computed(() => getActiveHataSideProfile(hataSideStudioStore.value));
 const studioPostButtonIcon = computed(() => studioProfile.value.postButton.icon === 'paw' ? 'ti ti-paw' : 'ti ti-pencil');
+const composeLabel = computed(() => isHatadyTab.value && !isPageView.value && !deckActive.value ? copy.record : copy.note);
+const composeIcon = computed(() => isHatadyTab.value && !isPageView.value && !deckActive.value ? 'ti ti-book-2' : studioPostButtonIcon.value);
+const hatadyTimeline = ref<InstanceType<typeof MkHatadyTimeline> | null>(null);
 const studioPostButtonStyle = computed(() => ({
 	background: gradientCss(studioProfile.value.postButton),
 	color: studioProfile.value.postButton.foreground,
@@ -1607,7 +1612,20 @@ onUnmounted(timelineTabGestures.destroy);
 // ===== ナビゲーション =====
 // 旗鯖fork: 上部ナビバーの横スクロール(縦ホイール→横)
 const onTopNavWheel = (ev: WheelEvent) => { const el = ev.currentTarget as HTMLElement; el.scrollLeft += (Math.abs(ev.deltaY) > Math.abs(ev.deltaX) ? ev.deltaY : ev.deltaX); };
-const onPostClick = () => { os.post({}); };
+const onPostClick = () => {
+	if (isHatadyTab.value && !isPageView.value && !deckActive.value) void openHatadyRecord({ variant: 'ui', onDone: () => hatadyTimeline.value?.reloadTimeline() });
+	else os.post({});
+};
+function onHatadyShortcut(event: KeyboardEvent) {
+	if (!isHatadyTab.value || isPageView.value || deckActive.value || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing || !['p', 'n'].includes(event.key.toLowerCase())) return;
+	const target = event.target;
+	if (!(target instanceof HTMLElement) || !timelineCollapseRoot.value?.contains(target) || target.closest('input, textarea, [contenteditable="true"], [role="dialog"]')) return;
+	event.preventDefault();
+	event.stopImmediatePropagation();
+	onPostClick();
+}
+onMounted(() => window.document.addEventListener('keydown', onHatadyShortcut, true));
+onUnmounted(() => window.document.removeEventListener('keydown', onHatadyShortcut, true));
 const scrollToTop = () => { if (contentEl.value) contentEl.value.scrollTo({ top: 0, behavior: 'smooth' }); };
 // 旗鯖fork: ホームボタンは「HTLへ強制的に切り替える」ボタンではなく、今見ているTLタブを
 // 一番上(最新)まで戻すボタンとして扱う。以前は following(HTL)以外のタブを見ている時に
@@ -1690,7 +1708,7 @@ function onNavbarSearchKeydown(event: KeyboardEvent) {
 const goToHatask = () => { mainRouter.push('/hatask'); };
 const goToHatady = () => { mainRouter.push('/hatady'); };
 const goToHataFeed = () => { mainRouter.push('/hatafeed'); };
-const goToNotifications = () => { hasUnreadNotif.value = false; unreadNotifCount.value = 0; mainRouter.push('/my/notifications'); };
+const goToNotifications = () => { mainRouter.push('/my/notifications'); };
 const goToLists = () => { mainRouter.push('/my/lists'); };
 const goToChannels = () => { mainRouter.push('/channels'); };
 const goToAntennas = () => { mainRouter.push('/my/antennas'); };
@@ -2179,6 +2197,7 @@ const syncUnreadFromI = () => {
 		}
 	}
 };
+watch(() => [$i?.unreadNotificationsCount, $i?.hasUnreadNotification], syncUnreadFromI);
 
 // 初期状態の取得（$i に値があればそれを使い、無ければ API 取得）
 const checkUnread = async() => {
@@ -2187,11 +2206,15 @@ const checkUnread = async() => {
 		// $i に何も値が無い場合のフォールバック: API で直近1件取得
 		if (!$i || (typeof $i.hasUnreadNotification !== 'boolean' && typeof $i.unreadNotificationsCount !== 'number')) {
 			// 旗鯖fork: os.api は存在しないため misskeyApi を動的importして使う(従来はcatchで握り潰され未読フォールバックが機能していなかった)
+			const ownerId = $i?.id;
 			const { misskeyApi } = await import('@/utility/misskey-api.js');
-			const r = await misskeyApi('i/notifications', { limit: 1 });
+			const r = await misskeyApi('i/notifications', { limit: 1, markAsRead: false });
+			if ($i?.id !== ownerId) return;
+			if (typeof $i?.unreadNotificationsCount === 'number') { syncUnreadFromI(); return; }
 			const first = Array.isArray(r) ? (r as Array<{ isRead?: boolean }>)[0] : undefined;
 			if (first && first.isRead !== true) {
 				hasUnreadNotif.value = true;
+				unreadNotifCount.value = Math.max(1, unreadNotifCount.value);
 			} else {
 				hasUnreadNotif.value = false;
 				unreadNotifCount.value = 0;
@@ -2215,31 +2238,19 @@ const initStream = () => {
 		broadcastStream = stream;
 		stream.on('hataTimelineCollapse', onHataTimelineCollapse);
 
-		// 新規通知
-		mainCh.on('notification', () => {
-			if (mainRouter.currentRoute.value.path.startsWith('/my/notifications')) return;
-			hasUnreadNotif.value = true;
-			// $i は本家の `meUpdated` イベント経由で自動更新される
-			// ここでは即時反応のためインクリメント or 同期
-			if (typeof $i?.unreadNotificationsCount === 'number') {
-				unreadNotifCount.value = $i.unreadNotificationsCount;
-			} else {
-				unreadNotifCount.value++;
-			}
-		});
-
-		// 未読通知サマリ（接続復帰時など）
-		mainCh.on('unreadNotification', () => {
-			if (mainRouter.currentRoute.value.path.startsWith('/my/notifications')) return;
-			hasUnreadNotif.value = true;
-			syncUnreadFromI();
-		});
-
-		// 全て既読化
-		mainCh.on('readAllNotifications', () => {
-			hasUnreadNotif.value = false;
-			unreadNotifCount.value = 0;
-		});
+		const ownerId = $i?.id;
+		const updateUnread = (state: { unreadNotificationsCount: number; revision: string }) => {
+			if ($i?.id !== ownerId) return;
+			const count = acceptNotificationUnreadState(ownerId, state);
+			if (count === null) return;
+			unreadNotifCount.value = count;
+			hasUnreadNotif.value = count > 0;
+		};
+		mainCh.on('unreadNotification', updateUnread);
+		mainCh.on('readNotification', updateUnread);
+		mainCh.on('notificationChanged', updateUnread);
+		mainCh.on('notificationFlushed', updateUnread);
+		mainCh.on('readAllNotifications', updateUnread);
 
 		// 接続切断時のログのみ（ハンドラ自体は残る、再接続時に発火継続）
 		stream.on('_disconnected_', () => {
@@ -3816,6 +3827,9 @@ onUnmounted(() => {
 .desktopLayout .timelineContainer {
     padding-top:calc(56px);
 }
+.timelineContainerWithFixedForm { padding-top:0; }
+.fixedFormHost { max-width:800px; margin:0 auto; padding-top:calc(56px + env(safe-area-inset-top,0px)); }
+.desktopLayout .fixedFormHost { padding-top:56px; }
 /* 旗鯖fork: タイムライン上部固定投稿フォーム */
 .fixedPostForm {
     margin: 0 auto var(--MI-margin) auto;

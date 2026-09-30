@@ -134,7 +134,9 @@ export default class Connection {
 
 	@bindThis
 	private onReadNotification(payload: JsonValue | undefined) {
-		this.notificationService.readAllNotification(this.user!.id);
+		if (this.user == null || (this.token != null && !this.token.permission.includes('read:notifications'))) return;
+		if (!isJsonObject(payload) || typeof payload.id !== 'string' || !/^[a-zA-Z0-9]{1,80}$/.test(payload.id)) return;
+		void this.notificationService.markNotificationRead(this.user.id, payload.id).catch(() => {});
 	}
 
 	/**

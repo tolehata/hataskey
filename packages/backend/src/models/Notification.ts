@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { userExportableEntities } from '@/types.js';
+import { userExportableEntities, type HatadyNotificationSubtype } from '@/types.js';
 import { MiUser } from './User.js';
 import { MiNote } from './Note.js';
 import { MiUserGroupInvitation } from './UserGroupInvitation.js';
@@ -160,10 +160,22 @@ export type MiNotification = {
 	type: 'hataFeed';
 	id: string;
 	createdAt: string;
+	/** Older HataFeed entries have no source ID and keep their existing read state. */
+	sourceNotificationId?: string;
 	customBody: string;
 	customHeader: string | null;
 	customIcon: string | null;
 	customLink: string | null;
+} | {
+	type: 'hatady';
+	id: string;
+	createdAt: string;
+	sourceNotificationId: string;
+	subtype: HatadyNotificationSubtype;
+	/** Immutable primary target, retained even when a source FK uses SET NULL. */
+	targetType: 'none' | 'log' | 'comment' | 'work' | 'session' | 'mediaComment';
+	targetId: string | null;
+	notifierId?: MiUser['id'];
 } | {
 	// Hataskの花が収穫できるようになった通知。
 	type: 'hataskFlowerReady';

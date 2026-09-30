@@ -69,7 +69,7 @@ function logFixture() {
 	const stored = { id: 'log', userId: 'owner', title: 'old', kind: 'study', tags: [], durationMinutes: 0, durationSeconds: null, body: 'old', details: { future: 1 }, fileIds: ['a', 'gone'] };
 	const repo = { findOneBy: vi.fn().mockResolvedValue(stored), findOneByOrFail: vi.fn().mockResolvedValue(stored), update: vi.fn(async (_id: unknown, patch: object) => Object.assign(stored, patch)) };
 	const service = Object.create(HatadyService.prototype) as HatadyService;
-	Object.assign(service, { hatadyLogsRepository: repo, hatadyAttachmentService: f.service });
+	Object.assign(service, { hatadyLogsRepository: repo, hatadyAttachmentService: f.service, hatadyNotificationsRepository: { findBy: vi.fn().mockResolvedValue([]) } });
 	return { ...f, stored, repo, logs: service };
 }
 
@@ -81,7 +81,7 @@ describe('record update compatibility', () => {
 		const records = { insert: vi.fn(async (record: Record<string, unknown>) => { saved = record; }), findOneByOrFail: vi.fn(async () => saved) };
 		const manager = { getRepository: vi.fn((model: { name: string }) => model === MiDriveFile ? f.repository : model.name === 'MiHatadyBook' ? books : records) };
 		const service = Object.create(HatadyService.prototype) as HatadyService;
-		Object.assign(service, { hatadyAttachmentService: f.service, hatadyLogsRepository: { manager: { transaction: async (fn: (tx: unknown) => unknown) => fn(manager) } }, idService: { gen: () => 'log' } });
+		Object.assign(service, { hatadyAttachmentService: f.service, hatadyLogsRepository: { manager: { transaction: async (fn: (tx: unknown) => unknown) => fn(manager) } }, idService: { gen: () => 'log' }, flowerService: { onHatadyCreated: vi.fn().mockResolvedValue({}) } });
 		Object.defineProperty(service, 'notifyMilestoneIfReached', { value: vi.fn().mockResolvedValue(undefined) });
 		const input = { kind, title: 'record', subject: 'subject', durationSeconds: 60, bookId: 'book', pageTo: 5 };
 		await expect(service.createLog({ id: 'owner' } as never, { ...input, fileIds: ['foreign'] })).rejects.toThrow(HATADY_ATTACHMENT_ERROR);
@@ -113,7 +113,7 @@ describe('record update compatibility', () => {
 		const repo = { findOne: vi.fn().mockResolvedValue(stored), findOneByOrFail: vi.fn().mockResolvedValue(stored), update: vi.fn(async (_id: unknown, patch: object) => Object.assign(stored, patch)) };
 		const manager = { getRepository: vi.fn((model: unknown) => model === MiDriveFile ? f.repository : repo) };
 		const service = Object.create(HatadyMediaService.prototype) as HatadyMediaService;
-		Object.assign(service, { sessionsRepository: repo, hatadyAttachmentService: f.service, db: { transaction: async (fn: (tx: unknown) => unknown) => fn(manager) } });
+		Object.assign(service, { sessionsRepository: repo, hatadyAttachmentService: f.service, db: { transaction: async (fn: (tx: unknown) => unknown) => fn(manager), getRepository: () => ({ findBy: vi.fn().mockResolvedValue([]) }) }, hatadyService: { refreshHatadyNotificationRows: vi.fn().mockResolvedValue(undefined) } });
 		await service.updateSession('owner', 'session', { note: 'new' });
 		expect(stored.fileIds).toEqual(['a', 'gone']);
 		await expect(service.updateSession('owner', 'session', { note: 'bad', fileIds: ['foreign'] })).rejects.toThrow(HATADY_ATTACHMENT_ERROR);

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { groupedNotificationTypes, userExportableEntities } from '@/types.js';
+import { groupedNotificationTypes, hatadyNotificationSubtypes, userExportableEntities } from '@/types.js';
 
 const baseSchema = {
 	type: 'object',
@@ -12,6 +12,10 @@ const baseSchema = {
 			type: 'string',
 			optional: false, nullable: false,
 			format: 'id',
+		},
+		notificationIds: {
+			type: 'array', optional: true, nullable: false,
+			items: { type: 'string', format: 'id', optional: false, nullable: false },
 		},
 		createdAt: {
 			type: 'string',
@@ -441,6 +445,28 @@ export const packedNotificationSchema = {
 				type: 'string',
 				optional: false, nullable: true,
 			},
+			sourceNotificationId: { type: 'string', optional: true, nullable: false },
+		},
+	}, {
+		type: 'object',
+		properties: {
+			...baseSchema.properties,
+			type: { type: 'string', optional: false, nullable: false, enum: ['hatady'] },
+			sourceNotificationId: { type: 'string', optional: false, nullable: false },
+			subtype: { type: 'string', optional: false, nullable: false, enum: hatadyNotificationSubtypes },
+			targetType: { type: 'string', optional: false, nullable: false, enum: ['none', 'log', 'comment', 'work', 'session', 'mediaComment'] },
+			targetId: { type: 'string', optional: false, nullable: true, format: 'id' },
+			user: { type: 'object', ref: 'UserLite', optional: true, nullable: false },
+			userId: { type: 'string', optional: true, nullable: false, format: 'id' },
+			title: { type: 'string', optional: true, nullable: false },
+			logId: { type: 'string', optional: true, nullable: false, format: 'id' },
+			mediaWorkId: { type: 'string', optional: true, nullable: false, format: 'id' },
+			mediaSessionId: { type: 'string', optional: true, nullable: false, format: 'id' },
+			mediaCommentId: { type: 'string', optional: true, nullable: false, format: 'id' },
+			commentId: { type: 'string', optional: true, nullable: false, format: 'id' },
+			reaction: { type: 'string', optional: true, nullable: false },
+			value: { type: 'number', optional: true, nullable: false },
+			isRead: { type: 'boolean', optional: false, nullable: false },
 		},
 	}, {
 		// 旗鯖fork: Hataskのお花の収穫通知(app通知と同形。通知フィルタで個別にON/OFFできるよう専用タイプ)

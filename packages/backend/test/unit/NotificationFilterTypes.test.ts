@@ -5,7 +5,7 @@
 
 import { notificationTypes as clientNotificationTypes } from 'cherrypick-js';
 import { describe, expect, test } from 'vitest';
-import { notificationFilterTypes } from '@/types.js';
+import { hatadyNotificationSubtypes, notificationFilterTypes } from '@/types.js';
 import { paramDef as notificationsParamDef } from '@/server/api/endpoints/i/notifications.js';
 import { paramDef as groupedNotificationsParamDef } from '@/server/api/endpoints/i/notifications-grouped.js';
 import { paramDef as updateParamDef } from '@/server/api/endpoints/i/update.js';
@@ -15,6 +15,10 @@ describe('notification filter types', () => {
 	test('花の受信設定を保存APIとユーザー取得スキーマの両方に公開する', () => {
 		expect(updateParamDef.properties.notificationRecieveConfig.properties.hataskFlowerReady).toEqual(notificationRecieveConfig);
 		expect(packedMeDetailedOnlySchema.properties.notificationRecieveConfig.properties.hataskFlowerReady).toEqual({ optional: true, ...notificationRecieveConfig });
+		for (const type of ['hatady', 'hataFeed'] as const) {
+			expect(updateParamDef.properties.notificationRecieveConfig.properties[type]).toEqual(notificationRecieveConfig);
+			expect(packedMeDetailedOnlySchema.properties.notificationRecieveConfig.properties[type]).toEqual({ optional: true, ...notificationRecieveConfig });
+		}
 	});
 
 	test('フロントとバックエンドのフィルタ対象が一致する', () => {
@@ -32,5 +36,10 @@ describe('notification filter types', () => {
 			expect(includeEnum).toContain(type);
 			expect(excludeEnum).toContain(type);
 		}
+		expect(paramDef.properties.brand.enum).toEqual(['all', 'standard', 'hatady', 'hatask', 'hataFeed']);
+		expect(paramDef.properties.includeBrands.items.enum).toEqual(['standard', 'hatady', 'hatask', 'hataFeed']);
+		expect(paramDef.properties.includeHataskApp).toEqual({ type: 'boolean' });
+		expect(paramDef.properties.includeHatadySubtypes.items.enum).toEqual(hatadyNotificationSubtypes);
+		expect(paramDef.properties.excludeHatadySubtypes.items.enum).toEqual(hatadyNotificationSubtypes);
 	});
 });

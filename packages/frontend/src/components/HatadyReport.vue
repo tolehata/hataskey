@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
-<HyDialog ref="dialog" :title="copy.title" back :busy="busy" :inert="prompt" @back="requestClose" @close="requestClose" @closed="emit('closed')">
+<HyDialog ref="dialog" :title="copy.title" :variant="variant" back :busy="busy" :inert="prompt" @back="requestClose" @close="requestClose" @closed="emit('closed')">
 	<div :class="$style.person"><i class="ti ti-flag" aria-hidden="true"></i><strong>{{ i18n.tsx._hata._hatady._report.personContent({ name: user.name || user.username }) }}</strong></div>
 	<blockquote v-if="excerpt" :class="$style.excerpt">{{ excerpt }}</blockquote>
 	<form :id="formId" class="hy-form" @submit.prevent="send">
@@ -37,7 +37,7 @@ import { i18n } from '@/i18n.js';
 
 const copy = i18n.ts._hata._hatady._report;
 
-const props = defineProps<{ user: Misskey.entities.UserLite; initialComment?: string }>();
+const props = withDefaults(defineProps<{ user: Misskey.entities.UserLite; initialComment?: string; variant?: 'hatady' | 'ui' | 'uis' }>(), { variant: 'hatady' });
 const emit = defineEmits<{ (event: 'closed'): void }>();
 const dialog = useTemplateRef('dialog');
 const formId = useId();

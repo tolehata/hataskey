@@ -25,13 +25,18 @@ import { MiHatadyReaction } from '@/models/HatadyReaction.js';
 import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { CacheService } from '@/core/CacheService.js';
+import { HatadyStreamService } from '@/core/HatadyStreamService.js';
 import { UserBlockingService } from '@/core/UserBlockingService.js';
 import { PushNotificationService, type HatadyPushNotificationBody } from '@/core/PushNotificationService.js';
+import { NotificationService } from '@/core/NotificationService.js';
+import type { MiNotification } from '@/models/Notification.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import { HatadyAttachmentService } from '@/core/HatadyAttachmentService.js';
 import { bindThis } from '@/decorators.js';
 
 type HatadySummaryRecord = { id: string; kind: string; occurredAt: Date; startedAt: string | null; seconds: number | null; subject: string; tags: string[]; calories: number | null };
+type HatadyStandardNotification = Extract<MiNotification, { type: 'hatady' }>;
+export type HatadyMirrorNotification = Pick<HatadyStandardNotification, 'sourceNotificationId' | 'subtype' | 'targetType' | 'targetId'> & { userId: string; notifierId: string | null };
 
 @Injectable()
 export class HatadyService {
@@ -68,6 +73,8 @@ export class HatadyService {
 		private userBlockingService: UserBlockingService,
 		private pushNotificationService: PushNotificationService,
 		private hatadyAttachmentService: HatadyAttachmentService,
+		private hatadyStreamService: HatadyStreamService,
+		private notificationService: NotificationService,
 	) {
 	}
 
@@ -107,10 +114,10 @@ export class HatadyService {
 	}
 
 	// 分野の色を設定/明示登録(upsert)。color=null で自動割当に戻す(行は残す)。
-	public async saveSubject(userId: MiUser['id'], name: string, color: string | null, originalName?: string): Promise<{ name: string; color: string | null }> {
+	public async saveSubject(userId: MiUser['id'], name: string, color?: string | null, originalName?: string): Promise<{ name: string; color: string | null }> {
 		const trimmed = name.trim();
 		if (trimmed.length === 0 || trimmed.length > 128) throw new Error('invalid subject name');
-		const normColor = this.normalizeSubjectColor(color);
+		const normColor = color === undefined ? undefined : this.normalizeSubjectColor(color);
 		const now = new Date();
 		if (originalName != null && originalName.trim() !== trimmed) {
 			const from = originalName.trim();
@@ -119,16 +126,25 @@ export class HatadyService {
 				const subjects = manager.getRepository(MiHatadySubject);
 				const existing = await subjects.findOne({ where: { userId, name: from }, lock: { mode: 'pessimistic_write' } });
 				if (await subjects.existsBy({ userId, name: trimmed })) throw new Error('subject name already exists');
-				if (existing) await subjects.update({ id: existing.id, userId }, { name: trimmed, color: normColor, updatedAt: now });
-				else await subjects.insert({ id: this.idService.gen(now.getTime()), userId, name: trimmed, color: normColor, createdAt: now, updatedAt: now });
+				if (existing) await subjects.update({ id: existing.id, userId }, { name: trimmed, ...(normColor === undefined ? {} : { color: normColor }), updatedAt: now });
+				else await subjects.insert({ id: this.idService.gen(now.getTime()), userId, name: trimmed, color: normColor ?? null, createdAt: now, updatedAt: now });
 				await manager.getRepository(MiHatadyLog).update({ userId, subject: from }, { subject: trimmed });
 			});
+		} else if (normColor === undefined) {
+			await this.hatadySubjectsRepository.createQueryBuilder()
+				.insert()
+				.into(MiHatadySubject)
+				.values({ id: this.idService.gen(now.getTime()), userId, name: trimmed, color: null, createdAt: now, updatedAt: now })
+				.orIgnore()
+				.execute();
 		} else {
 			const existing = await this.hatadySubjectsRepository.findOneBy({ userId, name: trimmed });
 			if (existing) await this.hatadySubjectsRepository.update({ id: existing.id, userId }, { color: normColor, updatedAt: now });
 			else await this.hatadySubjectsRepository.insertOne({ id: this.idService.gen(now.getTime()), userId, name: trimmed, color: normColor, createdAt: now, updatedAt: now });
 		}
-		return { name: trimmed, color: normColor };
+		const saved = await this.hatadySubjectsRepository.findOneBy({ userId, name: trimmed });
+		if (saved == null) throw new Error('subject not found after save');
+		return { name: trimmed, color: saved.color };
 	}
 
 	// 分野を削除。reassignTo 指定時はその分野が付いた本人のログを付け替える(ログ自体は非破壊)。
@@ -321,6 +337,8 @@ export class HatadyService {
 			followerId: follower.id,
 			followeeId,
 		});
+		this.hatadyStreamService?.refresh(follower.id);
+		await this.notificationService.refreshHatadyNotificationsForViewer(follower.id);
 		await this.notify({ notifieeId: followeeId, notifierId: follower.id, type: 'follow' });
 	}
 
@@ -329,6 +347,8 @@ export class HatadyService {
 		const existing = await this.hatadyFollowingsRepository.findOneBy({ followerId: follower.id, followeeId });
 		if (existing == null) return;
 		await this.hatadyFollowingsRepository.delete(existing.id);
+		this.hatadyStreamService?.refresh(follower.id);
+		await this.notificationService.refreshHatadyNotificationsForViewer(follower.id);
 	}
 
 	@bindThis
@@ -368,6 +388,8 @@ export class HatadyService {
 		const existing = await this.hatadyFollowingsRepository.findOneBy({ followerId, followeeId: me.id });
 		if (existing == null) return;
 		await this.hatadyFollowingsRepository.delete(existing.id);
+		this.hatadyStreamService?.refresh(followerId);
+		await this.notificationService.refreshHatadyNotificationsForViewer(followerId);
 	}
 
 	// プロフィール用の集計(統計 + 分野タグ)。表示中のログと同じ公開範囲を対象にする。
@@ -689,15 +711,29 @@ export class HatadyService {
 		if (Object.keys(set).length > 0) await this.hatadyLogsRepository.update(log.id, set);
 		const recommendedBookId = patch.bookId === undefined ? log.bookId : patch.bookId;
 		if (recommendedBookId && patch.tags?.includes('recommend')) await this.hatadyBooksRepository.update({ id: recommendedBookId, userId: user.id }, { isRecommended: true });
-		return await this.hatadyLogsRepository.findOneByOrFail({ id: log.id });
+		const updated = await this.hatadyLogsRepository.findOneByOrFail({ id: log.id });
+		this.hatadyStreamService?.changed('log', log.id);
+		await this.refreshHatadyNotificationRows(await this.hatadyNotificationsRepository.findBy({ logId: log.id }));
+		return updated;
 	}
 
 	@bindThis
 	public async deleteLog(user: MiUser, logId: MiHatadyLog['id']): Promise<void> {
-		const log = await this.hatadyLogsRepository.findOneBy({ id: logId });
-		if (log == null || log.userId !== user.id) throw new Error('no such log or access denied');
-		// リアクション/コメント/通知は FK の ON DELETE CASCADE で自動削除される。
-		await this.hatadyLogsRepository.delete(log.id);
+		let sources: MiHatadyNotification[] = [];
+		await this.hatadyLogsRepository.manager.transaction(async manager => {
+			const log = await manager.getRepository(MiHatadyLog).findOne({ where: { id: logId, userId: user.id }, lock: { mode: 'pessimistic_write' } });
+			if (log == null) throw new Error('no such log or access denied');
+			sources = await manager.getRepository(MiHatadyNotification).findBy({ logId });
+			await manager.getRepository(MiHatadyLog).delete({ id: logId, userId: user.id });
+		});
+		this.hatadyStreamService?.changed('log', logId);
+		await this.refreshHatadyNotificationRows(sources);
+	}
+
+	public async refreshHatadyNotificationRows(rows: Pick<MiHatadyNotification, 'id' | 'notifieeId'>[]): Promise<void> {
+		const byOwner = new Map<string, string[]>();
+		for (const row of rows) byOwner.set(row.notifieeId, [...(byOwner.get(row.notifieeId) ?? []), row.id]);
+		await Promise.all([...byOwner].map(([userId, ids]) => this.notificationService.refreshSourceNotifications(userId, 'hatady', ids)));
 	}
 
 	// 通知を1件作成する(受信者=発生者 の自己通知は作らない)。
@@ -705,7 +741,7 @@ export class HatadyService {
 	private async notify(params: {
 		notifieeId: MiUser['id'];
 		notifierId: MiUser['id'] | null;
-		type: string;
+		type: HatadyStandardNotification['subtype'];
 		logId?: string | null;
 		commentId?: string | null;
 		reaction?: string | null;
@@ -727,12 +763,22 @@ export class HatadyService {
 			value: params.value ?? null,
 			isRead: false,
 		});
-		await this.pushHatadyNotification(params.notifieeId, {
-			id: notification.id,
-			notificationType: notification.type,
-			reaction: notification.reaction,
-			value: notification.value,
+		await this.mirrorHatadyNotification({
+			userId: params.notifieeId, sourceNotificationId: notification.id,
+			subtype: params.type, notifierId: params.notifierId,
+			targetType: params.commentId ? 'comment' : params.logId ? 'log' : 'none',
+			targetId: params.commentId ?? params.logId ?? null,
 		});
+	}
+
+	@bindThis
+	public async mirrorHatadyNotification(record: HatadyMirrorNotification): Promise<void> {
+		const { userId, notifierId, ...data } = record;
+		try {
+			await this.notificationService.createNotificationAsync(userId, 'hatady', data, notifierId);
+		} catch (cause) {
+			throw new Error(`hatady standard notification mirror failed: ${record.sourceNotificationId}`, { cause });
+		}
 	}
 
 	@bindThis
@@ -767,12 +813,30 @@ export class HatadyService {
 
 	@bindThis
 	public async markAllNotificationsRead(userId: MiUser['id']): Promise<void> {
-		await this.hatadyNotificationsRepository.update({ notifieeId: userId, isRead: false, deletedAt: IsNull() }, { isRead: true });
+		const rows = await this.hatadyNotificationsRepository.findBy({ notifieeId: userId, isRead: false, deletedAt: IsNull() });
+		if (rows.length === 0) return;
+		const ids = rows.map(row => row.id);
+		await this.hatadyNotificationsRepository.update({ notifieeId: userId, id: In(ids), isRead: false, deletedAt: IsNull() }, { isRead: true });
+		await this.notificationService.markSourceNotificationsRead(userId, 'hatady', ids);
+	}
+
+	@bindThis
+	public async markNotificationsRead(userId: MiUser['id'], notificationIds: string[]): Promise<void> {
+		if (!Array.isArray(notificationIds) || notificationIds.length === 0 || notificationIds.length > 100) throw new Error('invalid notification IDs');
+		const rows = await this.hatadyNotificationsRepository.findBy({ notifieeId: userId, id: In([...new Set(notificationIds)]), deletedAt: IsNull() });
+		if (rows.length === 0) return;
+		const ids = rows.map(row => row.id);
+		await this.hatadyNotificationsRepository.update({ notifieeId: userId, id: In(ids), isRead: false, deletedAt: IsNull() }, { isRead: true });
+		await this.notificationService.markSourceNotificationsRead(userId, 'hatady', ids);
 	}
 
 	public async setNotificationsDeleted(userId: string, ids: string[], deleted: boolean): Promise<void> {
 		if (!Array.isArray(ids) || ids.length === 0 || ids.length > 100) throw new Error('invalid notification IDs');
-		await this.hatadyNotificationsRepository.update({ notifieeId: userId, id: In([...new Set(ids)]) }, { deletedAt: deleted ? new Date() : null });
+		const owned = await this.hatadyNotificationsRepository.findBy({ notifieeId: userId, id: In([...new Set(ids)]) });
+		if (owned.length === 0) return;
+		const ownedIds = owned.map(row => row.id);
+		await this.hatadyNotificationsRepository.update({ notifieeId: userId, id: In(ownedIds) }, { deletedAt: deleted ? new Date() : null });
+		await this.notificationService.refreshSourceNotifications(userId, 'hatady', ownedIds);
 	}
 
 	@bindThis
@@ -900,6 +964,7 @@ export class HatadyService {
 			const flowerReward = await this.flowerService.onHatadyCreated(manager, user.id, id);
 			return Object.assign(await logs.findOneByOrFail({ id, userId: user.id }), { flowerReward });
 		});
+		this.hatadyStreamService?.changed('log', log.id);
 		// 継続・達成(マイルストーン)通知の判定。
 		await this.notifyMilestoneIfReached(user.id);
 
@@ -1091,6 +1156,7 @@ export class HatadyService {
 		// 非正規化コメント数を更新。
 		const count = await this.hatadyCommentsRepository.countBy({ logId: log.id });
 		await this.hatadyLogsRepository.update(log.id, { commentsCount: count });
+		this.hatadyStreamService?.changed('log', log.id);
 
 		// 通知: ログの所有者へ。返信先がある場合は親コメントの投稿者へも(重複回避)。
 		await this.notify({ notifieeId: log.userId, notifierId: user.id, type: 'comment', logId: log.id, commentId: comment.id });
@@ -1114,16 +1180,22 @@ export class HatadyService {
 
 	@bindThis
 	public async deleteComment(user: MiUser, commentId: MiHatadyComment['id']): Promise<void> {
+		let logId: string | null = null;
+		let sources: MiHatadyNotification[] = [];
 		await this.hatadyCommentsRepository.manager.transaction(async manager => {
 			const comments = manager.getRepository(MiHatadyComment);
 			const comment = await comments.findOne({ where: { id: commentId, userId: user.id }, lock: { mode: 'pessimistic_write' } });
 			if (comment == null) throw new Error('no such comment or access denied');
+			logId = comment.logId;
+			sources = await manager.getRepository(MiHatadyNotification).findBy({ commentId: comment.id });
 			// 返信を孤児参照にしない。返信本文は残し、トップレベルへ戻す。
 			await comments.update({ replyId: comment.id }, { replyId: null });
 			await comments.delete({ id: comment.id, userId: user.id });
 			const count = await comments.countBy({ logId: comment.logId });
 			await manager.getRepository(MiHatadyLog).update(comment.logId, { commentsCount: count });
 		});
+		if (logId) this.hatadyStreamService?.changed('log', logId);
+		await this.refreshHatadyNotificationRows(sources);
 	}
 
 	@bindThis
@@ -1147,7 +1219,8 @@ export class HatadyService {
 		if (reactionStr.length === 0) throw new Error('empty reaction');
 		if (!target.logId && !target.commentId) throw new Error('no such target or access denied');
 
-		const pushes: { userId: string; body: HatadyPushNotificationBody }[] = [];
+		const mirrors: HatadyMirrorNotification[] = [];
+		let changedLogId: string | null = null;
 		await this.hatadyReactionsRepository.manager.transaction(async manager => {
 			let targetComment: MiHatadyComment | null = null;
 			let logId = target.logId ?? null;
@@ -1160,6 +1233,7 @@ export class HatadyService {
 				? null
 				: await manager.getRepository(MiHatadyLog).findOne({ where: { id: logId }, lock: { mode: 'pessimistic_write' } });
 			if (targetLog == null) throw new Error('no such target or access denied');
+			changedLogId = targetLog.id;
 			if (!(await this.canViewLog(targetLog, user.id))) throw new Error('no such target or access denied');
 			if (target.commentId) {
 				targetComment = await manager.getRepository(MiHatadyComment).findOne({ where: { id: target.commentId, logId: targetLog.id }, lock: { mode: 'pessimistic_write' } });
@@ -1200,15 +1274,17 @@ export class HatadyService {
 					type: 'reaction', logId: targetLog.id, commentId: targetComment?.id ?? null,
 					mediaWorkId: null, mediaCommentId: null, reaction: reactionStr, value: null, isRead: false,
 				});
-				pushes.push({ userId: notifieeId, body: { id: notificationId, notificationType: 'reaction', reaction: reactionStr, value: null } });
+				mirrors.push({ userId: notifieeId, notifierId: user.id, sourceNotificationId: notificationId, subtype: 'reaction', targetType: targetComment ? 'comment' : 'log', targetId: targetComment?.id ?? targetLog.id });
 			}
 		});
-		await Promise.all(pushes.map(push => this.pushHatadyNotification(push.userId, push.body)));
+		if (changedLogId) this.hatadyStreamService?.changed('log', changedLogId);
+		await Promise.all(mirrors.map(record => this.mirrorHatadyNotification(record)));
 	}
 
 	@bindThis
 	public async unreact(user: MiUser, target: { logId?: string | null; commentId?: string | null }): Promise<void> {
 		if (!target.logId && !target.commentId) return;
+		let changedLogId: string | null = null;
 		await this.hatadyReactionsRepository.manager.transaction(async manager => {
 			let targetComment: MiHatadyComment | null = null;
 			let logId = target.logId ?? null;
@@ -1230,6 +1306,7 @@ export class HatadyService {
 				? await reactionRepo.findOneBy({ userId: user.id, commentId: targetComment.id })
 				: await reactionRepo.findOneBy({ userId: user.id, logId: targetLog.id });
 			if (existing == null) return;
+			changedLogId = targetLog.id;
 			await reactionRepo.delete(existing.id);
 			if (targetComment) {
 				const count = await reactionRepo.countBy({ commentId: targetComment.id });
@@ -1239,6 +1316,7 @@ export class HatadyService {
 				await manager.getRepository(MiHatadyLog).update(targetLog.id, { reactionsCount: count });
 			}
 		});
+		if (changedLogId) this.hatadyStreamService?.changed('log', changedLogId);
 	}
 
 	// ===================================================================
@@ -1445,12 +1523,12 @@ export class HatadyService {
 		let current = 0;
 		if (goal.metricType === 'minutes') {
 			const raw = await this.hatadyLogsRepository.createQueryBuilder('log')
-				.select('COALESCE(SUM(log.durationMinutes), 0)', 'sum')
+				.select('COALESCE(SUM(log.durationSeconds), 0)', 'sum')
 				.where('log.userId = :uid', { uid: goal.userId })
 				.andWhere('log.studiedAt >= :from', { from })
 				.andWhere('log.studiedAt <= :to', { to })
 				.getRawOne();
-			current = Number(raw?.sum ?? 0);
+			current = Number(raw?.sum ?? 0) / 60;
 		} else if (goal.metricType === 'logs') {
 			current = await this.hatadyLogsRepository.createQueryBuilder('log')
 				.where('log.userId = :uid', { uid: goal.userId })
@@ -1488,7 +1566,9 @@ export class HatadyService {
 			if (!g.done && g.metricType != null && progress.percent != null && progress.percent >= 100) {
 				g.done = true; g.doneAt = new Date();
 				await this.hatadyGoalsRepository.update(g.id, { done: true, doneAt: g.doneAt, updatedAt: new Date() });
-				await this.notify({ notifieeId: userId, notifierId: null, type: 'goalDone', value: null }).catch(() => {});
+				await this.notify({ notifieeId: userId, notifierId: null, type: 'goalDone', value: null }).catch(error => {
+					console.error('Hatady goalDone notification delivery failed', error);
+				});
 			}
 			out.push({
 				id: g.id, title: g.title, description: g.description, termType: g.termType,

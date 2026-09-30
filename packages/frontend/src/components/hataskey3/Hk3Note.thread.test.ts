@@ -33,7 +33,7 @@ vi.mock('@/i18n.js', () => ({ i18n: { ts: {
 vi.mock('@/custom-emojis.js', () => ({ customEmojisMap: new Map() }));
 vi.mock('@/preferences.js', async () => {
 	const { ref } = await import('vue');
-	return { prefer: { s: { animation: false }, r: { disableNyaize: ref(false) } } };
+	return { prefer: { s: { animation: false }, r: { disableNyaize: ref(false), 'postFormVisibilityBorder.enabled': ref(false) } } };
 });
 vi.mock('@/utility/check-word-mute.js', () => ({ checkWordMute: () => false }));
 vi.mock('@/composables/use-note-capture.js', () => ({
