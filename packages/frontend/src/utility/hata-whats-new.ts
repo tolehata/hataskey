@@ -5,7 +5,7 @@ export type HataWhatsNewCard = { id: string; label: string; icon: string; title:
 export type HataWhatsNewGroup = { label: string; title: string; feature?: 'ui-s' | 'ui-s-2' | 'recipes' | 'flowers'; scene?: 0 | 1 | 2 | 3; cards: HataWhatsNewCard[] };
 export type HataWhatsNewStory = HataWhatsNewGroup & { id: string };
 export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = {
-	version: '2026.9.1-hata.12.8.1',
+	version: '2026.9.1-hata.12.8.2',
 	groups: [
 		{
 			label: 'Hataskey UI S 2', title: 'どの画面でも、続いていく。', feature: 'ui-s-2', scene: 0, cards: [
@@ -162,6 +162,20 @@ export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = 
 					'UI Sでは添付画像の縁色をノートの背景へ柔らかく映します。隠した画像は対象にしません。',
 					'上部ナビの透明感と、引っ張って更新するときの表示を整えました。iOSの読み込み線も画面上部に合わせます。',
 					'通常のHataskey UIでは、読み込み表示を上部ナビの縁へまとめました。',
+				] },
+			],
+		},
+		{
+			label: '12.8.2の更新', title: '記録も通知も、いつもの場所で。', cards: [
+				{ id: 'hatady-notifications-1282', label: 'Hatadyと通知', icon: 'ti ti-bell', title: '記録と通知を、見つけやすく。', points: [
+					'通常UI・UI S・デッキからHatadyの記録を見て、返信・リアクション・編集ができます。',
+					'通知一覧・ウィジェット・デッキで、標準・Hatady・Hatask・HataFeedを細かく選べます。メンション・指名のタブも使えます。',
+					'Hatady・HataFeedと共通通知の既読状態を揃え、未読件数のずれを抑えました。',
+				] },
+				{ id: 'ui-hatask-1282', label: 'UI SとHatask', icon: 'ti ti-plant-2', title: '読む・書くと、日々の景色を。', points: [
+					'UI Sモバイルの上部でタイムラインを切り替え、投稿欄を折りたたんでも下書きを保持します。',
+					'Hataskの庭とウィジェットに「季節の木」を追加し、支援情報は絵文字の申請可能数の案内に対応しました。',
+					'ToDo入力欄のハイライトと、英語・簡体字・繁体字の表示を整えました。',
 				] },
 			],
 		},

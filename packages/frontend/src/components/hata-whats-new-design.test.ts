@@ -265,7 +265,7 @@ describe('production update introduction', () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
-		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.8.1)');
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.8.2)');
 		expect(host.querySelector('header')?.textContent).not.toContain('HATASKEY RELEASE');
 		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('ui-s-layout');
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();

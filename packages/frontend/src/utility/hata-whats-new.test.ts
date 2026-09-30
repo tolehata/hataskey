@@ -5,15 +5,17 @@ import { describe, expect, test } from 'vitest';
 import { getHataWhatsNewDisplayVersion, getHataWhatsNewStories, HATA_WHATS_NEW, HATA_WHATS_NEW_THEMES } from './hata-whats-new.js';
 
 const root = path.resolve(process.cwd(), '../..');
-const ids = ['ui-s-layout', 'ui-s-hatask', 'ui-s-split', 'ui-s-mobile-dock', 'ui-s-search', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'hataskey-sounds', 'sound-preferences', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'note-appearance', 'ui-s-fixes', 'daily-fixes', 'upstream-update', 'script-errors', 'composer-drafts', 'note-menu', 'timeline-swipe', 'ltl-punch'];
+const ids = ['ui-s-layout', 'ui-s-hatask', 'ui-s-split', 'ui-s-mobile-dock', 'ui-s-search', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'hataskey-sounds', 'sound-preferences', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'note-appearance', 'hatady-notifications-1282', 'ui-hatask-1282', 'ui-s-fixes', 'daily-fixes', 'upstream-update', 'script-errors', 'composer-drafts', 'note-menu', 'timeline-swipe', 'ltl-punch'];
 describe('approved release stories', () => {
 	test('the displayed-version gate stays aligned with the package and release metadata', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 		expect(HATA_WHATS_NEW.version).toBe(pkg.version);
-		expect(HATA_WHATS_NEW.version).toBe('2026.9.1-hata.12.8.1');
+		expect(HATA_WHATS_NEW.version).toBe('2026.9.1-hata.12.8.2');
 		const version = getHataWhatsNewDisplayVersion(pkg.version);
-		expect(version).toBe('hata-12.8.1');
+		expect(version).toBe('hata-12.8.2');
 		const changelog = fs.readFileSync(path.join(root, 'HATA-CHANGELOG.md'), 'utf8');
+		expect(changelog.indexOf('## hata-12.8.2\n')).toBeGreaterThan(0);
+		expect(changelog.indexOf('## hata-12.8.2\n')).toBeLessThan(changelog.indexOf('## hata-12.8.1\n'));
 		expect(changelog.indexOf('## hata-12.8.1\n')).toBeGreaterThan(0);
 		expect(changelog.indexOf('## hata-12.8.1\n')).toBeLessThan(changelog.indexOf('## hata-12.8\n'));
 		expect(changelog.indexOf('## hata-12.8\n')).toBeLessThan(changelog.indexOf('## hata-12.7.2\n'));
