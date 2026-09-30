@@ -46,4 +46,4 @@ base image・apt・pnpm取得に伴うnetwork利用はログで確認済み。so
 
 拳は既存の`@discordapp/twemoji 16.0.1`のSVGを`/twemoji`から表示する。追加素材・依存の取得はなく、元SVGは変更しない。拡大・回転・移動・透明度・影を演出として適用し、About画面に著作者、[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)、[source](https://github.com/discord/twemoji)、表示変更を記載する。独自プログラムはAGPL-3.0-only、graphicsはCC BY 4.0。
 
-素材の帰属記録は[モックのATTRIBUTION](../../../mockups/ltl-punch/assets/twemoji/ATTRIBUTION.md)、権利調査の範囲は[RIGHTS](../../../mockups/ltl-punch/RIGHTS.md)を参照。これらはFTO（第三者権利を侵害せず実施できること）の保証ではない。
+素材の帰属記録は[素材クレジット](../../frontend/assets/CREDITS.md)を参照。これはFTO（第三者権利を侵害せず実施できること）の保証ではない。

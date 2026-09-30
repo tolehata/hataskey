@@ -99,8 +99,8 @@ HATA-PITFALLS.md
 # idea/ 直下の追跡済みファイルは上流由来の保管コードなので対象外
 /docs/
 /idea/*/
-# サウンドの試作・生成方法はローカルに保持
-/mockups/sound-design/
+# モックはローカルに保持
+/mockups/
 
 # 一時出力・競合バックアップ・ヒープダンプ
 *.tmp
