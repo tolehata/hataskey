@@ -3,6 +3,9 @@ import { EventEmitter } from 'node:events';
 import { describe, expect, test, vi } from 'vitest';
 import { HatadyTimelineChannel } from '@/server/api/stream/channels/hatady-timeline.js';
 
+// This test exercises timeline sync only; re2 is loaded transitively but no regex behavior is used.
+vi.mock('re2', () => ({ default: RegExp }));
+
 function fixture(scope: 'mine' | 'recent' | 'following' = 'recent') {
 	const subscriber = new EventEmitter();
 	const sent: { type: string; body: Record<string, unknown> }[] = [];
@@ -59,6 +62,16 @@ describe('Hatady timeline channel sync', () => {
 		f.channel.dispose();
 	});
 
+	test('an empty sync completes and a later sync starts a new worker', async () => {
+		const f = fixture();
+		await f.channel.onMessage('sync', { ids: [], seenThrough: 0, requestId: 1 });
+		f.logs.set('later', visibleLog('later'));
+		await f.channel.onMessage('sync', { ids: ['log:later'], seenThrough: 1, requestId: 2 });
+		expect(f.sent.filter(event => event.type === 'synced').map(event => event.body.requestId)).toEqual([1, 2]);
+		expect(f.sent.filter(event => event.type === 'activity').map(event => event.body.key)).toEqual(['log:later']);
+		f.channel.dispose();
+	});
+
 	test('an older sync cannot restore an ID after a newer sync has completed', async () => {
 		const f = fixture();
 		const old = deferred<Record<string, unknown> | null>();
@@ -66,9 +79,11 @@ describe('Hatady timeline channel sync', () => {
 		f.logs.set('new', visibleLog('new'));
 		const first = f.channel.onMessage('sync', { ids: ['log:old'], seenThrough: 0, requestId: 1 });
 		await vi.waitFor(() => expect(f.logRepository.findOneBy).toHaveBeenCalledWith({ id: 'old' }));
-		await f.channel.onMessage('sync', { ids: ['log:new'], seenThrough: 0, requestId: 2 });
+		const second = f.channel.onMessage('sync', { ids: ['log:new'], seenThrough: 0, requestId: 2 });
+		expect(second).toBe(first);
+		expect(f.logRepository.findOneBy).toHaveBeenCalledTimes(1);
 		old.resolve(visibleLog('old'));
-		await first;
+		await Promise.all([first, second]);
 		expect(f.sent.filter(event => event.type === 'activity').map(event => event.body.key)).toEqual(['log:new']);
 		expect(f.sent.filter(event => event.type === 'synced').map(event => event.body.requestId)).toEqual([2]);
 		f.channel.dispose();
@@ -117,9 +132,11 @@ describe('Hatady timeline channel sync', () => {
 		f.logRepository.findOneBy.mockImplementation(async () => old.promise);
 		const sync = f.channel.onMessage('sync', { ids: ['log:old'], seenThrough: 0, requestId: 1 });
 		await vi.waitFor(() => expect(f.logRepository.findOneBy).toHaveBeenCalledTimes(1));
+		const queued = f.channel.onMessage('sync', { ids: ['log:later'], seenThrough: 0, requestId: 2 });
 		f.channel.dispose();
 		old.resolve(visibleLog('old'));
-		await sync;
+		await Promise.all([sync, queued]);
+		expect(f.logRepository.findOneBy).toHaveBeenCalledTimes(1);
 		expect(f.sent).toEqual([]);
 		expect((f.channel as unknown as { dirty: Set<string> }).dirty.size).toBe(0);
 	});
@@ -133,20 +150,51 @@ describe('Hatady timeline channel sync', () => {
 		f.channel.dispose();
 	});
 
-	test('overlapping sync requests keep total retained keys within 500', async () => {
+	test('a same-key sync flood keeps one lookup active and only reconciles the latest request', async () => {
 		const f = fixture();
-		const held = deferred<null>();
-		f.logRepository.findOneBy.mockImplementation(async () => held.promise);
-		const requests = Array.from({ length: 500 }, (_, i) => f.channel.onMessage('sync', { ids: [`log:id${i}`], seenThrough: 0, requestId: i + 1 }));
-		await vi.waitFor(() => expect(f.logRepository.findOneBy).toHaveBeenCalledTimes(500));
-		await f.channel.onMessage('sync', { ids: ['log:overflow'], seenThrough: 0, requestId: 501 });
+		const held = deferred<Record<string, unknown> | null>();
+		let active = 0;
+		let peakActive = 0;
+		f.logRepository.findOneBy.mockImplementation(async () => {
+			active++;
+			peakActive = Math.max(peakActive, active);
+			try {
+				return await (active === 1 && f.logRepository.findOneBy.mock.calls.length === 1 ? held.promise : visibleLog('same'));
+			} finally {
+				active--;
+			}
+		});
+		const requests = [f.channel.onMessage('sync', { ids: ['log:same'], seenThrough: 0, requestId: 1 })];
+		await vi.waitFor(() => expect(f.logRepository.findOneBy).toHaveBeenCalledTimes(1));
+		for (let requestId = 2; requestId <= 501; requestId++) requests.push(f.channel.onMessage('sync', { ids: ['log:same'], seenThrough: 0, requestId }));
+		expect(f.logRepository.findOneBy).toHaveBeenCalledTimes(1);
+		held.resolve(visibleLog('same'));
+		await Promise.all(requests);
+		expect(peakActive).toBe(1);
+		expect(f.logRepository.findOneBy).toHaveBeenCalledTimes(2);
+		expect(f.sent.filter(event => event.type === 'activity').map(event => event.body.key)).toEqual(['log:same']);
+		expect(f.sent.filter(event => event.type === 'synced').map(event => event.body.requestId)).toEqual([501]);
+		f.channel.dispose();
+	});
+
+	test('distinct overlapping IDs retain only the newest pending sync without forcing resync', async () => {
+		const f = fixture();
+		const held = deferred<Record<string, unknown> | null>();
+		f.logRepository.findOneBy.mockImplementation(async ({ id }) => id === 'id0' ? held.promise : visibleLog(id));
+		const requests = [f.channel.onMessage('sync', { ids: ['log:id0'], seenThrough: 0, requestId: 1 })];
+		await vi.waitFor(() => expect(f.logRepository.findOneBy).toHaveBeenCalledTimes(1));
+		for (let i = 1; i <= 500; i++) requests.push(f.channel.onMessage('sync', { ids: [`log:id${i}`], seenThrough: 0, requestId: i + 1 }));
 		const state = f.channel as unknown as { watched: Set<string>; dirty: Set<string>; processing: Set<string>; inflight: Map<string, number>; generations: Map<string, number> };
 		const known = new Set([...state.watched, ...state.dirty, ...state.processing, ...state.inflight.keys()]);
 		expect(known.size).toBeLessThanOrEqual(500);
 		expect(state.generations.size).toBeLessThanOrEqual(500);
-		expect(f.sent.filter(event => event.type === 'resyncRequired')).toHaveLength(1);
+		expect(f.logRepository.findOneBy).toHaveBeenCalledTimes(1);
+		expect(f.sent.filter(event => event.type === 'resyncRequired')).toHaveLength(0);
 		held.resolve(null);
 		await Promise.all(requests);
+		expect(f.logRepository.findOneBy).toHaveBeenCalledTimes(2);
+		expect(f.sent.filter(event => event.type === 'activity').map(event => event.body.key)).toEqual(['log:id500']);
+		expect(f.sent.filter(event => event.type === 'synced').map(event => event.body.requestId)).toEqual([501]);
 		f.channel.dispose();
 	});
 

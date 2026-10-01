@@ -43,6 +43,8 @@ export class HatadyTimelineChannel extends Channel {
 	private needsResync = false;
 	private seq = 0;
 	private lastRequestId = -1;
+	private queuedSync: { ids: Set<Key>; requestId: number } | null = null;
+	private syncWorker: Promise<void> | null = null;
 
 	constructor(
 		private activityService: HatadyActivityService,
@@ -132,7 +134,7 @@ export class HatadyTimelineChannel extends Channel {
 	}
 
 	private async reconcile(key: Key, syncRequestId?: number): Promise<void> {
-		if (this.needsResync) return;
+		if (this.disposed || this.needsResync || (syncRequestId !== undefined && syncRequestId !== this.lastRequestId)) return;
 		const generation = this.generations.get(key) ?? 0;
 		const wasWatched = this.watched.has(key);
 		this.inflight.set(key, (this.inflight.get(key) ?? 0) + 1);
@@ -204,7 +206,7 @@ export class HatadyTimelineChannel extends Channel {
 	}
 
 	@bindThis
-	public async onMessage(type: string, body: JsonValue): Promise<void> {
+	public onMessage(type: string, body: JsonValue): Promise<void> | void {
 		if (type !== 'sync' || this.disposed || body === null || typeof body !== 'object' || Array.isArray(body)) return;
 		const input = body as JsonObject;
 		if (!Array.isArray(input.ids) || input.ids.length > MAX_WATCHED || !input.ids.every(validKey)) return;
@@ -229,19 +231,34 @@ export class HatadyTimelineChannel extends Channel {
 			this.generations.set(key, ++this.generationCounter);
 			this.dirty.delete(key);
 		}
-		for (const key of ids) {
-			const generation = this.generations.get(key);
-			try { await this.reconcile(key, requestId); } catch { if (requestId === this.lastRequestId) this.requireResync(requestId); return; }
-			if (generation === this.generations.get(key)) this.dirty.delete(key);
-			this.cleanupGeneration(key);
-			if (this.disposed || this.needsResync || requestId !== this.lastRequestId) return;
+		this.queuedSync = { ids, requestId };
+		this.syncWorker ??= Promise.resolve().then(() => this.drainSyncs());
+		return this.syncWorker;
+	}
+
+	private async drainSyncs(): Promise<void> {
+		try {
+			while (this.queuedSync !== null && !this.disposed) {
+				const { ids, requestId } = this.queuedSync;
+				this.queuedSync = null;
+				for (const key of ids) {
+					if (this.disposed || this.needsResync || requestId !== this.lastRequestId) break;
+					const generation = this.generations.get(key);
+					try { await this.reconcile(key, requestId); } catch { if (requestId === this.lastRequestId) this.requireResync(requestId); break; }
+					if (generation === this.generations.get(key)) this.dirty.delete(key);
+					this.cleanupGeneration(key);
+				}
+				if (!this.disposed && !this.needsResync && requestId === this.lastRequestId) this.send('synced', { seq: ++this.seq, requestId });
+			}
+		} finally {
+			this.syncWorker = null;
 		}
-		this.send('synced', { seq: ++this.seq, requestId });
 	}
 
 	@bindThis
 	public dispose(): void {
 		this.disposed = true;
+		this.queuedSync = null;
 		if (this.timer !== null) clearTimeout(this.timer);
 		this.timer = null;
 		this.subscriber.off('hatadyTimelineStream', this.onEvent);
