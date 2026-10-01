@@ -80,6 +80,9 @@ export function dismissHk3Toast(id: string): void {
 /** UI3の投稿欄で受け取れる投稿要求か。外部アカウント・文脈なしの新規投稿は通常の投稿フォームへ回す。 */
 export function hk3CanAdoptPostForm(request: PostFormProps): boolean {
 	if (request.externalReply || request.externalRenote || request.initialUseExternalAccount) return false;
+	// The standard form inherits direct-reply recipients, including asynchronous
+	// user lookup. Do not accept the request here with an incomplete audience.
+	if (request.reply?.visibility === 'specified') return false;
 	// Explicit editor inputs are handled by the standard form without losing fields.
 	if (request.initialPoll !== undefined || request.initialEvent !== undefined || request.initialReactionAcceptance !== undefined || request.restoreDraft !== undefined) return false;
 	// 「削除して編集」「編集」も UI3 の投稿欄で受け取る(元ノートの内容を戻して開く)。

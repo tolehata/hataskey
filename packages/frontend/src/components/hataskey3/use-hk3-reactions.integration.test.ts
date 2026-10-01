@@ -39,7 +39,8 @@ async function settle() {
 		await nextTick();
 	}
 }
-async function setup(counts: Record<string, number>, rows: ReturnType<typeof reaction>[], mine: string | null = null) {
+
+async function setup(counts: Record<string, number>, rows: ReturnType<typeof reaction>[], mine: string | null = null, mutedIds = ['muted']) {
 	let resolveMutes!: (rows: ReturnType<typeof mute>[]) => void;
 	const muteList = new Promise<ReturnType<typeof mute>[]>(resolve => { resolveMutes = resolve; });
 	mocks.api.mockImplementation(async (endpoint: string) => {
@@ -57,17 +58,17 @@ async function setup(counts: Record<string, number>, rows: ReturnType<typeof rea
 	scopes.push(scope);
 	cleanups.push(() => { users.invalidateMutedUsers(); actors.invalidateMutedReactions(); });
 	const visible = scope.run(() => useHk3Reactions('note1', () => source.value, () => myReaction.value))!;
-	return { visible, source, myReaction, users, hideMutedReactionsLocal, loadMutes: () => resolveMutes([mute('muted')]) };
+	return { visible, source, myReaction, users, hideMutedReactionsLocal, loadMutes: () => resolveMutes(mutedIds.map(mute)) };
 }
 
 describe('UI S reactions through the real shared mute stores', () => {
 	it('loads mute/list before actors, hides muted-only Unicode/custom reactions and subtracts mixed actors', async () => {
 		const view = await setup({ '😢': 1, ':cat@.:': 1, '👍': 2 }, [
 			reaction('r1', '😢', 'muted'),
-			reaction('r2', ':cat@.:', 'muted'),
-			reaction('r3', '👍', 'muted'),
+			reaction('r2', ':cat@.:', 'muted-2'),
+			reaction('r3', '👍', 'muted-3'),
 			reaction('r4', '👍', 'ordinary'),
-		]);
+		], null, ['muted', 'muted-2', 'muted-3']);
 		expect(view.visible.value).toEqual({});
 		view.loadMutes();
 		await settle();
@@ -82,8 +83,8 @@ describe('UI S reactions through the real shared mute stores', () => {
 		const view = await setup({ '👍': 2, ':cat@.:': 1 }, [
 			reaction('r1', '👍', 'muted'),
 			reaction('r2', '👍', 'me'),
-			reaction('r3', ':cat@.:', 'muted'),
-		], '👍');
+			reaction('r3', ':cat@.:', 'muted-2'),
+		], '👍', ['muted', 'muted-2']);
 		view.loadMutes();
 		await settle();
 		// The self reaction remains as one actor; it must not exempt the entire emoji.
@@ -100,16 +101,18 @@ describe('UI S reactions through the real shared mute stores', () => {
 	it('updates displayed reactions on immediate unmute and remute without reloading the note', async () => {
 		const view = await setup({ '😢': 1, '👍': 2 }, [
 			reaction('r1', '😢', 'muted'),
-			reaction('r2', '👍', 'muted'),
+			reaction('r2', '👍', 'muted-2'),
 			reaction('r3', '👍', 'ordinary'),
-		]);
+		], null, ['muted', 'muted-2']);
 		view.loadMutes();
 		await settle();
 		expect(view.visible.value).toEqual({ '👍': 1 });
 		view.users.updateMutedUserState('muted', false);
+		view.users.updateMutedUserState('muted-2', false);
 		await settle();
 		expect(view.visible.value).toEqual({ '😢': 1, '👍': 2 });
 		view.users.updateMutedUserState('muted', true);
+		view.users.updateMutedUserState('muted-2', true);
 		await settle();
 		expect(view.visible.value).toEqual({ '👍': 1 });
 		expect(mocks.api.mock.calls.filter(call => call[0] === 'mute/list')).toHaveLength(1);

@@ -42,7 +42,7 @@ vi.mock('@/i18n.js', () => ({ i18n: { ts: {
 	_hata: {
 		_drawingTool: { attachmentLimit: 'Limit 16' },
 		_postDelay: { countdown: 'Waiting', cancel: 'Cancel', sendNow: 'Send now' },
-		_hataskeyUi3: { attach: 'Attach', emoji: 'Emoji', visibility: 'Visibility', post: 'Post', postTools: 'Tools', cw: 'Content warning', cwPlaceholder: 'Example warning', expandForm: 'Full', noAltText: 'Missing alt', preview: 'Preview', quote: 'Quote', reply: 'Reply', channel: 'Channel', clearContext: 'Clear context', attachmentsOnly: 'Attachments only', unrenoteConfirm: 'Remove this renote?' },
+		_hataskeyUi3: { attach: 'Attach', emoji: 'Emoji', visibility: 'Visibility', post: 'Post', postTools: 'Tools', cw: 'Content warning', cwPlaceholder: 'Example warning', expandForm: 'Full', noAltText: 'Missing alt', preview: 'Preview', poll: 'Poll', cwRequired: 'Enter a content warning', pollNeedsTwo: 'Enter two choices', recipientRequired: 'Choose a recipient', removeRecipient: 'Remove recipient', quote: 'Quote', reply: 'Reply', channel: 'Channel', clearContext: 'Clear context', attachmentsOnly: 'Attachments only', unrenoteConfirm: 'Remove this renote?' },
 	},
 }, tsx: { _hata: { _hataskeyUi3: {
 	replyTo: ({ name }: { name: string }) => `Reply to ${name}`,
@@ -377,7 +377,7 @@ describe('UI S composer in-flight draft ownership', () => {
 		const warning = deferred<{ canceled: boolean; result: string }>();
 		mocks.actions.mockReturnValue(warning.promise);
 		const view = mount();
-		view.adopt({ initialText: 'before warning', initialFiles: [{ ...driveFile('no-alt'), comment: null }] });
+		view.adopt({ channel: null, initialText: 'before warning', initialFiles: [{ ...driveFile('no-alt'), comment: null }] });
 		keyboardSubmit(view);
 		await settle();
 		setText(view, 'after warning');
@@ -391,8 +391,8 @@ describe('UI S composer in-flight draft ownership', () => {
 	it('sends a fixed create payload while retaining later body, CW, attachment and visibility edits', async () => {
 		const sending = deferred<{ createdNote: null }>();
 		mocks.api.mockReturnValue(sending.promise);
-		const view = mount();
-		view.adopt({ initialText: 'sent body', initialFiles: [driveFile('sent')], initialVisibility: 'public' });
+		const view = mount('uiS:composer:main', { compact: false });
+		view.adopt({ channel: null, initialText: 'sent body', initialFiles: [driveFile('sent')], initialVisibility: 'public' });
 		await settle();
 		keyboardSubmit(view);
 		await settle();
@@ -848,6 +848,94 @@ describe('automatic composer drafts', () => {
 		const restored = mount();
 		await settle();
 		expect(restored.input().value).toBe('next draft');
+	});
+});
+
+describe('UI S composer reply audience', () => {
+	it.each([false, true])('leaves an existing draft untouched when delegating a direct reply (editing: %s)', async editing => {
+		const view = mount();
+		if (editing) {
+			view.adopt({ initialNote: { id: 'edit', text: 'kept draft', visibility: 'home', files: [driveFile('kept')] } as Misskey.entities.Note, updateMode: true });
+		} else {
+			view.adopt({ reply: { id: 'old-reply', user: { id: 'old-author', username: 'old-author' }, visibility: 'home' } as Misskey.entities.Note, initialText: 'kept draft', initialFiles: [driveFile('kept')], initialVisibility: 'home' });
+		}
+		await settle();
+		const direct = { id: 'direct', visibility: 'specified', userId: 'author', user: { id: 'author', username: 'author' }, visibleUserIds: ['me', 'recipient'] } as Misskey.entities.Note;
+		expect(view.adopt({ reply: direct })).toBe(false);
+		await settle();
+		expect(view.input().value).toBe('kept draft');
+		expect(view.ids()).toEqual(['kept']);
+		expect(mocks.api).not.toHaveBeenCalled();
+		keyboardSubmit(view);
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith(editing ? 'notes/update' : 'notes/create', expect.objectContaining({
+			text: 'kept draft', fileIds: ['kept'],
+			...(editing ? { noteId: 'edit' } : { replyId: 'old-reply', visibility: 'home' }),
+		}));
+	});
+
+	it.each([
+		['home', 'public', 'home'], ['home', 'followers', 'followers'], ['home', 'specified', 'specified'],
+		['followers', 'public', 'followers'], ['followers', 'home', 'followers'], ['followers', 'specified', 'specified'],
+		['public', 'home', 'home'],
+	] as const)('uses %s reply visibility without widening %s', async (sourceVisibility, initialVisibility, expectedVisibility) => {
+		const view = mount();
+		const note = { id: 'reply', user: { id: 'author', username: 'author' }, visibility: sourceVisibility } as Misskey.entities.Note;
+		expect(view.adopt({ reply: note, initialVisibility, initialText: 'reply body', initialVisibleUsers: [{ id: 'author', username: 'author' } as Misskey.entities.UserDetailed] })).toBe(true);
+		await settle();
+		keyboardSubmit(view);
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({ replyId: 'reply', visibility: expectedVisibility }));
+	});
+
+	it('shows and submits local-only when replying to a local-only note', async () => {
+		const view = mount();
+		const note = { id: 'local', user: { id: 'author', username: 'author' }, visibility: 'public', localOnly: true } as Misskey.entities.Note;
+		view.adopt({ reply: note, initialLocalOnly: false, initialText: 'local reply' });
+		await settle();
+		keyboardSubmit(view);
+		await settle();
+		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({ localOnly: true }));
+	});
+});
+
+describe('UI S composer validation after warnings', () => {
+	it.each(['poll', 'recipient', 'cw', 'length', 'empty'] as const)('does not send when %s becomes invalid while confirming a warning', async field => {
+		const warning = deferred<{ canceled: boolean; result: string }>();
+		mocks.actions.mockReturnValue(warning.promise);
+		const view = mount();
+		view.adopt({ channel: null, initialText: 'body', initialFiles: [{ ...driveFile('no-alt'), comment: null }],
+			...(field === 'recipient' ? { initialVisibility: 'specified' as const, initialVisibleUsers: [{ id: 'recipient', username: 'recipient' } as Misskey.entities.UserDetailed] } : {}),
+			...(field === 'cw' ? { initialCw: 'original warning' } : {}),
+		});
+		if (field === 'poll') {
+			view.target.querySelector<HTMLButtonElement>('button[title="Tools"]')!.click();
+			await settle();
+			[...view.target.querySelectorAll<HTMLButtonElement>('[data-composer-menu="tools"] button')].find(button => button.textContent === 'Poll')!.click();
+			await settle();
+			for (const [index, input] of [...view.target.querySelectorAll<HTMLInputElement>('input[placeholder^="Choice"]')].entries()) {
+				input.value = `Option ${index}`; input.dispatchEvent(new Event('input', { bubbles: true }));
+			}
+		}
+		keyboardSubmit(view);
+		await settle();
+		expect(mocks.actions).toHaveBeenCalledOnce();
+		if (field === 'poll' || field === 'cw') {
+			const input = view.target.querySelector<HTMLInputElement>(field === 'poll' ? 'input[placeholder="Choice 2"]' : 'input[aria-label="Content warning"]')!;
+			input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true }));
+		} else if (field === 'recipient') {
+			view.target.querySelector<HTMLButtonElement>('button[title="Remove recipient"]')!.click();
+		} else if (field === 'length') {
+			setText(view, 'x'.repeat(3001));
+		} else {
+			setText(view, '');
+			view.target.querySelector<HTMLButtonElement>('[data-detach-file]')!.click();
+		}
+		warning.resolve({ canceled: false, result: 'post' });
+		await settle();
+		expect(mocks.api).not.toHaveBeenCalled();
+		expect(view.posted).not.toHaveBeenCalled();
+		expect(view.send().dataset.state).toBe('idle');
 	});
 });
 

@@ -56,7 +56,11 @@ function mount(active = true, variant: 'ui' | 'uis' = 'ui') {
 
 function emit(name: string, payload: unknown) { fixture.channels.at(-1)!.events.get(name)!(payload); }
 
-beforeEach(() => { fixture.api.mockReset(); fixture.channels = []; fixture.listeners.clear(); });
+beforeEach(async () => {
+	fixture.api.mockReset(); fixture.channels = []; fixture.listeners.clear();
+	const { store } = await import('@/store.js');
+	store.s.realtimeMode = true; store.r.realtimeMode.value = true;
+});
 afterEach(() => { app?.unmount(); app = null; host?.remove(); vi.restoreAllMocks(); });
 
 test('append keeps newer stream changes and synchronizes every displayed ID', async () => {
@@ -86,6 +90,29 @@ test('failed REST leaves displayed records subject to buffered removals', async 
 	expect(fixture.channels[0].send).toHaveBeenLastCalledWith('sync', expect.objectContaining({ ids: [], seenThrough: 1 }));
 });
 
+test('failed reconnect snapshots still synchronize retained displayed and queued records', async () => {
+	fixture.api.mockResolvedValueOnce(page([record('a', 'displayed')])).mockRejectedValueOnce(new Error('offline'));
+	mount(); await settle();
+	const section = host.querySelector('section');
+	if (!section) throw new Error('timeline root missing');
+	vi.spyOn(section, 'getBoundingClientRect').mockReturnValue({ top: -100 } as DOMRect);
+	window.dispatchEvent(new Event('scroll'));
+	emit('activity', { seq: 1, key: 'log:q', activity: record('q', 'queued') }); await settle();
+	expect(component.value.queuedCount).toBe(1);
+	for (const listener of fixture.listeners.get('_disconnected_') ?? []) listener();
+	for (const listener of fixture.listeners.get('_connected_') ?? []) listener();
+	await settle();
+	expect(fixture.channels[0].send).toHaveBeenCalledTimes(2);
+	expect(fixture.channels[0].send).toHaveBeenLastCalledWith('sync', { ids: ['log:a', 'log:q'], seenThrough: 0, requestId: 1 });
+	expect(host.querySelector('[data-record="a"]')).not.toBeNull();
+	expect(component.value.queuedCount).toBe(1);
+	expect(Array.from(host.querySelectorAll('button')).some(button => button.textContent === '再試行')).toBe(true);
+	emit('removed', { seq: 1, key: 'log:a', id: 'a' });
+	emit('removed', { seq: 2, key: 'log:q', id: 'q' }); await settle();
+	expect(host.querySelector('[data-record="a"]')).toBeNull();
+	expect(component.value.queuedCount).toBe(0);
+});
+
 test('manual mode does not subscribe or reload after an empty first page and reactivation', async () => {
 	const { store } = await import('@/store.js');
 	store.s.realtimeMode = false; store.r.realtimeMode.value = false;
@@ -97,6 +124,67 @@ test('manual mode does not subscribe or reload after an empty first page and rea
 	window.document.dispatchEvent(new Event('visibilitychange')); await settle();
 	expect(fixture.api).toHaveBeenCalledTimes(1);
 	store.s.realtimeMode = true; store.r.realtimeMode.value = true;
+});
+
+test('manual mode retries an initial load interrupted by tab deactivation', async () => {
+	const { store } = await import('@/store.js');
+	store.s.realtimeMode = false; store.r.realtimeMode.value = false;
+	const pending = deferred<ReturnType<typeof page>>();
+	fixture.api.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(page([record('current', 'current')]));
+	const props = mount(); await settle();
+	props.active = false; await settle(); props.active = true; await settle();
+	pending.resolve(page([record('stale', 'stale')])); await settle();
+	expect(fixture.api).toHaveBeenCalledTimes(2);
+	expect(fixture.channels).toHaveLength(0);
+	expect(host.querySelector('[data-record="current"]')).not.toBeNull();
+	expect(host.querySelector('[data-record="stale"]')).toBeNull();
+});
+
+test('manual mode retries an initial load interrupted while the document was hidden', async () => {
+	const { store } = await import('@/store.js');
+	store.s.realtimeMode = false; store.r.realtimeMode.value = false;
+	const hidden = vi.spyOn(window.document, 'hidden', 'get').mockReturnValue(false);
+	const pending = deferred<ReturnType<typeof page>>();
+	fixture.api.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(page([record('current', 'current')]));
+	mount(); await settle();
+	hidden.mockReturnValue(true);
+	window.document.dispatchEvent(new Event('visibilitychange')); await settle();
+	hidden.mockReturnValue(false);
+	window.document.dispatchEvent(new Event('visibilitychange')); await settle();
+	pending.resolve(page([record('stale', 'stale')])); await settle();
+	expect(fixture.api).toHaveBeenCalledTimes(2);
+	expect(fixture.channels).toHaveLength(0);
+	expect(host.querySelector('[data-record="current"]')).not.toBeNull();
+	expect(host.querySelector('[data-record="stale"]')).toBeNull();
+});
+
+test('manual mode retries an interrupted first load for a new filter', async () => {
+	const { store } = await import('@/store.js');
+	store.s.realtimeMode = false; store.r.realtimeMode.value = false;
+	const pending = deferred<ReturnType<typeof page>>();
+	fixture.api.mockResolvedValueOnce(page([record('previous', 'previous')])).mockReturnValueOnce(pending.promise).mockResolvedValueOnce(page([record('current', 'current')]));
+	const props = mount(); await settle();
+	const mine = Array.from(host.querySelectorAll<HTMLButtonElement>('button[aria-pressed]')).find(button => button.textContent === '自分');
+	mine?.click(); await settle();
+	props.active = false; await settle(); props.active = true; await settle();
+	pending.resolve(page([record('stale', 'stale')])); await settle();
+	expect(fixture.api).toHaveBeenCalledTimes(3);
+	expect(fixture.api).toHaveBeenLastCalledWith('hata/hatady/activities', expect.objectContaining({ scope: 'mine' }));
+	expect(host.querySelector('[data-record="current"]')).not.toBeNull();
+	expect(host.querySelector('[data-record="stale"]')).toBeNull();
+});
+
+test('switching to manual mode retries an interrupted initial load', async () => {
+	const { store } = await import('@/store.js');
+	const pending = deferred<ReturnType<typeof page>>();
+	fixture.api.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(page([record('current', 'current')]));
+	mount(); await settle();
+	store.s.realtimeMode = false; store.r.realtimeMode.value = false; await settle();
+	pending.resolve(page([record('stale', 'stale')])); await settle();
+	expect(fixture.api).toHaveBeenCalledTimes(2);
+	expect(fixture.channels[0].dispose).toHaveBeenCalledOnce();
+	expect(host.querySelector('[data-record="current"]')).not.toBeNull();
+	expect(host.querySelector('[data-record="stale"]')).toBeNull();
 });
 
 test('dispose rejects a pending REST result and late events from its old channel', async () => {

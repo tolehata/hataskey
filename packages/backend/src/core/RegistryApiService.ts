@@ -6,6 +6,7 @@
 import { HataskFlowerV2Service } from './HataskFlowerV2Service.js';
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
+import { lockHataskFlowerWallet } from '@/core/hatask-flower-v2.js';
 import type { RegistryItemsRepository } from '@/models/_.js';
 import { IdentifiableError } from '@/misc/identifiable-error.js';
 import type { MiUser } from '@/models/User.js';
@@ -77,6 +78,7 @@ export class RegistryApiService {
 			}
 			await this.registryItemsRepository.manager.transaction(async manager => {
 				await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatask-planner:${userId}:${collection}`]);
+				if (collection === 'todos') await lockHataskFlowerWallet(manager, userId);
 				const backupKey = plannerBackupKey(collection);
 				const migrationMarkerKey = HATASK_PLANNER_SHADOW_KEY;
 				const rows = await findPlannerRows(manager, userId, [collection, backupKey, migrationMarkerKey], true);
@@ -165,7 +167,8 @@ export class RegistryApiService {
 		targetIntegrity: PlannerMigrationTargetIntegrity,
 	): Promise<{ created: boolean; revision: string; sourceHash: string; rawRowCount: number }> {
 		return await this.registryItemsRepository.manager.transaction(async manager => {
-			for (const collection of HATASK_PLANNER_CORE_COLLECTIONS) {
+			// Match commit-batch's order when a migration overlaps another client's save.
+			for (const collection of [...HATASK_PLANNER_CORE_COLLECTIONS].sort()) {
 				await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatask-planner:${userId}:${collection}`]);
 			}
 

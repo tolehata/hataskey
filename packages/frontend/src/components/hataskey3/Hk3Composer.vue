@@ -394,7 +394,8 @@ const effectiveLocalOnly = computed(() => composerChannel.value ? true : localOn
 const maxLength = computed(() => instance.maxNoteTextLength ?? 3000);
 const characterCount = computed(() => Array.from(draftText.value).length);
 const overLimit = computed(() => characterCount.value > maxLength.value);
-const canSubmit = computed(() => !confirmationActive.value && !submitting.value && pendingAttachments.value === 0 && !overLimit.value && (draftText.value.trim().length > 0 || draftFiles.value.length > 0 || pollEnabled.value || event.value != null));
+const hasValidContent = computed(() => !overLimit.value && (draftText.value.trim().length > 0 || draftFiles.value.length > 0 || pollEnabled.value || event.value != null));
+const canSubmit = computed(() => !confirmationActive.value && !submitting.value && pendingAttachments.value === 0 && hasValidContent.value);
 const placeholder = computed(() => {
 	if (context.value?.kind === 'reply' && context.value.note) return i18n.tsx._hata._hataskeyUi3.replyTo({ name: context.value.note.user.name || context.value.note.user.username });
 	if (context.value?.kind === 'quote') return copy.quotePlaceholder;
@@ -865,11 +866,24 @@ function isAnnoyingMfm(text: string): boolean {
 	return text.includes('$[x2') || text.includes('$[x3') || text.includes('$[x4') || text.includes('$[scale') || text.includes('$[position');
 }
 
-async function confirmWarnings(): Promise<boolean> {
+async function validateDraft(): Promise<boolean> {
+	if (!hasValidContent.value) return false;
+	if (!composerChannel.value && visibility.value === 'specified' && visibleUsers.value.length === 0) {
+		await os.alert({ type: 'warning', text: copy.recipientRequired });
+		return false;
+	}
+	if (pollEnabled.value && pollChoices.value.map(value => value.trim()).filter(Boolean).length < 2) {
+		await os.alert({ type: 'warning', text: copy.pollNeedsTwo });
+		return false;
+	}
 	if (cwEnabled.value && cwText.value.trim() === '') {
 		await os.alert({ type: 'warning', text: copy.cwRequired });
 		return false;
 	}
+	return true;
+}
+
+async function confirmWarnings(): Promise<boolean> {
 	if (prefer.s.showNoAltTextWarning && draftFiles.value.some(file => file.comment == null || file.comment.length === 0)) {
 		const confirm = await os.actions({
 			type: 'warning',
@@ -921,16 +935,12 @@ async function submit() {
 
 async function submitDraft() {
 	const generation = draftGeneration;
-	if (!composerChannel.value && visibility.value === 'specified' && visibleUsers.value.length === 0) {
-		await os.alert({ type: 'warning', text: copy.recipientRequired });
-		return;
-	}
-	let choices = pollChoices.value.map(value => value.trim()).filter(Boolean);
-	if (pollEnabled.value && choices.length < 2) {
-		await os.alert({ type: 'warning', text: copy.pollNeedsTwo });
-		return;
-	}
+	if (!await validateDraft()) return;
+	if (unmounted || generation !== draftGeneration || pendingAttachments.value > 0) return;
 	if (!await confirmWarnings()) return;
+	if (unmounted || generation !== draftGeneration || pendingAttachments.value > 0) return;
+	// The warning dialog can outlive edits to the body, poll, CW or recipients.
+	if (!await validateDraft()) return;
 	if (unmounted || generation !== draftGeneration || pendingAttachments.value > 0) return;
 
 	// Warnings may change the draft. Capture exactly what this submission will send.
@@ -939,7 +949,7 @@ async function submitDraft() {
 	const submittedContext = deepClone(context.value as any) as typeof context.value;
 	const editing = deepClone(editingNote.value as any) as typeof editingNote.value;
 	const submittedFiles = deepClone(draftFiles.value as any) as Misskey.entities.DriveFile[];
-	choices = pollChoices.value.map(value => value.trim()).filter(Boolean);
+	const choices = pollChoices.value.map(value => value.trim()).filter(Boolean);
 	let postData: Record<string, any> | null = deepClone({
 		text: draftText.value === '' ? null : draftText.value,
 		fileIds: submittedFiles.length > 0 ? submittedFiles.map(file => file.id) : undefined,
@@ -1093,6 +1103,13 @@ function adopt(request: PostFormProps): boolean {
 	if (request.specified) {
 		visibility.value = 'specified';
 		if (!visibleUsers.value.some(user => user.id === request.specified!.id)) visibleUsers.value.push(request.specified);
+	}
+	if (!channel && request.reply) {
+		// Match the standard form: inherit a restricted reply audience without
+		// widening an already more restrictive draft or explicit initial value.
+		if (request.reply.visibility === 'home' && visibility.value === 'public') visibility.value = 'home';
+		if (request.reply.visibility === 'followers' && (visibility.value === 'public' || visibility.value === 'home')) visibility.value = 'followers';
+		if (request.reply.localOnly) localOnly.value = true;
 	}
 	if (request.mention && !request.reply && !request.renote && !channel) mentionUser(request.mention);
 	focus();

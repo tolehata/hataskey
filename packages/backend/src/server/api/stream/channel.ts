@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import promiseLimit from 'promise-limit';
 import { bindThis } from '@/decorators.js';
 import { isInstanceMuted } from '@/misc/is-instance-muted.js';
 import { isUserRelated } from '@/misc/is-user-related.js';
@@ -18,6 +19,7 @@ import type Connection from './Connection.js';
 // eslint-disable-next-line import/no-default-export
 export default abstract class Channel {
 	protected connection: Connection;
+	private noteQueue = promiseLimit<void>(1);
 	public id: string;
 	public abstract readonly chName: string;
 	public static readonly shouldShare: boolean;
@@ -83,9 +85,14 @@ export default abstract class Channel {
 		this.connection = connection;
 	}
 
-	protected async sendNote(note: Packed<'Note'>): Promise<void> {
-		const filtered = await this.connection.noteStreamingHidingService.filter(note, this.user?.id ?? null);
-		if (filtered != null && this.connection.isChannelConnected(this)) this.send('note', filtered);
+	protected sendNote(note: Packed<'Note'>): Promise<void> {
+		// Visibility checks may query the database. Keep their completion order from
+		// changing the publication order seen by the timeline.
+		return this.noteQueue(async () => {
+			if (!this.connection.isChannelConnected(this)) return;
+			const filtered = await this.connection.noteStreamingHidingService.filter(note, this.user?.id ?? null);
+			if (filtered != null && this.connection.isChannelConnected(this)) this.send('note', filtered);
+		});
 	}
 
 	public send(payload: { type: string, body: JsonValue }): void;

@@ -31,6 +31,7 @@ import { PushNotificationService, type HatadyPushNotificationBody } from '@/core
 import { NotificationService } from '@/core/NotificationService.js';
 import type { MiNotification } from '@/models/Notification.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
+import { applyHatadyLogCursor } from '@/misc/hatady-log-cursor.js';
 import { HatadyAttachmentService } from '@/core/HatadyAttachmentService.js';
 import { bindThis } from '@/decorators.js';
 
@@ -644,7 +645,7 @@ export class HatadyService {
 			.where('log.userId IN (:...ids)', { ids: followeeIds })
 			.andWhere('log.visibility IN (:...vis)', { vis: ['public', 'followers'] });
 		if (opts.subject != null) q.andWhere('log.subject = :subject', { subject: opts.subject });
-		if (opts.untilId != null) q.andWhere('log.id < :untilId', { untilId: opts.untilId });
+		if (opts.untilId != null && !(await applyHatadyLogCursor(q, opts.untilId))) return [];
 		return q.orderBy('log.studiedAt', 'DESC').addOrderBy('log.id', 'DESC').limit(opts.limit).getMany();
 	}
 
@@ -1563,7 +1564,7 @@ export class HatadyService {
 		for (const g of goals) {
 			const progress = await this.getGoalProgress(g);
 			// metric 目標が達成条件を満たしたら done を自動更新(冪等)。
-			if (!g.done && g.metricType != null && progress.percent != null && progress.percent >= 100) {
+			if (!g.done && g.metricType != null && progress.target != null && progress.target > 0 && progress.current >= progress.target) {
 				g.done = true; g.doneAt = new Date();
 				await this.hatadyGoalsRepository.update(g.id, { done: true, doneAt: g.doneAt, updatedAt: new Date() });
 				await this.notify({ notifieeId: userId, notifierId: null, type: 'goalDone', value: null }).catch(error => {

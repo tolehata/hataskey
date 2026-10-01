@@ -19,7 +19,8 @@ import { showMachineInfo } from '@/misc/show-machine-info.js';
 import { envOption } from '@/env.js';
 import { startLtlEmojiVoteCoordinator, stopLtlEmojiVoteCoordinator } from '@/core/ltl-emoji-vote-ipc.js';
 import { initExtraThreadPool, jobQueue, server } from './common.js';
-import { installShutdownSignalHandlers } from './shutdown-handler.js';
+import { installShutdownSignalHandlers, isShutdownInProgress, SHUTDOWN_TIMEOUT_MS } from './shutdown-handler.js';
+import { spawnWorker, terminateWorkers } from './worker-lifecycle.js';
 import type { INestApplicationContext } from '@nestjs/common';
 
 const _filename = fileURLToPath(import.meta.url);
@@ -112,8 +113,6 @@ export async function masterMain() {
 		} else {
 			serverApp = await server();
 		}
-
-		await spawnWorkers(config.clusterLimit);
 	} else {
 		// clusterモジュール無効時
 
@@ -128,9 +127,11 @@ export async function masterMain() {
 	}
 
 	installShutdownSignalHandlers({
+		// Workers have their own drain deadline; leave a separate budget for primary cleanup.
+		timeoutMs: envOption.disableClustering ? undefined : SHUTDOWN_TIMEOUT_MS * 2,
 		shutdownTasks: [
 			async () => stopLtlEmojiVoteCoordinator(),
-			terminateWorkers,
+			() => terminateWorkers(Object.values(cluster.workers ?? {})),
 			async () => { if (serverApp) await serverApp.close(); },
 			async () => { if (queueApp) await queueApp.close(); },
 			shutdownTelemetry,
@@ -139,23 +140,14 @@ export async function masterMain() {
 		onRegistered: message => bootLogger.info(message),
 	});
 
+	if (!envOption.disableClustering) await spawnWorkers(config.clusterLimit);
+	if (isShutdownInProgress()) return;
+
 	if (envOption.onlyQueue) {
 		bootLogger.succ('Queue started', null, true);
 	} else {
 		bootLogger.succ(config.socket ? `Now listening on socket ${config.socket} on ${config.url}` : `Now listening on port ${config.port} on ${config.url}`, null, true);
 	}
-}
-
-/**
- * マスターがSIGTERM/SIGINTを受けた際、子workerへも転送してそれぞれの
- * installShutdownSignalHandlers(worker.ts側)によるgraceful shutdownを開始させる。
- * OSがSIGTERMを送るのは通常マスターのPIDのみで、子プロセスへは自動転送されないため必要。
- */
-function terminateWorkers(): Promise<void> {
-	for (const id in cluster.workers) {
-		cluster.workers[id]?.process.kill('SIGTERM');
-	}
-	return Promise.resolve();
 }
 
 function showEnvironment(): void {
@@ -219,20 +211,21 @@ async function connectDb(): Promise<void> {
 async function spawnWorkers(limit = 1) {
 	const workers = Math.min(limit, os.cpus().length);
 	bootLogger.info(`Starting ${workers} worker${workers === 1 ? '' : 's'}...`);
-	await Promise.all([...Array(workers)].map(spawnWorker));
+	try {
+		await Promise.all([...Array(workers)].map(() => spawnWorker({
+			fork: () => cluster.fork(),
+			isShuttingDown: isShutdownInProgress,
+			onFailure: failWorkerStartup,
+		})));
+	} catch (error) {
+		if (isShutdownInProgress()) return;
+		failWorkerStartup(error instanceof Error ? error : new Error(String(error)));
+	}
+	if (isShutdownInProgress()) return;
 	bootLogger.succ('All workers started');
 }
 
-function spawnWorker(): Promise<void> {
-	return new Promise(res => {
-		const worker = cluster.fork();
-		worker.on('message', message => {
-			if (message === 'listenFailed') {
-				bootLogger.error('The server Listen failed due to the previous error.');
-				process.exit(1);
-			}
-			if (message !== 'ready') return;
-			res();
-		});
-	});
+function failWorkerStartup(error: Error): never {
+	bootLogger.error(error, null, true);
+	process.exit(1);
 }

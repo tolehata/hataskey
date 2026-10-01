@@ -14,6 +14,8 @@ import type { Meilisearch } from 'meilisearch';
 
 @Injectable()
 export class HealthServerService {
+	private pendingDependencyCheck: Promise<unknown> | undefined;
+
 	constructor(
 		@Inject(DI.redis)
 		private redis: Redis.Redis,
@@ -30,6 +32,9 @@ export class HealthServerService {
 		@Inject(DI.redisForReactions)
 		private redisForReactions: Redis.Redis,
 
+		@Inject(DI.redisForJobQueue)
+		private redisForJobQueue: Redis.Redis,
+
 		@Inject(DI.db)
 		private db: DataSource,
 
@@ -40,17 +45,43 @@ export class HealthServerService {
 	@bindThis
 	public createServer(fastify: FastifyInstance, options: FastifyPluginOptions, done: (err?: Error) => void) {
 		fastify.get('/', async (request, reply) => {
-			reply.code(await Promise.all([
-				new Promise<void>((resolve, reject) => readyRef.value ? resolve() : reject()),
-				this.redis.ping(),
-				this.redisForPub.ping(),
-				this.redisForSub.ping(),
-				this.redisForTimelines.ping(),
-				this.redisForReactions.ping(),
-				this.db.query('SELECT 1'),
-				...(this.meilisearch ? [this.meilisearch.health()] : []),
-			]).then(() => 200, () => 503));
 			reply.header('Cache-Control', 'no-store');
+			const redisClients = [this.redis, this.redisForPub, this.redisForSub, this.redisForTimelines, this.redisForReactions, this.redisForJobQueue];
+			// Do not add probes to the offline queue, especially the job queue
+			// connection whose maxRetriesPerRequest is deliberately unlimited.
+			if (!readyRef.value || redisClients.some(redis => redis.status !== 'ready')) {
+				reply.code(503);
+				return;
+			}
+
+			let timeout: ReturnType<typeof setTimeout> | undefined;
+			try {
+				if (!this.pendingDependencyCheck) {
+					const check = Promise.allSettled([
+						...redisClients.map(redis => redis.ping()),
+						this.db.query('SELECT 1'),
+						...(this.meilisearch ? [this.meilisearch.health()] : []),
+					]).then(results => {
+						if (results.some(result => result.status === 'rejected')) throw new Error('Dependency health check failed');
+					});
+					this.pendingDependencyCheck = check;
+					// Keep a timed-out check shared until its underlying work settles.
+					void check.finally(() => {
+						if (this.pendingDependencyCheck === check) this.pendingDependencyCheck = undefined;
+					}).catch(() => {});
+				}
+				await Promise.race([
+					this.pendingDependencyCheck,
+					new Promise<never>((resolve, reject) => {
+						timeout = setTimeout(() => reject(new Error('Health check timed out')), 5000);
+					}),
+				]);
+				reply.code(readyRef.value && redisClients.every(redis => redis.status === 'ready') ? 200 : 503);
+			} catch {
+				reply.code(503);
+			} finally {
+				clearTimeout(timeout);
+			}
 		});
 
 		done();

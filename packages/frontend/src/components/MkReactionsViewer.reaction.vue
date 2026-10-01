@@ -27,7 +27,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { getUnicodeEmojiOrNull } from '@@/js/emojilist.js';
 import { getEmojiNameFromReaction, isLocalCustomEmojiReaction } from '@@/js/emoji-name.js';
@@ -533,36 +533,86 @@ onMounted(() => {
 	if (!props.isInitial) anime();
 });
 
-async function showReactionDetails(showing: Ref<boolean>) {
-	try {
+async function loadReactionUsers(count: number, isCurrent: () => boolean): Promise<Misskey.entities.UserLite[] | null> {
+	if (!isCurrent()) return null;
+	const hideMuted = hideMutedReactionsLocal.value && !props.revealMuted;
+	if (hideMuted) {
+		await fetchMutedUsers();
+		if (!isCurrent()) return null;
+	}
+
+	const users: Misskey.entities.UserLite[] = [];
+	const seenUsers = new Set<string>();
+	const seenCursors = new Set<string>();
+	let untilId: string | undefined;
+	while (isCurrent() && users.length < Math.min(10, count)) {
 		const reactions = await misskeyApi('notes/reactions', {
 			noteId: props.noteId,
 			type: props.reaction,
 			limit: 10,
+			...(untilId == null ? {} : { untilId }),
 		});
-
-		if (!showing.value || buttonEl.value == null) return;
-
-		let users = reactions.map(x => x.user);
-		// 詳細画面でミュートを公開している間だけは除外しない。
-		if (hideMutedReactionsLocal.value && !props.revealMuted) {
-			await fetchMutedUsers();
-			if (!showing.value || buttonEl.value == null) return;
-			users = users.filter(u => !isMutedUser(u.id));
+		if (!isCurrent()) return null;
+		for (const { user } of reactions) {
+			if (seenUsers.has(user.id)) continue;
+			seenUsers.add(user.id);
+			if (!hideMuted || !isMutedUser(user.id)) users.push(user);
+			if (users.length >= 10) break;
 		}
-
-		const { dispose } = os.popup(XDetails, {
-			showing,
-			reaction: props.reaction,
-			users,
-			count: props.count,
-			anchorElement: buttonEl.value,
-		}, {
-			closed: () => dispose(),
-		});
-	} catch {
-		// Details are optional; a failed request must not reject a tooltip or touch callback.
+		const nextCursor = reactions.at(-1)?.id;
+		if (reactions.length < 10 || nextCursor == null || seenCursors.has(nextCursor)) break;
+		seenCursors.add(nextCursor);
+		untilId = nextCursor;
 	}
+	return isCurrent() ? users : null;
+}
+
+const activeDetailsShowings = new Set<Ref<boolean>>();
+
+async function showReactionDetails(showing: Ref<boolean>) {
+	if (!showing.value || buttonEl.value == null) return;
+	activeDetailsShowings.add(showing);
+	const users = reactive<Misskey.entities.UserLite[]>([]);
+	let generation = 0;
+	let opened = false;
+	const isCurrent = (request: number) => showing.value && buttonEl.value != null && generation === request;
+
+	async function reload() {
+		const request = ++generation;
+		users.splice(0);
+		const count = props.count;
+		if (count <= 0) return;
+		try {
+			const currentUsers = await loadReactionUsers(count, () => isCurrent(request));
+			if (currentUsers == null || !isCurrent(request)) return;
+			const anchorElement = buttonEl.value;
+			if (anchorElement == null) return;
+			users.push(...currentUsers);
+			if (opened) return;
+			const { dispose } = os.popup(XDetails, {
+				showing,
+				reaction: props.reaction,
+				users,
+				count: computed(() => props.count),
+				anchorElement,
+			}, {
+				closed: () => dispose(),
+			});
+			opened = true;
+		} catch {
+			// Details are optional; a failed request must not reject a tooltip or touch callback.
+		}
+	}
+
+	const stopCount = watch(() => props.count, () => { void reload(); }, { flush: 'sync' });
+	const stopShowing = watch(showing, (value) => {
+		if (value) return;
+		generation++;
+		stopCount();
+		stopShowing();
+		activeDetailsShowings.delete(showing);
+	}, { flush: 'sync' });
+	await reload();
 }
 
 let focusDetailsShowing: Ref<boolean> | null = null;
@@ -587,6 +637,8 @@ if (!mock) {
 
 onBeforeUnmount(() => {
 	onReactionBlur();
+	if (touchDetailsShowing != null) touchDetailsShowing.value = false;
+	for (const showing of activeDetailsShowings) showing.value = false;
 	reactionTouchGesture.dispose();
 });
 </script>

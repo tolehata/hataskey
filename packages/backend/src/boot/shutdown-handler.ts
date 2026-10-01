@@ -7,7 +7,7 @@ type ShutdownSignalProcess = {
 	once(event: 'SIGTERM' | 'SIGINT', listener: () => Promise<void>): unknown;
 };
 
-const SHUTDOWN_TIMEOUT_MS = 10_000;
+export const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 export type ShutdownTask = () => Promise<void>;
 
@@ -18,6 +18,8 @@ export type ShutdownHandlerOptions = {
 	shutdownTasks: readonly ShutdownTask[];
 	/** Process termination function. */
 	exit?: (code: number) => void;
+	/** Total deadline, including any child-worker drain awaited by the primary. */
+	timeoutMs?: number;
 	/** Optional boot logger hook used after signal handlers are registered. */
 	onRegistered?: (message: string) => void;
 };
@@ -42,6 +44,7 @@ export function installShutdownSignalHandlers(options: ShutdownHandlerOptions): 
 	// テストではprocess/exitを差し替え、本番では実processにSIGTERM/SIGINT handlerを登録する。
 	const processLike = options.process ?? process;
 	const exit = options.exit ?? ((code: number) => process.exit(code));
+	const timeoutMs = options.timeoutMs ?? SHUTDOWN_TIMEOUT_MS;
 
 	const handleSignal = async () => {
 		// 同時に複数signalが来てもflushを二重実行せず、cluster refork抑止用の状態もここで立てる。
@@ -72,12 +75,12 @@ export function installShutdownSignalHandlers(options: ShutdownHandlerOptions): 
 					timeout = setTimeout(() => {
 						timedOut = true;
 						try {
-							console.error(`Shutdown tasks timed out after ${SHUTDOWN_TIMEOUT_MS}ms.`);
+							console.error(`Shutdown tasks timed out after ${timeoutMs}ms.`);
 						} catch {
 							// stderrの出力自体が失敗してもexitは継続する。
 						}
 						resolve();
-					}, SHUTDOWN_TIMEOUT_MS);
+					}, timeoutMs);
 				}),
 			]);
 		} finally {
@@ -92,8 +95,7 @@ export function installShutdownSignalHandlers(options: ShutdownHandlerOptions): 
 	processLike.once('SIGTERM', handleSignal);
 	processLike.once('SIGINT', handleSignal);
 
-	// app.enableShutdownHooks()未配線の現状、SIGTERM/SIGINT時には登録済み終了処理のみを行う。
-	options.onRegistered?.('Registered SIGTERM/SIGINT shutdown handler (this process does not perform NestJS graceful shutdown on these signals).');
+	options.onRegistered?.('Registered SIGTERM/SIGINT shutdown handler.');
 }
 
 export function isShutdownInProgress(): boolean {

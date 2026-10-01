@@ -36,6 +36,9 @@ export class NoteStreamingHidingService {
 
 		for (let current: Packed<'Note'> | null | undefined = note; current != null; current = current.renote) {
 			renoteChain.push(current);
+			// A quote has its own content. Its hidden source must not suppress a
+			// renote of that otherwise visible quote.
+			if (!isRenotePacked(current) || isQuotePacked(current)) break;
 		}
 
 		return renoteChain;

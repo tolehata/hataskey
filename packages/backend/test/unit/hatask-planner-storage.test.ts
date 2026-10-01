@@ -163,6 +163,7 @@ describe('Hatask planner loss prevention', () => {
 		const endpoint = new BatchCommitEndpoint(
 			{ transaction: vi.fn(async callback => await callback(manager)) } as never,
 			{ gen: vi.fn().mockReturnValue('generated-id') } as never,
+			{ onTodosCommitted: vi.fn().mockResolvedValue({}) } as never,
 		);
 		await expect(endpoint.exec({
 			changes: [
@@ -178,7 +179,9 @@ describe('Hatask planner loss prevention', () => {
 				},
 			],
 		}, { id: 'usera' } as never, null, null)).rejects.toThrow();
-		expect(manager.query).toHaveBeenCalledTimes(2);
+		expect(manager.query.mock.calls.map(call => call[1])).toEqual([
+			['hatask-planner:usera:folders'], ['hatask-planner:usera:todos'], ['hatask-flower:usera'],
+		]);
 		expect(insert).not.toHaveBeenCalled();
 		expect(update).not.toHaveBeenCalled();
 	});
@@ -202,6 +205,7 @@ describe('Hatask planner loss prevention', () => {
 			getRepository: vi.fn().mockReturnValue({ createQueryBuilder: vi.fn().mockReturnValue(lockedQuery), insert }),
 		};
 		const service = new RegistryApiService(
+			{ onTodosCommitted: vi.fn().mockResolvedValue({}) } as never,
 			{ manager: { transaction: vi.fn(async (callback: (value: typeof manager) => unknown) => await callback(manager)) } } as never,
 			{ gen: vi.fn().mockReturnValue('shadow-id') } as never,
 			{ publishMainStream: vi.fn() } as never,
@@ -269,6 +273,7 @@ describe('Hatask planner loss prevention', () => {
 		};
 		const publishMainStream = vi.fn();
 		const service = new RegistryApiService(
+			{ onTodosCommitted: vi.fn().mockResolvedValue({}) } as never,
 			registryRepository as never,
 			{ gen: vi.fn().mockReturnValue('generated-id') } as never,
 			{ publishMainStream } as never,

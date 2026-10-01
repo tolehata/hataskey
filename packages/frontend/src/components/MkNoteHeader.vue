@@ -24,7 +24,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- 旗鯖fork: 外部サーバーラベル(ticker)を日時の左に配置。
 		     旧実装は日時の info ブロックの後ろ(下)に別 div で置かれ、かつ :style に
 		     クラス名を渡していた(:class が正)ため、ラベルが日時の下に表示されていた。 -->
-		<div v-if="showTicker" :class="$style.ticker"><MkInstanceTicker :host="note.user.host" :instance="note.user.instance" @click.stop="showOnRemote"/></div>
+		<div v-if="tickerVisible" :class="$style.ticker"><MkInstanceTicker :host="note.user.host" :instance="note.user.instance" @click.stop="showOnRemote"/></div>
 		<div :class="$style.info">
 			<span v-if="note.updatedAt" style="margin-right: 0.5em;"><i v-tooltip="i18n.tsx.noteUpdatedAt({ date: (new Date(note.updatedAt)).toLocaleDateString(), time: (new Date(note.updatedAt)).toLocaleTimeString() })" class="ti ti-pencil"></i></span>
 			<span v-if="note.deleteAt" style="margin-right: 0.5em;"><i v-tooltip="`${i18n.ts.scheduledNoteDelete}: ${(new Date(note.deleteAt)).toLocaleString()}`" class="ti ti-bomb"></i></span>
@@ -71,13 +71,14 @@ import { useRouter } from '@/router.js';
 import MkInstanceTicker from '@/components/MkInstanceTicker.vue';
 import MkUserRoleBadges from '@/components/MkUserRoleBadges.vue';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
 	note: Misskey.entities.Note;
+	showTicker?: boolean;
 	deliveryTargets?: {
 		mode: 'include' | 'exclude';
 		hosts: string[];
 	} | null;
-}>();
+}>(), { showTicker: true });
 
 const emit = defineEmits<{
 	(ev: 'nameClick', userId: string): void;
@@ -85,7 +86,7 @@ const emit = defineEmits<{
 
 const mock = inject(DI.mock, false);
 
-const showTicker = (prefer.s.instanceTicker === 'always') || (prefer.s.instanceTicker === 'remote' && props.note.user.instance);
+const tickerVisible = props.showTicker && ((prefer.s.instanceTicker === 'always') || (prefer.s.instanceTicker === 'remote' && props.note.user.instance));
 const router = useRouter();
 
 function deliveryTargetsTooltip(targets: Misskey.entities.Note['deliveryTargets']): string {

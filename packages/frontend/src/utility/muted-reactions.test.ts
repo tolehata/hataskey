@@ -39,6 +39,11 @@ const reaction = (userId: string, type: string) => ({
 	type,
 	user: { id: userId },
 });
+const numberedReaction = (id: number, userId = `user-${id}`, type = ':wave:') => ({
+	id: String(id).padStart(4, '0'),
+	type,
+	user: { id: userId },
+});
 
 describe('ミュートユーザーのリアクション表示キャッシュ', () => {
 	beforeEach(() => {
@@ -51,10 +56,11 @@ describe('ミュートユーザーのリアクション表示キャッシュ', (
 	});
 
 	test('ミュートした利用者の件数だけをリアクション別に集計する', async () => {
+		mocks.mutedIds.add('muted-user-2');
 		mocks.api.mockResolvedValueOnce([
 			reaction('muted-user', ':wave:'),
 			reaction('visible-user', ':wave:'),
-			reaction('muted-user', ':star:'),
+			reaction('muted-user-2', ':star:'),
 		]);
 		const subject = await import('./muted-reactions.js');
 
@@ -192,5 +198,165 @@ describe('ミュートユーザーのリアクション表示キャッシュ', (
 		subject.requestMutedReactions('failed-note', 1);
 		await vi.waitFor(() => expect(mocks.api).toHaveBeenCalledTimes(3));
 		vi.useRealTimers();
+	});
+
+	test('100件超はuntilIdで総数まで取得し、全ページ完了前に公開しない', async () => {
+		const second = deferred<unknown[]>();
+		const firstPage = Array.from({ length: 100 }, (_, i) => numberedReaction(201 - i));
+		mocks.mutedIds = new Set(['user-201', 'user-1']);
+		mocks.api.mockResolvedValueOnce(firstPage).mockImplementationOnce(() => second.promise);
+		const subject = await import('./muted-reactions.js');
+
+		subject.requestMutedReactions('note-1', 201);
+		await vi.waitFor(() => expect(mocks.api).toHaveBeenCalledTimes(2));
+		expect(mocks.api).toHaveBeenNthCalledWith(1, 'notes/reactions', { noteId: 'note-1', limit: 100 });
+		expect(mocks.api).toHaveBeenNthCalledWith(2, 'notes/reactions', { noteId: 'note-1', limit: 100, untilId: '0102' });
+		expect(subject.getMutedReactions('note-1', 201)).toBeUndefined();
+
+		mocks.api.mockResolvedValueOnce([numberedReaction(1)]);
+		second.resolve(Array.from({ length: 100 }, (_, i) => numberedReaction(101 - i)));
+		await vi.waitFor(() => expect(mocks.api).toHaveBeenCalledTimes(3));
+		expect(mocks.api).toHaveBeenNthCalledWith(3, 'notes/reactions', { noteId: 'note-1', limit: 100, untilId: '0002' });
+		await vi.waitFor(() => expect(subject.getMutedReactions('note-1', 201)).toEqual({
+			delta: { ':wave:': 2 }, hidden: 2, truncated: false,
+		}));
+	});
+
+	test('snapshot総数より短いページでも実rowsを取りきれば差分を確定する', async () => {
+		mocks.api.mockResolvedValueOnce([
+			numberedReaction(3, 'muted-user'),
+			numberedReaction(2, 'visible-user'),
+		]);
+		const subject = await import('./muted-reactions.js');
+		subject.requestMutedReactions('note-1', 101);
+
+		await vi.waitFor(() => expect(subject.getMutedReactions('note-1', 101)).toEqual({
+			delta: { ':wave:': 1 }, hidden: 1, truncated: false,
+		}));
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+	});
+
+	test('総数100件に達したら空ページを追加取得しない', async () => {
+		const page = Array.from({ length: 100 }, (_, i) => numberedReaction(100 - i));
+		mocks.mutedIds = new Set(['user-1']);
+		mocks.api.mockResolvedValueOnce(page);
+		const subject = await import('./muted-reactions.js');
+		subject.requestMutedReactions('note-1', 100);
+
+		await vi.waitFor(() => expect(subject.getMutedReactions('note-1', 100)?.hidden).toBe(1));
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+	});
+
+	test('100件の後の空ページは正常終端として確定する', async () => {
+		const lastPage = deferred<unknown[]>();
+		const page = Array.from({ length: 100 }, (_, i) => numberedReaction(100 - i));
+		mocks.mutedIds = new Set(['user-100']);
+		mocks.api.mockResolvedValueOnce(page).mockImplementationOnce(() => lastPage.promise);
+		const subject = await import('./muted-reactions.js');
+		subject.requestMutedReactions('note-1', 150);
+
+		await vi.waitFor(() => expect(mocks.api).toHaveBeenCalledTimes(2));
+		expect(mocks.api).toHaveBeenNthCalledWith(2, 'notes/reactions', { noteId: 'note-1', limit: 100, untilId: '0001' });
+		expect(subject.getMutedReactions('note-1', 150)).toBeUndefined();
+		lastPage.resolve([]);
+		await vi.waitFor(() => expect(subject.getMutedReactions('note-1', 150)).toEqual({
+			delta: { ':wave:': 1 }, hidden: 1, truncated: false,
+		}));
+		expect(mocks.api).toHaveBeenCalledTimes(2);
+	});
+
+	test('重複したreactionとuserを二重に数えない', async () => {
+		mocks.api.mockResolvedValueOnce([
+			numberedReaction(3, 'muted-user'),
+			numberedReaction(3, 'muted-user'),
+			numberedReaction(2, 'muted-user'),
+			numberedReaction(1, 'visible-user'),
+		]);
+		const subject = await import('./muted-reactions.js');
+		subject.requestMutedReactions('note-1', 3);
+		await vi.waitFor(() => expect(subject.getMutedReactions('note-1', 3)).toEqual({
+			delta: { ':wave:': 1 }, hidden: 1, truncated: false,
+		}));
+	});
+
+	test('重複ページでcursorが進まなければ追加通信や部分差分の確定をしない', async () => {
+		const page = Array.from({ length: 100 }, (_, i) => numberedReaction(101 - i));
+		mocks.api.mockResolvedValue(page);
+		const subject = await import('./muted-reactions.js');
+		subject.requestMutedReactions('note-1', 101);
+		await vi.waitFor(() => expect(mocks.api).toHaveBeenCalledTimes(2));
+		expect(subject.getMutedReactions('note-1', 101)).toBeUndefined();
+		await Promise.resolve();
+		expect(mocks.api).toHaveBeenCalledTimes(2);
+	});
+
+	test('短い非空の重複ページは正常終端とみなさない', async () => {
+		const page = Array.from({ length: 100 }, (_, i) => numberedReaction(101 - i));
+		mocks.api.mockResolvedValueOnce(page).mockResolvedValueOnce([numberedReaction(2)]);
+		const subject = await import('./muted-reactions.js');
+		subject.requestMutedReactions('note-1', 101);
+
+		await vi.waitFor(() => expect(mocks.api).toHaveBeenCalledTimes(2));
+		expect(subject.getMutedReactions('note-1', 101)).toBeUndefined();
+	});
+
+	test('2ページ目の失敗時は部分差分を公開せず、次回は最初から再取得する', async () => {
+		vi.useFakeTimers();
+		const page = Array.from({ length: 100 }, (_, i) => numberedReaction(101 - i));
+		mocks.mutedIds = new Set(['user-101', 'user-1']);
+		mocks.api.mockResolvedValueOnce(page).mockRejectedValueOnce(new Error('network'))
+			.mockResolvedValueOnce(page).mockResolvedValueOnce([numberedReaction(1)]);
+		const subject = await import('./muted-reactions.js');
+		subject.requestMutedReactions('note-1', 101);
+		await vi.waitFor(() => expect(mocks.api).toHaveBeenCalledTimes(2));
+		expect(subject.getMutedReactions('note-1', 101)).toBeUndefined();
+
+		await vi.advanceTimersByTimeAsync(1500);
+		subject.requestMutedReactions('note-1', 101);
+		await vi.waitFor(() => expect(subject.getMutedReactions('note-1', 101)?.hidden).toBe(2));
+		expect(mocks.api).toHaveBeenNthCalledWith(3, 'notes/reactions', { noteId: 'note-1', limit: 100 });
+		vi.useRealTimers();
+	});
+
+	test('ページ待機中にnoteが変わったら旧取得を打ち切る', async () => {
+		const second = deferred<unknown[]>();
+		const page = Array.from({ length: 100 }, (_, i) => numberedReaction(101 - i));
+		mocks.api.mockResolvedValueOnce(page).mockImplementationOnce(() => second.promise)
+			.mockResolvedValueOnce([reaction('muted-user', ':new:')]);
+		const subject = await import('./muted-reactions.js');
+		subject.requestMutedReactions('note-1', 101);
+		await vi.waitFor(() => expect(mocks.api).toHaveBeenCalledTimes(2));
+		subject.notifyMutedReactionSourceChanged('note-1');
+		subject.requestMutedReactions('note-1', 1);
+		second.resolve([numberedReaction(1)]);
+		await vi.waitFor(() => expect(subject.getMutedReactions('note-1', 1)?.delta).toEqual({ ':new:': 1 }));
+		expect(mocks.api).toHaveBeenCalledTimes(3);
+		expect(subject.getMutedReactions('note-1', 101)).toBeUndefined();
+	});
+
+	test('設定の無効化後は同じ鍵の新取得を旧取得のcleanupが解除しない', async () => {
+		const oldSecond = deferred<unknown[]>();
+		const newFirst = deferred<unknown[]>();
+		const page = Array.from({ length: 100 }, (_, i) => numberedReaction(101 - i));
+		mocks.api.mockResolvedValueOnce(page).mockImplementationOnce(() => oldSecond.promise)
+			.mockImplementationOnce(() => newFirst.promise).mockResolvedValueOnce([numberedReaction(1)]);
+		const subject = await import('./muted-reactions.js');
+
+		subject.requestMutedReactions('note-1', 101);
+		await vi.waitFor(() => expect(mocks.api).toHaveBeenCalledTimes(2));
+		subject.invalidateMutedReactions();
+		subject.requestMutedReactions('note-1', 101);
+		await vi.waitFor(() => expect(mocks.api).toHaveBeenCalledTimes(3));
+		oldSecond.resolve([numberedReaction(1)]);
+		await oldSecond.promise;
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(subject.getMutedReactions('note-1', 101)).toBeUndefined();
+		subject.requestMutedReactions('note-1', 101);
+		expect(mocks.api).toHaveBeenCalledTimes(3);
+
+		newFirst.resolve(page);
+		await vi.waitFor(() => expect(subject.getMutedReactions('note-1', 101)?.hidden).toBe(0));
+		expect(mocks.api).toHaveBeenCalledTimes(4);
 	});
 });

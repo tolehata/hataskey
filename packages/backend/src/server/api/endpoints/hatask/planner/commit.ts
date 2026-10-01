@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
+import { lockHataskFlowerWallet } from '@/core/hatask-flower-v2.js';
 import { HataskFlowerV2Service } from '@/core/HataskFlowerV2Service.js';
 import { IdService } from '@/core/IdService.js';
 import { MiRegistryItem } from '@/models/RegistryItem.js';
@@ -91,6 +92,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const backupKey = plannerBackupKey(collection);
 			const result = await this.db.transaction(async manager => {
 				await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatask-planner:${me.id}:${collection}`]);
+				if (collection === 'todos') await lockHataskFlowerWallet(manager, me.id);
 				const rows = await findPlannerRows(manager, me.id, [collection, backupKey], true);
 				const collectionRows = rows.filter(row => row.key === collection);
 				const latest = latestPlannerRow(collectionRows);

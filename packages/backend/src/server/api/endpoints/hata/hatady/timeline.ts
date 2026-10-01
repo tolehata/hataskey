@@ -9,6 +9,7 @@ import type { HatadyLogsRepository } from '@/models/_.js';
 import { HatadyService } from '@/core/HatadyService.js';
 import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
 import { DI } from '@/di-symbols.js';
+import { applyHatadyLogCursor } from '@/misc/hatady-log-cursor.js';
 
 export const meta = {
 	tags: ['hata'],
@@ -52,7 +53,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const excludedUserIds = [...await this.hatadyService.getTimelineExcludedUserIds(me.id)];
 			if (excludedUserIds.length > 0) query.andWhere('log.userId NOT IN (:...excludedUserIds)', { excludedUserIds });
 			if (ps.subject != null) query.andWhere('log.subject = :subject', { subject: ps.subject });
-			if (ps.untilId != null) query.andWhere('log.id < :untilId', { untilId: ps.untilId });
+			if (ps.untilId != null && !(await applyHatadyLogCursor(query, ps.untilId, ps.type === 'popular'))) return [];
 			if (ps.type === 'popular') {
 				query.orderBy('log.reactionsCount', 'DESC').addOrderBy('log.studiedAt', 'DESC').addOrderBy('log.id', 'DESC');
 			} else {

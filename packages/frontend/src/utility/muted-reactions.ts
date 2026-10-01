@@ -16,14 +16,14 @@
 ⚠️取り方
   `notes/reactions` はログイン情報を含むPOSTで取得し、ノートの閲覧権限を確認する。
   通信量はこの共有ストアのキャッシュと同時実行数で抑える。
-  - ⚠️**ノート1件につき1リクエストまで**（種別ごとに分けない＝`type` を渡さない）
+  - ⚠️**ノート1件につき総数まで100件ずつ取得**（種別ごとに分けない＝`type` を渡さない）
   - ⚠️**同時実行を絞る**（スクロールで一気に走らせない）
   - ⚠️リアクションのstream更新世代が変わるまで再取得しない
   - ⚠️ミュートが空／設定が切のときは**1回も投げない**
 
 ⚠️限界（正直に）
-  `limit` の上限が **100** なので、⚠️**リアクションが100件を超えるノートでは取りこぼす**。
-  ⚠️取りこぼしたぶんは「消えないリアクション」として残る。0件にはできない。
+  リアクション総数は表示側のスナップショットなので、APIが先に終端へ達した場合は
+  実際に取得できた全件から差分を確定する。通信失敗時は部分差分を表示せず再試行する。
 
 ⚠️**管理者のリアクションは隠さない。ミュートしたモデレーターのリアクションは隠す。**
   判定はすべて `isMutedUser()` 一本に通しており、除外は共有キャッシュ（`utility/muted-users.ts`）の
@@ -41,7 +41,7 @@ import type * as Misskey from 'cherrypick-js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hasMutedUsers, isMutedUser, isMutedUsersReady, mutedUsersRevision } from '@/utility/muted-users.js';
 
-/** `notes/reactions` の上限。⚠️これを超えるぶんは取りこぼす（endpoint 側の maximum: 100）。 */
+/** `notes/reactions` の1ページの上限（endpoint 側の maximum: 100）。 */
 const FETCH_LIMIT = 100;
 /** ⚠️同時に走らせる数。スクロール時に何十本も同時に飛ばさないための蓋。 */
 const MAX_PARALLEL = 4;
@@ -51,7 +51,7 @@ export type MutedReactionEntry = Readonly<{
 	delta: Readonly<Record<string, number>>;
 	/** 隠した総数。0なら ⓘ を出す必要がない。 */
 	hidden: number;
-	/** ⚠️取りこぼしの可能性があるか（総数が取得上限を超えていた）。 */
+	/** 差分の取りこぼしがあるか。全ページ取得後にのみ確定するため通常 false。 */
 	truncated: boolean;
 }>;
 
@@ -127,7 +127,8 @@ function runNext(): void {
 		}
 		running++;
 		void next.run().finally(() => {
-			inflight.delete(next.key);
+			// invalidate 後に同じ鍵で新しい取得が始まっていても消さない。
+			if (next.generation === generation) inflight.delete(next.key);
 			running--;
 			runNext();
 		});
@@ -179,30 +180,62 @@ export function requestMutedReactions(noteId: string, reactionCount: number): vo
 	inflight.add(key);
 	lastActorRefreshAtByNote.set(noteId, Date.now());
 	const requestGeneration = generation;
+	const isCurrent = () => requestGeneration === generation
+		&& latestKeyByNote.get(noteId) === key
+		&& cacheKeyOf(noteId, reactionCount) === key
+		&& isMutedUsersReady()
+		&& hasMutedUsers();
 
 	const task = async () => {
 		try {
-			const rows = await misskeyApi('notes/reactions', {
-				noteId,
-				limit: FETCH_LIMIT,
-			}) as Misskey.entities.NoteReaction[];
-
 			const delta: Record<string, number> = {};
 			let hidden = 0;
-			for (const row of rows) {
-				const userId = row.user.id;
-				if (!isMutedUser(userId)) continue;
-				// ⚠️`type` は `:name@host:` 形式。チップ側の見出しと同じ文字列なのでそのまま使う。
-				delta[row.type] = (delta[row.type] ?? 0) + 1;
-				hidden++;
+			const seenReactionIds = new Set<string>();
+			const seenUserIds = new Set<string>();
+			let untilId: string | undefined;
+			while (seenReactionIds.size < reactionCount) {
+				if (!isCurrent()) return;
+				const rows = await misskeyApi('notes/reactions', {
+					noteId,
+					limit: FETCH_LIMIT,
+					...(untilId ? { untilId } : {}),
+				}) as Misskey.entities.NoteReaction[];
+				if (!isCurrent()) return;
+				// snapshot の総数は削除などで古くなり得る。空ページは正常な終端。
+				if (rows.length === 0) break;
+				const before = seenReactionIds.size;
+				for (const row of rows) {
+					const userId = row.user.id;
+					if (seenReactionIds.has(row.id)) continue;
+					seenReactionIds.add(row.id);
+					if (!seenUserIds.has(userId)) {
+						seenUserIds.add(userId);
+						if (isMutedUser(userId)) {
+							// ⚠️`type` は `:name@host:` 形式。チップ側の見出しと同じ文字列なのでそのまま使う。
+							delta[row.type] = (delta[row.type] ?? 0) + 1;
+							hidden++;
+						}
+					}
+					if (seenReactionIds.size === reactionCount) break;
+				}
+				if (seenReactionIds.size === before) {
+					throw new Error('notes/reactions duplicated a nonempty page');
+				}
+				if (seenReactionIds.size >= reactionCount || rows.length < FETCH_LIMIT) break;
+				// 次ページを読む場合だけcursorを要求・検証する。
+				const nextUntilId = rows.at(-1)?.id;
+				if (!nextUntilId || (untilId && nextUntilId >= untilId)) {
+					throw new Error('notes/reactions cursor did not advance');
+				}
+				untilId = nextUntilId;
 			}
-			if (requestGeneration === generation && latestKeyByNote.get(noteId) === key) {
-				cache.set(noteId, { key, delta, hidden, truncated: rows.length >= FETCH_LIMIT });
+			if (isCurrent()) {
+				cache.set(noteId, { key, delta, hidden, truncated: false });
 				failureAttempts.delete(key);
 				mutedReactionsRevision.value++;
 			}
 		} catch {
-			if (requestGeneration === generation && latestKeyByNote.get(noteId) === key) {
+			if (isCurrent()) {
 				// 一時失敗では直前の安定表示を維持し、上限付きで再試行する。
 				// 再試行を使い切った場合だけfail-openし、表示を永久に空にしない。
 				if (!scheduleRetry(noteId, key, requestGeneration)) {
@@ -241,5 +274,6 @@ export function invalidateMutedReactions(): void {
 	retryTimers.clear();
 	for (const queued of waiting) inflight.delete(queued.key);
 	waiting.length = 0;
+	inflight.clear();
 	mutedReactionsRevision.value++;
 }

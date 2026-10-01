@@ -8,6 +8,7 @@ vi.mock('@/core/RoleService.js', () => ({ RoleService: class {} }));
 vi.mock('@/core/ReactionsBufferingService.js', () => ({ ReactionsBufferingService: class {} }));
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { NoteStreamingHidingService } from '@/server/api/stream/NoteStreamingHidingService.js';
+import { ChannelChannelService } from '@/server/api/stream/channels/channel.js';
 import { RoleTimelineChannelService } from '@/server/api/stream/channels/role-timeline.js';
 import { FeedService } from '@/server/web/FeedService.js';
 import { QueryService } from '@/core/QueryService.js';
@@ -32,6 +33,7 @@ function fixture(policy = 'all') {
 	const streaming = new NoteStreamingHidingService(service.meta, service);
 	return { service, streaming };
 }
+
 function note(overrides: Record<string, unknown> = {}): Packed<'Note'> {
 	return { id: 'note', userId: 'author', user: { id: 'author', host: null }, createdAt: '2020-01-01T00:00:00Z', visibility: 'public', text: 'body', cw: null, fileIds: [], files: [], reactions: {}, mentions: [], channelId: null, ...overrides } as Packed<'Note'>;
 }
@@ -88,6 +90,19 @@ describe('visitor content visibility', () => {
 		const result = await streaming.filter(note({ text: null, renoteId: 'target', renote: note({ reply: note({ visibility: 'specified', visibleUserIds: [] }) }) }), null);
 		expect(result?.renote?.reply?.isHidden).toBe(true);
 	});
+	test('retains a pure renote of a visible quote whose quoted source is hidden', async () => {
+		const { streaming } = fixture();
+		const original = note({ text: null, renoteId: 'quote', renote: note({
+			id: 'quote', text: 'public commentary', renoteId: 'source', renote: note({
+				id: 'source', user: { host: null, requireSigninToViewContents: true },
+			}),
+		}) });
+		const result = await streaming.filter(original, null);
+		expect(result?.renote?.text).toBe('public commentary');
+		expect(result?.renote?.renote?.isHidden).toBe(true);
+		expect(result?.renote?.renote?.text).toBeNull();
+		expect(original.renote?.renote?.text).toBe('body');
+	});
 	test('retains private-channel membership and administrator time exceptions', async () => {
 		const { service, streaming } = fixture();
 		const privateNote = note({ channelId: 'private' });
@@ -120,6 +135,21 @@ describe('visitor content visibility', () => {
 		const snapshot = { id: 'old', userId: 'author', visibility: 'public', userHost: null, channelId: null };
 		expect(await service.isVisibleForMe(snapshot, 'outsider')).toBe(false);
 		expect(await service.isVisibleForMe(snapshot, 'admin')).toBe(true);
+	});
+	test.each([
+		['makeNotesHiddenBefore', 1577836800],
+		['makeNotesFollowersOnlyBefore', 1577836800],
+		['makeNotesHiddenBefore', -3600],
+		['makeNotesFollowersOnlyBefore', -3600],
+	] as const)('partial content matches packed visibility exactly at the %s = %s cutoff', async (setting, cutoff) => {
+		vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2020-01-01T01:00:00Z'));
+		const { service } = fixture();
+		const user = { host: null, [setting]: cutoff };
+		service.usersRepository.findOneBy.mockResolvedValue(user);
+		const packed = note({ user });
+		const snapshot = { id: 'note', userId: 'author', visibility: 'public', userHost: null, channelId: null };
+		expect(await service.shouldHideNote(packed, 'outsider')).toBe(false);
+		expect(await service.isVisibleForMe(snapshot, 'outsider')).toBe(true);
 	});
 	test('joined reaction queries restrict the note host, not the reaction alias', () => {
 		const query = { alias: 'reaction', andWhere: vi.fn() };
@@ -184,6 +214,65 @@ describe('role timeline visibility', () => {
 });
 
 describe('websocket connection ordering', () => {
+	function channelFixture(filter: ReturnType<typeof vi.fn>) {
+		const subscriber = new EventEmitter();
+		const sendMessageToWs = vi.fn();
+		const connection = {
+			subscriber, sendMessageToWs, isChannelConnected: vi.fn(() => true),
+			userIdsWhoMeMuting: new Set(), userIdsWhoBlockingMe: new Set(), userIdsWhoMeMutingRenotes: new Set(),
+			noteStreamingHidingService: { filter },
+		};
+		const channel = new ChannelChannelService({} as never).create('channel', connection as never);
+		return { channel, connection, sendMessageToWs };
+	}
+
+	test('channel notes retain publish order when their visibility checks finish out of order', async () => {
+		let finish!: () => void;
+		const first = note({ id: 'first', channelId: 'public-channel' });
+		const second = note({ id: 'second', channelId: 'public-channel' });
+		const filter = vi.fn().mockImplementationOnce(() => new Promise<Packed<'Note'>>(resolve => { finish = () => resolve(first); })).mockResolvedValue(second);
+		const { channel, sendMessageToWs } = channelFixture(filter);
+		await channel.init({ channelId: 'public-channel' });
+		const firstDelivery = (channel as any).onNote(first);
+		const secondDelivery = (channel as any).onNote(second);
+		await vi.waitFor(() => expect(filter).toHaveBeenCalled());
+		finish();
+		await Promise.all([firstDelivery, secondDelivery]);
+		expect(sendMessageToWs.mock.calls.map(([, payload]) => payload.body.id)).toEqual(['first', 'second']);
+		channel.dispose();
+	});
+
+	test('disconnect drops an in-flight channel note and skips queued visibility checks', async () => {
+		let finish!: () => void;
+		const first = note({ id: 'first', channelId: 'public-channel' });
+		const filter = vi.fn(() => new Promise<Packed<'Note'>>(resolve => { finish = () => resolve(first); }));
+		const { channel, connection, sendMessageToWs } = channelFixture(filter);
+		await channel.init({ channelId: 'public-channel' });
+		const firstDelivery = (channel as any).onNote(first);
+		const secondDelivery = (channel as any).onNote(note({ id: 'second', channelId: 'public-channel' }));
+		await vi.waitFor(() => expect(filter).toHaveBeenCalledOnce());
+		channel.dispose();
+		connection.isChannelConnected.mockReturnValue(false);
+		finish();
+		await Promise.all([firstDelivery, secondDelivery]);
+		expect(sendMessageToWs).not.toHaveBeenCalled();
+		expect(filter).toHaveBeenCalledOnce();
+	});
+
+	test('a failed channel visibility check does not stall subsequent notes', async () => {
+		const second = note({ id: 'second', channelId: 'public-channel' });
+		const filter = vi.fn().mockRejectedValueOnce(new Error('temporary database failure')).mockResolvedValue(second);
+		const { channel, sendMessageToWs } = channelFixture(filter);
+		await channel.init({ channelId: 'public-channel' });
+		const results = await Promise.allSettled([
+			(channel as any).onNote(note({ id: 'first', channelId: 'public-channel' })),
+			(channel as any).onNote(second),
+		]);
+		expect(results.map(result => result.status)).toEqual(['rejected', 'fulfilled']);
+		expect(sendMessageToWs.mock.calls.map(([, payload]) => payload.body.id)).toEqual(['second']);
+		channel.dispose();
+	});
+
 	test('note updates retain publish order when the first visibility check is delayed', async () => {
 		let finish!: () => void;
 		const canReceiveUpdates = vi.fn().mockImplementationOnce(() => new Promise<boolean>(resolve => { finish = () => resolve(true); })).mockResolvedValue(true);

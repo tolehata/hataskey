@@ -11,30 +11,33 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.reactionName">{{ getReactionName(reaction) }}</div>
 		</div>
 		<div :class="$style.users">
-			<div v-for="u in users" :key="u.id" :class="$style.user">
+			<div v-for="u in visibleUsers" :key="u.id" :class="$style.user">
 				<MkAvatar :class="$style.avatar" :user="u"/>
 				<MkUserName :user="u" :nowrap="true"/>
 			</div>
-			<div v-if="count > 10" :class="$style.more">+{{ count - 10 }}</div>
+			<div v-if="remainingCount > 0" :class="$style.more">+{{ remainingCount }}</div>
 		</div>
 	</div>
 </MkTooltip>
 </template>
 
 <script lang="ts" setup>
-import { } from 'vue';
+import { computed } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { getEmojiName } from '@@/js/emojilist.js';
 import MkTooltip from './MkTooltip.vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 
-defineProps<{
+const props = defineProps<{
 	showing: boolean;
 	reaction: string;
 	users: Misskey.entities.UserLite[];
 	count: number;
 	anchorElement: HTMLElement;
 }>();
+
+const visibleUsers = computed(() => props.users.slice(0, Math.min(10, Math.max(0, props.count))));
+const remainingCount = computed(() => Math.max(0, props.count - visibleUsers.value.length));
 
 const emit = defineEmits<{
 	(ev: 'closed'): void;

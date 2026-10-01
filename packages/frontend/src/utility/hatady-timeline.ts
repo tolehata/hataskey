@@ -42,8 +42,8 @@ export function hatadyTimelineAutoRefreshAllowed(active: boolean, realtimeMode: 
 	return active && realtimeMode && visible;
 }
 
-export function hatadyTimelineShouldLoadOnActivate(realtimeMode: boolean, initialLoadAttempted: boolean): boolean {
-	return realtimeMode || !initialLoadAttempted;
+export function hatadyTimelineShouldLoadOnActivate(realtimeMode: boolean, initialLoadSettled: boolean): boolean {
+	return realtimeMode || !initialLoadSettled;
 }
 
 export function hatadyTimelineTrackedKeys(displayed: readonly HatadyActivity[], queued: readonly HatadyActivity[]): string[] {

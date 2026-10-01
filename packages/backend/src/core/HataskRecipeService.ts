@@ -127,6 +127,7 @@ export class HataskRecipeService {
 	public async canView(recipe: MiHataskRecipe, viewerId: MiUser['id']): Promise<boolean> {
 		if (recipe.userId === viewerId) return true;
 		if (recipe.isDraft) return false;
+		if (!await this.users.existsBy({ id: recipe.userId, isDeleted: false, isSuspended: false })) return false;
 		if (await this.blockings.exists({ where: [{ blockerId: viewerId, blockeeId: recipe.userId }, { blockerId: recipe.userId, blockeeId: viewerId }] })) return false;
 		if (recipe.visibility === 'specified') return recipe.visibleUserIds.includes(viewerId);
 		if (recipe.visibility === 'followers') return await this.followings.exists({ where: { followerId: viewerId, followeeId: recipe.userId } });

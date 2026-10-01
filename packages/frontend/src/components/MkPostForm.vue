@@ -85,6 +85,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button class="_buttonPrimary" style="padding: 4px; border-radius: 8px;" @click="addVisibleUser"><i class="ti ti-plus ti-fw"></i></button>
 		</div>
 	</div>
+	<MkInfo v-if="visibleRecipients.loading.value" role="status">{{ i18n.ts.recipient }}: {{ i18n.ts.loading }}</MkInfo>
+	<MkInfo v-else-if="visibleRecipients.failed.value" warn role="alert">
+		{{ i18n.ts.recipient }}: {{ i18n.ts.somethingHappened }}
+		<button class="_textButton" @click="visibleRecipients.retry()">{{ i18n.ts.retry }}</button>
+		<div v-for="id in visibleRecipients.missingIds.value" :key="id">
+			{{ i18n.ts.unknown }} ({{ id }})
+			<button class="_textButton" :aria-label="`${i18n.ts.remove}: ${id}`" @click="visibleRecipients.remove(id)">{{ i18n.ts.remove }}</button>
+		</div>
+	</MkInfo>
 	<MkInfo v-if="scheduledAt != null" :class="$style.scheduledAt">
 		<I18n :src="i18n.ts.scheduleToPostOnX" tag="span">
 			<template #x>
@@ -158,8 +167,9 @@ import * as Misskey from 'cherrypick-js';
 import insertTextAtCursor from 'insert-text-at-cursor';
 import { toASCII } from 'punycode.js';
 import { host, url } from '@@/js/config.js';
-import { erase, unique } from '@@/js/array.js';
+import { unique } from '@@/js/array.js';
 import MkUploaderItems from './MkUploaderItems.vue';
+import { createPostFormRecipients } from './post-form-recipients.js';
 import type { ShallowRef } from 'vue';
 import type { PostFormProps } from '@/types/post-form.js';
 import type { MenuItem } from '@/types/menu.js';
@@ -273,7 +283,8 @@ watch(showAddMfmFunction, () => prefer.commit('enableQuickAddMfmFunction', showA
 const cw = ref<string | null>(props.initialCw ?? null);
 const localOnly = ref(props.initialLocalOnly ?? (prefer.s.rememberNoteVisibility ? store.s.localOnly : prefer.s.defaultNoteLocalOnly));
 const visibility = ref(props.initialVisibility ?? (prefer.s.rememberNoteVisibility ? store.s.visibility : prefer.s.defaultNoteVisibility));
-const visibleUsers = ref<Misskey.entities.UserDetailed[]>([]);
+const visibleRecipients = createPostFormRecipients(userIds => misskeyApi('users/show', { userIds }));
+const visibleUsers = visibleRecipients.users;
 
 // 旗鯖fork: 投稿範囲に応じて投稿フォームの枠色を変える(アクセシビリティ)。レイアウトに影響しないよう inset box-shadow で枠を描く。
 const visibilityBorderStyle = computed(() => {
@@ -333,6 +344,7 @@ const uploader = useUploader({
 });
 
 onUnmounted(() => {
+	visibleRecipients.dispose();
 	postDelay.dispose();
 	uploader.dispose();
 	if (visibilityFlashTimer != null) window.clearTimeout(visibilityFlashTimer);
@@ -415,7 +427,7 @@ const cwTextLength = computed((): number => {
 const maxCwTextLength = 100;
 
 const canPost = computed((): boolean => {
-	return !props.mock && !posting.value && !posted.value && !postDelay.active.value && !uploader.uploading.value && (uploader.items.value.length === 0 || uploader.readyForUpload.value) &&
+	return visibleRecipients.ready.value && !props.mock && !posting.value && !posted.value && !postDelay.active.value && !uploader.uploading.value && (uploader.items.value.length === 0 || uploader.readyForUpload.value) &&
 		(
 			1 <= textLength.value ||
 			1 <= files.value.length ||
@@ -509,19 +521,11 @@ if (replyTargetNote.value && ['home', 'followers', 'specified'].includes(replyTa
 	}
 
 	if (visibility.value === 'specified') {
-		if (replyTargetNote.value.visibleUserIds) {
-			misskeyApi('users/show', {
-				userIds: replyTargetNote.value.visibleUserIds.filter(uid => uid !== $i.id && uid !== replyTargetNote.value?.userId),
-			}).then(users => {
-				users.forEach(u => pushVisibleUser(u));
-			});
-		}
-
-		if (replyTargetNote.value.userId !== $i.id) {
-			misskeyApi('users/show', { userId: replyTargetNote.value.userId }).then(user => {
-				pushVisibleUser(user);
-			});
-		}
+		void visibleRecipients.load([
+			...visibleRecipients.userIds.value,
+			...(replyTargetNote.value.visibleUserIds ?? []),
+			replyTargetNote.value.userId,
+		].filter(id => id !== $i.id));
 	}
 }
 
@@ -552,6 +556,7 @@ function watchForDraft() {
 	watch(scheduledAt, () => saveDraft());
 	watch(scheduledNoteDelete, () => saveDraft());
 	watch(deliveryTargets, () => saveDraft(), { deep: true });
+	watch(visibleRecipients.userIds, () => saveDraft());
 }
 
 function checkMissingMention() {
@@ -866,13 +871,13 @@ function showOtherSettings() {
 //#endregion
 
 function pushVisibleUser(user: Misskey.entities.UserDetailed) {
-	if (!visibleUsers.value.some(u => u.username === user.username && u.host === user.host)) {
-		visibleUsers.value.push(user);
-	}
+	visibleRecipients.add(user);
 }
 
 function addVisibleUser() {
+	const selectionToken = visibleRecipients.selectionToken();
 	os.selectUser().then(user => {
+		if (!visibleRecipients.isCurrentSelection(selectionToken)) return;
 		pushVisibleUser(user);
 
 		if (!text.value.toLowerCase().includes(`@${user.username.toLowerCase()}`)) {
@@ -881,11 +886,12 @@ function addVisibleUser() {
 	});
 }
 
-function removeVisibleUser(user) {
-	visibleUsers.value = erase(user, visibleUsers.value);
+function removeVisibleUser(user: Misskey.entities.UserDetailed) {
+	visibleRecipients.remove(user.id);
 }
 
 function clear() {
+	visibleRecipients.invalidateSelection();
 	text.value = '';
 	files.value = [];
 	poll.value = null;
@@ -1068,7 +1074,7 @@ function saveDraft() {
 			files: files.value,
 			poll: poll.value,
 			event: event.value,
-			...( visibleUsers.value.length > 0 ? { visibleUserIds: visibleUsers.value.map(x => x.id) } : {}),
+			visibleUserIds: visibleRecipients.userIds.value,
 			quoteId: quoteId.value,
 			reactionAcceptance: reactionAcceptance.value,
 			scheduledAt: scheduledAt.value,
@@ -1091,6 +1097,8 @@ function deleteDraft() {
 async function saveServerDraft(options: {
 	isActuallyScheduled?: boolean;
 } = {}) {
+	if (!visibleRecipients.ready.value) return;
+
 	return await misskeyApi(serverDraftId.value == null ? 'notes/drafts/create' : 'notes/drafts/update', {
 		...(serverDraftId.value == null ? {} : { draftId: serverDraftId.value }),
 		text: text.value,
@@ -1102,7 +1110,7 @@ async function saveServerDraft(options: {
 		fileIds: files.value.map(f => f.id),
 		poll: poll.value,
 		event: event.value,
-		visibleUserIds: visibleUsers.value.map(x => x.id),
+		visibleUserIds: visibleRecipients.userIds.value,
 		renoteId: renoteTargetNote.value ? renoteTargetNote.value.id : quoteId.value ? quoteId.value : null,
 		replyId: replyTargetNote.value ? replyTargetNote.value.id : null,
 		channelId: targetChannel.value ? targetChannel.value.id : null,
@@ -1137,6 +1145,8 @@ async function uploadFiles() {
 }
 
 async function post(ev?: MouseEvent) {
+	if (!visibleRecipients.ready.value) return;
+
 	if (ev) {
 		const el = (ev.currentTarget ?? ev.target) as HTMLElement | null;
 
@@ -1161,7 +1171,6 @@ async function post(ev?: MouseEvent) {
 		}
 
 		await postAsScheduled();
-		clear();
 		return;
 	}
 
@@ -1245,6 +1254,9 @@ async function post(ev?: MouseEvent) {
 		}
 	}
 
+	// Recipient restoration may have started while a warning or upload was open.
+	if (!visibleRecipients.ready.value) return;
+
 	let postData = {
 		text: text.value === '' ? null : text.value,
 		fileIds: files.value.length > 0 ? files.value.map(f => f.id) : undefined,
@@ -1256,7 +1268,7 @@ async function post(ev?: MouseEvent) {
 		cw: useCw.value ? cw.value ?? '' : null,
 		localOnly: localOnly.value,
 		visibility: visibility.value,
-		visibleUserIds: visibility.value === 'specified' ? visibleUsers.value.map(u => u.id) : undefined,
+		visibleUserIds: visibility.value === 'specified' ? [...visibleRecipients.userIds.value] : undefined,
 		reactionAcceptance: reactionAcceptance.value,
 		disableRightClick: disableRightClick.value,
 		noteId: props.updateMode ? props.initialNote?.id : undefined,
@@ -1504,7 +1516,7 @@ async function post(ev?: MouseEvent) {
 }
 
 async function postAsScheduled() {
-	if (props.mock) return;
+	if (props.mock || !visibleRecipients.ready.value) return;
 
 	await saveServerDraft({
 		isActuallyScheduled: true,
@@ -1684,11 +1696,7 @@ async function openAccountMenu(ev: MouseEvent) {
 						};
 					});
 				}
-				if (draft.visibleUserIds) {
-					misskeyApi('users/show', { userIds: draft.visibleUserIds }).then(users => {
-						users.forEach(u => pushVisibleUser(u));
-					});
-				}
+				void visibleRecipients.load(draft.visibleUserIds ?? []);
 				quoteId.value = draft.renoteId ?? null;
 				renoteTargetNote.value = draft.renote;
 				replyTargetNote.value = draft.reply;
@@ -1696,15 +1704,6 @@ async function openAccountMenu(ev: MouseEvent) {
 				scheduledAt.value = draft.scheduledAt ?? null;
 				deliveryTargets.value = normalizeDeliveryTargets(draft.deliveryTargets);
 				if (draft.channel) targetChannel.value = draft.channel as unknown as Misskey.entities.Channel;
-
-				visibleUsers.value = [];
-				draft.visibleUserIds?.forEach(uid => {
-					if (!visibleUsers.value.some(u => u.id === uid)) {
-						misskeyApi('users/show', { userId: uid }).then(user => {
-							pushVisibleUser(user);
-						});
-					}
-				});
 
 				serverDraftId.value = draft.id;
 			},
@@ -1868,9 +1867,7 @@ onMounted(() => {
 					event.value = draft.data.event;
 				}
 				if (draft.data.visibleUserIds) {
-					misskeyApi('users/show', { userIds: draft.data.visibleUserIds }).then(users => {
-						users.forEach(u => pushVisibleUser(u));
-					});
+					void visibleRecipients.load(draft.data.visibleUserIds);
 				}
 				quoteId.value = draft.data.quoteId;
 				reactionAcceptance.value = draft.data.reactionAcceptance;
@@ -1911,11 +1908,7 @@ onMounted(() => {
 					metadata: init.event.metadata,
 				};
 			}
-			if (init.visibleUserIds) {
-				misskeyApi('users/show', { userIds: init.visibleUserIds }).then(users => {
-					users.forEach(u => pushVisibleUser(u));
-				});
-			}
+			void visibleRecipients.load(init.visibleUserIds ?? []);
 			quoteId.value = renoteTargetNote.value ? renoteTargetNote.value.id : null;
 			reactionAcceptance.value = init.reactionAcceptance;
 			disableRightClick.value = init.disableRightClick != null;

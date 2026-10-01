@@ -123,7 +123,8 @@ describe('record moderation transaction', () => {
 });
 describe('Hatask record moderation locking', () => {
 	const hataskTarget = { product: 'hatask', targetType: 'record', targetId: 'c'.repeat(64) } as const;
-	function hataskFixture(options: { insertAfterRowLock?: boolean } = {}) {
+
+	function hataskFixture(options: { insertAfterRowLock?: boolean; collection?: 'todos' | 'gallery' } = {}) {
 		const steps: string[] = [];
 		let ownerLocked = false;
 		const manager = {
@@ -134,7 +135,8 @@ describe('Hatask record moderation locking', () => {
 					if (key === 'record-moderation:hatask') ownerLocked = true;
 					return [];
 				}
-				if (sql.startsWith('WITH expanded')) return [{ userId: 'owner', key: 'todos', entry_id: 'id:t1', data: {}, title: '予定', contentVersion: 'a'.repeat(64), revision: 0 }];
+				if (sql.startsWith('WITH expanded')) return [{ userId: 'owner', key: options.collection ?? 'todos', entry_id: 'id:t1', data: {}, title: '予定', contentVersion: 'a'.repeat(64), revision: 0 }];
+				if (sql.startsWith('SELECT to_jsonb')) return [];
 				if (sql.startsWith('SELECT id,value,"updatedAt" FROM registry_item')) {
 					if (sql.endsWith('FOR UPDATE')) steps.push('rows');
 					const value = [{ id: 't1' }, ...(options.insertAfterRowLock && ownerLocked ? [{ id: 't1', copy: true }] : [])];
@@ -152,12 +154,12 @@ describe('Hatask record moderation locking', () => {
 		return { service, steps };
 	}
 
-	test('takes the planner lock, then row locks, then the owner lock, matching writers', async () => {
-		const f = hataskFixture();
+	test.each(['todos', 'gallery'] as const)('%s takes planner, wallet, row, then owner locks, matching writers', async collection => {
+		const f = hataskFixture({ collection });
 		const { version } = await f.service.preview(moderator, hataskTarget);
 		f.steps.length = 0;
 		await f.service.execute(moderator, { ...hataskTarget, action: 'warn', requestId: 'request-1234567890', version, reason: '理由', warning: '警告' });
-		const order = ['lock:hatask-planner:owner', 'rows', 'lock:record-moderation:hatask', 'lock:hatask-review:' + hataskTarget.targetId];
+		const order = ['lock:hatask-planner:owner', 'lock:hatask-flower:owner', 'rows', 'lock:record-moderation:hatask', 'lock:hatask-review:' + hataskTarget.targetId];
 		expect(f.steps.filter(step => order.includes(step))).toEqual(order);
 	});
 

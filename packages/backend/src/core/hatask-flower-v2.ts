@@ -1,3 +1,10 @@
+import type { EntityManager } from 'typeorm';
+
+/** Acquire before planner/flower row locks or writes that run the moderation trigger. */
+export async function lockHataskFlowerWallet(manager: Pick<EntityManager, 'query'>, userId: string): Promise<void> {
+	await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatask-flower:${userId}`]);
+}
+
 export const DEFAULT_FLOWER_RULES = { todoMinAgeMinutes: 30, todoMinLength: 3, hatadyGapSeconds: 60, pourMinutes: 120, todoCap: 5, hatadyCap: 10, loginCap: 1, festivalGoal: 1000 };
 export function normalizeFlowerTodoTitle(title: string): string { return title.normalize('NFKC').replace(/\s/gu, '').toLowerCase(); }
 export function flowerDay(now: Date, timezone?: string | null): string {

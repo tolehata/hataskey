@@ -5,7 +5,7 @@ import { DI } from '@/di-symbols.js';
 import { NotificationService } from './NotificationService.js';
 import { IdService } from '@/core/IdService.js';
 import { HATASK_FLOWER_CATALOG, HATASK_FLOWER_SEASONS, type HataskFlowerSeason } from '@/misc/hatask-flower-catalog.js';
-import { DEFAULT_FLOWER_RULES, flowerDay, flowerResetAt, normalizeFlowerTodoTitle } from './hatask-flower-v2.js';
+import { DEFAULT_FLOWER_RULES, flowerDay, flowerResetAt, lockHataskFlowerWallet, normalizeFlowerTodoTitle } from './hatask-flower-v2.js';
 import type { DataSource, EntityManager } from 'typeorm';
 
 type Flower = { seedKey?: string; id: string; speciesId: string; season: HataskFlowerSeason; emoji: string; name: string; hanakotoba: string; rare: boolean; startedAt: number; lastGrowthAt: number; totalMinutes: number; targetMinutes: number; progress: number; memory: string[] };
@@ -46,7 +46,7 @@ export class HataskFlowerV2Service {
 
 	private async wallet(m: EntityManager, userId: string, timezone?: string): Promise<Wallet> {
 		// Every balance, reward, growth and seed mutation takes this same lock.
-		await m.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatask-flower:${userId}`]);
+		await lockHataskFlowerWallet(m, userId);
 		await m.query('INSERT INTO hatask_drop_wallet("userId") VALUES($1) ON CONFLICT DO NOTHING', [userId]);
 		const [w] = await m.query('SELECT * FROM hatask_drop_wallet WHERE "userId"=$1 FOR UPDATE', [userId]) as Wallet[];
 		if (w.timezone == null && timezone) {

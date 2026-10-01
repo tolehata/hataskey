@@ -130,7 +130,7 @@ onMounted(() => {
 	window.addEventListener(HATASK_FLOWER_STATE_EVENT, onState);
 	document.addEventListener('visibilitychange', resume);
 	void load();
-	void misskeyApi('i/registry/get', { scope, key: 'flowerV2IntroSeen' }).then(value => { if (!disposed) intro.value = value !== true; }).catch(error => { if (!disposed && error?.code === 'NO_SUCH_KEY') intro.value = true; });
+	void misskeyApi('i/registry/get', { scope, key: 'flowerV2IntroSeen' }).then((value: unknown) => { if (!disposed) intro.value = value !== true; }).catch(error => { if (!disposed && error?.code === 'NO_SUCH_KEY') intro.value = true; });
 	timer = window.setInterval(resume, 60_000);
 });
 onActivated(() => { active = true; void load(); });

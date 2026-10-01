@@ -139,7 +139,8 @@ describe('shared reaction custom rendering', () => {
 		expect(fixture.api).not.toHaveBeenCalled();
 		await vi.advanceTimersByTimeAsync(1);
 		expect(fixture.api).toHaveBeenCalledExactlyOnceWith('notes/reactions', { noteId: 'details-note', type: ':test:', limit: 10 });
-		expect(fixture.popup).toHaveBeenCalledWith(Details, expect.objectContaining({ reaction: ':test:', count: 2, anchorElement: button }), expect.any(Object));
+		expect(fixture.popup).toHaveBeenCalledWith(Details, expect.objectContaining({ reaction: ':test:', count: expect.any(Object), anchorElement: button }), expect.any(Object));
+		expect(fixture.popup.mock.calls[0][1].count.value).toBe(2);
 		const showing = fixture.popup.mock.calls[0][1].showing;
 		button.dispatchEvent(new Event('touchend', { bubbles: true }));
 		const click = new MouseEvent('click', { bubbles: true, cancelable: true });
@@ -162,6 +163,113 @@ describe('shared reaction custom rendering', () => {
 		const showing = fixture.popup.mock.calls[0][1].showing;
 		button.dispatchEvent(new Event('mouseleave'));
 		expect(showing.value).toBe(false);
+		expect(fixture.api).toHaveBeenCalledTimes(1);
+	});
+
+	test('long press pages past muted and duplicate users until ten distinct visible users are found', async () => {
+		hideMutedReactionsLocal.value = true;
+		fixture.isMutedUser.mockImplementation(id => id.startsWith('m'));
+		const page = (start: number, users: string[]) => users.map((id, index) => ({ id: `r${start - index}`, user: { id } }));
+		fixture.api
+			.mockResolvedValueOnce(page(20, ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'v1', 'v2', 'v3', 'v4']))
+			.mockResolvedValueOnce(page(10, ['v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'm7', 'm8', 'm9', 'm10']))
+			.mockResolvedValueOnce(page(0, ['v10']));
+		const { button } = await mountReaction({ count: 12 });
+		startHold(button);
+		await vi.advanceTimersByTimeAsync(450);
+		expect(fixture.api.mock.calls).toEqual([
+			['notes/reactions', { noteId: 'details-note', type: ':test:', limit: 10 }],
+			['notes/reactions', { noteId: 'details-note', type: ':test:', limit: 10, untilId: 'r11' }],
+			['notes/reactions', { noteId: 'details-note', type: ':test:', limit: 10, untilId: 'r1' }],
+		]);
+		expect(fixture.popup.mock.calls[0][1].users.map(user => user.id)).toEqual(Array.from({ length: 10 }, (_, i) => `v${i + 1}`));
+	});
+
+	test('count changes refresh the actors, removing a canceled reaction while details stay open', async () => {
+		fixture.api
+			.mockResolvedValueOnce([{ user: { id: 'A' } }, { user: { id: 'B' } }])
+			.mockResolvedValueOnce([{ user: { id: 'B' } }])
+			.mockResolvedValueOnce([{ user: { id: 'C' } }, { user: { id: 'B' } }]);
+		const { button, props } = await mountReaction({ count: 2 });
+		button.dispatchEvent(new Event('mouseover'));
+		await vi.advanceTimersByTimeAsync(100);
+		const details = fixture.popup.mock.calls[0][1];
+		expect(details.count.value).toBe(2);
+		expect(details.users.map(user => user.id)).toEqual(['A', 'B']);
+		props.value = { ...props.value, count: 1 };
+		await settle();
+		expect(details.count.value).toBe(1);
+		expect(details.users.map(user => user.id)).toEqual(['B']);
+		props.value = { ...props.value, count: 2 };
+		await settle();
+		expect(details.count.value).toBe(2);
+		expect(details.users.map(user => user.id)).toEqual(['C', 'B']);
+		expect(fixture.api).toHaveBeenCalledTimes(3);
+		expect(fixture.popup).toHaveBeenCalledTimes(1);
+	});
+
+	test('older refresh responses cannot overwrite newer actors, including after unmount', async () => {
+		const older = deferred<Array<{ user: { id: string } }>>();
+		const newer = deferred<Array<{ user: { id: string } }>>();
+		const afterUnmount = deferred<Array<{ user: { id: string } }>>();
+		fixture.api
+			.mockResolvedValueOnce([{ user: { id: 'A' } }, { user: { id: 'B' } }])
+			.mockReturnValueOnce(older.promise)
+			.mockReturnValueOnce(newer.promise)
+			.mockReturnValueOnce(afterUnmount.promise);
+		const { button, props, unmount } = await mountReaction({ count: 2 });
+		button.dispatchEvent(new Event('mouseover'));
+		await vi.advanceTimersByTimeAsync(100);
+		const details = fixture.popup.mock.calls[0][1];
+		props.value = { ...props.value, count: 1 };
+		await nextTick();
+		expect(details.users).toEqual([]);
+		props.value = { ...props.value, count: 2 };
+		await nextTick();
+		newer.resolve([{ user: { id: 'B' } }, { user: { id: 'C' } }]);
+		await settle();
+		expect(details.users.map(user => user.id)).toEqual(['B', 'C']);
+		older.resolve([{ user: { id: 'A' } }]);
+		await settle();
+		expect(details.users.map(user => user.id)).toEqual(['B', 'C']);
+		props.value = { ...props.value, count: 1 };
+		await nextTick();
+		expect(details.users).toEqual([]);
+		unmount();
+		afterUnmount.resolve([{ user: { id: 'A' } }]);
+		await settle();
+		expect(details.users).toEqual([]);
+		expect(fixture.api).toHaveBeenCalledTimes(4);
+		expect(fixture.popup).toHaveBeenCalledTimes(1);
+	});
+
+	test('closing while a later page is pending stops paging and never opens stale details', async () => {
+		hideMutedReactionsLocal.value = true;
+		fixture.isMutedUser.mockReturnValue(true);
+		const later = deferred<Array<{ id: string; user: { id: string } }>>();
+		fixture.api.mockResolvedValueOnce(Array.from({ length: 10 }, (_, i) => ({ id: `r${20 - i}`, user: { id: `m${i}` } })));
+		fixture.api.mockReturnValueOnce(later.promise);
+		const { button } = await mountReaction({ count: 12 });
+		button.dispatchEvent(new Event('mouseover'));
+		await vi.advanceTimersByTimeAsync(100);
+		expect(fixture.api).toHaveBeenCalledTimes(2);
+		button.dispatchEvent(new Event('mouseleave'));
+		later.resolve(Array.from({ length: 10 }, (_, i) => ({ id: `r${10 - i}`, user: { id: `v${i}` } })));
+		await settle();
+		expect(fixture.api).toHaveBeenCalledTimes(2);
+		expect(fixture.popup).not.toHaveBeenCalled();
+	});
+
+	test('a repeated page cursor stops pagination', async () => {
+		hideMutedReactionsLocal.value = true;
+		fixture.isMutedUser.mockReturnValue(true);
+		const page = Array.from({ length: 10 }, (_, i) => ({ id: `r${20 - i}`, user: { id: `m${i}` } }));
+		fixture.api.mockResolvedValue(page);
+		const { button } = await mountReaction({ count: 12 });
+		startHold(button);
+		await vi.advanceTimersByTimeAsync(450);
+		expect(fixture.api).toHaveBeenCalledTimes(2);
+		expect(fixture.popup.mock.calls[0][1].users).toEqual([]);
 	});
 
 	test('a continuous 3s hold retains the menu including hide and emoji mute', async () => {

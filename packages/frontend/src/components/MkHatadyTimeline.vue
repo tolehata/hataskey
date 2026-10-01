@@ -106,7 +106,7 @@ let serverSeq = 0;
 let syncRequestId = 0;
 let connectedOnce = false;
 let snapshotReady = false;
-let initialLoadAttempted = false;
+let initialLoadSettled = false;
 let loadingSnapshot = false;
 type PendingEvent = { seq: number; kind: 'activity' | 'removed'; key: string; activity?: HatadyActivity };
 let pendingEvents = new Map<string, PendingEvent>();
@@ -228,7 +228,6 @@ function scheduleResync(): void {
 
 async function loadPage(append = false): Promise<void> {
 	if (!active.value || (append && (loading.value || loadingMore.value || !cursor.value))) return;
-	if (!append) initialLoadAttempted = true;
 	const generation = requestGeneration.next();
 	const requestCursor = append ? cursor.value : null;
 	const seenThrough = serverSeq;
@@ -262,11 +261,15 @@ async function loadPage(append = false): Promise<void> {
 	} catch {
 		if (active.value && requestGeneration.current(generation)) {
 			for (const event of [...pendingEvents.values()].filter(event => event.seq > seenThrough).sort((a, b) => a.seq - b.seq)) applyEvent(event);
+			// Retained rows still need access checks on the new channel even if REST failed.
+			snapshotReady = snapshotReady || activities.value.length > 0 || queued.value.length > 0;
 			committed = snapshotReady;
 			error.value = true;
 		}
 	} finally {
 		if (requestGeneration.current(generation)) {
+			// An invalidated first request still needs a replacement in manual mode.
+			if (!append) initialLoadSettled = true;
 			if (append) loadingMore.value = false;
 			else loading.value = false;
 			loadingSnapshot = false;
@@ -370,19 +373,30 @@ function selectKind(value: HatadyTimelineKind): void { closeKindMenu(true); if (
 
 function resetFilter(): void {
 	disconnect(); activities.value = []; queued.value = []; cursor.value = null; hasMore.value = false;
+	initialLoadSettled = false;
 	connect(); void reloadTimeline();
 }
 
 function measureTop(): void { atTop.value = (root.value?.getBoundingClientRect().top ?? 0) >= -50; }
 
-function visibility(): void { if (window.document.hidden) disconnect(); else if (hatadyTimelineAutoRefreshAllowed(active.value, store.s.realtimeMode, true)) { connect(); void reloadTimeline(); } }
+function visibility(): void {
+	if (window.document.hidden) disconnect();
+	else if (active.value && hatadyTimelineShouldLoadOnActivate(store.s.realtimeMode, initialLoadSettled)) { connect(); void reloadTimeline(); }
+}
 
-function activate(): void { if (active.value || !props.active) return; active.value = true; connect(); if (hatadyTimelineShouldLoadOnActivate(store.s.realtimeMode, initialLoadAttempted)) void reloadTimeline(); }
+function activate(): void { if (active.value || !props.active) return; active.value = true; connect(); if (hatadyTimelineShouldLoadOnActivate(store.s.realtimeMode, initialLoadSettled)) void reloadTimeline(); }
 
 function deactivate(): void { if (!active.value) return; active.value = false; closeKindMenu(); disconnect(); }
 
 watch(() => props.active, value => { if (value) activate(); else deactivate(); });
-watch(() => store.r.realtimeMode.value, enabled => { if (enabled && active.value) { connect(); void reloadTimeline(); } else disconnect(); });
+watch(() => store.r.realtimeMode.value, enabled => {
+	if (enabled && active.value) {
+		connect(); void reloadTimeline();
+	} else {
+		disconnect();
+		if (active.value && !initialLoadSettled && !window.document.hidden) void reloadTimeline();
+	}
+});
 onMounted(() => { window.addEventListener('scroll', measureTop, true); window.addEventListener('scroll', positionKindMenu, true); window.addEventListener('resize', positionKindMenu); window.document.addEventListener('visibilitychange', visibility); window.document.addEventListener('pointerdown', onKindMenuOutside); window.document.addEventListener('focusin', onKindMenuOutside); activate(); });
 onActivated(activate);
 onDeactivated(deactivate);

@@ -224,7 +224,13 @@ export class HatadyTimelineChannel extends Channel {
 		this.needsResync = false;
 		this.watched = ids;
 		for (const key of this.generations.keys()) {
-			if (!ids.has(key)) this.generations.set(key, ++this.generationCounter);
+			if (!ids.has(key)) {
+				this.generations.set(key, ++this.generationCounter);
+				// A REST snapshot can predate a real change already being reconciled.
+				// Retry that change after invalidating the in-flight read; dropping it
+				// would leave the client unaware of the activity until its next edit.
+				if (this.processing.has(key)) this.dirty.add(key);
+			}
 			this.cleanupGeneration(key);
 		}
 		for (const key of ids) {

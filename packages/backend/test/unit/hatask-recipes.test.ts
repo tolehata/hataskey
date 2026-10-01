@@ -35,7 +35,7 @@ function cooking(overrides: Partial<HataskCookingRecordInput> = {}): HataskCooki
 
 const me = (id: string) => ({ id }) as never;
 
-function setup(options: { stored?: MiHataskRecipe | null; following?: boolean; blocked?: boolean; users?: number } = {}) {
+function setup(options: { stored?: MiHataskRecipe | null; following?: boolean; blocked?: boolean; users?: number; activeOwner?: boolean } = {}) {
 	const recipes = {
 		findOneBy: vi.fn().mockResolvedValue(options.stored === undefined ? recipe() : options.stored),
 		insertOne: vi.fn(async (row: MiHataskRecipe) => row),
@@ -51,7 +51,7 @@ function setup(options: { stored?: MiHataskRecipe | null; following?: boolean; b
 			return qb;
 		}),
 	};
-	const users = { countBy: vi.fn().mockResolvedValue(options.users ?? 0) };
+	const users = { countBy: vi.fn().mockResolvedValue(options.users ?? 0), existsBy: vi.fn().mockResolvedValue(options.activeOwner ?? true) };
 	const followings = { exists: vi.fn().mockResolvedValue(options.following ?? false) };
 	const blockings = { exists: vi.fn().mockResolvedValue(options.blocked ?? false) };
 	const driveFiles = { findOneBy: vi.fn().mockResolvedValue(null) };
@@ -77,6 +77,12 @@ describe('Hatask recipe audiences', () => {
 	] as const)('%s', async (_, stored, viewer, options, expected) => {
 		const { service } = setup(options);
 		expect(await service.canView(stored, viewer)).toBe(expected);
+	});
+
+	test.each(['followers', 'specified'] as const)('direct %s reads hide inactive owners just like the shared list', async visibility => {
+		const { service, users } = setup({ stored: recipe({ visibility, visibleUserIds: ['member'] }), following: true, activeOwner: false });
+		await expect(service.show(me('member'), 'recipe')).rejects.toMatchObject({ code: 'NO_SUCH_RECIPE' });
+		expect(users.existsBy).toHaveBeenCalledWith({ id: 'owner', isDeleted: false, isSuspended: false });
 	});
 
 	test('a specified recipe without local members is rejected before insert', async () => {

@@ -150,6 +150,23 @@ describe('Hatady timeline channel sync', () => {
 		f.channel.dispose();
 	});
 
+	test('sync keeps a live change whose reconciliation is already in flight', async () => {
+		const f = fixture();
+		const held = deferred<Record<string, unknown> | null>();
+		f.logs.set('fresh', visibleLog('fresh'));
+		f.logRepository.findOneBy.mockImplementationOnce(async () => held.promise);
+		f.subscriber.emit('hatadyTimelineStream', { type: 'changed', body: { source: 'log', id: 'fresh' } });
+		try {
+			await vi.waitFor(() => expect(f.logRepository.findOneBy).toHaveBeenCalledTimes(1));
+			await f.channel.onMessage('sync', { ids: [], seenThrough: 0, requestId: 1 });
+			held.resolve(visibleLog('fresh'));
+			await vi.waitFor(() => expect(f.sent.filter(event => event.type === 'activity').map(event => event.body.key)).toContain('log:fresh'));
+		} finally {
+			held.resolve(visibleLog('fresh'));
+			f.channel.dispose();
+		}
+	});
+
 	test('a same-key sync flood keeps one lookup active and only reconciles the latest request', async () => {
 		const f = fixture();
 		const held = deferred<Record<string, unknown> | null>();

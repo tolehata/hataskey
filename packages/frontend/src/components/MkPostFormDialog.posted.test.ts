@@ -6,7 +6,7 @@ import MkPostFormDialog from './MkPostFormDialog.vue';
 const mocks = vi.hoisted(() => ({ close: vi.fn() }));
 vi.mock('@/components/MkModal.vue', async () => {
 	const { defineComponent, h } = await import('vue');
-	return { default: defineComponent({ setup(_, { slots, expose }) { expose({ close: mocks.close }); return () => h('div', slots.default?.()); } }) };
+	return { default: defineComponent({ emits: ['click', 'closed', 'esc'], setup(_, { slots, expose }) { expose({ close: mocks.close }); return () => h('div', slots.default?.()); } }) };
 });
 vi.mock('@/components/MkPostForm.vue', async () => {
 	const { defineComponent, h } = await import('vue');

@@ -129,12 +129,15 @@ const deckBoxEl = shallowRef<HTMLElement | null>(null);
 const composeWindowEl = shallowRef<HTMLElement | null>(null);
 const punchBusy = ref(false);
 const timelineRef = shallowRef<InstanceType<typeof Hk3Timeline> | null>(null);
-const isHatadyTimeline = computed(() => isHome.value && timelineRef.value?.mobileNavigation.active === 'hatady' && !deckActive.value);
+const isHatadyTimeline = computed(() => timelineVisible.value && timelineRef.value?.mobileNavigation.active === 'hatady' && !deckActive.value);
+
 function launchHatadyRecord() { void openHatadyRecord({ variant: 'uis', onDone: () => timelineRef.value?.reload() }); }
+
 function onMobileCompose() {
 	if (isHatadyTimeline.value) launchHatadyRecord();
 	else composerRef.value?.focus();
 }
+
 const composerRef = shallowRef<InstanceType<typeof Hk3Composer> | null>(null);
 const confirmationActive = computed(() => composerRef.value?.confirmationActive ?? false);
 const mobileDockRef = shallowRef<InstanceType<typeof Hk3MobileDock> | null>(null);
@@ -732,6 +735,7 @@ function onExternalNotification(ev: Event) {
 }
 
 let releaseNotificationChannel: (() => void) | null = null;
+
 function watchNotificationReads(): void {
 	if (!store.s.realtimeMode || !$i) return;
 	const ownerId = $i.id;

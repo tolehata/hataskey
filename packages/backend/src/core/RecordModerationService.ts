@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
+import { lockHataskFlowerWallet } from '@/core/hatask-flower-v2.js';
 import type { MiUser } from '@/models/User.js';
 import { MiAnnouncement } from '@/models/Announcement.js';
 import { ApiError } from '@/server/api/error.js';
@@ -94,9 +95,10 @@ export class RecordModerationService {
 			[row] = await manager.query(`${HATASK_REVIEW_CTE} SELECT * FROM reviewed WHERE id=$1`, [target.targetId]);
 			if (!row) throw new ApiError(errors.missing);
 			if (lock === true) {
-				// Writers take the planner lock, then row locks, and the moderation trigger
-				// takes the owner lock last. Follow that order to avoid deadlocks.
+				// Writers take the planner lock, then the flower wallet and row locks;
+				// the moderation trigger takes the owner lock last. Keep the same order.
 				await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatask-planner:${row.userId}:${row.key}`]);
+				if (row.key === 'todos' || row.key === 'gallery') await lockHataskFlowerWallet(manager, row.userId);
 				const locked = await this.snapshot(manager, target, 'rows');
 				await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`record-moderation:hatask:${locked.userId}`]);
 				await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`hatask-review:${target.targetId}`]);

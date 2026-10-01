@@ -3,11 +3,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import { deepClone } from '@/utility/clone.js';
 import type { PostFormProps } from '@/types/post-form.js';
 import { hk3CanAdoptPostForm } from './hataskey3/hk3-state.js';
+import { createPostFormRecipients } from './post-form-recipients.js';
+import type * as Misskey from 'cherrypick-js';
 
 const source = readFileSync(resolve(process.cwd(), 'src/components/MkPostForm.vue'), 'utf8').match(/<script[^>]*>([\s\S]*?)<\/script>/)![1];
 const ast = ts.createSourceFile('MkPostForm.ts', source, ts.ScriptTarget.Latest, true);
@@ -64,5 +66,33 @@ describe('explicit full composer initial state', () => {
 			expect(hk3CanAdoptPostForm({ channel: null, ...advanced })).toBe(false);
 		}
 		expect(hk3CanAdoptPostForm({ channel: null })).toBe(true);
+	});
+});
+
+describe('direct reply standard-form fallback', () => {
+	it.each(['author', 'me'])('hydrates the original audience asynchronously for a reply to %s', async authorId => {
+		const reply = { id: 'direct', visibility: 'specified', userId: authorId, visibleUserIds: ['me', authorId, 'recipient'] } as NonNullable<PostFormProps['reply']>;
+		expect(hk3CanAdoptPostForm({ reply })).toBe(false);
+		const inheritance = ast.statements.find(node => ts.isIfStatement(node) && node.expression.getText(ast).startsWith("replyTargetNote.value && ['home', 'followers', 'specified']"));
+		expect(inheritance).toBeDefined();
+		const visibility = ref('public');
+		const pending = new Map<string, (users: Misskey.entities.UserDetailed[]) => void>();
+		const misskeyApi = vi.fn((_endpoint: string, _args: { userIds: string[] }) => new Promise<Misskey.entities.UserDetailed[]>(complete => pending.set('recipients', complete)));
+		const visibleRecipients = createPostFormRecipients(userIds => misskeyApi('users/show', { userIds }));
+		const visibleUsers = visibleRecipients.users;
+		const context = {
+			replyTargetNote: ref(reply), visibility, $i: { id: 'me' }, visibleRecipients,
+		};
+		const compiled = ts.transpileModule(inheritance!.getText(ast), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+		runInNewContext(compiled, context);
+		expect(visibility.value).toBe('specified');
+		expect(visibleUsers.value).toEqual([]);
+		const recipientIds = authorId === 'me' ? ['recipient'] : ['author', 'recipient'];
+		expect(visibleRecipients.ready.value).toBe(false);
+		expect(misskeyApi).toHaveBeenCalledExactlyOnceWith('users/show', { userIds: recipientIds });
+		pending.get('recipients')!(recipientIds.map(id => ({ id }) as Misskey.entities.UserDetailed));
+		await Promise.resolve();
+		expect(visibleUsers.value.map(user => user.id).sort()).toEqual(recipientIds);
+		expect(visibleRecipients.ready.value).toBe(true);
 	});
 });

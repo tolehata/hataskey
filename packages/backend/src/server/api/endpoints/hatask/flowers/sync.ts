@@ -7,6 +7,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { ApiError } from '@/server/api/error.js';
 import { DI } from '@/di-symbols.js';
+import { lockHataskFlowerWallet } from '@/core/hatask-flower-v2.js';
 import { IdService } from '@/core/IdService.js';
 import { hataskModeratedRecordError, rethrowHataskModerationError } from '@/misc/hatask-moderated-record.js';
 import { MiHataskFlower, type HataskFlowersRepository } from '@/models/_.js';
@@ -90,29 +91,33 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				if (harvestedAt == null) throw new ApiError(meta.errors.invalidHarvestedAt);
 				return { ...flower, harvestedAt };
 			});
-			// 同じ clientFlowerId を一つの同期で重ねても、ON CONFLICT が同一行を二度更新しないようにする。
-			const authoritative: { id: string }[] = await this.hataskFlowersRepository.manager.query('SELECT id FROM hatask_flower_harvest WHERE "userId"=$1', [me.id]);
-			const authoritativeIds = new Set(authoritative.map(flower => flower.id));
-			const flowers = [...new Map(parsedFlowers.map(flower => [flower.clientFlowerId, flower])).values()].filter(flower => !authoritativeIds.has(flower.clientFlowerId));
-			if (flowers.length === 0) return { synced: 0 };
+			return this.hataskFlowersRepository.manager.transaction(async manager => {
+				// Serialize the authority check and legacy write with V2 harvest/rename.
+				await lockHataskFlowerWallet(manager, me.id);
+				// 同じ clientFlowerId を一つの同期で重ねても、ON CONFLICT が同一行を二度更新しないようにする。
+				const authoritative: { id: string }[] = await manager.query('SELECT id FROM hatask_flower_harvest WHERE "userId"=$1', [me.id]);
+				const authoritativeIds = new Set(authoritative.map(flower => flower.id));
+				const flowers = [...new Map(parsedFlowers.map(flower => [flower.clientFlowerId, flower])).values()].filter(flower => !authoritativeIds.has(flower.clientFlowerId));
+				if (flowers.length === 0) return { synced: 0 };
 
-			await this.hataskFlowersRepository.createQueryBuilder()
-				.insert()
-				.into(MiHataskFlower)
-				.values(flowers.map(flower => ({
-					id: this.idService.gen(),
-					userId: me.id,
-					clientFlowerId: flower.clientFlowerId,
-					emoji: flower.emoji,
-					name: flower.name,
-					hanakotoba: flower.hanakotoba,
-					harvestedAt: flower.harvestedAt,
-				})))
-				// id と userId/clientFlowerId は競合時に絶対更新しない。既存行の安定 ID を保持する。
-				.orUpdate(['emoji', 'name', 'hanakotoba', 'harvestedAt'], ['userId', 'clientFlowerId'])
-				.execute().catch(rethrowHataskModerationError);
+				await manager.getRepository(MiHataskFlower).createQueryBuilder()
+					.insert()
+					.into(MiHataskFlower)
+					.values(flowers.map(flower => ({
+						id: this.idService.gen(),
+						userId: me.id,
+						clientFlowerId: flower.clientFlowerId,
+						emoji: flower.emoji,
+						name: flower.name,
+						hanakotoba: flower.hanakotoba,
+						harvestedAt: flower.harvestedAt,
+					})))
+					// id と userId/clientFlowerId は競合時に絶対更新しない。既存行の安定 ID を保持する。
+					.orUpdate(['emoji', 'name', 'hanakotoba', 'harvestedAt'], ['userId', 'clientFlowerId'])
+					.execute();
 
-			return { synced: flowers.length };
+				return { synced: flowers.length };
+			}).catch(rethrowHataskModerationError);
 		});
 	}
 }

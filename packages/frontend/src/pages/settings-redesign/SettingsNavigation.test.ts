@@ -21,6 +21,11 @@ describe('settings redesign navigation contract', () => {
 		expect(shellSource).toContain('@click.prevent="goToSetting(item)"');
 		expect(shellSource).toContain('if (await goToSetting(target)) closeSearch({ reason: \'select\' });');
 	});
+	test('an unset UI preserves the first-item landing fallback', () => {
+		const section = { id: 'hataskey-ui', items: [{ id: 'hataskey-ui' }, { id: 'hataskey-ui-s' }] };
+		expect(sectionLandingItem(section, null)).toBe(section.items[0]);
+		expect(sectionLandingItem({ id: 'hataskey-ui', items: [] }, null)).toBeUndefined();
+	});
 	test('shell SFC parses and compiles, including each navigation section only once', () => {
 		const parsed = parse(shellSource, { filename: 'settings-redesign/index.vue' });
 		expect(parsed.errors).toEqual([]);

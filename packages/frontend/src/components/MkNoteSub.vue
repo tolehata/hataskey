@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-if="note.channel" :class="$style.colorBar" :style="{ background: note.channel.color }"></div>
 		<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="$style.avatar" :user="note.user" link preview/>
 		<div :class="$style.body" :style="{ cursor: expandOnNoteClick ? 'pointer' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick">
-			<MkNoteHeader :class="$style.header" :note="note" :mini="true"/>
+			<MkNoteHeader :class="$style.header" :note="note" :mini="true" :showTicker="false"/>
 			<div>
 				<MkInfo v-if="note.deleteAt != null" warn :class="$style.deleteAt">
 					<I18n :src="i18n.ts.scheduledToDeleteOnX" tag="span">
@@ -31,6 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkSubNoteContent :class="[$style.text, { [$style.showSubNoteFooterButton]: prefer.s.showSubNoteFooterButton }]" :note="note" :showSubNoteFooterButton="prefer.s.showSubNoteFooterButton"/>
 				</div>
 			</div>
+			<div v-if="showTicker" :class="$style.tickerFooter"><MkInstanceTicker :host="note.user.host" :instance="note.user.instance" @click.stop="showOnRemote"/></div>
 		</div>
 	</div>
 	<template v-if="depth < 5">
@@ -55,6 +56,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import MkNoteHeader from '@/components/MkNoteHeader.vue';
+import MkInstanceTicker from '@/components/MkInstanceTicker.vue';
 import MkSubNoteContent from '@/components/MkSubNoteContent.vue';
 import MkCwButton from '@/components/MkCwButton.vue';
 import MkEvent from '@/components/MkEvent.vue';
@@ -84,6 +86,7 @@ const muted = ref(props.note && $i ? checkWordMute(props.note, $i, $i.mutedWords
 
 const expandOnNoteClick = prefer.s.expandOnNoteClick;
 const router = useRouter();
+const showTicker = prefer.s.instanceTicker === 'always' || (prefer.s.instanceTicker === 'remote' && !!props.note?.user.instance);
 
 const showContent = ref(false);
 const replies = ref<Misskey.entities.Note[]>([]);
@@ -108,6 +111,12 @@ function noteClick(ev: MouseEvent) {
 function noteDblClick(ev: MouseEvent) {
 	if (!expandOnNoteClick || window.getSelection()?.toString() !== '' || prefer.s.expandOnNoteClickBehavior === 'click') ev.stopPropagation();
 	else router.pushByPath(notePage(props.note));
+}
+
+function showOnRemote() {
+	if (!props.note) return;
+	if (props.note.user.instance === undefined) router.pushByPath(notePage(props.note));
+	else window.open(props.note.url ?? props.note.uri, '_blank', 'noopener');
 }
 </script>
 
@@ -205,6 +214,20 @@ function noteDblClick(ev: MouseEvent) {
 
 .header {
 	margin-bottom: 2px;
+}
+
+.tickerFooter {
+	display: flex;
+	justify-content: flex-end;
+	min-width: 0;
+	max-width: 100%;
+	margin-top: 4px;
+
+	> :global(*) {
+		min-width: 0;
+		max-width: min(100%, 320px);
+		margin-top: 0;
+	}
 }
 
 .cw {
