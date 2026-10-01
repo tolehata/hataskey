@@ -54,9 +54,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private hatadyMediaService: HatadyMediaService,
 		private userEntityService: UserEntityService,
 	) {
-		super(meta, paramDef, async (ps, me, token) => {
+		super(meta, paramDef, async (ps, me, token, flashToken) => {
 			try {
-				const staffAccess = token == null;
+				const staffAccess = token == null && flashToken == null;
 				if (ps.targetType === 'work') {
 					await this.hatadyMediaService.getVisibleWork(ps.targetId, me.id, staffAccess);
 				} else if (ps.targetType === 'session') {

@@ -4,12 +4,17 @@
  */
 
 import { describe, expect, test, vi } from 'vitest';
+import { HatadyService } from '@/core/HatadyService.js';
 import { HatadyMediaService } from '@/core/HatadyMediaService.js';
 import LogReactionListEndpoint from '@/server/api/endpoints/hata/hatady/reactions/list.js';
 import MediaReactionListEndpoint from '@/server/api/endpoints/hata/hatady/media/reactions/list.js';
 
+// 依存先の読み込みで使われるだけで、このテストでは正規表現処理を行わない。
+vi.mock('re2', () => ({ default: RegExp }));
+
 const viewer = { id: 'viewer' } as never;
 const appToken = { permission: ['read:account'] } as never;
+const moderatorFlashToken = { permissions: ['read:account'], user: viewer } as never;
 
 function queryWith(rows: Array<{ id: string; createdAt: Date; reaction: string; userId: string }> = []) {
 	const query = {
@@ -27,6 +32,34 @@ function queryWith(rows: Array<{ id: string; createdAt: Date; reaction: string; 
 }
 
 describe('Hatady reaction list API', () => {
+	test.each(['log', 'comment'] as const)('%s reactions use the log visibility policy for Flash and native moderator sessions', async targetType => {
+		const log = { id: 'log', userId: 'owner', visibility: 'private' };
+		const logs = Object.setPrototypeOf({
+			getLog: vi.fn().mockResolvedValue(log),
+			canModerate: vi.fn().mockResolvedValue(true),
+			isBlockedEitherDirection: vi.fn().mockResolvedValue(false),
+			isFollowing: vi.fn().mockResolvedValue(false),
+		}, HatadyService.prototype);
+		const comments = { findOneBy: vi.fn().mockResolvedValue({ id: 'comment', logId: 'log' }) };
+		const reactions = { createQueryBuilder: vi.fn().mockImplementation(() => queryWith()) };
+		const endpoint = new LogReactionListEndpoint(comments as never, reactions as never, logs as never, { packMany: vi.fn().mockResolvedValue([]) } as never);
+		const params = targetType === 'log' ? { logId: 'log' } : { commentId: 'comment' };
+
+		await expect(endpoint.exec(params, viewer, null, moderatorFlashToken)).rejects.toMatchObject({ code: 'NO_SUCH_HATADY_REACTION_TARGET' });
+		await expect(endpoint.exec(params, viewer, appToken, null)).rejects.toMatchObject({ code: 'NO_SUCH_HATADY_REACTION_TARGET' });
+		expect(reactions.createQueryBuilder).not.toHaveBeenCalled();
+		expect(logs.canModerate).not.toHaveBeenCalled();
+
+		await expect(endpoint.exec(params, viewer, null, null)).resolves.toEqual([]);
+		expect(logs.canModerate).toHaveBeenCalledOnce();
+		expect(reactions.createQueryBuilder).toHaveBeenCalledOnce();
+
+		log.visibility = 'public';
+		await expect(endpoint.exec(params, viewer, null, moderatorFlashToken)).resolves.toEqual([]);
+		expect(logs.canModerate).toHaveBeenCalledOnce();
+		expect(reactions.createQueryBuilder).toHaveBeenCalledTimes(2);
+	});
+
 	test('log/comment target is exclusive and a missing comment never queries reactions', async () => {
 		const query = queryWith();
 		const comments = { findOneBy: vi.fn().mockResolvedValue(null) };
@@ -72,6 +105,43 @@ describe('Hatady reaction list API', () => {
 });
 
 describe('Hatady media reaction list API', () => {
+	test.each([
+		['work', 'work'],
+		['session', 'session'],
+		['comment', 'work'],
+		['comment', 'session'],
+	] as const)('%s reactions with a %s parent use the media visibility policy for Flash and native moderator sessions', async (targetType, parentType) => {
+		const parent = { id: parentType, userId: 'owner', visibility: 'private' };
+		const hatadyService = {
+			canModerate: vi.fn().mockResolvedValue(true),
+			isBlockedEitherDirection: vi.fn().mockResolvedValue(false),
+		};
+		const media = Object.assign(Object.create(HatadyMediaService.prototype), {
+			worksRepository: { findOneBy: vi.fn().mockResolvedValue(parentType === 'work' ? parent : null) },
+			sessionsRepository: { findOneBy: vi.fn().mockResolvedValue(parentType === 'session' ? parent : null) },
+			hatadyService,
+			hatadyFollowingsRepository: { existsBy: vi.fn().mockResolvedValue(false) },
+		});
+		const comments = { findOneBy: vi.fn().mockResolvedValue({ id: 'comment', workId: parentType === 'work' ? 'work' : null, sessionId: parentType === 'session' ? 'session' : null }) };
+		const reactions = { createQueryBuilder: vi.fn().mockImplementation(() => queryWith()) };
+		const endpoint = new MediaReactionListEndpoint(comments as never, reactions as never, media as never, { packMany: vi.fn().mockResolvedValue([]) } as never);
+		const params = { targetType, targetId: targetType === 'comment' ? 'comment' : parentType };
+
+		await expect(endpoint.exec(params, viewer, null, moderatorFlashToken)).rejects.toMatchObject({ code: 'NO_SUCH_HATADY_MEDIA' });
+		await expect(endpoint.exec(params, viewer, appToken, null)).rejects.toMatchObject({ code: 'NO_SUCH_HATADY_MEDIA' });
+		expect(reactions.createQueryBuilder).not.toHaveBeenCalled();
+		expect(hatadyService.canModerate).not.toHaveBeenCalled();
+
+		await expect(endpoint.exec(params, viewer, null, null)).resolves.toEqual([]);
+		expect(hatadyService.canModerate).toHaveBeenCalledOnce();
+		expect(reactions.createQueryBuilder).toHaveBeenCalledOnce();
+
+		parent.visibility = 'public';
+		await expect(endpoint.exec(params, viewer, null, moderatorFlashToken)).resolves.toEqual([]);
+		expect(hatadyService.canModerate).toHaveBeenCalledOnce();
+		expect(reactions.createQueryBuilder).toHaveBeenCalledTimes(2);
+	});
+
 	test('work privacy denies an app token before querying reactions', async () => {
 		const reactions = { createQueryBuilder: vi.fn() };
 		const media = { getVisibleWork: vi.fn().mockRejectedValue(new Error(HatadyMediaService.ERR_NOT_FOUND)) };

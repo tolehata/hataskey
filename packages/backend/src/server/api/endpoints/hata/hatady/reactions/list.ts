@@ -65,12 +65,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private hatadyService: HatadyService,
 		private userEntityService: UserEntityService,
 	) {
-		super(meta, paramDef, async (ps, me, token) => {
+		super(meta, paramDef, async (ps, me, token, flashToken) => {
 			if ((ps.logId != null) === (ps.commentId != null)) throw new ApiError(meta.errors.invalidTarget);
 			const comment = ps.commentId == null ? null : await this.commentsRepository.findOneBy({ id: ps.commentId });
 			if (ps.commentId != null && comment == null) throw new ApiError(meta.errors.noSuchTarget);
 			const log = await this.hatadyService.getLog(comment?.logId ?? ps.logId!);
-			if (log == null || !(await this.hatadyService.canViewLog(log, me.id, token == null))) throw new ApiError(meta.errors.noSuchTarget);
+			if (log == null || !(await this.hatadyService.canViewLog(log, me.id, token == null && flashToken == null))) throw new ApiError(meta.errors.noSuchTarget);
 
 			const query = this.reactionsRepository.createQueryBuilder('reaction')
 				.where(comment == null ? 'reaction.logId = :targetId' : 'reaction.commentId = :targetId', { targetId: comment?.id ?? log.id });
