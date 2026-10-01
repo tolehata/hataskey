@@ -23,14 +23,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 		>
 		</MkTab>
 	</template>
-	<XReactions v-if="tab === 'reactions'" :user="user"/>
+	<XReactions v-if="tab === 'reactions'" ref="reactionsEl" :user="user"/>
 	<XFiles v-else-if="tab === 'files' && prefer.s.filesGridLayoutInUserPage" :paginator="filesPaginator"/>
 	<MkNotesTimeline v-else :paginator="tab === 'featured' ? featuredPaginator : notesPaginator" :pullToRefresh="false" :class="$style.tl" :noGap="!prefer.s.showGapBetweenNotesInTimeline" forceShowReplyTargetNote/>
 </MkStickyContainer>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, markRaw } from 'vue';
+import { ref, computed, markRaw, useTemplateRef } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import MkNotesTimeline from '@/components/MkNotesTimeline.vue';
 import MkTab from '@/components/MkTab.vue';
@@ -41,6 +41,7 @@ import { Paginator } from '@/utility/paginator.js';
 import { $i } from '@/i.js';
 import { prefer } from '@/preferences.js';
 import { scrollToVisibility } from '@/utility/scroll-to-visibility.js';
+import type XReactions_TypeReferenceOnly from './reactions.vue';
 
 const { showEl } = scrollToVisibility();
 
@@ -49,6 +50,7 @@ const props = defineProps<{
 }>();
 
 const tab = ref<'notes' | 'all' | 'featured' | 'files' | 'reactions'>('notes');
+const reactionsEl = useTemplateRef<InstanceType<typeof XReactions_TypeReferenceOnly>>('reactionsEl');
 
 const featuredPaginator = markRaw(new Paginator('users/featured-notes', {
 	limit: 10,
@@ -75,6 +77,12 @@ const filesPaginator = markRaw(new Paginator('users/notes', {
 		withFiles: true,
 	})),
 }));
+
+defineExpose({
+	reload: () => tab.value === 'reactions'
+		? reactionsEl.value?.reload()
+		: (tab.value === 'featured' ? featuredPaginator : tab.value === 'files' && prefer.s.filesGridLayoutInUserPage ? filesPaginator : notesPaginator).reload(),
+});
 </script>
 
 <style lang="scss" module>

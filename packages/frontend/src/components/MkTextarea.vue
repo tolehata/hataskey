@@ -74,6 +74,7 @@ const emit = defineEmits<{
 	(ev: 'keydown', _ev: KeyboardEvent): void;
 	(ev: 'enter'): void;
 	(ev: 'update:modelValue', value: string): void;
+	(ev: 'savingStateChange', changed: boolean): void;
 }>();
 
 const { modelValue, autofocus } = toRefs(props);
@@ -93,6 +94,7 @@ let autocompleteWorker: Autocomplete | null = null;
 const focus = () => inputEl.value?.focus();
 const onInput = (ev) => {
 	changed.value = true;
+	if (props.manualSave) emit('savingStateChange', true);
 	emit('change', ev);
 };
 const onKeydown = (ev: KeyboardEvent) => {
@@ -117,6 +119,7 @@ const onKeydown = (ev: KeyboardEvent) => {
 
 const updated = () => {
 	changed.value = false;
+	if (props.manualSave) emit('savingStateChange', false);
 	emit('update:modelValue', v.value ?? '');
 };
 

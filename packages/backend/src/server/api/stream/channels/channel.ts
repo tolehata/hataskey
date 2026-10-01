@@ -49,7 +49,7 @@ class ChannelChannel extends Channel {
 			}
 		}
 
-		this.send('note', note);
+		await this.sendNote(note);
 	}
 
 	@bindThis

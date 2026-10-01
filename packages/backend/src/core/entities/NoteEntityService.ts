@@ -15,6 +15,7 @@ import { utageSnapshot, type UtageParticipation } from '@/misc/utage-revival.js'
 import type { MiNote } from '@/models/Note.js';
 import type { MiChannel } from '@/models/Channel.js';
 import type { UsersRepository, NotesRepository, FollowingsRepository, PollsRepository, PollVotesRepository, NoteReactionsRepository, ChannelsRepository, ChannelMembersRepository, InstancesRepository, MiMeta, EventsRepository, UtageSessionsRepository } from '@/models/_.js';
+import { shouldHideNoteByTime } from '@/misc/should-hide-note-by-time.js';
 import { bindThis } from '@/decorators.js';
 import { DebounceLoader } from '@/misc/loader.js';
 import { IdService } from '@/core/IdService.js';
@@ -25,6 +26,10 @@ import type { CustomEmojiService } from '../CustomEmojiService.js';
 import type { ReactionService } from '../ReactionService.js';
 import type { UserEntityService } from './UserEntityService.js';
 import type { DriveFileEntityService } from './DriveFileEntityService.js';
+
+export type NoteVisibilityInput = Pick<MiNote,
+	'id' | 'userId' | 'userHost' | 'channelId' | 'visibility' | 'visibleUserIds' | 'mentions' | 'replyUserId'
+> & Partial<Pick<MiNote, 'user' | 'channel'>>;
 
 // is-renote.tsとよしなにリンク
 function isPureRenote(note: MiNote): note is MiNote & { renoteId: MiNote['id']; renote: MiNote } {
@@ -151,7 +156,7 @@ export class NoteEntityService implements OnModuleInit {
 	}
 
 	@bindThis
-	private async hideNote(
+	public async shouldHideNote(
 		packedNote: Packed<'Note'>,
 		meId: MiUser['id'] | null,
 		_hint_?: {
@@ -159,17 +164,20 @@ export class NoteEntityService implements OnModuleInit {
 			channelMembershipMap?: Map<MiChannel['id'], boolean>;
 			iAmModerator?: boolean;
 		},
-	): Promise<void> {
-		if (meId === packedNote.userId) return;
+	): Promise<boolean> {
+		if (packedNote.isHidden) return true;
+		if (meId === packedNote.userId) return false;
 
 		// 旗鯖fork: サーバー管理者はモデレーション上の理由で
 		// 「過去のノートを非公開化」の自動非表示化をbypass (要signin保護はそのまま)
 		if (meId != null && await this.roleService.isAdministrator({ id: meId })) {
-			return;
+			return false;
 		}
 
 		// TODO: isVisibleForMe を使うようにしても良さそう(型違うけど)
-		let hide = false;
+		const visibility = this.treatVisibility({ ...packedNote });
+		let hide = meId == null && (this.meta.ugcVisibilityForVisitor === 'none'
+			|| (this.meta.ugcVisibilityForVisitor === 'local' && packedNote.user.host != null));
 
 		if (packedNote.user.requireSigninToViewContents && meId == null) {
 			hide = true;
@@ -211,12 +219,12 @@ export class NoteEntityService implements OnModuleInit {
 
 		// visibility が specified かつ自分が指定されていなかったら非表示
 		if (!hide) {
-			if (packedNote.visibility === 'specified') {
+			if (visibility === 'specified') {
 				if (meId == null) {
 					hide = true;
 				} else {
 					// 指定されているかどうか
-					const specified = packedNote.visibleUserIds!.some(id => meId === id);
+					const specified = packedNote.visibleUserIds?.some(id => meId === id) ?? false;
 
 					if (!specified) {
 						hide = true;
@@ -227,7 +235,7 @@ export class NoteEntityService implements OnModuleInit {
 
 		// visibility が followers かつ自分が投稿者のフォロワーでなかったら非表示
 		if (!hide) {
-			if (packedNote.visibility === 'followers') {
+			if (visibility === 'followers') {
 				if (meId == null) {
 					hide = true;
 				} else if (packedNote.reply && (meId === packedNote.reply.userId)) {
@@ -251,16 +259,21 @@ export class NoteEntityService implements OnModuleInit {
 			}
 		}
 
-		if (hide) {
-			packedNote.visibleUserIds = undefined;
-			packedNote.fileIds = [];
-			packedNote.files = [];
-			packedNote.text = null;
-			packedNote.poll = undefined;
-			packedNote.cw = null;
-			packedNote.isHidden = true;
-			// TODO: hiddenReason みたいなのを提供しても良さそう
-		}
+		return hide;
+	}
+
+	@bindThis
+	public hideNote(packedNote: Packed<'Note'>): void {
+		packedNote.visibleUserIds = undefined;
+		packedNote.fileIds = [];
+		packedNote.files = [];
+		packedNote.text = null;
+		packedNote.poll = undefined;
+		packedNote.event = undefined;
+		packedNote.tags = undefined;
+		packedNote.cw = null;
+		packedNote.isHidden = true;
+		// TODO: hiddenReason みたいなのを提供しても良さそう
 	}
 
 	@bindThis
@@ -385,8 +398,20 @@ export class NoteEntityService implements OnModuleInit {
 	}
 
 	@bindThis
-	public async isVisibleForMe(note: MiNote, meId: MiUser['id'] | null): Promise<boolean> {
+	public async isVisibleForMe(note: NoteVisibilityInput, meId: MiUser['id'] | null): Promise<boolean> {
 		// This code must always be synchronized with the checks in generateVisibilityQuery.
+		if (meId == null && (this.meta.ugcVisibilityForVisitor === 'none'
+			|| (this.meta.ugcVisibilityForVisitor === 'local' && note.userHost != null))) return false;
+
+		let visibility = note.visibility;
+		// Partial responses and note-update events need the same time/sign-in checks as packing.
+		if (meId !== note.userId && !(meId != null && await this.roleService.isAdministrator({ id: meId }))) {
+			const author = note.user ?? await this.usersRepository.findOneBy({ id: note.userId });
+			if (author == null || (meId == null && author.requireSigninToViewContents)) return false;
+			const createdAt = this.idService.parse(note.id).date;
+			if (shouldHideNoteByTime(author.makeNotesHiddenBefore, createdAt)) return false;
+			if ((visibility === 'public' || visibility === 'home') && shouldHideNoteByTime(author.makeNotesFollowersOnlyBefore, createdAt)) visibility = 'followers';
+		}
 
 		// 旗鯖fork: プライベートチャンネルのノートは、メンバー/作成者/副管理者/モデレーターのみ閲覧可。
 		if (note.channelId != null) {
@@ -401,7 +426,7 @@ export class NoteEntityService implements OnModuleInit {
 		}
 
 		// visibility が specified かつ自分が指定されていなかったら非表示
-		if (note.visibility === 'specified') {
+		if (visibility === 'specified') {
 			if (meId == null) {
 				return false;
 			} else if (meId === note.userId) {
@@ -413,7 +438,7 @@ export class NoteEntityService implements OnModuleInit {
 		}
 
 		// visibility が followers かつ自分が投稿者のフォロワーでなかったら非表示
-		if (note.visibility === 'followers') {
+		if (visibility === 'followers') {
 			if (meId == null) {
 				return false;
 			} else if (meId === note.userId) {
@@ -633,7 +658,7 @@ export class NoteEntityService implements OnModuleInit {
 		this.treatVisibility(packed, meIsAdmin);
 
 		if (!opts.skipHide) {
-			await this.hideNote(packed, meId, opts._hint_);
+			if (await this.shouldHideNote(packed, meId, opts._hint_)) this.hideNote(packed);
 		}
 
 		return packed;
@@ -841,20 +866,34 @@ export class NoteEntityService implements OnModuleInit {
 	}
 
 	@bindThis
-	public async fetchDiffs(noteIds: MiNote['id'][]) {
+	public async fetchDiffs(noteIds: MiNote['id'][], meId: MiUser['id'] | null = null) {
 		if (noteIds.length === 0) return [];
+		if (meId == null && this.meta.ugcVisibilityForVisitor === 'none') return [];
 
-		const notes = await this.notesRepository.find({
+		const fetched = await this.notesRepository.find({
 			where: {
 				id: In(noteIds),
 			},
 			select: {
 				id: true,
+				userId: true,
+				channelId: true,
 				userHost: true,
+				visibility: true,
+				visibleUserIds: true,
+				mentions: true,
+				replyUserId: true,
 				reactions: true,
 				reactionAndUserPairCache: true,
 			},
 		});
+
+		const notes: MiNote[] = [];
+		for (const note of fetched) {
+			if (await this.isVisibleForMe(note, meId)) {
+				notes.push(note);
+			}
+		}
 
 		const bufferedReactionsMap = this.meta.enableReactionsBuffering ? await this.reactionsBufferingService.getMany(noteIds) : null;
 

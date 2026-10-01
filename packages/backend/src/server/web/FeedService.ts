@@ -15,6 +15,7 @@ import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { DriveFileEntityService } from '@/core/entities/DriveFileEntityService.js';
 import { bindThis } from '@/decorators.js';
 import { IdService } from '@/core/IdService.js';
+import { shouldHideNoteByTime } from '@/misc/should-hide-note-by-time.js';
 import { MfmService } from '@/core/MfmService.js';
 
 @Injectable()
@@ -54,9 +55,15 @@ export class FeedService {
 				renoteId: IsNull(),
 				visibility: In(['public', 'home']),
 			},
+			relations: { channel: true },
 			order: { id: -1 },
 			take: 20,
-		});
+		}).then(notes => notes.filter(note => {
+			const createdAt = this.idService.parse(note.id).date;
+			return !note.channel?.isPrivate
+				&& !shouldHideNoteByTime(user.makeNotesHiddenBefore, createdAt)
+				&& !shouldHideNoteByTime(user.makeNotesFollowersOnlyBefore, createdAt);
+		}));
 
 		const feed = new Feed({
 			id: author.link,

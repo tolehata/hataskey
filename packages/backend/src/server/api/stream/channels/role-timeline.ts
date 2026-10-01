@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { bindThis } from '@/decorators.js';
-import { RoleService } from '@/core/RoleService.js';
+import { DI } from '@/di-symbols.js';
+import type { RolesRepository } from '@/models/_.js';
 import type { GlobalEvents } from '@/core/GlobalEventService.js';
 import type { JsonObject } from '@/misc/json-value.js';
 import Channel, { type MiChannelService } from '../channel.js';
@@ -19,7 +20,7 @@ class RoleTimelineChannel extends Channel {
 
 	constructor(
 		private noteEntityService: NoteEntityService,
-		private roleservice: RoleService,
+		private rolesRepository: RolesRepository,
 
 		id: string,
 		connection: Channel['connection'],
@@ -30,25 +31,29 @@ class RoleTimelineChannel extends Channel {
 
 	@bindThis
 	public async init(params: JsonObject) {
-		if (typeof params.roleId !== 'string') return;
+		if (typeof params.roleId !== 'string') return false;
 		this.roleId = params.roleId;
+		if (!await this.isAvailable()) return false;
 
 		this.subscriber.on(`roleTimelineStream:${this.roleId}`, this.onEvent);
+		return true;
+	}
+
+	private async isAvailable(): Promise<boolean> {
+		return await this.rolesRepository.exists({ where: { id: this.roleId, isPublic: true, isExplorable: true } });
 	}
 
 	@bindThis
 	private async onEvent(data: GlobalEvents['roleTimeline']['payload']) {
+		if (!await this.isAvailable()) return;
 		if (data.type === 'note') {
 			const note = data.body;
 
-			if (!(await this.roleservice.isExplorable({ id: this.roleId }))) {
-				return;
-			}
 			if (note.visibility !== 'public') return;
 
 			if (this.isNoteMutedOrBlocked(note)) return;
 
-			this.send('note', note);
+			await this.sendNote(note);
 		} else {
 			this.send(data.type, data.body);
 		}
@@ -69,7 +74,8 @@ export class RoleTimelineChannelService implements MiChannelService<false> {
 
 	constructor(
 		private noteEntityService: NoteEntityService,
-		private roleservice: RoleService,
+		@Inject(DI.rolesRepository)
+		private rolesRepository: RolesRepository,
 	) {
 	}
 
@@ -77,7 +83,7 @@ export class RoleTimelineChannelService implements MiChannelService<false> {
 	public create(id: string, connection: Channel['connection']): RoleTimelineChannel {
 		return new RoleTimelineChannel(
 			this.noteEntityService,
-			this.roleservice,
+			this.rolesRepository,
 			id,
 			connection,
 		);

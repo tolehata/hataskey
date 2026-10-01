@@ -38,6 +38,8 @@ const paginator = markRaw(new Paginator('users/reactions', {
 		userId: props.user.id,
 	})),
 }));
+
+defineExpose({ reload: () => paginator.reload() });
 </script>
 
 <style lang="scss" module>

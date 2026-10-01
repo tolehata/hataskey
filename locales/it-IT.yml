@@ -1412,6 +1412,7 @@ scheduled: "Pianificata"
 widgets: "Riquadri"
 deviceInfo: "Informazioni sul dispositivo"
 deviceInfoDescription: "Se ci contatti per ricevere supporto tecnico, ti preghiamo di includere le seguenti informazioni per aiutarci a risolvere il tuo problema."
+pixelatedZoom: "Ingrandimento pixelato"
 _compression:
   _quality:
     high: "Alta qualità"

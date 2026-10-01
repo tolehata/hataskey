@@ -5,7 +5,7 @@ export type HataWhatsNewCard = { id: string; label: string; icon: string; title:
 export type HataWhatsNewGroup = { label: string; title: string; feature?: 'ui-s' | 'ui-s-2' | 'recipes' | 'flowers'; scene?: 0 | 1 | 2 | 3; cards: HataWhatsNewCard[] };
 export type HataWhatsNewStory = HataWhatsNewGroup & { id: string };
 export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = {
-	version: '2026.9.1-hata.12.8.2',
+	version: '2026.10.0-hata.12.8.2',
 	groups: [
 		{
 			label: 'Hataskey UI S 2', title: 'どの画面でも、続いていく。', feature: 'ui-s-2', scene: 0, cards: [
@@ -194,10 +194,10 @@ export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = 
 		},
 		{
 			label: '本体の改善', title: '安心して使える土台へ。', cards: [
-				{ id: 'upstream-update', label: '本体の更新', icon: 'ti ti-refresh', title: 'Misskey 2026.9.1の改善を反映。', points: [
-					'Misskey 2026.9.1の修正を取り込み、安全性と表示の安定性を改善しました。',
+				{ id: 'upstream-update', label: '本体の更新', icon: 'ti ti-refresh', title: 'Misskey 2026.10.0の改善を反映。', points: [
+					'Misskey 2026.10.0の修正を取り込み、安全性と表示の安定性を改善しました。',
 					'本家の変更内容の詳細は、Misskey公式リリースノートを参照してください。',
-				], link: { label: 'Misskey公式リリースノート（2026.9.1）', url: 'https://github.com/misskey-dev/misskey/releases/tag/2026.9.1' } },
+				], link: { label: 'Misskey公式リリースノート（2026.10.0）', url: 'https://github.com/misskey-dev/misskey/releases/tag/2026.10.0' } },
 				{ id: 'script-errors', label: 'スクリプト', icon: 'ti ti-code', title: 'エラーの原因を、見つけやすく。', points: [
 					'AiScriptの非同期処理で起きたエラーも、画面で確認できるようにしました。',
 					'スクラッチパッドでは、エラーを赤い文字で出力して残します。',

@@ -75,7 +75,7 @@ class BubbleTimelineChannel extends Channel {
 			}
 		}
 		
-		this.send('note', note);
+		await this.sendNote(note);
 	}
 
 	@bindThis

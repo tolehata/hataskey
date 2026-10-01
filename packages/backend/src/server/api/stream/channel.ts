@@ -83,6 +83,11 @@ export default abstract class Channel {
 		this.connection = connection;
 	}
 
+	protected async sendNote(note: Packed<'Note'>): Promise<void> {
+		const filtered = await this.connection.noteStreamingHidingService.filter(note, this.user?.id ?? null);
+		if (filtered != null && this.connection.isChannelConnected(this)) this.send('note', filtered);
+	}
+
 	public send(payload: { type: string, body: JsonValue }): void;
 	public send(type: string, payload: JsonValue): void;
 	@bindThis

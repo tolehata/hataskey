@@ -4,6 +4,8 @@
  */
 
 import * as WebSocket from 'ws';
+import promiseLimit from 'promise-limit';
+import type { NoteStreamingHidingService } from './NoteStreamingHidingService.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiAccessToken } from '@/models/AccessToken.js';
 import type { Packed } from '@/misc/json-schema.js';
@@ -32,6 +34,9 @@ export default class Connection {
 	private wsConnection: WebSocket.WebSocket;
 	public subscriber: StreamEventEmitter;
 	private channels: Channel[] = [];
+	private messageQueue = promiseLimit<void>(1);
+	private noteUpdateQueue = promiseLimit<void>(1);
+	private disposed = false;
 	private subscribingNotes: Map<string, number> = new Map();
 	public userProfile: MiUserProfile | null = null;
 	public following: Record<string, Pick<MiFollowing, 'withReplies'> | undefined> = {};
@@ -50,6 +55,7 @@ export default class Connection {
 
 		user: MiUser | null | undefined,
 		token: MiAccessToken | null | undefined,
+		public noteStreamingHidingService: NoteStreamingHidingService,
 	) {
 		if (user) this.user = user;
 		if (token) this.token = token;
@@ -91,7 +97,9 @@ export default class Connection {
 		this.subscriber = subscriber;
 
 		this.wsConnection = wsConnection;
-		this.wsConnection.on('message', this.onWsConnectionMessage);
+		this.wsConnection.on('message', data => {
+			void this.messageQueue(() => this.onWsConnectionMessage(data)).catch(() => {});
+		});
 
 		this.subscriber.on('broadcast', data => {
 			this.onBroadcastMessage(data);
@@ -103,6 +111,7 @@ export default class Connection {
 	 */
 	@bindThis
 	private async onWsConnectionMessage(data: WebSocket.RawData) {
+		if (this.disposed || this.wsConnection.readyState !== WebSocket.WebSocket.OPEN) return;
 		let obj: JsonObject;
 
 		try {
@@ -120,7 +129,7 @@ export default class Connection {
 			case 'sr': this.onSubscribeNote(body); break;
 			case 'unsubNote': this.onUnsubscribeNote(body); break;
 			case 'un': this.onUnsubscribeNote(body); break; // alias
-			case 'connect': this.onChannelConnectRequested(body); break;
+			case 'connect': await this.onChannelConnectRequested(body); break;
 			case 'disconnect': this.onChannelDisconnectRequested(body); break;
 			case 'channel': this.onChannelMessageRequested(body); break;
 			case 'ch': this.onChannelMessageRequested(body); break; // alias
@@ -186,14 +195,14 @@ export default class Connection {
 	}
 
 	@bindThis
-	private async onNoteStreamMessage(data: GlobalEvents['note']['payload']) {
-		if (data.body.visibility === 'specified' && data.body.userId !== this.user!.id && !data.body.visibleUserIds.includes(this.user!.id)) {
-			return;
-		}
+	private onNoteStreamMessage(data: GlobalEvents['note']['payload']) {
+		void this.noteUpdateQueue(() => this.processNoteStreamMessage(data)).catch(() => {});
+	}
 
-		if (data.body.visibility === 'followers' && data.body.userId !== this.user!.id && !Object.hasOwn(this.following, data.body.userId)) {
-			return;
-		}
+	private async processNoteStreamMessage(data: GlobalEvents['note']['payload']) {
+		if (this.disposed || !this.subscribingNotes.has(data.body.id)) return;
+		if (!await this.noteStreamingHidingService.canReceiveUpdates(data.body, this.user?.id ?? null)) return;
+		if (!this.subscribingNotes.has(data.body.id)) return;
 
 		this.sendMessageToWs('noteUpdated', {
 			id: data.body.id,
@@ -206,14 +215,14 @@ export default class Connection {
 	 * チャンネル接続要求時
 	 */
 	@bindThis
-	private onChannelConnectRequested(payload: JsonValue | undefined) {
+	private async onChannelConnectRequested(payload: JsonValue | undefined) {
 		if (!isJsonObject(payload)) return;
 		const { channel, id, params, pong } = payload;
 		if (typeof id !== 'string') return;
 		if (typeof channel !== 'string') return;
 		if (typeof pong !== 'boolean' && typeof pong !== 'undefined' && pong !== null) return;
 		if (typeof params !== 'undefined' && !isJsonObject(params)) return;
-		this.connectChannel(id, params, channel, pong ?? undefined);
+		await this.connectChannel(id, params, channel, pong ?? undefined);
 	}
 
 	/**
@@ -232,6 +241,7 @@ export default class Connection {
 	 */
 	@bindThis
 	public sendMessageToWs(type: string, payload: JsonObject) {
+		if (this.disposed || this.wsConnection.readyState !== WebSocket.WebSocket.OPEN) return;
 		this.wsConnection.send(JSON.stringify({
 			type: type,
 			body: payload,
@@ -243,7 +253,7 @@ export default class Connection {
 	 */
 	@bindThis
 	public async connectChannel(id: string, params: JsonObject | undefined, channel: string, pong = false) {
-		if (this.channels.length >= MAX_CHANNELS_PER_CONNECTION) {
+		if (this.disposed || this.wsConnection.readyState !== WebSocket.WebSocket.OPEN || this.channels.some(c => c.id === id) || this.channels.length >= MAX_CHANNELS_PER_CONNECTION) {
 			return;
 		}
 
@@ -265,7 +275,18 @@ export default class Connection {
 
 		const ch: Channel = channelService.create(id, this);
 		this.channels.push(ch);
-		const valid = await ch.init(params ?? {});
+		let valid: void | boolean;
+		try {
+			valid = await ch.init(params ?? {});
+		} catch (error) {
+			this.disconnectChannel(id);
+			throw error;
+		}
+		if (this.disposed || this.wsConnection.readyState !== WebSocket.WebSocket.OPEN || !this.channels.includes(ch)) {
+			ch.dispose?.();
+			this.channels = this.channels.filter(c => c !== ch);
+			return;
+		}
 		if (typeof valid === 'boolean' && !valid) {
 			// 初期化処理の結果、接続拒否されたので切断
 			this.disconnectChannel(id);
@@ -277,6 +298,10 @@ export default class Connection {
 				id: id,
 			});
 		}
+	}
+
+	public isChannelConnected(channel: Channel): boolean {
+		return !this.disposed && this.channels.includes(channel);
 	}
 
 	/**
@@ -315,6 +340,7 @@ export default class Connection {
 	 */
 	@bindThis
 	public dispose() {
+		this.disposed = true;
 		if (this.fetchIntervalId) clearInterval(this.fetchIntervalId);
 		for (const c of this.channels.filter(c => c.dispose)) {
 			if (c.dispose) c.dispose();

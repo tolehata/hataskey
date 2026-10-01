@@ -17,6 +17,7 @@ import { UserService } from '@/core/UserService.js';
 import { ChannelFollowingService } from '@/core/ChannelFollowingService.js';
 import { AuthenticateService, AuthenticationError } from './AuthenticateService.js';
 import MainStreamConnection from './stream/Connection.js';
+import { NoteStreamingHidingService } from './stream/NoteStreamingHidingService.js';
 import { ChannelsService } from './stream/ChannelsService.js';
 import type * as http from 'node:http';
 
@@ -36,6 +37,7 @@ export class StreamingApiServerService {
 		private cacheService: CacheService,
 		private authenticateService: AuthenticateService,
 		private channelsService: ChannelsService,
+		private noteStreamingHidingService: NoteStreamingHidingService,
 		private notificationService: NotificationService,
 		private usersService: UserService,
 		private channelFollowingService: ChannelFollowingService,
@@ -98,6 +100,7 @@ export class StreamingApiServerService {
 				this.cacheService,
 				this.channelFollowingService,
 				user, app,
+				this.noteStreamingHidingService,
 			);
 
 			await stream.init();

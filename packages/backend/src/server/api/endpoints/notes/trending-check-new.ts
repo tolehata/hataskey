@@ -18,17 +18,20 @@
  *
  * ===== 軽量化 =====
  *
- * - DB は触らず、Redis から noteIds を取得するだけ
+ * - 基本は Redis から noteIds を取得する。匿名ローカル限定表示では DB で作者ホストを確認する
  * - レスポンス JSON サイズは noteId × 100 件 ≒ 数 KB
  * - 30 秒ポーリングでも負荷は最小
  *
  * ===== 外部影響なし =====
  *
  * - ActivityPub fetch は一切行わない
- * - Redis 読み取りのみ
+ * - Redis と必要時の DB 読み取りのみ
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { DI } from '@/di-symbols.js';
+import type { MiMeta, NotesRepository } from '@/models/_.js';
+import { In, IsNull } from 'typeorm';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { TrendingService, TRENDING_TOP_LIMIT } from '@/core/TrendingService.js';
 
@@ -79,9 +82,18 @@ export const paramDef = {
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
 	constructor(
 		private trendingService: TrendingService,
+		@Inject(DI.meta) private serverSettings: MiMeta,
+		@Inject(DI.notesRepository) private notesRepository: NotesRepository,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			const topNoteIds = await this.trendingService.getTopNoteIds(TRENDING_TOP_LIMIT);
+			if (me == null && this.serverSettings.ugcVisibilityForVisitor === 'none') return { topNoteIds: [], newCount: 0 };
+			let topNoteIds = await this.trendingService.getTopNoteIds(TRENDING_TOP_LIMIT);
+
+			if (me == null && this.serverSettings.ugcVisibilityForVisitor === 'local' && topNoteIds.length > 0) {
+				const localNotes = await this.notesRepository.find({ where: { id: In(topNoteIds), userHost: IsNull() }, select: { id: true } });
+				const localIds = new Set(localNotes.map(note => note.id));
+				topNoteIds = topNoteIds.filter(id => localIds.has(id));
+			}
 
 			let newCount = 0;
 			if (ps.knownIds && ps.knownIds.length > 0) {

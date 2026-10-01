@@ -185,8 +185,11 @@ export class UtageService {
 					const actor = await this.notesRepository.manager.findOneBy(MiUser, { id: session.interruptedByUserId });
 					if (actor && actor.host == null) await this.achievementService.reconcileUtageAchievements(actor.id, 'interruption');
 				}
-				await this.globalEventService.publishNoteStream({ id: session.noteId, userId: session.userId, visibility: 'public', visibleUserIds: [] } as unknown as MiNote,
-					'utageStatusUpdated', { status: session.status as ReturnType<typeof utageSnapshot>['utageStatus'], ...utageSnapshot(session) });
+				const note = await this.notesRepository.manager.findOneBy(MiNote, { id: session.noteId });
+				if (note != null) {
+					await this.globalEventService.publishNoteStream(note,
+						'utageStatusUpdated', { status: session.status as ReturnType<typeof utageSnapshot>['utageStatus'], ...utageSnapshot(session) });
+				}
 				await this.utageSessionsRepository.createQueryBuilder().update()
 					.set({ publishedRevision: session.revision }).where('id = :id AND "publishedRevision" < :revision', { id: session.id, revision: session.revision }).execute();
 			} catch (error) { console.error('[utage] pending side effects will be retried:', error); }

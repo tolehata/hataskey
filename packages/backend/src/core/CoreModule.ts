@@ -104,6 +104,7 @@ import { FeaturedService } from './FeaturedService.js';
 // 旗鯖fork: トレンドタイムライン
 import { TrendingService } from './TrendingService.js';
 import { FanoutTimelineService } from './FanoutTimelineService.js';
+import { NoteStreamingHidingService } from '@/server/api/stream/NoteStreamingHidingService.js';
 import { ChannelFollowingService } from './ChannelFollowingService.js';
 import { ChatService } from './ChatService.js';
 import { RegistryApiService } from './RegistryApiService.js';
@@ -474,6 +475,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		FanoutTimelineService,
 		FanoutTimelineEndpointService,
 		ChannelFollowingService,
+		NoteStreamingHidingService,
 		ChatService,
 		RegistryApiService,
 		ReversiService,
@@ -837,6 +839,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		FanoutTimelineService,
 		FanoutTimelineEndpointService,
 		ChannelFollowingService,
+		NoteStreamingHidingService,
 		ChatService,
 		RegistryApiService,
 		ReversiService,

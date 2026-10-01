@@ -56,6 +56,7 @@ export const paramDef = {
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
 	constructor(
 		private noteHistoryEntityService: NoteHistoryEntityService,
+		private noteEntityService: NoteEntityService,
 		private noteHistoryService: NoteHistorySerivce,
 		private getterService: GetterService,
 	) {
@@ -64,6 +65,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				if (err.id === '9725d0ce-ba28-4dde-95a7-2cbb2c15de24') throw new ApiError(meta.errors.noSuchNote);
 				throw err;
 			});
+			if (!await this.noteEntityService.isVisibleForMe(note, me?.id ?? null)) {
+				throw new ApiError(meta.errors.noSuchNote);
+			}
 			const note_history = await this.noteHistoryService.getHistory(note.id, ps.limit, ps.sinceId, ps.untilId);
 			if (!note_history) {
 				return [];

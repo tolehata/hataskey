@@ -6,6 +6,7 @@
 process.env.NODE_ENV = 'test';
 
 import * as assert from 'assert';
+import { vi } from 'vitest';
 import { api, ApiRequest, failedApiCall, hiddenNote, post, signup, successfulApiCall } from '../utils.js';
 import type * as Misskey from 'cherrypick-js';
 import { DEFAULT_POLICIES } from '@/core/RoleService.js';
@@ -803,6 +804,37 @@ describe('クリップ', () => {
 		test('を削除できる。', async () => {
 			await addNote({ clipId: aliceClip.id, noteId: aliceNote.id });
 			await removeNote({ clipId: aliceClip.id, noteId: aliceNote.id });
+			assert.deepStrictEqual(await notes({ clipId: aliceClip.id }), []);
+		});
+
+		test('未追加ノートと同時削除で被クリップ数を余分に減らさない', async () => {
+			const showCount = async () => (await successfulApiCall({
+				endpoint: 'notes/show',
+				parameters: { noteId: aliceNote.id },
+				user: alice,
+			})).clippedCount;
+			const before = await showCount();
+			assert.ok(before !== undefined);
+
+			await failedApiCall({
+				endpoint: 'clips/remove-note',
+				parameters: { clipId: aliceClip.id, noteId: aliceNote.id },
+				user: alice,
+			}, {
+				status: 400,
+				code: 'NO_SUCH_NOTE',
+				id: 'aff017de-190e-434b-893e-33a9ff5049d8',
+			});
+			assert.strictEqual(await showCount(), before);
+
+			await addNote({ clipId: aliceClip.id, noteId: aliceNote.id });
+			await vi.waitFor(async () => assert.strictEqual(await showCount(), before + 1));
+			const results = await Promise.all([
+				api('clips/remove-note', { clipId: aliceClip.id, noteId: aliceNote.id }, alice),
+				api('clips/remove-note', { clipId: aliceClip.id, noteId: aliceNote.id }, alice),
+			]);
+			assert.deepStrictEqual(results.map(x => x.status).sort(), [204, 400]);
+			await vi.waitFor(async () => assert.strictEqual(await showCount(), before));
 			assert.deepStrictEqual(await notes({ clipId: aliceClip.id }), []);
 		});
 

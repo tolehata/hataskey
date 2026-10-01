@@ -94,3 +94,57 @@ describe('invitation claims', () => {
 		expect(fixture.ticket.usedAt).toBeInstanceOf(Date);
 	});
 });
+
+describe('pending invitation expiry follows the pending account, not the earlier claim', () => {
+	function setup(pendingAgeMinutes: number | null) {
+		const ticket = { id: 'ticket', usedById: null as string | null, usedAt: new Date(Date.now() - 31 * 60 * 1000), pendingUserId: 'old-pending' as string | null };
+		const pending = pendingAgeMinutes == null ? null : { id: 'old-pending' };
+		const matches = (condition: Record<string, any>) => Object.entries(condition).every(([key, expected]) => {
+			const value = ticket[key as keyof typeof ticket];
+			if (expected?.type === 'isNull') return value == null;
+			if (expected?.type === 'lessThanOrEqual') return value != null && value <= expected.value;
+			return value === expected;
+		});
+		const repository = {
+			findOneBy: vi.fn(async (condition: Record<string, any>) => matches(condition) ? { ...ticket } : null),
+			update: vi.fn(async (condition: Record<string, any> | Record<string, any>[], values: Partial<typeof ticket>) => {
+				if (!(Array.isArray(condition) ? condition.some(matches) : matches(condition))) return { affected: 0 };
+				Object.assign(ticket, values);
+				return { affected: 1 };
+			}),
+		};
+		const pendings = { findOneBy: vi.fn(async () => pending), delete: vi.fn(async () => undefined) };
+		const service = Object.assign(Object.create(SignupApiService.prototype), {
+			meta: { emailRequiredForSignup: true }, registrationTicketsRepository: repository, userPendingsRepository: pendings,
+			idService: { parse: () => ({ date: new Date(Date.now() - (pendingAgeMinutes ?? 0) * 60 * 1000) }) },
+		});
+		return { service, ticket, repository, pendings };
+	}
+
+	test('the still-valid pending account prevents reclaim after usedAt has expired', async () => {
+		const f = setup(29);
+		expect(await f.service.claimRegistrationTicket({ ...f.ticket })).toBe(false);
+		expect(f.ticket.pendingUserId).toBe('old-pending');
+		expect(f.pendings.delete).not.toHaveBeenCalled();
+	});
+
+	test.each([31, null])('an expired or missing pending account can be reclaimed once (age=%s)', async age => {
+		const f = setup(age);
+		const stale = { ...f.ticket };
+		expect(await Promise.all([f.service.claimRegistrationTicket(stale), f.service.claimRegistrationTicket(stale)])).toEqual([true, false]);
+		expect(f.ticket.pendingUserId).toBeNull();
+		expect(f.ticket.usedAt.getTime()).toBeGreaterThan(Date.now() - 1000);
+		expect(f.pendings.delete).toHaveBeenCalledTimes(age == null ? 0 : 1);
+	});
+
+	test('a concurrent account attachment is not detached or reclaimed', async () => {
+		const f = setup(31);
+		f.pendings.findOneBy.mockImplementationOnce(async () => {
+			f.ticket.usedById = 'created-account';
+			return { id: 'old-pending' };
+		});
+		expect(await f.service.claimRegistrationTicket({ ...f.ticket })).toBe(false);
+		expect(f.ticket.pendingUserId).toBe('old-pending');
+		expect(f.pendings.delete).not.toHaveBeenCalled();
+	});
+});

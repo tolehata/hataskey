@@ -15,7 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</button>
 			</div>
 		</div>
-		<XHome v-if="tab === 'home'" :user="user" @showMoreFiles="() => { tab = 'files'; }"/>
+		<XHome v-if="tab === 'home'" :user="user" :refreshUser="refreshUser" @showMoreFiles="() => { tab = 'files'; }"/>
 		<XNotes v-else-if="tab === 'notes'" :user="user"/>
 		<XFiles v-else-if="tab === 'files'" :user="user"/>
 		<XEvent v-else-if="tab === 'events'" :user="user"/>
@@ -111,6 +111,12 @@ function fetchUser(): void {
 watch(() => props.acct, fetchUser, {
 	immediate: true,
 });
+
+async function refreshUser(): Promise<void> {
+	if (props.acct == null) return;
+	const { username, host } = Misskey.acct.parse(props.acct);
+	user.value = await misskeyApi('users/show', { username, host });
+}
 
 onUnmounted(() => {
 	window.removeEventListener('resize', handleResize);

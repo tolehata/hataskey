@@ -14,8 +14,11 @@ import { meta as updateRemoteUserMeta } from '@/server/api/endpoints/federation/
 describe('followers 限定ノートの返信先', () => {
 	test('返信リレーションと mentions がなくても replyUserId のユーザーは閲覧できる', async () => {
 		const followings = { count: vi.fn() };
-		const users = { findOneByOrFail: vi.fn() };
+		const users = { findOneByOrFail: vi.fn(), findOneBy: vi.fn(async () => ({})) };
 		const service = Object.create(NoteEntityService.prototype) as any;
+		service.meta = { ugcVisibilityForVisitor: 'all' };
+		service.roleService = { isAdministrator: vi.fn(async () => false) };
+		service.idService = { parse: () => ({ date: new Date() }) };
 		service.followingsRepository = followings;
 		service.usersRepository = users;
 		const note = {
@@ -31,8 +34,11 @@ describe('followers 限定ノートの返信先', () => {
 
 	test('返信先以外でフォローしていないローカルユーザーは閲覧できない', async () => {
 		const service = Object.create(NoteEntityService.prototype) as any;
+		service.meta = { ugcVisibilityForVisitor: 'all' };
+		service.roleService = { isAdministrator: vi.fn(async () => false) };
+		service.idService = { parse: () => ({ date: new Date() }) };
 		service.followingsRepository = { count: vi.fn(async () => 0) };
-		service.usersRepository = { findOneByOrFail: vi.fn(async () => ({ id: 'stranger', host: null })) };
+		service.usersRepository = { findOneBy: vi.fn(async () => ({})), findOneByOrFail: vi.fn(async () => ({ id: 'stranger', host: null })) };
 		const note = {
 			visibility: 'followers', userId: 'author', userHost: null,
 			channelId: null, replyId: 'parent', replyUserId: 'recipient',

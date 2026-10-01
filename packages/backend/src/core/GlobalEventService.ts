@@ -153,6 +153,10 @@ type NoteStreamEventTypes = {
 	[key in keyof NoteEventTypes]: {
 		id: MiNote['id'];
 		userId: MiNote['userId'];
+		userHost: MiNote['userHost'];
+		channelId: MiNote['channelId'];
+		replyUserId: MiNote['replyUserId'];
+		mentions: MiNote['mentions'];
 		visibility: MiNote['visibility'];
 		visibleUserIds: MiNote['visibleUserIds'];
 		body: NoteEventTypes[key];
@@ -436,6 +440,10 @@ export class GlobalEventService {
 		return this.publish(`noteStream:${note.id}`, type, {
 			id: note.id,
 			userId: note.userId,
+			userHost: note.userHost,
+			channelId: note.channelId,
+			replyUserId: note.replyUserId,
+			mentions: note.mentions,
 			visibility: note.visibility,
 			visibleUserIds: note.visibleUserIds,
 			body: value,

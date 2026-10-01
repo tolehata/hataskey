@@ -57,8 +57,6 @@ class LocalTimelineChannel extends Channel {
 		if (note.visibility !== 'public') return;
 		if (note.channelId != null) return;
 		if (note.user.requireSigninToViewContents && this.user == null) return;
-		if (note.renote && note.renote.user.requireSigninToViewContents && this.user == null) return;
-		if (note.reply && note.reply.user.requireSigninToViewContents && this.user == null) return;
 
 		// 関係ない返信は除外
 		if (note.reply && this.user && !this.following[note.userId]?.withReplies && !this.withReplies) {
@@ -78,7 +76,7 @@ class LocalTimelineChannel extends Channel {
 			}
 		}
 
-		this.send('note', note);
+		await this.sendNote(note);
 	}
 
 	@bindThis

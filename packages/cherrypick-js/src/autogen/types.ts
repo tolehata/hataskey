@@ -56216,6 +56216,8 @@ export interface operations {
             content: {
                 'application/json': {
                     endpoint: string;
+                    auth: string;
+                    publickey: string;
                 };
             };
         };
@@ -56255,6 +56257,15 @@ export interface operations {
             };
             /** @description I'm Ai */
             418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

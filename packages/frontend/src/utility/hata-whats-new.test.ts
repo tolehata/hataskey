@@ -10,7 +10,7 @@ describe('approved release stories', () => {
 	test('the displayed-version gate stays aligned with the package and release metadata', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 		expect(HATA_WHATS_NEW.version).toBe(pkg.version);
-		expect(HATA_WHATS_NEW.version).toBe('2026.9.1-hata.12.8.2');
+		expect(HATA_WHATS_NEW.version).toBe('2026.10.0-hata.12.8.2');
 		const version = getHataWhatsNewDisplayVersion(pkg.version);
 		expect(version).toBe('hata-12.8.2');
 		const changelog = fs.readFileSync(path.join(root, 'HATA-CHANGELOG.md'), 'utf8');
@@ -20,7 +20,7 @@ describe('approved release stories', () => {
 		expect(changelog.indexOf('## hata-12.8.1\n')).toBeLessThan(changelog.indexOf('## hata-12.8\n'));
 		expect(changelog.indexOf('## hata-12.8\n')).toBeLessThan(changelog.indexOf('## hata-12.7.2\n'));
 		expect(changelog).not.toContain('（未リリース）');
-		expect(changelog).toContain('https://github.com/misskey-dev/misskey/releases/tag/2026.9.1');
+		expect(changelog).toContain('https://github.com/misskey-dev/misskey/releases/tag/2026.10.0');
 		expect(changelog).toContain('Hataskey UI Sをベータ公開');
 		expect(changelog).toContain('レシピと料理記録');
 		expect(changelog).toContain('1790035500000-hatask-recipes.js');
@@ -87,7 +87,7 @@ describe('approved release stories', () => {
 		expect(points('mood-timezone')).toContain('通知の設定は自動で書き換えず');
 		expect(points('script-errors')).toContain('赤い文字');
 		expect(points('upstream-update')).toContain('公式リリースノートを参照');
-		expect(cards.flatMap(card => card.link ? [card.link] : [])).toEqual([{ label: 'Misskey公式リリースノート（2026.9.1）', url: 'https://github.com/misskey-dev/misskey/releases/tag/2026.9.1' }]);
+		expect(cards.flatMap(card => card.link ? [card.link] : [])).toEqual([{ label: 'Misskey公式リリースノート（2026.10.0）', url: 'https://github.com/misskey-dev/misskey/releases/tag/2026.10.0' }]);
 		expect(cards.flatMap(card => card.preview ? [card.preview] : [])).toEqual(['note-actions', 'emoji-changes']);
 		for (const card of cards) expect(card.points?.length).toBeGreaterThanOrEqual(2);
 		for (const card of cards) expect(card.points?.length).toBeLessThanOrEqual(3);

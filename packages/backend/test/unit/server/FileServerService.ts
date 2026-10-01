@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { describe, expect, test, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, expect, test, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import sharp from 'sharp';
 import { DataSource, type Repository } from 'typeorm';
 import { initTestDb, randomString } from '../../utils.js';
@@ -90,10 +90,10 @@ describe('FileServerService', () => {
 	let createdFallbackAssets = false;
 	let fallbackAssetsDir = '';
 
-	function writeInternalFile(key: string) {
+	function writeInternalFile(key: string, data: Buffer = dummyBuffer) {
 		const dest = internalStorageService.resolvePath(key);
 		fs.mkdirSync(path.dirname(dest), { recursive: true });
-		fs.copyFileSync(dummyPath, dest);
+		fs.writeFileSync(dest, data);
 		storedPaths.push(dest);
 	}
 
@@ -288,6 +288,16 @@ describe('FileServerService', () => {
 	});
 
 	describe('GET /files/:key', () => {
+		test.each(['../../sentinel.txt', 'nested/file.png', '..\\file.png', '..'])('resolver は DB 一致済みでも内蔵ストレージの %s をパス解決せず拒否する', async (accessKey) => {
+			await insertDriveFile({ accessKey, storedInternal: true, isLink: false });
+			const resolvePath = vi.spyOn(internalStorageService, 'resolvePath');
+
+			const result = await (fileServerService as any).getFileFromKey(accessKey);
+
+			expect(result).toBe('404');
+			expect(resolvePath).not.toHaveBeenCalled();
+		});
+
 		test('GET /files/:key 404 のときダミー画像を返す', async () => {
 			const accessKey = randomString();
 
@@ -297,7 +307,8 @@ describe('FileServerService', () => {
 			});
 
 			expect(res.statusCode).toBe(404);
-			expect(res.headers['cache-control']).toBe('public, max-age=0');
+			// The fork explicitly caches the missing-file placeholder for one day.
+			expect(res.headers['cache-control']).toBe('max-age=86400');
 		});
 
 		test('GET /files/:key 画像配信ヘッダを検証する', async () => {
@@ -319,6 +330,7 @@ describe('FileServerService', () => {
 			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
 			expect(res.headers['content-type']).toBe('image/png');
 			expect(res.headers['content-length']).toBe(String(dummySize));
+			expect(res.headers['accept-ranges']).toBe('bytes');
 			expect(res.headers['content-disposition'] ?? '').toMatch(/^inline;/);
 		});
 
@@ -370,10 +382,46 @@ describe('FileServerService', () => {
 			expect(res.headers['content-length']).toBe(String(dummySize));
 		});
 
+		test.each(['original', 'thumbnail', 'webpublic', 'remote'] as const)('GET /files/:key %s は Range 終端がサイズと等しい場合も実データ末尾へ丸める', async role => {
+			const accessKey = randomString();
+			const variantKey = randomString();
+			const isVariant = role === 'thumbnail' || role === 'webpublic';
+			const data = isVariant ? await sharp(dummyBuffer).resize(1, 1).png().toBuffer() : dummyBuffer;
+			const key = isVariant ? variantKey : accessKey;
+			if (role !== 'remote') {
+				writeInternalFile(accessKey);
+				if (isVariant) writeInternalFile(variantKey, data);
+			}
+			await insertDriveFile({
+				accessKey,
+				thumbnailAccessKey: role === 'thumbnail' ? variantKey : null,
+				webpublicAccessKey: role === 'webpublic' ? variantKey : null,
+				storedInternal: role !== 'remote',
+				isLink: role === 'remote',
+				...(role === 'remote' ? { uri: remotePngUrl, size: 1 } : {}),
+			});
+
+			const res = await fastify.inject({
+				method: 'GET',
+				url: `/files/${key}`,
+				headers: { range: `bytes=0-${data.length}` },
+			});
+
+			expect(res.statusCode).toBe(206);
+			expect(res.headers['content-range']).toBe(`bytes 0-${data.length - 1}/${data.length}`);
+			expect(res.headers['content-length']).toBe(String(data.length));
+			expect(res.headers['accept-ranges']).toBe('bytes');
+			expect(res.rawPayload).toEqual(data);
+		});
+
+		/** Content-Range の総量と範囲は、応答対象のサムネイルのバイト列に基づく。 */
 		test('GET /files/:key thumbnail の Range で部分配信する', async () => {
 			const accessKey = randomString();
 			const thumbnailKey = randomString();
-			writeInternalFile(thumbnailKey);
+			const thumbnailBuffer = await sharp(dummyBuffer).resize(1, 1).png().toBuffer();
+			expect(thumbnailBuffer.length).not.toBe(dummySize);
+			writeInternalFile(accessKey);
+			writeInternalFile(thumbnailKey, thumbnailBuffer);
 			await insertDriveFile({
 				accessKey,
 				thumbnailAccessKey: thumbnailKey,
@@ -391,17 +439,22 @@ describe('FileServerService', () => {
 			});
 
 			expect(res.statusCode).toBe(206);
-			expect(res.headers['content-range']).toBe(`bytes 0-3/${dummySize}`);
+			expect(res.headers['content-range']).toBe(`bytes 0-3/${thumbnailBuffer.length}`);
 			expect(res.headers['accept-ranges']).toBe('bytes');
 			expect(res.headers['content-length']).toBe('4');
 			expect(res.headers['content-type']).toBe('image/png');
 			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
+			expect(res.rawPayload).toEqual(thumbnailBuffer.subarray(0, 4));
 		});
 
-		test('GET /files/:key thumbnail のファイル名を整形する', async () => {
+		/** Content-Length は、内蔵ストレージに保存したサムネイルのバイト数と一致する。 */
+		test('GET /files/:key thumbnail のファイル名と配信サイズを検証する', async () => {
 			const accessKey = randomString();
 			const thumbnailKey = randomString();
-			writeInternalFile(thumbnailKey);
+			const thumbnailBuffer = await sharp(dummyBuffer).resize(1, 1).png().toBuffer();
+			expect(thumbnailBuffer.length).not.toBe(dummySize);
+			writeInternalFile(accessKey);
+			writeInternalFile(thumbnailKey, thumbnailBuffer);
 			await insertDriveFile({
 				accessKey,
 				thumbnailAccessKey: thumbnailKey,
@@ -419,12 +472,18 @@ describe('FileServerService', () => {
 			expect(res.headers['content-type']).toBe('image/png');
 			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
 			expect(res.headers['content-disposition'] ?? '').toContain('sample-thumb.png');
+			expect(res.rawPayload).toEqual(thumbnailBuffer);
+			expect(res.headers['content-length']).toBe(String(thumbnailBuffer.length));
 		});
 
-		test('GET /files/:key webpublic のファイル名を整形する', async () => {
+		/** Content-Length は、Web公開用に変換して内蔵ストレージに保存した画像のバイト数と一致する。 */
+		test('GET /files/:key webpublic のファイル名と配信サイズを検証する', async () => {
 			const accessKey = randomString();
 			const webpublicKey = randomString();
-			writeInternalFile(webpublicKey);
+			const webpublicBuffer = await sharp(dummyBuffer).resize(1, 1).png().toBuffer();
+			expect(webpublicBuffer.length).not.toBe(dummySize);
+			writeInternalFile(accessKey);
+			writeInternalFile(webpublicKey, webpublicBuffer);
 			await insertDriveFile({
 				accessKey,
 				webpublicAccessKey: webpublicKey,
@@ -442,6 +501,8 @@ describe('FileServerService', () => {
 			expect(res.headers['content-type']).toBe('image/png');
 			expect(res.headers['cache-control']).toBe('max-age=31536000, immutable');
 			expect(res.headers['content-disposition'] ?? '').toContain('sample-web.png');
+			expect(res.rawPayload).toEqual(webpublicBuffer);
+			expect(res.headers['content-length']).toBe(String(webpublicBuffer.length));
 		});
 
 		test('GET /files/:key browsersafe でない MIME は octet-stream になる', async () => {
@@ -604,17 +665,29 @@ describe('FileServerService', () => {
 			expect(res.headers['content-security-policy']).toBe('default-src \'none\'; img-src \'self\'; media-src \'self\'; style-src \'unsafe-inline\'');
 		});
 
-		test('GET /proxy/:url* misskey User-Agent を拒否する', async () => {
+		test('GET /proxy/:url* cherrypick User-Agent の再帰リクエストを拒否する', async () => {
 			const res = await fastify.inject({
 				method: 'GET',
 				url: '/proxy/any?url=https%3A%2F%2Fexample.com%2Fimg.png',
 				headers: {
-					'user-agent': 'misskey/1.0',
+					'user-agent': 'cherrypick/1.0',
 				},
 			});
 
 			expect(res.statusCode).toBe(403);
 			expect(res.headers['cache-control']).toBe('max-age=300');
+		});
+
+		test('GET /proxy/:url* misskey User-Agent の画像リクエストは許可する', async () => {
+			const res = await fastify.inject({
+				method: 'GET',
+				url: `/proxy/any?url=${encodeURIComponent(remotePngUrl)}`,
+				headers: { 'user-agent': 'misskey/1.0' },
+			});
+
+			expect(res.statusCode).toBe(200);
+			expect(res.headers['content-type']).toBe('image/png');
+			expect(res.rawPayload).toEqual(dummyBuffer);
 		});
 
 		test('GET /proxy/:url* origin 指定時は User-Agent 必須を検証する', async () => {

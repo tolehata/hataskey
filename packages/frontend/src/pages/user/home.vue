@@ -72,7 +72,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</span>
 						</div>
 						<div v-if="iAmModerator" class="moderationNote">
-							<MkTextarea v-if="editModerationNote || (moderationNote != null && moderationNote !== '')" v-model="moderationNote" manualSave>
+							<MkTextarea v-if="editModerationNote || (moderationNote != null && moderationNote !== '')" v-model="moderationNote" manualSave @change="moderationNoteEditRevision++" @savingStateChange="(changed) => { isModerationNoteDirty = changed; }">
 								<template #label>{{ i18n.ts.moderationNote }}</template>
 								<template #caption>{{ i18n.ts.moderationNoteDescription }}</template>
 							</MkTextarea>
@@ -176,7 +176,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</template>
 					<div v-if="!disableNotes && !user.isBlocked">
 						<MkLazy>
-							<XTimeline :user="user"/>
+							<XTimeline ref="timelineEl" :user="user"/>
 						</MkLazy>
 					</div>
 					<MkResult v-if="user.isBlocked" type="blocked" :user="user"/>
@@ -228,6 +228,7 @@ import { globalEvents } from '@/events.js';
 import { notesSearchAvailable, canSearchNonLocalNotes } from '@/utility/check-permissions.js';
 import { store } from '@/store.js';
 import { getHataProfileBadges } from '@/utility/hata-profile-badges.js';
+import type XTimeline_TypeReferenceOnly from './index.timeline.vue';
 
 const profileTipCopy = i18n.ts._hata._profileTip;
 
@@ -252,9 +253,12 @@ const XTimeline = defineAsyncComponent(() => import('./index.timeline.vue'));
 
 const props = withDefaults(defineProps<{
 	user: Misskey.entities.UserDetailed;
+	/** Refetches the user in place. Supplied by the parent page. */
+	refreshUser?: () => Promise<void>;
 	/** Test only; MkNotesTimeline currently causes problems in vitest */
 	disableNotes?: boolean;
 }>(), {
+	refreshUser: undefined,
 	disableNotes: false,
 });
 
@@ -360,13 +364,24 @@ function onUtageScrollOrResize() {
 const rootEl = useTemplateRef('rootEl');
 const bannerEl = useTemplateRef('bannerEl');
 const memoTextareaEl = useTemplateRef('memoTextareaEl');
+const timelineEl = useTemplateRef<InstanceType<typeof XTimeline_TypeReferenceOnly>>('timelineEl');
 const memoDraft = ref(props.user.memo);
 const isEditingMemo = ref(false);
 const moderationNote = ref(props.user.moderationNote ?? '');
 const editModerationNote = ref(false);
+const moderationNoteEditRevision = ref(0);
+const isModerationNoteDirty = ref(false);
 
-watch(moderationNote, async () => {
-	await misskeyApi('admin/update-user-note', { userId: props.user.id, text: moderationNote.value });
+watch(moderationNote, async (newValue) => {
+	if (newValue === (user.value.moderationNote ?? '')) {
+		isModerationNoteDirty.value = false;
+		return;
+	}
+	const editRevision = moderationNoteEditRevision.value;
+	isModerationNoteDirty.value = true;
+	await misskeyApi('admin/update-user-note', { userId: user.value.id, text: newValue });
+	user.value = { ...user.value, moderationNote: newValue };
+	if (editRevision === moderationNoteEditRevision.value) isModerationNoteDirty.value = false;
 });
 
 const playAnimation = ref(true);
@@ -431,12 +446,17 @@ async function toggleNotify() {
 	});
 }
 
-watch([props.user], () => {
-	memoDraft.value = props.user.memo;
+watch(() => props.user, () => {
+	user.value = props.user;
+	if (!isModerationNoteDirty.value) moderationNote.value = props.user.moderationNote ?? '';
+	if (!isEditingMemo.value) memoDraft.value = props.user.memo;
 });
 
 async function reload() {
-	// TODO
+	await Promise.allSettled([
+		props.refreshUser?.(),
+		timelineEl.value?.reload(),
+	]);
 }
 
 let bannerParallaxResizeObserver: ResizeObserver | null = null;
