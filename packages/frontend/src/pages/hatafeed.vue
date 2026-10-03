@@ -828,7 +828,7 @@ watch([hataFeedTheme, currentProject], ([theme, project]) => { if (props.embedde
 watch(() => props.paneActive, active => {
 	if (!props.embedded) return;
 	if (!active) stopOwnedTutorial();
-	else { tutorialActive = true; void loadNotifications(); }
+	else { tutorialActive = true; void loadNotifications(); void maybeShowTutorial(); }
 });
 let goesOwnerDisposed = false;
 const goesReadyWaiters = new Set<() => void>();

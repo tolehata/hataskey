@@ -214,7 +214,7 @@ import {
 	tabSwipeEnabled, setTabSwipeEnabled,
 } from '@/utility/hatasaba-device-prefs.js';
 import { miLocalStorage } from '@/local-storage.js';
-import { HATASABA_BOTTOM_NAV_MAX, mergeMissingNavItems } from '@/utility/hatasaba-navigation.js';
+import { HATASABA_BOTTOM_NAV_MAX, mergeMissingNavItems, normalizeBottomNavItems } from '@/utility/hatasaba-navigation.js';
 import * as os from '@/os.js';
 import { mainRouter } from '@/router.js';
 import { i18n } from '@/i18n.js';
@@ -353,8 +353,8 @@ function onReplayDeckTutorial() {
 //   現在値を deep clone してバッファに置き、明示保存(下部の「保存」ボタン)まで prefer.commit しない。
 const editedTopNav = ref<any[]>(JSON.parse(JSON.stringify(prefer.s['simpleUi.topNav'] ?? [])));
 const editedBottomNav = ref<any[]>(mergeMissingNavItems(
-	JSON.parse(JSON.stringify(prefer.s['simpleUi.bottomNav'] ?? [])),
-	JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.bottomNav'))),
+	normalizeBottomNavItems(JSON.parse(JSON.stringify(prefer.s['simpleUi.bottomNav'] ?? []))),
+	normalizeBottomNavItems(JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.bottomNav')))),
 ));
 const initialTopNavSnapshot = JSON.stringify(editedTopNav.value);
 const initialBottomNavSnapshot = JSON.stringify(editedBottomNav.value);
@@ -376,7 +376,7 @@ async function resetTopNav() {
 async function resetBottomNav() {
 	const c = await os.confirm({ type: 'warning', title: copy.resetDefaults, text: copy.resetBottomNavConfirm });
 	if (c.canceled) return;
-	editedBottomNav.value = JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.bottomNav')));
+	editedBottomNav.value = normalizeBottomNavItems(JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.bottomNav'))));
 }
 
 // 下部ナビ現在表示中判定 (グレーアウト条件)。simple.vue と同じロジック。
@@ -403,8 +403,7 @@ const navLabelById: Record<string, string> = {
 	search: copy.navSearch,
 	home: copy.navHome,
 	notifications: copy.navNotifications,
-	hatask: copy.navCustomFeatures,
-	hatady: copy.navHatady,
+	hatagoes: 'HataGoes',
 	hatafeed: copy.navHataFeed,
 	widgets: copy.navWidgets,
 };
@@ -448,7 +447,7 @@ function save() {
 		// ナビバー(上部/下部)は変更があればまとめて commit。
 		if (hasNavChanges.value) {
 			prefer.commit('simpleUi.topNav', JSON.parse(JSON.stringify(editedTopNav.value)));
-			prefer.commit('simpleUi.bottomNav', JSON.parse(JSON.stringify(editedBottomNav.value)));
+			prefer.commit('simpleUi.bottomNav', normalizeBottomNavItems(JSON.parse(JSON.stringify(editedBottomNav.value))));
 		}
 		os.toast(copy.savedReloading);
 		emit('done', { saved: true });

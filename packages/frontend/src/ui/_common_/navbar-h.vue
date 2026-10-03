@@ -63,6 +63,7 @@ import { getHTMLElementOrNull } from '@/utility/get-dom-node-or-null.js';
 import { haptic } from '@/utility/haptic.js';
 import HataAppNavIcon from '@/components/HataAppNavIcon.vue';
 import { hataAppForMenuIcon } from '@/utility/hata-app-brand.js';
+import { normalizeHatagoesMenu } from '@/utility/hatagoes-sidebar.js';
 import { store } from '@/store.js';
 
 const WINDOW_THRESHOLD = 1400;
@@ -74,7 +75,7 @@ const handleResize = () => {
 window.addEventListener('resize', handleResize, { passive: true });
 
 const settingsWindowed = ref(window.innerWidth > WINDOW_THRESHOLD);
-const menu = ref(prefer.s.menu);
+const menu = computed(() => normalizeHatagoesMenu(prefer.r.menu.value));
 // const menuDisplay = computed(store.makeGetterSetter('menuDisplay'));
 const otherNavItemIndicated = computed<boolean>(() => {
 	for (const def in navbarItemDef) {

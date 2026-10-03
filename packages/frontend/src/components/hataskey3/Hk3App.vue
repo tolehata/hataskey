@@ -74,7 +74,7 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 
 <script lang="ts" setup>
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
-import { Bell, BookOpen, CalendarCheck, GripHorizontal, House, LayoutGrid, MessageSquareWarning, PanelBottom, Pencil, Search, X } from '@lucide/vue';
+import { Bell, BookOpen, GripHorizontal, House, LayoutGrid, MessageSquareWarning, PanelBottom, Pencil, Search, Sparkles, X } from '@lucide/vue';
 import Hk3Backdrop from './Hk3Backdrop.vue';
 import type * as Misskey from 'cherrypick-js';
 import type { Component } from 'vue';
@@ -570,9 +570,8 @@ const mobileNav = computed(() => {
 		home: { path: '/', label: copy.tabHome, icon: House, badge: null },
 		search: { path: '/search', label: i18n.ts.search, icon: Search, badge: null },
 		notifications: { path: '/my/notifications', label: i18n.ts.notifications, icon: Bell, badge: unread > 0 ? (unread > 99 ? '99+' : String(unread)) : null },
-		hatask: { path: '/hatask', label: 'Hatask', icon: CalendarCheck, badge: null, brand: true },
+		hatagoes: { path: '/hatagoes', label: 'HataGoes', icon: Sparkles, badge: null, brand: true },
 		widgets: { path: '/widgets', label: copy.paneWidgets, icon: LayoutGrid, badge: null },
-		hatady: { path: '/hatady', label: 'Hatady', icon: BookOpen, badge: null, brand: true },
 		hatafeed: { path: '/hatafeed', label: 'HataFeed', icon: MessageSquareWarning, badge: null, brand: true },
 	};
 	return normalizeUiSBottomNav(resolveUiSBottomNav(prefer.r.hataskeyUi3BottomNav.value, prefer.r['simpleUi.bottomNav'].value, sharedBottomNavDefaults))

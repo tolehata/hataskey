@@ -18,7 +18,7 @@ import {
 	tabSwipeEnabled, setTabSwipeEnabled,
 } from '@/utility/hatasaba-device-prefs.js';
 import { miLocalStorage } from '@/local-storage.js';
-import { HATASABA_BOTTOM_NAV_MAX, mergeMissingNavItems } from '@/utility/hatasaba-navigation.js';
+import { HATASABA_BOTTOM_NAV_MAX, mergeMissingNavItems, normalizeBottomNavItems } from '@/utility/hatasaba-navigation.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 
@@ -64,8 +64,8 @@ export function useHatasabaUi2Draft() {
 			// Both lists intentionally use the persisted, optional-field shape. The
 			// defaults are typed more narrowly by the preference registry, but the
 			// merge must preserve the draft's stable NavItem contract.
-			clone(prefer.s['simpleUi.bottomNav'] ?? []) as NavItem[],
-			bottomNavDefaults,
+			normalizeBottomNavItems(clone(prefer.s['simpleUi.bottomNav'] ?? []) as NavItem[]),
+			normalizeBottomNavItems(bottomNavDefaults),
 		),
 	};
 
@@ -194,7 +194,7 @@ export function useHatasabaUi2Draft() {
 
 	async function resetBottomNav(): Promise<void> {
 		const confirmation = await os.confirm({ type: 'warning', title: copy.resetDefaults, text: copy.resetBottomNavConfirm });
-		if (!confirmation.canceled) draft.editedBottomNav = clone(getInitialPrefValue('simpleUi.bottomNav')) as NavItem[];
+		if (!confirmation.canceled) draft.editedBottomNav = normalizeBottomNavItems(clone(getInitialPrefValue('simpleUi.bottomNav')) as NavItem[]);
 	}
 
 	function setTopNavVisible(index: number, visible: boolean): void {
@@ -243,7 +243,7 @@ export function useHatasabaUi2Draft() {
 	const navLabelById: Record<string, string> = {
 		following: copy.navHome, local: copy.navLocal, social: copy.navSocial, mixed: copy.navGlobal,
 		search: copy.navSearch, home: copy.navHome, notifications: copy.navNotifications,
-		hatask: copy.navCustomFeatures, hatady: copy.navHatady, hatafeed: copy.navHataFeed, widgets: copy.navWidgets,
+		hatagoes: 'HataGoes', hatafeed: copy.navHataFeed, widgets: copy.navWidgets,
 	};
 
 	function navDisplayLabel(item: NavItem): string { return navLabelById[item.id] ?? item.label ?? item.id; }
@@ -281,7 +281,7 @@ export function useHatasabaUi2Draft() {
 			if (draft.editedTabSwipeEnabled !== snapshot.tabSwipeEnabled) setTabSwipeEnabled(draft.editedTabSwipeEnabled);
 			if (hasNavChanges.value) {
 				prefer.commit('simpleUi.topNav', normalizeNavItems(draft.editedTopNav, topNavDefaults));
-				prefer.commit('simpleUi.bottomNav', normalizeNavItems(draft.editedBottomNav, bottomNavDefaults));
+				prefer.commit('simpleUi.bottomNav', normalizeNavItems(normalizeBottomNavItems(draft.editedBottomNav), normalizeBottomNavItems(bottomNavDefaults)));
 			}
 			os.toast(copy.savedReloading);
 		window.setTimeout(() => window.location.reload(), 300);

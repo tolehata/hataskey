@@ -62,33 +62,11 @@ export const navbarItemDef = reactive({
 		show: computed(() => $i != null),
 		to: '/hatagoes',
 	},
-	hatask: {
-		title: 'Hatask',
-		icon: 'ti ti-layout-dashboard',
-		show: computed(() => $i != null),
-		to: '/hatask',
-	},
 	mascot: {
 		title: i18n.ts._hata._common.mascot,
 		icon: 'ti ti-mood-smile',
 		show: computed(() => $i != null),
 		to: '/mascot',
-	},
-	hatafeed: {
-		title: 'HataFeed',
-		icon: 'ti ti-message-report',
-		// 旗鯖fork: ロールポリシー canAccessHataFeed 保持者、またはスタッフにのみ表示。
-		// 旗鯖fork(G9): canAccessHataFeedはcherrypick-jsのRolePolicies型に未反映のフォーク独自ポリシーのため
-		//   as で橋渡し(実行時の値・挙動は変えない)。
-		show: computed(() => $i != null && ((($i.policies as Record<string, unknown> | undefined)?.canAccessHataFeed) === true || $i.isModerator || $i.isAdmin)),
-		to: '/hatafeed',
-	},
-	hatady: {
-		// 旗鯖fork: Hatady(学習・読書記録ツール)。ログインユーザー全員に表示。
-		title: 'Hatady',
-		icon: 'ti ti-book-2',
-		show: computed(() => $i != null),
-		to: '/hatady',
 	},
 	earthquake: {
 		title: '地震・津波情報',

@@ -40,6 +40,18 @@ function lifecycle(name: string): ts.Block {
 	return callback.body;
 }
 
+function paneActiveWatcher(): ts.Block {
+	const statement = page.statements.find(node =>
+		ts.isExpressionStatement(node) && ts.isCallExpression(node.expression) &&
+		node.expression.expression.getText(page) === 'watch' &&
+		node.expression.arguments[0]?.getText(page) === '() => props.paneActive',
+	);
+	if (!statement || !ts.isExpressionStatement(statement) || !ts.isCallExpression(statement.expression)) throw new Error('Missing paneActive watcher');
+	const callback = statement.expression.arguments[1];
+	if (!callback || !ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) throw new Error('Missing paneActive callback');
+	return callback.body;
+}
+
 function statementMatching(statements: ts.NodeArray<ts.Statement>, pattern: RegExp): ts.Statement {
 	const matches = statements.filter(statement => pattern.test(statement.getText(page)));
 	if (matches.length !== 1) throw new Error(`Expected one source statement for ${pattern}, found ${matches.length}`);
@@ -81,6 +93,7 @@ type State = {
 	ready: boolean;
 	loadFromMount: () => Promise<void>;
 	activate: () => void;
+	setPaneActive: (active: boolean) => void;
 	deactivate: () => void;
 	unmount: () => void;
 	acceptLoadedHataskSettings: (value: unknown) => boolean;
@@ -111,14 +124,16 @@ function fixture(options: { settings?: unknown; removeReadGuard?: boolean; embed
 	const variables = ['SCOPE', 'loadedKeys', 'settings', 'hataskPageActive', 'hataskIntroductionReady', 'showTutorial', 'showTutTheme', 'tutStep', 'tutThemes'].map(name => declaration(name)).join('\n');
 	// Execute the actual relevant mount/activation statements, leaving unrelated clocks, flowers and network subscriptions outside this fixture.
 	const activation = [/^hataskPageActive = !props\.embedded \|\| props\.paneActive;/u, /^showHataskIntroduction\(\);$/u].map(pattern => statementMatching(lifecycle('onActivated').statements, pattern).getText(page)).join('\n');
+	const paneActivation = paneActiveWatcher().getText(page);
 	const code = `${variables}\n${sourceFunctions(options.removeReadGuard)}
 	async function loadFromMount() { ${mountSettingsStatements.join('\n')} }
 	function activate() { ${activation} }
+	function setPaneActive(active) { props.paneActive = active; ${paneActivation} }
 	function deactivate() { ${statementMatching(lifecycle('onDeactivated').statements, /^cleanupHataskState\(\);$/u).getText(page)} }
 	function unmount() { ${statementMatching(lifecycle('onBeforeUnmount').statements, /^cleanupHataskState\(\);$/u).getText(page)} }
 	({ settings, loadedKeys, showTutorial, showTutTheme, tutStep, tutThemes,
 		get active() { return hataskPageActive; }, get ready() { return hataskIntroductionReady; },
-		loadFromMount, activate, deactivate, unmount, acceptLoadedHataskSettings, showHataskIntroduction, startTutFromTheme, skipTutorial, reopenTutorial });`;
+		loadFromMount, activate, setPaneActive, deactivate, unmount, acceptLoadedHataskSettings, showHataskIntroduction, startTutFromTheme, skipTutorial, reopenTutorial });`;
 
 	const compiled = ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } });
 	const documentFixture = { body: { dataset: {} }, querySelectorAll: () => [] };
@@ -131,6 +146,9 @@ function fixture(options: { settings?: unknown; removeReadGuard?: boolean; embed
 		os: { popup },
 		closeFlowerDetail: vi.fn(), closeFlowerCollection: vi.fn(), closeEventDetail: vi.fn(), closeBlankCalendarActions: vi.fn(), hatakMascotActive: ref(true), stopMascotCardRotation: vi.fn(),
 		hfTimer: null, eqPollTimer: null, eqStream: null, showMobileNav: ref(true), navProtectionObserver: null, navVisibilityTimer: null,
+		canAccessHataFeed: ref(false), refreshSharedEventAccess: vi.fn(), invalidateCommunityFlowers: vi.fn(),
+		useStream: () => ({ state: 'connected', on: vi.fn(), off: vi.fn() }),
+		streamConnected: ref(false), onEqEvent: vi.fn(), onEqStreamConn: vi.fn(), onEqStreamDisc: vi.fn(), startEqPoll: vi.fn(),
 		['document']: documentFixture,
 		window: { document: documentFixture },
 	}, { timeout: 1000 }) as State;
@@ -139,6 +157,35 @@ function fixture(options: { settings?: unknown; removeReadGuard?: boolean; embed
 }
 
 describe('Hataskの初回導入と設定読込', () => {
+	test('HataGoesで非表示のまま先読みした未完了案内は、初めてペインを開いた時に始まる', async () => {
+		const current = fixture({ settings: { theme: 'akatsuki', tutorialDone: false }, embedded: true, paneActive: false });
+		await current.state.loadFromMount();
+		expect(current.state.ready).toBe(true);
+		expect(current.state.showTutTheme.value).toBe(false);
+		current.state.setPaneActive(true);
+		expect(current.state.showTutTheme.value).toBe(true);
+		expect(current.state.showTutorial.value).toBe(false);
+		current.state.setPaneActive(false);
+		current.state.setPaneActive(true);
+		expect(current.state.showTutTheme.value).toBe(true);
+		current.state.startTutFromTheme();
+		current.state.tutStep.value = 3;
+		current.state.setPaneActive(false);
+		current.state.setPaneActive(true);
+		expect(current.state.showTutorial.value).toBe(true);
+		expect(current.state.tutStep.value).toBe(3);
+		expect(current.writeSettings).not.toHaveBeenCalled();
+	});
+
+	test('HataGoesで先読みした完了済み案内は、ペインを開いても表示しない', async () => {
+		const current = fixture({ settings: { theme: 'akatsuki', tutorialDone: true }, embedded: true, paneActive: false });
+		await current.state.loadFromMount();
+		current.state.setPaneActive(true);
+		expect(current.state.showTutTheme.value).toBe(false);
+		expect(current.state.showTutorial.value).toBe(false);
+		expect(current.writeSettings).not.toHaveBeenCalled();
+	});
+
 	test('埋め込みの非表示ペインは再活性化しても導入画面を開かない', async () => {
 		const current = fixture({ settings: { theme: 'akatsuki', tutorialDone: false }, embedded: true, paneActive: false });
 		await current.state.loadFromMount();

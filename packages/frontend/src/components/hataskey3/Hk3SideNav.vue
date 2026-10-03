@@ -29,7 +29,7 @@ Hataskey UI 3: 左メニュー。HataSideStudio の有効プロファイル(拡�
 							:title="buttonLabel(item)"
 							@click="onItemClick(item, $event)"
 						>
-							<HataAppNavIcon v-if="hataAppForMenuIcon(item.menuId, item.icon)" :app="hataAppForMenuIcon(item.menuId, item.icon)!" :size="item.size === 'small' ? 26 : 28" :monochrome="dark" :class="$style.itemIcon"/><i v-else :class="[iconOf(item), $style.itemIcon]"></i>
+							<HataAppNavIcon v-if="hataAppForMenuIcon(item.menuId, item.icon)" :app="hataAppForMenuIcon(item.menuId, item.icon)!" :size="item.size === 'small' ? 26 : 28" :monochrome="dark && item.menuId !== 'hatagoes'" :class="$style.itemIcon"/><i v-else :class="[iconOf(item), $style.itemIcon]"></i>
 							<HataAppWordmark v-if="item.showLabel && item.size !== 'small' && hataAppForMenuLabel(item.menuId, buttonLabel(item), item.icon)" :app="hataAppForMenuLabel(item.menuId, buttonLabel(item), item.icon)!" :class="$style.itemLabel" :onDark="dark" :inheritColor="menuActive(item.menuId)"/><span v-else-if="item.showLabel && item.size !== 'small'" :class="$style.itemLabel">{{ buttonLabel(item) }}</span>
 							<span v-if="badgeOf(item.menuId)" :class="$style.badge">{{ badgeOf(item.menuId) }}</span>
 						</button>
@@ -55,7 +55,7 @@ Hataskey UI 3: 左メニュー。HataSideStudio の有効プロファイル(拡�
 				:title="buttonLabel(item)"
 				@click="onItemClick(item, $event)"
 			>
-				<HataAppNavIcon v-if="hataAppForMenuIcon(item.menuId, item.icon)" :app="hataAppForMenuIcon(item.menuId, item.icon)!" :size="28" :monochrome="dark" :class="$style.railIcon"/><i v-else :class="[iconOf(item), $style.railIcon]"></i>
+				<HataAppNavIcon v-if="hataAppForMenuIcon(item.menuId, item.icon)" :app="hataAppForMenuIcon(item.menuId, item.icon)!" :size="28" :monochrome="dark && item.menuId !== 'hatagoes'" :class="$style.railIcon"/><i v-else :class="[iconOf(item), $style.railIcon]"></i>
 				<span v-if="badgeOf(item.menuId)" :class="$style.railBadge">{{ badgeOf(item.menuId) }}</span>
 			</button>
 		</div>
@@ -183,6 +183,7 @@ const MENU_PATHS: Record<string, string> = {
 	notifications: '/my/notifications',
 	search: '/search',
 	chat: '/chat',
+	hatagoes: '/hatagoes',
 	hatask: '/hatask',
 	lists: '/my/lists',
 	channels: '/channels',
@@ -219,7 +220,7 @@ function iconOf(item: HataSideButton): string {
 }
 
 // Hataskey 独自のツールは、名前をロゴと同じ Righteous で表示する。
-const BRAND_MENUS = new Set(['hatask', 'hatafeed', 'hatady']);
+const BRAND_MENUS = new Set(['hatagoes']);
 
 function buttonLabel(item: HataSideButton): string {
 	return getHataSideStudioMenuDisplayLabel(item.menuId, item.label);

@@ -68,13 +68,31 @@ beforeEach(async () => { window.localStorage.removeItem(storageKey); await boot(
 afterEach(() => { cleanups.splice(0).forEach(cleanup => cleanup()); vi.restoreAllMocks(); window.localStorage.removeItem(storageKey); });
 
 describe('UI S bottom navigation settings', () => {
+	it('normalizes restored Hatask and Hatady candidates before editing and saving', async () => {
+		manager.commit('hataskeyUi3BottomNav', [
+			{ id: 'home', visible: true },
+			{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', visible: true },
+			{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', visible: true },
+		]);
+		const mounted = await mount();
+		expect(rows(mounted.host)).toContain('hatagoes');
+		expect(rows(mounted.host)).not.toContain('hatask');
+		expect(rows(mounted.host)).not.toContain('hatady');
+		expect(rows(mounted.host).filter(id => id === 'hatagoes')).toHaveLength(1);
+		checkbox(mounted.host, 'hatagoes').checked = false;
+		checkbox(mounted.host, 'hatagoes').dispatchEvent(new Event('change', { bubbles: true }));
+		await settle();
+		expect(manager.s.hataskeyUi3BottomNav?.some(item => item.id === 'hatask' || item.id === 'hatady')).toBe(false);
+		expect(manager.s.hataskeyUi3BottomNav?.find(item => item.id === 'hatagoes')?.visible).toBe(false);
+	});
+
 	it.each([false, true])('keeps home on and reorderable without enabling it in shared settings (missing: %s)', async missing => {
 		const home = { id: 'home', icon: 'ti ti-home', label: 'Home', visible: false };
 		manager.commit('simpleUi.bottomNav', [
 			{ id: 'search', icon: 'ti ti-search', label: 'Search', visible: true },
 			{ id: 'notifications', icon: 'ti ti-bell', label: 'Notifications', visible: true },
-			{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', visible: true },
-			{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', visible: true },
+			{ id: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes', visible: true },
+			{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', visible: true },
 			...(missing ? [] : [home]),
 		]);
 		const before = manager.s['simpleUi.bottomNav'].map(item => ({ ...item }));
@@ -159,8 +177,8 @@ describe('UI S bottom navigation settings', () => {
 		const mounted = await mount();
 		expect(mounted.host.querySelector('.warning')).toBeNull();
 		expect(mounted.host.querySelector('.saveHint')?.textContent).toContain('ウィジェット');
-		expect(checkbox(mounted.host, 'hatask').checked).toBe(true);
-		expect(rows(mounted.host).slice(0, 5)).toEqual(['search', 'home', 'notifications', 'hatask', 'widgets']);
+		expect(checkbox(mounted.host, 'hatagoes').checked).toBe(true);
+		expect(rows(mounted.host).slice(0, 5)).toEqual(['search', 'home', 'notifications', 'hatagoes', 'widgets']);
 		checkbox(mounted.host, 'widgets').checked = false;
 		checkbox(mounted.host, 'widgets').dispatchEvent(new Event('change', { bubbles: true }));
 		await settle();
@@ -170,17 +188,17 @@ describe('UI S bottom navigation settings', () => {
 		expect(checkbox(mounted.host, 'widgets').checked).toBe(true);
 		expect(manager.s.hataskeyUi3BottomNav?.filter(item => item.visible !== false)).toHaveLength(5);
 		expect(mounted.host.querySelector('.saveHint')?.textContent).toContain('ウィジェット');
-		checkbox(mounted.host, 'hatady').checked = true;
-		checkbox(mounted.host, 'hatady').dispatchEvent(new Event('change', { bubbles: true }));
+		checkbox(mounted.host, 'hatafeed').checked = true;
+		checkbox(mounted.host, 'hatafeed').dispatchEvent(new Event('change', { bubbles: true }));
 		await settle();
-		expect(checkbox(mounted.host, 'hatady').checked).toBe(false);
+		expect(checkbox(mounted.host, 'hatafeed').checked).toBe(false);
 		expect(mounted.host.querySelector('.warning')?.textContent).toContain('5つまで');
 		const handle = mounted.host.querySelector<HTMLButtonElement>('[data-nav-id="home"] .bottomNavHandle')!;
 		handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
 		await settle();
 		mounted.host.querySelector<HTMLButtonElement>('.heading button')!.click();
 		await settle();
-		expect(rows(mounted.host).slice(0, 5)).toEqual(['search', 'home', 'notifications', 'hatask', 'widgets']);
+		expect(rows(mounted.host).slice(0, 5)).toEqual(['search', 'home', 'notifications', 'hatagoes', 'widgets']);
 		expect(manager.s.hataskeyUi3BottomNav?.filter(item => item.visible !== false)).toHaveLength(5);
 		expect(manager.s['simpleUi.bottomNav']).toEqual(legacy);
 	});
@@ -196,7 +214,7 @@ describe('UI S bottom navigation settings', () => {
 		if (!reset || typeof reset !== 'object' || !('action' in reset) || typeof reset.action !== 'function') throw new Error('Missing reset action');
 		reset.action(new MouseEvent('click')); await settle();
 		expect(manager.s.hataskeyUi3BottomNav).toBeNull();
-		expect(rows(mounted.host).slice(0, 5)).toEqual(['search', 'home', 'notifications', 'hatask', 'widgets']);
+		expect(rows(mounted.host).slice(0, 5)).toEqual(['search', 'home', 'notifications', 'hatagoes', 'widgets']);
 		expect(manager.s['simpleUi.bottomNav']).toEqual(legacy);
 	});
 });

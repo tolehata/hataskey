@@ -33,7 +33,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:to="navbarItemDef[item].to"
 					v-on="navbarItemDef[item].action ? { click: navbarItemDef[item].action } : {}"
 				>
-					<HataAppNavIcon v-if="hataAppForMenuIcon(item)" :app="hataAppForMenuIcon(item)!" :size="24" :monochrome="store.r.darkMode.value" :class="$style.itemIcon" :style="{ viewTransitionName: 'navbar-item-' + item }"/><i v-else class="ti-fw" :class="[$style.itemIcon, navbarItemDef[item].icon]" :style="{ viewTransitionName: 'navbar-item-' + item }"></i><HataAppWordmark v-if="hataAppForMenuLabel(item, navbarItemDef[item].title)" :app="hataAppForMenuLabel(item, navbarItemDef[item].title)!" :class="$style.itemText" inheritColor/><span v-else :class="$style.itemText">{{ navbarItemDef[item].title }}</span>
+					<HataAppNavIcon v-if="hataAppForMenuIcon(item)" :app="hataAppForMenuIcon(item)!" :size="24" :monochrome="store.r.darkMode.value && item !== 'hatagoes'" :class="$style.itemIcon" :style="{ viewTransitionName: 'navbar-item-' + item }"/><i v-else class="ti-fw" :class="[$style.itemIcon, navbarItemDef[item].icon]" :style="{ viewTransitionName: 'navbar-item-' + item }"></i><HataAppWordmark v-if="hataAppForMenuLabel(item, navbarItemDef[item].title)" :app="hataAppForMenuLabel(item, navbarItemDef[item].title)!" :class="$style.itemText" inheritColor/><span v-else :class="$style.itemText">{{ navbarItemDef[item].title }}</span>
 					<span v-if="navbarItemDef[item].indicated" :class="$style.itemIndicator" class="_blink">
 						<span v-if="navbarItemDef[item].indicateValue && prefer.s.showUnreadNotificationsCount" class="_indicateCounter" :class="$style.itemIndicateValueIcon">{{ navbarItemDef[item].indicateValue }}</span>
 						<i v-else class="_indicatorCircle"></i>
@@ -109,6 +109,7 @@ import { computed, defineAsyncComponent, ref, watch, onUnmounted } from 'vue';
 import { openInstanceMenu } from './common.js';
 import * as os from '@/os.js';
 import { navbarItemDef } from '@/navbar.js';
+import { normalizeHatagoesMenu } from '@/utility/hatagoes-sidebar.js';
 import { store } from '@/store.js';
 import { i18n } from '@/i18n.js';
 import { instance } from '@/instance.js';
@@ -151,7 +152,7 @@ const controlPanelIndicated = ref(false);
 // 旗鯖fork: 外部アカウント連携時に、menu に externalNotifications が無ければ
 // 通知の直後に動的注入する (既存ユーザーの保存済み menu 設定を壊さず反映)。
 const displayMenu = computed(() => {
-	const menu = [...prefer.r.menu.value];
+	const menu = normalizeHatagoesMenu(prefer.r.menu.value);
 	const token = prefer.r['external.token']?.value;
 	const host = prefer.r['external.host']?.value;
 	const linked = token != null && host != null && host !== '';

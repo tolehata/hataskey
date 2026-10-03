@@ -4241,6 +4241,7 @@ watch(() => props.paneActive, active => {
 	hataskPageActive = active;
 	if (!active) cleanupHataskState(true);
 	else {
+		showHataskIntroduction();
 		refreshSharedEventAccess(); invalidateCommunityFlowers();
 		if (!hfTimer && canAccessHataFeed.value) { void loadHfNotifs(); hfTimer = window.setInterval(loadHfNotifs, 30_000); }
 		if (!eqStream) {

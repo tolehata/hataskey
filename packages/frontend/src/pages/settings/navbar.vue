@@ -87,10 +87,11 @@ import { getInitialPrefValue } from '@/preferences/manager.js';
 import { genId } from '@/utility/id.js';
 import HataAppNavIcon from '@/components/HataAppNavIcon.vue';
 import { hataAppForMenuIcon } from '@/utility/hata-app-brand.js';
+import { normalizeHatagoesMenu } from '@/utility/hatagoes-sidebar.js';
 
 const Sortable = defineAsyncComponent(() => import('vuedraggable').then(x => x.default));
 
-const items = ref(prefer.s.menu.map(x => ({
+const items = ref(normalizeHatagoesMenu(prefer.s.menu).map(x => ({
 	id: genId(),
 	type: x,
 })));
@@ -136,12 +137,12 @@ function removeItem(index: number) {
 }
 
 function save() {
-	prefer.commit('menu', itemTypeValues.value);
+	prefer.commit('menu', normalizeHatagoesMenu(itemTypeValues.value));
 	os.success();
 }
 
 function reset() {
-	items.value = getInitialPrefValue('menu').map(x => ({
+	items.value = normalizeHatagoesMenu(getInitialPrefValue('menu')).map(x => ({
 		id: genId(),
 		type: x,
 	}));

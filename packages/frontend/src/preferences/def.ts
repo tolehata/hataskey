@@ -191,7 +191,7 @@ export const PREF_DEF = definePreferences({
 			'notifications',
 			'chat',
 			'favorites',
-			'hatask',
+			'hatagoes',
 			'mascot',
 			'explore',
 			'followRequests',
@@ -876,8 +876,7 @@ export const PREF_DEF = definePreferences({
 			{ id: 'search', icon: 'ti ti-search', label: '検索', visible: true },
 			{ id: 'home', icon: 'ti ti-home', label: 'ホーム', visible: true },
 			{ id: 'notifications', icon: 'ti ti-bell', label: '通知', visible: true },
-			{ id: 'hatask', icon: 'ti ti-eye', label: '独自機能', visible: true },
-			{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', visible: false },
+			{ id: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes', visible: true },
 			{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', visible: false },
 			{ id: 'widgets', icon: 'ti ti-apps', label: 'ウィジェット', visible: false },
 		] as { id: string; icon: string; label: string; visible: boolean }[],
@@ -898,10 +897,7 @@ export const PREF_DEF = definePreferences({
 			{ id: 'drive', icon: 'ti ti-cloud', label: 'ドライブ', group: 'basic' },
 			{ id: 'favorites', icon: 'ti ti-star', label: 'お気に入り', group: 'basic' },
 			// グループ2: 旗鯖独自
-			{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', group: 'hata' },
-			{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', group: 'hata' },
-			// 旗鯖fork(Hatady): 学習・読書記録ツール (v6 マイグレで既存ユーザーにも insertAfter で追加)
-			{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', group: 'hata' },
+			{ id: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes', group: 'hata' },
 			{ id: 'earthquake', icon: 'ti ti-activity', label: '地震・津波情報', group: 'hata' },
 			// グループ3: 発見・交流
 			{ id: 'uiSetup', icon: 'ti ti-wand', label: 'UI切り替え', group: 'discover' },

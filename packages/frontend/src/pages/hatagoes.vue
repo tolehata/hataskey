@@ -2,7 +2,7 @@
 <template>
 <div ref="shellRoot" data-hatagoes-root :data-active="shellActive" :class="[$style.shell, themeClasses]" :data-hatask-theme="hataskPaletteTheme" :data-hatask-mode="hataskPaletteMode" :data-hatady-theme="activeTheme" :style="shellStyle">
 	<header ref="shellHeader" :class="$style.header" :data-home="location.view === 'home'" :data-home-feed="homeInFeed">
-		<div :class="$style.brandGroup"><button ref="exitButton" type="button" :class="$style.iconButton" aria-label="終了" title="終了" @click="requestExit"><i class="ti ti-x" aria-hidden="true"></i></button><button type="button" :class="$style.brand" :aria-label="brandLabel" @click="tapLogo(brandApp); common('home')"><HataAppLogo :key="brandApp" :monochrome="brandOnDark" :app="brandApp" :size="narrowShell ? 28 : 24" motion="startup" :active="shellActive" :tapSequence="logoTapSequence[brandApp]"/><Transition mode="out-in" :enterActiveClass="$style.brandEnter" :leaveActiveClass="$style.brandLeave" :enterFromClass="$style.brandHidden" :leaveToClass="$style.brandHidden"><HataAppWordmark :key="brandApp" :class="$style.brandText" :app="brandApp" :onDark="brandOnDark"/></Transition></button><small v-if="location.view === 'home' && homeInFeed" :class="$style.homeSubtitle">みんなのきょう</small></div>
+		<div :class="$style.brandGroup"><button ref="exitButton" type="button" :class="$style.iconButton" aria-label="終了" title="終了" @click="requestExit"><i class="ti ti-x" aria-hidden="true"></i></button><button type="button" :class="$style.brand" :aria-label="brandLabel" @click="openBrandHome"><HataAppLogo :key="brandApp" :monochrome="brandOnDark" :app="brandApp" :size="narrowShell ? 28 : 24" motion="startup" :active="shellActive" :tapSequence="logoTapSequence[brandApp]"/><Transition mode="out-in" :enterActiveClass="$style.brandEnter" :leaveActiveClass="$style.brandLeave" :enterFromClass="$style.brandHidden" :leaveToClass="$style.brandHidden"><HataAppWordmark :key="brandApp" :class="$style.brandText" :app="brandApp" :onDark="brandOnDark"/></Transition></button><small v-if="location.view === 'home' && homeInFeed" :class="$style.homeSubtitle">みんなのきょう</small></div>
 		<div :class="$style.appsSlot"><nav ref="appsCapsule" :class="$style.apps" :style="{ '--hg-app-count': apps.length + 1 }" aria-label="アプリ" @pointerenter="onNoticePointerEnter" @pointerleave="noticeHovered = false" @pointercancel="noticeHovered = false" @focusin="onNoticeFocusIn" @focusout="onNoticeFocusOut">
 			<div v-if="shellActive && !dialogNoticeTarget && noticeGlowVisible && !narrowShell && noticeGeometryReady" :class="$style.noticeBloom" :data-leaving="noticeGlowLeaving" aria-hidden="true"><svg :viewBox="noticeViewBox" :style="noticeSvgStyle"><path v-for="path in noticePaths" :key="path" :d="path" pathLength="100" :style="{ strokeDashoffset: noticeProgress }"/></svg></div>
 			<button type="button" aria-label="HataGoesホーム" title="HataGoesホーム" :aria-current="location.view === 'home' ? 'page' : undefined" @click="tapLogo('hatagoes'); common('home')"><HataAppLogo :monochrome="brandOnDark" app="hatagoes" :size="20" :active="shellActive" :tapSequence="logoTapSequence.hatagoes"/><span>ホーム</span></button>
@@ -40,7 +40,7 @@
 	<div :class="$style.body">
 		<div ref="contentSurface" :class="$style.content">
 			<div v-if="message" :class="$style.message" role="alert">{{ message }} <button type="button" aria-label="閉じる" @click="message = ''">×</button></div>
-			<div v-show="location.view === 'home' || location.view === 'search'" :class="[$style.common, $style.homeScroll]"><HatagoesHome ref="homeRef" :monochrome="brandOnDark" :cards="prefs.cards.value" :cardsV3="prefs.cardsV3?.value" :launcherApps="launcherApps" :revision="revision" :active="shellActive && (location.view === 'home' || location.view === 'search')" :busyTodoIds="busyTodoIds" :busyActions="busyActions" @navigate="navigate" @create="create" @toggleTodo="toggleTodo" @recordMood="recordMood" @water="water" @recordMeal="recordMeal" @recordReading="recordReading" @feedState="homeInFeed = $event" @openApp="openHomeLauncherScreen" @allApps="openAllDirectory"/></div>
+			<div v-show="location.view === 'home' || location.view === 'search'" ref="homeScrollEl" data-hatagoes-home-scroll :class="[$style.common, $style.homeScroll]"><HatagoesHome ref="homeRef" :monochrome="brandOnDark" :cards="prefs.cards.value" :cardsV3="prefs.cardsV3?.value" :launcherApps="launcherApps" :revision="revision" :active="shellActive && (location.view === 'home' || location.view === 'search')" :busyTodoIds="busyTodoIds" :busyActions="busyActions" @navigate="navigate" @create="create" @toggleTodo="toggleTodo" @recordMood="recordMood" @water="water" @recordMeal="recordMeal" @recordReading="recordReading" @feedState="homeInFeed = $event" @openApp="openHomeLauncherScreen" @allApps="openAllDirectory"/></div>
 			<div v-show="location.view === 'notifications'" :class="$style.common"><HatagoesNotifications :active="shellActive && location.view === 'notifications'" :pollingActive="shellActive" :revision="revision" @count="unread = $event" @navigate="navigate"/></div>
 			<div v-if="visited.settings" v-show="location.view === 'settings'" :class="$style.common">
 				<HatagoesSettings :monochrome="brandOnDark" :pins="visiblePins" :appPins="visibleAppPins" :availableApps="apps.map(app => app.id)" :cards="prefs.cards.value" :cardsV3="prefs.cardsV3?.value" :theme="prefs.theme.value" :ready="prefs.ready.value" :saving="prefs.saving.value" :error="prefs.error.value" :screens="screens" @save="saveSetting" @retry="prefs.load" @appSettings="openAppSettings" @editAppPins="editAppPins" @navigate="navigate" @replayIntroduction="replayIntroduction"/>
@@ -70,16 +70,15 @@
 			</section>
 		</section>
 	</HatagoesCreateHost>
-	<div ref="mobileDock" :class="$style.mobileDock" :data-home="location.view === 'home'" :data-create-expanded="createOpen && narrowShell" :data-create-layer="mobileCreateExpanded">
+	<div ref="mobileDock" :class="$style.mobileDock" :data-create-expanded="createOpen && narrowShell" :data-create-layer="mobileCreateExpanded">
 	<nav ref="mobileCapsule" :class="$style.mobileNav" aria-label="モバイルアプリ">
 		<button type="button" aria-label="HataGoesホーム" :aria-current="location.view === 'home' ? 'page' : undefined" @click="tapLogo('hatagoes'); common('home')"><HataAppLogo :monochrome="brandOnDark" app="hatagoes" :size="location.view === 'home' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatagoes"/><span v-if="location.view === 'home'">ホーム</span></button>
 		<button type="button" aria-label="Hatask" :aria-current="location.view === 'app' && location.app === 'hatask' ? 'page' : undefined" @click="tapLogo('hatask'); openApp('hatask')"><HataAppLogo :monochrome="brandOnDark" app="hatask" :size="location.view === 'app' && location.app === 'hatask' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatask"/><HataAppWordmark v-if="location.view === 'home' || location.view === 'app' && location.app === 'hatask'" app="hatask" :inheritColor="true"/></button>
-		<button v-if="location.view !== 'home'" ref="mobileCreateButton" type="button" :class="$style.mobileCreate" :data-open="createOpen" :aria-label="createOpen ? '作成を閉じる' : '作成'" :aria-expanded="createOpen" title="作成" @pointerdown="startLongPress" @pointerup="endLongPress" @pointerleave="cancelLongPress" @pointercancel="cancelLongPress" @click="showCreate"><i class="ti ti-plus" aria-hidden="true"></i></button>
+		<button ref="mobileCreateButton" type="button" :class="$style.mobileCreate" :data-open="createOpen" :aria-label="createOpen ? '作成を閉じる' : '作成'" :aria-expanded="createOpen" title="作成" @pointerdown="startLongPress" @pointerup="endLongPress" @pointerleave="cancelLongPress" @pointercancel="cancelLongPress" @click="showCreate"><i class="ti ti-plus" aria-hidden="true"></i></button>
 		<button type="button" aria-label="Hatady" :aria-current="location.view === 'app' && location.app === 'hatady' ? 'page' : undefined" @click="tapLogo('hatady'); openApp('hatady')"><HataAppLogo :monochrome="brandOnDark" app="hatady" :size="location.view === 'app' && location.app === 'hatady' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatady"/><HataAppWordmark v-if="location.view === 'home' || location.view === 'app' && location.app === 'hatady'" app="hatady" :inheritColor="true"/></button>
 		<button v-if="canFeed" type="button" aria-label="HataFeed" :aria-current="location.view === 'app' && location.app === 'hatafeed' ? 'page' : undefined" @click="tapLogo('hatafeed'); openApp('hatafeed')"><HataAppLogo :monochrome="brandOnDark" app="hatafeed" :size="location.view === 'app' && location.app === 'hatafeed' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatafeed"/><HataAppWordmark v-if="location.view === 'home' || location.view === 'app' && location.app === 'hatafeed'" app="hatafeed" :inheritColor="true"/></button>
 		<span :class="$style.activePill" :style="mobilePillStyle" aria-hidden="true"></span>
 	</nav>
-	<button v-if="location.view === 'home'" ref="mobileCreateButton" type="button" :class="$style.mobileCreate" :data-open="createOpen" :aria-label="createOpen ? '作成を閉じる' : '作成'" :aria-expanded="createOpen" title="作成" @pointerdown="startLongPress" @pointerup="endLongPress" @pointerleave="cancelLongPress" @pointercancel="cancelLongPress" @click="showCreate"><i class="ti ti-plus" aria-hidden="true"></i></button>
 	</div>
 	<MkHataskeyNotificationToasts v-if="shellActive && !inheritedNotices" :context="noticeContext" :receiveExternal="ownsNoticeSurface"/>
 	<Teleport to="body">
@@ -278,6 +277,7 @@ const releaseNoticeReceiver = registerNotificationPageContext(noticeContext, () 
 const releaseFeedNotice = registerHataFeedNoticeHost({ active: () => shellActive.value && ownsNoticeSurface.value, notify: message => noticeContext.enqueueStatus(message) });
 provide(HATA_GOES_SESSION, createHataGoesPopupSession(shellActive));
 const contentSurface = ref<HTMLElement>();
+const homeScrollEl = ref<HTMLElement>();
 const screenCapsule = ref<HTMLElement>();
 const mobileCapsule = ref<HTMLElement>();
 const mobileDock = ref<HTMLElement>();
@@ -293,6 +293,13 @@ const brandApp = computed<HataApp>(() => location.value.view === 'app' ? locatio
 const logoTapSequence = reactive<Record<HataApp, number>>({ hatagoes: 0, hatask: 0, hatady: 0, hatafeed: 0 });
 
 function tapLogo(app: HataApp): void { logoTapSequence[app]++; }
+
+function openBrandHome() {
+	const app = brandApp.value;
+	tapLogo(app);
+	if (app === 'hatagoes') common('home');
+	else openApp(app);
+}
 
 function screenLabel(screen: HatagoesCatalogEntry): string {
 	const prefix = `${appNames[screen.app]} `;
@@ -867,6 +874,15 @@ const shellStyle = computed(() => {
 
 function onFocus() { if (shellActive.value) void prefs.load(); }
 
+function resetHomeScrollOnEntry() {
+	if (location.value.view !== 'home') return;
+	void nextTick(() => {
+		if (!shellActive.value || location.value.view !== 'home') return;
+		if (homeScrollEl.value) homeScrollEl.value.scrollTop = 0;
+		homeInFeed.value = false;
+	});
+}
+
 function deactivateShell() {
 	shellActive.value = false;
 	introductionCompleted = false;
@@ -893,6 +909,7 @@ function deactivateShell() {
 
 let shellSizeObserver: ResizeObserver | undefined;
 onMounted(() => {
+	resetHomeScrollOnEntry();
 	void prefs.load().finally(() => { introductionPreferencesLoaded = true; maybeOpenIntroduction(); }); window.addEventListener('focus', onFocus);
 	if (typeof ResizeObserver !== 'undefined') {
 		shellSizeObserver = new ResizeObserver(syncShellSize);
@@ -902,7 +919,7 @@ onMounted(() => {
 	void nextTick(syncShellSize);
 	window.addEventListener('resize', syncShellSize);
 });
-onActivated(() => { shellActive.value = true; registerNoticeSurface(); applyLocation(router.getCurrentFullPath()); maybeOpenIntroduction(); });
+onActivated(() => { shellActive.value = true; registerNoticeSurface(); applyLocation(router.getCurrentFullPath()); resetHomeScrollOnEntry(); maybeOpenIntroduction(); });
 onDeactivated(deactivateShell);
 onBeforeUnmount(() => { window.removeEventListener('focus', onFocus); window.removeEventListener('resize', syncShellSize); shellSizeObserver?.disconnect(); window.clearTimeout(noticeGlowTimer); releaseFeedNotice(); releaseNoticeReceiver(); deactivateShell(); });
 applyLocation(router.getCurrentFullPath());
@@ -1121,28 +1138,23 @@ provideMetadataReceiver(() => undefined);
 	.screenNav > .projectButton { flex: none; width: 44px; height: 54px; padding: 0; }
 	.screenNav > .projectButton span, .screenNav > .projectButton i:last-child { display: none; }
 	.mobileDock { position: relative; display: flex; flex-shrink: 0; align-items: stretch; gap: 0; margin: 8px 12px max(10px, env(safe-area-inset-bottom)); transition: margin-top 360ms cubic-bezier(.22,1,.36,1), gap 360ms cubic-bezier(.22,1,.36,1), background-color 360ms ease, border-radius 360ms cubic-bezier(.22,1,.36,1); }
-	.mobileDock[data-home='true'] { gap: 8px; }
 	.mobileDock[data-create-layer='true'] { z-index: 7; }
 	.mobileDock[data-create-expanded='true'] { margin-top: 0; border-radius: 0 0 min(var(--hg-case), 30px) min(var(--hg-case), 30px); }
-	.mobileDock[data-home='true'][data-create-expanded='true'] { gap: 0; padding: 5px; border: 1px solid var(--rule); border-top: 0; background: var(--surface); box-shadow: var(--shadow, 0 12px 32px -24px #0004); }
 	.mobileNav { position: relative; isolation: isolate; display: flex; flex: 1; min-width: 0; align-items: center; justify-content: space-around; gap: 4px; padding: 5px; border: 1px solid var(--rule); border-radius: min(var(--hg-case), 30px); background: var(--surface); box-shadow: var(--shadow, 0 12px 32px -24px #0004); transition: border-radius 360ms cubic-bezier(.22,1,.36,1), border-color 360ms ease; }
 	.mobileNav > .activePill { clip-path: inset(0 round var(--hg-pill-edge-radius)); }
 	.mobileNav { --hg-pill-edge-radius: max(0px, calc(min(var(--hg-case), 30px) - 6px)); }
 	.mobileNav:has(> button:first-of-type[aria-current='page']) > .activePill { border-top-left-radius: var(--hg-pill-edge-radius); border-bottom-left-radius: var(--hg-pill-edge-radius); }
 	.mobileNav:has(> button:last-of-type[aria-current='page']) > .activePill { border-top-right-radius: var(--hg-pill-edge-radius); border-bottom-right-radius: var(--hg-pill-edge-radius); }
 	.mobileDock[data-create-expanded='true'] .mobileNav { border-top-color: transparent; border-radius: 0 0 min(var(--hg-case), 30px) min(var(--hg-case), 30px); }
-	.mobileDock[data-home='true'][data-create-expanded='true'] .mobileNav { --hg-pill-edge-radius: max(0px, calc(min(var(--hg-case), 30px) - 10px)); }
 	.mobileDock[data-create-expanded='true'] .mobileNav:has(> button:first-of-type[aria-current='page']) > .activePill { border-top-left-radius: var(--hg-button); }
 	.mobileDock[data-create-expanded='true'] .mobileNav:has(> button:last-of-type[aria-current='page']) > .activePill { border-top-right-radius: var(--hg-button); }
-	.mobileDock[data-home='true'][data-create-expanded='true'] .mobileNav { border: 0; box-shadow: none; background: transparent; }
 	.mobileNav button { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 8px 2px; min-height: 46px; }
 	.mobileNav i { font-size: 23px; }
 	.mobileNav button span { font-size: 10px; line-height: 1.2; }
 	.mobileNav button[aria-current=page] { color: var(--on-accent, var(--MI_THEME-fgOnAccent)); }
-	.mobileCreate { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 58px; width: 58px; height: 58px; align-self: center; border: 0; border-radius: min(var(--hg-case), 30px); color: var(--on-accent, var(--MI_THEME-fgOnAccent)); background: var(--accent); box-shadow: var(--shadow); cursor: pointer; font-size: 24px; }
+	.mobileCreate { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 48px; width: 48px; height: 48px; align-self: center; border: 0; border-radius: min(var(--hg-case), 30px); color: var(--on-accent, var(--MI_THEME-fgOnAccent)); background: var(--accent); box-shadow: var(--shadow); cursor: pointer; font-size: 24px; }
 	.mobileNav .mobileCreate { flex: 0 0 48px; width: 48px; height: 48px; background: var(--accent); color: var(--on-accent, var(--MI_THEME-fgOnAccent)); }
 	.shell[data-hatask-theme='kashin'] .mobileNav .mobileCreate { background: var(--accent); color: #fff; }
-	.mobileDock[data-home='true'][data-create-expanded='true'] > .mobileCreate { box-shadow: none; }
 	.mobileCreate i { transition: transform 300ms cubic-bezier(.22,1,.36,1); }
 	.homeScroll { scroll-snap-type: y proximity; }
 	.mobileCreate[data-open='true'] i { transform: rotate(45deg); }

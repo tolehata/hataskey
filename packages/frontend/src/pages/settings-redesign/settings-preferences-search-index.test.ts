@@ -100,7 +100,7 @@ describe('redesigned preferences search index', () => {
 		expect(redesignedPreferenceStableIdAliases([generated]).get(generated.stableId)).toBe(stableId);
 		expect(preferenceDestinationForSearchTarget(item!)).toBe('hataskey-ui-s');
 		const catalog = buildSettingsCatalogV2([], merged, undefined, settingsDestinationCatalogItemsV2());
-		for (const query of ['下部ナビバー', '並び替え', 'モバイル', 'ウィジェット', 'simpleUi.bottomNav', 'hataskeyUi3BottomNav']) {
+		for (const query of ['下部ナビバー', '並び替え', 'モバイル', 'ウィジェット', 'HataGoes', 'Hatask', 'Hatady', 'simpleUi.bottomNav', 'hataskeyUi3BottomNav']) {
 			expect(searchSettingsV2(catalog, query).results.some(result => result.stableId === stableId), query).toBe(true);
 		}
 	});

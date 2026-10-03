@@ -27,7 +27,7 @@ import { canonicalSearchIdForPreferenceKey } from './settings-preferences-catalo
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 import { getInitialPrefValue } from '@/preferences/manager.js';
-import { getUiSBottomNavDefaults, normalizeUiSBottomNav, resolveUiSBottomNav, UI_S_BOTTOM_NAV_MAX } from '@/utility/hatasaba-navigation.js';
+import { getUiSBottomNavDefaults, normalizeBottomNavItems, normalizeUiSBottomNav, resolveUiSBottomNav, UI_S_BOTTOM_NAV_MAX } from '@/utility/hatasaba-navigation.js';
 import type { HatasabaNavItem } from '@/utility/hatasaba-navigation.js';
 import { useRouter } from '@/router.js';
 
@@ -47,7 +47,7 @@ function currentItems(): NavItem[] {
 }
 
 function commit(items: NavItem[]): void {
-	prefer.commit('hataskeyUi3BottomNav', items.map(item => ({
+	prefer.commit('hataskeyUi3BottomNav', normalizeBottomNavItems(items).map(item => ({
 		...item,
 		icon: item.icon ?? defaultById.get(item.id)?.icon ?? '',
 		label: item.label ?? defaultById.get(item.id)?.label ?? item.id,
@@ -63,7 +63,7 @@ function isVisibleInUiS(item: HatasabaNavItem): boolean { return item.id === 'ho
 const visibleCount = computed(() => currentItems().filter(isVisibleInUiS).length);
 const labelById: Record<string, string> = {
 	search: labels.navSearch, home: labels.navHome, notifications: labels.navNotifications,
-	hatask: 'Hatask', hatady: labels.navHatady, hatafeed: labels.navHataFeed, widgets: labels.navWidgets,
+	hatagoes: 'HataGoes', hatafeed: labels.navHataFeed, widgets: labels.navWidgets,
 };
 
 function displayLabel(item: HatasabaNavItem): string { return labelById[item.id] ?? item.label ?? item.id; }

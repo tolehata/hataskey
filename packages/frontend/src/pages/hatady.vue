@@ -1329,7 +1329,7 @@ watch(hatadyTheme, theme => { if (props.embedded) emit('appearanceChange', { the
 watch(() => props.paneActive, active => {
 	if (!props.embedded) return;
 	tutorialActive = active;
-	if (!active) { stopTutorial?.(); cancelPageMotion(); } else void loadUnread();
+	if (!active) { stopTutorial?.(); cancelPageMotion(); } else { void loadUnread(); void maybeShowTutorial(); }
 });
 // eslint-disable-next-line vue/no-setup-props-reactivity-loss -- The owner registration is fixed for this mounted pane.
 const unregisterHataGoes = props.embedded ? hataGoesHost?.register('hatady', {

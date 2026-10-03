@@ -178,7 +178,7 @@ describe('HataSideStudio', () => {
 		expect(profile.expanded.nodes.every(node => node.type === 'group')).toBe(true);
 		expect(profile.expanded.nodes.every(node => node.type !== 'group' || node.columns === 2)).toBe(true);
 		expect(profile.expanded.nodes.every(node => node.type !== 'group' || node.foreground === 'var(--MI_THEME-fg)')).toBe(true);
-		expect(profile.collapsed.buttons.map(button => button.menuId)).toEqual(['timeline', 'notifications', 'externalNotifications', 'hatask']);
+		expect(profile.collapsed.buttons.map(button => button.menuId)).toEqual(['timeline', 'notifications', 'externalNotifications', 'hatagoes']);
 		expect(profile.collapsed.buttons.every(button => button.showLabel === false && button.rotation === 0)).toBe(true);
 		expect(profile.collapsed.buttons.every(button => button.border === 'var(--MI_THEME-divider)')).toBe(true);
 		expect(profile.collapsed.buttons.every(button => button.borderVisible === false)).toBe(true);
@@ -395,9 +395,85 @@ describe('HataSideStudio', () => {
 		];
 		const profile = createDefaultProfile(interleaved);
 		const expanded = profile.expanded.nodes.flatMap(node => node.type === 'group' ? node.children.map(child => child.type === 'button' ? child.menuId : '') : []);
-		expect(expanded).toEqual(['timeline', 'hatask', 'notifications', 'externalNotifications']);
+		expect(expanded).toEqual(['timeline', 'hatagoes', 'notifications', 'externalNotifications']);
 		expect(profile.collapsed.buttons.map(button => button.menuId)).toEqual(expanded);
 		expect(profile.expanded.nodes).toHaveLength(3);
+	});
+
+	test('全プロファイルの拡大・縮小で既存HataGoesを優先し、位置と装飾を保持する', () => {
+		const old = (menuId: string, id: string): HataSideButton => ({ ...createButton(source[0]), id, menuId, icon: 'ti ti-eye', label: '旧ラベル', targetId: 'abc123', background: '#123456' });
+		const first = createDefaultProfile(source, '既存あり');
+		const group = createGroup('隠したグループ');
+		group.showName = false;
+		group.background = '#101820';
+		group.children = [old('hatafeed', 'old-in-group'), createWidget('clock')];
+		const kept = { ...createButton({ id: 'hatagoes', icon: 'ti ti-heart', label: '私の入口' }), id: 'chosen', background: '#abcdef', label: '私の入口' };
+		first.expanded.nodes = [old('hatask', 'old-root'), group, kept, old('hatady', 'old-last'), { ...kept, id: 'duplicate' }];
+		first.collapsed.buttons = [old('hatady', 'collapsed-old'), { ...kept, id: 'collapsed-chosen' }, old('hatask', 'collapsed-last'), { ...kept, id: 'collapsed-duplicate' }];
+		const second = createDefaultProfile(source, '旧のみ');
+		const empty = createGroup('空のグループ');
+		const legacy = old('hatafeed', 'first-old');
+		second.expanded.nodes = [empty, legacy, old('hatask', 'second-old')];
+		second.collapsed.buttons = [old('hatask', 'collapsed-first'), old('hatady', 'collapsed-second')];
+		const absent = createDefaultProfile(source, '対象なし');
+		absent.expanded.nodes = [createWidget('clock')];
+		absent.collapsed.buttons = [];
+		const store = sanitizeHataSideStudioStore({ version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: first.id, profiles: [first, second, absent] });
+		const [a, b, c] = store.profiles;
+		expect(a.expanded.nodes.filter(node => node.type !== 'button' || node.menuId !== 'externalNotifications').map(node => node.id)).toEqual([group.id, 'chosen']);
+		const retainedGroup = a.expanded.nodes.find(node => node.id === group.id);
+		expect(retainedGroup).toMatchObject({ showName: false, background: '#101820' });
+		expect(retainedGroup?.type === 'group' && retainedGroup.children.map(child => child.type)).toEqual(['widget']);
+		expect(a.expanded.nodes.find(node => node.id === 'chosen')).toMatchObject({ ...kept, id: 'chosen' });
+		expect(a.collapsed.buttons.filter(button => button.menuId !== 'externalNotifications').map(button => button.id)).toEqual(['collapsed-chosen']);
+		expect(a.collapsed.buttons.find(button => button.id === 'collapsed-chosen')).toMatchObject({ icon: 'ti ti-heart', label: '私の入口', background: '#abcdef' });
+		expect(b.expanded.nodes.filter(node => node.type !== 'button' || node.menuId !== 'externalNotifications').map(node => node.id)).toEqual([empty.id, 'first-old']);
+		expect(b.expanded.nodes.find(node => node.id === empty.id)).toMatchObject({ type: 'group', children: [] });
+		const converted = b.expanded.nodes.find(node => node.id === 'first-old');
+		expect(converted).toMatchObject({ menuId: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes', background: '#123456' });
+		expect(converted).not.toHaveProperty('targetId');
+		expect(b.collapsed.buttons.filter(button => button.menuId !== 'externalNotifications').map(button => button.id)).toEqual(['collapsed-first']);
+		const convertedCollapsed = b.collapsed.buttons.find(button => button.id === 'collapsed-first');
+		expect(convertedCollapsed).toMatchObject({ menuId: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes' });
+		expect(convertedCollapsed).not.toHaveProperty('targetId');
+		expect(c.expanded.nodes.map(node => node.type)).toEqual(['button', 'widget']);
+		expect(c.expanded.nodes.some(node => node.type === 'button' && node.menuId === 'hatagoes')).toBe(false);
+		expect(c.collapsed.buttons.map(button => button.menuId)).toEqual(['externalNotifications']);
+		expect(sanitizeHataSideStudioStore(store)).toEqual(store);
+	});
+
+	test('旧3項目はcatalogに現れず、既存HataGoesの候補・装飾を優先する', () => {
+		const catalog = createHataSideStudioSourceCatalog([
+			{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', group: 'hata', external: true, url: 'https://example.com' },
+			{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', group: 'hata' },
+			{ id: 'hatagoes', icon: 'ti ti-heart', label: '私の入口', group: 'custom', visible: false },
+			{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', group: 'hata' },
+		]);
+		expect(catalog.sidebar.map(item => item.id)).toEqual(['hatagoes']);
+		expect(catalog.sidebar[0]).toMatchObject({ icon: 'ti ti-heart', label: '私の入口', group: 'custom', visible: false });
+		const oldOnly = createHataSideStudioSourceCatalog([], [{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', external: true, url: 'https://example.com' }]);
+		expect(oldOnly.more).toEqual([{ id: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes', group: 'more' }]);
+		expect(createButton({ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask' })).toMatchObject({ menuId: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes' });
+	});
+
+	test('読み込み・保存・別ウィンドウ同期で旧メニューが再流入しても統合する', () => {
+		const values = new Map<string, string>();
+		storage.getItem.mockImplementation(key => values.get(key) ?? null);
+		storage.setItem.mockImplementation((key, value) => { values.set(key, value); });
+		const key = getHataSideStudioStorageKey();
+		const profile = createDefaultProfile(source);
+		const old = { ...createButton(source[0]), id: 'legacy-again', menuId: 'hatask', icon: 'ti ti-eye', label: 'Hatask' };
+		profile.expanded.nodes = [old];
+		profile.collapsed.buttons = [{ ...old }];
+		const raw: HataSideStudioStore = { version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: profile.id, profiles: [profile] };
+		values.set(key, JSON.stringify(raw));
+		ensureHataSideStudioInitialized(source);
+		expect(JSON.parse(values.get(key)!).profiles[0].expanded.nodes.some((node: HataSideButton) => node.menuId === 'hatagoes')).toBe(true);
+		applyHataSideStudioStore(raw);
+		expect(JSON.parse(values.get(key)!).profiles[0].collapsed.buttons.map((button: HataSideButton) => button.menuId)).toEqual(['externalNotifications', 'hatagoes']);
+		window.dispatchEvent(new StorageEvent('storage', { key, newValue: JSON.stringify(raw) }));
+		expect(hataSideStudioStore.value.profiles[0].expanded.nodes.some(node => node.type === 'button' && node.menuId === 'hatagoes')).toBe(true);
+		expect(hataSideStudioStore.value.profiles[0].expanded.nodes.some(node => node.type === 'button' && node.menuId === 'hatask')).toBe(false);
 	});
 
 	test('ワイド幅を保持し、複数列へ持ち込まれた大サイズを安全な標準へ補正する', () => {
@@ -443,7 +519,7 @@ describe('HataSideStudio', () => {
 		const profile = createDefaultProfile(source);
 		profile.expanded.nodes.push(createWidget('flowers'));
 		const copied = copyExpandedToCollapsed(profile);
-		expect(copied.collapsed.buttons.map(button => button.menuId)).toEqual(['timeline', 'notifications', 'externalNotifications', 'hatask']);
+		expect(copied.collapsed.buttons.map(button => button.menuId)).toEqual(['timeline', 'notifications', 'externalNotifications', 'hatagoes']);
 		expect(copied.collapsed.buttons.every(button => button.type === 'button')).toBe(true);
 		expect(copied.collapsed.buttons.every(button => button.borderVisible === false)).toBe(true);
 	});
@@ -645,7 +721,7 @@ describe('HataSideStudio', () => {
 			const laterLegacy = createDefaultProfile(source, '別タブで後から編集');
 			values.set('hataSideStudio', JSON.stringify({ version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: laterLegacy.id, profiles: [laterLegacy] }));
 			uiS.ensureHataSideStudioInitialized(source);
-			expect(uiS.getActiveHataSideStudioMenuIds().has('hatask')).toBe(true);
+			expect(uiS.getActiveHataSideStudioMenuIds().has('hatagoes')).toBe(true);
 			expect(uiS.hataSideStudioStore.value.profiles[0].name).not.toBe('別タブで後から編集');
 			expect(JSON.parse(values.get(HATA_SIDE_STUDIO_UI_S_STORAGE_KEY)!).profiles[0].expanded.nodes.length).toBeGreaterThan(0);
 			values.set('ui', 'simple');

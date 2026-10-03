@@ -372,7 +372,12 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		console.warn('[hataskey-sound-migration] 設定の取得・保存に失敗したため、次回起動時に再試行します');
 	});
 	const { migrateRetiredPortalMenu } = await import('@/utility/retired-portal-migration.js');
+	const { migrateHatagoesBottomNav } = await import('@/utility/hatagoes-bottom-nav-migration.js');
+	void migrateHatagoesBottomNav(prefer).catch(() => {
+		console.warn('[hatagoes-bottom-nav-migration] 設定の取得・保存に失敗したため、次回起動時に再試行します');
+	});
 	const { migrateExternalNotificationsSidebar } = await import('@/utility/external-notifications-sidebar-migration.js');
+	const { migrateHatagoesSidebar } = await import('@/utility/hatagoes-sidebar-migration.js');
 	const repairExternalNotificationsSidebar = async () => {
 		try {
 			await migrateExternalNotificationsSidebar(prefer, miLocalStorage, $i?.id ?? 'guest');
@@ -380,20 +385,23 @@ export async function common(createVue: () => Promise<App<Element>>) {
 			console.warn('[external-notifications-sidebar-migration] 設定の取得・保存に失敗したため、次回同期時に再試行します');
 		}
 	};
-	void (async () => {
+	const repairHatagoesSidebar = async () => {
 		try {
-			await migrateRetiredPortalMenu(prefer, miLocalStorage, $i?.id ?? 'guest');
+			await migrateHatagoesSidebar(prefer);
 		} catch {
-			console.warn('[portal-migration] 設定の取得・保存に失敗したため、次回起動時に再試行します');
+			console.warn('[hatagoes-sidebar-migration] 設定の取得・保存に失敗したため、次回同期時に再試行します');
 		}
-		await repairExternalNotificationsSidebar();
-
-		// 別タブやクラウド同期から旧配列が再読込されても、保存位置を並び替え可能な通常項目として保つ。
-		let pendingRepair = Promise.resolve();
-		watch(prefer.r['simpleUi.sidebar'], () => {
-			pendingRepair = pendingRepair.then(repairExternalNotificationsSidebar);
-		}, { deep: true });
-	})();
+	};
+	// 保存操作を直列化し、初回修復の進行中に届いた同期更新も取りこぼさない。
+	let pendingSidebarRepair = migrateRetiredPortalMenu(prefer, miLocalStorage, $i?.id ?? 'guest')
+		.catch(() => {
+			console.warn('[portal-migration] 設定の取得・保存に失敗したため、次回起動時に再試行します');
+		})
+		.then(repairExternalNotificationsSidebar)
+		.then(repairHatagoesSidebar);
+	watch([prefer.r.menu, prefer.r['simpleUi.sidebar']], () => {
+		pendingSidebarRepair = pendingSidebarRepair.then(repairExternalNotificationsSidebar).then(repairHatagoesSidebar);
+	}, { deep: true });
 
 	if (instance.swPublickey && ('PushManager' in window) && $i && $i.token && showPushNotificationDialog == null) {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkPushNotification.vue')), {}, {

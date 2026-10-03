@@ -72,7 +72,7 @@ function uiSBottomNavSearchItem(): SettingsControlCatalogItemV2 {
 		route: PREFERENCES_ROUTE,
 		label: copy.title,
 		description: copy.caption,
-		aliases: ['下部ナビバー', '並び替え', 'モバイル', 'ウィジェット', 'bottom navigation', 'reorder', 'mobile', 'widgets', '底部导航栏', '调整顺序', '移动端', '小组件', 'simpleUi.bottomNav', 'hataskeyUi3BottomNav', 'Hataskey UI S'],
+		aliases: ['下部ナビバー', '並び替え', 'モバイル', 'ウィジェット', 'HataGoes', 'Hatask', 'Hatady', 'bottom navigation', 'reorder', 'mobile', 'widgets', '底部导航栏', '调整顺序', '移动端', '小组件', 'simpleUi.bottomNav', 'hataskeyUi3BottomNav', 'Hataskey UI S'],
 		preferenceKeys: ['hataskeyUi3BottomNav'],
 		legacyMarkerAncestorIds: [],
 		semanticGroupId: 'settings.group.hataskey-ui-s.bottom-nav',

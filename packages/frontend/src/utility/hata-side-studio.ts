@@ -10,6 +10,7 @@
 import { ref } from 'vue';
 import { i18n } from '@/i18n.js';
 import { miLocalStorage } from '@/local-storage.js';
+import { normalizeHatagoesSidebar, RETIRED_HATA_SIDEBAR_IDS } from '@/utility/hatagoes-sidebar.js';
 import {
 	HATA_SIDE_WIDGET_REGISTRY,
 	HATA_SIDE_WIDGET_SIZES,
@@ -205,6 +206,7 @@ const HATA_SIDE_STUDIO_MENU_STORAGE_LABELS: Readonly<Record<string, string>> = {
 	hatask: 'Hatask',
 	hatafeed: 'HataFeed',
 	hatady: 'Hatady',
+	hatagoes: 'HataGoes',
 	earthquake: '地震・津波情報',
 	uiSetup: 'UI切り替え',
 	explore: 'みつける',
@@ -223,9 +225,7 @@ const fallbackSidebar: SidebarSourceItem[] = [
 	{ id: 'announcements', icon: 'ti ti-speakerphone', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.announcements, group: 'basic' },
 	{ id: 'drive', icon: 'ti ti-cloud', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.drive, group: 'basic' },
 	{ id: 'favorites', icon: 'ti ti-star', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.favorites, group: 'basic' },
-	{ id: 'hatask', icon: 'ti ti-eye', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.hatask, group: 'hata' },
-	{ id: 'hatafeed', icon: 'ti ti-message-report', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.hatafeed, group: 'hata' },
-	{ id: 'hatady', icon: 'ti ti-book-2', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.hatady, group: 'hata' },
+	{ id: 'hatagoes', icon: 'ti ti-sparkles', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.hatagoes, group: 'hata' },
 	{ id: 'earthquake', icon: 'ti ti-activity', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.earthquake, group: 'hata' },
 	{ id: 'uiSetup', icon: 'ti ti-wand', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.uiSetup, group: 'discover' },
 	{ id: 'explore', icon: 'ti ti-hash', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.explore, group: 'discover' },
@@ -337,12 +337,13 @@ export function createDefaultPostButtonAppearance(): HataSidePostButtonAppearanc
 }
 
 export function createButton(source: SidebarSourceItem, appearance?: Partial<HataSideAppearance & Pick<HataSideButton, 'borderVisible'>>): HataSideButton {
-	const menuId = normalizeHataSideStudioMenuId(source.id);
+	const sourceId = normalizeHataSideStudioMenuId(source.id);
+	const menuId = RETIRED_HATA_SIDEBAR_IDS.has(sourceId) ? 'hatagoes' : sourceId;
 	return {
 		type: 'button',
 		id: uid('button'),
 		menuId,
-		icon: source.icon,
+		icon: menuId === 'hatagoes' && sourceId !== menuId ? 'ti ti-sparkles' : source.icon,
 		// 既知IDはlocale表示名ではなく互換用の固定名を保存する。
 		label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS[menuId] ?? source.label,
 		...createDefaultAppearance(),
@@ -437,7 +438,7 @@ function sanitizeSourceList(source: readonly unknown[], forcedGroup?: string): S
 		seen.add(item.id);
 		result.push(item);
 	}
-	return result;
+	return normalizeHatagoesSidebar(result);
 }
 
 export function createHataSideStudioSourceCatalog(
@@ -732,6 +733,36 @@ function ensureExternalNotificationsCollapsed(buttons: HataSideButton[]): HataSi
 	return deduplicated;
 }
 
+/** 拡大メニューはルートとグループの子を表示順に1つの並びとして統合する。 */
+function normalizeHatagoesButtons<T extends HataSideButton | HataSideWidget>(items: T[], keep: HataSideButton | undefined): T[] {
+	return items.flatMap(item => {
+		if (item.type !== 'button' || (item.menuId !== 'hatagoes' && !RETIRED_HATA_SIDEBAR_IDS.has(item.menuId))) return [item];
+		if (item !== keep) return [];
+		if (item.menuId === 'hatagoes') return [item];
+		const { targetId: _targetId, ...button } = item;
+		return [{ ...button, menuId: 'hatagoes', icon: 'ti ti-sparkles', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.hatagoes } as T];
+	});
+}
+
+function preferredHatagoesButton(buttons: HataSideButton[]): HataSideButton | undefined {
+	return buttons.find(button => button.menuId === 'hatagoes')
+		?? buttons.find(button => RETIRED_HATA_SIDEBAR_IDS.has(button.menuId));
+}
+
+function normalizeHatagoesExpanded(nodes: HataSideNode[]): HataSideNode[] {
+	const buttons = nodes.flatMap(node => node.type === 'button' ? [node] : node.type === 'group' ? node.children.filter((child): child is HataSideButton => child.type === 'button') : []);
+	const keep = preferredHatagoesButton(buttons);
+	return nodes.flatMap<HataSideNode>(node => {
+		if (node.type !== 'group') return normalizeHatagoesButtons([node], keep);
+		const children = normalizeHatagoesButtons(node.children, keep);
+		return [children.length === node.children.length && children.every((child, index) => child === node.children[index]) ? node : { ...node, children }];
+	});
+}
+
+function normalizeHatagoesCollapsed(buttons: HataSideButton[]): HataSideButton[] {
+	return normalizeHatagoesButtons(buttons, preferredHatagoesButton(buttons));
+}
+
 export function sanitizeHataSideStudioStore(value: unknown, source: readonly SidebarSourceItem[] = fallbackSidebar): HataSideStudioStore {
 	if (!isRecord(value) || !Array.isArray(value.profiles)) return createDefaultStore(source);
 	const storedVersion = Number(value.version);
@@ -744,11 +775,11 @@ export function sanitizeHataSideStudioStore(value: unknown, source: readonly Sid
 		const expandedRaw = isRecord(raw.expanded) ? raw.expanded : {};
 		const collapsedRaw = isRecord(raw.collapsed) ? raw.collapsed : {};
 		const columns = expandedRaw.columns === 2 || expandedRaw.columns === 3 ? expandedRaw.columns : 1;
-		const nodes = ensureExternalNotificationsExpanded((Array.isArray(expandedRaw.nodes) ? expandedRaw.nodes.map(node => isRecord(node) && node.type === 'group' ? sanitizeGroup(node, refreshLayoutDefaults) : isRecord(node) && node.type === 'widget' ? sanitizeWidget(node, refreshLayoutDefaults) : sanitizeButton(node)).filter((node): node is HataSideNode => node != null) : [])
-			.map(node => columns > 1 && node.type !== 'group' && node.size === 'large' ? { ...node, size: 'normal' as const } : node));
-		const buttons = ensureExternalNotificationsCollapsed(Array.isArray(collapsedRaw.buttons) ? collapsedRaw.buttons
+		const nodes = normalizeHatagoesExpanded(ensureExternalNotificationsExpanded((Array.isArray(expandedRaw.nodes) ? expandedRaw.nodes.map(node => isRecord(node) && node.type === 'group' ? sanitizeGroup(node, refreshLayoutDefaults) : isRecord(node) && node.type === 'widget' ? sanitizeWidget(node, refreshLayoutDefaults) : sanitizeButton(node)).filter((node): node is HataSideNode => node != null) : [])
+			.map(node => columns > 1 && node.type !== 'group' && node.size === 'large' ? { ...node, size: 'normal' as const } : node)));
+		const buttons = normalizeHatagoesCollapsed(ensureExternalNotificationsCollapsed(Array.isArray(collapsedRaw.buttons) ? collapsedRaw.buttons
 			.map(button => sanitizeButton(button, true))
-			.filter((button): button is HataSideButton => button != null) : []);
+			.filter((button): button is HataSideButton => button != null) : []));
 		profiles.push({
 			id: typeof raw.id === 'string' ? raw.id : uid('profile'), name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.profileFallback,
 			postButton: sanitizePostButtonAppearance(raw.postButton),

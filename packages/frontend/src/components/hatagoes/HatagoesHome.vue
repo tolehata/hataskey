@@ -50,7 +50,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template v-else-if="card.id === 'flower'">
 					<button type="button" class="hgh-tile-body" @click="emit('navigate', paths.flower)"><span class="hgh-tile-icon" :style="{ '--flower-progress': `${state.flower.data.flower?.progress ?? 0}%` }" aria-hidden="true"><span class="hgh-tile-icon-inner"><HataskEmoji :emoji="state.flower.data.flower?.emoji ?? '✿'"/></span></span><strong>{{ state.flower.data.flower?.name ?? 'おはな' }}</strong><small v-if="state.flower.data.flower">成長 {{ state.flower.data.flower.progress }}% · 花しずく {{ state.flower.data.flower.drops }}個</small><small v-else>花の情報はありません。</small><span class="hgh-sr-only">を開く</span></button>
 					<button v-if="state.flower.data.flower?.canWater || waterDone" type="button" class="hgh-water-action" :disabled="!canHomeWater" @click="requestWater"><i class="ti ti-droplet" aria-hidden="true"></i> {{ waterDone ? 'きょうは水やり済み' : '水をあげる' }} <i v-if="!waterDone" class="ti ti-arrow-right" aria-hidden="true"></i></button>
-					<small v-if="state.flower.data.flower?.canWater && state.flower.data.flower.pourMinutes != null" class="hgh-water-explain">1回で花しずく1個を使い、{{ state.flower.data.flower.pourMinutes }}分育ちます</small>
+					<small v-if="state.flower.data.flower?.canWater && state.flower.data.flower.pourMinutes != null" class="hgh-water-explain">1回で花しずく1個を使い、{{ formatPourHours(state.flower.data.flower.pourMinutes) }}時間育ちます</small>
 					<small v-if="state.flower.data.flower" class="hgh-harvested">咲いたおはな <b>{{ state.flower.data.flower.harvestedCount }}</b> 本</small>
 				</template>
 				<template v-else-if="card.id === 'mood'">
@@ -127,6 +127,11 @@ const creation: Partial<Record<HatagoesHomeCardId, { app: 'hatask' | 'hatady' | 
 const icons: Record<HatagoesHomeCardId, string> = { schedule: 'ti ti-calendar-event', todo: 'ti ti-checkbox', flower: 'ti ti-flower', mood: 'ti ti-mood-smile', meal: 'ti ti-soup', reading: 'ti ti-book-2', issues: 'ti ti-message-report', community: 'ti ti-users', roadmap: 'ti ti-route' };
 const cardBrand: Partial<Record<HatagoesHomeCardId, HataApp>> = { schedule: 'hatask', flower: 'hatask', meal: 'hatask', reading: 'hatady', issues: 'hatafeed', community: 'hatady', roadmap: 'hatafeed' };
 const priorityLabel = { high: '高', medium: '中', low: '低', none: '' };
+
+const pourHoursFormatter = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 });
+
+function formatPourHours(minutes: number): string { return pourHoursFormatter.format(minutes / 60); }
+
 const issueSteps = [{ id: 'open', label: '受付' }, { id: 'planned', label: '確認' }, { id: 'inProgress', label: '対応中' }, { id: 'resolved', label: '完了' }] as const;
 const now = ref(new Date());
 const rootEl = ref<HTMLElement | null>(null);

@@ -263,6 +263,10 @@ describe('HataGoes common create', () => {
 		(target.querySelector('[data-action="feed"]') as HTMLButtonElement).click();
 		await settle();
 		expect(header.querySelector('small')?.textContent).toBe('みんなのきょう');
+		const homeScrolls = fixture.homeScrolls;
+		(header.querySelector('button[class*=brand]') as HTMLButtonElement).click();
+		expect(router().getCurrentFullPath()).toBe('/hatagoes');
+		expect(fixture.homeScrolls).toBe(homeScrolls + 1);
 	});
 
 	test('app tabs always open their Home while explicit screen routes remain available', async () => {
@@ -306,8 +310,8 @@ describe('HataGoes common create', () => {
 		expect(target.querySelector('[data-hatagoes-mobile-create] form[data-meal-slot="lunch"]')).not.toBeNull();
 		const mobileNav = target.querySelector('nav[aria-label="モバイルアプリ"]')!;
 		for (const app of ['ホーム', 'Hatask', 'Hatady', 'HataFeed']) expect(mobileNav.textContent).toContain(app);
-		expect(mobileNav.querySelector('button[aria-label="作成を閉じる"]')).toBeNull();
-		expect(mobileNav.parentElement?.querySelector(':scope > button[aria-label="作成を閉じる"]')).not.toBeNull();
+		expect(mobileNav.querySelector('button[aria-label="作成を閉じる"]')).not.toBeNull();
+		expect(mobileNav.parentElement?.querySelector(':scope > button[aria-label="作成を閉じる"]')).toBeNull();
 		(target.querySelector('nav[aria-label="モバイルアプリ"] button[aria-label="HataGoesホーム"]') as HTMLButtonElement).click();
 		expect(fixture.homeScrolls).toBe(1);
 		(target.querySelector('[data-action="feed"]') as HTMLButtonElement).click();
@@ -316,10 +320,18 @@ describe('HataGoes common create', () => {
 		expect(fixture.homeScrolls).toBe(2);
 	});
 
-	test('keeps the plus button inside the app capsule outside Home', async () => {
-		const target = await mount(hatagoesUrl('/hatask?tab=todo'));
+	test('keeps one plus button in the third mobile tab on Home and app screens', async () => {
+		const target = await mount('/hatagoes');
 		const nav = target.querySelector('nav[aria-label="モバイルアプリ"]')!;
-		expect(nav.querySelector('button[aria-label="作成"]')).not.toBeNull();
+		const labels = () => [...nav.querySelectorAll(':scope > button')].map(item => item.getAttribute('aria-label'));
+		expect(labels()).toEqual(['HataGoesホーム', 'Hatask', '作成', 'Hatady', 'HataFeed']);
+		const plus = nav.querySelector<HTMLButtonElement>('button[aria-label="作成"]')!;
+		(nav.querySelector('button[aria-label="Hatask"]') as HTMLButtonElement).click(); await settle();
+		expect(router().getCurrentFullPath()).toBe(hatagoesUrl('/hatask'));
+		expect(nav.querySelector('button[aria-label="作成"]')).toBe(plus);
+		expect(labels()).toEqual(['HataGoesホーム', 'Hatask', '作成', 'Hatady', 'HataFeed']);
+		(nav.querySelector('button[aria-label="HataGoesホーム"]') as HTMLButtonElement).click(); await settle();
+		expect(nav.querySelector('button[aria-label="作成"]')).toBe(plus);
 		expect(nav.parentElement?.querySelector(':scope > button[aria-label="作成"]')).toBeNull();
 	});
 	test('opens both other apps on mobile Home and resets their disclosure state on reopening', async () => {
@@ -340,6 +352,8 @@ describe('HataGoes common create', () => {
 		const target = await mount('/hatagoes');
 		const nav = target.querySelector<HTMLElement>('nav[aria-label="モバイルアプリ"]')!.parentElement!;
 		const plus = nav.querySelector<HTMLButtonElement>('button[aria-label="作成"]')!;
+		expect(plus.parentElement).toBe(nav.querySelector('nav[aria-label="モバイルアプリ"]'));
+		expect(plus).toBe(nav.querySelector('nav[aria-label="モバイルアプリ"]')?.querySelectorAll(':scope > button')[2]);
 		plus.click();
 		await settle();
 		const panel = target.querySelector<HTMLElement>('[data-hatagoes-mobile-create]');
@@ -643,7 +657,22 @@ describe('HataGoes common create', () => {
 		expect(target.querySelector('header button[class*=brand]')?.textContent).toBe('Hatady');
 		expect(screens.querySelector('button[aria-current="page"]')?.textContent).toBe('コレクション');
 		(target.querySelector('header button[class*=brand]') as HTMLButtonElement).click();
-		await vi.waitFor(() => expect(target.querySelector('header button[class*=brand]')?.textContent).toBe('HataGoes'));
+		await settle();
+		expect(router().getCurrentFullPath()).toBe(hatagoesUrl('/hatady'));
+		expect(target.querySelector('header button[class*=brand]')?.textContent).toBe('Hatady');
+	});
+
+	test.each([
+	[hatagoesUrl('/hatask?tab=todo'), 'Hatask', hatagoesUrl('/hatask')],
+	[hatagoesUrl('/hatafeed?tab=issues'), 'HataFeed', hatagoesUrl('/hatafeed')],
+	['/hatagoes?view=settings', 'HataGoes', '/hatagoes'],
+])('header brand returns from %s to its owning Home', async (path, label, home) => {
+		const target = await mount(path);
+		const brand = target.querySelector<HTMLButtonElement>('header button[class*=brand]')!;
+		expect(brand.getAttribute('aria-label')).toBe(label);
+		brand.click();
+		await settle();
+		expect(router().getCurrentFullPath()).toBe(home);
 	});
 
 	test('shows only five saved Hatask screens and a temporary current screen', async () => {
@@ -741,6 +770,31 @@ describe('HataGoes common create', () => {
 		expect(window.document.body.querySelector('[aria-labelledby="hatagoes-screens-heading"]')).not.toBeNull();
 	});
 
+	test('resets Home scroll on KeepAlive return but preserves it across tabs in one session', async () => {
+		fixture.initialPath = '/hatagoes';
+		const active = ref(true);
+		const target = window.document.createElement('div');
+		window.document.body.append(target);
+		const app = createApp({ setup: () => () => h(KeepAlive, null, { default: () => active.value ? h(Hatagoes) : null }) });
+		app.mount(target);
+		cleanup = () => { app.unmount(); target.remove(); };
+		await settle();
+		const homeScroll = target.querySelector<HTMLElement>('[data-hatagoes-home-scroll]')!;
+		homeScroll.scrollTop = 180;
+		(target.querySelector('nav[aria-label="モバイルアプリ"] button[aria-label="Hatask"]') as HTMLButtonElement).click();
+		await settle();
+		expect(homeScroll.scrollTop).toBe(180);
+		(target.querySelector('nav[aria-label="モバイルアプリ"] button[aria-label="HataGoesホーム"]') as HTMLButtonElement).click();
+		await settle();
+		expect(homeScroll.scrollTop).toBe(180);
+		active.value = false;
+		await settle();
+		active.value = true;
+		await settle();
+		expect(target.querySelector('[data-hatagoes-home-scroll]')).toBe(homeScroll);
+		expect(homeScroll.scrollTop).toBe(0);
+	});
+
 	test('app switching preserves its session popup until shell exit', async () => {
 		const target = await mount(hatagoesUrl('/hatask?tab=todo'));
 		expect(fixture.closePopup).not.toBeNull();
@@ -785,7 +839,8 @@ describe('HataGoes common create', () => {
 		expect(target.querySelector('[data-home-active]')?.getAttribute('data-home-active')).toBe('false');
 		(target.querySelector('header button[class*=brand]') as HTMLButtonElement).click();
 		await settle();
-		expect(target.querySelector('[data-home-active]')?.getAttribute('data-home-active')).toBe('true');
+		expect(router().getCurrentFullPath()).toBe(hatagoesUrl('/hatask'));
+		expect(target.querySelector('[data-home-active]')?.getAttribute('data-home-active')).toBe('false');
 	});
 
 	test('opens mood and meal pages from the common button without quick capture', async () => {

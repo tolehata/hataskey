@@ -139,9 +139,10 @@ describe('HataGoes Home', () => {
 
 	test('shows the next event once and keeps the compact flower tile navigable', async () => {
 		loaders.planner.mockResolvedValue({ schedule: { rows: [{ id: 'e1', title: '図書館へ', path: '/event/e1', detail: '今日 · 16:30' }], nextEvent: { id: 'e1', title: '図書館へ', path: '/event/e1', date: '2026-10-02', timeStart: '16:30', allDay: false } }, todo: { rows: [] } });
-		loaders.flower.mockResolvedValue({ rows: [], flower: { emoji: '🌼', name: '花', progress: 72, drops: 2, canWater: true } });
+		loaders.flower.mockResolvedValue({ rows: [], flower: { emoji: '🌼', name: '花', progress: 72, drops: 2, canWater: true, pourMinutes: 120 } });
 		const view = mount([{ id: 'schedule', hidden: false }, { id: 'flower', hidden: false }]);
 		await settle();
+		expect(view.target.textContent).toContain('1回で花しずく1個を使い、2時間育ちます');
 		expect(view.target.textContent?.match(/図書館へ/g)).toHaveLength(1);
 		expect(view.target.textContent).not.toContain('今後30日の予定はありません');
 		(view.target.querySelector('.hgh-card-flower .hgh-tile-body') as HTMLButtonElement).click();
@@ -183,7 +184,7 @@ describe('HataGoes Home', () => {
 		await settle();
 		const button = view.target.querySelector('.hgh-water-action') as HTMLButtonElement;
 		expect(button.disabled).toBe(false);
-		expect(view.target.textContent).toContain('1回で花しずく1個を使い、30分育ちます');
+		expect(view.target.textContent).toContain('1回で花しずく1個を使い、0.5時間育ちます');
 		button.click();
 		view.home.value?.markWatered('2026-10-03');
 		await settle();

@@ -44,7 +44,6 @@ vi.mock('@/utility/hatasaba-device-prefs.js', () => ({
 	setGlassUiLocal: fixture.setGlassUiLocal, setGlassUiBubbleLocal: fixture.setGlassUiBubbleLocal, setDeckIgnoreWidth: fixture.setDeckIgnoreWidth, setTabSwipeEnabled: fixture.setTabSwipeEnabled,
 }));
 vi.mock('@/local-storage.js', () => ({ miLocalStorage: { getItem: () => 'simple' } }));
-vi.mock('@/utility/hatasaba-navigation.js', () => ({ HATASABA_BOTTOM_NAV_MAX: 4, mergeMissingNavItems: <T>(saved: T[]) => saved }));
 vi.mock('@/os.js', () => ({ confirm: fixture.confirm, toast: fixture.toast, alert: fixture.alert, popup: fixture.popup }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatasabaUi: { _editWindow: fixture.copy } } }, tsx: { _hata: { _hatasabaUi: { _editWindow: {
 	bottomNavReorderHint: ({ max }: { max: number }) => `${max}`, maxVisibleItems: ({ max }: { max: number }) => `${max}`, tryAgainWithDetails: ({ details }: { details: string }) => details,
@@ -79,6 +78,28 @@ afterEach(() => {
 });
 
 describe('useHatasabaUi2Draft', () => {
+	test('normalizes restored bottom navigation before merging and saving the draft', () => {
+		vi.useFakeTimers();
+		const original = fixture.prefer.s['simpleUi.bottomNav'];
+		fixture.prefer.s['simpleUi.bottomNav'] = [
+			{ id: 'hatask', visible: true }, { id: 'hatady', visible: true }, { id: 'search', visible: true },
+		];
+		try {
+			const { editor, unmount } = mountEditor();
+			expect(editor.draft.editedBottomNav.map(item => item.id)).toEqual(['hatagoes', 'search']);
+			expect(editor.navDisplayLabel(editor.draft.editedBottomNav[0]!)).toBe('HataGoes');
+			editor.draft.editedBottomNav[0]!.visible = false;
+			expect(editor.save()).toBe(true);
+			const saved = fixture.commits.find(([key]) => key === 'simpleUi.bottomNav')?.[1] as { id: string }[];
+			expect(saved.map(item => item.id)).toEqual(['hatagoes', 'search']);
+			unmount();
+		} finally {
+			fixture.prefer.s['simpleUi.bottomNav'] = original;
+			vi.clearAllTimers();
+			vi.useRealTimers();
+		}
+	});
+
 	test('saves the Hatady tab visibility with the other basic settings', () => {
 		vi.useFakeTimers();
 		const { editor, unmount } = mountEditor();
