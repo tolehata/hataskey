@@ -4,6 +4,12 @@ Copyright © hatacha and hataskey-project
 
 And is distributed under The GNU Affero General Public License Version 3, you should have received a copy of the license file as LICENSE.
 
+The original icon and logo shapes and original motion and animation for
+HataFeed, Hatask, Hatady, and HataGoes, including their SVG, CSS, and JavaScript
+implementations, are distributed under AGPL-3.0-only. Fonts and other
+third-party components retain their respective licenses; see
+packages/frontend/assets/CREDITS.md and packages/frontend/assets/fonts/NOTICE.md.
+
 The audio files and accompanying documentation in
 packages/frontend/assets/sounds/hataskey-sound/ are exceptions to the above:
 Copyright (c) 2026 hataskey-sound contributors
