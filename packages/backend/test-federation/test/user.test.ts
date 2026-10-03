@@ -2,12 +2,15 @@ import assert, { rejects, strictEqual } from 'node:assert';
 import * as Misskey from 'cherrypick-js';
 import { createAccount, deepStrictEqualWithExcludedFields, fetchAdmin, type LoginUser, resolveRemoteNote, resolveRemoteUser, sleep } from './utils.js';
 
-const [aAdmin, bAdmin] = await Promise.all([
-	fetchAdmin('a.test'),
-	fetchAdmin('b.test'),
-]);
+let aAdmin: LoginUser, bAdmin: LoginUser;
 
 describe('User', () => {
+	beforeAll(async () => {
+		[aAdmin, bAdmin] = await Promise.all([
+			fetchAdmin('a.test'),
+			fetchAdmin('b.test'),
+		]);
+	});
 	describe('Profile', () => {
 		describe('Consistency of profile', () => {
 			let alice: LoginUser;

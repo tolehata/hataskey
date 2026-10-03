@@ -25,7 +25,7 @@
 		"lint": "pnpm typecheck && pnpm eslint",
 		"test": "pnpm build && cross-env NODE_ENV=test pnpm compile-config && vitest --config vitest.config.unit.ts",
 		"test:e2e": "pnpm build && cross-env NODE_ENV=test pnpm compile-config && vitest --config vitest.config.e2e.ts",
-		"test:fed": "cross-env NODE_ENV=test pnpm compile-config && vitest --config vitest.config.fed.ts",
+		"test:fed": "cross-env NODE_ENV=test vitest run --config vitest.config.fed.ts",
 		"test-and-coverage": "pnpm build && cross-env NODE_ENV=test pnpm compile-config && vitest --coverage --config vitest.config.unit.ts",
 		"test-and-coverage:e2e": "pnpm build && cross-env NODE_ENV=test pnpm compile-config && vitest --coverage --config vitest.config.e2e.ts",
 		"check-migrations": "node scripts/check_migrations_clean.js",

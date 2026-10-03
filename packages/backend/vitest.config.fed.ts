@@ -6,6 +6,8 @@ export default mergeConfig(
 	defineConfig({
 		test: {
 			include: ['test-federation/test/**/*.test.ts'],
+			globals: true,
+			hookTimeout: 60000,
 		},
 	}),
 );

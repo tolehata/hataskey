@@ -2,13 +2,14 @@ import { strictEqual } from 'assert';
 import * as Misskey from 'cherrypick-js';
 import { createAccount, fetchAdmin, isNoteUpdatedEventFired, isFired, type LoginUser, type Request, resolveRemoteUser, sleep, createRole } from './utils.js';
 
-const bAdmin = await fetchAdmin('b.test');
+let bAdmin: LoginUser;
 
 describe('Timeline', () => {
 	let alice: LoginUser, bob: LoginUser;
 	let bobInA: Misskey.entities.UserDetailedNotMe, aliceInB: Misskey.entities.UserDetailedNotMe;
 
 	beforeAll(async () => {
+		bAdmin = await fetchAdmin('b.test');
 		[alice, bob] = await Promise.all([
 			createAccount('a.test'),
 			createAccount('b.test'),
@@ -23,9 +24,8 @@ describe('Timeline', () => {
 		await sleep();
 	});
 
-	type TimelineChannel = keyof Misskey.Channels & (`${string}Timeline` | 'antenna' | 'userList' | 'hashtag');
 	type TimelineEndpoint = keyof Misskey.Endpoints & (`notes/${string}timeline` | 'antennas/notes' | 'roles/notes' | 'notes/search-by-tag');
-	const timelineMap = new Map<TimelineChannel, TimelineEndpoint>([
+	const timelineEntries = [
 		['antenna', 'antennas/notes'],
 		['globalTimeline', 'notes/global-timeline'],
 		['homeTimeline', 'notes/timeline'],
@@ -34,7 +34,9 @@ describe('Timeline', () => {
 		['roleTimeline', 'roles/notes'],
 		['hashtag', 'notes/search-by-tag'],
 		['userList', 'notes/user-list-timeline'],
-	]);
+	] as const satisfies readonly (readonly [keyof Misskey.Channels, TimelineEndpoint])[];
+	type TimelineChannel = typeof timelineEntries[number][0];
+	const timelineMap = new Map<TimelineChannel, TimelineEndpoint>(timelineEntries);
 
 	async function postAndCheckReception<C extends TimelineChannel>(
 		timelineChannel: C,
@@ -117,7 +119,7 @@ describe('Timeline', () => {
 			 * FIXME: can receive this
 			 * @see https://github.com/misskey-dev/misskey/issues/14083
 			 */
-			test.failing('Don\'t receive remote followee\'s invisible and mentioned specified-only Note', async () => {
+			test.fails('Don\'t receive remote followee\'s invisible and mentioned specified-only Note', async () => {
 				await postAndCheckReception(homeTimeline, false, { text: `@${bob.username}@b.test Hello`, visibility: 'specified' });
 			});
 
@@ -125,7 +127,7 @@ describe('Timeline', () => {
 			 * FIXME: cannot receive this
 			 * @see https://github.com/misskey-dev/misskey/issues/14084
 			 */
-			test.failing('Receive remote followee\'s visible specified-only reply to invisible specified-only Note', async () => {
+			test.fails('Receive remote followee\'s visible specified-only reply to invisible specified-only Note', async () => {
 				const note = (await alice.client.request('notes/create', { text: 'a', visibility: 'specified' })).createdNote;
 				await postAndCheckReception(homeTimeline, true, { replyId: note.id, visibility: 'specified', visibleUserIds: [bobInA.id] });
 			});
