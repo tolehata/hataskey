@@ -17,6 +17,7 @@ import type { FollowingsRepository, NotesRepository, EmojisRepository, NoteReact
 import * as url from '@/misc/prelude/url.js';
 import type { Config } from '@/config.js';
 import { ApRendererService } from '@/core/activitypub/ApRendererService.js';
+import { ApDbResolverService } from '@/core/activitypub/ApDbResolverService.js';
 import { QueueService } from '@/core/QueueService.js';
 import type { MiLocalUser, MiRemoteUser, MiUser } from '@/models/User.js';
 import { UserKeypairService } from '@/core/UserKeypairService.js';
@@ -82,6 +83,7 @@ export class ActivityPubServerService {
 		private queryService: QueryService,
 		private fanoutTimelineEndpointService: FanoutTimelineEndpointService,
 		private activityPubAccessControlService: ActivityPubAccessControlService,
+		private apDbResolverService: ApDbResolverService,
 	) {
 		//this.createServer = this.createServer.bind(this);
 	}
@@ -769,6 +771,7 @@ export class ActivityPubServerService {
 		// chat message
 		fastify.get<{ Params: { id: string; } }>('/chat/messages/:id', { constraints: { apOrHtml: 'ap' } }, async (request, reply) => {
 			vary(reply.raw, 'Accept');
+			reply.header('Cache-Control', 'private, no-store');
 
 			if (this.meta.federation === 'none') {
 				reply.code(403);
@@ -784,6 +787,11 @@ export class ActivityPubServerService {
 				return;
 			}
 
+			if (message.toRoomId != null || message.toUserId == null) {
+				reply.code(404);
+				return;
+			}
+
 			// Get fromUser
 			const fromUser = await this.usersRepository.findOneBy({ id: message.fromUserId });
 			if (fromUser == null || fromUser.host !== null) {
@@ -791,26 +799,39 @@ export class ActivityPubServerService {
 				return;
 			}
 
-			// Get toUser(s)
-			let toUsers: MiUser[] = [];
-			if (message.toUserId) {
-				// 1:1 chat
-				const toUser = await this.usersRepository.findOneBy({ id: message.toUserId });
-				if (toUser) toUsers = [toUser];
-			} else if (message.toRoomId) {
-				// Group chat - not yet fully implemented for ActivityPub
+			const toUser = await this.usersRepository.findOneBy({ id: message.toUserId });
+			if (toUser == null || toUser.host == null) {
 				reply.code(404);
 				return;
 			}
 
-			if (toUsers.length === 0) {
+			// A direct message can only be dereferenced by its remote recipient.
+			// The parser checks clock skew, but an invalid date can bypass that comparison.
+			const signedDateHeader = request.headers['x-date'] == null ? 'date' : 'x-date';
+			const date = request.headers[signedDateHeader];
+			if (request.headers.host !== this.config.host || typeof date !== 'string' || !Number.isFinite(Date.parse(date))) {
 				reply.code(404);
 				return;
 			}
 
-			reply.header('Cache-Control', 'public, max-age=180');
+			try {
+				const signature = httpSignature.parseRequest(request.raw, {
+					headers: ['(request-target)', 'host', signedDateHeader],
+					authorizationHeaderName: 'signature',
+				});
+				const authUser = await this.apDbResolverService.getAuthUserFromKeyId(signature.keyId);
+				if (authUser == null || authUser.user.host == null || authUser.user.id !== toUser.id
+					|| !httpSignature.verifySignature(signature, authUser.key.keyPem)) {
+					reply.code(404);
+					return;
+				}
+			} catch {
+				reply.code(404);
+				return;
+			}
+
 			this.setResponseType(request, reply);
-			return this.apRendererService.addContext(await this.apRendererService.renderChatMessage(message, fromUser, toUsers));
+			return this.apRendererService.addContext(await this.apRendererService.renderChatMessage(message, fromUser, [toUser]));
 		});
 
 		// outbox

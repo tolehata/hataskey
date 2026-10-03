@@ -8,6 +8,7 @@ import type { FeedbackEmojiRequestsRepository } from '@/models/_.js';
 import { FeedbackService } from '@/core/FeedbackService.js';
 import { DI } from '@/di-symbols.js';
 import { ApiError } from '@/server/api/error.js';
+import { feedbackAttachmentErrors } from '@/misc/feedback-attachments.js';
 
 export const meta = {
 	tags: ['hata'],
@@ -18,6 +19,7 @@ export const meta = {
 	secure: true,
 	kind: 'write:admin',
 	errors: {
+		invalidAttachment: feedbackAttachmentErrors.invalidAttachment,
 		noSuchRequest: { message: 'No such emoji request.', code: 'NO_SUCH_EMOJI_REQUEST', id: '40617283-6c55-4d0f-69fb-586970819203' },
 	},
 	limit: { duration: ms('1min'), max: 60 },

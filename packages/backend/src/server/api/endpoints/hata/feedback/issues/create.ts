@@ -7,6 +7,7 @@ import { Endpoint } from '@/server/api/endpoint-base.js';
 import { FeedbackEntityService } from '@/core/entities/FeedbackEntityService.js';
 import { FeedbackService } from '@/core/FeedbackService.js';
 import { ApiError } from '@/server/api/error.js';
+import { feedbackAttachmentErrors } from '@/misc/feedback-attachments.js';
 
 export const meta = {
 	tags: ['hata'],
@@ -18,6 +19,7 @@ export const meta = {
 		optional: false, nullable: false,
 	},
 	errors: {
+		invalidAttachment: feedbackAttachmentErrors.invalidAttachment,
 		accessDenied: {
 			message: 'HataFeed is not available for your account.',
 			code: 'HATAFEED_ACCESS_DENIED',

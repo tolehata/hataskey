@@ -9,10 +9,12 @@ import { bindThis } from '@/decorators.js';
 import { isJsonObject } from '@/misc/json-value.js';
 import type { JsonObject, JsonValue } from '@/misc/json-value.js';
 import Channel, { type MiChannelService } from '../channel.js';
+import { StatsLogRequests } from '../stats-log-requests.js';
 
 const ev = new Xev();
 
 class ServerStatsChannel extends Channel {
+	private readonly logRequests = new StatsLogRequests(ev, 'serverStatsLog', 'requestServerStatsLog', log => this.send('statsLog', log));
 	public readonly chName = 'serverStats';
 	public static shouldShare = true;
 	public static requireCredential = false as const;
@@ -38,19 +40,15 @@ class ServerStatsChannel extends Channel {
 		switch (type) {
 			case 'requestLog':
 				if (!isJsonObject(body)) return;
-				ev.once(`serverStatsLog:${body.id}`, statsLog => {
-					this.send('statsLog', statsLog);
-				});
-				ev.emit('requestServerStatsLog', {
-					id: body.id,
-					length: body.length,
-				});
+				if (typeof body.id !== 'string' && !(typeof body.id === 'number' && Number.isFinite(body.id))) return;
+				this.logRequests.request(body.length);
 				break;
 		}
 	}
 
 	@bindThis
 	public dispose() {
+		this.logRequests.dispose();
 		ev.removeListener('serverStats', this.onStats);
 	}
 }

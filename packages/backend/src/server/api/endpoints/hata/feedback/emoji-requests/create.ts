@@ -10,6 +10,7 @@ import { FeedbackEntityService } from '@/core/entities/FeedbackEntityService.js'
 import { FeedbackService } from '@/core/FeedbackService.js';
 import { DI } from '@/di-symbols.js';
 import { ApiError } from '@/server/api/error.js';
+import { feedbackAttachmentErrors } from '@/misc/feedback-attachments.js';
 
 export const meta = {
 	tags: ['hata'],
@@ -18,6 +19,7 @@ export const meta = {
 	kind: 'write:account',
 	res: { type: 'object', optional: false, nullable: false },
 	errors: {
+		invalidAttachment: feedbackAttachmentErrors.invalidAttachment,
 		accessDenied: { message: 'HataFeed is not available for your account.', code: 'HATAFEED_ACCESS_DENIED', id: '2e4d5f60-4a33-4bed-47f9-364758697081' },
 		noImage: { message: 'No image source (fileId for image / originalUrl for remote).', code: 'NO_IMAGE_SOURCE', id: '3f5e6071-5b44-4cfe-58fa-475869708192' },
 		remoteNotAllowed: { message: 'Requesting remote emoji is not allowed for your account.', code: 'HATAFEED_REMOTE_EMOJI_NOT_ALLOWED', id: '4061a283-6c55-4d0f-69fb-58697081a324' },

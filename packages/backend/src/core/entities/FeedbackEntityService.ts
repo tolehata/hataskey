@@ -16,6 +16,7 @@ import type {
 	FeedbackIssueModeratorsRepository,
 	FeedbackEmojiChangeRequestsRepository,
 	EmojisRepository,
+	DriveFilesRepository,
 } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
@@ -51,6 +52,8 @@ export class FeedbackEntityService {
 		private feedbackEmojiChangesRepository: FeedbackEmojiChangeRequestsRepository,
 		@Inject(DI.emojisRepository)
 		private emojisRepository: EmojisRepository,
+		@Inject(DI.driveFilesRepository)
+		private driveFilesRepository: DriveFilesRepository,
 	) {
 	}
 
@@ -77,7 +80,7 @@ export class FeedbackEntityService {
 	// 旗鯖fork: Issue を一括 pack する。N+1 解消のため:
 	//   1. 「賛同済み」を Issue 単位 exists 1回ずつ → In() で 1 クエリにまとめる
 	//   2. createdBy / closedBy のユーザーを packMany で 1 クエリに集約
-	//   3. 各 Issue の添付ファイル ID を全 Issue 横断で集めて 1 回の packManyByIds に集約
+	//   3. 各 Issue の添付ファイル ID を全 Issue 横断で読み、所有者を確認してから packMany に渡す
 	// 既存の packIssue は内部で packIssues([issue]) を呼ぶ形にしてコード重複を避けている。
 	@bindThis
 	public async packIssues(issues: MiFeedbackIssue[], me?: { id: MiUser['id'] } | null): Promise<Record<string, unknown>[]> {
@@ -121,9 +124,15 @@ export class FeedbackEntityService {
 		// 3. 全 Issue 横断で fileIds を集めて 1 回の packManyByIds に集約。
 		const allFileIds = new Set<string>();
 		for (const i of issues) for (const fid of i.fileIds) allFileIds.add(fid);
+		const sourceFiles = allFileIds.size > 0
+			? await this.driveFilesRepository.findBy({ id: In([...allFileIds]) })
+			: [];
+		const sourceFilesMap = new Map(sourceFiles.map(file => [file.id, file]));
+		const safeFileIds = [...allFileIds].filter(fid => issues.some(issue =>
+			issue.createdById != null && issue.fileIds.includes(fid) && sourceFilesMap.get(fid)?.userId === issue.createdById));
 		const packedFilesMap = new Map<string, Packed<'DriveFile'>>();
-		if (allFileIds.size > 0) {
-			const packed = await this.driveFileEntityService.packManyByIds([...allFileIds]);
+		if (safeFileIds.length > 0) {
+			const packed = await this.driveFileEntityService.packMany(sourceFiles.filter(file => safeFileIds.includes(file.id)));
 			for (const f of packed) packedFilesMap.set(f.id, f);
 		}
 
@@ -154,7 +163,8 @@ export class FeedbackEntityService {
 				.map(uid => packedUsersMap.get(uid))
 				.filter((x): x is Packed<'UserLite'> => x != null),
 			files: issue.fileIds.length > 0
-				? issue.fileIds.map(fid => packedFilesMap.get(fid)).filter(x => x != null)
+				? issue.fileIds.filter(fid => issue.createdById != null && sourceFilesMap.get(fid)?.userId === issue.createdById)
+					.map(fid => packedFilesMap.get(fid)).filter(x => x != null)
 				: [],
 		}));
 	}
@@ -194,7 +204,7 @@ export class FeedbackEntityService {
 	// 旗鯖fork: Comment を一括 pack する。N+1 解消のため:
 	//   1. リアクションを Comment 単位で findBy → In() で 1 クエリにまとめる
 	//   2. コメント投稿者のユーザーを packMany で一括取得(replyTo.user も含む)
-	//   3. ファイル ID を全 Comment 横断で集めて 1 回の packManyByIds に集約
+	//   3. ファイル ID を全 Comment 横断で読み、所有者を確認してから packMany に渡す
 	//   4. 返信先 Comment 本体(replyToId)を In() で 1 クエリにまとめる
 	@bindThis
 	public async packComments(comments: MiFeedbackComment[], me?: { id: MiUser['id'] } | null): Promise<Record<string, unknown>[]> {
@@ -232,9 +242,15 @@ export class FeedbackEntityService {
 		// 4. ファイル ID を全 Comment 横断で集めて 1 回の packManyByIds に集約。
 		const allFileIds = new Set<string>();
 		for (const c of comments) for (const fid of c.fileIds) allFileIds.add(fid);
+		const sourceFiles = allFileIds.size > 0
+			? await this.driveFilesRepository.findBy({ id: In([...allFileIds]) })
+			: [];
+		const sourceFilesMap = new Map(sourceFiles.map(file => [file.id, file]));
+		const safeFileIds = [...allFileIds].filter(fid => comments.some(comment =>
+			comment.userId != null && comment.fileIds.includes(fid) && sourceFilesMap.get(fid)?.userId === comment.userId));
 		const packedFilesMap = new Map<string, Packed<'DriveFile'>>();
-		if (allFileIds.size > 0) {
-			const packed = await this.driveFileEntityService.packManyByIds([...allFileIds]);
+		if (safeFileIds.length > 0) {
+			const packed = await this.driveFileEntityService.packMany(sourceFiles.filter(file => safeFileIds.includes(file.id)));
 			for (const f of packed) packedFilesMap.set(f.id, f);
 		}
 
@@ -259,7 +275,8 @@ export class FeedbackEntityService {
 				text: src.text,
 				user: packedUsersMap.get(src.userId) ?? null,
 				files: src.fileIds.length > 0
-					? src.fileIds.map(fid => packedFilesMap.get(fid)).filter(x => x != null)
+					? src.fileIds.filter(fid => src.userId != null && sourceFilesMap.get(fid)?.userId === src.userId)
+						.map(fid => packedFilesMap.get(fid)).filter(x => x != null)
 					: [],
 				reactions: bucket.counts,
 				myReaction: bucket.myReaction,
@@ -284,13 +301,21 @@ export class FeedbackEntityService {
 	@bindThis
 	public async packEmojiRequests(requests: MiFeedbackEmojiRequest[]): Promise<Record<string, unknown>[]> {
 		if (!requests.length) return [];
-		const [emojis, changes] = await Promise.all([
+		const fileIds = [...new Set(requests.flatMap(request => request.fileId != null ? [request.fileId] : []))];
+		const [emojis, changes, sourceFiles] = await Promise.all([
 			this.emojisRepository.findBy({ id: In(requests.flatMap(request => request.resolvedEmojiId ? [request.resolvedEmojiId] : [])) }),
 			this.feedbackEmojiChangesRepository.createQueryBuilder('change').distinctOn(['change.originalRequestId']).where('change.originalRequestId IN (:...ids)', { ids: requests.map(request => request.id) }).orderBy('change.originalRequestId').addOrderBy('change.id', 'DESC').getMany(),
+			fileIds.length > 0 ? this.driveFilesRepository.findBy({ id: In(fileIds) }) : Promise.resolve([]),
 		]);
+		const sourceFilesMap = new Map(sourceFiles.map(file => [file.id, file]));
+		const safeFileIds = fileIds.filter(id => requests.some(request => request.fileId === id && request.requestedById != null && sourceFilesMap.get(id)?.userId === request.requestedById));
+		const packedFiles = safeFileIds.length > 0 ? await this.driveFileEntityService.packMany(sourceFiles.filter(file => safeFileIds.includes(file.id))) : [];
+		const packedFilesMap = new Map(packedFiles.map(file => [file.id, file]));
 		return Promise.all(requests.map(async src => {
 			const emoji = emojis.find(item => item.id === src.resolvedEmojiId && item.host == null);
 			const change = changes.find(item => item.originalRequestId === src.id);
+			const ownedFileId = src.fileId != null && src.requestedById != null && sourceFilesMap.get(src.fileId)?.userId === src.requestedById
+				? src.fileId : null;
 			return {
 				id: src.id,
 				createdAt: src.createdAt.toISOString(),
@@ -305,8 +330,9 @@ export class FeedbackEntityService {
 				sourceType: src.sourceType,
 				originalUrl: src.originalUrl,
 				remoteHost: src.remoteHost,
-				fileId: src.fileId,
-				imageUrl: src.fileId ? (await this.driveFileEntityService.packManyByIds([src.fileId]))[0]?.url ?? src.originalUrl : src.originalUrl,
+				fileId: ownedFileId,
+				imageUrl: src.fileId != null ? (ownedFileId != null ? packedFilesMap.get(ownedFileId)?.url ?? null : null)
+					: src.sourceType === 'remote' ? src.originalUrl : null,
 				status: src.status,
 				resolvedComment: src.resolvedComment,
 				resolvedById: src.resolvedById,

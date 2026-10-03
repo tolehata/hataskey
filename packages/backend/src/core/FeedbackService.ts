@@ -36,6 +36,7 @@ import type { EmojiTransaction } from '@/misc/emoji-transaction.js';
 import { MiFeedbackNotification } from '@/models/FeedbackNotification.js';
 import { ApiError } from '@/server/api/error.js';
 import { feedbackEmojiErrors } from '@/misc/feedback-emoji-errors.js';
+import { feedbackAttachmentErrors, validateFeedbackFiles } from '@/misc/feedback-attachments.js';
 
 type FeedbackNotificationRefs = { actorId?: MiUser['id'] | null; feedbackId?: string | null; emojiRequestId?: string | null; emojiChangeRequestId?: string | null; commentId?: string | null };
 type EmojiOverrides = { name?: string; category?: string | null; aliases?: string[]; license?: string | null; localOnly?: boolean; isSensitive?: boolean };
@@ -348,6 +349,7 @@ export class FeedbackService {
 		fileIds?: string[];
 		code?: string | null;
 	}): Promise<string> {
+		await validateFeedbackFiles(this.driveFilesRepository, params.fileIds ?? [], creator.id);
 		const now = new Date();
 		const id = this.idService.gen();
 		// 連番のイシュー番号を採番(低頻度なので max+1 方式)。
@@ -492,6 +494,7 @@ export class FeedbackService {
 
 	@bindThis
 	public async addComment(user: MiUser, issue: MiFeedbackIssue, text: string, fileIds: string[] = [], replyToId: string | null = null): Promise<string> {
+		await validateFeedbackFiles(this.driveFilesRepository, fileIds, user.id);
 		const now = new Date();
 		const id = this.idService.gen();
 		// 旗鯖fork: 返信先コメントを検証(同じイシュー内のものだけ許可)。
@@ -664,6 +667,8 @@ export class FeedbackService {
 		remoteHost?: string | null;
 		fileId?: string | null;
 	}): Promise<string> {
+		if (params.sourceType === 'image' && params.fileId == null) throw new ApiError(feedbackAttachmentErrors.invalidAttachment);
+		if (params.fileId != null) await validateFeedbackFiles(this.driveFilesRepository, [params.fileId], user.id);
 		const now = new Date();
 		const id = this.idService.gen();
 		await this.feedbackEmojiRequestsRepository.insert({
@@ -709,6 +714,10 @@ export class FeedbackService {
 	private async applyEmojiApproval(actor: MiUser, req: MiFeedbackEmojiRequest, overrides?: EmojiOverrides): Promise<void> {
 		// ⚠️保留中(held)も承認できるようにする。ここを pending だけにすると保留した申請が二度と処理できなくなる。
 		if (req.status !== 'pending' && req.status !== 'held') return;
+		if (req.sourceType === 'image' && req.fileId == null) throw new ApiError(feedbackAttachmentErrors.invalidAttachment);
+		const ownedFile = req.fileId != null
+			? (await validateFeedbackFiles(this.driveFilesRepository, [req.fileId], req.requestedById)).get(req.fileId)
+			: null;
 
 		// 承認者の修正を反映した最終値。
 		const rawName = overrides?.name ?? req.name;
@@ -730,12 +739,11 @@ export class FeedbackService {
 		let publicUrl: string;
 		let fileType = 'image/png';
 		if (req.fileId != null) {
-			const file = await this.driveFilesRepository.findOneBy({ id: req.fileId });
-			if (file == null) throw new Error('drive file not found');
+			const file = ownedFile!;
 			originalUrl = file.url;
 			publicUrl = file.webpublicUrl ?? file.url;
 			fileType = file.webpublicType ?? file.type ?? fileType;
-		} else if (req.originalUrl != null) {
+		} else if (req.sourceType === 'remote' && req.originalUrl != null) {
 			originalUrl = req.originalUrl;
 			publicUrl = req.originalUrl;
 		} else {

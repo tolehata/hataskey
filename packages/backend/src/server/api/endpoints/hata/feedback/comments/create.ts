@@ -9,6 +9,7 @@ import { FeedbackEntityService } from '@/core/entities/FeedbackEntityService.js'
 import { FeedbackService } from '@/core/FeedbackService.js';
 import { DI } from '@/di-symbols.js';
 import { ApiError } from '@/server/api/error.js';
+import { feedbackAttachmentErrors } from '@/misc/feedback-attachments.js';
 
 export const meta = {
 	tags: ['hata'],
@@ -17,6 +18,7 @@ export const meta = {
 	kind: 'write:account',
 	res: { type: 'object', optional: false, nullable: false },
 	errors: {
+		invalidAttachment: feedbackAttachmentErrors.invalidAttachment,
 		accessDenied: { message: 'HataFeed is not available for your account.', code: 'HATAFEED_ACCESS_DENIED', id: 'a6b5d6f7-c255-4365-cf81-5e6f70819203' },
 		noSuchIssue: { message: 'No such issue.', code: 'NO_SUCH_ISSUE', id: 'b7c6e708-d366-4476-d092-6f7081920314' },
 		issueClosed: { message: 'This issue is closed.', code: 'HATAFEED_ISSUE_CLOSED', id: 'c8d7f819-e477-4476-e1a3-7081920314a3' },
