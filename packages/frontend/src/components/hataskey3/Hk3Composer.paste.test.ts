@@ -964,29 +964,70 @@ describe('UI S composer quote context', () => {
 		}));
 	});
 
-	it('keeps the draft and cursor when clearing a quote, then sends without renoteId', async () => {
-		const note = { id: 'quoted', user: { id: 'author', username: 'author' }, text: 'original' } as Misskey.entities.Note;
-		const view = mount();
-		expect(view.adopt({ channel: null, renote: note, initialText: 'draft text', initialCw: 'draft warning', initialFiles: [driveFile('kept')], initialVisibility: 'followers' })).toBe(true);
+	it.each([
+		['reply', 'body'], ['reply', 'CW'], ['quote', 'body'], ['quote', 'CW'],
+	] as const)('keeps %s %s focus on primary pointer cancellation and restores a context-free draft', async (kind, field) => {
+		const note = { id: 'source', user: { id: 'author', username: 'author' }, text: 'original' } as Misskey.entities.Note;
+		const postContext = { reveal: vi.fn(), begin: vi.fn(() => ({ complete: vi.fn(), cancel: vi.fn() })) };
+		const view = mount('uiS:composer:main', { postContext });
+		expect(view.adopt({ channel: null, ...(kind === 'reply' ? { reply: note } : { renote: note }), initialText: 'draft text', initialCw: 'draft warning', initialFiles: [driveFile('kept')], initialVisibility: 'followers' })).toBe(true);
 		await settle();
-		const quote = view.target.querySelector<HTMLElement>('[data-kind="quote"]')!;
-		const wrapper = quote.parentElement!.parentElement!;
+		postContext.reveal.mockClear();
+		const context = view.target.querySelector<HTMLElement>(`[data-kind="${kind}"]`)!;
+		const wrapper = context.parentElement!.parentElement!;
+		const clear = context.querySelector<HTMLButtonElement>('button[title="Clear context"]')!;
 		expect(wrapper.getAttribute('aria-hidden')).toBe('false');
 		expect(wrapper.hasAttribute('inert')).toBe(false);
-		view.input().setSelectionRange(2, 2);
-		quote.querySelector<HTMLButtonElement>('button[title="Clear context"]')!.click();
+		const focusedInput = field === 'body' ? view.input() : view.target.querySelector<HTMLInputElement>('input[aria-label="Content warning"]')!;
+		focusedInput.focus();
+		focusedInput.setSelectionRange(2, 2);
+		for (const button of [1, 2]) {
+			const down = new PointerEvent('pointerdown', { button, bubbles: true, cancelable: true });
+			clear.dispatchEvent(down);
+			expect(down.defaultPrevented).toBe(false);
+		}
+		const down = new PointerEvent('pointerdown', { button: 0, bubbles: true, cancelable: true });
+		clear.dispatchEvent(down);
+		expect(down.defaultPrevented).toBe(true);
+		expect(window.document.activeElement).toBe(focusedInput);
+		expect(wrapper.getAttribute('aria-hidden')).toBe('false');
+		clear.click();
 		await settle();
 		expect(wrapper.getAttribute('aria-hidden')).toBe('true');
 		expect(wrapper.hasAttribute('inert')).toBe(true);
-		expect(window.document.activeElement).toBe(view.input());
-		expect(view.input().selectionStart).toBe(2);
+		expect(postContext.reveal).not.toHaveBeenCalled();
+		expect(window.document.activeElement).toBe(focusedInput);
+		expect(focusedInput.selectionStart).toBe(2);
 		expect(view.input().value).toBe('draft text');
 		expect(view.ids()).toEqual(['kept']);
-		view.send().click();
+		view.unmount();
+		const restored = mount();
+		await settle();
+		expect(restored.target.querySelector('[data-kind="reply"], [data-kind="quote"]')).toBeNull();
+		expect(restored.input().value).toBe('draft text');
+		expect(restored.ids()).toEqual(['kept']);
+		restored.send().click();
 		await settle();
 		expect(mocks.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({
-			text: 'draft text', fileIds: ['kept'], cw: 'draft warning', visibility: 'followers', renoteId: undefined,
+			text: 'draft text', fileIds: ['kept'], cw: 'draft warning', visibility: 'followers', replyId: undefined, renoteId: undefined,
 		}));
+	});
+
+	it.each(['reply', 'quote'] as const)('returns keyboard focus from the %s clear button synchronously', async kind => {
+		const note = { id: 'source', user: { id: 'author', username: 'author' } } as Misskey.entities.Note;
+		const postContext = { reveal: vi.fn(), begin: vi.fn(() => ({ complete: vi.fn(), cancel: vi.fn() })) };
+		const view = mount('uiS:composer:main', { postContext });
+		expect(view.adopt({ channel: null, ...(kind === 'reply' ? { reply: note } : { renote: note }), initialText: 'draft text' })).toBe(true);
+		await settle();
+		postContext.reveal.mockClear();
+		const clear = view.target.querySelector<HTMLButtonElement>(`[data-kind="${kind}"] button[title="Clear context"]`)!;
+		clear.focus();
+		expect(window.document.activeElement).toBe(clear);
+		clear.click();
+		expect(window.document.activeElement).toBe(view.input());
+		expect(postContext.reveal).not.toHaveBeenCalled();
+		await settle();
+		expect(view.input().value).toBe('draft text');
 	});
 
 	it('shows a CW before body text, passes custom emojis, and hides hidden note contents', async () => {

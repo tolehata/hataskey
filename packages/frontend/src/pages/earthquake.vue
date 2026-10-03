@@ -493,6 +493,7 @@ definePage(() => ({ title: '地震・津波情報', icon: 'ti ti-activity' }));
 	--MI_THEME-divider: #111;
 	--MI_THEME-accent: #111;
 	--MI_THEME-accentedBg: #eee;
+	--MI_THEME-buttonBg: #eee;
 	--MI_THEME-buttonHoverBg: #eee;
 	background: #fff;
 	color: #111;

@@ -15,7 +15,7 @@ Hataskey UI 3: 画面下の投稿欄。返信・引用・チャンネルの文�
 					<b :class="$style.ctxKind">{{ shownContext?.kind === 'quote' ? copy.quote : shownContext?.kind === 'channel' ? copy.channel : copy.reply }}</b>
 					<MkAvatar v-if="shownContext?.note" :user="shownContext.note.user" :class="$style.ctxAvatar"/>
 					<b :class="$style.ctxName"><MkUserName v-if="shownContext?.note" :user="shownContext.note.user"/><template v-else-if="shownContext?.channel">{{ shownContext.channel.name }}</template></b>
-					<button type="button" :class="$style.ctxClear" :title="copy.clearContext" :aria-label="copy.clearContext" @click="clearContext"><X :size="16"/></button>
+					<button type="button" :class="$style.ctxClear" :title="copy.clearContext" :aria-label="copy.clearContext" @pointerdown="preserveContextInputFocus" @click="clearContext"><X :size="16"/></button>
 				</div>
 				<span v-if="shownContext?.note && !shownContext.note.isHidden && (shownContext.note.cw != null || shownContext.note.text)" :class="$style.ctxText"><Mfm :text="shownContext.note.cw ?? shownContext.note.text ?? ''" :plain="true" :author="shownContext.note.user" :emojiUrls="shownContext.note.emojis"/></span>
 				<span v-else-if="shownContext?.note && !shownContext.note.isHidden && shownContext.note.files?.length" :class="$style.ctxText">{{ copy.attachmentsOnly }}</span>
@@ -520,10 +520,15 @@ watch(context, (next, prev) => {
 	}
 });
 
+function preserveContextInputFocus(ev: PointerEvent) {
+	if (ev.button === 0 && (window.document.activeElement === inputEl.value || window.document.activeElement === cwInputEl.value)) ev.preventDefault();
+}
+
 function clearContext() {
+	const focusedInContext = ctxEl.value?.contains(window.document.activeElement);
 	cancelPostReceipt();
 	context.value = null;
-	focus();
+	if (focusedInContext) inputEl.value?.focus({ preventScroll: true });
 }
 
 function mentionUser(user: Misskey.entities.UserLite) {
@@ -1666,9 +1671,10 @@ defineExpose({ adopt, focus, openConfirmation, cancelConfirmation, confirmationA
 
 .ctx .ctxClear {
 	position: absolute;
-	top: 50%;
+	top: 0;
+	bottom: 0;
 	right: 9px;
-	transform: translateY(-50%);
+	margin-block: auto;
 	width: 44px;
 	height: 44px;
 }

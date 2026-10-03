@@ -18,6 +18,7 @@ export const DI = {
 	currentStickyBottom: Symbol() as InjectionKey<Ref<number>>,
 	mfmEmojiReactCallback: Symbol() as InjectionKey<(emoji: string) => void>,
 	inModal: Symbol() as InjectionKey<boolean>,
+	pageControlsContained: Symbol() as InjectionKey<ComputedRef<boolean>>,
 	inAppSearchMarkerId: Symbol() as InjectionKey<Ref<string | null>>,
 	inChannel: Symbol() as InjectionKey<ComputedRef<string | null> | null>, // 現在開いているチャンネルのID
 	mkLightboxItemMediaEl: Symbol() as InjectionKey<Ref<HTMLVideoElement | HTMLAudioElement | null>>,

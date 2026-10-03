@@ -581,8 +581,10 @@ onBeforeUnmount(() => {
 
 	:global(._panel) {
 		border-radius: 0 !important;
-		box-shadow: none !important;
 		border-bottom: 2px solid var(--hk3-divider);
+	}
+	:global(._panel:not(.mkw-post-form)) {
+		box-shadow: none !important;
 	}
 }
 

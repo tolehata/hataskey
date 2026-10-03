@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp, defineComponent, h, inject, nextTick, reactive, unref } from 'vue';
-import type { MaybeRef } from 'vue';
+import { computed, createApp, defineComponent, h, inject, nextTick, reactive, unref } from 'vue';
 import Hk3SideWorkspace from './Hk3SideWorkspace.vue';
+import type { MaybeRef } from 'vue';
+import { DI } from '@/di.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => cleanups.splice(0).forEach(cleanup => cleanup()));
@@ -21,7 +22,8 @@ function mount(persistentPage = false) {
 		mounted.page++;
 		const omitTitle = inject<MaybeRef<boolean>>('shouldOmitHeaderTitle', false);
 		const omitBack = inject<MaybeRef<boolean>>('shouldOmitHeaderBack', false);
-		return () => h('div', { 'data-test-page': '', 'data-omit-title': unref(omitTitle), 'data-omit-back': unref(omitBack) }, 'Page');
+		const contained = inject(DI.pageControlsContained, computed(() => false));
+		return () => h('div', { 'data-test-page': '', 'data-omit-title': unref(omitTitle), 'data-omit-back': unref(omitBack), 'data-contained-controls': unref(contained) }, 'Page');
 	} });
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
@@ -42,6 +44,27 @@ function mount(persistentPage = false) {
 }
 
 describe('Hk3SideWorkspace', () => {
+	it('keeps page controls contained on desktop in split and full modes', async () => {
+		const view = mount(true);
+		const page = view.target.querySelector('[data-test-page]');
+		const contained = () => page?.getAttribute('data-contained-controls');
+		expect(contained()).toBe('true');
+		view.state.mode = 'split'; view.state.pageActive = true;
+		await nextTick();
+		expect(contained()).toBe('true');
+		view.state.mode = 'full';
+		await nextTick();
+		expect(contained()).toBe('true');
+		view.state.mobile = true;
+		await nextTick();
+		expect(contained()).toBe('false');
+		view.state.mobile = false; view.state.mode = 'split';
+		await nextTick();
+		expect(contained()).toBe('true');
+		expect(view.target.querySelector('[data-test-page]')).toBe(page);
+		expect(view.mounted.page).toBe(1);
+	});
+
 	it('updates the page-only back context without remounting the page across pane modes', async () => {
 		const view = mount(true);
 		const page = view.target.querySelector('[data-test-page]');
@@ -167,7 +190,6 @@ describe('Hk3SideWorkspace', () => {
 		expect(view.mounted.timeline).toBe(1);
 	});
 });
-
 
 it('blocks the split page while leaving the retained timeline composer available for confirmation', async () => {
 	const view = mount(true);

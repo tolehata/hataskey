@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button type="button" :class="$style.control" :title="closeLabel" :aria-label="closeLabel" @click="emit('close')"><X :size="18"/></button>
 			</div>
 		</div>
-		<Hk3SidePageContent :class="[$style.content, pageClass]" :data-embedded-surfaces="mode === 'split' && !!controls && pageActive && !mobile && !preservePageNavigation ? 'true' : undefined" :omitHeaderTitle="!!(controls && pageActive && title)" :omitHeaderBack="mode === 'split' && !!controls && pageActive && !mobile && !preservePageNavigation"><slot name="page"/></Hk3SidePageContent>
+		<Hk3SidePageContent :class="[$style.content, pageClass]" :data-embedded-surfaces="mode === 'split' && !!controls && pageActive && !mobile && !preservePageNavigation ? 'true' : undefined" :omitHeaderTitle="!!(controls && pageActive && title)" :omitHeaderBack="mode === 'split' && !!controls && pageActive && !mobile && !preservePageNavigation" :containedControls="!mobile"><slot name="page"/></Hk3SidePageContent>
 	</div>
 	<div data-hk3-side-timeline :class="$style.timeline" :data-active="timelineActive ? 'true' : undefined" :inert="!timelineActive" :aria-hidden="!timelineActive">
 		<slot name="timeline"/>

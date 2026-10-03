@@ -290,14 +290,14 @@ const visibleUsers = visibleRecipients.users;
 const visibilityBorderStyle = computed(() => {
 	// カウント中は同じ位置を進捗枠へ譲り、公開範囲色との二重枠を防ぐ。終了後は元の色へ戻る。
 	if (postDelay.active.value) return undefined;
-	if (!prefer.s['postFormVisibilityBorder.enabled']) return undefined;
-	const w = prefer.s['postFormVisibilityBorder.width'];
+	if (!prefer.r['postFormVisibilityBorder.enabled'].value) return undefined;
+	const w = prefer.r['postFormVisibilityBorder.width'].value;
 	let color: string;
 	switch (visibility.value) {
-		case 'home': color = prefer.s['postFormVisibilityBorder.color.home']; break;
-		case 'followers': color = prefer.s['postFormVisibilityBorder.color.followers']; break;
-		case 'specified': color = prefer.s['postFormVisibilityBorder.color.specified']; break;
-		default: color = prefer.s['postFormVisibilityBorder.color.public']; break;
+		case 'home': color = prefer.r['postFormVisibilityBorder.color.home'].value; break;
+		case 'followers': color = prefer.r['postFormVisibilityBorder.color.followers'].value; break;
+		case 'specified': color = prefer.r['postFormVisibilityBorder.color.specified'].value; break;
+		default: color = prefer.r['postFormVisibilityBorder.color.public'].value; break;
 	}
 	return { boxShadow: `inset 0 0 0 ${w}px ${color}` };
 });
