@@ -11,37 +11,16 @@ The caller keeps the dialog queue and records the displayed version on closed.
 			<button :class="$style.closeButton" aria-label="更新案内を閉じる" @click="dismiss"><i class="ti ti-x" aria-hidden="true"></i></button>
 		</header>
 
-		<div ref="pageBody" :class="$style.releaseBody" :data-feature="currentStory.feature" :inert="!contentReady" :aria-hidden="!contentReady" role="region" aria-label="更新内容の本文">
-			<section v-if="(opened || closing) && contentReady" :key="currentStory.id" :class="[currentStory.feature ? $style.featurePage : $style.updatesPage, $style.storyPage]" data-story="updates" :data-feature="currentStory.feature" :data-summary="currentStory.id" :data-single="currentStory.cards.length === 1">
+		<div ref="pageBody" :class="[$style.releaseBody, $style.simpleBody]" :data-feature="currentStory.feature" :inert="!contentReady" :aria-hidden="!contentReady" role="region" aria-label="更新内容の本文">
+			<section v-if="(opened || closing) && contentReady" :key="currentStory.id" :class="[$style.storyPage, $style.simplePage]" data-story="updates" :data-feature="currentStory.feature" :data-summary="currentStory.id">
 				<div :class="$style.updatesHeading" data-reveal="lead">
-					<template v-if="currentStory.feature === 'ui-s-2' && currentStory.scene === 0"><p :class="$style.eyebrow">正式リリース</p><h2 ref="pageTitle" :class="$style.uiSBrandTitle" aria-label="Hataskey UI S 2" tabindex="-1"><span v-for="(word, wordIndex) in uiSBrandWords" :key="word" :class="$style.uiSBrandLine" aria-hidden="true"><span v-for="(character, charIndex) in Array.from(word)" :key="charIndex" :class="$style.uiSBrandChar" :style="{ animationDelay: `${(uiSBrandWords.slice(0, wordIndex).join('').length + wordIndex + charIndex) * 80}ms` }">{{ character }}</span></span></h2><p :class="$style.uiSTagline"><span>美しさと利便性を追求、</span><wbr><span>S(Special)な体験を</span></p><p :class="$style.featureLead">PCでも、モバイルでも。タイムラインを見ながら、次のアクションへ。</p></template>
-					<template v-else-if="currentStory.feature === 'ui-s-2'"><p :class="$style.eyebrow">SCENE 0{{ (currentStory.scene ?? 0) + 1 }} · HATASKEY UI S 2</p><h2 ref="pageTitle" tabindex="-1"><span v-if="currentStory.scene === 1">並べて見て、<br><em>そのまま集中。</em></span><span v-else-if="currentStory.scene === 2">指を置いて、<br><em>行き先を選ぶ。</em></span><span v-else>探すのも、書くのも。<br><em>ここから。</em></span></h2><p :class="$style.sceneLead"><template v-if="currentStory.scene === 1"><span>左に開いたページ、右に残るタイムライン。</span><span>左右矢印で広げ、×でホームへ。</span></template><template v-else-if="currentStory.scene === 2"><span>ホームを長押しして、タイムラインの一覧へ。</span><span>指を滑らせ、行き先で離します。</span></template><template v-else><span>ドックの検索から、同じケースの中へ。</span><span>閉じれば、いつもの投稿フォームに戻ります。</span></template></p></template>
-				<template v-else><p :class="[$style.eyebrow, { [$style.brandLabel]: isBrandLabel }]">{{ currentStory.label }}</p><h2 ref="pageTitle" tabindex="-1"><template v-if="currentStory.feature === 'recipes'"><span :class="$style.featureWord">紹介して、</span><span :class="$style.featureWord">作って、</span><span :class="$style.featureWord">記録する。</span></template><template v-else-if="currentStory.feature === 'flowers'"><span :class="$style.featureWord">日々をためて、</span><span :class="$style.featureWord">花を咲かせる。</span></template><template v-else>{{ currentStory.title }}</template></h2></template>
+					<p :class="[$style.eyebrow, { [$style.brandLabel]: isBrandLabel }]">{{ currentStory.label }}</p>
+					<h2 ref="pageTitle" tabindex="-1">{{ currentStory.title }}</h2>
 				</div>
-				<nav v-if="currentStory.feature === 'ui-s-2'" :class="$style.sceneTabs" aria-label="Hataskey UI S 2の章" data-chapter-nav data-reveal="chapters"><button v-for="(chapter, index) in uiS2Chapters" :key="chapter.id" type="button" :aria-current="chapter.id === currentStory.id ? 'step' : undefined" :disabled="changing" @click="move(index + 1)"><span>0{{ index + 1 }}</span>{{ index === 0 ? '新しい景色' : chapter.label }}</button></nav>
-				<div v-if="currentStory.feature" :class="$style.featureStage" data-reveal="stage">
-					<UiS2Feature v-if="currentStory.feature === 'ui-s-2'" :scene="currentStory.scene ?? 0" :motion="motion"/>
-					<FeatureStory v-else :feature="legacyFeature" :motion="motion"/>
-					<p v-if="currentStory.feature === 'recipes'" :class="$style.recipeDisclaimer">説明用のサンプルです。このレシピの使用により生じた損害について、サーバーソフトウェア開発者およびサーバー運営者は責任を負いません。</p>
+				<div v-if="currentStory.feature === 'hatagoes'" :class="$style.mergeStage" data-reveal="stage" data-feature-mock aria-hidden="true" inert>
+					<HatagoesMergeMotion :active="mergeActive" :loop="true"/>
 				</div>
-				<div v-if="currentStory.feature" :class="$style.featureHighlights" data-reveal="support">
-					<article v-for="card in currentStory.cards" :key="card.id" :class="$style.featureHighlight" :data-change-id="card.id">
-						<div :class="$style.digestLabel"><i :class="card.icon" aria-hidden="true"></i><span :class="$style.updateLabel">{{ card.label }}</span></div>
-						<h3>{{ card.title }}</h3><ul :class="$style.digestPoints"><li v-for="point in card.points" :key="point">{{ point }}</li></ul>
-					</article>
-				</div>
-				<template v-else>
-					<article v-for="(card, index) in currentStory.cards" :key="card.id" :class="$style.updateCard" :data-digest="!card.preview" :data-change-id="card.id" :data-reveal="index === 0 ? 'stage' : 'support'">
-						<UpdatePreview v-if="card.preview" :kind="card.preview"/>
-						<div :class="$style.updateCopy">
-							<div :class="$style.digestLabel"><i v-if="!card.preview" :class="card.icon" aria-hidden="true"></i><span :class="$style.updateLabel">{{ card.label }}</span></div>
-							<h3>{{ card.title }}</h3>
-							<p v-if="card.text"><template v-for="(line, lineIndex) in card.text" :key="line"><br v-if="lineIndex">{{ line }}</template></p>
-							<ul v-else :class="$style.digestPoints"><li v-for="point in card.points" :key="point">{{ point }}</li></ul>
-							<a v-if="card.link" :href="card.link.url" target="_blank" rel="noopener noreferrer">{{ card.link.label }}</a>
-						</div>
-					</article>
-				</template>
+				<a v-else :class="$style.releaseNotesLink" :href="currentStory.cards[0].link?.url" target="_blank" rel="noopener noreferrer" data-reveal="stage">{{ currentStory.cards[0].link?.label }}<i class="ti ti-external-link" aria-hidden="true"></i></a>
 			</section>
 		</div>
 
@@ -55,11 +34,9 @@ The caller keeps the dialog queue and records the displayed version on closed.
 </MkModal>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import ReleaseOpening from './hata-whats-new/ReleaseOpening.vue';
-import FeatureStory from './hata-whats-new/FeatureStory.vue';
-import UiS2Feature from './hata-whats-new/UiS2Feature.vue';
-import UpdatePreview from './hata-whats-new/UpdatePreview.vue';
+import HatagoesMergeMotion from './hatagoes/motion/HatagoesMergeMotion.vue';
 import { createReveal } from './hata-whats-new/reveal.js';
 import { getHataWhatsNewStories, getHataWhatsNewDisplayVersion, HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
 import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
@@ -68,8 +45,10 @@ import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { prefer } from '@/preferences.js';
 import { store } from '@/store.js';
 import { i18n } from '@/i18n.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 
 const emit = defineEmits<{ closed: [] }>();
+const hataGoesHost = inject(HATA_GOES_HOST, null);
 const copy = i18n.ts._hata._whatsNew._window;
 const displayVersion = getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version);
 const modal = useTemplateRef('modal');
@@ -83,10 +62,7 @@ const pageId = ref(HATA_WHATS_NEW.groups[0].cards[0].id);
 const page = computed(() => Math.max(0, stories.value.findIndex(story => story.id === pageId.value || story.cards.some(card => card.id === pageId.value))) + 1);
 const totalPages = computed(() => stories.value.length);
 const currentStory = computed(() => stories.value[page.value - 1]);
-const uiS2Chapters = computed(() => stories.value.filter(story => story.feature === 'ui-s-2'));
-const uiSBrandWords = ['Hataskey', 'UI S', '2'];
-const legacyFeature = computed<'ui-s' | 'recipes' | 'flowers'>(() => currentStory.value.feature === 'recipes' || currentStory.value.feature === 'flowers' ? currentStory.value.feature : 'ui-s');
-const isBrandLabel = computed(() => ['Hataskey UI S 2', 'HataFeed', 'Hatask'].includes(currentStory.value.label));
+const isBrandLabel = computed(() => ['HataGoes', 'Hataskey UI S 2', 'HataFeed', 'Hatask'].includes(currentStory.value.label));
 const opened = ref(true);
 const closing = ref(false);
 const contentReady = ref(false);
@@ -97,7 +73,8 @@ const media = window.matchMedia('(prefers-reduced-motion: reduce)');
 const reduced = ref(media.matches);
 const documentVisible = ref(!window.document.hidden);
 const motion = computed(() => opened.value && prefer.r.animation.value && !reduced.value && documentVisible.value);
-const modalMotionPreset = computed<'none' | 'dissolve' | undefined>(() => !prefer.r.animation.value || reduced.value || !documentVisible.value ? 'none' : contentReady.value ? 'dissolve' : undefined);
+const mergeActive = computed(() => opened.value && contentReady.value && !changing.value && currentStory.value.feature === 'hatagoes' && documentVisible.value);
+const modalMotionPreset = computed<'none' | 'dissolve' | undefined>(() => !documentVisible.value ? 'none' : hataGoesHost ? undefined : !prefer.r.animation.value || reduced.value ? 'none' : contentReady.value ? 'dissolve' : undefined);
 const reveal = createReveal();
 let bodyObserver: ResizeObserver | undefined;
 let transitionRevision = 0;
@@ -132,7 +109,6 @@ async function enter(initial = false) {
 	const ticket = ++entranceRevision;
 	await nextTick();
 	if (isClosed() || !contentReady.value) return;
-	const uiS2 = currentStory.value.feature === 'ui-s-2';
 	arrival.value = motion.value && !window.document.hidden ? 'arriving' : 'settled';
 	await reveal.play([
 		...(initial ? [
@@ -140,9 +116,8 @@ async function enter(initial = false) {
 			{ element: releaseRoot.value?.querySelector('footer') ?? null, delay: 420, duration: 440, y: 5 },
 		] : []),
 		{ element: pageBody.value?.querySelector<HTMLElement>('[data-reveal="lead"]') ?? null, duration: 480, y: 10 },
-		{ element: pageBody.value?.querySelector<HTMLElement>('[data-reveal="chapters"]') ?? null, delay: 100, duration: 480, y: 8 },
-		{ element: pageBody.value?.querySelector<HTMLElement>('[data-reveal="stage"]') ?? null, delay: uiS2 ? 300 : 110, duration: 650, y: 0, scale: .988 },
-		{ element: pageBody.value?.querySelector<HTMLElement>('[data-reveal="support"]') ?? null, delay: uiS2 ? 800 : 570, duration: 480, y: 8 },
+		{ element: pageBody.value?.querySelector<HTMLElement>('[data-reveal="stage"]') ?? null, delay: 110, duration: 650, y: 0, scale: .988 },
+		{ element: pageBody.value?.querySelector<HTMLElement>('[data-reveal="support"]') ?? null, delay: 570, duration: 480, y: 8 },
 	], motion.value);
 	if (ticket === entranceRevision) arrival.value = 'settled';
 }

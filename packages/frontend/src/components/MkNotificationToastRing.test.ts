@@ -74,12 +74,25 @@ describe('notification outline visibility and measurement', () => {
 	it('recovers zero geometry when a hidden navbar becomes visible', async () => {
 		const { element, bounds } = target(0, 0);
 		await mount(element);
-		expect(element.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 0 0');
+		expect(element.querySelector('svg')).toBeNull();
 		bounds.mockReturnValue(new DOMRect(0, 0, 360, 120));
 		notifyResize();
 		await nextTick();
 		expect(element.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 360 120');
+		expect(element.querySelector('svg')?.style.width).toBe('360px');
+		expect(element.querySelector('svg')?.style.height).toBe('120px');
 		expect(element.querySelector('path')?.getAttribute('d')).toContain('359 24');
+	});
+
+	it('tracks the changing outline without stretching an old viewBox', async () => {
+		const { element, bounds } = target(300, 60);
+		await mount(element);
+		bounds.mockReturnValue(new DOMRect(0, 0, 300, 124));
+		notifyResize();
+		await nextTick();
+		const svg = element.querySelector('svg');
+		expect(svg?.getAttribute('viewBox')).toBe('0 0 300 124');
+		expect(svg?.style.height).toBe('124px');
 	});
 
 	it('attaches to a late navbar ref and moves to its replacement without resetting progress', async () => {

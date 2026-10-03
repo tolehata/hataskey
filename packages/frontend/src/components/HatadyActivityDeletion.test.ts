@@ -4,9 +4,10 @@ import { createApp, h, nextTick } from 'vue';
 import HatadyActivityCard from './HatadyActivityCard.vue';
 import type { HatadyActivity, HatadyActivityType } from '@/utility/hatady-media.js';
 
-const fixture = vi.hoisted(() => ({ api: vi.fn(), confirm: vi.fn(), notify: vi.fn() }));
+const fixture = vi.hoisted(() => ({ api: vi.fn(), confirm: vi.fn(), popup: vi.fn(), notify: vi.fn() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
-vi.mock('@/os.js', () => ({ confirm: fixture.confirm }));
+vi.mock('@/os.js', () => ({ confirm: fixture.confirm, popup: fixture.popup }));
+vi.mock('@/utility/hatagoes-popup.js', () => ({ useHataGoesPopup: () => fixture.popup }));
 vi.mock('@/i.js', () => ({ $i: { id: 'viewer' } }));
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 vi.mock('@/utility/hatady-ui.js', () => ({ hatadyNotify: fixture.notify, hatadyDuration: () => '30分' }));
@@ -47,13 +48,14 @@ async function mountCard(record: HatadyActivity, showActions = true) {
 	window.document.body.append(host);
 	const deleted = vi.fn();
 	const edit = vi.fn();
-	const app = createApp({ render: () => h(HatadyActivityCard, { activity: record, showActions, showAuthor: false, onDeleted: deleted, onEdit: edit }) });
+	const opened = vi.fn();
+	const app = createApp({ render: () => h(HatadyActivityCard, { activity: record, showActions, showAuthor: false, onDeleted: deleted, onEdit: edit, onOpenLog: opened }) });
 	app.component('MkAvatar', { render: () => null });
 	app.component('MkUserName', { render: () => null });
 	app.mount(host);
 	cleanups.push(() => { app.unmount(); host.remove(); });
 	await settle();
-	return { host, deleted, edit };
+	return { host, deleted, edit, opened };
 }
 
 function deleteButton(host: HTMLElement): HTMLButtonElement {
@@ -70,6 +72,18 @@ beforeEach(() => {
 });
 
 afterEach(() => { cleanups.splice(0).forEach(cleanup => cleanup()); });
+
+test.each([undefined, 0, 3])('comment action remains available and shows only a positive count (%s)', async commentsCount => {
+	const record = activity('study');
+	record.study!.commentsCount = commentsCount;
+	const { host, opened } = await mountCard(record);
+	const button = [...host.querySelectorAll<HTMLButtonElement>('button')].find(item => item.querySelector('.ti-message-circle-2'));
+	expect(button).toBeDefined();
+	expect(button?.getAttribute('aria-label')).toBeTruthy();
+	expect(button?.querySelector('span')?.textContent).toBe(commentsCount === 3 ? '3' : undefined);
+	button?.click();
+	expect(opened).toHaveBeenCalledExactlyOnceWith('log-study');
+});
 
 test.each(kinds)('%s deletion uses the underlying record ID and emits only after API success', async type => {
 	const record = activity(type);

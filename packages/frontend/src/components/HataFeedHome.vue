@@ -21,7 +21,7 @@
 		<header :class="$style.cardHead"><h2><i class="ti ti-mood-plus" aria-hidden="true"></i>確認待ちの絵文字</h2></header>
 		<p v-if="!emojiRequests.length && !emojiChangeRequests?.length" class="hf-empty">{{ copy.noPendingRequests }}</p>
 		<div v-else :class="$style.pending"><button v-for="request in emojiRequests.slice(0, 3)" :key="request.id" type="button" @click="emit('approve', request)"><img v-if="request.imageUrl" :src="request.imageUrl" :alt="request.name"><small>:{{ request.name }}:</small><small>{{ request.requestedBy?.name ?? request.requestedBy?.username }}</small></button></div>
-		<div v-if="emojiChangeRequests?.length" :class="$style.pending"><button v-for="request in emojiChangeRequests.slice(0, 3)" :key="request.id" type="button" @click="openHataFeedEmojiNotification({ emojiChangeRequestId: request.id }, () => emit('changed'))"><img :src="request.imageUrl ?? request.previousImageUrl" :alt="request.name"><small>:{{ request.name }}:</small><small>{{ emojiChangeLabel[request.kind] }}</small></button></div>
+		<div v-if="emojiChangeRequests?.length" :class="$style.pending"><button v-for="request in emojiChangeRequests.slice(0, 3)" :key="request.id" type="button" @click="openHataFeedEmojiNotification({ emojiChangeRequestId: request.id }, () => emit('changed'), popup)"><img :src="request.imageUrl ?? request.previousImageUrl" :alt="request.name"><small>:{{ request.name }}:</small><small>{{ emojiChangeLabel[request.kind] }}</small></button></div>
 		<button v-if="emojiRequests.length" type="button" class="hy-secondary" :class="$style.reviewQueue" @click="emit('reviewQueue')"><i class="ti ti-checks" aria-hidden="true"></i>未処理を連続確認</button>
 		<button type="button" :class="$style.textLink" @click="emit('navigate', 'emoji')"><i class="ti ti-arrow-right" aria-hidden="true"></i>申請管理</button>
 	</section>
@@ -33,7 +33,8 @@
 </div>
 <section data-hatafeed-home-panel class="hf-panel" :class="$style.listPanel" :aria-busy="loading">
 	<header :class="$style.listHead"><h2>イシュー<small title="読み込み済みの件数">{{ issues.length }}{{ issuesHasNext ? '+' : '' }}</small></h2><button type="button" :class="$style.textLink" @click="emit('navigate', 'issues')"><i class="ti ti-arrow-right" aria-hidden="true"></i>一覧を見る</button></header>
-	<div v-if="!issues.length" class="hf-empty">イシューがありません</div>
+	<div v-if="loading && !issues.length" class="hf-empty"><HataAppLoading app="hatafeed" :size="28" :active="active" :monochrome="monochrome" label="読み込み中"/></div>
+	<div v-else-if="!issues.length" class="hf-empty">イシューがありません</div>
 	<div v-else :class="$style.listCard">
 		<button
 			v-for="issue in issues.slice(0, 3)"
@@ -68,13 +69,17 @@
 import type { HataFeedHomeActivity, HataFeedHomeIssue } from '@/utility/hatafeed-home.js';
 import type { HataFeedEmojiRequest, HataFeedEmojiChangeRequest } from '@/utility/hatafeed.js';
 import type { HataFeedTab } from '@/utility/hatafeed-ui.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { openHataFeedEmojiNotification } from '@/utility/hatafeed-emoji-notification.js';
 import HfStatusPill from '@/components/HfStatusPill.vue';
 import HfCategoryBadge from '@/components/HfCategoryBadge.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
+import HataAppLoading from '@/components/HataAppLoading.vue';
 import HfQuotaMeter from '@/components/HfQuotaMeter.vue';
 import { activeEmojiChange, emojiChangeLabel, emojiRequestDisplayStatus, emojiStatusIcon, emojiStatusLabel, statusLabel } from '@/utility/hatafeed.js';
 import { i18n } from '@/i18n.js';
+
+const popup = useHataGoesPopup();
 
 defineProps<{
 	isStaff: boolean;
@@ -87,6 +92,8 @@ defineProps<{
 	issues: HataFeedHomeIssue[];
 	issuesHasNext?: boolean;
 	loading?: boolean;
+	active?: boolean;
+	monochrome?: boolean;
 }>();
 const emit = defineEmits<{
 	issue: [id: string];

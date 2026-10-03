@@ -4,14 +4,15 @@
  */
 
 import { createApp, computed, h, nextTick, ref } from 'vue';
-import type { App, PropType } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import HataSideStudio from './hata-side-studio.vue';
+import type { App, PropType, Ref } from 'vue';
+import type { HataSideGroup, HataSideStudioStore } from '@/utility/hata-side-studio.js';
 import Hk3SideNav from '@/components/hataskey3/Hk3SideNav.vue';
 import { HK3_THEME_CONTEXT, hk3ThemeStyle } from '@/components/hataskey3/hk3-theme.js';
 import { HATA_SIDE_STUDIO_FORMAT_VERSION, HATA_SIDE_STUDIO_STORAGE_KEY, createButton, createDefaultProfile, hataSideStudioStore } from '@/utility/hata-side-studio.js';
-import type { HataSideGroup, HataSideStudioStore } from '@/utility/hata-side-studio.js';
 import { i18n } from '@/i18n.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 
 const storage = vi.hoisted(() => new Map<string, string>());
 
@@ -33,6 +34,8 @@ vi.mock('@/local-storage.js', () => ({ miLocalStorage: {
 vi.mock('@/preferences.js', async () => {
 	const { ref } = await import('vue');
 	return { prefer: { r: {
+		animation: ref(false),
+		hataskeyUi3SideMenuBackground: ref(false),
 		'simpleUi.sidebar': ref([
 			{ id: 'timeline', icon: 'ti ti-home', label: 'Timeline', group: 'basic' },
 			{ id: 'notifications', icon: 'ti ti-bell', label: 'Notifications', group: 'basic' },
@@ -43,8 +46,12 @@ vi.mock('@/preferences.js', async () => {
 	} } };
 });
 vi.mock('@/i.js', () => ({ $i: null }));
+vi.mock('@/store.js', async () => ({ store: { r: { darkMode: (await import('vue')).ref(false) } } }));
 vi.mock('@/instance.js', () => ({ instance: { name: 'Hataskey', iconUrl: null, federation: 'none' } }));
-vi.mock('@/router.js', () => ({ mainRouter: { currentRoute: { value: { path: '/hata-side-studio' } }, navHook: null, pushByPath: vi.fn(), replace: vi.fn(), push: vi.fn() } }));
+vi.mock('@/router.js', () => {
+	const router = { currentRoute: { value: { path: '/hata-side-studio' } }, navHook: null, pushByPath: vi.fn(), replace: vi.fn(), push: vi.fn() };
+	return { mainRouter: router, useRouter: () => router };
+});
 vi.mock('@/accounts.js', () => ({ getAccountMenu: vi.fn() }));
 vi.mock('@/ui/_common_/common.js', () => ({ openInstanceMenu: vi.fn() }));
 vi.mock('@/utility/external-api.js', () => ({ getExternalAccount: () => ({}) }));
@@ -52,7 +59,7 @@ vi.mock('@/components/MkLaunchPad.vue', () => ({ default: { render: () => null }
 vi.mock('@/page.js', () => ({ definePage: vi.fn() }));
 vi.mock('@/navbar.js', () => ({ navbarItemDef: {} }));
 vi.mock('@/cache.js', () => ({ antennasCache: {}, userListsCache: {} }));
-vi.mock('@/os.js', () => ({ toast: vi.fn() }));
+vi.mock('@/os.js', () => ({ toast: vi.fn(), popup: vi.fn() }));
 vi.mock('@/utility/achievements.js', () => ({ claimAchievement: vi.fn() }));
 vi.mock('@/components/HataSideStudioEarthquake.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/HataSideStudioFlowers.vue', () => ({ default: { render: () => null } }));
@@ -92,13 +99,14 @@ function fixture(): { store: HataSideStudioStore; group: HataSideGroup } {
 
 async function flush() { await nextTick(); await Promise.resolve(); await nextTick(); }
 
-async function mountStudio(uiS = false) {
-	const host = document.createElement('div');
-	document.body.append(host);
+async function mountStudio(uiS = false, goesActive?: Ref<boolean>) {
+	const host = window.document.createElement('div');
+	window.document.body.append(host);
 	const mode = ref<'light' | 'dark'>('light');
 	const theme = computed(() => hk3ThemeStyle(mode.value));
 	const app = createApp({ setup: () => () => h(HataSideStudio) });
 	if (uiS) app.provide(HK3_THEME_CONTEXT, theme);
+	if (goesActive) app.provide(HATA_GOES_HOST, { active: goesActive, register: () => () => {}, changed: vi.fn() });
 	app.mount(host);
 	apps.push({ app, host });
 	await flush();
@@ -123,6 +131,26 @@ afterEach(() => {
 });
 
 describe('HataSideStudio in Hataskey UI and UI S', () => {
+	test('keeps the unload warning for unsaved edits while another HataGoes app is active', async () => {
+		const { store, group } = fixture();
+		group.children[0].size = 'normal';
+		storage.set(HATA_SIDE_STUDIO_STORAGE_KEY, JSON.stringify(store));
+		const active = ref(true);
+		const { host } = await mountStudio(false, active);
+		const clean = new Event('beforeunload', { cancelable: true });
+		window.dispatchEvent(clean);
+		expect(clean.defaultPrevented).toBe(false);
+		host.querySelector<HTMLElement>(`[data-group-id="${group.id}"]`)?.click();
+		await flush();
+		buttonByText(host, copy.grid).click();
+		await flush();
+		active.value = false;
+		await flush();
+		const dirty = new Event('beforeunload', { cancelable: true });
+		window.dispatchEvent(dirty);
+		expect(dirty.defaultPrevented).toBe(true);
+	});
+
 	test('without the UI S provider, legacy appearance controls and custom search preview remain', async () => {
 		const { store, group } = fixture();
 		storage.set(HATA_SIDE_STUDIO_STORAGE_KEY, JSON.stringify(store));
@@ -146,7 +174,7 @@ describe('HataSideStudio in Hataskey UI and UI S', () => {
 		storage.set(HATA_SIDE_STUDIO_STORAGE_KEY, JSON.stringify(store));
 		const { host, mode } = await mountStudio(true);
 		const root = host.firstElementChild as HTMLElement;
-		const wrappers = [...document.body.querySelectorAll<HTMLElement>('[data-ui-s="true"]')];
+		const wrappers = [...window.document.body.querySelectorAll<HTMLElement>('[data-ui-s="true"]')];
 		expect(wrappers).toHaveLength(3);
 		expect(wrappers).toContain(root);
 		for (const element of wrappers) {
@@ -199,8 +227,8 @@ describe('HataSideStudio in Hataskey UI and UI S', () => {
 		group.children.push(createButton({ id: 'earthquake', icon: 'ti ti-activity', label: '地震・津波情報' }));
 		storage.set(HATA_SIDE_STUDIO_STORAGE_KEY, JSON.stringify(store));
 		const { host } = await mountStudio(true);
-		const liveHost = document.createElement('div');
-		document.body.append(liveHost);
+		const liveHost = window.document.createElement('div');
+		window.document.body.append(liveHost);
 		const app = createApp(Hk3SideNav);
 		app.mount(liveHost);
 		apps.push({ app, host: liveHost });
@@ -220,5 +248,4 @@ describe('HataSideStudio in Hataskey UI and UI S', () => {
 		expect(liveHost.querySelector('[data-menu-id="earthquake"]')?.textContent).toBe('地震・津波情報');
 		expect(root.querySelector('[data-menu-id="earthquake"]')?.textContent).toContain('地震・津波情報');
 	});
-
 });

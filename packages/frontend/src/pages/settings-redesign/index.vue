@@ -121,7 +121,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 						<h2 :class="[$style.sectionTitle, $style.quickSectionTitle]">{{ copy.frequentlyUsedSettings }}</h2>
 						<div :class="$style.quickGrid">
-							<component :is="opensSettingsPopup(item) ? 'button' : 'MkA'" v-for="item in visibleQuickItems" :key="item.id" v-bind="navBindings(item)" :class="[$style.quickItem, { [$style.navLinkActive]: isActive(item) }]" :aria-label="item.label" :title="item.label" :aria-current="isActive(item) ? 'page' : undefined" @click.prevent="goToSetting(item)"><i :class="item.icon" aria-hidden="true"></i><span><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span></component>
+							<component :is="opensSettingsPopup(item) ? 'button' : 'MkA'" v-for="item in visibleQuickItems" :key="item.id" v-bind="navBindings(item)" :class="[$style.quickItem, { [$style.navLinkActive]: isActive(item) }]" :aria-label="item.label" :title="item.label" :aria-current="isActive(item) ? 'page' : undefined" @click.prevent="goToSetting(item)"><HataAppNavIcon v-if="hataAppForSettingsBrand(item.brand)" :app="hataAppForSettingsBrand(item.brand)!" :size="22" :monochrome="store.r.darkMode.value"/><i v-else :class="item.icon" aria-hidden="true"></i><span><HataAppWordmark v-if="hataAppForSettingsBrand(item.brand) && item.label === item.brand" :app="hataAppForSettingsBrand(item.brand)!" :onDark="store.r.darkMode.value" :inheritColor="isActive(item)"/><span v-else-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span></component>
 						</div>
 
 						<!-- ⚠️Transition は子を1つしか取れない。それぞれを包むこと。 -->
@@ -146,7 +146,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								     ⚠️絵を持つ分類は絵を優先する。 -->
 								<button ref="navDetailBackEl" type="button" :class="$style.detailBack" data-settings-nav-detail-back @click="setNavPaneMode('categories')"><i class="ti ti-chevron-left" aria-hidden="true"></i><img v-if="activeNavSection.iconImage != null" :src="activeNavSection.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><i v-else :class="activeNavSection.icon" aria-hidden="true"></i><span :class="{ settingsBrand: activeNavSection.brand != null || hasSettingsBrand(activeNavSection.label) }">{{ activeNavSection.label }}</span></button>
 								<nav :class="$style.links" :aria-label="activeNavSection.label">
-									<component :is="opensSettingsPopup(item) ? 'button' : 'MkA'" v-for="item in activeNavSection.items" :key="item.id" v-bind="navBindings(item)" :class="[$style.navLink, { [$style.navLinkActive]: isActive(item) }]" :aria-current="isActive(item) ? 'page' : undefined" @click.prevent="goToSetting(item)"><img v-if="item.iconImage != null" :src="item.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><i v-else :class="item.icon" aria-hidden="true"></i><span><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span><span v-if="item.showCount && settingCountForItem(item) != null" :class="$style.countBadge">{{ settingCountForItem(item) }}</span></component>
+									<component :is="opensSettingsPopup(item) ? 'button' : 'MkA'" v-for="item in activeNavSection.items" :key="item.id" v-bind="navBindings(item)" :class="[$style.navLink, { [$style.navLinkActive]: isActive(item) }]" :aria-current="isActive(item) ? 'page' : undefined" @click.prevent="goToSetting(item)"><img v-if="item.iconImage != null" :src="item.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><HataAppNavIcon v-else-if="hataAppForSettingsBrand(item.brand)" :app="hataAppForSettingsBrand(item.brand)!" :size="22" :monochrome="store.r.darkMode.value"/><i v-else :class="item.icon" aria-hidden="true"></i><span><HataAppWordmark v-if="hataAppForSettingsBrand(item.brand) && item.label === item.brand" :app="hataAppForSettingsBrand(item.brand)!" :onDark="store.r.darkMode.value" :inheritColor="isActive(item)"/><span v-else-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span><span v-if="item.showCount && settingCountForItem(item) != null" :class="$style.countBadge">{{ settingCountForItem(item) }}</span></component>
 								</nav>
 							</div>
 						</Transition>
@@ -179,7 +179,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					@wheel="onSiblingTabWheel"
 				>
 					<button v-for="item in siblingTabs" :key="item.id" type="button" :aria-label="item.label" :title="item.label" :data-active="isActive(item) ? 'true' : 'false'" :aria-current="isActive(item) ? 'page' : undefined" @click="goToSetting(item)">
-						<img v-if="item.iconImage != null" :src="item.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><i v-else :class="item.icon" aria-hidden="true"></i><span v-if="isActive(item)" :class="$style.siblingTabLabel"><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span>
+						<img v-if="item.iconImage != null" :src="item.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><HataAppNavIcon v-else-if="hataAppForSettingsBrand(item.brand)" :app="hataAppForSettingsBrand(item.brand)!" :size="22" :monochrome="store.r.darkMode.value"/><i v-else :class="item.icon" aria-hidden="true"></i><span v-if="isActive(item)" :class="$style.siblingTabLabel"><HataAppWordmark v-if="hataAppForSettingsBrand(item.brand) && item.label === item.brand" :app="hataAppForSettingsBrand(item.brand)!" :onDark="store.r.darkMode.value" :inheritColor="isActive(item)"/><span v-else-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span>
 					</button>
 				</nav>
 				<!-- 旗鯖fork: 狭い幅の画面遷移を左右へ滑らせる。
@@ -260,6 +260,10 @@ import { createSettingsSurfaceLeaveGuard } from './settings-surface-leave-guard.
 import { waitForSettingsNavigationFocus } from './settings-navigation-focus.js';
 import { createSettingsNavMotion } from './settings-nav-motion.js';
 import { settingsDestinationSections, settingsDestinations, destinationForId } from './settings-destinations.js';
+import HataAppNavIcon from '@/components/HataAppNavIcon.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import { hataAppForSettingsBrand } from '@/utility/hata-app-brand.js';
+import { store } from '@/store.js';
 import { createSearchHintController } from '@/pages/settings-redesign/settings-search-hint.js';
 import { canonicalSearchIdForDescriptor, destinationForSearchDescriptor, generatedPreferenceSearchId, parsePreferenceDestination } from './settings-preferences-catalog.js';
 import { mergeRedesignedPreferenceSearchItems, redesignedPreferenceStableIdAliases, settingsDestinationCatalogItemsV2, suppressLegacyPreferenceSearchMarkers } from './settings-preferences-search-index.js';

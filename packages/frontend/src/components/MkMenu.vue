@@ -198,8 +198,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</button>
 
 				<button
-					v-else
-					role="menuitem"
+				v-else
+				role="menuitem"
 					tabindex="0"
 					:class="['_button', $style.item, { [$style.danger]: item.danger, [$style.active]: unref(item.active) }]"
 					@click.prevent="unref(item.active) ? close(false) : clicked(item.action, $event)"
@@ -210,7 +210,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkAvatar v-if="item.avatar" :user="item.avatar" :class="$style.avatar"/>
 					<div :class="$style.item_content">
 						<div :class="$style.item_content_text">
-							<div :class="$style.item_content_text_title">{{ item.text }}</div>
+							<div :class="[$style.item_content_text_title, item.textFont === 'righteous' && $style.wordmark]">{{ item.text }}</div>
 							<div v-if="item.caption" :class="$style.item_content_text_caption">{{ item.caption }}</div>
 						</div>
 						<span v-if="item.indicate" :class="$style.indicator" class="_blink"><i class="_indicatorCircle"></i></span>
@@ -223,9 +223,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</span>
 		</div>
 	</div>
-	<div v-if="childMenu">
-		<XChild ref="child" :items="childMenu" :anchorElement="childTarget!" :rootElement="itemsEl!" @actioned="childActioned" @closed="closeChild"/>
-	</div>
+	<Transition :enterActiveClass="goesMotion ? $style.transition_child_enterActive : ''" :leaveActiveClass="goesMotion ? $style.transition_child_leaveActive : ''" :enterFromClass="goesMotion ? $style.transition_child_enterFrom : ''" :leaveToClass="goesMotion ? $style.transition_child_leaveTo : ''" :duration="goesMotion ? { enter: 160, leave: 120 } : 0">
+		<div v-if="childMenu">
+			<XChild ref="child" :items="childMenu" :anchorElement="childTarget!" :rootElement="itemsEl!" @actioned="childActioned" @closed="closeChild"/>
+		</div>
+	</Transition>
 </div>
 </template>
 
@@ -236,7 +238,8 @@ import type { Hk3ComposerMenuAppearance } from '@/components/hataskey3/hk3-compo
 import type { MenuItem, InnerMenuItem, MenuPending, MenuAction, MenuSwitch, MenuRadio, MenuRadioOption, MenuParent } from '@/types/menu.js';
 import type { Keymap } from '@/utility/hotkey.js';
 import MkSwitchButton from '@/components/MkSwitch.button.vue';
-import * as os from '@/os.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+import { useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { i18n } from '@/i18n.js';
 import { isTouchUsing } from '@/utility/touch.js';
 import { isFocusable } from '@/utility/focus.js';
@@ -248,8 +251,10 @@ const childrenCache = new WeakMap<MenuParent, MenuItem[]>();
 
 <script lang="ts" setup>
 const XChild = defineAsyncComponent(() => import('./MkMenu.child.vue'));
+const hataGoesHost = inject(HATA_GOES_HOST, null);
 
 const props = defineProps<{
+	forceMotion?: boolean;
 	items: MenuItem[];
 	asDrawer?: boolean;
 	align?: 'center' | string;
@@ -258,6 +263,8 @@ const props = defineProps<{
 	maxHeight?: number;
 	appearance?: Hk3ComposerMenuAppearance;
 }>();
+const goesMotion = computed(() => props.forceMotion === true || hataGoesHost != null);
+const popupMenu = useHataGoesPopupMenu(goesMotion.value);
 
 // Child menus retain the opt-in without changing their positioning component.
 const inheritedAppearance = inject<Ref<Hk3ComposerMenuAppearance | undefined>>('hk3ComposerMenuAppearance', ref());
@@ -356,7 +363,7 @@ async function showRadioOptions(item: MenuRadio, ev: Event) {
 	});
 
 	if (props.asDrawer) {
-		os.popupMenu(children, ev.currentTarget ?? ev.target).finally(() => {
+		popupMenu(children, ev.currentTarget ?? ev.target).finally(() => {
 			close(false);
 		});
 		emit('hide');
@@ -388,7 +395,7 @@ async function showChildren(item: MenuParent, ev: Event) {
 	if (disposed || !target.isConnected) return;
 
 	if (props.asDrawer) {
-		os.popupMenu(children, target).finally(() => {
+		popupMenu(children, target).finally(() => {
 			close(false);
 		});
 		emit('hide');
@@ -494,6 +501,10 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 @use './hataskey3/hk3-glass';
+
+.transition_child_enterActive { transition: opacity 160ms ease !important; }
+.transition_child_leaveActive { transition: opacity 120ms ease !important; }
+.transition_child_enterFrom, .transition_child_leaveTo { pointer-events: none; opacity: 0; }
 .root {
 	&.center {
 		> .menu {
@@ -732,6 +743,12 @@ onBeforeUnmount(() => {
 .item_content_text_title {
 	text-overflow: ellipsis;
 	overflow: hidden;
+}
+
+.wordmark {
+	font-family: 'Righteous', system-ui, sans-serif;
+	font-weight: 400;
+	font-synthesis: none;
 }
 
 .item_content_text_caption {

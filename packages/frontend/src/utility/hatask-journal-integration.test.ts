@@ -42,8 +42,8 @@ describe('Hatask journal integration', () => {
 		expect(page).toContain('(m.note ?? \'\').toLowerCase()');
 	});
 	test('モバイル・小窓でもタブ切り替えで書きかけをアンマウントしない', () => {
-		expect(page).toContain('v-show="activeTab===\'mood\'" class="htk-tabpage htk-journal-page"');
-		expect(page).toContain('v-show="activeTab===\'meal\'" class="htk-tabpage htk-journal-page"');
+		expect(page).toContain('v-show="activeTab===\'mood\' || captureKind === \'mood\'" class="htk-tabpage htk-journal-page"');
+		expect(page).toContain('v-show="activeTab===\'meal\' || captureKind === \'meal\'" class="htk-tabpage htk-journal-page"');
 		expect(journal).toContain('container-type: inline-size');
 		expect(journal).toContain('@container (max-width: 560px)');
 		expect(journal).toContain('box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; max-width: 100%');

@@ -344,6 +344,7 @@ import HyBookCover from '@/components/HyBookCover.vue';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import { $i } from '@/i.js';
 import * as os from '@/os.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { confirmHatadyAction } from '@/utility/hatady-record-delete.js';
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -352,6 +353,8 @@ import { isOwnHatadyProfile, openOwnHatadyProfileIfNeeded, useHatadyActivityActi
 import { versatileLang } from '@/utility/intl-const.js';
 import { hySubjectPalette, HY_BOOKMARK_COLORS, hyBookmarkColor } from '@/utility/hatady.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
+
+const popup = useHataGoesPopup();
 
 const props = withDefaults(defineProps<{ bookId: string; variant?: 'hatady' | 'ui' | 'uis' }>(), { variant: 'hatady' });
 const timelineActions = useHatadyActivityActions({
@@ -568,7 +571,7 @@ async function saveMemo(m: any) {
 }
 
 async function removeMemo(m: any) {
-	if (!(await confirmHatadyAction(props.variant, t('memoDeleteConfirm')))) return;
+	if (!(await confirmHatadyAction(props.variant, t('memoDeleteConfirm'), 'warning', popup))) return;
 	await misskeyApi('hata/hatady/memos/delete', { memoId: m.id });
 	memos.value = memos.value.filter((x) => x.id !== m.id);
 	emit('changed');
@@ -708,7 +711,7 @@ async function setStatus(s: (typeof statuses)[number]) {
 // 編集は本の新規作成と同じ 1i デザインのフォーム(編集モード)を開く。
 async function openEdit() {
 	if (!book.value) return;
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyBookForm.vue')).default,
 		{
 			editBook: { ...book.value, bookmarks: bookmarks.value, memos: memos.value }, variant: props.variant,
@@ -727,7 +730,7 @@ async function removeBook() {
 	if (!book.value || !isMine.value || saving.value) return;
 	saving.value = true;
 	try {
-		if (!(await confirmHatadyAction(props.variant, bookExtra.deleteConfirm))) return;
+		if (!(await confirmHatadyAction(props.variant, bookExtra.deleteConfirm, 'warning', popup))) return;
 		await misskeyApi('hata/hatady/books/delete', { bookId: book.value.id });
 		hatadyNotify(bookExtra.deleted);
 		emit('deleted');
@@ -772,7 +775,7 @@ function logActivity(log: any) {
 }
 
 async function editRelated(activity: any) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyComposer.vue')).default,
 		{ editLog: activity.study, variant: props.variant },
 		{
@@ -786,7 +789,7 @@ async function editRelated(activity: any) {
 }
 
 async function openLog(logId: string) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ logId, variant: props.variant },
 		{
@@ -807,7 +810,7 @@ async function openProfile(userId: string) {
 		requestClose();
 		return;
 	}
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyProfile.vue')).default,
 		{ userId, variant: props.variant },
 		{ closed: () => dispose() },

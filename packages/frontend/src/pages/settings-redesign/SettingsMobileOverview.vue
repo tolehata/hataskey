@@ -21,7 +21,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<h2 id="settings-mobile-quick" :class="$style.sectionTitle">{{ copy.frequentlyUsedSettings }}</h2>
 		<div :class="$style.quickGrid">
 			<button v-for="item in props.quickItems" :key="item.id" type="button" :class="[$style.quickItem, { [$style.itemActive]: activeItemId === item.id }]" :aria-label="item.label" :aria-current="activeItemId === item.id ? 'page' : undefined" @click="emit('select', item)">
-				<i :class="item.icon" aria-hidden="true"></i><span :class="{ settingsBrand: item.brand != null || hasSettingsBrand(item.label) }">{{ item.label }}</span>
+				<HataAppNavIcon v-if="hataAppForSettingsBrand(item.brand)" :app="hataAppForSettingsBrand(item.brand)!" :size="24" :monochrome="store.r.darkMode.value"/><i v-else :class="item.icon" aria-hidden="true"></i><HataAppWordmark v-if="hataAppForSettingsBrand(item.brand) && item.label === item.brand" :app="hataAppForSettingsBrand(item.brand)!" :onDark="store.r.darkMode.value" :inheritColor="activeItemId === item.id"/><span v-else :class="{ settingsBrand: item.brand != null || hasSettingsBrand(item.label) }">{{ item.label }}</span>
 			</button>
 		</div>
 	</section>
@@ -67,7 +67,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<h2 :id="`settings-mobile-category-${activeCategory.id}`" :class="$style.sectionTitle"><span :class="{ settingsBrand: activeCategory.brand != null || hasSettingsBrand(activeCategory.label) }">{{ activeCategory.label }}</span></h2>
 		<p :class="[$style.categoryDescription, { settingsBrandText: hasSettingsBrand(activeCategory.description) }]">{{ activeCategory.description }}</p>
 		<div :class="$style.categoryLinks">
-			<button v-for="item in activeCategory.items" :key="item.id" type="button" :class="{ [$style.itemActive]: activeItemId === item.id }" :aria-current="activeItemId === item.id ? 'page' : undefined" @click="emit('select', item)"><i :class="item.icon" aria-hidden="true"></i><span :class="{ settingsBrand: item.brand != null || hasSettingsBrand(item.label) }">{{ item.label }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+			<button v-for="item in activeCategory.items" :key="item.id" type="button" :class="{ [$style.itemActive]: activeItemId === item.id }" :aria-current="activeItemId === item.id ? 'page' : undefined" @click="emit('select', item)"><HataAppNavIcon v-if="hataAppForSettingsBrand(item.brand)" :app="hataAppForSettingsBrand(item.brand)!" :size="22" :monochrome="store.r.darkMode.value"/><i v-else :class="item.icon" aria-hidden="true"></i><HataAppWordmark v-if="hataAppForSettingsBrand(item.brand) && item.label === item.brand" :app="hataAppForSettingsBrand(item.brand)!" :onDark="store.r.darkMode.value" :inheritColor="activeItemId === item.id"/><span v-else :class="{ settingsBrand: item.brand != null || hasSettingsBrand(item.label) }">{{ item.label }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
 		</div>
 	</section>
 
@@ -97,6 +97,10 @@ import type { ComponentPublicInstance } from 'vue';
 import type { SettingsSearchNavigationTargetV2 } from '@/utility/settings-search-v2-context.js';
 import { i18n } from '@/i18n.js';
 import { ui } from '@@/js/config.js';
+import HataAppNavIcon from '@/components/HataAppNavIcon.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import { hataAppForSettingsBrand } from '@/utility/hata-app-brand.js';
+import { store } from '@/store.js';
 
 // 旗鯖fork: iconImage は Tabler の代わりに出す絵。⚠️あるときは icon を描かない。
 export type SettingsOverviewItem = SettingsSearchNavigationTargetV2 & { id: string; label: string; icon: string; iconImage?: string; brand?: string };

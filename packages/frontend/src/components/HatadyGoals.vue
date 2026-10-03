@@ -92,7 +92,12 @@ import { hatadyTheme } from '@/utility/hatady-prefs.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatadyDuration } from '@/utility/hatady-ui.js';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { useHataGoesPopup, useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
+
+const dialogs = useHataGoesDialogs();
+const popup = useHataGoesPopup();
+const popupMenu = useHataGoesPopupMenu();
 
 const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'changed'): void }>();
 const dialog = ref<any>(null);
@@ -149,7 +154,7 @@ function openEdit(g: Goal) {
 }
 
 async function openEditor(goal?: Goal) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyGoalEditor.vue')).default,
 		{ goal },
 		{
@@ -163,7 +168,7 @@ async function openEditor(goal?: Goal) {
 }
 
 function openMenu(g: Goal, ev: MouseEvent) {
-	os.popupMenu(
+	popupMenu(
 		[
 			{ text: copy.edit, icon: 'ti ti-pencil', action: () => openEdit(g) },
 			{ text: copy.delete, icon: 'ti ti-trash', danger: true, action: () => remove(g) },
@@ -179,12 +184,12 @@ async function toggleDone(g: Goal) {
 		await load();
 		emit('changed');
 	} catch {
-		os.alert({ type: 'error', text: copy.saveFailed });
+		dialogs.alert({ type: 'error', text: copy.saveFailed });
 	}
 }
 
 async function remove(g: Goal) {
-	const { canceled } = await os.confirm({
+	const { canceled } = await dialogs.confirm({
 		type: 'warning',
 		text: i18n.tsx._hata._hatady._goals.confirmDelete({ title: g.title }),
 	});
@@ -194,7 +199,7 @@ async function remove(g: Goal) {
 		await load();
 		emit('changed');
 	} catch {
-		os.alert({ type: 'error', text: copy.saveFailed });
+		dialogs.alert({ type: 'error', text: copy.saveFailed });
 	}
 }
 

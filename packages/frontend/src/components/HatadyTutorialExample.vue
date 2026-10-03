@@ -5,7 +5,7 @@
 		<div v-if="page === 'about'" class="screen">
 			<div class="screen-head">
 				<strong>
-					<span class="brand">Hatady</span>
+					<span class="brand"><HataAppLogo app="hatady" :size="20" :monochrome="darkTheme"/><HataAppWordmark app="hatady" inheritColor/></span>
 				</strong>
 				<div class="screen-nav">
 					<span class="active">
@@ -95,7 +95,7 @@
 		<div v-else-if="page === 'record'" class="screen">
 			<div class="screen-head">
 				<strong>
-					<span class="brand">Hatady</span>
+					<span class="brand"><HataAppLogo app="hatady" :size="20" :monochrome="darkTheme"/><HataAppWordmark app="hatady" inheritColor/></span>
 				</strong>
 				<div class="screen-nav">
 					<span class="active">
@@ -521,7 +521,7 @@
 		<div v-if="page === 'home'" class="screen">
 			<div class="update-heading">
 				<strong>
-					<span class="brand">Hatady</span>
+					<span class="brand"><HataAppLogo app="hatady" :size="20" :monochrome="darkTheme"/><HataAppWordmark app="hatady" inheritColor/></span>
 				</strong>
 				<span class="update-create">
 					<i class="ti ti-plus"></i>
@@ -916,14 +916,20 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { HatadyTutorialKind } from '@/utility/hatady-tutorial-content.js';
 import { i18n } from '@/i18n.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
+import { store } from '@/store.js';
+import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
 
 defineProps<{
 	kind: HatadyTutorialKind;
 	page: string;
 }>();
 const exampleCopy = i18n.ts._hata._hatady._tutorialExample;
+const darkTheme = computed(() => hatadyTheme.value === 'dark' || hatadyTheme.value === 'espresso' || (hatadyTheme.value === 'hataskey' && store.r.darkMode.value));
 </script>
 
 <style lang="scss" scoped>
@@ -953,7 +959,10 @@ const exampleCopy = i18n.ts._hata._hatady._tutorialExample;
 	color: var(--hy-muted);
 }
 .brand {
-	font: 30px 'Hatady Brand',sans-serif;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 30px;
 }
 .ti {
 	display: inline-flex;

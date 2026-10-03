@@ -10,6 +10,8 @@ import { lockHataskFlowerWallet } from '@/core/hatask-flower-v2.js';
 import type { RegistryItemsRepository } from '@/models/_.js';
 import { IdentifiableError } from '@/misc/identifiable-error.js';
 import type { MiUser } from '@/models/User.js';
+import { flowerDay } from './hatask-flower-v2.js';
+import { validTodayJournalRow } from './hatagoes-daily.js';
 import { IdService } from '@/core/IdService.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
 import { bindThis } from '@/decorators.js';
@@ -118,6 +120,24 @@ export class RegistryApiService {
 				}
 				if (collection === 'todos') await this.flowerService.onTodosCommitted(manager, userId, previous, value);
 			});
+			return;
+		}
+		if (isNativeHataskPlannerScope && (key === 'moods' || key === 'meals')) {
+			await this.registryItemsRepository.manager.transaction(async manager => {
+				const kind = key === 'moods' ? 'mood' : 'meal';
+				await lockHataskFlowerWallet(manager, userId);
+				const [wallet] = await manager.query('SELECT timezone FROM hatask_drop_wallet WHERE "userId"=$1', [userId]);
+				await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatagoes-journal:${userId}:${key}`]);
+				const repo = manager.getRepository(MiRegistryItem);
+				const rows = await repo.createQueryBuilder('item').where('item.domain IS NULL').andWhere('item.userId = :userId', { userId }).andWhere('item.scope = :scope', { scope }).andWhere('item.key = :key', { key }).orderBy('item.updatedAt', 'DESC').addOrderBy('item.id', 'DESC').setLock('pessimistic_write').getMany();
+				const now = new Date();
+				const today = flowerDay(now, wallet?.timezone);
+				const previouslyValidIds = new Set(rows.flatMap(item => Array.isArray(item.value) ? item.value.filter((entry: unknown) => validTodayJournalRow(entry, kind, today)).map((entry: { id: string }) => entry.id) : []));
+				if (rows.length) await repo.update(rows.map(row => row.id), { updatedAt: now, value });
+				else await repo.insert({ id: this.idService.gen(now.getTime()), updatedAt: now, userId, domain: null, scope, key, value });
+				if (Array.isArray(value) && value.some(row => validTodayJournalRow(row, kind, today) && !previouslyValidIds.has(row.id))) await this.flowerService.onJournalCommitted(manager, userId, kind, now);
+			});
+			this.globalEventService.publishMainStream(userId, 'registryUpdated', { scope, key, value });
 			return;
 		}
 

@@ -40,11 +40,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-if="query.trim().length >= 2" :class="$style.results">
 			<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
 			<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
-			<div v-else-if="!error && totalCount === 0" :class="$style.empty">
+			<div v-else-if="!error && totalCount === 0 && (!inHataGoes || !searchesUsers || (!userLoading && !userError && users.length === 0))" :class="$style.empty">
 				<i class="ti ti-mood-empty" :class="$style.hintIcon"></i>
 				<div>{{ copy.noResults }}</div>
 			</div>
 			<template v-else>
+				<section v-if="inHataGoes && searchesUsers" :class="$style.group" aria-label="ユーザー">
+					<div :class="$style.groupHead"><i class="ti ti-users"></i>ユーザー<span :class="$style.groupCount">{{ users.length }}</span></div>
+					<p v-if="userLoading && users.length === 0" :class="$style.userState">{{ copy.loading }}</p>
+					<p v-if="userError" role="alert" :class="$style.userState">{{ userError }} <button type="button" @click="loadUsers(query.trim(), seq)">再試行</button></p>
+					<button v-for="user in users" :key="user.id" type="button" :class="$style.row" @click="openProfile(user.id)">
+						<img v-if="user.avatarUrl" :src="user.avatarUrl" alt="" :class="$style.avatar"/>
+						<span v-else :class="$style.avatar"><i class="ti ti-user"></i></span>
+						<span :class="$style.rowMain"><strong :class="$style.rowTitle">{{ user.name || user.username }}</strong><small :class="$style.rowSub">@{{ user.username }}{{ user.host ? `@${user.host}` : '' }}</small></span>
+						<i class="ti ti-chevron-right" :class="$style.rowGo"></i>
+					</button>
+					<button v-if="userHasMore" type="button" :class="$style.more" :disabled="userLoading" @click="loadUsers(query.trim(), seq)">{{ userLoading ? copy.loading : 'もっと見る' }}</button>
+				</section>
 				<!-- ログ -->
 				<section v-if="results && results.logs.length" :class="$style.group">
 					<div :class="$style.groupHead">
@@ -194,7 +206,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, nextTick, onUnmounted } from 'vue';
+import { ref, computed, inject, onMounted, nextTick, onUnmounted } from 'vue';
 import type { HatadyActivity } from '@/utility/hatady-media.js';
 import HyDialog from '@/components/HyDialog.vue';
 import HyCapsule from '@/components/HyCapsule.vue';
@@ -204,6 +216,13 @@ import { hatadyTheme } from '@/utility/hatady-prefs.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+import { usersSearchAvailable } from '@/utility/check-permissions.js';
+import type * as Misskey from 'cherrypick-js';
+
+const popup = useHataGoesPopup();
+const inHataGoes = inject(HATA_GOES_HOST, null) != null;
 
 const props = defineProps<{ initialQuery?: string }>();
 const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'jumpLog', studiedAt: string): void }>();
@@ -237,6 +256,14 @@ const scope = ref('all');
 const results = ref<Results | null>(null);
 const loading = ref(false);
 const error = ref('');
+type SearchUser = Pick<Misskey.entities.UserLite, 'id' | 'name' | 'username' | 'host' | 'avatarUrl'>;
+const users = ref<SearchUser[]>([]);
+const userLoading = ref(false);
+const userError = ref('');
+const userHasMore = ref(false);
+let userOffset = 0;
+const userPageSize = 20;
+const searchesUsers = computed(() => scope.value === 'all' || scope.value === 'users');
 
 const totalCount = computed(() => {
 	const r = results.value;
@@ -261,10 +288,46 @@ const typeLabel = (key: TypeKey): string =>
 const scopeOptions = computed(() => [
 	{ value: 'all', label: copy.scopeAll, icon: 'ti ti-search' },
 	...TYPES.map((t) => ({ value: t.key, label: typeLabel(t.key), icon: `ti ${t.icon}` })),
+	...(inHataGoes ? [{ value: 'users', label: 'ユーザー', icon: 'ti ti-users' }] : []),
 ]);
 let debounceId: number | undefined;
 let seq = 0;
 let disposed = false;
+
+function resetUsers() {
+	users.value = [];
+	userOffset = 0;
+	userLoading.value = false;
+	userError.value = '';
+	userHasMore.value = false;
+}
+
+async function loadUsers(q: string, request: number) {
+	if (!inHataGoes || !searchesUsers.value || request !== seq || userLoading.value) return;
+	if (!usersSearchAvailable) {
+		userError.value = i18n.ts.usersSearchNotAvailable;
+		return;
+	}
+	userLoading.value = true;
+	userError.value = '';
+	try {
+		const page = await misskeyApi<SearchUser[]>('users/search', { query: q, offset: userOffset, limit: userPageSize, origin: 'combined', detail: false });
+		if (request !== seq || disposed) return;
+		userOffset += page.length;
+		const ids = new Set(users.value.map((user) => user.id));
+		const fresh = page.filter((user) => {
+			if (ids.has(user.id)) return false;
+			ids.add(user.id);
+			return true;
+		});
+		users.value = [...users.value, ...fresh];
+		userHasMore.value = page.length === userPageSize;
+	} catch {
+		if (request === seq && !disposed) userError.value = copy.searchFailed;
+	} finally {
+		if (request === seq && !disposed) userLoading.value = false;
+	}
+}
 
 function clearSearch() {
 	query.value = '';
@@ -272,12 +335,14 @@ function clearSearch() {
 	loading.value = false;
 	results.value = null;
 	error.value = '';
+	resetUsers();
 	if (debounceId) window.clearTimeout(debounceId);
 }
 
 onUnmounted(() => {
 	disposed = true;
 	seq++;
+	resetUsers();
 	if (debounceId) window.clearTimeout(debounceId);
 });
 
@@ -285,6 +350,8 @@ function onInput() {
 	if (debounceId) window.clearTimeout(debounceId);
 	// Invalidate an earlier response as soon as the query changes, including the debounce wait.
 	seq++;
+	resetUsers();
+	results.value = null;
 	error.value = '';
 	loading.value = query.value.trim().length >= 2;
 	if (!loading.value) {
@@ -304,14 +371,21 @@ async function runSearch(_immediate: boolean, preserveResults = false) {
 	const q = query.value.trim();
 	if (q.length < 2) {
 		seq++;
+		resetUsers();
 		loading.value = false;
 		results.value = null;
 		return;
 	}
 	const mySeq = ++seq;
+	resetUsers();
 	if (!keepResults) results.value = null;
-	loading.value = !keepResults;
+	loading.value = scope.value !== 'users' && !keepResults;
 	error.value = '';
+	if (inHataGoes && searchesUsers.value) void loadUsers(q, mySeq);
+	if (inHataGoes && scope.value === 'users') {
+		results.value = null;
+		return;
+	}
 	try {
 		const res = (await (misskeyApi as any)('hata/hatady/search', {
 			query: q,
@@ -329,6 +403,9 @@ async function runSearch(_immediate: boolean, preserveResults = false) {
 function removeResult(type: 'book' | 'work' | 'session', id: string) {
 	// A response started before deletion must not put the removed row back.
 	seq++;
+	const pendingUsers = userLoading.value;
+	userLoading.value = false;
+	if (pendingUsers && inHataGoes && searchesUsers.value) void loadUsers(query.value.trim(), seq);
 	const current = results.value;
 	if (!current) return;
 	if (type === 'book') {
@@ -348,10 +425,18 @@ function refreshResults() {
 
 async function openBook(bookId: string | null) {
 	if (!bookId) return;
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyBookDetail.vue')).default,
 		{ bookId },
 		{ closed: () => dispose(), deleted: () => removeResult('book', bookId), changed: refreshResults },
+	);
+}
+
+async function openProfile(userId: string) {
+	const { dispose } = popup(
+		(await import('@/components/HatadyProfile.vue')).default,
+		{ userId },
+		{ closed: () => dispose() },
 	);
 }
 
@@ -409,7 +494,7 @@ function bmColor(key: string | null): string {
 }
 
 async function openMedia(workId: string) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyMediaWorkDetail.vue')).default,
 		{ workId },
 		{ closed: () => dispose(), deleted: () => removeResult('work', workId), changed: refreshResults },
@@ -417,7 +502,7 @@ async function openMedia(workId: string) {
 }
 
 async function openSession(session: any) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ sessionId: session.id, workId: session.workId },
 		{
@@ -568,6 +653,32 @@ onMounted(async () => {
 .group {
 	margin-bottom: 16px;
 }
+.avatar {
+	width: 36px;
+	height: 36px;
+	flex: 0 0 36px;
+	border-radius: 50%;
+	object-fit: cover;
+	background: var(--hy-surface-2);
+	display: grid;
+	place-items: center;
+}
+.userState {
+	color: var(--hy-muted);
+	font-size: 12px;
+}
+.userState button, .more {
+	border: 0;
+	background: transparent;
+	color: var(--hy-accent-ink);
+	font: inherit;
+	cursor: pointer;
+}
+.more {
+	width: 100%;
+	padding: 12px;
+}
+.more:disabled { cursor: wait; opacity: 0.6; }
 .groupHead {
 	display: flex;
 	align-items: center;

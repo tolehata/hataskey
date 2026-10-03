@@ -22,6 +22,7 @@ import type { HataskEventDetailsLabels } from './hatask-event-details-types.js';
 
 type BlankProps = {
 	isOpen: boolean;
+	active?: boolean;
 	targetLabel: string;
 	events: HataskCalendarBlankEvent[];
 	labels: HataskCalendarBlankLabels;
@@ -129,6 +130,26 @@ afterEach(async () => {
 });
 
 describe('HataskCalendarBlankDialog', () => {
+	test('keeps the copy selection while the owning HataGoes pane is hidden', async () => {
+		const { container, state, handlers } = await mountDialog({ active: true });
+		action(container, 'copy').click();
+		await settle();
+		await enterQuery(container, '図書館');
+		pick(container).click();
+		await settle();
+		expect(container.textContent).toContain(labels.confirmCopy);
+		state.active = false;
+		await settle();
+		expect(container.querySelector('[role="dialog"]')).toBeNull();
+		expect(handlers.close).not.toHaveBeenCalled();
+		expect(handlers.confirm).not.toHaveBeenCalled();
+		state.active = true;
+		await settle();
+		expect(container.textContent).toContain(labels.confirmCopy);
+		action(container, 'confirm').click();
+		expect(handlers.confirm).toHaveBeenCalledWith('event-1', 'copy');
+	});
+
 	test('予定データなしで共有フレームを一つだけ開き、対象日時と三つの操作を説明する', async () => {
 		const { container, state } = await mountDialog();
 		expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1);

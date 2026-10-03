@@ -29,6 +29,7 @@ class ReactionPicker {
 		targetNote: Misskey.entities.Note | null,
 		onChosen?: (reaction: string) => void,
 		onClosed?: () => void,
+		launcher: typeof popup = popup,
 	) {
 		const anchorRef = shallowRef(anchorElement);
 		const targetNoteRef = ref(targetNote);
@@ -36,7 +37,7 @@ class ReactionPicker {
 		// iOS PWAではdefineAsyncComponentをタップ後に解決すると、ユーザー
 		// アクティベーションやfocusが失われ、ピッカーが開かない場合がある。
 		// 静的に読み込んだコンポーネントを、このクリック処理内で同期的に開く。
-		const { dispose } = popup(MkEmojiPickerDialog, {
+		const { dispose } = launcher(MkEmojiPickerDialog, {
 			anchorElement: anchorRef,
 			pinnedEmojis: this.reactionsRef,
 			asReactionPicker: true,

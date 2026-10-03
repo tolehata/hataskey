@@ -15,6 +15,10 @@ import { SUPPORT_POLICIES } from '@/utility/hatask-support.js';
 
 const mocks = vi.hoisted(() => ({ api: vi.fn() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	return { i18n: createTestHataskI18n() };
+});
 vi.mock('@/instance.js', async () => ({ instance: (await import('vue')).reactive({ name: '旗茶くんのサーバー' }) }));
 vi.mock('@/utility/hatakyu-assets.js', () => ({ hatakyuAssetUrl: (name: string) => `/client-assets/hatakyu/${name}.png` }));
 vi.mock('@/components/global/MkAvatar.vue', () => ({ default: { props: ['user'], setup: (props: { user: { id: string } }) => () => h('span', { 'data-avatar': props.user.id }) } }));
@@ -104,7 +108,7 @@ describe('Hatask support view', () => {
 		await flush();
 		expect(container.querySelector('[data-hatask-support]')?.getAttribute('data-theme')).toBe(props.theme);
 		expect(container.querySelector('[data-hatask-support]')?.getAttribute('data-mode')).toBe(props.mode);
-		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(13);
+		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(SUPPORT_POLICIES.length);
 		expect(container.querySelectorAll('[data-avatar]')).toHaveLength(2);
 		expect(container.querySelector('[data-user-name]')?.textContent).toBe('実ユーザー one');
 		expect(container.querySelector('[data-section="supporters"] a')?.getAttribute('href')).toBe('/@one');
@@ -351,7 +355,7 @@ describe('Hatask support view', () => {
 		expect(container.querySelector('[data-section="unconfigured-support"]')).toBeNull();
 		button(container, '再試行').click();
 		await flush();
-		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(13);
+		expect(container.querySelectorAll('[data-benefit-card]')).toHaveLength(SUPPORT_POLICIES.length);
 	});
 	test('unmount cancels stale data adoption and disconnects layout observation', async () => {
 		let resolveRequest!: (value: ReturnType<typeof response>) => void;

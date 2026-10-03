@@ -38,7 +38,7 @@ describe('selected event data and notifications', () => {
 		const newEvent = { value: event('private') };
 		const popupMenu = vi.fn().mockResolvedValue(undefined);
 		const runtime = execute(['handleEventCaptureChip', 'handleEventCaptureTool', 'toggleEventCaptureVisibility', 'setEventVisibility'], {
-			newEvent, os: { popupMenu }, copy: { private: '自分のみ', public: '公開' }, plannerCopy: { memberVisibility: '指定したメンバー' },
+			newEvent, popupMenu, copy: { private: '自分のみ', public: '公開' }, plannerCopy: { memberVisibility: '指定したメンバー' },
 		});
 		await runtime[handler]('visibility', anchor);
 		expect(popupMenu).toHaveBeenCalledOnce();
@@ -88,7 +88,7 @@ describe('selected event data and notifications', () => {
 			expect(showEventDetails.value).toBe(false);
 			expect(newEvent.value).toEqual(before);
 		}
-		const overlay = page.match(/<div\s+v-if="showEventDetails"[^>]*>/)?.[0];
+		const overlay = page.match(/<div\s+v-if="showEventDetails && \(!embedded \|\| paneActive \|\| captureKind !== null\)"[^>]*>/)?.[0];
 		expect(overlay).toContain(':style="{ zIndex: eventDetailsZIndex }"');
 	});
 

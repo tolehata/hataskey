@@ -4,8 +4,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<Transition name="hatask-event-details" :css="animations !== false">
-	<div v-if="visible" ref="overlayEl" v-bind="$attrs" :class="$style.overlay" :style="overlayStyle" :data-presentation="presentation" :data-motion="animations !== false" data-hatask-event-detail="overlay" @click.self="requestClose">
+<Transition :name="goesMotion ? 'hatagoes-event-details' : 'hatask-event-details'" :css="goesMotion || animations !== false">
+	<div v-if="visible" ref="overlayEl" v-bind="$attrs" :class="$style.overlay" :style="overlayStyle" :data-presentation="presentation" :data-motion="goesMotion || animations !== false" data-hatask-event-detail="overlay" @click.self="requestClose">
 		<div :class="$style.bubble" :style="bubbleStyle" :data-placement="position?.placement" data-hatask-event-detail="bubble">
 			<section ref="dialogEl" :class="$style.dialog" role="dialog" aria-modal="true" :aria-labelledby="event ? `${titleId} ${eventTitleId}` : titleId" :aria-busy="busy" :data-compact-height="compactHeight" tabindex="-1" data-hatask-event-detail="dialog" @keydown="onKeydown">
 				<header :class="$style.header">
@@ -72,17 +72,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, ref, useId, useSlots, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, ref, useId, useSlots, watch } from 'vue';
 import type { HataskEventDetails, HataskEventDetailsLabels, HataskEventRsvpStatus } from './hatask-event-details-types.js';
 import HataskEmoji from '@/components/HataskEmoji.vue';
 import { claimZIndex } from '@/os.js';
 import { focusTrap } from '@/utility/focus-trap.js';
 import { isFocusable } from '@/utility/focus.js';
 import { getHataskEventDetailsPosition } from '@/utility/hatask-event-details-position.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+const goesMotion = !!inject(HATA_GOES_HOST, null);
 
 defineOptions({ inheritAttrs: false });
 const props = withDefaults(defineProps<{
 	isOpen: boolean;
+	active?: boolean;
 	event: HataskEventDetails | null;
 	labels: HataskEventDetailsLabels;
 	readOnly: boolean;
@@ -92,6 +95,7 @@ const props = withDefaults(defineProps<{
 	getAnchorRect?: (anchor: HTMLElement) => { left: number; right: number; top: number; bottom: number };
 	animations?: boolean;
 }>(), {
+	active: true,
 	returnFocusTo: null,
 	getAnchor: () => null,
 	getAnchorRect: undefined,
@@ -134,7 +138,7 @@ const bubbleStyle = computed(() => presentation.value === 'popover' && position.
 	maxHeight: `${position.value.maxHeight}px`,
 	'--arrow-left': `${position.value.arrowLeft ?? 0}px`,
 } : undefined);
-const visible = computed(() => props.isOpen && (props.event != null || slots.body != null));
+const visible = computed(() => props.active && props.isOpen && (props.event != null || slots.body != null));
 const canModify = computed(() => visible.value && !props.busy && !props.readOnly && props.event?.canEdit === true);
 const canRespond = computed(() => visible.value && !props.busy && !props.readOnly && props.event?.isOwner === false && props.event.rsvp != null && !props.event.rsvp.closed);
 const canCloseRsvp = computed(() => visible.value && !props.busy && !props.readOnly && props.event?.isOwner === true && props.event.rsvp != null && !props.event.rsvp.closed);
@@ -327,7 +331,7 @@ function releaseDialog(): void {
 	opener = null;
 	releaseTrap?.();
 	releaseTrap = null;
-	if (!shouldRestore) return;
+	if (!shouldRestore || !props.active) return;
 	void nextTick(() => {
 		if (!disposed && visible.value) return;
 		const current = window.document.activeElement;
@@ -500,6 +504,11 @@ onBeforeUnmount(() => { disposed = true; releaseDialog(); });
 :global(.hatask-event-details-enter-from), :global(.hatask-event-details-leave-to) { opacity: 0; }
 :global(.hatask-event-details-enter-from) .bubble, :global(.hatask-event-details-leave-to) .bubble { transform: translateY(var(--enter-offset, 12px)); opacity: 0; }
 :global(.hatask-event-details-leave-active) { pointer-events: none; }
+:global(.hatagoes-event-details-enter-active) { transition: opacity 160ms ease; }
+:global(.hatagoes-event-details-leave-active) { transition: opacity 120ms ease; pointer-events: none; }
+:global(.hatagoes-event-details-enter-active) .bubble, :global(.hatagoes-event-details-leave-active) .bubble { transition: transform 160ms ease; }
+:global(.hatagoes-event-details-enter-from), :global(.hatagoes-event-details-leave-to) { opacity: 0; }
+:global(.hatagoes-event-details-enter-from) .bubble, :global(.hatagoes-event-details-leave-to) .bubble { transform: translateY(4px); }
 @container hatask-event-details (max-width: 560px) {
 	.bubble { align-self: end; }
 	.header, .footer { padding: 12px 16px; }

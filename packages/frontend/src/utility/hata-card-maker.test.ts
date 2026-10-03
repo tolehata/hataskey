@@ -96,7 +96,9 @@ describe('カードメーカー', () => {
 		expect(page).not.toContain('>Hataskey</span>');
 		expect(page).toContain('font-family: \'HataRighteous\'');
 		expect(page).toContain('url(\'/client-assets/Righteous-Regular.woff2\')');
-		expect(page).toContain('<div :class="$style.workspace">');
+		expect(page).toContain('<div v-show="!inHataGoes || privacyAcknowledged" :class="$style.workspace">');
+		expect(page).toContain('v-if="inHataGoes && !privacyAcknowledged"');
+		expect(page).toContain('if (inHataGoes && !privacyAcknowledged.value) return;');
 		expect(page).toContain(':class="$style.editor"');
 		expect(page).toContain(':class="$style.preview"');
 		expect(page).toContain('@click="resetTilt"');

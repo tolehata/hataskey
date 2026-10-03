@@ -24,7 +24,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			tag="div"
 		>
 			<div v-for="(notification, i) in displayNotifications" :key="notification.id" :data-scroll-anchor="notification.id" :data-notification-ids="notification.type === 'hataFeed:grouped' ? undefined : JSON.stringify(notificationReadIds(notification))" :class="$style.item">
-				<div v-if="i > 0 && isSeparatorNeeded(displayNotifications[i - 1].createdAt, notification.createdAt)" :class="$style.date">
+				<div v-if="i > 0 && isSeparatorNeeded(displayNotifications[i - 1].createdAt, notification.createdAt)" :class="$style.date" data-notification-date-separator>
 					<span><i class="ti ti-chevron-up"></i> {{ getSeparatorInfo(displayNotifications[i - 1].createdAt, notification.createdAt)?.prevText }}</span>
 					<span style="height: 1em; width: 1px; background: var(--MI_THEME-divider);"></span>
 					<span>{{ getSeparatorInfo(displayNotifications[i - 1].createdAt, notification.createdAt)?.nextText }} <i class="ti ti-chevron-down"></i></span>

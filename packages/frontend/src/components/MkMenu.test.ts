@@ -61,6 +61,17 @@ async function mountMenu(props: { items: MenuItem[]; width?: number; maxWidth?: 
 }
 
 describe('MkMenuの子メニュー用制約と非同期anchor保持', () => {
+	test('指定した通常ボタンのタイトルだけRighteousにし、Hatask設定のApp候補が指定する', async () => {
+		const { container } = await mountMenu({ items: [
+			{ text: 'Hataskey App', textFont: 'righteous', action: vi.fn() },
+			{ text: '普通の項目', action: vi.fn() },
+		] });
+		const titles = [...container.querySelectorAll<HTMLElement>('button[role="menuitem"]')].map(button => button.querySelector<HTMLElement>('div[class*="item_content_text_title"]'));
+		expect(titles[0]?.className).toMatch(/wordmark/u);
+		expect(titles[1]?.className).not.toMatch(/wordmark/u);
+		const settings = readFileSync(resolve(process.cwd(), 'src/pages/HataskSettings.vue'), 'utf8');
+		expect(settings).toContain("textFont: choice.id === 'apps' || choice.id === 'hataskapps' ? 'righteous' : undefined");
+	});
 	test('maxWidthを渡した子だけタッチ時の最小幅を縮め、長文を含めて画面内へ制約する', async () => {
 		const { container } = await mountMenu({
 			items: [{ text: '日本語の長い項目名と分割できない識別子abcdefghijk'.repeat(4), action: vi.fn() }],

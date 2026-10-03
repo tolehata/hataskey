@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	ref="rootEl"
 	:class="$style.root"
 	data-hatask-component="calendar"
+	:data-embedded="embedded"
 	:data-hatask-theme="theme"
 	:data-compact="compactLayout"
 	:data-view="view"
@@ -69,6 +70,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</button>
 		</div>
 	</header>
+	<div v-if="embedded" ref="inlineCaptureTarget" data-hatagoes-inline-capture="calendar"></div>
 
 	<p v-if="readOnly" :class="$style.notice">
 		<i class="ti ti-lock" aria-hidden="true"></i>
@@ -330,6 +332,7 @@ const props = withDefaults(defineProps<{
 	loading?: boolean;
 	readOnly?: boolean;
 	maxEventsPerDay?: number;
+	embedded?: boolean;
 }>(), {
 	theme: undefined,
 	colorMode: undefined,
@@ -337,6 +340,7 @@ const props = withDefaults(defineProps<{
 	loading: false,
 	readOnly: false,
 	maxEventsPerDay: 3,
+	embedded: false,
 });
 
 const emit = defineEmits<{
@@ -351,6 +355,7 @@ const emit = defineEmits<{
 	(ev: 'drop-event', event: HataskCalendarEvent, day: HataskCalendarDay, time?: string): void;
 	(ev: 'trash-event', event: HataskCalendarEvent): void;
 	(ev: 'move-request', event: HataskCalendarEvent, day: HataskCalendarDay): void;
+	(ev: 'captureTarget', target: HTMLElement | undefined): void;
 }>();
 
 const styles = useCssModule();
@@ -363,6 +368,8 @@ const calendarWeeks = computed(() => {
 });
 const focusedDayKey = ref<string | null>(null);
 const rootEl = ref<HTMLElement | null>(null);
+const inlineCaptureTarget = ref<HTMLElement | null>(null);
+watch(inlineCaptureTarget, target => emit('captureTarget', target ?? undefined), { flush: 'post' });
 const compactLayout = ref(false);
 const availableWidth = ref(0);
 const monthEventLimit = computed(() => availableWidth.value >= 900 ? Math.min(props.maxEventsPerDay, 1) : props.maxEventsPerDay);
@@ -1568,7 +1575,7 @@ button:active:not(:disabled) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.root *, .root *::before, .root *::after {
+	.root:not([data-embedded="true"]) *, .root:not([data-embedded="true"]) *::before, .root:not([data-embedded="true"]) *::after {
 		animation: none !important;
 		transition-duration: .01ms !important;
 	}

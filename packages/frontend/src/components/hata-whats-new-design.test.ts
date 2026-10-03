@@ -17,7 +17,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatadyNotice, hatadyNotify } from '@/utility/hatady-ui.js';
 import { createHataskeyNotificationToasts, getNotificationPageContext, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { hataFeedNotify, registerHataFeedNoticeHost } from '@/utility/hatafeed-ui.js';
-import { getHataWhatsNewStories, HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
+import { getHataWhatsNewStories } from '@/utility/hata-whats-new.js';
 
 vi.mock('@/i18n.js', async () => {
 	const { I18n } = await import('@@/js/i18n.js');
@@ -32,12 +32,13 @@ vi.mock('@/utility/hatady-prefs.js', async () => { const { ref } = await import(
 vi.mock('@/store.js', async () => { const { ref } = await import('vue'); return { store: { r: { darkMode: ref(false) } } }; });
 vi.mock('@/i.js', () => ({ $i: { id: 'actual-user' }, iAmModerator: false }));
 vi.mock('@/events.js', () => ({ globalEvents: { on: vi.fn(), off: vi.fn() } }));
-vi.mock('@/os.js', () => ({ toast: vi.fn() }));
+vi.mock('@/os.js', () => ({ toast: vi.fn(), popup: vi.fn(() => ({ dispose: vi.fn() })) }));
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn(() => { throw new Error('Introductions must not request real records'); }) }));
 vi.mock('@/utility/hatakyu-assets.js', () => ({ useHatakyuBranding: () => true, hatakyuAssetUrl: (key: string) => `/client-assets/hatakyu/${key}.png` }));
 vi.mock('@/components/MkHatakyuIllustration.vue', () => ({ default: { template: '<img alt="" data-mascot>' } }));
 vi.mock('./hata-whats-new/UiS2Feature.vue', () => ({ default: { props: ['scene', 'motion'], template: '<div data-feature-mock inert aria-hidden="true">Hataskey UI S 2 scene {{ scene }}</div>' } }));
+vi.mock('./hatagoes/motion/HatagoesMergeMotion.vue', () => ({ default: { props: ['active', 'loop'], template: '<div :data-merge-active="active">HataGoes Merge</div>' } }));
 vi.mock('@/components/HyDialog.vue', () => ({ default: { setup() { throw new Error('A decorative preview opened a live dialog'); } } }));
 vi.mock('@/components/MkHataskeyNotificationToasts.vue', () => ({ default: { setup() { throw new Error('A decorative preview started a live receiver'); } } }));
 vi.mock('@/components/MkModal.vue', async () => {
@@ -76,9 +77,7 @@ let modalCloseCalls: number;
 let deferModalClose: boolean;
 let closed: ReturnType<typeof vi.fn>;
 
-const approvedIds = ['ui-s-layout', 'ui-s-hatask', 'ui-s-split', 'ui-s-mobile-dock', 'ui-s-search', 'recipes', 'cooking-records', 'flower-care', 'flower-collection', 'ui-s-settings', 'legacy-ui-migration', 'ui-s-rss', 'registration-guidance', 'note-actions', 'line-seed', 'hataskey-sounds', 'sound-preferences', 'emoji-changes', 'feedback-overview', 'utage-revival', 'utage-status', 'mood-timezone', 'hatask-display', 'hatady-forms', 'timeline-display', 'note-appearance', 'ui-s-fixes', 'daily-fixes', 'upstream-update', 'script-errors', 'composer-drafts', 'note-menu', 'timeline-swipe', 'ltl-punch'];
-const approvedPreviews = ['note-actions', 'emoji-changes'];
-const previewCopy: Record<string, string> = { 'note-actions': 'クリップに追加しました', 'emoji-changes': '絵文字の変更申請' };
+const approvedIds = ['hatagoes-motion', 'release-notes'];
 
 async function flush() { for (let i = 0; i < 10; i++) await nextTick(); }
 
@@ -234,30 +233,22 @@ describe('production update introduction', () => {
 		expect(motions.length).toBe(count);
 		expect(host.querySelector('[data-story]')).toBeNull();
 	});
-	test('the four UI S 2 chapters use the release navigation and stay keyboard accessible', async () => {
+	test('the two release pages keep focus and show the release-notes link', async () => {
 		await mount();
-		const brand = requiredElement('[data-story] h2');
-		expect(brand.getAttribute('aria-label')).toBe('Hataskey UI S 2');
-		expect(brand.querySelectorAll('[aria-hidden="true"]')).toHaveLength(3);
-		expect(brand.textContent).toBe('HataskeyUI S2');
-		const characters = [...brand.querySelectorAll<HTMLElement>('span[style]')];
-		expect(characters).toHaveLength('HataskeyUI S2'.length);
-		expect(characters.at(-1)?.style.animationDelay).toBe('1120ms');
-		const chapterButtons = [...host.querySelectorAll<HTMLButtonElement>('[data-chapter-nav] button')];
-		expect(chapterButtons.map(button => button.textContent?.trim())).toEqual(['01新しい景色', '02PCで並べる', '03指先で選ぶ', '04探す・書く']);
-		expect(chapterButtons[0].getAttribute('aria-current')).toBe('step');
-		chapterButtons[2].focus();
-		chapterButtons[2].click(); await flush();
-		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('ui-s-mobile-dock');
-		expect(requiredElement('[data-story] h2 + p').textContent).toContain('長押しして、タイムラインの一覧へ。');
-		expect(requiredElement('[data-story] h2 + p').querySelectorAll('span')).toHaveLength(2);
-		expect(requiredElement('[data-chapter-nav] [aria-current="step"]').textContent).toContain('指先で選ぶ');
-		expect(host.querySelectorAll('[aria-label="次へ"]')).toHaveLength(1);
-		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
+		expect(requiredElement('[data-story] h2').textContent).toBe('三つが、ひとつに。そして、進む。');
+		expect(requiredElement('[data-feature-mock]').textContent).toContain('HataGoes Merge');
+		expect(requiredElement('[data-feature-mock] [data-merge-active]').getAttribute('data-merge-active')).toBe('true');
 		await next();
-		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('ui-s-search');
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('release-notes');
+		expect(requiredElement('[data-story] h2').textContent).toBe('詳細はリリースノートをご確認ください');
+		const link = requiredElement<HTMLAnchorElement>('[data-story] a');
+		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-1282');
+		expect(link.target).toBe('_blank');
+		expect(link.rel).toBe('noopener noreferrer');
+		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
 	});
-	test.each([600, 380])('all approved topics and decorative previews retain notification ownership at body height %s', async height => {
+
+	test.each([600, 380])('two pages preserve live notification ownership at body height %s', async height => {
 		bodyHeight = height;
 		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
 		cleanups.push(registerNotificationPageContext(context, () => true));
@@ -266,88 +257,49 @@ describe('production update introduction', () => {
 		await mount();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
 		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.8.2)');
-		expect(host.querySelector('header')?.textContent).not.toContain('HATASKEY RELEASE');
-		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('ui-s-layout');
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hatagoes-motion');
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		store.r.darkMode.value = true; await flush();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-mode')).toBe('dark');
 		hatadyNotify('実際の画面への通知');
 		const notice = hatadyNotice.value;
-		const seen: string[] = [], previews: string[] = [];
-		const stories = getHataWhatsNewStories(height);
-		const total = stories.length;
-		const expectedPages = stories.map(story => story.cards.map(card => card.id));
-		for (let pageNumber = 1; pageNumber <= total; pageNumber++) {
+		const seen: string[] = [];
+		for (let pageNumber = 1; pageNumber <= 2; pageNumber++) {
 			expect(requiredElement('[data-story]').getAttribute('data-story')).toBe('updates');
-			expect(host.querySelector('footer')?.textContent).toContain(`${pageNumber} / ${total}`);
-			const cards = [...host.querySelectorAll<HTMLElement>('[data-change-id]')];
-			expect(cards).toHaveLength(expectedPages[pageNumber - 1].length);
-			for (const card of cards) {
-				const id = card.getAttribute('data-change-id') ?? '';
-				seen.push(id);
-				const copy = HATA_WHATS_NEW.groups.flatMap(group => group.cards).find(item => item.id === id);
-				expect(card.querySelector('h3')?.textContent).toBe(copy?.title);
-				expect([...card.querySelectorAll('li')].map(point => point.textContent)).toEqual(copy?.points);
-				const link = card.querySelector('a');
-				if (copy?.link) {
-					expect(link?.getAttribute('href')).toBe(copy.link.url);
-					expect(link?.textContent).toBe(copy.link.label);
-					expect(link?.getAttribute('target')).toBe('_blank');
-					expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
-				} else expect(link).toBeNull();
-			}
-			const feature = host.querySelector<HTMLElement>('[data-feature-mock]');
-			const storyFeature = stories[pageNumber - 1].feature;
-			if (storyFeature) {
-				expect(requiredElement('[data-story]').getAttribute('data-feature')).toBe(storyFeature);
-				expect(feature).not.toBeNull();
-				expect(feature?.textContent).toContain(({ 'ui-s-2': 'Hataskey UI S 2', 'ui-s': 'Hatask', recipes: 'Hatady 料理記録', flowers: 'しずく' })[storyFeature]);
-				expect(feature?.getAttribute('aria-hidden')).toBe('true');
-				expect(feature?.hasAttribute('inert')).toBe(true);
-				expect(feature?.querySelector('button, input, select, textarea, a[href], [tabindex]')).toBeNull();
-			} else expect(feature).toBeNull();
-			for (const preview of host.querySelectorAll<HTMLElement>('[data-preview-root]')) {
-				const kind = preview.getAttribute('data-preview') ?? '';
-				previews.push(kind);
-				expect(preview.textContent).toContain(previewCopy[kind]);
-				expect(preview.getAttribute('aria-hidden')).toBe('true');
-				expect(preview.hasAttribute('inert')).toBe(true);
-				expect(preview.querySelector('button, input, select, textarea, a[href], [tabindex]')).toBeNull();
-			}
+			expect(host.querySelector('footer')?.textContent).toContain(`${pageNumber} / 2`);
+			seen.push(requiredElement('[data-summary]').getAttribute('data-summary') ?? '');
 			expect(host.querySelector('[data-theme-choice], [data-hy-entrance], [data-hatafeed-home-panel], [data-hataintro-canvas]')).toBeNull();
 			expect(hatadyNotice.value).toBe(notice);
 			expect(getNotificationPageContext()).toBe(context);
-			if (pageNumber < total) { requiredElement<HTMLElement>('[role="region"]').scrollTop = 72; await next(); expect(requiredElement<HTMLElement>('[role="region"]').scrollTop).toBe(0); }
+			if (pageNumber === 1) { requiredElement<HTMLElement>('[role="region"]').scrollTop = 72; await next(); expect(requiredElement<HTMLElement>('[role="region"]').scrollTop).toBe(0); }
 		}
 		expect(seen).toEqual(approvedIds);
-		expect(previews).toEqual(approvedPreviews);
 		expect(host.querySelector('[aria-label="次へ"]')).toBeNull();
 		hataFeedNotify('本体での更新'); expect(received).toHaveBeenCalledWith('本体での更新');
 		expect(closed).not.toHaveBeenCalled();
-		for (let pageNumber = total - 1; pageNumber >= 1; pageNumber--) {
-			requiredElement<HTMLButtonElement>('[aria-label="戻る"]').click(); await flush();
-			expect([...host.querySelectorAll('[data-change-id]')].map(card => card.getAttribute('data-change-id'))).toEqual(expectedPages[pageNumber - 1]);
-			expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
-		}
+		requiredElement<HTMLButtonElement>('[aria-label="戻る"]').click(); await flush();
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hatagoes-motion');
+		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		expect(misskeyApi).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled(); expect(prefer.commit).not.toHaveBeenCalled();
 	});
-	test.each(HATA_WHATS_NEW.groups.map(group => group.cards[group.cards.length - 1].id))('resizing between grouped and short pages preserves last topic %s', async id => {
-		const group = HATA_WHATS_NEW.groups.find(item => item.cards.some(card => card.id === id));
-		if (!group) throw new Error(`Missing update group for ${id}`);
+
+	test('resizing keeps the same two pages and active story', async () => {
 		bodyHeight = 380; width = 390;
 		await mount();
-		const compact = getHataWhatsNewStories(380);
-		for (let index = 0; index < compact.findIndex(story => story.cards.some(card => card.id === id)); index++) await next();
-		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe(group.feature ? group.cards[0].id : id);
 		for (const height of [600, 469, 470, 380]) {
 			bodyHeight = height; resizeCallbacks.forEach(callback => callback()); await flush();
-			expect(host.querySelector(`[data-change-id="${id}"]`)).not.toBeNull();
-			expect(host.querySelectorAll('[data-change-id]')).toHaveLength(!group.feature && height < 470 ? 1 : group.cards.length);
-			if (height < 470) expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe(group.feature ? group.cards[0].id : id);
-			expect(host.querySelector('footer')?.textContent).toContain(`/ ${getHataWhatsNewStories(height).length}`);
+			expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hatagoes-motion');
+			expect(host.querySelector('footer')?.textContent).toContain('/ 2');
+		}
+		await next();
+		for (const height of [600, 380]) {
+			bodyHeight = height; resizeCallbacks.forEach(callback => callback()); await flush();
+			expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('release-notes');
+			expect(host.querySelector('footer')?.textContent).toContain('/ 2');
 		}
 	});
+
 	test('finishing the notice emits closed once and leaves persistence to the caller', async () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
@@ -396,6 +348,7 @@ describe('production update introduction', () => {
 		prefer.r.animation.value = setting !== 'preference'; reduced = setting === 'reduced'; hidden = setting === 'hidden';
 		await mount();
 		expect(requiredElement('[data-modal]').getAttribute('data-motion-preset')).toBe('none');
+		if (setting !== 'hidden') expect(requiredElement('[data-merge-active]').getAttribute('data-merge-active')).toBe('true');
 	});
 	test('back/forward labels stay accessible while visible buttons are icons, and motion stops on close', async () => {
 		prefer.r.animation.value = true;
@@ -403,9 +356,8 @@ describe('production update introduction', () => {
 		expect(motions.length).toBeGreaterThan(0);
 		requiredElement<HTMLButtonElement>('[aria-label="次へ"]').click(); await finishMotion();
 		expect(host.querySelector('[aria-label="戻る"]')?.textContent.trim()).toBe('');
-		expect(host.querySelector('[aria-label="次へ"]')?.textContent.trim()).toBe('');
+		expect(host.querySelector('[aria-label="次へ"]')).toBeNull();
 		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
-		requiredElement<HTMLButtonElement>('[aria-label="次へ"]').click();
 		requiredElement<HTMLButtonElement>('[aria-label="更新案内を閉じる"]').click();
 		await finishMotion();
 		expect(host.querySelector('[data-story]')).toBeNull();

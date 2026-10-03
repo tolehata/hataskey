@@ -8,13 +8,13 @@ SPDX-License-Identifier: AGPL-3.0-only
   - お住いの都道府県・取得間隔は端末ローカルのみ(サーバー非送信)。
 -->
 <template>
-<MkStickyContainer>
-	<template #header><MkPageHeader :actions="headerActions" :title="'地震・津波情報'" :icon="'ti ti-activity'"/></template>
+<MkStickyContainer :class="{ [$style.embedded]: embedded }">
+	<template v-if="!embedded" #header><MkPageHeader :actions="headerActions" :title="'地震・津波情報'" :icon="'ti ti-activity'"/></template>
 	<MkSpacer :contentMax="1100">
 		<div :class="$style.dashCt">
 		<div :class="$style.dash">
 			<!-- 上: 直近地震の電光掲示板(最新地震が入れ替わったらフェードで差し替え) -->
-			<MkEarthquakeTicker :class="$style.tickerSlot" :quakes="rawQuakes" :tsunami="tsunami" mode="full"/>
+			<MkEarthquakeTicker :class="$style.tickerSlot" :quakes="rawQuakes" :tsunami="tsunami" mode="full" :accessible="embedded"/>
 
 			<!-- 左上: 津波情報(複数発表時は4行ずつページ送り) -->
 			<section :class="[$style.cell, $style.cellTsunami]">
@@ -42,7 +42,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 右上: 付近の地震 -->
 			<section :class="[$style.cell, $style.cellNearby]">
-				<div :class="$style.cellHead"><i class="ti ti-map-pin"></i> 付近の地震<span v-if="myPref" :class="$style.prefTag">{{ myPref }}</span></div>
+				<div :class="$style.cellHead"><i class="ti ti-map-pin"></i> 付近の地震<span v-if="myPref" :class="$style.prefTag">{{ myPref }}</span><button v-if="embedded" type="button" :class="[$style.headBtn, $style.settingsHeadBtn]" aria-label="地震情報の設定" title="設定" @click="openSettings"><i class="ti ti-settings" aria-hidden="true"></i></button></div>
 				<div v-if="!myPref" :class="$style.notice">
 					<p>歯車（右上）で<b>お住いの都道府県</b>を指定すると、付近の地震をここに表示します。</p>
 					<MkButton small inline @click="openSettings"><i class="ti ti-settings"></i> 都道府県を設定</MkButton>
@@ -150,6 +150,8 @@ import {
 	tsunamiGradeLabel, tsunamiGradeColor, issueTypeLabel, domesticTsunamiLabel,
 	dedupeQuakes, quakeAffectsPref, maxScaleInPref, pruneOld,
 } from '@/utility/earthquake.js';
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
 
 const stream = useStream();
 const rawQuakes = ref<any[]>([]);
@@ -419,6 +421,7 @@ definePage(() => ({ title: '地震・津波情報', icon: 'ti ti-activity' }));
 .cellHead { font-weight: 700; font-size: .82em; margin-bottom: 11px; display: flex; align-items: center; gap: 7px; letter-spacing: .03em; opacity: .9; }
 .lastUpdate { margin-left: auto; font-size: .85em; font-weight: 600; opacity: .55; font-variant-numeric: tabular-nums; }
 .headBtn { width: 26px; height: 26px; border-radius: 7px; border: none; background: transparent; color: var(--MI_THEME-fg); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1em; }
+.settingsHeadBtn { margin-left: auto; }
 .headBtn:hover:not(:disabled) { background: var(--MI_THEME-buttonHoverBg); color: var(--MI_THEME-accent); }
 .headBtn:disabled { opacity: .4; cursor: default; }
 .spin { animation: hataEqSpin .9s linear infinite; }
@@ -482,6 +485,36 @@ definePage(() => ({ title: '地震・津波情報', icon: 'ti ti-activity' }));
 	.scaleBadge { width: 46px; height: 46px; }
 	.scaleNum { font-size: 1.3em; }
 }
+/* HataGoes earthquake keeps the original bulletin values and alert colors. */
+.embedded {
+	--MI_THEME-bg: #fff;
+	--MI_THEME-panel: #fff;
+	--MI_THEME-fg: #111;
+	--MI_THEME-divider: #111;
+	--MI_THEME-accent: #111;
+	--MI_THEME-accentedBg: #eee;
+	--MI_THEME-buttonHoverBg: #eee;
+	background: #fff;
+	color: #111;
+	font-size: 15px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	.cell, .quake { border: 2px solid #111; box-shadow: none; }
+	.quakeSelected { background: #eee; }
+	.cellHead, .quakeMeta, .quakeTime, .nearbyTime, .source, .disclaimer,
+	.pointGroup, .pointScale, .empty, .tsunamiArea, .tsunamiNote, .domTsunami,
+	.connStatus, .pagerInfo, .tsunamiCount, .prefTag, .lastUpdate, .reportCount,
+	.notice p, .privacy, .scaleLabel { font-size: 15px !important; opacity: 1; }
+	.cellHead > i:first-child { color: #111; }
+	.quakeHypo, .nearbyHypo { font-size: 18px; }
+	.scaleNum, .miniBadge { font-size: 30px; }
+	.scaleBadge { min-width: 64px; min-height: 64px; }
+	.miniBadge { min-width: 48px; min-height: 48px; }
+	.connStatus { background: #fff; border: 2px solid #111; backdrop-filter: none; box-shadow: none; }
+	.connMsg, .connTime, .issueType { opacity: 1; }
+	.source, .disclaimer { line-height: 1.7; }
+}
+
 </style>
 
 <style lang="scss">

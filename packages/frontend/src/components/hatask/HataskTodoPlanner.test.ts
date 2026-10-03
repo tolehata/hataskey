@@ -10,6 +10,7 @@ import { createApp, defineComponent, h, nextTick, reactive } from 'vue';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 vi.mock('@/os.js', () => ({ popupMenu: vi.fn(async () => {}) }));
+vi.mock('@/components/hataskey3/hk3-composer-menu.js', () => ({ captureHk3ComposerMenu: vi.fn() }));
 
 vi.mock('@/components/HataskEmoji.vue', async () => {
 	const { defineComponent: defineMockComponent, h: renderNode } = await import('vue');
@@ -223,6 +224,22 @@ describe('normalizeHataskTodoMobileTabs', () => {
 });
 
 describe('HataskTodoPlanner', () => {
+	test('埋め込み時は検索・並び替えの下に入力フォームの移動先を渡す', async () => {
+		const captureTarget = vi.fn();
+		const { container } = mountTodo({ embedded: true, onCaptureTarget: captureTarget });
+		await nextTick();
+		const root = container.querySelector<HTMLElement>('[data-hatask-component="todo"]');
+		const target = root?.querySelector<HTMLElement>('[data-hatagoes-inline-capture="todo"]');
+		expect(target).toBeInstanceOf(HTMLElement);
+		expect(captureTarget).toHaveBeenCalledWith(target);
+		const header = root?.querySelector('header');
+		if (!root || !header || !target) throw new Error('Missing inline capture layout');
+		expect(header.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(target.compareDocumentPosition(root.querySelector('[data-todo-id]') as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		const legacy = mountTodo();
+		expect(legacy.container.querySelector('[data-hatagoes-inline-capture]')).toBeNull();
+	});
+
 	test('優先度・小項目・保管状態を表示し、操作を親へ通知する', async () => {
 		const { container, handlers } = mountTodo();
 		await nextTick();

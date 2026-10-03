@@ -63,13 +63,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 						<div :class="$style.dedicatedGrid">
 							<button type="button" :class="$style.dedicatedButton" :disabled="busy || dedicatedExportBusy != null" @click="openHatadyExport">
-								<span :class="$style.dedicatedIcon"><i :class="['ti', dedicatedExportBusy === 'hatady' ? 'ti-loader-2' : 'ti-school']"></i></span>
-								<span :class="$style.dedicatedCopy"><b>Hatady</b><small>{{ copy.hatadyExportDescription }}</small></span>
+								<span :class="$style.dedicatedIcon"><i v-if="dedicatedExportBusy === 'hatady'" class="ti ti-loader-2"></i><HataAppLogo v-else app="hatady" :size="32" :monochrome="store.r.darkMode.value"/></span>
+								<span :class="$style.dedicatedCopy"><b><HataAppWordmark app="hatady" inheritColor/></b><small>{{ copy.hatadyExportDescription }}</small></span>
 								<i class="ti ti-chevron-right" :class="$style.dedicatedArrow"></i>
 							</button>
 							<button type="button" :class="$style.dedicatedButton" :disabled="busy || dedicatedExportBusy != null" @click="openHataFeedExport">
-								<span :class="$style.dedicatedIcon"><i :class="['ti', dedicatedExportBusy === 'hatafeed' ? 'ti-loader-2' : 'ti-message-report']"></i></span>
-								<span :class="$style.dedicatedCopy"><b>HataFeed</b><small>{{ copy.hatafeedExportDescription }}</small></span>
+								<span :class="$style.dedicatedIcon"><i v-if="dedicatedExportBusy === 'hatafeed'" class="ti ti-loader-2"></i><HataAppLogo v-else app="hatafeed" :size="32" :monochrome="store.r.darkMode.value"/></span>
+								<span :class="$style.dedicatedCopy"><b><HataAppWordmark app="hatafeed" inheritColor/></b><small>{{ copy.hatafeedExportDescription }}</small></span>
 								<i class="ti ti-chevron-right" :class="$style.dedicatedArrow"></i>
 							</button>
 						</div>
@@ -118,6 +118,9 @@ import { computed, ref, useTemplateRef } from 'vue';
 import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
 import type { HataSettingsCategoryId, HataSettingsTransferFile } from '@/utility/hata-settings-transfer.js';
 import MkWindow from '@/components/MkWindow.vue';
+import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import { store } from '@/store.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { i18n } from '@/i18n.js';
@@ -429,7 +432,7 @@ defineProps<{ embedded?: boolean }>();
 .dedicatedButton:not(:disabled):hover { border-color:var(--MI_THEME-accent); background:var(--MI_THEME-accentedBg); transform:translateY(-1px); }
 .dedicatedButton:focus-visible { outline:2px solid var(--MI_THEME-accent); outline-offset:2px; }
 .dedicatedButton:disabled { opacity:.55; cursor:not-allowed; }
-.dedicatedIcon { width:34px; height:34px; display:grid; place-items:center; border-radius:11px; color:var(--MI_THEME-accent); background:var(--MI_THEME-accentedBg); font-size:1.15em; }
+.dedicatedIcon { width:34px; height:34px; display:grid; place-items:center; border-radius:11px; color:var(--MI_THEME-accent); font-size:1.15em; }
 .dedicatedCopy { min-width:0; display:flex; flex-direction:column; gap:2px; }
 .dedicatedCopy b { line-height:1.25; }
 .dedicatedCopy small { min-width:0; opacity:.67; font-size:.75em; line-height:1.35; overflow-wrap:anywhere; }

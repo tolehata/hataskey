@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
   受身型: 親(rawQuakes/tsunami)を渡す形。WS購読/fetchは親側で。
 -->
 <template>
-<div v-if="latestQuake" :class="[$style.ticker, mode === 'compact' ? $style.compact : $style.full]">
+<div v-if="latestQuake" :class="[$style.ticker, { [$style.accessible]: accessible }, mode === 'compact' ? $style.compact : $style.full]">
 	<Transition name="hfEqFade" mode="out-in">
 		<div :key="latestQuake._key" :class="$style.tickerInner">
 			<!-- 左: 最大震度バッジ -->
@@ -35,7 +35,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 	</Transition>
 </div>
-<div v-else-if="showEmpty" :class="[$style.ticker, mode === 'compact' ? $style.compact : $style.full, $style.empty]">
+<div v-else-if="showEmpty" :class="[$style.ticker, { [$style.accessible]: accessible }, mode === 'compact' ? $style.compact : $style.full, $style.empty]">
 	<i class="ti ti-activity"></i> 最近の地震情報はありません
 </div>
 </template>
@@ -45,13 +45,15 @@ import { computed, ref, onMounted, onUnmounted, nextTick, watch, useTemplateRef 
 import { scaleToLabel, scaleToColor, generateTickerItems, dedupeQuakes } from '@/utility/earthquake.js';
 
 const props = withDefaults(defineProps<{
-	quakes: any[];        // 親から渡される地震情報(生レコード列。dedupe前)
-	tsunami?: any[];      // 親から渡される津波情報(参考用)
+	quakes: any[]; // 親から渡される地震情報(生レコード列。dedupe前)
+	tsunami?: any[]; // 親から渡される津波情報(参考用)
 	mode?: 'full' | 'compact';
-	showEmpty?: boolean;  // 地震情報なしの時のプレースホルダーを出すか
+	accessible?: boolean;
+	showEmpty?: boolean; // 地震情報なしの時のプレースホルダーを出すか
 }>(), {
 	tsunami: () => [],
 	mode: 'full',
+	accessible: false,
 	showEmpty: false,
 });
 
@@ -72,8 +74,8 @@ const displayItems = computed(() => overflowing.value ? itemsDoubled.value : ite
 
 function checkOverflow() {
 	if (!scrollEl.value || !trackEl.value) return;
-	const contentW = trackEl.value.scrollWidth;     // 描画中のtrack(items 1セット or 2連結)の幅
-	const containerW = scrollEl.value.clientWidth;  // スクロール領域の見えてる幅
+	const contentW = trackEl.value.scrollWidth; // 描画中のtrack(items 1セット or 2連結)の幅
+	const containerW = scrollEl.value.clientWidth; // スクロール領域の見えてる幅
 	// overflowing=true(現在2連結) のとき: contentW は items の2倍。中身1セット分(contentW/2)が枠より大きいか
 	// overflowing=false(現在1セット) のとき: contentW が items 1セット分。それが枠より大きいか
 	const unitW = overflowing.value ? contentW / 2 : contentW;
@@ -123,7 +125,7 @@ watch(items, () => nextTick(checkOverflow));
 /* 旗鯖fork: 内容が枠に収まる場合はスクロールせず固定表示 */
 .tickerFixed { animation: none !important; padding-left: 16px; will-change: auto; }
 .tItem { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: .95em; }
-.tItemScale { min-width: 22px; height: 22px; padding: 0 5px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: .82em; font-weight: 900; }
+.tItemScale { min-width: 22px; height: 22px; padding: 0 5px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: .82em; font-weight: 900; color: #fff; }
 .tHeader { display: inline-flex; align-items: center; gap: 5px; font-weight: 800; font-size: .92em; color: var(--MI_THEME-accent); margin-right: 8px; padding-left: 12px; border-left: 2px solid var(--MI_THEME-accent); }
 .tickerNone { padding-left: 16px; opacity: .5; font-size: .9em; }
 @keyframes hataEqMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
@@ -134,6 +136,20 @@ watch(items, () => nextTick(checkOverflow));
 	.full .tickerBadge, .compact .tickerBadge { width: 66px; }
 	.tBadgeNum { font-size: 1.4em; }
 }
+.accessible {
+	background: #fff; color: #111; border: 2px solid #111; height: auto; min-height: 90px;
+	font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;
+	.tBadgeLabel, .tHypoTime, .tItem, .tItemScale, .tHeader, .tickerNone { font-size: 15px; opacity: 1; }
+	.tBadgeNum { font-size: 30px; }
+	.tHypoName { font-size: 18px; white-space: normal; }
+	.tickerBadge { min-width: 80px; color: #fff; }
+	.tickerHypo { max-width: none; padding: 8px 12px; border: 0; }
+	.tickerRight { flex-direction: column; }
+	.tickerScroll { min-height: 34px; }
+	.tItemScale { min-width: 32px; height: 32px; font-size: 30px; }
+	.tHeader { color: #111; border-color: #111; }
+}
+
 </style>
 
 <style lang="scss">

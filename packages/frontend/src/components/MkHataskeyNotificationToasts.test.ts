@@ -5,7 +5,7 @@ import * as Vue from 'vue';
 import { compileTemplate, parse } from '@vue/compiler-sfc';
 import type { App } from 'vue';
 import type { entities } from 'cherrypick-js';
-import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
+import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey, hataskeyToastMotionEnabled, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
 import { prefer } from '@/preferences.js';
 import { $i } from '@/i.js';
@@ -13,7 +13,8 @@ import { mainRouter } from '@/router.js';
 import { popups } from '@/os.js';
 import MkHataskeyNotificationToasts from '@/components/MkHataskeyNotificationToasts.vue';
 import MkToast from '@/components/MkToast.vue';
-import { createHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
+import { createHataskeyTimelineNewNotes, useRetainedHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
+import { i18n } from '@/i18n.js';
 import simpleSource from '@/ui/simple.vue?raw';
 
 vi.mock('@/preferences.js', async () => {
@@ -37,6 +38,15 @@ vi.mock('@/i18n.js', async () => {
 let app: App | undefined;
 let frameCallback: FrameRequestCallback | undefined;
 const note = (id: string): entities.Notification => ({ id, type: 'test', createdAt: '2026-09-07T00:00:00Z' });
+
+it('limits forced toast motion to the surface that explicitly opts in', () => {
+	const regular = { active: ref(true), target: ref<HTMLElement | null>(null), outline: ref<HTMLElement | null>(null), animations: ref(true) };
+	const goes = { ...regular, forceAnimations: ref(true) };
+	expect(hataskeyToastMotionEnabled(regular, false, true)).toBe(false);
+	expect(hataskeyToastMotionEnabled(regular, true, false)).toBe(true);
+	expect(hataskeyToastMotionEnabled({ ...regular, animations: ref(false) }, true, false)).toBe(false);
+	expect(hataskeyToastMotionEnabled(goes, false, true)).toBe(true);
+});
 
 beforeEach(() => {
 	frameCallback = undefined;
@@ -104,11 +114,21 @@ function mount(mobile = false, navbar = true, withNewNotes = false, preloaded = 
 	const handler = simpleSource.match(/function showNavbarNewNotes\(\) \{[^}]+\}/)?.[0];
 	if (!handler) throw new Error('Missing native navbar new-notes handler');
 	const NewNotesRow = defineComponent({
-		setup: () => ({
-			navbarNewNotes: newNotes.notice,
-			showNavbarNewNotes: new Function('showTopBar', 'navbarNewNotes', `${handler}; return showNavbarNewNotes;`)(visible, newNotes.notice),
-			isDesktop: !mobile, newNotesButtonEl: ref(null),
-		}),
+		setup: () => {
+			const newNotesMotionEnabled = computed(() => prefer.r.animation.value);
+			const navbarNewNotesContent = useRetainedHataskeyTimelineNewNotes(newNotes.notice, newNotesMotionEnabled);
+			const navbarNewNotesLabel = computed(() => navbarNewNotesContent.value?.count == null
+				? navbarNewNotesContent.value?.text
+				: i18n.tsx.newNoteRecivedCount({ n: navbarNewNotesContent.value.count }));
+			return {
+				navbarNewNotes: newNotes.notice,
+				navbarNewNotesContent,
+				navbarNewNotesLabel,
+				newNotesMotionEnabled,
+				showNavbarNewNotes: new Function('showTopBar', 'navbarNewNotes', `${handler}; return showNavbarNewNotes;`)(visible, newNotes.notice),
+				isDesktop: !mobile, newNotesButtonEl: ref(null), newNotesContentEl: ref(null), newNotesFlashEl: ref(null),
+			};
+		},
 		render: new Function('Vue', compiled.code)(Vue),
 	});
 	app = createApp(defineComponent({ setup: () => () => [

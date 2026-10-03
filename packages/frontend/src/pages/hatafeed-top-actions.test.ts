@@ -5,6 +5,7 @@ import bell from '../components/HataFeedNotifications.vue?raw';
 import source from './hatafeed.vue?raw';
 import type { HataFeedTab } from '@/utility/hatafeed-ui.js';
 vi.mock('@/preferences.js', async () => ({ prefer: { r: { animation: (await import('vue')).ref(false) } } }));
+vi.mock('@/i18n.js', async () => ({ i18n: (await import('@/utility/hatask-test-i18n.js')).createTestHataskI18n() }));
 vi.mock('@/components/MkHataskeyNotificationToasts.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('@/os.js', () => ({ toast: vi.fn() }));
 import HataFeedHeader from '@/components/HataFeedHeader.vue';

@@ -14,7 +14,7 @@
 			<button
 				class="hy-secondary"
 				:aria-label="i18n.tsx._hata._hatady._homeDashboard.viewFocusRecords({ focus: focusLabel || dashboardCopy.mixedDays })"
-				@click="overviewOpen = true"
+				@click="openOverview"
 			>
 				<i :class="focusIcon" aria-hidden="true"></i>
 			</button>
@@ -25,7 +25,7 @@
 		{{ error }}
 		<button class="hy-secondary" @click="load">{{ dashboardCopy.reload }}</button>
 	</div>
-	<p v-if="loading && !loaded" class="hy-empty" role="status">{{ copy.loading }}</p>
+	<div v-if="loading && !loaded" class="hy-empty"><HataAppLoading app="hatady" :size="32" :monochrome="monochrome" :active="active && hataGoesHost?.active.value !== false && hataGoesSession?.active.value !== false" :label="copy.loading"/></div>
 	<div v-else-if="loaded" :class="$style.bento">
 		<section :class="$style.hero" data-hy-entrance="home">
 			<header :class="$style.head">
@@ -329,49 +329,50 @@
 			</div>
 		</section>
 	</div>
-	<HyDialog v-if="overviewOpen && !preview" :title="dashboardCopy.overviewTitle" @close="overviewOpen = false" @closed="overviewOpen = false">
-		<div :class="$style.overview">
-			<h3>
-				{{
-					summary.emerging
-						? i18n.tsx._hata._hatady._homeDashboard.emergingKind({ kind: kindLabel(summary.emerging) })
-						: summary.primary
-							? i18n.tsx._hata._hatady._homeDashboard.primaryKind({ kind: kindLabel(summary.primary) })
-							: dashboardCopy.mixedDays
-				}}
-			</h3>
-			<div>
-				<span>{{ dashboardCopy.ownRecords }}</span>
-				<span>{{ dashboardCopy.thirtyDays }}</span>
-				<span>{{ dashboardCopy.sevenDays }}</span>
+	<Teleport to="body">
+		<HyDialog v-if="overviewOpen && !preview" ref="overviewDialog" :title="dashboardCopy.overviewTitle" @close="closeOverview" @closed="onOverviewClosed">
+			<div :class="$style.overview">
+				<h3>
+					{{
+						summary.emerging
+							? i18n.tsx._hata._hatady._homeDashboard.emergingKind({ kind: kindLabel(summary.emerging) })
+							: summary.primary
+								? i18n.tsx._hata._hatady._homeDashboard.primaryKind({ kind: kindLabel(summary.primary) })
+								: dashboardCopy.mixedDays
+					}}
+				</h3>
+				<div>
+					<span>{{ dashboardCopy.ownRecords }}</span>
+					<span>{{ dashboardCopy.thirtyDays }}</span>
+					<span>{{ dashboardCopy.sevenDays }}</span>
+				</div>
+				<button
+					v-for="item in summary.ranked"
+					:key="item.kind"
+					@click="openOverviewRecords(item.kind)"
+				>
+					<span>
+						<i :class="kindIcon(item.kind)" aria-hidden="true"></i>
+						{{ kindLabel(item.kind) }}
+					</span>
+					<b>{{ item.count }}</b>
+					<b>{{ item.weekCount }}</b>
+				</button>
+				<small>{{ localDateKey(new Date(homePeriod(now).since)) }} — {{ localDateKey(now) }}</small>
 			</div>
-			<button
-				v-for="item in summary.ranked"
-				:key="item.kind"
-				@click="
-					overviewOpen = false;
-					emit('records', item.kind);
-				"
-			>
-				<span>
-					<i :class="kindIcon(item.kind)" aria-hidden="true"></i>
-					{{ kindLabel(item.kind) }}
-				</span>
-				<b>{{ item.count }}</b>
-				<b>{{ item.weekCount }}</b>
-			</button>
-			<small>{{ localDateKey(new Date(homePeriod(now).since)) }} — {{ localDateKey(now) }}</small>
-		</div>
-	</HyDialog>
+		</HyDialog>
+	</Teleport>
 </section>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, nextTick, onDeactivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import type { HatadyActivity, HatadyLogKind } from '@/utility/hatady-media.js';
 import type { HatadyHomePreview, HatadyHomeWork } from '@/utility/hatady-home.js';
 import { createHatadyShelfMotion } from '@/utility/hatady-shelf-motion.js';
 import HyDialog from '@/components/HyDialog.vue';
+import HataAppLoading from '@/components/HataAppLoading.vue';
+import { HATA_GOES_HOST, HATA_GOES_SESSION } from '@/utility/hatagoes-context.js';
 import HyBookCover from '@/components/HyBookCover.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
 import HyMediaCover from '@/components/HyMediaCover.vue';
@@ -398,7 +399,7 @@ import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { $i } from '@/i.js';
 
-const props = defineProps<{ revision: number; stats?: Record<string, any> | null; preview?: HatadyHomePreview }>();
+const props = withDefaults(defineProps<{ revision: number; stats?: Record<string, any> | null; preview?: HatadyHomePreview; active?: boolean; monochrome?: boolean }>(), { active: true, monochrome: false });
 const emit = defineEmits<{
 	(event: 'records' | 'record', kind: string): void;
 	(event: 'work', work: HatadyHomeWork): void;
@@ -418,6 +419,48 @@ const loading = ref(false),
 	hasOlder = ref(false),
 	now = ref(new Date());
 const overviewOpen = ref(false);
+const overviewDialog = ref<InstanceType<typeof HyDialog> | null>(null);
+const hataGoesHost = inject(HATA_GOES_HOST, null);
+const hataGoesSession = inject(HATA_GOES_SESSION, null);
+let overviewClosing = false;
+let overviewRecordsKind: string | null = null;
+
+function openOverview(): void {
+	if (props.preview || hataGoesHost?.active.value === false || hataGoesSession?.active.value === false) return;
+	overviewOpen.value = true;
+}
+
+function closeOverview(): void {
+	if (overviewClosing) return;
+	overviewClosing = true;
+	overviewDialog.value?.close();
+}
+
+function onOverviewClosed(): void {
+	overviewOpen.value = false;
+	overviewClosing = false;
+	if (overviewRecordsKind !== null) {
+		const kind = overviewRecordsKind;
+		overviewRecordsKind = null;
+		emit('records', kind);
+	}
+}
+
+function openOverviewRecords(kind: string): void {
+	overviewRecordsKind = kind;
+	closeOverview();
+}
+
+function discardOverview(): void {
+	overviewOpen.value = false;
+	overviewClosing = false;
+	overviewRecordsKind = null;
+}
+
+watch(() => props.preview, preview => { if (preview) discardOverview(); });
+watch(() => hataGoesHost?.active.value, active => { if (active === false) discardOverview(); });
+watch(() => hataGoesSession?.active.value, active => { if (active === false) discardOverview(); });
+onDeactivated(discardOverview);
 const recommendIndex = ref(0),
 	reduced = ref(false),
 	shelfPaused = ref(false),
@@ -758,6 +801,7 @@ onMounted(() => {
 	window.document.addEventListener('visibilitychange', onVisibility);
 });
 onUnmounted(() => {
+	discardOverview();
 	generation++;
 	shelfMotion?.dispose();
 	motionQuery?.removeEventListener('change', onMotion);

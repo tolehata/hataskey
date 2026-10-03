@@ -13,11 +13,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div ref="featureEl" :class="$style.feature" :data-paused="paused" role="region" :aria-roledescription="copy.carousel" :aria-label="i18n.tsx._hata._hatask._akatsukiApps.featureLabel({ app: appTitle })" @pointerenter="hoverPaused = true" @pointerleave="hoverPaused = false" @focusin="focusPaused = true" @focusout="onFocusOut">
 		<div :class="$style.track" data-feature-track :style="{ transform: `translateX(-${activeIndex * 100}%)` }">
 			<div v-for="(slide, index) in features" :key="slide.id" :class="$style.slide" :data-tone="slide.tone" :data-feature-id="slide.id" :inert="index !== activeIndex" :aria-hidden="index !== activeIndex" role="group" :aria-roledescription="copy.slide" :aria-label="`${index + 1} / ${features.length}`">
-				<component :is="slide.icon" :class="$style.featureMark" :strokeWidth="2" aria-hidden="true"/>
+				<HataAppLogo v-if="slide.id === 'hatady'" app="hatady" :size="132" :monochrome="monochrome" :class="$style.featureMark"/><component :is="slide.icon" v-else :class="$style.featureMark" :strokeWidth="2" aria-hidden="true"/>
 				<div :class="$style.featureBody">
 					<div :class="$style.featureKicker">{{ slide.kicker }}</div>
 					<div :class="$style.featureTitle" data-feature-title>{{ slide.lines[0] }}<br>{{ slide.lines[1] }}</div>
-					<button type="button" :class="$style.featureApp" :data-feature-open="slide.id" @click="emit('open', slide.id)"><component :is="slide.icon" :strokeWidth="2" aria-hidden="true"/><span :class="slide.brand ? $style.brand : $style.featureNative">{{ slide.label }}</span></button>
+					<button type="button" :class="$style.featureApp" :data-feature-open="slide.id" @click="emit('open', slide.id)"><HataAppLogo v-if="slide.id === 'hatady'" app="hatady" :size="18" :monochrome="monochrome"/><component :is="slide.icon" v-else :strokeWidth="2" aria-hidden="true"/><HataAppWordmark v-if="slide.id === 'hatady'" app="hatady" inheritColor/><span v-else :class="slide.brand ? $style.brand : $style.featureNative">{{ slide.label }}</span></button>
 				</div>
 			</div>
 		</div>
@@ -32,7 +32,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div :class="$style.mobileList" data-app-layout="mobile">
 		<h2 :class="[$style.mobileTitle, $style.brand]">{{ appTitle }}</h2>
 		<article v-for="app in mobileApps" :key="app.id" :class="$style.mobileCard" :data-app-id="app.id">
-			<div :class="$style.mobileCardHead"><component :is="app.icon" :strokeWidth="2" aria-hidden="true"/><span :class="app.brand ? [$style.appName, $style.brand] : $style.appName">{{ app.label }}</span><span v-if="countsKnown !== false && app.count && count(app.count) > 0" :class="$style.countBadge" data-count-badge>{{ count(app.count) }}</span><span v-if="app.isNew" :class="$style.countBadge" data-new-badge>NEW</span><button type="button" :class="$style.appOpen" :aria-label="i18n.tsx._hata._hatask._akatsukiApps.openApp({ app: app.label })" @click="emit('open', app.id)"><ChevronRight :strokeWidth="2" aria-hidden="true"/></button></div>
+			<div :class="$style.mobileCardHead"><HataAppLogo v-if="app.id === 'feed' || app.id === 'hatady'" :app="app.id === 'feed' ? 'hatafeed' : 'hatady'" :size="26" :monochrome="monochrome"/><component :is="app.icon" v-else :strokeWidth="2" aria-hidden="true"/><span :class="app.brand ? [$style.appName, $style.brand] : $style.appName"><HataAppWordmark v-if="app.id === 'feed' || app.id === 'hatady'" :app="app.id === 'feed' ? 'hatafeed' : 'hatady'" inheritColor/><template v-else>{{ app.label }}</template></span><span v-if="countsKnown !== false && app.count && count(app.count) > 0" :class="$style.countBadge" data-count-badge>{{ count(app.count) }}</span><span v-if="app.isNew" :class="$style.countBadge" data-new-badge>NEW</span><button type="button" :class="$style.appOpen" :aria-label="i18n.tsx._hata._hatask._akatsukiApps.openApp({ app: app.label })" @click="emit('open', app.id)"><ChevronRight :strokeWidth="2" aria-hidden="true"/></button></div>
 			<p :class="$style.mobileDescription">{{ app.description }}</p>
 		</article>
 	</div>
@@ -42,8 +42,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<section v-for="group in groups" :key="group.id" :class="$style.appGroup">
 			<h3 v-if="group.label" :class="$style.category"><component :is="group.icon" :strokeWidth="2" aria-hidden="true"/>{{ group.label }}</h3>
 			<article v-for="app in group.apps" :key="app.id" :class="$style.desktopRow" :data-app-id="app.id">
-				<component :is="app.icon" :strokeWidth="2" aria-hidden="true"/>
-				<div :class="$style.desktopCopy"><div :class="$style.nameLine"><strong :class="app.brand ? $style.brand : undefined">{{ app.label }}</strong><span v-if="countsKnown !== false && app.count && count(app.count) > 0" :class="$style.countBadge" data-count-badge>{{ count(app.count) }}</span><span v-if="app.isNew" :class="$style.countBadge" data-new-badge>NEW</span></div><p>{{ app.description }}</p></div>
+				<HataAppLogo v-if="app.id === 'feed' || app.id === 'hatady'" :app="app.id === 'feed' ? 'hatafeed' : 'hatady'" :size="30" :monochrome="monochrome"/><component :is="app.icon" v-else :strokeWidth="2" aria-hidden="true"/>
+				<div :class="$style.desktopCopy"><div :class="$style.nameLine"><strong :class="app.brand ? $style.brand : undefined"><HataAppWordmark v-if="app.id === 'feed' || app.id === 'hatady'" :app="app.id === 'feed' ? 'hatafeed' : 'hatady'" inheritColor/><template v-else>{{ app.label }}</template></strong><span v-if="countsKnown !== false && app.count && count(app.count) > 0" :class="$style.countBadge" data-count-badge>{{ count(app.count) }}</span><span v-if="app.isNew" :class="$style.countBadge" data-new-badge>NEW</span></div><p>{{ app.description }}</p></div>
 				<button type="button" :class="$style.appOpen" :aria-label="i18n.tsx._hata._hatask._akatsukiApps.openApp({ app: app.label })" @click="emit('open', app.id)"><ChevronRight :strokeWidth="2" aria-hidden="true"/></button>
 			</article>
 		</section>
@@ -56,6 +56,8 @@ import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, 
 import { Activity, BookOpen, BookOpenCheck, CalendarDays, ChefHat, ChevronLeft, ChevronRight, Contact, Flag, Flower2, Gamepad2, MessageSquareWarning, Newspaper, Paintbrush, Palette, PanelLeft, Pause, Play, ScanFace, SlidersHorizontal, Smile, Soup, SquareCheckBig, Trophy, Wrench } from '@lucide/vue';
 import type { Component } from 'vue';
 import { i18n } from '@/i18n.js';
+import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
 
 type CountKey = 'calendar' | 'todo' | 'meal' | 'feedback';
 type AppItem = { id: string; label: string; icon: Component; description: string; brand?: boolean; count?: CountKey; isNew?: boolean };
@@ -64,11 +66,13 @@ type Feature = { id: string; label: string; icon: Component; kicker: string; lin
 const props = withDefaults(defineProps<{
 	kind: 'hatask' | 'tools';
 	animations: boolean;
+	monochrome?: boolean;
 	counts: { calendar: number; todo: number; meal: number; feedback: number };
 	countsKnown?: boolean;
 	canAccessHataFeed: boolean;
 	canUseMascot: boolean;
-}>(), { countsKnown: true });
+	embedded?: boolean;
+}>(), { countsKnown: true, embedded: false, monochrome: false });
 const emit = defineEmits<{ open: [id: string] }>();
 const copy = i18n.ts._hata._hatask._akatsukiApps;
 const appTitle = computed(() => props.kind === 'hatask' ? 'Hatask App' : 'Hataskey App');
@@ -102,7 +106,7 @@ const toolApps: readonly AppItem[] = [
 	{ id: 'whatsnew', label: copy.appWhatsNew, icon: Newspaper, description: copy.appWhatsNewDescription },
 	{ id: 'hatasettings', label: copy.appHataskeySettings, icon: Flag, description: copy.appHataskeySettingsDescription },
 ];
-const availableTools = computed(() => toolApps.filter(app => (app.id !== 'feed' || props.canAccessHataFeed) && (app.id !== 'mascot' || props.canUseMascot)));
+const availableTools = computed(() => toolApps.filter(app => (app.id !== 'feed' || props.canAccessHataFeed) && (app.id !== 'mascot' || props.canUseMascot) && (!props.embedded || (app.id !== 'games' && app.id !== 'hatasettings'))));
 const mobileApps = computed(() => props.kind === 'hatask' ? hataskApps : availableTools.value);
 const groupSpecs = [
 	{ id: 'tools', label: copy.groupTools, icon: Wrench, apps: ['card', 'analyze', 'drawing'] },
@@ -221,7 +225,7 @@ onBeforeUnmount(() => {
 .root .featureApp:hover { filter: brightness(.94); }
 .featureApp .brand { min-width: 0; font-size: 15px; overflow-wrap: anywhere; }
 .featureNative { min-width: 0; font-size: 14px; font-weight: 800; overflow-wrap: anywhere; }
-.featureApp svg { width: 17px; height: 17px; flex: 0 0 auto; }
+.featureApp > svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .featureMark { position: absolute; right: -14px; bottom: -24px; width: 132px !important; height: 132px !important; opacity: .13; pointer-events: none; }
 .controls { position: absolute; inset-inline: 0; bottom: 0; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 0 18px 19px; pointer-events: none; }
 .controls > * { pointer-events: auto; }
@@ -271,7 +275,7 @@ onBeforeUnmount(() => {
 	.featureKicker::after { width: 26px; }
 	.featureTitle { font-size: clamp(20px, calc((100cqi - 32px) / 12), 22px); line-height: 1.18; letter-spacing: -.02em; }
 	.root .featureApp { padding-inline: 14px; font-size: 13px; }
-	.featureApp svg { width: 16px; height: 16px; }
+	.featureApp > svg { width: 16px; height: 16px; }
 	.controls { gap: 7px; }
 	.root .carouselButton { width: 32px; height: 32px; }
 	.carouselButton svg { width: 16px; height: 16px; }

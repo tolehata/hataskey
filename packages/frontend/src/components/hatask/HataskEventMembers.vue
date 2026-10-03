@@ -22,12 +22,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
+import { useHataGoesPickers } from '@/utility/hatagoes-pickers.js';
 import { computed, ref, watch } from 'vue';
 import type { HataskPlannerTemplate } from '@/utility/hatask-planner-storage.js';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { i18n } from '@/i18n.js';
 
+const pickers = useHataGoesPickers();
+const dialogs = useHataGoesDialogs();
 const props = defineProps<{
 	disabled: boolean;
 	templatesReady: boolean;
@@ -53,7 +56,8 @@ watch(model, async ids => {
 
 async function addMember(): Promise<void> {
 	if (props.disabled || busy.value || model.value.length >= 100) return;
-	const user = await os.selectUser({ localOnly: true, includeSelf: false });
+	const user = await pickers.selectUser({ localOnly: true, includeSelf: false });
+	if (!user) return;
 	if (model.value.includes(user.id)) return;
 	names.value[user.id] = user.name ? `${user.name} (@${user.username})` : `@${user.username}`;
 	model.value = [...model.value, user.id];
@@ -66,7 +70,7 @@ function applyTemplate(): void {
 }
 
 async function saveTemplate(): Promise<void> {
-	const { canceled, result } = await os.inputText({ title: copy.saveMemberTemplate, minLength: 1, maxLength: 80 });
+	const { canceled, result } = await dialogs.inputText({ title: copy.saveMemberTemplate, minLength: 1, maxLength: 80 });
 	if (canceled || !result.trim() || props.disabled) return;
 	busy.value = true;
 	error.value = '';
@@ -75,7 +79,7 @@ async function saveTemplate(): Promise<void> {
 
 async function removeTemplate(): Promise<void> {
 	const id = selectedTemplate.value;
-	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteMemberTemplate });
+	const { canceled } = await dialogs.confirm({ type: 'warning', text: copy.deleteMemberTemplate });
 	if (canceled || props.disabled) return;
 	busy.value = true;
 	error.value = '';

@@ -8,9 +8,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<XTitlebar v-if="prefer.r.showTitlebar.value" style="flex-shrink: 0;"/>
 
 	<div :class="$style.nonTitlebarArea">
-		<XSidebar v-if="!isMobile" :class="$style.sidebar" :showWidgetButton="!isDesktop" @widgetButtonClick="widgetsShowing = true"/>
+		<XSidebar v-if="!isMobile && !isHataGoesPage" :class="$style.sidebar" :showWidgetButton="!isDesktop" @widgetButtonClick="widgetsShowing = true"/>
 
-		<div :class="[$style.contents, !isMobile && prefer.r.showTitlebar.value ? $style.withSidebarAndTitlebar : null]" @contextmenu.stop="onContextmenu">
+		<div :class="[$style.contents, !isMobile && !isHataGoesPage && prefer.r.showTitlebar.value ? $style.withSidebarAndTitlebar : null]" @contextmenu.stop="onContextmenu">
 			<div>
 				<XReloadSuggestion v-if="shouldSuggestReload"/>
 				<XPreferenceRestore v-if="shouldSuggestRestoreBackup"/>
@@ -19,10 +19,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<StackingRouterView v-if="prefer.s['experimental.stackingRouterView']" :class="$style.content"/>
 			<RouterView v-else :class="$style.content"/>
-			<XMobileFooterMenu v-if="isMobile" ref="navFooter" v-model:drawerMenuShowing="drawerMenuShowing" v-model:widgetsShowing="widgetsShowing"/>
+			<XMobileFooterMenu v-if="isMobile && mainRouter.currentRoute.value.path !== '/hatagoes'" ref="navFooter" v-model:drawerMenuShowing="drawerMenuShowing" v-model:widgetsShowing="widgetsShowing"/>
 		</div>
 
-		<div v-if="isDesktop && !pageMetadata?.needWideArea && prefer.s.enableWidgetsArea" :class="$style.widgets" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'">
+		<div v-if="isDesktop && !isHataGoesPage && !pageMetadata?.needWideArea && prefer.s.enableWidgetsArea" :class="$style.widgets" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'">
 			<div :class="$style.widgetsInner">
 				<XWidgets collapsible :collapsed="rightWidgetsCollapsed" @toggleCollapse="setRightWidgetsCollapsed(!rightWidgetsCollapsed)"/>
 			</div>
@@ -63,6 +63,7 @@ const XStatusBars = defineAsyncComponent(() => import('@/ui/_common_/statusbars.
 const XAnnouncements = defineAsyncComponent(() => import('@/ui/_common_/announcements.vue'));
 
 const isRoot = computed(() => mainRouter.currentRoute.value.name === 'index');
+const isHataGoesPage = computed(() => mainRouter.currentRoute.value.path === '/hatagoes');
 
 const DESKTOP_THRESHOLD = 1100;
 const MOBILE_THRESHOLD = 500;

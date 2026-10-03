@@ -22,10 +22,12 @@ import HatadyTutorialExample from '@/components/HatadyTutorialExample.vue';
 import { getHatadyTutorialPages } from '@/utility/hatady-tutorial-content.js';
 import { hatadyTheme, saveHatadyDisplay } from '@/utility/hatady-prefs.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
-import * as os from '@/os.js';
+import { useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { i18n } from '@/i18n.js';
 
 const copy = i18n.ts._hata._hatady._tutorial;
+
+const popupMenu = useHataGoesPopupMenu();
 
 withDefaults(defineProps<{ kind?: HatadyTutorialKind; anchorElement?: HTMLElement | null; cancelSignal?: AbortSignal }>(), { kind: 'initial', anchorElement: null });
 const emit = defineEmits<{ done: []; closed: [] }>();
@@ -44,7 +46,7 @@ async function chooseTheme(event: MouseEvent): Promise<void> {
 		{ value: 'espresso', label: copy.themeEspresso },
 		{ value: 'hataskey', label: copy.themeHataskey },
 	];
-	await os.popupMenu(
+	await popupMenu(
 		options.map((option) => ({
 			text: option.label,
 			icon: hatadyTheme.value === option.value ? 'ti ti-check' : undefined,

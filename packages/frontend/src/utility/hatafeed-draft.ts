@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
-import { computed, nextTick, ref, shallowRef } from 'vue';
+import { computed, inject, nextTick, ref, shallowRef } from 'vue';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { hataFeedDraftPromptOpen, hataFeedNotify } from '@/utility/hatafeed-ui.js';
-import * as os from '@/os.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 
 let openPrompts = 0;
 export function useHataFeedDraft<T>(options: {
@@ -12,10 +13,12 @@ export function useHataFeedDraft<T>(options: {
 	isMeaningful: (value: T) => boolean;
 	busy?: () => boolean;
 }) {
+	const popup = useHataGoesPopup();
+	const host = inject(HATA_GOES_HOST, null);
 	const offered = shallowRef<T | null>(null);
 	const prompt = ref(false);
 	let completed = false;
-	const draft = useHataFormDraft<T>({ ...options, autoSave: false, restore: value => { offered.value = value; } });
+	const draft = useHataFormDraft<T>({ ...options, autoSave: false, restore: value => { offered.value = value; }, onPreserveFailure: () => hataFeedNotify('下書きを保存できませんでした') });
 
 	function resumeDraft() {
 		if (offered.value == null) return;
@@ -48,8 +51,9 @@ export function useHataFeedDraft<T>(options: {
 		let leaving = false;
 		try {
 			const component = (await import('@/components/HataFeedDraftPrompt.vue')).default;
+			if (host && !host.active.value) return false;
 			const result = await new Promise<boolean>(resolve => {
-				const { dispose } = os.popup(component, { save: () => {
+				const { dispose } = popup(component, { save: () => {
 					const saved = draft.saveDraft();
 					if (saved) hataFeedNotify('端末に下書きを保存しました');
 					return saved;

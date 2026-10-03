@@ -48,11 +48,11 @@ vi.mock('vuedraggable', async () => {
 });
 vi.mock('@/components/MkModalWindow.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
-	return { default: defineComponent({ setup: (_props, { slots, expose }) => { expose({ close: vi.fn() }); return () => render('div', { 'data-test-window': 'modal' }, slots.default?.()); } }) };
+	return { default: defineComponent({ props: { panelClass: String, panelTheme: String, panelMode: String }, setup: (props, { slots, expose }) => { expose({ close: vi.fn() }); return () => render('div', { 'data-test-window': 'modal', 'data-panel-theme': props.panelTheme, 'data-panel-mode': props.panelMode, class: props.panelClass }, slots.default?.()); } }) };
 });
 vi.mock('@/components/SettingsEmbeddedWindow.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
-	return { default: defineComponent({ setup: (_props, { slots, expose }) => { expose({ close: vi.fn() }); return () => render('div', { 'data-test-window': 'embedded' }, slots.default?.()); } }) };
+	return { default: defineComponent({ props: { panelClass: String, panelTheme: String, panelMode: String }, setup: (props, { slots, expose }) => { expose({ close: vi.fn() }); return () => render('div', { 'data-test-window': 'embedded', 'data-panel-theme': props.panelTheme, 'data-panel-mode': props.panelMode, class: props.panelClass }, slots.default?.()); } }) };
 });
 vi.mock('@/components/MkButton.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
@@ -82,16 +82,16 @@ function themeButton(container: HTMLElement, name: string): HTMLButtonElement {
 	return button;
 }
 
-async function mountSettings(embedded = true) {
+async function mountSettings(embedded = true, initialSection?: string) {
 	const changed = vi.fn();
 	const container = window.document.createElement('div'); window.document.body.append(container);
-	const app = createApp({ render: () => h(HataskSettings, { embedded, onChanged: changed }) });
+	const app = createApp({ render: () => h(HataskSettings, { embedded, initialSection, onChanged: changed }) });
 	app.mount(container); mounted.push({ app, container });
 	await flush();
 	return { container, changed };
 }
 
-async function openThemes(container: HTMLElement): Promise<void> { textButton(container, copy.openThemeSettings).click(); await flush(); }
+async function openThemes(container: HTMLElement): Promise<void> { expect(container.querySelector('[data-theme-carousel]')).not.toBeNull(); await flush(); }
 
 function writes() { return vi.mocked(misskeyApi).mock.calls.filter(([endpoint]) => endpoint === 'i/registry/set'); }
 
@@ -109,6 +109,30 @@ beforeEach(() => {
 afterEach(() => { for (const { app, container } of mounted.splice(0)) { app.unmount(); container.remove(); } });
 
 describe('Hatask theme settings and persistence safety', () => {
+	test('shows the theme and all settings together and updates the modal palette with the saved theme', async () => {
+		readSettings = async () => ({ theme: 'koke', autoTheme: false, darkMode: true });
+		const { container } = await mountSettings(false, 'appearance');
+		const panel = container.querySelector('[data-test-window="modal"]');
+		expect(panel?.getAttribute('data-panel-theme')).toBe('koke');
+		expect(panel?.getAttribute('data-panel-mode')).toBe('dark');
+		expect(panel?.className).toMatch(/settingsWindow/u);
+		expect(container.querySelector('[data-hatagoes-setting="theme"]')).not.toBeNull();
+		expect(container.querySelector('[data-hatagoes-setting="appearance"]')).not.toBeNull();
+		expect(container.querySelector('[data-hatagoes-setting="navigation"]')).not.toBeNull();
+		themeButton(container, copy.themeSuri).click(); await flush();
+		expect(panel?.getAttribute('data-panel-theme')).toBe('suri');
+		expect(panel?.getAttribute('data-panel-mode')).toBe('dark');
+	});
+	test('keeps the embedded heading in the same reactive palette as the settings body', async () => {
+		readSettings = async () => ({ theme: 'koke', autoTheme: false, darkMode: true });
+		const { container } = await mountSettings(true);
+		const panel = container.querySelector('[data-test-window="embedded"]');
+		expect(panel?.className).toMatch(/settingsPalette/u);
+		expect(panel?.getAttribute('data-panel-theme')).toBe('koke');
+		expect(panel?.getAttribute('data-panel-mode')).toBe('dark');
+		themeButton(container, copy.themeSuri).click(); await flush();
+		expect(panel?.getAttribute('data-panel-theme')).toBe('suri');
+	});
 	test('only a missing settings key selects the new default without writing it', async () => {
 		const { container, changed } = await mountSettings();
 		expect(container.querySelector('[data-akatsuki-navigation]')).not.toBeNull();
@@ -282,7 +306,7 @@ describe('テーマ選択カルーセルの内容高と説明文', () => {
 	test('暁の日本語説明は指定箇所だけで改行し、翻訳の元の値や通常設定の説明は変えない', async () => {
 		const description = copy.themeAkatsukiDescription;
 		const { container } = await mountSettings();
-		expect(container.textContent).toContain(description);
+		expect(container.textContent?.replace(/\s+/gu, '')).toContain(description);
 		await openThemes(container);
 		expect(container.querySelector('[data-theme-description="akatsuki"]')?.textContent).toBe('朝焼けのグラデーションと、\n軽やかな3ペイン');
 		expect(container.querySelector('[data-theme-description="kashin"]')?.textContent).toBe(copy.themeKashinDescription);
@@ -443,7 +467,6 @@ describe('下部ナビバー設定はすべてのテーマで共通に表示す�
 		let rejectSave: (error: Error) => void = () => { throw new Error('Save did not start'); };
 		writeSettings = () => new Promise((_resolve, reject) => { rejectSave = reject; });
 		await openThemes(container); themeButton(container, copy.themeAkatsuki).click(); await flush();
-		textButton(container, copy.backToSettings).click(); await flush();
 		expect(writes()).toHaveLength(1);
 		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
 		rejectSave(new Error('Offline')); await flush();
@@ -451,12 +474,10 @@ describe('下部ナビバー設定はすべてのテーマで共通に表示す�
 		expect(changed).not.toHaveBeenCalled();
 		writeSettings = async () => undefined;
 		await openThemes(container); themeButton(container, copy.themeAkatsuki).click(); await flush();
-		textButton(container, copy.backToSettings).click(); await flush();
 		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
 		let resolveSave: () => void = () => { throw new Error('Save did not start'); };
 		writeSettings = () => new Promise<void>(resolve => { resolveSave = resolve; });
 		await openThemes(container); themeButton(container, copy.themeHatakyu).click(); await flush();
-		textButton(container, copy.backToSettings).click(); await flush();
 		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
 		expect(navButton(container, '[data-ak-menu="home"]').disabled).toBe(true);
 		resolveSave(); await flush();
@@ -464,7 +485,6 @@ describe('下部ナビバー設定はすべてのテーマで共通に表示す�
 		expect(changed).toHaveBeenLastCalledWith(expect.objectContaining({ ...saved, theme: 'hatakyu' }));
 		writeSettings = async () => undefined;
 		await openThemes(container); themeButton(container, copy.themeAkatsuki).click(); await flush();
-		textButton(container, copy.backToSettings).click(); await flush();
 		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
 		expect(writes()).toHaveLength(4);
 		for (const [, params] of writes()) expect(params).toMatchObject({ value: { akatsukiMobileTabs: saved.akatsukiMobileTabs, akatsukiShortcut: 'meal', custom: 'keep' } });
@@ -475,7 +495,6 @@ describe('下部ナビバー設定はすべてのテーマで共通に表示す�
 		readSettings = async () => saved;
 		const { container } = await mountSettings();
 		await openThemes(container); themeButton(container, copy.themeSuri).click(); await flush();
-		textButton(container, copy.backToSettings).click(); await flush();
 		const menu = openTabMenu(container, 'todo');
 		menuAction(menu, 'カレンダー'); await flush();
 		expect(navigationOrder(container)).toEqual(['home', 'cal', 'hataskapps', 'apps']);
@@ -740,7 +759,8 @@ describe('暁のドラッグと項目別メニューによる4枠設定', () => 
 		const { container } = await mountSettings();
 		menuAction(openTabMenu(container, 'todo'), 'カレンダー');
 		await flush();
-		const other = textButton(container, copy.openThemeSettings);
+		const other = window.document.createElement('button');
+		container.append(other);
 		other.focus(); closeMenu();
 		await flush();
 		finishSave();

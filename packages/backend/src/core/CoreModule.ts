@@ -67,6 +67,7 @@ import { HataskRecordReviewService } from './HataskRecordReviewService.js';
 import { FeedbackService } from './FeedbackService.js';
 import { FeedbackEmojiService } from './FeedbackEmojiService.js';
 import { HatadyService } from './HatadyService.js';
+import { HatagoesSearchService } from './HatagoesSearchService.js';
 import { HatadyStreamService } from './HatadyStreamService.js';
 import { HatadyMediaService } from './HatadyMediaService.js';
 import { HatadyActivityService } from './HatadyActivityService.js';
@@ -432,6 +433,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		FeedbackService,
 		FeedbackEmojiService,
 		HatadyService,
+		HatagoesSearchService,
 		HatadyStreamService,
 		HatadyMediaService,
 		HatadyActivityService,
@@ -796,6 +798,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		FeedbackService,
 		FeedbackEmojiService,
 		HatadyService,
+		HatagoesSearchService,
 		HatadyStreamService,
 		HatadyMediaService,
 		HatadyActivityService,

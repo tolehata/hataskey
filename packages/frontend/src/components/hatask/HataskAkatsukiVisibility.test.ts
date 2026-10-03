@@ -52,7 +52,7 @@ function attribute(node: ElementNode, name: string): string | undefined {
 }
 
 function tabNode(tab: typeof tabs[number]): ElementNode {
-	const matches = elements(parsed.descriptor.template?.ast?.children ?? []).filter(node => node.props.some(prop => prop.type === 7 && prop.name === 'if' && prop.exp?.type === 4 && prop.exp.content.replace(/\s/gu, '') === `activeTab==='${tab}'`));
+	const matches = elements(parsed.descriptor.template?.ast?.children ?? []).filter(node => node.props.some(prop => prop.type === 7 && prop.name === 'if' && prop.exp?.type === 4 && prop.exp.content.replace(/\s/gu, '') === `activeTab==='${tab}'||captureKind==='${tab}'`));
 	expect(matches, `${tab} の実テンプレート分岐`).toHaveLength(1);
 	expect(attribute(matches[0], 'class')).toContain('htk-tabpage');
 	return matches[0];
@@ -108,7 +108,8 @@ function rulesFrom(style: CompiledStyle): Rule[] {
 		for (const selector of rule.selectors) {
 			// The relevant selectors currently contain only classes, attributes,
 			// descendant combinators and nth-child. Reject unsupported syntax.
-			const withoutAttributes = selector.replace(/\[[^\]]+\]/gu, '');
+			const withoutNot = selector.replace(/:not\(\[[^\]]+\]\)/gu, '');
+			const withoutAttributes = withoutNot.replace(/\[[^\]]+\]/gu, '');
 			const withoutClasses = withoutAttributes.replace(/\.[\w-]+/gu, '').replace(/:nth-child\([^)]*\)/gu, '');
 			expect(withoutClasses.trim(), `unsupported visibility selector: ${selector}`).toBe('');
 			const specificity = (selector.match(/\[[^\]]+\]|\.[\w-]+|:nth-child\([^)]*\)/gu) ?? []).length;

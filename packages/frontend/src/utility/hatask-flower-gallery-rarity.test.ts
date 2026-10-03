@@ -1,191 +1,196 @@
-/*
- * SPDX-FileCopyrightText: Tolehata and hatasaba-project
- * SPDX-License-Identifier: AGPL-3.0-only
- */
-
+/* SPDX-License-Identifier: AGPL-3.0-only */
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
-import { describe, expect, test, vi } from 'vitest';
-import { createHataskGrowingFlower } from './hatask-flower-growth.js';
-import { findHataskFlora, floraData, generateFlowerName, isRareHataskFlower, localizeFloraName } from './hatask-flora.js';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { findHataskFlora, floraData, isRareHataskFlower, localizeFloraName } from './hatask-flora.js';
 
-vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn() }));
+const api = vi.hoisted(() => vi.fn());
+vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: api }));
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 
 const page = readFileSync(`${process.cwd()}/src/pages/hatask.vue`, 'utf8');
-const script = page.match(/<script lang="ts" setup>([\s\S]*?)<\/script>/u)![1];
+const care = readFileSync(`${process.cwd()}/src/components/hatask/HataskFlowerCare.vue`, 'utf8');
+const pageScript = page.match(/<script lang="ts" setup>([\s\S]*?)<\/script>/u)![1];
+const careScript = care.match(/<script setup lang="ts">([\s\S]*?)<\/script>/u)![1];
 
-// Execute the page's real handlers; only the dialog, Registry, and network boundaries are replaced.
-function handler(name: string, bindings: Record<string, unknown>): (...args: unknown[]) => Promise<unknown> {
-	const ast = ts.createSourceFile('hatask.ts', script, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+// Run the actual component/page handlers while replacing only state and API boundaries.
+function handler(source: string, name: string, bindings: Record<string, unknown>): (...args: unknown[]) => Promise<unknown> {
+	const ast = ts.createSourceFile(`${name}.ts`, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 	const declaration = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name);
-	if (!declaration) throw new Error(`Missing page handler: ${name}`);
-	const source = declaration.getText(ast).replace('await import(\'@/components/MkDialog.vue\').then(module => module.default)', 'await loadInputDialog()');
-	const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+	if (!declaration) throw new Error(`Missing handler: ${name}`);
+	const code = ts.transpileModule(declaration.getText(ast).replace('await import(\'@/components/MkDialog.vue\').then(module => module.default)', 'await loadInputDialog()'), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 	return new Function(...Object.keys(bindings), `${code}; return ${name};`)(...Object.values(bindings));
 }
 
-function fixture(growing: ReturnType<typeof createHataskGrowingFlower>) {
-	const gallery = { value: [] as Record<string, unknown>[] };
-	const flower = { value: growing };
-	const rare = floraData.find(item => item.name === '流星花')!;
-	const registrySet = vi.fn().mockResolvedValue(undefined);
-	const syncFlowerGallery = vi.fn().mockResolvedValue(undefined);
-	const inputText = vi.fn().mockResolvedValue({ canceled: false, result: '窓辺のお花' });
-	const bindings = {
-		flower, gallery, findHataskFlora, generateFlowerName, localizeFloraName,
-		activeTab: { value: 'garden' }, hataskPageActive: true,
-		flowerDataWritable: { value: true }, flowerDialogOpen: { value: false },
-		createHataskGrowingFlower, pickRandomFlora: () => rare,
-		generateId: () => 'harvested-id', registrySet, syncFlowerGallery,
-		syncHataskFlowerCount: vi.fn().mockResolvedValue(undefined),
-		copy: {}, inputFlowerName: inputText, os: { inputText, toast: vi.fn() },
-	};
-	const harvest = handler('harvestFlower', bindings);
-	return { ...bindings, inputText, harvest, rename: handler('renameFlower', bindings), handleHarvest: handler('handleFlowerHarvest', { ...bindings, harvestFlower: harvest }) };
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	let reject!: (error: Error) => void;
+	const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail; });
+	return { promise, resolve, reject };
+}
+
+function careFixture() {
+	const original = { id: 'flower-1', name: '流星花', emoji: '☄️', rare: true, speciesId: 'meteor', rank: 3, memory: ['本を読んだ'], progress: 100 };
+	const state = { value: { flower: original, zukan: { catalog: [] } } };
+	const bloomFlower = { value: null as Record<string, unknown> | null };
+	const busy = { value: false }, bloom = { value: false };
+	const bloomDialog = { value: { close: vi.fn() } };
+	const harvestHataskFlower = vi.fn(), receive = vi.fn(), emit = vi.fn(), notify = vi.fn();
+	const bindings = { state, bloomFlower, busy, bloom, bloomDialog, harvestHataskFlower, receive, emit, notify,
+		active: true, lastBloomId: '', meaning: { value: '希望' }, nextTick: () => Promise.resolve(), copy: { harvested: '収穫', harvestFailed: '失敗' } };
+	return { ...bindings, original, open: handler(careScript, 'openBloom', bindings), harvest: handler(careScript, 'harvest', bindings) };
 }
 
 function inputFixture(activeTab = { value: 'garden' }) {
 	let events: { done: (result: { canceled: boolean; result?: string }) => void; closed: () => void } | undefined;
-	const dispose = vi.fn();
-	const loadInputDialog = vi.fn().mockResolvedValue({});
-	const popup = vi.fn((_component: unknown, _props: unknown, handlers: NonNullable<typeof events>) => {
-		events = handlers;
-		return { dispose };
-	});
-	return {
-		activeTab, dispose, loadInputDialog, popup,
-		input: handler('inputFlowerName', { activeTab, hataskPageActive: true, loadInputDialog, os: { popup } }),
-		finish() {
-			if (!events) throw new Error('Flower name dialog did not open');
-			events.done({ canceled: false, result: '窓辺のお花' });
-			events.closed();
-		},
-	};
+	const dispose = vi.fn(), loadInputDialog = vi.fn().mockResolvedValue({});
+	const popup = vi.fn((_component: unknown, _props: unknown, handlers: NonNullable<typeof events>) => { events = handlers; return { dispose }; });
+	return { activeTab, dispose, loadInputDialog, popup,
+		input: handler(pageScript, 'inputFlowerName', { activeTab, hataskPageActive: true, loadInputDialog, popup }),
+		finish() { if (!events) throw new Error('Flower name dialog did not open'); events.done({ canceled: false, result: '窓辺のお花' }); events.closed(); } };
 }
 
 const nameInputProps = { title: '収穫', text: '名前', default: 'お花', minLength: 1, maxLength: 80 };
+beforeEach(() => { api.mockReset(); vi.resetModules(); });
 
-describe('Hatask flower harvest and rarity integration', () => {
-	test('おはなの収穫ボタンから名前入力を開き、満開の花だけを保存する', async () => {
-		const growing = createHataskGrowingFlower({ emoji: '☄️', name: '流星花', rare: true });
-		const f = fixture({ ...growing, progress: 100, totalMinutes: growing.targetMinutes });
-		f.activeTab.value = 'garden';
-		const dialog = inputFixture(f.activeTab);
-		f.inputText.mockImplementation(dialog.input);
-		const operation = f.handleHarvest();
-		await Promise.resolve();
-		expect(dialog.popup).toHaveBeenCalledOnce();
-		expect(f.flowerDialogOpen.value).toBe(true);
-		dialog.finish();
-		await operation;
-		expect(f.gallery.value[0]).toMatchObject({ emoji: '☄️', name: '窓辺のお花' });
-		expect(f.registrySet).toHaveBeenCalledTimes(2);
-		expect(f.flowerDialogOpen.value).toBe(false);
-		expect(page).toContain('@click="handleFlowerHarvest">{{copy.harvestAndName}}');
+describe('Hatask current flower harvest and rarity integration', () => {
+	test('満開の花だけが収穫画面を開き、品種・レア・思い出を入力画面へ渡す', async () => {
+		const f = careFixture();
+		f.state.value.flower.progress = 99;
+		await f.open();
+		expect(f.bloom.value).toBe(false);
+		f.state.value.flower.progress = 100;
+		await f.open();
+		expect(f.bloom.value).toBe(true);
+		expect(f.bloomFlower.value).toMatchObject({ id: 'flower-1', speciesId: 'meteor', rare: true, rank: 3, memory: ['本を読んだ'], meaning: '希望' });
+		expect(care).toContain('@click="openBloom"');
 	});
 
-	test.each(['home', 'todo', 'eye'])('%s からは収穫用の名前入力を開かない', async tab => {
+	test('名前と花IDを現行保存APIへ渡し、応答の品種情報をそのまま採用する', async () => {
+		const f = careFixture();
+		await f.open();
+		const saved = { flower: { id: 'next-flower' }, zukan: { entries: [{ speciesId: 'meteor', nickname: '窓辺のお花', rare: true, rank: 3, memory: ['本を読んだ'] }] } };
+		f.harvestHataskFlower.mockResolvedValue(saved);
+		await f.harvest('  窓辺のお花  ');
+		expect(f.harvestHataskFlower).toHaveBeenCalledExactlyOnceWith('flower-1', '窓辺のお花');
+		expect(f.receive).toHaveBeenCalledExactlyOnceWith(saved);
+		expect(f.emit).toHaveBeenCalledWith('harvested', saved);
+		expect(f.bloomDialog.value.close).toHaveBeenCalledOnce();
+	});
+
+	test('名前が空なら元の名前で保存し、失敗時は育成中の花を保持する', async () => {
+		const f = careFixture();
+		await f.open();
+		f.harvestHataskFlower.mockRejectedValue(new Error('offline'));
+		await f.harvest('   ');
+		expect(f.harvestHataskFlower).toHaveBeenCalledExactlyOnceWith('flower-1', '流星花');
+		expect(f.state.value.flower).toBe(f.original);
+		expect(f.receive).not.toHaveBeenCalled();
+		expect(f.emit).not.toHaveBeenCalled();
+		expect(f.bloomDialog.value.close).not.toHaveBeenCalled();
+		expect(f.busy.value).toBe(false);
+	});
+
+	test('保存中の二重収穫を止め、元の花IDを送る', async () => {
+		const f = careFixture();
+		await f.open();
+		const pending = deferred<unknown>();
+		f.harvestHataskFlower.mockReturnValue(pending.promise);
+		const first = f.harvest('一輪目');
+		await f.harvest('二輪目');
+		f.state.value.flower = { ...f.original, id: 'flower-2' };
+		expect(f.harvestHataskFlower).toHaveBeenCalledExactlyOnceWith('flower-1', '一輪目');
+		pending.resolve({ flower: { id: 'flower-2' } });
+		await first;
+	});
+
+	test('保存所有者は古い読取結果で図鑑を戻さない', async () => {
+		const { getHataskFlowerState, harvestHataskFlower, HATASK_FLOWER_STATE_EVENT } = await import('./hatask-flower-v2.js');
+		const old = deferred<unknown>();
+		const saved = { flower: { id: 'next-flower' }, zukan: { entries: [{ speciesId: 'meteor', nickname: '一輪目', rare: true, rank: 3 }] } };
+		api.mockReturnValueOnce(old.promise).mockResolvedValueOnce(saved);
+		const published: unknown[] = [];
+		const listener = (event: Event) => published.push((event as CustomEvent).detail);
+		window.addEventListener(HATASK_FLOWER_STATE_EVENT, listener);
+		try {
+			const read = getHataskFlowerState();
+			const result = await harvestHataskFlower('flower-1', '一輪目');
+			expect(api).toHaveBeenLastCalledWith('hatask/flowers/harvest', expect.objectContaining({ flowerId: 'flower-1', nickname: '一輪目' }));
+			expect(result).toBe(saved);
+			old.resolve({ flower: { id: 'flower-1' }, zukan: { entries: [] } });
+			expect(await read).toBe(saved);
+			expect(published).toEqual([saved]);
+		} finally { window.removeEventListener(HATASK_FLOWER_STATE_EVENT, listener); }
+	});
+
+	test('保存所有者は収穫中の二重更新を拒否し、失敗時は状態を公開しない', async () => {
+		const { harvestHataskFlower, renameHataskFlower, HATASK_FLOWER_STATE_EVENT } = await import('./hatask-flower-v2.js');
+		const pending = deferred<unknown>();
+		api.mockReturnValueOnce(pending.promise);
+		const published: unknown[] = [];
+		const listener = (event: Event) => published.push((event as CustomEvent).detail);
+		window.addEventListener(HATASK_FLOWER_STATE_EVENT, listener);
+		try {
+			const first = harvestHataskFlower('flower-1', '一輪目');
+			await expect(renameHataskFlower('flower-1', '別名')).rejects.toThrow('already in progress');
+			pending.reject(new Error('offline'));
+			await expect(first).rejects.toThrow('offline');
+			expect(api).toHaveBeenCalledTimes(1);
+			expect(published).toEqual([]);
+		} finally { window.removeEventListener(HATASK_FLOWER_STATE_EVENT, listener); }
+	});
+
+	test.each(['home', 'todo', 'eye'])('%s から旧ギャラリーの名前入力を開かない', async tab => {
 		const f = inputFixture({ value: tab });
 		await expect(f.input(nameInputProps)).resolves.toEqual({ canceled: true });
 		expect(f.loadInputDialog).not.toHaveBeenCalled();
 		expect(f.popup).not.toHaveBeenCalled();
 	});
 
-	test('廃止したEYEからは収穫処理や保存を始めない', async () => {
-		const f = fixture({ ...createHataskGrowingFlower({ emoji: '☄️', name: '流星花', rare: true }), progress: 100 });
-		f.activeTab.value = 'eye';
-		await f.handleHarvest();
-		expect(f.inputText).not.toHaveBeenCalled();
-		expect(f.registrySet).not.toHaveBeenCalled();
-	});
-
-	test('入力部品の読込中や名前入力中にタブが変わったら収穫を取り消す', async () => {
-		const loading = inputFixture({ value: 'garden' });
+	test('旧ギャラリーの名前入力中にタブが変われば取り消す', async () => {
+		const loading = inputFixture();
 		const beforeOpen = loading.input(nameInputProps);
 		loading.activeTab.value = 'home';
 		await expect(beforeOpen).resolves.toEqual({ canceled: true });
 		expect(loading.popup).not.toHaveBeenCalled();
-		const opened = inputFixture({ value: 'garden' });
+		const opened = inputFixture();
 		const beforeClose = opened.input(nameInputProps);
 		await Promise.resolve();
-		expect(opened.popup).toHaveBeenCalledOnce();
 		opened.activeTab.value = 'home';
 		opened.finish();
 		await expect(beforeClose).resolves.toEqual({ canceled: true });
 		expect(opened.dispose).toHaveBeenCalledOnce();
 	});
 
-	test('名前入力中に育成中の花が差し替わったら新しい花を収穫しない', async () => {
-		const f = fixture(createHataskGrowingFlower({ emoji: '☄️', name: '流星花', now: 1000, rare: true }));
-		const operation = f.harvest();
-		const replacement = createHataskGrowingFlower({ emoji: '💎', name: '宝石フラワー', now: 2000, rare: true });
-		f.flower.value = replacement;
-		await operation;
-		expect(f.flower.value).toBe(replacement);
-		expect(f.gallery.value).toEqual([]);
-		expect(f.registrySet).not.toHaveBeenCalled();
+	test('v2改名は花IDをAPIへ渡し、失敗時は元の品種情報を保つ', async () => {
+		const original = { id: 'flower-1', name: '流星花', speciesId: 'meteor', rare: true, v2: true };
+		const renameHataskFlower = vi.fn().mockRejectedValue(new Error('offline'));
+		const applyFlowerState = vi.fn();
+		const rename = handler(pageScript, 'renameFlower', { localizeFloraName, inputFlowerName: vi.fn().mockResolvedValue({ canceled: false, result: '窓辺のお花' }), renameHataskFlower, applyFlowerState,
+			invalidateCommunityFlowers: vi.fn(), registrySet: vi.fn(), gallery: { value: [] }, syncFlowerGallery: vi.fn(), copy: {} });
+		await expect(rename(original)).rejects.toThrow('offline');
+		expect(renameHataskFlower).toHaveBeenCalledExactlyOnceWith('flower-1', '窓辺のお花');
+		expect(original).toMatchObject({ name: '流星花', speciesId: 'meteor', rare: true });
+		expect(applyFlowerState).not.toHaveBeenCalled();
 	});
 
-	test.each(['loading', 'dialog', 'growing'] as const)('%s の間はおはなの収穫ボタンから二重操作しない', async state => {
-		const growing = createHataskGrowingFlower({ emoji: '☄️', name: '流星花', rare: true });
-		const f = fixture({ ...growing, progress: state === 'growing' ? 99 : 100 });
-		f.activeTab.value = 'garden';
-		f.flowerDataWritable.value = state !== 'loading';
-		f.flowerDialogOpen.value = state === 'dialog';
-		await f.handleHarvest();
-		expect(f.inputText).not.toHaveBeenCalled();
-		expect(f.registrySet).not.toHaveBeenCalled();
-	});
-
-	test('品種IDを持つ花は収穫・改名後も同じ品種として保存し、次のレア花を長時間で育てる', async () => {
+	test('旧ギャラリーの改名は品種IDを保持し、保存失敗でも表示名を戻す', async () => {
 		const species = floraData.find(item => item.speciesId != null)!;
-		const f = fixture(createHataskGrowingFlower({ emoji: species.emoji, name: generateFlowerName(species), speciesId: species.speciesId }));
-		await f.harvest();
-		expect(f.gallery.value[0]).toMatchObject({ speciesId: species.speciesId, name: '窓辺のお花' });
-		expect(findHataskFlora(f.gallery.value[0])).toBe(species);
-		expect(f.flower.value).toMatchObject({ emoji: '☄️', rare: true });
-		expect(f.flower.value.targetMinutes).toBeGreaterThanOrEqual(2880);
-		expect(f.flower.value.targetMinutes).toBeLessThanOrEqual(5760);
-		expect(f.registrySet).toHaveBeenCalledWith('gallery', f.gallery.value);
-		expect(f.registrySet).toHaveBeenCalledWith('flower', f.flower.value);
-		f.inputText.mockResolvedValueOnce({ canceled: false, result: '大切な一輪' });
-		await f.rename(f.gallery.value[0]);
-		expect(f.gallery.value[0]).toMatchObject({ speciesId: species.speciesId, name: '大切な一輪' });
-		expect(f.syncFlowerGallery).toHaveBeenLastCalledWith([f.gallery.value[0]]);
+		const original = { id: 'legacy', emoji: species.emoji, name: species.name, speciesId: species.speciesId };
+		const gallery = { value: [original] };
+		const registrySet = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(undefined);
+		const syncFlowerGallery = vi.fn();
+		const rename = handler(pageScript, 'renameFlower', { localizeFloraName, inputFlowerName: vi.fn().mockResolvedValue({ canceled: false, result: '窓辺のお花' }), registrySet, gallery, syncFlowerGallery, copy: {} });
+		await expect(rename(original)).rejects.toThrow('offline');
+		expect(original.name).toBe(species.name);
+		await rename(original);
+		expect(original).toMatchObject({ name: '窓辺のお花', speciesId: species.speciesId });
+		expect(findHataskFlora(original)).toBe(species);
+		expect(syncFlowerGallery).toHaveBeenCalledWith([original]);
 	});
 
-	test('同じ絵文字の旧品種を先頭一致で別の花にせず、確定できない花言葉は補わない', async () => {
-		const f = fixture(createHataskGrowingFlower({ emoji: '🌸', name: '利用者がつけた名前' }));
-		await f.harvest();
-		expect(f.gallery.value[0].hanakotoba).toBe('');
-		expect(f.gallery.value[0]).not.toHaveProperty('speciesId');
-	});
-
-	test('収穫ダイアログを取り消すと育成中の花とギャラリーを保存し直さない', async () => {
-		const initial = createHataskGrowingFlower({ emoji: '☄️', name: '流星花', rare: true });
-		const f = fixture(initial);
-		f.inputText.mockResolvedValueOnce({ canceled: true, result: '' });
-		await f.harvest();
-		expect(f.flower.value).toBe(initial);
-		expect(f.gallery.value).toEqual([]);
-		expect(f.registrySet).not.toHaveBeenCalled();
-	});
-
-	test('改名を保存できない場合は元の表示名と品種を維持する', async () => {
-		const f = fixture(createHataskGrowingFlower({ emoji: '☄️', name: '流星花', rare: true }));
-		await f.harvest();
-		const original = { ...f.gallery.value[0] };
-		f.registrySet.mockRejectedValueOnce(new Error('offline'));
-		f.inputText.mockResolvedValueOnce({ canceled: false, result: '保存できない名前' });
-		await expect(f.rename(f.gallery.value[0])).rejects.toThrow('offline');
-		expect(f.gallery.value[0]).toEqual(original);
-		expect(f.syncFlowerGallery).toHaveBeenCalledTimes(1);
-	});
-
-	test('改名済みの取得済みレア花も、みんなのお花と同じ判定で枠を表示できる', () => {
-		const oldRare = { emoji: '💎', name: '大切な思い出' };
-		expect(isRareHataskFlower(oldRare)).toBe(true);
+	test('改名後の旧レア花も品種を誤判定しない', () => {
+		expect(isRareHataskFlower({ emoji: '💎', name: '大切な思い出' })).toBe(true);
 		expect(isRareHataskFlower({ emoji: '🌼', name: '宝石フラワー' })).toBe(false);
 	});
 });

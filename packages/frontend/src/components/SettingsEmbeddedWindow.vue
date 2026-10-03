@@ -15,7 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<section :class="$style.root">
+<section :class="[$style.root, panelClass]" :data-hatask-theme="panelTheme" :data-hatask-mode="panelMode">
 	<header v-if="$slots.header" :class="$style.head">
 		<h2 :class="$style.title"><slot name="header"></slot></h2>
 	</header>
@@ -46,6 +46,8 @@ defineProps<{
 	withCloseButton?: boolean;
 	okButtonDisabled?: boolean;
 	panelClass?: string;
+	panelTheme?: string;
+	panelMode?: string;
 	width?: number;
 	height?: number;
 	// MkModal 由来

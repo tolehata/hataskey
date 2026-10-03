@@ -395,7 +395,7 @@ export class NotificationService implements OnApplicationShutdown {
 	}
 
 	@bindThis
-	public async getUnreadNotificationsCount(userId: string): Promise<number> {
+	public async getUnreadNotificationCountsByBrand(userId: string): Promise<Record<Exclude<NotificationBrand, 'all'>, number>> {
 		const [entries, cursor, individualReads] = await Promise.all([
 			this.redisClient.xrevrange(`notificationTimeline:${userId}`, '+', '-'),
 			this.redisClient.get(`latestReadNotification:${userId}`),
@@ -427,11 +427,17 @@ export class NotificationService implements OnApplicationShutdown {
 			hatady: new Map(hatadyRows.map(row => [row.id, row.isRead])),
 			hataFeed: new Map(hataFeedRows.map(row => [row.id, row.isRead])),
 		};
-		let count = 0;
+		const counts = { standard: 0, hatask: 0, hatady: 0, hataFeed: 0 };
 		for (const { entryId, notification } of visibleCandidates) {
-			if (!(await this.isRead(userId, notification, entryId, cursor, individualReads, sourceReads))) count++;
+			if (!(await this.isRead(userId, notification, entryId, cursor, individualReads, sourceReads))) counts[notificationBrand(notification)]++;
 		}
-		return count;
+		return counts;
+	}
+
+	@bindThis
+	public async getUnreadNotificationsCount(userId: string, includeBrands?: readonly Exclude<NotificationBrand, 'all'>[]): Promise<number> {
+		const counts = await this.getUnreadNotificationCountsByBrand(userId);
+		return (includeBrands ?? ['standard', 'hatask', 'hatady', 'hataFeed']).reduce((total, brand) => total + counts[brand], 0);
 	}
 
 	@bindThis

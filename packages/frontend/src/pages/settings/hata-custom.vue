@@ -21,7 +21,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button v-for="cat in categories" :key="cat.id" :class="[$style.catTab, activeCat === cat.id && $style.catTabOn]" :tabindex="embeddedInSettingsShell ? -1 : undefined" @click="activeCat = cat.id">
 				<!-- Hataskey fork: 地震ビューアだけは既存の Tabler アイコンを維持する(ゲーム/地震機能へハタキュを持ち込まない方針のため明示除外)。
                      それ以外は hatakyuAsset があればハタキュイラストを優先して出す。 -->
-				<i v-if="cat.id === 'earthquake' || !cat.hatakyuAsset || !useHatakyuBranding()" :class="cat.icon"></i>
+				<HataAppNavIcon v-if="hataAppForMenuIcon(cat.id, cat.icon)" :app="hataAppForMenuIcon(cat.id, cat.icon)!" :size="24" :monochrome="store.r.darkMode.value"/><i v-else-if="cat.id === 'earthquake' || !cat.hatakyuAsset || !useHatakyuBranding()" :class="cat.icon"></i>
 				<MkHatakyuIllustration v-else :asset="cat.hatakyuAsset" :size="24"/>
 				{{ cat.label }}
 			</button>
@@ -434,6 +434,9 @@ import { HATA_FONT_PRESETS, DEFAULT_HATA_FONT_ID, SYSTEM_HATA_FONT_STACK, applyH
 import { isDirectUploadCustomFontFile, isSupportedCustomFontFile } from '@/utility/hata-font-file.js';
 import { chooseDriveFile, uploadFile } from '@/utility/drive.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import HataAppNavIcon from '@/components/HataAppNavIcon.vue';
+import { hataAppForMenuIcon } from '@/utility/hata-app-brand.js';
+import { store } from '@/store.js';
 // 旗鯖fork: applySidebarIconOverride も同上 (サイドバー編集はモーダル側で完結)。
 const router = useRouter();
 ensureSignin();

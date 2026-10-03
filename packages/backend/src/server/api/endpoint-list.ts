@@ -694,3 +694,8 @@ export * as 'hatask/flowers/drops/show' from './endpoints/hatask/flowers/drops/s
 export * as 'hatask/flowers/zukan/show' from './endpoints/hatask/flowers/zukan/show.js';
 export * as 'hatask/flowers/festival/show' from './endpoints/hatask/flowers/festival/show.js';
 export * as 'hatask/flowers/rename' from './endpoints/hatask/flowers/rename.js';
+export * as 'hata/hatagoes/search' from './endpoints/hata/hatagoes/search.js';
+export * as 'hata/hatagoes/show' from './endpoints/hata/hatagoes/show.js';
+export * as 'hata/hatagoes/notifications/unread-count' from './endpoints/hata/hatagoes/notifications/unread-count.js';
+export * as 'hata/hatagoes/home/issues' from './endpoints/hata/hatagoes/home/issues.js';
+export * as 'hata/hatagoes/home/daily' from './endpoints/hata/hatagoes/home/daily.js';

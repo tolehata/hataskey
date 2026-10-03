@@ -18,9 +18,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed } from 'vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
 import { i18n } from '@/i18n.js';
 
+const dialogs = useHataGoesDialogs();
 const props = defineProps<{ text: string }>();
 const router = useRouter();
 
@@ -45,7 +46,7 @@ async function openIssue(number: number) {
 		const res = await misskeyApi('hata/feedback/issues/show', { number });
 		router.pushByPath('/hatafeed/' + res.issue.id);
 	} catch {
-		os.alert({ type: 'warning', text: i18n.tsx._hata._hatafeed._text.issueNotFound({ number: number.toString() }) });
+		dialogs.alert({ type: 'warning', text: i18n.tsx._hata._hatafeed._text.issueNotFound({ number: number.toString() }) });
 	}
 }
 </script>

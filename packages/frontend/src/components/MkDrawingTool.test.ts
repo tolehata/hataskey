@@ -6,6 +6,7 @@
 import { createApp, defineComponent, h, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import MkDrawingTool from './MkDrawingTool.vue';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 import type { App } from 'vue';
 import { i18n } from '@/i18n.js';
 import { hatadintCopy as ui } from '@/utility/hatadint-copy.js';
@@ -88,11 +89,12 @@ function resize() {
 	for (const observer of observers) observer.callback([...observer.targets].map(target => ({ target, contentRect: target.getBoundingClientRect() })) as ResizeObserverEntry[], {} as ResizeObserver);
 }
 
-async function mount(canAttach = true) {
+async function mount(canAttach = true, host = false) {
 	const container = window.document.createElement('div');
 	window.document.body.append(container);
 	const done = vi.fn(), closed = vi.fn();
 	const app = createApp(MkDrawingTool, { canAttach, onDone: done, onClosed: closed });
+	if (host) app.provide(HATA_GOES_HOST, {} as never);
 	app.mount(container);
 	await settle();
 	const root = container.querySelector<HTMLElement>('[data-hatadint]');
@@ -116,7 +118,12 @@ function popup(root: HTMLElement): HTMLDialogElement {
 	return dialog;
 }
 
-async function click(root: ParentNode, name: string) { named(root, name).click(); await settle(); }
+async function click(root: ParentNode, name: string) {
+	if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(1);
+	else await new Promise(resolve => window.setTimeout(resolve, 0));
+	named(root, name).click();
+	await settle();
+}
 
 async function exportTo(root: HTMLElement, destination: string) { await click(root, ui.export); await click(popup(root), destination); }
 
@@ -293,6 +300,28 @@ afterEach(() => {
 });
 
 describe('Hatadintの制作UI', () => {
+	test('HataGoesの狭幅メニューは同じdialogを下部シートで閉じアニメーション中も保持する', async () => {
+		rootWidth = 430;
+		const { root } = await mount(true, true);
+		await click(root, ui.changeTool);
+		const dialog = popup(root);
+		expect(dialog.dataset.sheet).toBe('true');
+		expect(dialog.style.bottom).toBe('0px');
+		await click(dialog, copy.close);
+		expect(dialog.open).toBe(true);
+		expect(dialog.dataset.closing).toBe('true');
+		expect(dialog.textContent).toContain(copy.toolEraser);
+		expect(dialog.hasAttribute('inert')).toBe(true);
+		await click(root, copy.brushSize);
+		expect(popup(root)).toBe(dialog);
+		expect(dialog.dataset.closing).toBe('false');
+		expect(dialog.textContent).toContain(copy.brushSize);
+		await new Promise(resolve => window.setTimeout(resolve, 180));
+		expect(dialog.open).toBe(true);
+		await click(dialog, copy.close);
+		await vi.waitFor(() => expect(dialog.open).toBe(false));
+	});
+
 	test('上部のツール・サイズ・不透明度は同じ非モーダル吹き出しを切り替える', async () => {
 		const { root } = await mount();
 		await click(root, ui.changeTool);
@@ -994,9 +1023,12 @@ describe('Hatadintの同意と書き出し', () => {
 		api.mockResolvedValue({ agreed: true, agreedAt: '2026-09-09T01:00:00Z', version: '2026-09-09' });
 		upload.mockImplementation(() => ({ filePromise: Promise.reject(new Error('upload failed')), abort: abortUpload }));
 		await exportTo(root, ui.attachNote);
+		await vi.waitFor(() => {
+			expect(upload).toHaveBeenCalledTimes(1);
+			expect(root.querySelector('[role="alert"]')?.textContent).toContain(copy.saveFailed);
+		});
 		expect(done).not.toHaveBeenCalled();
 		expect(modalClose).not.toHaveBeenCalled();
-		expect(root.querySelector('[role="alert"]')).toBeTruthy();
 	});
 
 	test('アカウントが変わった状態で元の作品を他のアカウントへ送信しない', async () => {

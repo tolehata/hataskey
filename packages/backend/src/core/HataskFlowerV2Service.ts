@@ -6,12 +6,21 @@ import { NotificationService } from './NotificationService.js';
 import { IdService } from '@/core/IdService.js';
 import { HATASK_FLOWER_CATALOG, HATASK_FLOWER_SEASONS, type HataskFlowerSeason } from '@/misc/hatask-flower-catalog.js';
 import { DEFAULT_FLOWER_RULES, flowerDay, flowerResetAt, lockHataskFlowerWallet, normalizeFlowerTodoTitle } from './hatask-flower-v2.js';
+import { validTodayJournalRow } from './hatagoes-daily.js';
 import type { DataSource, EntityManager } from 'typeorm';
 
 type Flower = { seedKey?: string; id: string; speciesId: string; season: HataskFlowerSeason; emoji: string; name: string; hanakotoba: string; rare: boolean; startedAt: number; lastGrowthAt: number; totalMinutes: number; targetMinutes: number; progress: number; memory: string[] };
 type Wallet = { userId: string; drops: number; timezone: string | null; flower: Flower | null; seeds: HataskFlowerSeason[]; rareSeeds: HataskFlowerSeason[] };
 export type FlowerReward = { granted: boolean; why?: 'rewarded' | 'short' | 'dup' | 'young' | 'cap' | 'gap' | 'store'; left?: number };
 type Rules = typeof DEFAULT_FLOWER_RULES;
+/** Keep a whole percentage stable when repeated fractional awards land just below its binary representation. */
+function flowerProgress(totalMinutes: number, targetMinutes: number): number {
+	return Math.min(100, Math.floor(totalMinutes / targetMinutes * 100 + 1e-9));
+}
+export const HATAGOES_RITUALS = ['mood', 'meal', 'todo', 'water', 'reading'] as const;
+export type HatagoesRitual = typeof HATAGOES_RITUALS[number];
+const ritualSource = (ritual: HatagoesRitual) => `hatagoes-${ritual}`;
+const previousDay = (day: string): string => new Date(Date.parse(`${day}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
 
 @Injectable()
 export class HataskFlowerV2Service {
@@ -105,7 +114,7 @@ export class HataskFlowerV2Service {
 		const elapsed = Math.max(0, Math.floor((now.getTime() - f.lastGrowthAt) / 60000));
 		f.totalMinutes = Math.min(f.targetMinutes, f.totalMinutes + elapsed);
 		f.lastGrowthAt += elapsed * 60000;
-		f.progress = Math.min(100, Math.floor(f.totalMinutes / f.targetMinutes * 100));
+		f.progress = flowerProgress(f.totalMinutes, f.targetMinutes);
 		if (f.progress >= 100) await this.notice(m, w.userId, 'hataskFlowerBloomed', f.id);
 		return f;
 	}
@@ -131,8 +140,70 @@ export class HataskFlowerV2Service {
 		w.drops++;
 		return { granted: true };
 	}
+	private async markObserved(m: EntityManager, w: Wallet, now: Date): Promise<void> {
+		const day = flowerDay(now, w.timezone);
+		await m.query('INSERT INTO hatask_drop_ledger("userId",source,"sourceId",day,title,"createdAt") VALUES($1,$2,$3,$4,NULL,$5) ON CONFLICT DO NOTHING', [w.userId, 'hatagoes-start', 'v3', day, now]);
+	}
+	private async awardRitual(m: EntityManager, w: Wallet, ritual: HatagoesRitual, now: Date): Promise<boolean> {
+		await this.markObserved(m, w, now);
+		const day = flowerDay(now, w.timezone);
+		const inserted = await m.query('INSERT INTO hatask_drop_ledger("userId",source,"sourceId",day,title,"createdAt") VALUES($1,$2,$3,$3,NULL,$4) ON CONFLICT DO NOTHING RETURNING source', [w.userId, ritualSource(ritual), day, now]);
+		if (!inserted.length) return false;
+		const flower = await this.grow(m, w, now);
+		flower.totalMinutes = Math.min(flower.targetMinutes, flower.totalMinutes + flower.targetMinutes * 0.02);
+		flower.progress = flowerProgress(flower.totalMinutes, flower.targetMinutes);
+		if (flower.progress >= 100) await this.notice(m, w.userId, 'hataskFlowerBloomed', flower.id);
+		return true;
+	}
+	/** Call only from an already validated, persisted action in the same transaction. */
+	public async onJournalCommitted(m: EntityManager, userId: string, ritual: 'mood' | 'meal', now: Date = new Date()): Promise<void> {
+		const w = await this.wallet(m, userId);
+		await this.awardRitual(m, w, ritual, now);
+		await this.save(m, w);
+	}
+	public async daily(userId: string, timezone?: string) {
+		return this.db.transaction(async m => {
+			const w = await this.wallet(m, userId, timezone), now = new Date();
+			await this.markObserved(m, w, now);
+			const today = flowerDay(now, w.timezone);
+			const registry: { key: string; value: unknown }[] = await m.query('SELECT key,value FROM registry_item WHERE "userId"=$1 AND domain IS NULL AND scope=$2 AND key=ANY($3::varchar[]) ORDER BY "updatedAt" DESC,id DESC', [userId, ['client', 'hatask'], ['moods', 'meals', 'todos']]);
+			const latest = new Map<string, unknown>();
+			for (const row of registry) if (!latest.has(row.key)) latest.set(row.key, row.value);
+			for (const [key, ritual] of [['moods', 'mood'], ['meals', 'meal']] as const) {
+				const value = latest.get(key);
+				if (Array.isArray(value) && value.some(row => validTodayJournalRow(row, ritual, today))) await this.awardRitual(m, w, ritual, now);
+			}
+			const todos = latest.get('todos');
+			if (Array.isArray(todos) && todos.some(row => row != null && typeof row === 'object' && !Array.isArray(row) && typeof row.id === 'string' && row.done === true && typeof row.doneAt === 'string' && !Number.isNaN(Date.parse(row.doneAt)) && flowerDay(new Date(row.doneAt), w.timezone) === today)) await this.awardRitual(m, w, 'todo', now);
+			const readings: { studiedAt: Date }[] = await m.query('SELECT "studiedAt" FROM hatady_log WHERE "userId"=$1 AND "bookId" IS NOT NULL AND kind=$2 AND "studiedAt">=$3 AND "studiedAt"<$4', [userId, 'study', new Date(now.getTime() - 48 * 3600000), new Date(now.getTime() + 24 * 3600000)]);
+			if (readings.some(row => flowerDay(new Date(row.studiedAt), w.timezone) === today)) await this.awardRitual(m, w, 'reading', now);
+			await this.save(m, w);
+			const rows: { source: string; day: string }[] = await m.query('SELECT source,day FROM hatask_drop_ledger WHERE "userId"=$1 AND (source=$2 OR source=ANY($3::varchar[]))', [userId, 'hatagoes-start', HATAGOES_RITUALS.map(ritualSource)]);
+			const trackedSince = rows.find(row => row.source === 'hatagoes-start')?.day ?? null;
+			const byDay = new Map<string, Set<HatagoesRitual>>();
+			for (const row of rows) {
+				const ritual = row.source.replace(/^hatagoes-/, '') as HatagoesRitual;
+				if (!HATAGOES_RITUALS.includes(ritual)) continue;
+				const completed = byDay.get(row.day) ?? new Set<HatagoesRitual>();
+				completed.add(ritual); byDay.set(row.day, completed);
+			}
+			const days = Array.from({ length: 14 }, (_, index) => {
+				let date = today;
+				for (let offset = 0; offset < 13 - index; offset++) date = previousDay(date);
+				const completed = HATAGOES_RITUALS.filter(ritual => byDay.get(date)?.has(ritual));
+				return { date, known: trackedSince != null && date >= trackedSince, completed, count: completed.length, complete: completed.length === HATAGOES_RITUALS.length };
+			});
+			let cursor = byDay.get(today)?.size === HATAGOES_RITUALS.length ? today : previousDay(today);
+			let streakDays = 0;
+			while (trackedSince != null && cursor >= trackedSince && byDay.get(cursor)?.size === HATAGOES_RITUALS.length) { streakDays++; cursor = previousDay(cursor); }
+			return { today, timezone: w.timezone, trackedSince, days, streakDays, awardedToday: (byDay.get(today)?.size ?? 0) * 2 };
+		});
+	}
 	public async onHatadyCreated(m: EntityManager, userId: string, id: string): Promise<FlowerReward> {
-		const w = await this.wallet(m, userId); const result = await this.grant(m, w, 'hatady', id, new Date(), await this.rules(m)); await this.save(m, w); return result;
+		const w = await this.wallet(m, userId); const now = new Date();
+		const [reading] = await m.query('SELECT "studiedAt" FROM hatady_log WHERE id=$1 AND "userId"=$2 AND "bookId" IS NOT NULL AND kind=$3', [id, userId, 'study']);
+		if (reading && flowerDay(new Date(reading.studiedAt), w.timezone) === flowerDay(now, w.timezone)) await this.awardRitual(m, w, 'reading', now);
+		const result = await this.grant(m, w, 'hatady', id, now, await this.rules(m)); await this.save(m, w); return result;
 	}
 	public async onTodosCommitted(m: EntityManager, userId: string, previous: Record<string, unknown>[], next: Record<string, unknown>[]): Promise<Record<string, FlowerReward>> {
 		const w = await this.wallet(m, userId), now = new Date(), rules = await this.rules(m), result: Record<string, FlowerReward> = {};
@@ -147,6 +218,7 @@ export class HataskFlowerV2Service {
 			const createdAt = trackedById.get(id);
 			if (!createdAt) continue;
 			if (todo.done !== true || old?.done === true || !old) continue;
+			await this.awardRitual(m, w, 'todo', now);
 			const f = await this.grow(m, w, now);
 			if (f.progress < 100 && f.memory.length < 6 && typeof todo.text === 'string' && !f.memory.includes(todo.text.slice(0, 512))) f.memory.push(todo.text.slice(0, 512));
 			result[id] = await this.grant(m, w, 'todo', id, now, rules, normalizeFlowerTodoTitle(String(todo.text)), new Date(createdAt));
@@ -206,7 +278,8 @@ export class HataskFlowerV2Service {
 			if (w.drops < 1) throw new Error('HATASK_FLOWER_NO_DROPS');
 			if (target === 'self') {
 				const f = await this.grow(m, w, now); if (f.progress >= 100) throw new Error('HATASK_FLOWER_BLOOMED');
-				f.totalMinutes = Math.min(f.targetMinutes, f.totalMinutes + rules.pourMinutes); f.progress = Math.min(100, Math.floor(f.totalMinutes / f.targetMinutes * 100));
+				f.totalMinutes = Math.min(f.targetMinutes, f.totalMinutes + rules.pourMinutes); f.progress = flowerProgress(f.totalMinutes, f.targetMinutes);
+				await this.awardRitual(m, w, 'water', now);
 			} else {
 				const f = await this.festival(m, w, now, rules);
 				const changed = await m.query('UPDATE hatask_flower_festival SET total=total+1,"bloomedAt"=CASE WHEN total+1>=goal THEN $2 ELSE NULL END WHERE id=$1 AND "bloomedAt" IS NULL AND "startsAt"<=$2 AND "endsAt">$2 RETURNING id,"bloomedAt"', [f.id, now]);

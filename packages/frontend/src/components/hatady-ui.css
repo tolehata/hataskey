@@ -333,6 +333,8 @@ textarea.hy-input {
 	inset: 0 auto 0 0;
 	width: calc(100% + 0.65px);
 	height: 100%;
+	-webkit-backface-visibility: hidden;
+	backface-visibility: hidden;
 }
 .hy-paper-front {
 	overflow: hidden;
@@ -344,7 +346,6 @@ textarea.hy-input {
 	overflow: hidden;
 }
 .hy-paper-back {
-	backface-visibility: hidden;
 	transform: rotateY(180deg) translateZ(0.08px);
 	background: linear-gradient(180deg, #ffffff06, transparent 25%, #00000004), color-mix(in srgb, var(--hy-bg) 97%, transparent);
 	border-block: 1px solid var(--hy-border);

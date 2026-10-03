@@ -14,17 +14,19 @@ import { enqueuePageStatusToast } from '@/utility/hataskey-notification-toast.js
 import { HATADY_ACTIVITY_CHOICES, HATADY_RECORD_TAGS, hatadySeconds } from '@/utility/hatady-ui.js';
 import { formField as f, formTimestamp, localDateTime, optionalPages, recordAttachmentPatch, restoreLegacyTime } from '@/utility/hatady-form.js';
 import { hySubjects, loadHySubjects, saveHySubject } from '@/utility/hatady-subjects.js';
-import * as os from '@/os.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { i18n } from '@/i18n.js';
+
+const popup = useHataGoesPopup();
 const copy = i18n.ts._hata._hatady._wizardComposer;
-const props = withDefaults(defineProps<{ editLog?: any; kind?: 'study' | 'exercise' | 'work'; work?: HatadyMediaWork | null; embedded?: boolean; variant?: HatadySurfaceVariant }>(), { embedded: false, work: null, variant: 'hatady' });
+const props = withDefaults(defineProps<{ editLog?: any; kind?: 'study' | 'exercise' | 'work'; work?: HatadyMediaWork | null; initialBookId?: string; embedded?: boolean; variant?: HatadySurfaceVariant }>(), { embedded: false, work: null, variant: 'hatady' });
 const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void; (event: 'back'): void }>();
 const wizard = useTemplateRef('wizard'), source = props.editLog, isEdit = source != null, kind = props.kind ?? source?.kind ?? 'study';
 const type = HATADY_ACTIVITY_CHOICES.find(choice => choice.value === kind) ?? HATADY_ACTIVITY_CHOICES[0];
-const draftId = isEdit ? `hatady:log:edit:${source.id}` : kind === 'study' ? 'hatady:log:create' : `hatady:log:${kind}:create`;
+const draftId = isEdit ? `hatady:log:edit:${source.id}` : kind === 'study' ? (props.initialBookId ? `hatady:log:create:book:${props.initialBookId}` : 'hatady:log:create') : `hatady:log:${kind}:create`;
 const books = ref<any[]>([]), works = ref<HatadyMediaWork[]>([]);
 const values = ref<HatadyFormValues>({
-	title: source?.title ?? props.work?.title ?? '', subject: source?.subject ?? props.work?.details?.genre ?? '', bookId: source?.bookId ?? source?.book?.id ?? '', selectedBook: source?.book ?? null,
+	title: source?.title ?? props.work?.title ?? '', subject: source?.subject ?? props.work?.details?.genre ?? '', bookId: source?.bookId ?? source?.book?.id ?? props.initialBookId ?? '', selectedBook: source?.book ?? null,
 	mediaWorkId: source?.mediaWorkId ?? props.work?.id ?? '', pageFrom: source?.pageFrom ?? '', pageTo: source?.pageTo ?? '',
 	durationSeconds: source ? hatadySeconds(source) : null, date: localDateTime(source?.studiedAt).slice(0, 10), startedAt: source && Object.hasOwn(source, 'startedAt') ? source.startedAt ?? '' : source?.studiedAt ? localDateTime(source.studiedAt).slice(11) : '',
 	files: [...(source?.files ?? [])],
@@ -61,6 +63,10 @@ onMounted(async () => {
 	if (kind === 'study') {
 		loadHySubjects().catch(() => {});
 		books.value = await (misskeyApi as any)('hata/hatady/books', { limit: 100 }).catch(() => []);
+		if (props.initialBookId && !books.value.some(book => book.id === props.initialBookId)) {
+			const shown = await misskeyApi('hata/hatady/books/show', { bookId: props.initialBookId }).catch(() => null);
+			if (shown?.book) books.value.unshift(shown.book);
+		}
 		if (source?.book && !books.value.some(book => book.id === source.book.id)) books.value.unshift(source.book);
 		if (values.value.selectedBook?.id && !books.value.some(book => book.id === values.value.selectedBook.id)) books.value.unshift(values.value.selectedBook);
 	}
@@ -71,11 +77,11 @@ onMounted(async () => {
 	}
 });
 
-async function manageSubjects() { const { dispose } = os.popup((await import('@/components/HatadySubjectManager.vue')).default, {}, { changed: () => loadHySubjects().catch(() => {}), closed: () => dispose() }); }
+async function manageSubjects() { const { dispose } = popup((await import('@/components/HatadySubjectManager.vue')).default, {}, { changed: () => loadHySubjects().catch(() => {}), closed: () => dispose() }); }
 
-async function addBook() { const { dispose } = os.popup((await import('@/components/HatadyBookForm.vue')).default, { variant: props.variant }, { done: (book: any) => { books.value.unshift(book); values.value.selectedBook = book; values.value.bookId = book.id; }, closed: () => dispose() }); }
+async function addBook() { const { dispose } = popup((await import('@/components/HatadyBookForm.vue')).default, { variant: props.variant }, { done: (book: any) => { books.value.unshift(book); values.value.selectedBook = book; values.value.bookId = book.id; }, closed: () => dispose() }); }
 
-async function addWork() { const { dispose } = os.popup((await import('@/components/HatadyMediaWorkForm.vue')).default, { kind: 'work', variant: props.variant }, { done: (work: HatadyMediaWork) => { works.value.unshift(work); values.value.mediaWorkId = work.id; if (!values.value.title) values.value.title = work.title; }, closed: () => dispose() }); }
+async function addWork() { const { dispose } = popup((await import('@/components/HatadyMediaWorkForm.vue')).default, { kind: 'work', variant: props.variant }, { done: (work: HatadyMediaWork) => { works.value.unshift(work); values.value.mediaWorkId = work.id; if (!values.value.title) values.value.title = work.title; }, closed: () => dispose() }); }
 
 async function save(data: HatadyFormValues) {
 	const tags = [...new Set<string>(data.tags)], legacyTag = tags.find(tag => ['strength', 'weak', 'interest', 'movie', 'game'].includes(tag)) ?? null;

@@ -58,7 +58,9 @@ describe('Hatask支援管理の権限境界と保持', () => {
 		expect(statements[0]).toMatch(/^ALTER TABLE "meta" ADD "hataskSupport" jsonb NOT NULL DEFAULT '/);
 		const defaultJson = statements[0].match(/ DEFAULT '(.+)'$/)?.[1];
 		expect(defaultJson).toBeDefined();
-		expect(JSON.parse(defaultJson!.replaceAll("''", "'"))).toEqual(defaultHataskSupportSettings());
+		const { navButtonVisible, ...legacyDefault } = defaultHataskSupportSettings();
+		expect(navButtonVisible).toBe(true);
+		expect(JSON.parse(defaultJson!.replaceAll("''", "'"))).toEqual(legacyDefault);
 		expect(statements[1]).toBe('ALTER TABLE "user" ADD "hataskSupporter" boolean NOT NULL DEFAULT false');
 		expect(statements[2]).toBe('CREATE INDEX "IDX_user_hatask_supporter" ON "user" ("hataskSupporter", "id")');
 	});
@@ -75,7 +77,7 @@ describe('Hatask支援管理の権限境界と保持', () => {
 	test('OFFとURL未設定では設定も支援者も公開しない、再有効化で復元する', async () => {
 		const settings = configured();
 		const ctx = setup({ ...settings, enabled: false });
-		expect(await ctx.service.show(me)).toEqual({ configured: false, settings: null, isSupporter: false, benefits: [], supporterCount: 0 });
+		expect(await ctx.service.show(me)).toEqual({ configured: false, navButtonVisible: true, settings: null, isSupporter: false, benefits: [], supporterCount: 0 });
 		expect(await ctx.service.supporters(me, 0, 30)).toEqual({ users: [], total: 0, hasMore: false });
 		expect(ctx.users.createQueryBuilder).not.toHaveBeenCalled();
 		expect((await ctx.service.adminShow()).settings.benefits).toHaveLength(HATASK_SUPPORT_POLICY_KEYS.length);
@@ -84,6 +86,20 @@ describe('Hatask支援管理の権限境界と保持', () => {
 		await ctx.service.update({ ...settings, url: '' });
 		expect((await ctx.service.show(me)).configured).toBe(false);
 		expect(ctx.users.update).not.toHaveBeenCalled();
+	});
+
+	test('旧管理クライアントの保存はナビ表示設定を保持し、未設定時も公開フラグを返す', async () => {
+		const settings = { ...configured(), enabled: false, navButtonVisible: false };
+		const ctx = setup(settings);
+		expect((await ctx.service.show(me)).navButtonVisible).toBe(false);
+		const { navButtonVisible, ...oldClientSettings } = configured();
+		await new AdminUpdate(ctx.service).exec({ settings: oldClientSettings }, me, null, null);
+		expect(ctx.meta.update).toHaveBeenCalledWith({ hataskSupport: { ...oldClientSettings, navButtonVisible: false } });
+		expect((await ctx.service.show(me)).navButtonVisible).toBe(false);
+		await new AdminUpdate(ctx.service).exec({ settings: { ...oldClientSettings, navButtonVisible: true } }, me, null, null);
+		expect((await ctx.service.show(me)).navButtonVisible).toBe(true);
+		const legacy = setup({ ...oldClientSettings } as HataskSupportSettings);
+		expect((await legacy.service.show(me)).navButtonVisible).toBe(true);
 	});
 
 	test('隠した特典・base・非公開ロール情報を公開しない、削除済み参照はnull', async () => {

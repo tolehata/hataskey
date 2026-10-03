@@ -27,6 +27,7 @@ function fixture() {
 	const api = vi.fn().mockResolvedValue(undefined);
 	const runtime = runInNewContext(code, {
 		settings, loadedKeys, dataLoaded: ready, isAkatsuki: enabled,
+		props: { embedded: false },
 		akatsukiFavoritesSaving: saving, akatsukiFavoritesError: error, normalizeHataskAkatsukiFavorites,
 		isPlannerCollectionKey: () => false, misskeyApi: api, SCOPE: ['client', 'hatask'],
 	}) as { saveAkatsukiFavorites: (favorites: HataskAkatsukiFavoriteId[]) => Promise<void> };

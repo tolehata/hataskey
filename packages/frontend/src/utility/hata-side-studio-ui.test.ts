@@ -17,7 +17,7 @@ describe('HataSideStudio UI integration', () => {
 		expect(studio).toContain('<GradientEditor v-if="!isUiS" :modelValue="activeProfile.postButton"/>');
 		expect(studio).toContain(':style="postButtonStyle(activeProfile.postButton)"');
 		expect(simple.match(/:style="studioPostButtonStyle"/g)).toHaveLength(2);
-		expect(simple.match(/:class="studioPostButtonIcon"/g)).toHaveLength(2);
+		expect(simple.match(/:style="studioPostButtonStyle"[^>]*>\s*<i :class="composeIcon"/g)).toHaveLength(2);
 		expect(simple).toContain("studioProfile.value.postButton.icon === 'paw' ? 'ti ti-paw' : 'ti ti-pencil'");
 	});
 
@@ -196,7 +196,7 @@ describe('HataSideStudio UI integration', () => {
 		expect(studio).toContain('transform:translate(-50%,-50%)');
 		expect(studio).toContain('.header.tutorialFocus,.sidebarPreview.tutorialFocus { position:relative; }');
 		expect(studio).toContain("claimAchievement('hataSideStudioPioneer')");
-		expect(studio).toContain("mainRouter.replace('/settings/hata-custom')");
+		expect(studio).toContain("studioRouter.replace('/settings/hata-custom')");
 		expect(studio).not.toContain('modalBackdrop');
 	});
 

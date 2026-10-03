@@ -11,7 +11,7 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 	<div :class="$style.busy" :data-on="busyShown ? 'true' : undefined" aria-hidden="true"><span></span></div>
 	<!-- ===== デスクトップ ===== -->
 	<div v-if="!isMobile" :class="$style.desktop" :style="{ gridTemplateColumns: desktopColumns }">
-		<div data-hata-collapse-part :inert="confirmationActive" :class="$style.navCell" :style="{ width: `${sideNavExpanded ? navWidth : 64}px` }" :data-glass-seam="sideNavSeamless ? 'true' : undefined" :data-deck-seam="sideNavSeamless && deckActive ? 'true' : undefined" @pointerenter="onSideNavEnter" @pointerleave="sideNavHovered = false" @focusin="onSideNavFocus" @focusout="onSideNavBlur" @keydown.esc="closeSideNav" @keyup="onSideNavKeyUp">
+		<div v-if="!isHataGoesPage" data-hata-collapse-part :inert="confirmationActive" :class="$style.navCell" :style="{ width: `${sideNavExpanded ? navWidth : 64}px` }" :data-glass-seam="sideNavSeamless ? 'true' : undefined" :data-deck-seam="sideNavSeamless && deckActive ? 'true' : undefined" @pointerenter="onSideNavEnter" @pointerleave="sideNavHovered = false" @focusin="onSideNavFocus" @focusout="onSideNavBlur" @keydown.esc="closeSideNav" @keyup="onSideNavKeyUp">
 			<Hk3SideNav :collapsed="!sideNavExpanded" :seamless="sideNavSeamless" :isDeck="deckActive" :deckAvailable="isHome" :postOpen="composeWindowOpen" :dark="themeMode === 'dark'" @post="isHatadyTimeline ? launchHatadyRecord() : toggleComposeWindow()" @toggleTheme="toggleTheme" @mode="switchMode" @navigate="onSideNavigate" @launchPadOpen="sideNavLaunchPadOpen = $event" @instanceMenuOpen="sideNavInstanceMenuOpen = $event"/>
 		</div>
 
@@ -32,7 +32,7 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 		</template>
 		<template v-else>
 			<main data-hk3-stage :class="$style.main" :style="{ '--hk3-composer-left-inset': `${sideNavExpanded && isHome ? navWidth - 64 : 0}px` }">
-				<Hk3SideWorkspace :class="$style.workspace" :mode="workspaceMode" :pageActive="!isHome" :pageInert="confirmationActive" :timelineActive="timelineVisible" :controls="sidePageSession" :preservePageNavigation="preservePageNavigation" :title="props.pageMetadata?.title ?? ''" :reduceMotion="reduceMotionActive" :glass="prefer.r.hataskeyUi3TimelineBackground.value" :pageClass="$style.page" :expandLabel="copy.sidePageExpand" :restoreLabel="copy.sidePageRestore" :closeLabel="copy.sidePageClose" @toggle="toggleSidePage" @close="closeSidePage">
+				<Hk3SideWorkspace :class="$style.workspace" :mode="isHataGoesPage ? 'full' : workspaceMode" :pageActive="!isHome" :pageInert="confirmationActive" :timelineActive="timelineVisible && !isHataGoesPage" :controls="isHataGoesPage ? false : sidePageSession" :preservePageNavigation="preservePageNavigation" :title="props.pageMetadata?.title ?? ''" :reduceMotion="reduceMotionActive" :glass="prefer.r.hataskeyUi3TimelineBackground.value" :pageClass="$style.page" :expandLabel="copy.sidePageExpand" :restoreLabel="copy.sidePageRestore" :closeLabel="copy.sidePageClose" @toggle="toggleSidePage" @close="closeSidePage">
 					<template #page><RouterView v-if="!isHome"/></template>
 					<template #timeline>
 						<Hk3Timeline v-if="isHome || sidePageSession" ref="timelineRef" :active="timelineVisible" :narrow="sidePageSplit" :confirmationActive="confirmationActive" @punchBusy="punchBusy = $event">
@@ -153,11 +153,12 @@ provide('forceNoteRealtimeCapture', true);
 const width = ref(window.innerWidth);
 const isMobile = computed(() => width.value <= MOBILE_MAX);
 const path = computed(() => mainRouter.currentRoute.value.path);
-const mobileDockSuspended = computed(() => ['/hatask', '/hata-docs']
+const isHataGoesPage = computed(() => path.value === '/hatagoes');
+const mobileDockSuspended = computed(() => ['/hatask', '/hata-docs', '/hatagoes']
 	.some(root => path.value === root || path.value.startsWith(`${root}/`)));
-const preservePageNavigation = computed(() => ['/hatask', '/hatady', '/hatafeed', '/hata-side-studio', '/hata-docs']
+const preservePageNavigation = computed(() => ['/hatask', '/hatady', '/hatafeed', '/hata-side-studio', '/hata-docs', '/hatagoes']
 	.some(root => path.value === root || path.value.startsWith(`${root}/`)));
-const showRightPane = computed(() => width.value >= RIGHT_PANE_MIN && path.value !== '/hata-side-studio');
+const showRightPane = computed(() => width.value >= RIGHT_PANE_MIN && path.value !== '/hata-side-studio' && !isHataGoesPage.value);
 const isHome = computed(() => path.value === '/');
 const deckMode = ref(miLocalStorage.getItem('hataskeyUi3DeckMode') === 'true');
 const deckActive = computed(() => deckMode.value && isHome.value && width.value >= DECK_MIN);
@@ -312,6 +313,7 @@ watch(isMobile, mobile => {
 });
 
 const desktopColumns = computed(() => {
+	if (isHataGoesPage.value) return 'minmax(0, 1fr)';
 	if (deckActive.value) return '64px minmax(0, 1fr)';
 	return `64px minmax(0, 1fr)${showRightPane.value ? ' 320px' : ''}`;
 });
@@ -884,11 +886,11 @@ onBeforeUnmount(() => {
 	:global(button:focus-visible), :global(a:focus-visible) { outline: 2px solid var(--hk3-accent); outline-offset: 2px; }
 	::selection { background: var(--hk3-accent-200); }
 
-	// 動きを減らす設定中は、UI3 内のCSS遷移・アニメーションをすべて止める。
+	// 動きを減らす設定中は、UI3 内のCSS遷移・アニメーションを止める（アプリロゴを除く）。
 	&[data-reduce-motion],
-	&[data-reduce-motion] :global(*),
-	&[data-reduce-motion] :global(*)::before,
-	&[data-reduce-motion] :global(*)::after {
+	&[data-reduce-motion] :global(*:not([data-hata-app-logo], [data-hata-app-logo] *)),
+	&[data-reduce-motion] :global(*:not([data-hata-app-logo], [data-hata-app-logo] *))::before,
+	&[data-reduce-motion] :global(*:not([data-hata-app-logo], [data-hata-app-logo] *))::after {
 		transition: none !important;
 		animation: none !important;
 	}

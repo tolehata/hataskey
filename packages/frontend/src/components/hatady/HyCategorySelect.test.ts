@@ -41,12 +41,12 @@ async function settle() {
 	await nextTick();
 }
 
-async function mountPicker(initial = 'study', values = options) {
+async function mountPicker(initial = 'study', values = options, card = false) {
 	const host = window.document.createElement('main');
 	window.document.body.append(host);
 	const selected = ref(initial);
 	const update = vi.fn((value: string) => { selected.value = value; });
-	const app = createApp({ render: () => h(HyCategorySelect, { modelValue: selected.value, options: values, label: '活動の種類', 'onUpdate:modelValue': update }) });
+	const app = createApp({ render: () => h(HyCategorySelect, { modelValue: selected.value, options: values, label: '活動の種類', card, 'onUpdate:modelValue': update }) });
 	app.directive('hotkey', {});
 	app.mount(host);
 	let mounted = true;
@@ -66,6 +66,14 @@ async function press(element: HTMLElement, key: string) {
 }
 
 describe('Hatady category dropdown', () => {
+	test('uses the entire labeled card as the embedded category trigger', async () => {
+		const view = await mountPicker('study', options, true);
+		expect(view.trigger.textContent).toContain('活動の種類');
+		expect(view.trigger.querySelector('small')?.textContent).toBe('勉強・読書');
+		(view.trigger.querySelector('span span') as HTMLElement).click();
+		await settle();
+		expect(choices()).toHaveLength(options.length);
+	});
 	test('opens the existing floating Hatady dialog beside its trigger with all labeled choices', async () => {
 		const view = await mountPicker();
 		expect(view.trigger.textContent).toBe('勉強・読書');

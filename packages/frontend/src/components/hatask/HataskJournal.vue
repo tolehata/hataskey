@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
-<section :class="$style.root" :data-kind="kind" :data-motion="motion" :data-hatask-theme="theme" :aria-label="kind === 'mood' ? main.tabMood : main.tabMeal">
+<section ref="journalRoot" :class="$style.root" :data-kind="kind" :data-motion="goesMotion || motion" :data-hatagoes="goesMotion" :data-hatask-theme="theme" :aria-label="kind === 'mood' ? main.tabMood : main.tabMeal">
 	<div :class="$style.captureArea" data-journal-capture>
 		<header :class="$style.heading">
 			<div><h2>{{ kind === 'mood' ? main.tabMood : main.tabMeal }}</h2><p>{{ kind === 'mood' ? copy.moodIntro : copy.mealIntro }}</p></div>
@@ -26,7 +26,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:toolLabel="planner.captureTools"
 				:templateLabel="kind === 'meal' ? planner.templateLibrary : undefined"
 				:templateDisabled="!templatesWritable"
-				:hint="copy.submitHint"
+				:hint="showCaptureHint ? copy.submitHint : undefined"
 				:chips="captureChips"
 				:tools="captureTools"
 				:disabled="!writable || busy"
@@ -75,7 +75,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 	</div>
 
-	<section :class="$style.board">
+	<section v-if="!captureOnly" :class="$style.board">
 		<div :class="$style.toolbar">
 			<div :class="$style.tabs" role="tablist" :aria-label="copy.views" @keydown="onTabKeydown">
 				<button v-for="tab in tabs" :id="`${uid}-${tab.id}`" :key="tab.id" type="button" role="tab" :aria-label="tab.label" :title="tab.label" :aria-selected="view === tab.id" :aria-controls="`${uid}-panel`" :tabindex="view === tab.id ? 0 : -1" :data-selected="view === tab.id" @click="selectView(tab.id)"><i :class="tab.icon" aria-hidden="true"></i><span>{{ tab.label }}</span></button>
@@ -152,7 +152,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, useId, watch } from 'vue';
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, useId, watch } from 'vue';
 import HataskQuickCapture from './HataskQuickCapture.vue';
 import type { HataskCaptureChip, HataskCaptureTool } from './HataskQuickCapture.vue';
 import type { HataskPlannerTheme } from './hatask-planner-types.js';
@@ -161,7 +161,13 @@ import HataskEmoji from '@/components/HataskEmoji.vue';
 import { isJournalDate, isJournalTime, isMealTemplate, journalLocalDateTime, mealTemplateFromEntry, selectJournalEntries } from '@/utility/hatask-journal.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+
+const dialogs = useHataGoesDialogs();
+const popupMenu = useHataGoesPopupMenu();
+const goesMotion = inject(HATA_GOES_HOST, null) != null;
 
 const props = withDefaults(defineProps<{
 	theme?: HataskPlannerTheme;
@@ -171,6 +177,8 @@ const props = withDefaults(defineProps<{
 	loading?: boolean;
 	active?: boolean;
 	motion?: boolean;
+	captureOnly?: boolean;
+	showCaptureHint?: boolean;
 	illustration?: string;
 	templates?: unknown[];
 	templatesWritable?: boolean;
@@ -180,7 +188,7 @@ const props = withDefaults(defineProps<{
 	remove: (id: string) => Promise<void>;
 	storeTemplate?: (template: HataskMealTemplate, existingId?: string) => Promise<void>;
 	removeTemplate?: (id: string) => Promise<void>;
-}>(), { theme: undefined, loading: false, active: true, motion: true, illustration: undefined, templates: () => [], templatesWritable: false, summary: '', showSummary: true, storeTemplate: undefined, removeTemplate: undefined });
+}>(), { theme: undefined, loading: false, active: true, motion: true, captureOnly: false, showCaptureHint: true, illustration: undefined, templates: () => [], templatesWritable: false, summary: '', showSummary: true, storeTemplate: undefined, removeTemplate: undefined });
 const emit = defineEmits<{ info: []; reminders: [] }>();
 const main = i18n.ts._hata._hatask._main;
 const planner = i18n.ts._hata._hatask._planner;
@@ -298,7 +306,7 @@ function onTool(id: string): void {
 
 function openCaptureTemplates(event: MouseEvent): void {
 	if (props.kind !== 'meal' || busy.value || !props.writable || !props.templatesWritable) return;
-	os.popupMenu([
+	popupMenu([
 		{ text: planner.useTemplates, icon: 'ti ti-template', action: () => { detail.value = null; selectView('templates'); } },
 		{ text: planner.saveTemplate, icon: 'ti ti-bookmark-plus', action: () => saveTemplate() },
 	], event.currentTarget as HTMLElement, { motionPreset: 'postform' });
@@ -440,7 +448,7 @@ function draftFromEntry(entry: HataskJournalEntry): Draft {
 
 async function editEntry(entry: HataskJournalEntry): Promise<void> {
 	if (busy.value || !props.writable) return;
-	if (editingId.value && (await os.confirm({ type: 'question', text: copy.replaceDraft })).canceled) return;
+	if (editingId.value && (await dialogs.confirm({ type: 'question', text: copy.replaceDraft })).canceled) return;
 	if (!editingId.value) suspendedDraft.value = { ...draft.value, reasons: [...draft.value.reasons] };
 	editingId.value = entry.id; draft.value = draftFromEntry(entry); error.value = ''; notice.value = ''; detail.value = null; state.value = 'idle';
 	focusComposer();
@@ -449,7 +457,7 @@ async function editEntry(entry: HataskJournalEntry): Promise<void> {
 function cancelEdit(): void { editingId.value = null; draft.value = suspendedDraft.value ?? emptyDraft(); suspendedDraft.value = null; detail.value = null; error.value = ''; }
 
 async function deleteEntry(entry: HataskJournalEntry): Promise<void> {
-	if (busy.value || !props.writable || (await os.confirm({ type: 'warning', text: main.confirmDeleteRecord })).canceled || busy.value) return;
+	if (busy.value || !props.writable || (await dialogs.confirm({ type: 'warning', text: main.confirmDeleteRecord })).canceled || busy.value) return;
 	state.value = 'saving'; error.value = '';
 	try { await props.remove(entry.id); undoEntry.value = entry; if (editingId.value === entry.id) cancelEdit(); state.value = 'idle'; } catch { state.value = 'error'; error.value = copy.saveFailure; }
 }
@@ -461,7 +469,7 @@ async function undoDelete(): Promise<void> {
 }
 
 function openRecordMenu(entry: HataskJournalEntry, event: MouseEvent): void {
-	os.popupMenu([
+	popupMenu([
 		{ text: main.editRecord, icon: 'ti ti-pencil', action: () => editEntry(entry) },
 		...(props.kind === 'meal' ? [{ text: copy.reuseRecord, icon: 'ti ti-arrow-up', action: () => reuseMeal(entry) }, { text: copy.saveMealTemplate, icon: 'ti ti-bookmark-plus', disabled: !props.templatesWritable, action: () => saveTemplate(entry) }] : []),
 		{ type: 'divider' },
@@ -471,7 +479,7 @@ function openRecordMenu(entry: HataskJournalEntry, event: MouseEvent): void {
 
 async function acceptReplacement(): Promise<boolean> {
 	if (busy.value || !props.writable) return false;
-	if ((draft.value.note.trim() || draft.value.reasons.length || draft.value.date || draft.value.time || draft.value.level !== 'ate' || editingId.value) && (await os.confirm({ type: 'question', text: copy.replaceDraft })).canceled) return false;
+	if ((draft.value.note.trim() || draft.value.reasons.length || draft.value.date || draft.value.time || draft.value.level !== 'ate' || editingId.value) && (await dialogs.confirm({ type: 'question', text: copy.replaceDraft })).canceled) return false;
 	return !busy.value;
 }
 
@@ -491,22 +499,22 @@ async function useTemplate(template: HataskMealTemplate): Promise<void> {
 async function saveTemplate(entry?: HataskJournalEntry): Promise<void> {
 	if (props.kind !== 'meal' || busy.value || !props.templatesWritable || !props.storeTemplate) return;
 	const source = entry ?? makeEntry();
-	const { canceled, result } = await os.inputText({ title: copy.saveMealTemplate, text: planner.templateNamePrompt, default: source.note || slotLabel(source.slot ?? ''), maxLength: 80 });
+	const { canceled, result } = await dialogs.inputText({ title: copy.saveMealTemplate, text: planner.templateNamePrompt, default: source.note || slotLabel(source.slot ?? ''), maxLength: 80 });
 	if (canceled || !result?.trim() || busy.value) return;
 	state.value = 'saving'; error.value = '';
 	try { await props.storeTemplate(mealTemplateFromEntry(source, crypto.randomUUID(), result)); showSuccess(planner.templateSaved); } catch { state.value = 'error'; error.value = copy.saveFailure; }
 }
 
 function openTemplateMenu(template: HataskMealTemplate, event: MouseEvent): void {
-	os.popupMenu([
+	popupMenu([
 		{ text: copy.renameTemplate, icon: 'ti ti-pencil', action: async () => {
-			const { canceled, result } = await os.inputText({ title: copy.renameTemplate, default: template.name, maxLength: 80 });
+			const { canceled, result } = await dialogs.inputText({ title: copy.renameTemplate, default: template.name, maxLength: 80 });
 			if (canceled || !result?.trim() || busy.value || !props.storeTemplate) return;
 			state.value = 'saving'; error.value = '';
 			try { await props.storeTemplate({ ...template, name: result.trim() }, template.id); state.value = 'idle'; } catch { state.value = 'error'; error.value = copy.saveFailure; }
 		} },
 		{ text: main.delete, icon: 'ti ti-trash', danger: true, action: async () => {
-			if ((await os.confirm({ type: 'warning', text: copy.deleteTemplate })).canceled || busy.value || !props.removeTemplate) return;
+			if ((await dialogs.confirm({ type: 'warning', text: copy.deleteTemplate })).canceled || busy.value || !props.removeTemplate) return;
 			state.value = 'saving'; error.value = '';
 			try { await props.removeTemplate(template.id); state.value = 'idle'; } catch { state.value = 'error'; error.value = copy.saveFailure; }
 		} },
@@ -529,7 +537,26 @@ function focusFromHome(slot?: string, moodLevel?: number): void {
 	focusComposer();
 }
 
-defineExpose({ focusFromHome });
+const journalRoot = ref<HTMLElement | null>(null);
+
+async function openById(id: string): Promise<boolean> {
+	const entry = allEntries.value.find(item => item.id === id);
+	if (!entry) return false;
+	query.value = '';
+	chooseDay(entry.date);
+	await nextTick();
+	const index = filteredEntries.value.findIndex(item => item.id === id);
+	if (index < 0) return false;
+	page.value = Math.floor(index / 20) + 1;
+	await nextTick();
+	const row = [...(journalRoot.value?.querySelectorAll<HTMLElement>('[data-journal-record]') ?? [])].find(item => item.dataset.journalRecord === id);
+	row?.scrollIntoView({ block: 'center' });
+	row?.setAttribute('tabindex', '-1');
+	row?.focus({ preventScroll: true });
+	return !!row;
+}
+
+defineExpose({ focusFromHome, openById });
 
 watch(() => props.active, active => { if (active) clock.value = new Date(); });
 let clockTimer: number | undefined;
@@ -677,7 +704,7 @@ onUnmounted(() => {
 	.record { gap: 8px; padding: 10px 8px; }
 	.insights, .mealReview, .templateGrid { grid-template-columns: minmax(0, 1fr); }
 }
-@media (prefers-reduced-motion: reduce) { .root *, .root *::before, .root *::after { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .root:not([data-hatagoes='true']) *, .root:not([data-hatagoes='true']) *::before, .root:not([data-hatagoes='true']) *::after { animation: none !important; transition: none !important; } }
 .root[data-hatask-theme] {
 	--accent: var(--accent-ink);
 	--fg-3: var(--fg-2);

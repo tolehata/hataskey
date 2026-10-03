@@ -35,6 +35,32 @@ describe('Hatask authoritative flower client', () => {
 		expect(api).toHaveBeenCalledTimes(1);
 	});
 
+	test('uses one home watering request ID for repeat calls and preserves an uncertain older ID', async () => {
+		const { pourHataskFlower } = await import('./hatask-flower-v2.js');
+		const homeId = 'hatagoes-home-water:2026-10-03';
+		api.mockResolvedValueOnce({ drops: 2 }).mockResolvedValueOnce({ drops: 2 });
+		await pourHataskFlower('self', homeId);
+		await pourHataskFlower('self', homeId);
+		expect(api.mock.calls[0][1].requestId).toBe(homeId);
+		expect(api.mock.calls[1][1].requestId).toBe(homeId);
+		api.mockRejectedValueOnce(new TypeError('offline')).mockResolvedValueOnce({ drops: 1 });
+		await expect(pourHataskFlower('self')).rejects.toThrow('offline');
+		const uncertainId = api.mock.calls[2][1].requestId;
+		await pourHataskFlower('self', 'hatagoes-home-water:2026-10-04');
+		expect(api.mock.calls[3][1].requestId).toBe(uncertainId);
+	});
+
+	test('a remounted home sends the same day request ID after module reload', async () => {
+		api.mockResolvedValue({ drops: 2 });
+		const dayId = 'hatagoes-home-water:2026-10-03';
+		const first = await import('./hatask-flower-v2.js');
+		await first.pourHataskFlower('self', dayId);
+		vi.resetModules();
+		const reloaded = await import('./hatask-flower-v2.js');
+		await reloaded.pourHataskFlower('self', dayId);
+		expect(api.mock.calls.map(call => call[1].requestId)).toEqual([dayId, dayId]);
+	});
+
 	test('a slow read cannot overwrite a newer watering result', async () => {
 		const { getHataskFlowerState, pourHataskFlower, HATASK_FLOWER_STATE_EVENT } = await import('./hatask-flower-v2.js');
 		const old = deferred<{ drops: number }>();

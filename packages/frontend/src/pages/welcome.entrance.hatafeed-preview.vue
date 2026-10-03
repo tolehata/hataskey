@@ -5,11 +5,11 @@
 		<div :class="$style.page" data-welcome-feed-page>
 			<HataFeedHeader
 				v-if="canAccess"
-				preview :tab="issueId ? 'issues' : activeTab" :projectName="currentProject?.name ?? 'Hataskey'" :staff="isStaff" :unread="unreadCount" :refreshing="refreshing"
+				preview :tab="issueId ? 'issues' : activeTab" :projectName="currentProject?.name ?? 'Hataskey'" :staff="isStaff" :unread="unreadCount" :refreshing="refreshing" :onDark="hataFeedTheme === 'dark'"
 				@navigate="navigateTab" @create="handleCreate" @project="openProjectSwitch" @notifications="openNotifications" @refresh="refreshAll" @settings="openDisplaySettings" @exit="exitHataFeed"
 			/><main :class="$style.main">
 				<HataFeedHome
-					v-if="activeTab === 'home'" :isStaff="isStaff" :roadmap="roadmap" :ownEmojiRequests="ownEmojiRequests" :emojiRequests="emojiRequests" :emojiQuota="emojiQuota" :activity="activity" :issues="issues" :issuesHasNext="issuesHasNext" :loading="issuePageLoading"
+					v-if="activeTab === 'home'" :isStaff="isStaff" :roadmap="roadmap" :ownEmojiRequests="ownEmojiRequests" :emojiRequests="emojiRequests" :emojiQuota="emojiQuota" :activity="activity" :issues="issues" :issuesHasNext="issuesHasNext" :loading="issuePageLoading" :monochrome="hataFeedTheme === 'dark'"
 					@issue="openIssue" @navigate="navigateTab" @approve="openApprove" @addRoadmap="addRoadmap" @ownHistory="openOwnHistory" @reviewQueue="openReviewQueue"
 				/><section v-if="activeTab === 'issues' || activeTab === 'roadmap'" class="hf-panel" :class="$style.statusBar" aria-label="対応状況">
 					<h2>対応状況<small>このページの {{ issues.length }} 件</small></h2>

@@ -8,9 +8,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<MkStickyContainer>
 		<template #header>
 			<MkPageHeader v-if="notification && !hideHeader" v-model:tab="tab" v-bind="pageHeaderProps" :actions="actions" :tabs="props.tabs ?? []" :displayMyAvatar="displayMyAvatar" :title="i18n.ts.notifications" :icon="'ti ti-bell'" notification/>
-			<CPPageHeader v-else-if="isMobile && prefer.s.mobileHeaderChange && !popup && !hideHeader" v-model:tab="tab" v-bind="pageHeaderProps" :actions="actions" :tabs="props.tabs ?? []" :displayMyAvatar="displayMyAvatar" :disableFollowButton="(user && (user.isBlocked || user.isBlocking)) == true"/>
-			<MkPageHeader v-else-if="prefer.s.showPageTabBarBottom && (props.tabs?.length ?? 0) > 0 && !hideHeader" v-bind="pageHeaderPropsWithoutTabs" :actions="actions" :displayMyAvatar="displayMyAvatar" :disableFollowButton="(user && (user.isBlocked || user.isBlocking)) == true"/>
-			<MkPageHeader v-else-if="!popup && !hideHeader" v-model:tab="tab" v-bind="pageHeaderProps" :actions="actions" :tabs="props.tabs ?? []" :displayMyAvatar="displayMyAvatar" :disableFollowButton="(user && (user.isBlocked || user.isBlocking)) == true"/>
+			<CPPageHeader v-else-if="isMobile && prefer.s.mobileHeaderChange && !popup && !hideHeader" v-model:tab="tab" v-bind="pageHeaderProps" :actions="actions" :tabs="props.tabs ?? []" :displayMyAvatar="displayMyAvatar" :disableFollowButton="disableFollowButton"/>
+			<MkPageHeader v-else-if="prefer.s.showPageTabBarBottom && (props.tabs?.length ?? 0) > 0 && !hideHeader" v-bind="pageHeaderPropsWithoutTabs" :actions="actions" :displayMyAvatar="displayMyAvatar" :disableFollowButton="disableFollowButton"/>
+			<MkPageHeader v-else-if="!popup && !hideHeader" v-model:tab="tab" v-bind="pageHeaderProps" :actions="actions" :tabs="props.tabs ?? []" :displayMyAvatar="displayMyAvatar" :disableFollowButton="disableFollowButton"/>
 		</template>
 		<div :class="$style.body">
 			<MkSwiper v-if="horizontalSwipeEnabled && swipable && (props.tabs?.length ?? 1) > 1" v-model:tab="tab" :class="$style.swiper" :tabs="props.tabs ?? []">
@@ -78,6 +78,8 @@ const pageHeaderPropsWithoutTabs = computed(() => {
 	const { reversed, tabs, ...rest } = props;
 	return rest;
 });
+
+const disableFollowButton = computed(() => Boolean(props.disableFollowButton || props.user?.isBlocked || props.user?.isBlocking));
 
 const tab = defineModel<string>('tab');
 const rootEl = useTemplateRef('rootEl');

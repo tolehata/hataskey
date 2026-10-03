@@ -59,6 +59,8 @@
 <script lang="ts" setup>
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { deviceKind } from '@/utility/device-kind.js';
+import { mainRouter } from '@/router.js';
+import { hataMascotSuppressed } from '@/utility/hata-mascot-suppression.js';
 import { i18n } from '@/i18n.js';
 import {
 	mascotLoaded, loadMascot,
@@ -75,9 +77,14 @@ import {
 
 const copy = i18n.ts._hata._mascotFloating;
 const isDesktop = deviceKind === 'desktop';
+const suppressedForHataFamily = computed(() => {
+	const path = mainRouter.currentRef.value._parsedRoute.fullPath.split(/[?#]/u, 1)[0];
+	return hataMascotSuppressed.value || /^\/(?:hatagoes|hatask|hatady|hatafeed)(?:\/|$)/u.test(path);
+});
 
 // 表示するか(デスクトップ/モバイルで別設定)
 const visible = computed(() => {
+	if (suppressedForHataFamily.value) return false;
 	if (!mascotLoaded.value || !displaySettingsLoaded.value) return false;
 	// 旗鯖fork(タスク8): Hatask でマスコットカードを表示中は、フローティングを隠して2体並ぶのを防ぐ
 	if (hatakMascotActive.value) return false;

@@ -8,7 +8,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 	ref="modal"
 	v-slot="{ maxHeight }"
 	class="hatask-flower-detail-modal"
-	:data-flower-motion="animations ? 'on' : 'off'"
+	:data-flower-motion="goesMotion || animations ? 'on' : 'off'"
+	:data-hatagoes="goesMotion"
 	preferType="popup"
 	zPriority="high"
 	:anchorElement="source"
@@ -49,7 +50,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue';
+import { inject, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 import type { HataskFlowerView } from './hatask-flower-view.js';
 import HataskEmoji from '@/components/HataskEmoji.vue';
 import MkModal from '@/components/MkModal.vue';
@@ -66,6 +68,7 @@ export type HataskFlowerDetailLabels = {
 	owner: string;
 };
 
+const goesMotion = !!inject(HATA_GOES_HOST, null);
 const props = withDefaults(defineProps<{
 	flower: HataskFlowerView;
 	source: HTMLElement;
@@ -241,7 +244,7 @@ defineExpose({ close });
 .hatask-flower-detail-modal[data-flower-motion='off'] > * { transition: none !important; animation: none !important; transform: none !important; opacity: 1 !important; }
 .hatask-flower-detail-modal[data-flower-motion='off'] * { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
-	.hatask-flower-detail-modal > * { transition: none !important; animation: none !important; transform: none !important; opacity: 1 !important; }
-	.hatask-flower-detail-modal * { animation: none !important; }
+	.hatask-flower-detail-modal:not([data-hatagoes='true']) > * { transition: none !important; animation: none !important; transform: none !important; opacity: 1 !important; }
+	.hatask-flower-detail-modal:not([data-hatagoes='true']) * { animation: none !important; }
 }
 </style>

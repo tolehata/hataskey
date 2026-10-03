@@ -12,15 +12,20 @@ SPDX-License-Identifier: AGPL-3.0-only
      ⚠️受け口(#header / 本体 / close())は同じ形なので、中身には手を触れない。 -->
 <component :is="embedded ? SettingsEmbeddedWindow : MkModalWindow"
 	ref="dialog"
-	:width="560"
-	:height="720"
+	:width="650"
+	:height="900"
 	:withOkButton="false"
+	:panelClass="embedded ? $style.settingsPalette : $style.settingsWindow"
+	:panelTheme="settings.theme || 'akatsuki'"
+	:panelMode="previewMode"
+	v-bind="embedded ? {} : { fullScreenOnMobile: !!hataGoesHost }"
 	@close="dialog?.close()"
+	@esc="dialog?.close()"
 	@closed="emit('closed')"
 >
 	<template #header><span class="settingsBrandText">{{ copy.title }}</span></template>
 
-	<div :class="$style.root" :aria-busy="loading || settingsSaving">
+	<div ref="settingsRoot" :class="$style.root" :data-hatask-theme="settings.theme || 'akatsuki'" :data-hatask-mode="previewMode" :aria-busy="loading || settingsSaving">
 		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
 		<div v-else-if="!settingsLoaded" :class="$style.loadError">
 			<p role="alert">{{ plannerCopy.readFailure }}</p>
@@ -28,11 +33,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<template v-else>
 			<p v-if="settingsError" :class="$style.settingsError" role="alert">{{ settingsError }}</p>
-			<!-- v2: デザインテーマ選択パネル(「テーマ」カラムからボタン遷移) -->
-			<div v-if="view==='theme'" :class="$style.themePanel">
-				<div :class="$style.themeHead">
-					<button :class="$style.backBtn" @click="view='main'"><i class="ti ti-arrow-left"></i> {{ copy.backToSettings }}</button>
-				</div>
+			<!-- デザインテーマから始め、ほかの設定も同じ画面で続ける。 -->
+			<div :class="$style.themePanel" data-hatagoes-setting="theme">
 				<div :class="$style.label" style="font-size:1.05rem">{{ copy.designTheme }}</div>
 				<div :class="$style.desc" style="margin-bottom:12px">{{ copy.designThemeDescription }}</div>
 				<!-- v2: 左右スライドで選択(選択中=中央 / 前後=フェードで両脇) -->
@@ -52,35 +54,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button v-for="t in v2Themes" :key="t.id" type="button" :class="[$style.carDot, settings.theme===t.id && $style.carDotOn]" :disabled="settingsSaving" :aria-pressed="settings.theme===t.id" @click="setV2Theme(t.id)" :aria-label="t.name"></button>
 				</div>
 				<!-- 外観(ライト/ダーク) -->
-				<div :class="$style.card">
+				<div :class="$style.card" data-hatagoes-setting="appearance">
 					<div :class="$style.label">{{ copy.appearance }}</div>
 					<div :class="$style.row"><span>{{ autoAppearanceLabel }}</span><button type="button" :class="[$style.sw, settings.autoTheme && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="autoAppearanceLabel" :aria-checked="settings.autoTheme" @click="toggle('autoTheme')"></button></div>
 					<div v-if="!settings.autoTheme" :class="$style.row"><span>{{ copy.darkMode }}</span><button type="button" :class="[$style.sw, settings.darkMode && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="copy.darkMode" :aria-checked="settings.darkMode" @click="toggle('darkMode')"></button></div>
 				</div>
 				<!-- アニメーション -->
-				<div :class="$style.card">
+				<div :class="$style.card" data-hatagoes-setting="animation">
 					<div :class="$style.label">{{ copy.animation }}</div>
 					<div :class="$style.row"><span>{{ copy.animationMotion }}</span><button type="button" :class="[$style.sw, settings.animations!==false && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="copy.animationMotion" :aria-checked="settings.animations!==false" @click="toggle('animations')"></button></div>
 					<div :class="$style.desc">{{ copy.animationDescription }}</div>
 				</div>
 			</div>
 
-			<!-- 通常設定リスト -->
-			<template v-else>
-			<!-- テーマ(デザインテーマへの遷移 + レガシー背景) -->
-			<div :class="$style.card">
-				<div :class="$style.label">{{ copy.theme }}</div>
-				<div :class="$style.desc" style="margin-bottom:10px">{{ copy.themeDescription }}</div>
-				<div :class="$style.themeEntry">
-					<div style="min-width:0">
-						<div :class="$style.themeEntryLabel">{{ copy.designTheme }}</div>
-						<div :class="$style.themeEntryVal">{{ currentThemeLabel() }}</div>
-					</div>
-					<button :class="$style.themeEntryBtn" @click="view='theme'">{{ copy.openThemeSettings }} <i class="ti ti-arrow-right"></i></button>
-				</div>
-			</div>
-
-			<section :class="[$style.card, $style.akatsukiNav]" data-akatsuki-navigation aria-label="Hataskのナビゲーション設定">
+			<section :class="[$style.card, $style.akatsukiNav]" data-akatsuki-navigation data-hatagoes-setting="navigation" aria-label="Hataskのナビゲーション設定">
 				<h2 :class="$style.akNavHeading">スマホの下部タブ</h2>
 				<p :class="$style.akNavNote">左のつまみをドラッグして並べ替え、各項目の↓から表示する機能を選べます。上から順に、下部タブの左から右へ並びます</p>
 				<draggable
@@ -100,7 +87,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<button type="button" :class="$style.akDragHandle" data-ak-drag tabindex="-1" :disabled="settingsSaving" :aria-label="navigationChoice(tab).label + 'をドラッグして並べ替え'"><i class="ti ti-grip-vertical" aria-hidden="true"></i></button>
 							<span :class="$style.akTabNumber">{{ index+1 }}</span>
 							<i :class="[navigationChoice(tab).icon, $style.akTabIcon]" aria-hidden="true"></i>
-							<div :class="$style.akTabLabel"><span>{{ navigationChoice(tab).label }}</span><small v-if="isHataskAkatsukiRequiredTab(tab)">常に表示・並べ替えのみ</small></div>
+							<div :class="$style.akTabLabel"><span :class="(tab === 'hataskapps' || tab === 'apps') ? $style.akTabWordmark : undefined">{{ navigationChoice(tab).label }}</span><small v-if="isHataskAkatsukiRequiredTab(tab)">常に表示・並べ替えのみ</small></div>
 							<button type="button" :class="$style.akTabMenu" :data-ak-menu="tab" :disabled="settingsSaving" aria-haspopup="menu" :aria-label="navigationChoice(tab).label + 'の下部タブ設定'" @click="openAkatsukiTabMenu(tab, $event)"><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
 						</div>
 					</template>
@@ -110,7 +97,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</section>
 
 			<!-- カレンダー -->
-			<div :class="$style.card">
+			<div :class="$style.card" data-hatagoes-setting="calendar">
 				<div :class="$style.label">{{ copy.calendar }}</div>
 				<div :class="$style.row"><span>{{ copy.weekStart }}</span>
 					<select :class="$style.sel" :value="settings.weekStart" :disabled="settingsSaving" :aria-label="copy.weekStart" @change="onWeekStart($event)"><option value="mon">{{ copy.monday }}</option><option value="sun">{{ copy.sunday }}</option></select>
@@ -118,7 +105,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<!-- きもち記録 -->
-			<div ref="moodReminderCard" :class="[$style.card, moodReminderHighlight && $style.cardHighlight]">
+			<div ref="moodReminderCard" data-hatagoes-setting="moodReminder" :class="[$style.card, moodReminderHighlight && $style.cardHighlight]">
 				<div :class="$style.label">{{ copy.moodLog }}</div>
 				<div :class="$style.row"><span>{{ copy.moodReminderToggle }}</span><button ref="moodReminderSwitch" type="button" :class="[$style.sw, settings.moodRemind && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="copy.moodReminderToggle" :aria-checked="!!settings.moodRemind" @click="toggle('moodRemind')"></button></div>
 				<div :class="[$style.desc, $style.lines]">{{ copy.moodReminderDescription }}</div>
@@ -145,14 +132,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<!-- データ同期 -->
-			<div :class="$style.card">
+			<div :class="$style.card" data-hatagoes-setting="sync">
 				<div :class="$style.label">{{ copy.dataSync }}</div>
 				<div :class="$style.desc">{{ copy.dataSyncDescription }}</div>
 					<div v-for="s in syncItems" :key="s.id" :class="$style.row"><span>{{ s.label }}</span><span :class="[$style.sw, $style.swOn]" aria-hidden="true"></span></div>
 			</div>
 
 			<!-- 予定 / Todo 専用。既存IDを上書きしないJSON退避と追加統合。 -->
-			<div :class="$style.card">
+			<div :class="$style.card" data-hatagoes-setting="dataSafety">
 				<div :class="$style.label">{{ plannerCopy.dataSafety }}</div>
 				<div :class="$style.desc">{{ plannerCopy.mergeOnlyWarning }}</div>
 				<div :class="$style.safetyActions">
@@ -165,13 +152,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<!-- 起動時 -->
-			<div :class="$style.card">
+			<div :class="$style.card" data-hatagoes-setting="startup">
 				<div :class="$style.label">{{ copy.startup }}</div>
 					<div :class="$style.row"><span>{{ copy.openOnStartup }}</span><button type="button" :class="[$style.sw, settings.openOnStart && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="copy.openOnStartup" :aria-checked="settings.openOnStart" @click="toggle('openOnStart')"></button></div>
 			</div>
 
 			<!-- 通知 -->
-			<div :class="$style.card">
+			<div :class="$style.card" data-hatagoes-setting="notifications">
 				<div :class="$style.label">{{ copy.notifications }}</div>
 				<div :class="$style.row"><span>{{ i18n.ts._hata._hatask._ranking.showAchievementNotice }}</span><button type="button" :class="[$style.sw, settings.showRankingAchievementNotice !== false && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="i18n.ts._hata._hatask._ranking.showAchievementNotice" :aria-checked="settings.showRankingAchievementNotice !== false" @click="saveSettings({ showRankingAchievementNotice: settings.showRankingAchievementNotice === false })"></button></div>
 				<div :class="$style.row"><span>{{ copy.sendTestNotification }}</span><MkButton rounded small @click="sendTestNotification">{{ copy.sendTest }}</MkButton></div>
@@ -179,7 +166,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<!-- レートリミット -->
-			<div :class="$style.card">
+			<div :class="$style.card" data-hatagoes-setting="rateLimit">
 				<div :class="$style.label">{{ copy.rateLimit }}</div>
 				<div :class="$style.rlBox">
 					<div :class="$style.rlTitle">{{ copy.apiLimit }}</div>
@@ -196,28 +183,29 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<!-- ヘルプ -->
-			<div :class="$style.card">
+			<div :class="$style.card" data-hatagoes-setting="help">
 				<div :class="$style.label">{{ copy.help }}</div>
 				<div :class="$style.row"><span>{{ copy.showTutorialAgain }}</span><MkButton rounded small @click="reopenTutorial">{{ copy.show }}</MkButton></div>
 				<div :class="$style.desc">{{ copy.tutorialDescription }}</div>
 			</div>
 
 			<!-- Hatask本体を開く -->
-			<div :class="$style.card">
+			<div :class="$style.card" data-hatagoes-setting="standalone">
 				<div :class="$style.label">{{ copy.openHatask }}</div>
 				<div :class="$style.desc">{{ copy.openHataskDescription }}</div>
 				<MkButton primary rounded @click="openHatask"><i class="ti ti-external-link"></i> {{ copy.openHatask }}</MkButton>
 			</div>
 
 			<div :class="$style.note" role="status">{{ settingsSaving ? plannerCopy.saving : copy.savedNote }}</div>
-			</template>
 		</template>
 	</div>
 </component>
 </template>
 
 <script lang="ts" setup>
-import { ref, shallowRef, computed, nextTick, onMounted } from 'vue';
+import { ref, shallowRef, computed, nextTick, onMounted, inject, watch } from 'vue';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+import { revealHatagoesSetting } from '@/utility/hatagoes-setting-section.js';
 import draggable from 'vuedraggable';
 import type { MenuItem } from '@/types/menu.js';
 import type { HataskPlannerTheme } from '@/components/hatask/hatask-planner-types.js';
@@ -228,6 +216,8 @@ import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { createHataskPlannerApiStoragePort } from '@/utility/hatask-planner-api.js';
 import { createHataskPlannerIntegrity, HATASK_PLANNER_SCOPE, migrateHataskPlannerStorage, normalizeHataskPlannerData, stablePlannerJson, verifyHataskPlannerIntegrity } from '@/utility/hatask-planner-storage.js';
 import type { HataskPlannerCollectionKey, HataskPlannerEvent, HataskPlannerRawData, HataskPlannerTemplate } from '@/utility/hatask-planner-storage.js';
@@ -241,6 +231,8 @@ import { store } from '@/store.js';
 import HataskThemePreview from '@/components/hatask/HataskThemePreview.vue';
 import type { HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';
 
+const dialogs = useHataGoesDialogs();
+const popupMenu = useHataGoesPopupMenu();
 const emit = defineEmits<{ (ev:'closed'):void; (ev:'reopenTutorial'):void; (ev:'changed', settings:any):void }>();
 /**
  * 旗鯖fork: 窓と埋め込みのどちらでも通る参照の型。
@@ -336,7 +328,7 @@ async function openAkatsukiTabMenu(tab: HataskAkatsukiTab, event: MouseEvent): P
 	} else {
 		menu.push({ type: 'label', text: '表示する機能' });
 		for (const choice of navigationChoices.filter(choice => !akatsukiTabs.value.includes(choice.id))) {
-			menu.push({ text: choice.label, icon: choice.icon, action: () => {
+			menu.push({ text: choice.label, textFont: choice.id === 'apps' || choice.id === 'hataskapps' ? 'righteous' : undefined, icon: choice.icon, action: () => {
 				destination = choice.id;
 				save = saveAkatsukiNavigation(replaceHataskAkatsukiMobileTab(akatsukiTabs.value, akatsukiTabs.value.indexOf(tab), choice.id));
 			} });
@@ -349,7 +341,7 @@ async function openAkatsukiTabMenu(tab: HataskAkatsukiTab, event: MouseEvent): P
 		active: akatsukiTabs.value.indexOf(tab) === index,
 		action: () => { save = saveAkatsukiNavigation(moveHataskAkatsukiMobileTab(akatsukiTabs.value, akatsukiTabs.value.indexOf(tab), index)); },
 	})) });
-	await os.popupMenu(menu, anchor);
+	await popupMenu(menu, anchor);
 	if (!save) return;
 	await save;
 	await nextTick();
@@ -364,10 +356,7 @@ const plannerImportInput = ref<HTMLInputElement|null>(null);
 const plannerSafetyBusy = ref(false);
 const plannerSafetyMessage = ref('');
 const plannerLastBackup = ref('');
-// 旗鯖fork(v2): 設定モーダル内のビュー('main'=通常設定 / 'theme'=デザインテーマ選択)。
-const view = ref<'main'|'theme'>('main');
 function setV2Theme(id:string) { if (v2Themes.value.some(theme => theme.id === id)) void saveSettings({ theme: id }); }
-function currentThemeLabel():string { const t = v2Themes.value.find(x => x.id === (settings.value.theme || 'akatsuki')); return t ? `${t.name} (${t.description})` : copy.themeAkatsuki; }
 
 // 旗鯖fork(v2): テーマ選択カルーセル(左右スライド)。選択中を中央・前後をフェードで両脇に。
 const themeIndex = computed(() => { const i = v2Themes.value.findIndex(t => t.id === (settings.value.theme || 'akatsuki')); return i < 0 ? 0 : i; });
@@ -505,7 +494,7 @@ async function importPlannerData(event:Event):Promise<void>{
 		const incoming=normalizeHataskPlannerData(source);
 		if(incoming.issues.length)throw new TypeError(incoming.issues[0].message);
 		const incomingTemplates=normalizeHataskPlannerTemplates(source.templates??[]);if(incomingTemplates.invalidCount>0)throw new TypeError('Invalid Hatask planner templates');
-		const {canceled}=await os.confirm({type:'warning',text:plannerCopy.mergeOnlyWarning});
+		const {canceled}=await dialogs.confirm({type:'warning',text:plannerCopy.mergeOnlyWarning});
 		if(canceled)return;
 
 		const before=await preparePlannerImportStorage();
@@ -600,7 +589,7 @@ function onWeekStart(ev:Event) {
 	if (value === 'mon' || value === 'sun') void saveSettings({ weekStart: value });
 }
 
-function openHatask() { dialog.value?.close(); router.push('/hatask'); }
+function openHatask() { dialog.value?.close(); if (hataGoesHost?.openStandalone) hataGoesHost.openStandalone('/hatask'); else router.push('/hatask'); }
 
 // 旗鯖fork(#37): チュートリアル再表示。
 //   Hatask本体内で開いた場合は親(hatask.vue)が emit を受けて reopenTutorial を実行する。
@@ -625,7 +614,15 @@ const props = defineProps<{
 	embedded?: boolean;
 	/** 開いた直後に表示・強調する設定項目(きもち画面のリマインドボタンから)。 */
 	focus?: 'moodReminder';
+	initialSection?: string;
 }>();
+const hataGoesHost = inject(HATA_GOES_HOST, null);
+const settingsRoot = ref<HTMLElement>();
+watch([() => props.initialSection, settingsLoaded], async ([section, loaded]) => {
+	if (!section || !loaded) return;
+	await nextTick();
+	revealHatagoesSetting(settingsRoot.value, section);
+}, { immediate: true, flush: 'post' });
 
 const moodReminderCard = shallowRef<HTMLElement>();
 const moodReminderSwitch = shallowRef<HTMLButtonElement>();
@@ -657,6 +654,33 @@ async function revealFocusedSetting(): Promise<void> {
 </script>
 
 <style lang="scss" module>
+.settingsWindow, .settingsPalette, .root {
+	--MI_THEME-bg: var(--bg);
+	--MI_THEME-panel: var(--surface);
+	--MI_THEME-windowHeader: var(--surface);
+	--MI_THEME-fg: var(--fg);
+	--MI_THEME-fgMuted: var(--fg-2);
+	--MI_THEME-divider: var(--rule);
+	--MI_THEME-accent: var(--accent-ink, var(--accent));
+	--MI_THEME-buttonBg: var(--surface);
+	--MI_THEME-buttonHoverBg: color-mix(in srgb, var(--accent) 10%, var(--surface));
+	color: var(--fg);
+	background: var(--bg);
+}
+.settingsWindow { border-radius: 18px; }
+.settingsWindow > :first-child { display:grid; grid-template-columns:46px minmax(0,1fr) 46px; align-items:center; }
+.settingsWindow > :first-child > span { grid-column:2; padding:0; text-align:center; }
+.settingsWindow > :first-child > button { grid-column:1; grid-row:1; color:var(--fg); }
+.settingsWindow[data-hatask-theme='akatsuki'], .settingsPalette[data-hatask-theme='akatsuki'], .root[data-hatask-theme='akatsuki'] {
+	--bg:#fff3ec; --surface:rgba(255,255,255,.82); --fg:#2b1f2c; --fg-2:#6a5566;
+	--rule:rgba(80,50,70,.18); --accent:#e0567a; --accent-ink:#b02e56;
+	color-scheme:light;
+}
+.settingsWindow[data-hatask-theme='akatsuki'][data-hatask-mode='dark'], .settingsPalette[data-hatask-theme='akatsuki'][data-hatask-mode='dark'], .root[data-hatask-theme='akatsuki'][data-hatask-mode='dark'] {
+	--bg:#150f1b; --surface:#302539; --fg:#f6ecf3; --fg-2:#c8b5c6;
+	--rule:rgba(255,255,255,.18); --accent:#ff7fa3; --accent-ink:#ff7fa3;
+	color-scheme:dark;
+}
 .root { container-type:inline-size; display:flex; flex-direction:column; gap:14px; padding:18px 20px 22px; }
 .loadError { display:grid; justify-items:center; gap:12px; padding:24px 0; text-align:center; }
 .settingsError { margin:0; padding:12px 14px; border:1px solid var(--MI_THEME-divider); border-radius:12px; color:var(--MI_THEME-fg); background:var(--MI_THEME-panel); font-size:.85rem; line-height:1.6; }
@@ -705,17 +729,11 @@ async function revealFocusedSetting(): Promise<void> {
 .rlTbl thead th { opacity:.7; font-weight:600; }
 .rlTbl tbody tr:last-child td { border-bottom:none; }
 
-/* 旗鯖fork(v2): デザインテーマへの遷移エントリ(テーマカード内) */
+/* 旗鯖fork(v2): デザインテーマ */
 .subLabel { font-size:.78rem; font-weight:700; opacity:.6; margin:14px 0 8px; }
-.themeEntry { display:flex; align-items:center; justify-content:space-between; gap:12px; background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:10px; padding:12px 14px; }
-.themeEntryLabel { font-size:.9rem; font-weight:700; }
-.themeEntryVal { font-size:.8rem; opacity:.7; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.themeEntryBtn { flex-shrink:0; display:inline-flex; align-items:center; gap:5px; background: var(--MI_THEME-accent); color:#fff; border:none; border-radius:999px; padding:9px 16px; font-size:.85rem; font-weight:700; cursor:pointer; font-family:inherit; min-height:40px; transition:filter .15s; > i { font-size:1em; } &:hover { filter:brightness(1.06); } }
 
-/* 旗鯖fork(v2): デザインテーマ選択パネル */
+/* デザインテーマ選択パネル */
 .themePanel { display:flex; flex-direction:column; gap:14px; }
-.themeHead { display:flex; align-items:center; }
-.backBtn { display:inline-flex; align-items:center; gap:6px; background: var(--MI_THEME-buttonBg); color: var(--MI_THEME-fg); border:1px solid var(--MI_THEME-divider); border-radius:999px; padding:8px 15px; font-size:.85rem; font-weight:700; cursor:pointer; font-family:inherit; min-height:40px; &:hover { background: var(--MI_THEME-buttonHoverBg); } > i { font-size:1.05em; } }
 /* v2: テーマ選択カルーセル(左右スライド) */
 .themeCarousel { display:flex; align-items:center; gap:6px; margin:2px 0; }
 /* All cards share one grid cell: translated cards still reserve their content height. */
@@ -749,16 +767,16 @@ async function revealFocusedSetting(): Promise<void> {
 .akTabNumber { flex:0 0 1em; font-size:11px; color:var(--MI_THEME-fgMuted); text-align:center; }
 .akTabIcon { flex:0 0 22px; text-align:center; font-size:20px; }
 .akTabLabel { flex:1; min-width:0; display:grid; gap:3px; font-size:13px; font-weight:700; overflow-wrap:anywhere; }
+.akTabWordmark { font-family:'Righteous',system-ui,sans-serif; font-weight:400; font-synthesis:none; }
 .akTabLabel > small { color:var(--MI_THEME-fgMuted); font-size:10px; font-weight:400; }
 .akTabRow:global(.hataskTabDragGhost) { opacity:.35; outline:2px dashed var(--MI_THEME-accent); }
 
 @container (max-width:520px) {
 	.themeCard { width:min(192px,100%); }
 	.carArrow { width:34px; height:34px; }
-	.themeEntry { flex-wrap:wrap; }
-	.themeEntryBtn { width:100%; justify-content:center; }
 }
 @media (prefers-reduced-motion:reduce) {
 	.themeCard, .carArrow, .carDot::after, .sw::before, .sw::after { transition:none; }
 }
 </style>
+<style lang="scss" src="../components/hatask/hatask-themes.scss"></style>

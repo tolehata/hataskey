@@ -143,7 +143,7 @@ import HyCapsule from '@/components/HyCapsule.vue';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import { i18n } from '@/i18n.js';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
@@ -157,6 +157,7 @@ const emit = defineEmits<{
 	(ev: 'closed'): void;
 }>();
 const dialog = ref<any>(null);
+const dialogs = useHataGoesDialogs();
 const theme = hatadyTheme;
 const copy = i18n.ts._hata._hatady._notifications;
 const copyx = i18n.tsx._hata._hatady._notifications;
@@ -340,7 +341,7 @@ function onClickNotif(n: any) {
 async function toggleFollowBack(n: any) {
 	if (!n.user) return;
 	const uname = n.user.name || n.user.username;
-	const { canceled } = await os.confirm({
+	const { canceled } = await dialogs.confirm({
 		type: n.isFollowingBack ? 'warning' : 'question',
 		text: n.isFollowingBack ? copyx.unfollowConfirm({ name: uname }) : copyx.followConfirm({ name: uname }),
 	});

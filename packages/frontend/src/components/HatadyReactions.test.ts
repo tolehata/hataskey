@@ -7,6 +7,7 @@ const fixture = vi.hoisted(() => ({ api: vi.fn(), notify: vi.fn(), picker: vi.fn
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api, misskeyApiGet: fixture.api }));
 vi.mock('@/utility/hatady-ui.js', () => ({ hatadyNotify: fixture.notify }));
 vi.mock('@/utility/reaction-picker.js', () => ({ reactionPicker: { show: fixture.picker } }));
+vi.mock('@/utility/hatagoes-emoji-pickers.js', () => ({ useHataGoesEmojiPickers: () => ({ showReactionPicker: fixture.picker }) }));
 vi.mock('@/i18n.js', async () => {
 	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
 	const i18n = createTestHataskI18n();

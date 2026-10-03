@@ -729,6 +729,11 @@ export const ROUTE_DEF = [{
 	redirect: $i ? `@${$i.username}` : '/',
 	loginRequired: true,
 }, {
+	// Keep internal location out of route props so changing it retains the shell.
+	path: '/hatagoes',
+	component: page(() => import('@/pages/hatagoes.vue')),
+	loginRequired: true,
+}, {
 	path: '/hatask',
 	query: {
 		tab: 'tab',

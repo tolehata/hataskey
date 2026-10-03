@@ -61,7 +61,7 @@ import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, ref, u
 import type { Endpoints, entities } from 'cherrypick-js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
-import * as os from '@/os.js';
+import { useHataGoesPickers } from '@/utility/hatagoes-pickers.js';
 import MkAvatar from '@/components/global/MkAvatar.vue';
 import RecordModerationActions from '@/components/RecordModerationActions.vue';
 
@@ -72,6 +72,7 @@ type State = Item['state'];
 type Options = Endpoints['admin/hatask/records/list']['req'];
 defineProps<{ theme?: string; mode?: 'light' | 'dark' }>();
 const uid = useId(), reviewEl = ref<HTMLElement>(), detailHeading = ref<HTMLElement>();
+const { selectUser } = useHataGoesPickers();
 const revoked = ref(false);
 const allowed = computed(() => !revoked.value && !!$i && ($i.isAdmin || $i.isModerator));
 const kinds = [{ id: 'all', label: 'すべて', icon: '' }, { id: 'event', label: '予定', icon: 'ti-calendar-event' }, { id: 'todo', label: 'ToDo', icon: 'ti-checkbox' }, { id: 'mood', label: 'きもち', icon: 'ti-mood-smile' }, { id: 'meal', label: 'ごはん', icon: 'ti-soup' }, { id: 'flower', label: 'おはな', icon: 'ti-flower' }] as const;
@@ -156,7 +157,7 @@ function filterUser(user: entities.UserLite) { owner.value = user; filtersOpen.v
 
 async function selectOwner() {
 	const account = $i?.id;
-	try { const user = await os.selectUser({ includeSelf: true, localOnly: true }); if (valid(account)) filterUser(user); } catch { /* Selection cancelled. */ }
+	try { const user = await selectUser({ includeSelf: true, localOnly: true }); if (user && valid(account)) filterUser(user); } catch { /* Selection cancelled. */ }
 }
 
 function resetFilters() { query.value = ''; kind.value = state.value = visibility.value = 'all'; owner.value = null; dateFrom.value = dateTo.value = ''; }

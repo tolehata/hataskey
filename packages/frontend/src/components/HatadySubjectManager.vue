@@ -53,10 +53,14 @@ import type { HySubjectRow } from '@/utility/hatady-subjects.js';
 import HyDialog from '@/components/HyDialog.vue';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
 import { i18n } from '@/i18n.js';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { hySubjectPalette } from '@/utility/hatady.js';
 import { hySubjects, loadHySubjects, deleteHySubject } from '@/utility/hatady-subjects.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
+
+const dialogs = useHataGoesDialogs();
+const popup = useHataGoesPopup();
 
 const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'closed'): void }>();
 const dialog = useTemplateRef('dialog');
@@ -72,7 +76,7 @@ function pal(name: string) {
 }
 
 async function openEditor(subject?: HySubjectRow) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadySubjectEditor.vue')).default,
 		{ subject },
 		{ done: () => emit('changed'), closed: () => dispose() },
@@ -86,7 +90,7 @@ async function removeSubject(s: HySubjectRow) {
 
 	if (s.logCount > 0 && others.length > 0) {
 		// 付け替え先を選ばせる(この分野が付いたログを別分野へ移す)。
-		const sel = await os.select({
+		const sel = await dialogs.select({
 			title: i18n.tsx._hata._hatady._subjectManager.deleteTitle({ name: s.name }),
 			text: i18n.tsx._hata._hatady._subjectManager.reassignPrompt({ count: s.logCount.toString() }),
 			items: others.map((x) => ({
@@ -98,7 +102,7 @@ async function removeSubject(s: HySubjectRow) {
 		reassignTo = String(sel.result);
 	} else {
 		// 付け替え先が無い or ログ0件 → 確認のみ(ログはそのまま残り、色は自動に戻る)。
-		const c = await os.confirm({
+		const c = await dialogs.confirm({
 			type: 'warning',
 			title: i18n.tsx._hata._hatady._subjectManager.deleteTitle({ name: s.name }),
 			text:

@@ -647,3 +647,18 @@
   .stepCaption > span, .stepTrack { display: none; }
   .stepCaption { justify-content: center; }
 }
+.simpleBody { overflow-y: auto; overscroll-behavior: contain; }
+.simplePage { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; max-width: 1060px; height: auto; min-height: 100%; gap: 20px; padding: 22px 28px 24px; }
+.simplePage .updatesHeading h2 { margin-bottom: 0; }
+.mergeStage { flex-shrink: 0; width: min(100%, 900px); min-width: 0; border-radius: 20px; overflow: hidden; box-shadow: 0 12px 32px color-mix(in srgb, var(--MI_THEME-fg) 12%, transparent); }
+.releaseNotesLink { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 18px; border-radius: 999px; background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); font-weight: 700; }
+@container release (max-width: 620px) {
+  .simplePage { padding: 18px 18px 24px; }
+}
+@container release-body (max-height: 560px) {
+  .simplePage { justify-content: flex-start; padding: 14px 18px; gap: 10px; }
+  .mergeStage { width: min(100%, 700px); }
+}
+@container release-body (max-height: 380px) {
+  .simplePage { padding: 10px 14px; gap: 8px; }
+}

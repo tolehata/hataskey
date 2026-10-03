@@ -9,7 +9,7 @@ vi.mock('@/i.js', () => ({ $i: { id: 'reviewer' } }));
 vi.mock('@/local-storage.js', () => ({ miLocalStorage: { getItemAsJson: (key: string) => JSON.parse(fixture.records.get(key) ?? '{}'), setItemAsJson: (key: string, value: unknown) => fixture.records.set(key, JSON.stringify(value)) } }));
 vi.mock('@/utility/hatasaba-device-prefs.js', async () => ({ hataFeedTheme: (await import('vue')).ref('light') }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
-vi.mock('@/os.js', () => ({ toast: vi.fn(), inputText: async () => ({ canceled: false, result: '確認中' }) }));
+vi.mock('@/os.js', () => ({ popup: vi.fn(), toast: vi.fn(), inputText: async () => ({ canceled: false, result: '確認中' }) }));
 vi.mock('@/preferences.js', async () => ({ prefer: { r: { animation: (await import('vue')).ref(false) } } }));
 vi.mock('@/i18n.js', async () => {
 	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');

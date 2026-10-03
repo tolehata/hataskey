@@ -296,14 +296,15 @@ export function alert(props: {
 	caption?: string | null;
 	// Hataskey fork: MkDialog へそのまま popup() で渡るだけなので型追加のみで配線不要
 	hatakyuAsset?: HatakyuAssetKey;
-}): Promise<void> {
+}, launch: typeof popup = popup): Promise<void> {
 	return new Promise(resolve => {
-		const { dispose } = popup(MkDialog, props, {
+		let dispose = () => {};
+		dispose = launch(MkDialog, props, {
 			done: () => {
 				resolve();
 			},
-			closed: () => dispose(),
-		});
+			closed: () => { resolve(); dispose(); },
+		}).dispose;
 	});
 }
 
@@ -316,17 +317,18 @@ export function confirm(props: {
 	cancelText?: string;
 	// Hataskey fork: MkDialog へそのまま popup() で渡るだけなので型追加のみで配線不要
 	hatakyuAsset?: HatakyuAssetKey;
-}): Promise<{ canceled: boolean }> {
+}, launch: typeof popup = popup): Promise<{ canceled: boolean }> {
 	return new Promise(resolve => {
-		const { dispose } = popup(MkDialog, {
+		let dispose = () => {};
+		dispose = launch(MkDialog, {
 			...props,
 			showCancelButton: true,
 		}, {
 			done: result => {
 				resolve(result ? result : { canceled: true });
 			},
-			closed: () => dispose(),
-		});
+			closed: () => { resolve({ canceled: true }); dispose(); },
+		}).dispose;
 	});
 }
 
@@ -344,13 +346,14 @@ export function actions<T extends {
 	text?: string;
 	caption?: string | null;
 	actions: T;
-}): Promise<{
+}, launch: typeof popup = popup): Promise<{
 	canceled: true; result: undefined;
 } | {
 	canceled: false; result: T[number]['value'];
 }> {
 	return new Promise(resolve => {
-		const { dispose } = popup(MkDialog, {
+		let dispose = () => {};
+		dispose = launch(MkDialog, {
 			...props,
 			actions: props.actions.map(a => ({
 				text: a.text,
@@ -364,8 +367,8 @@ export function actions<T extends {
 			done: result => {
 				resolve(result ? result : { canceled: true });
 			},
-			closed: () => dispose(),
-		});
+			closed: () => { resolve({ canceled: true, result: undefined }); dispose(); },
+		}).dispose;
 	});
 }
 
@@ -379,7 +382,7 @@ export function inputText(props: {
 	default: string;
 	minLength?: number;
 	maxLength?: number;
-}): Promise<{
+}, launch?: typeof popup): Promise<{
 	canceled: true; result: undefined;
 } | {
 	canceled: false; result: string;
@@ -394,7 +397,7 @@ export function inputText(props: {
 	default?: string;
 	minLength: number;
 	maxLength?: number;
-}): Promise<{
+}, launch?: typeof popup): Promise<{
 	canceled: true; result: undefined;
 } | {
 	canceled: false; result: string;
@@ -408,7 +411,7 @@ export function inputText(props: {
 	default?: string | null;
 	minLength?: number;
 	maxLength?: number;
-}): Promise<{
+}, launch?: typeof popup): Promise<{
 	canceled: true; result: undefined;
 } | {
 	canceled: false; result: string | null;
@@ -422,13 +425,14 @@ export function inputText(props: {
 	default?: string | null;
 	minLength?: number;
 	maxLength?: number;
-}): Promise<{
+}, launch: typeof popup = popup): Promise<{
 	canceled: true; result: undefined;
 } | {
 	canceled: false; result: string | null;
 }> {
 	return new Promise(resolve => {
-		const { dispose } = popup(MkDialog, {
+		let dispose = () => {};
+		dispose = launch(MkDialog, {
 			title: props.title,
 			text: props.text,
 			input: {
@@ -443,8 +447,8 @@ export function inputText(props: {
 			done: result => {
 				resolve(result ? result : { canceled: true });
 			},
-			closed: () => dispose(),
-		});
+			closed: () => { resolve({ canceled: true, result: undefined }); dispose(); },
+		}).dispose;
 	});
 }
 
@@ -455,7 +459,7 @@ export function inputNumber(props: {
 	placeholder?: string | null;
 	autocomplete?: string;
 	default: number;
-}): Promise<{
+}, launch?: typeof popup): Promise<{
 	canceled: true; result: undefined;
 } | {
 	canceled: false; result: number;
@@ -466,7 +470,7 @@ export function inputNumber(props: {
 	placeholder?: string | null;
 	autocomplete?: string;
 	default?: number | null;
-}): Promise<{
+}, launch?: typeof popup): Promise<{
 	canceled: true; result: undefined;
 } | {
 	canceled: false; result: number | null;
@@ -477,13 +481,14 @@ export function inputNumber(props: {
 	placeholder?: string | null;
 	autocomplete?: string;
 	default?: number | null;
-}): Promise<{
+}, launch: typeof popup = popup): Promise<{
 	canceled: true; result: undefined;
 } | {
 	canceled: false; result: number | null;
 }> {
 	return new Promise(resolve => {
-		const { dispose } = popup(MkDialog, {
+		let dispose = () => {};
+		dispose = launch(MkDialog, {
 			title: props.title,
 			text: props.text,
 			input: {
@@ -496,8 +501,8 @@ export function inputNumber(props: {
 			done: result => {
 				resolve(result ? result : { canceled: true });
 			},
-			closed: () => dispose(),
-		});
+			closed: () => { resolve({ canceled: true, result: undefined }); dispose(); },
+		}).dispose;
 	});
 }
 
@@ -506,13 +511,14 @@ export function inputDatetime(props: {
 	text?: string;
 	placeholder?: string | null;
 	default?: string | null;
-}): Promise<{
+}, launch: typeof popup = popup): Promise<{
 	canceled: true; result: undefined;
 } | {
 	canceled: false; result: Date;
 }> {
 	return new Promise(resolve => {
-		const { dispose } = popup(MkDialog, {
+		let dispose = () => {};
+		dispose = launch(MkDialog, {
 			title: props.title,
 			text: props.text,
 			input: {
@@ -524,8 +530,8 @@ export function inputDatetime(props: {
 			done: result => {
 				resolve(result != null && result.result != null ? { result: new Date(result.result), canceled: false } : { result: undefined, canceled: true });
 			},
-			closed: () => dispose(),
-		});
+			closed: () => { resolve({ canceled: true, result: undefined }); dispose(); },
+		}).dispose;
 	});
 }
 
@@ -549,13 +555,14 @@ export function select<C extends OptionValue, D extends C | null = null>(props: 
 	text?: string;
 	default?: D;
 	items: (MkSelectItem<C> | undefined)[];
-}): Promise<{
+}, launch: typeof popup = popup): Promise<{
 	canceled: true; result: undefined;
 } | {
 	canceled: false; result: Exclude<D, undefined> extends null ? C | null : C;
 }> {
 	return new Promise(resolve => {
-		const { dispose } = popup(MkDialog, {
+		let dispose = () => {};
+		dispose = launch(MkDialog, {
 			title: props.title,
 			text: props.text,
 			select: {
@@ -566,8 +573,8 @@ export function select<C extends OptionValue, D extends C | null = null>(props: 
 			done: result => {
 				resolve(result ? result : { canceled: true });
 			},
-			closed: () => dispose(),
-		});
+			closed: () => { resolve({ canceled: true, result: undefined }); dispose(); },
+		}).dispose;
 	});
 }
 
@@ -619,14 +626,15 @@ export function waiting(options: { text?: string } = {}) {
 	return done;
 }
 
-export function form<F extends Form>(title: string, f: F): Promise<{ canceled: true, result?: undefined } | { canceled?: false, result: GetFormResultType<F> }> {
+export function form<F extends Form>(title: string, f: F, launch: typeof popup = popup): Promise<{ canceled: true, result?: undefined } | { canceled?: false, result: GetFormResultType<F> }> {
 	return new Promise(resolve => {
-		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkFormDialog.vue')), { title, form: f }, {
+		let dispose = () => {};
+		dispose = launch(defineAsyncComponent(() => import('@/components/MkFormDialog.vue')), { title, form: f }, {
 			done: result => {
 				resolve(result);
 			},
-			closed: () => dispose(),
-		});
+			closed: () => { resolve({ canceled: true }); dispose(); },
+		}).dispose;
 	});
 }
 

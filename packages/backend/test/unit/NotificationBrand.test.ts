@@ -31,6 +31,22 @@ describe('notification brand classification', () => {
 });
 
 describe('notification list brand and type filters', () => {
+	test('HataGoes includes native and legacy notifications from only its three apps', () => {
+		const filter = { includeBrands: ['hatask', 'hatady', 'hataFeed'] as const, includeHataskApp: true };
+		const cases: { notification: MiNotification; included: boolean }[] = [
+			{ notification: app('Hatask', '/hatask?tab=mood'), included: true },
+			{ notification: app('Hataskのお花', null), included: true },
+			{ notification: { id: 'native', type: 'hataskFlowerReady' } as MiNotification, included: true },
+			{ notification: { id: 'hatady', type: 'hatady' } as MiNotification, included: true },
+			{ notification: app('HataFeed', null), included: true },
+			{ notification: { id: 'feed', type: 'hataFeed' } as MiNotification, included: true },
+			{ notification: app('Other app', null), included: false },
+			{ notification: app('Hatask', '/unrelated'), included: false },
+			{ notification: { id: 'follow', type: 'follow' } as MiNotification, included: false },
+		];
+		for (const { notification, included } of cases) expect(matchesNotificationListFilter(notification, filter)).toBe(included);
+	});
+
 	test('multiple brands and the legacy single brand intersect without changing old requests', () => {
 		const standard = app('Other app', null);
 		const hatask = app('Hatask', '/hatask/garden');

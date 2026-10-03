@@ -47,7 +47,7 @@ afterEach(() => cleanups.splice(0).forEach(cleanup => cleanup()));
 function mount() {
 	const isMobile = ref(false);
 	const scope = effectScope();
-	const state = scope.run(() => new Function('ref', 'computed', 'nextTick', 'watch', 'isMobile', code)(ref, computed, nextTick, watch, isMobile)) as State;
+	const state = scope.run(() => new Function('ref', 'computed', 'nextTick', 'watch', 'isMobile', 'isHatadyTimeline', code)(ref, computed, nextTick, watch, isMobile, ref(false))) as State;
 	const container = window.document.createElement('div');
 	const rail = window.document.createElement('div');
 	const theme = window.document.createElement('button'); theme.title = 'Theme';

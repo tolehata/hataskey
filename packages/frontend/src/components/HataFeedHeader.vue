@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <header ref="root" :class="$style.header" :data-motion="prefer.r.animation.value" :data-preview="!!preview">
-	<button type="button" :class="$style.brand" :aria-label="headerCopy.brandHome" @click="emit('navigate', 'home')">HataFeed</button>
+	<button type="button" :class="$style.brand" :aria-label="headerCopy.brandHome" @click="brandTapSequence++; emit('navigate', 'home')"><HataAppLogo app="hatafeed" :size="26" motion="startup" :monochrome="onDark" :active="active" :tapSequence="brandTapSequence"/><HataAppWordmark app="hatafeed" :onDark="onDark"/></button>
 	<nav :class="$style.nav" aria-label="HataFeed">
 		<button type="button" :class="$style.exit" :aria-label="headerCopy.exit" :title="headerCopy.exit" @click="closeCreate(); emit('exit')"><i class="ti ti-logout-2" aria-hidden="true"></i></button>
 		<div ref="outline" :class="$style.capsule" :data-notification="ownsSurface && context.items.value.length > 0">
@@ -34,6 +34,8 @@
 import { computed, inject, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, shallowRef, useId, watch } from 'vue';
 import type { HataFeedTab } from '@/utility/hatafeed-ui.js';
 import HyCapsule from '@/components/HyCapsule.vue';
+import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import MkHataskeyNotificationToasts from '@/components/MkHataskeyNotificationToasts.vue';
 import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { hataFeedDraftPromptOpen, registerHataFeedNoticeHost } from '@/utility/hatafeed-ui.js';
@@ -42,7 +44,8 @@ import { i18n } from '@/i18n.js';
 
 const copy = i18n.ts._hata._hatafeed._home;
 const headerCopy = i18n.ts._hata._hatafeed._header;
-const props = defineProps<{ tab: HataFeedTab; projectName: string; staff: boolean; unread: number; refreshing?: boolean; preview?: boolean }>();
+const props = defineProps<{ tab: HataFeedTab; projectName: string; staff: boolean; unread: number; refreshing?: boolean; preview?: boolean; onDark?: boolean }>();
+const brandTapSequence = ref(0);
 const emit = defineEmits<{ navigate: [tab: HataFeedTab]; create: [kind: 'emoji' | 'issue']; project: [event: MouseEvent]; notifications: [event: MouseEvent]; refresh: []; settings: [event: MouseEvent]; exit: [] }>();
 const root = ref<HTMLElement>();
 const createDock = ref<HTMLElement>();
@@ -123,7 +126,7 @@ onUnmounted(() => { observer?.disconnect(); projectObserver?.disconnect(); unreg
 <style module>
 .header { position: sticky; top: var(--MI-stickyTop, 0px); z-index: 5; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 14px 0 10px; background: var(--hy-bg); }
 .header[data-preview='true'] { position: relative; top: auto; }
-.header > .brand { justify-self: start; padding: 0; border: 0; background: transparent; color: var(--hy-accent); font: 29px 'Hatady Brand', sans-serif; cursor: pointer; }
+.header > .brand { justify-self: start; display: inline-flex; align-items: center; gap: 7px; padding: 0; border: 0; background: transparent; color: var(--hy-accent); font: 29px 'Hatady Brand', sans-serif; cursor: pointer; }
 /* Reserve only the tabs' height. Notifications grow over the page, as in the
    Hataskey top bar, without moving the header tools or the content below it. */
 .nav { display: flex; align-items: flex-start; justify-content: center; min-width: 0; height: 56px; justify-self: center; }

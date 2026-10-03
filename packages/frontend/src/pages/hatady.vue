@@ -3,8 +3,8 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <MkStickyContainer>
 	<div :class="[$style.root, 'hatady-scope']" :data-hatady-theme="hatadyTheme" :data-hatady-lang="versatileLang">
-		<header :class="$style.header" :data-staff-nav="canModerate">
-			<button :class="$style.brand" @click="setTab('home')">Hatady</button>
+		<header v-if="!embedded" :class="$style.header" :data-staff-nav="canModerate">
+			<button :class="$style.brand" aria-label="Hatady ホーム" @click="brandTapSequence++; setTab('home')"><HataAppLogo app="hatady" :size="26" :motion="activeTab === 'records' && recordsLoading || activeTab === 'collection' && collectionLoading ? 'loading' : 'startup'" :monochrome="hatadyTheme === 'dark' || hatadyTheme === 'espresso' || hatadyTheme === 'hataskey' && store.r.darkMode.value" :active="!embedded || paneActive" :tapSequence="brandTapSequence"/><HataAppWordmark app="hatady" :onDark="hatadyTheme === 'dark' || hatadyTheme === 'espresso' || hatadyTheme === 'hataskey' && store.r.darkMode.value"/></button>
 			<button :class="[$style.mobileExit, 'hy-icon-button']" type="button" :aria-label="pageCopy.exit" :title="pageCopy.exit" @click="exitHatady">
 				<i class="ti ti-logout-2" aria-hidden="true"></i>
 			</button>
@@ -20,7 +20,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					<i class="ti ti-bell" aria-hidden="true"></i>
 					<span v-if="unread" :class="$style.badge">{{ unread > 99 ? '99+' : unread }}</span>
 				</button>
-				<button class="hy-icon-button" :aria-label="copy.settings" @click="openSettings">
+				<button class="hy-icon-button" :aria-label="copy.settings" @click="openSettings()">
 					<i class="ti ti-settings" aria-hidden="true"></i>
 				</button>
 			</div>
@@ -31,6 +31,8 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 		<main ref="mainEl" :class="$style.main" @scroll.passive="onPageScroll">
 			<HatadyHome
 				v-if="activeTab === 'home'"
+				:active="!embedded || paneActive"
+				:monochrome="hatadyTheme === 'dark' || hatadyTheme === 'espresso' || hatadyTheme === 'hataskey' && store.r.darkMode.value"
 				:revision="revision"
 				:stats="stats"
 				@record="openActivityComposer"
@@ -81,26 +83,30 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 							:label="pageCopy.recordScope"
 							@update:modelValue="setRecordScope"
 						/>
-						<div :class="$style.toolbar">
+						<div :class="[$style.toolbar, { [$style.embeddedRecordToolbar]: embedded }]">
 							<button
 								type="button"
-								class="hy-icon-button"
+								:class="embedded ? $style.embeddedPeriodButton : 'hy-icon-button'"
 								:aria-label="copy.period"
 								:aria-expanded="periodOpen"
 								:data-active="periodActive"
 								@click="periodOpen = !periodOpen"
 							>
 								<i class="ti ti-calendar" aria-hidden="true"></i>
+								<span v-if="embedded" :class="$style.embeddedPeriodText"><span>{{ copy.period }}</span><small>{{ periodActive ? `${since || '…'} 〜 ${until || '…'}` : copy.filterAll }}</small></span>
 							</button>
 							<HyCategorySelect
 								:modelValue="recordKind"
 								:options="recordKinds"
 								:label="pageCopy.activityKind"
+								:card="embedded"
 								@update:modelValue="setRecordKind"
 							/>
 						</div>
 					</div>
-					<form v-if="periodOpen" :class="$style.periodTools" :aria-label="pageCopy.recordDate" @submit.prevent="applyPeriod">
+					<HatagoesFilterSurface :embedded="embedded" :open="periodOpen" :title="copy.period" :closeLabel="i18n.ts.close" @close="periodOpen = false">
+					<form :class="[$style.periodTools, { [$style.embeddedFilterContent]: embedded }]" :aria-label="pageCopy.recordDate" @submit.prevent="submitPeriod">
+						<h3 v-if="embedded" :class="$style.embeddedPeriodHeading">{{ pageCopy.displayPeriod }}</h3>
 						<div :class="$style.periodRange" role="group" :aria-label="pageCopy.displayPeriod">
 							<label :class="$style.dateField">
 								<span>{{ pageCopy.start }}</span>
@@ -130,6 +136,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 							<input v-model="jumpDraft" type="date" :aria-label="copy.jumpTo" @change="jumpToDate"/>
 						</label>
 					</form>
+					</HatagoesFilterSurface>
 					<p v-if="periodActive && !periodOpen" :class="$style.periodLabel">
 						{{ since || '…' }} 〜 {{ until || '…' }}
 						<button class="hy-icon-button" :aria-label="copy.clearPeriod" @click="clearPeriod">
@@ -141,7 +148,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					{{ recordsError }}
 					<button class="hy-secondary" @click="loadRecords()">{{ pageCopy.reload }}</button>
 				</div>
-				<p v-if="recordsLoading && !activities.length" class="hy-empty" role="status">{{ copy.loading }}</p>
+				<div v-if="recordsLoading && !activities.length" class="hy-empty"><HataAppLoading app="hatady" :size="32" :monochrome="hatadyTheme === 'dark' || hatadyTheme === 'espresso' || hatadyTheme === 'hataskey' && store.r.darkMode.value" :active="!embedded || paneActive" :label="copy.loading"/></div>
 				<div v-else :class="$style.entries" :aria-busy="recordsLoading">
 					<HatadyActivityCard
 						v-for="activity in activities"
@@ -195,7 +202,8 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 						{{ collectionKind === 'work' ? pageCopy.addWork : pageCopy.addMedia }}
 					</button>
 				</div>
-				<div v-if="collectionFiltersOpen" :class="[$style.filterPanel, 'hy-form']">
+				<HatagoesFilterSurface :embedded="embedded" :open="collectionFiltersOpen" :title="mediaCopy.advancedFilters" :closeLabel="i18n.ts.close" @close="collectionFiltersOpen = false">
+				<div :class="[$style.filterPanel, { [$style.embeddedFilterContent]: embedded }, 'hy-form']">
 					<label class="hy-field">
 						{{ mediaCopy.search }}
 						<input
@@ -341,12 +349,13 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 						</div>
 					</details>
 				</div>
+				</HatagoesFilterSurface>
 				<div v-if="collectionError" class="hy-error" role="alert">
 					{{ collectionError }}
 					<button class="hy-secondary" @click="loadCollection">{{ pageCopy.reload }}</button>
 				</div>
-				<p v-if="collectionLoading && !collectionWorks.length" class="hy-empty" role="status">{{ copy.loading }}</p>
-				<div v-else :class="$style.gallery" :data-kind="collectionKind" :aria-busy="collectionLoading">
+				<div v-if="collectionLoading && !collectionWorks.length" class="hy-empty"><HataAppLoading app="hatady" :size="32" :monochrome="hatadyTheme === 'dark' || hatadyTheme === 'espresso' || hatadyTheme === 'hataskey' && store.r.darkMode.value" :active="!embedded || paneActive" :label="copy.loading"/></div>
+				<div v-else :class="[$style.gallery, { [$style.embeddedGallery]: embedded }]" :data-kind="collectionKind" :aria-busy="collectionLoading">
 					<button
 						v-for="work in filteredWorks"
 						:key="work.id"
@@ -473,13 +482,22 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { store } from '@/store.js';
+import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import HataAppLoading from '@/components/HataAppLoading.vue';
 import type { HatadyActivity, HatadyMediaAdvancedFilters, HatadyMediaKind } from '@/utility/hatady-media.js';
 import type { HatadyHomeWork } from '@/utility/hatady-home.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+import { HATAGOES_CATALOG } from '@/utility/hatagoes-catalog.js';
+import type { HatagoesCatalogEntry } from '@/utility/hatagoes-catalog.js';
+import { recordHatagoesScreenUsage } from '@/utility/hatagoes-launcher-usage.js';
 import { $i } from '@/i.js';
 import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { useHataGoesPopup, useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -495,6 +513,7 @@ import HatadyHome from '@/components/HatadyHome.vue';
 import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
 import HatadyProfile from '@/components/HatadyProfile.vue';
 import HatadyModeration from '@/components/HatadyModeration.vue';
+import HatagoesFilterSurface from '@/components/hatagoes/HatagoesFilterSurface.vue';
 import MkPullToRefresh from '@/components/MkPullToRefresh.vue';
 import { hyBookmarkColor } from '@/utility/hatady.js';
 import { loadHySubjects } from '@/utility/hatady-subjects.js';
@@ -516,12 +535,22 @@ import { activityKind, localDateKey } from '@/utility/hatady-home.js';
 import { loadHatadyCollection } from '@/utility/hatady-collection.js';
 import { useHatadyActivityActions } from '@/utility/hatady-activity-actions.js';
 import { openHatadyRecord } from '@/utility/hatady-record-launcher.js';
+import { useHataMascotSuppression } from '@/utility/hata-mascot-suppression.js';
 import { HATADY_ACTIVITY_CHOICES, HATADY_RECORD_TAGS, hatadyDialogSurfaces, hatadyDuration, hatadyNotify } from '@/utility/hatady-ui.js';
 import '@/components/hatady-ui.css';
+
+const popup = useHataGoesPopup();
+const brandTapSequence = ref(0);
+const popupMenu = useHataGoesPopupMenu();
 
 const copy = i18n.ts._hata._hatady._home,
 	mediaCopy = hatadyMediaCopy(),
 	pageCopy = i18n.ts._hata._hatady._page;
+const props = withDefaults(defineProps<{ embedded?: boolean; requestedTab?: string; requestedScope?: string; paneActive?: boolean }>(), { embedded: false, requestedTab: undefined, requestedScope: undefined, paneActive: true });
+useHataMascotSuppression(computed(() => !props.embedded || props.paneActive));
+const emit = defineEmits<{ exit: []; tabChange: [tab: string]; scopeChange: [scope: string]; appearanceChange: [appearance: { theme: string; cssVars?: Record<string, string> }] }>();
+const hataGoesHost = inject(HATA_GOES_HOST, null);
+const dialogs = useHataGoesDialogs();
 const router = useRouter(),
 	mainEl = useTemplateRef('mainEl'),
 	bell = useTemplateRef('bell'),
@@ -552,6 +581,7 @@ function remember(key: string, value: string): void {
 }
 
 function initialTab(): string {
+	if (props.embedded) return tabs.value.find(tab => tab.value === props.requestedTab)?.value ?? 'home';
 	const requested = new URLSearchParams(router.currentRef.value._parsedRoute.queryString ?? '').get('tab');
 	if (requested && tabs.value.some(tab => tab.value === requested)) return requested;
 	const old = saved('hatadyActiveTab');
@@ -568,6 +598,15 @@ const activeTab = ref(initialTab()),
 	revision = ref(0),
 	stats = ref<any>(null),
 	unread = ref(0);
+const hatadyUsageScreens = HATAGOES_CATALOG.filter((screen: HatagoesCatalogEntry) => screen.app === 'hatady' && (screen.access !== 'moderator' || canModerate.value));
+const hatadyUsageScreenIds: Record<string, string> = {
+	home: 'hatady.home', records: 'hatady.records', collection: 'hatady.collection', profile: 'hatady.profile', moderation: 'hatady.moderation',
+};
+watch(activeTab, tab => {
+	if (props.embedded) return;
+	const screenId = hatadyUsageScreenIds[tab];
+	if (screenId) recordHatagoesScreenUsage($i?.id, screenId, hatadyUsageScreens);
+}, { immediate: true });
 // Keep review-note drafts when visiting another Hatady tab; discard the private
 // component immediately if the viewer no longer has the staff role.
 const moderationVisited = ref(activeTab.value === 'moderation');
@@ -576,11 +615,12 @@ watch(activeTab, value => {
 }, { flush: 'sync' });
 watch(() => router.currentRef.value._parsedRoute.queryString, query => {
 	const requested = new URLSearchParams(query ?? '').get('tab');
-	if (requested && tabs.value.some(tab => tab.value === requested)) void setTab(requested);
+	if (requested && tabs.value.some(tab => tab.value === requested)) void setTab(requested, props.embedded);
 	void openNotificationLink(query);
 });
 
 let openedNotificationLink: string | null = null;
+
 async function openNotificationLink(query: string | null | undefined): Promise<void> {
 	const parameters = new URLSearchParams(query ?? '');
 	const notificationId = parameters.get('notificationId');
@@ -607,13 +647,18 @@ async function openNotificationLink(query: string | null | undefined): Promise<v
 		openedNotificationLink = null;
 	}
 }
+
 watch(canModerate, allowed => {
 	if (!allowed) {
 		moderationVisited.value = false;
 		if (activeTab.value === 'moderation') void setTab('home');
 	}
 }, { flush: 'sync' });
-const recordScope = ref(saved('hatadyActiveTab') === 'discover' ? 'recent' : 'mine');
+
+const requestedRecordScope = props.embedded && props.requestedScope != null && ['mine', 'recent', 'following', 'all'].includes(props.requestedScope) && (props.requestedScope !== 'all' || canModerate.value)
+	? props.requestedScope
+	: null;
+const recordScope = ref(requestedRecordScope ?? (saved('hatadyActiveTab') === 'discover' ? 'recent' : 'mine'));
 const previousKinds = normalizeHatadyLogKinds(saved('hatadyLogKinds'));
 const recordKind = ref(
 	previousKinds.length === 1
@@ -800,6 +845,12 @@ function applyPeriod(): void {
 	since.value = sinceDraft.value;
 	until.value = untilDraft.value;
 	loadRecords();
+}
+
+function submitPeriod(): void {
+	const valid = !sinceDraft.value || !untilDraft.value || sinceDraft.value <= untilDraft.value;
+	applyPeriod();
+	if (valid && props.embedded) periodOpen.value = false;
 }
 
 function clearPeriod(): void {
@@ -1020,6 +1071,7 @@ async function loadCollection(): Promise<void> {
 
 async function refresh(): Promise<void> {
 	revision.value++;
+	if (props.embedded) hataGoesHost?.changed();
 	loadStats();
 	loadUnread();
 	if (activeTab.value === 'records') loadRecords();
@@ -1047,12 +1099,12 @@ async function loadUnread(): Promise<void> {
 }
 
 async function openActivityComposer(_kind?: unknown): Promise<void> {
-	await openHatadyRecord({ onDone: refresh });
+	await openHatadyRecord({ onDone: refresh, popup });
 }
 
 async function addCollectionWork(event?: MouseEvent, kind = collectionKind.value): Promise<void> {
 	if (kind === 'all') {
-		os.popupMenu(collectionKinds.filter(option => option.value !== 'all').map(option => ({
+		popupMenu(collectionKinds.filter(option => option.value !== 'all').map(option => ({
 			text: i18n.tsx._hata._hatady._page.addKind({ kind: option.label }),
 			icon: option.icon,
 			action: () => addCollectionWork(undefined, option.value),
@@ -1060,13 +1112,13 @@ async function addCollectionWork(event?: MouseEvent, kind = collectionKind.value
 		return;
 	}
 	if (kind === 'book') {
-		const { dispose } = os.popup(
+		const { dispose } = popup(
 			(await import('@/components/HatadyBookForm.vue')).default,
 			{},
 			{ done: refresh, closed: () => dispose() },
 		);
 	} else {
-		const { dispose } = os.popup(
+		const { dispose } = popup(
 			(await import('@/components/HatadyMediaWorkForm.vue')).default,
 			{ kind: kind as HatadyMediaKind },
 			{ done: refresh, closed: () => dispose() },
@@ -1086,8 +1138,11 @@ const activityActions = useHatadyActivityActions({
 	onMediaDeleted: removeCollectionWork,
 	onOwnProfile: () => { void setTab('profile'); },
 });
+
 function openActivity(activity: HatadyActivity): void { activityActions.openActivity(activity); }
+
 function editActivity(activity: HatadyActivity): Promise<void> { return activityActions.editActivity(activity); }
+
 function openActivityMenu(activity: HatadyActivity, event: MouseEvent): void { activityActions.openActivityMenu(activity, event); }
 
 function removeActivity(activity: HatadyActivity): void {
@@ -1104,16 +1159,22 @@ function removeCollectionWork(id: string): void {
 }
 
 function deleteActivity(activity: HatadyActivity): Promise<void> { return activityActions.deleteActivity(activity); }
+
 function reportActivity(activity: HatadyActivity): Promise<void> { return activityActions.reportActivity(activity); }
+
 function openConversation(value: any): Promise<void> { return activityActions.openConversation(typeof value === 'string' ? value : value.id); }
+
 function openSession(sessionId: string, workId?: string): Promise<void> { return activityActions.openSession(sessionId, workId); }
+
 function openBookDetail(bookId: string): Promise<void> { return activityActions.openBookDetail(bookId); }
+
 function openMediaDetailById(workId: string, kind?: HatadyMediaKind): Promise<void> { return activityActions.openMediaDetailById(workId, kind); }
+
 function openProfile(userId?: string | null): Promise<void> { return activityActions.openProfile(userId); }
 
 async function openNotifications(event?: MouseEvent): Promise<void> {
 	const anchorElement = (event?.currentTarget as HTMLElement | null) || bell.value || menu.value;
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyNotifications.vue')).default,
 		{ anchorElement },
 		{
@@ -1134,7 +1195,7 @@ async function openNotifications(event?: MouseEvent): Promise<void> {
 }
 
 async function openFullSearch(initialQuery = ''): Promise<void> {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadySearch.vue')).default,
 		{ initialQuery },
 		{
@@ -1154,7 +1215,7 @@ async function openFullSearch(initialQuery = ''): Promise<void> {
 }
 
 async function openStatsDetail(): Promise<void> {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyStatsDetail.vue')).default,
 		{},
 		{ closed: () => dispose() },
@@ -1162,7 +1223,7 @@ async function openStatsDetail(): Promise<void> {
 }
 
 async function openGoals(): Promise<void> {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyGoals.vue')).default,
 		{},
 		{ changed: loadStats, closed: () => dispose() },
@@ -1170,31 +1231,32 @@ async function openGoals(): Promise<void> {
 }
 
 async function openStreaks(): Promise<void> {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyStreaks.vue')).default,
 		{},
 		{ closed: () => dispose() },
 	);
 }
 
-async function openSettings(): Promise<void> {
-	const { dispose } = os.popup(
+async function openSettings(initialSection?: string): Promise<void> {
+	const { dispose } = popup(
 		(await import('@/components/HatadyDisplaySettings.vue')).default,
-		{},
+		{ initialSection },
 		{ closed: () => dispose() },
 	);
 }
 
 function exitHatady(): void {
+	if (props.embedded) { emit('exit'); return; }
 	router.push('/');
 }
 
 function openMenu(event: MouseEvent): void {
-	os.popupMenu(
+	popupMenu(
 		[
 			{ text: copy.recordActivity, icon: 'ti ti-plus', action: openActivityComposer },
 			{ text: copy.searchAll, icon: 'ti ti-search', action: () => openFullSearch('') },
-			{ text: copy.settings, icon: 'ti ti-settings', action: openSettings },
+			{ text: copy.settings, icon: 'ti ti-settings', action: () => openSettings() },
 			{ text: copy.toolStats, icon: 'ti ti-chart-bar', action: openStatsDetail },
 			{ text: copy.toolGoals, icon: 'ti ti-target', action: openGoals },
 			{ text: pageCopy.exit, icon: 'ti ti-logout-2', action: exitHatady },
@@ -1203,11 +1265,11 @@ function openMenu(event: MouseEvent): void {
 	);
 }
 
-let tutorialActive = true;
+let tutorialActive = !props.embedded || props.paneActive;
 let stopTutorial: (() => void) | undefined;
 
 async function maybeShowTutorial(): Promise<void> {
-	const stop = await showHatadyTutorial({ isActive: () => tutorialActive });
+	const stop = await showHatadyTutorial({ isActive: () => tutorialActive, popup });
 	if (!stop) return;
 	if (tutorialActive) stopTutorial = stop;
 	else stop();
@@ -1225,6 +1287,7 @@ watch(hatadyDialogSurfaces, () => {
 }, { flush: 'post' });
 
 function onFocus(): void {
+	if (props.embedded && !props.paneActive) return;
 	if (!window.document.hidden) loadUnread();
 	else cancelPageMotion();
 }
@@ -1239,7 +1302,7 @@ onMounted(() => {
 	if (activeTab.value === 'records') loadRecords();
 	if (activeTab.value === 'collection') loadCollection();
 	unreadTimer = window.setInterval(() => {
-		if (!window.document.hidden) loadUnread();
+		if (!window.document.hidden && (!props.embedded || props.paneActive)) loadUnread();
 	}, 30000);
 	window.addEventListener('focus', onFocus);
 	window.document.addEventListener('visibilitychange', onFocus);
@@ -1254,6 +1317,69 @@ onMounted(() => {
 	if (mainEl.value) resize.observe(mainEl.value);
 	maybeShowTutorial();
 });
+watch(() => props.requestedTab, tab => {
+	if (props.embedded) void setTab(tab ?? 'home', true);
+});
+watch(() => props.requestedScope, scope => {
+	if (props.embedded && scope != null && scopeOptions.value.some(option => option.value === scope)) setRecordScope(scope);
+});
+watch(recordScope, scope => { if (props.embedded && props.paneActive && scope !== props.requestedScope) emit('scopeChange', scope); });
+watch(activeTab, tab => { if (props.embedded && props.paneActive && tab !== (props.requestedTab ?? 'home')) emit('tabChange', tab); });
+watch(hatadyTheme, theme => { if (props.embedded) emit('appearanceChange', { theme }); }, { immediate: true });
+watch(() => props.paneActive, active => {
+	if (!props.embedded) return;
+	tutorialActive = active;
+	if (!active) { stopTutorial?.(); cancelPageMotion(); } else void loadUnread();
+});
+// eslint-disable-next-line vue/no-setup-props-reactivity-loss -- The owner registration is fixed for this mounted pane.
+const unregisterHataGoes = props.embedded ? hataGoesHost?.register('hatady', {
+	openSettings,
+	async recordReading(bookId) {
+		if (!bookId || !props.embedded) throw new Error('Book unavailable');
+		await loadHatadyDisplay();
+		const component = (await import('@/components/HatadyActivityRecordChooser.vue')).default;
+		const { dispose } = popup(component, { initialKind: 'study', initialBookId: bookId, variant: 'hatady' }, {
+			done: () => { refresh(); hataGoesHost?.changed(); }, closed: () => dispose(),
+		});
+	},
+	async create(kind, signal?: AbortSignal) {
+		if (signal?.aborted) return;
+		await loadHatadyDisplay();
+		if (signal?.aborted) return;
+		const kinds = ['study', 'movie', 'game', 'exercise', 'work', 'cooking'] as const;
+		const goesRecordKind = kinds.find(value => value === kind);
+		if (kind === 'movie' || kind === 'game' || kind === 'work') {
+			const component = (await import('@/components/HatadyMediaWorkForm.vue')).default;
+			if (signal?.aborted) return;
+			const { dispose } = popup(component, { kind }, {
+				done: refresh, closed: () => dispose(),
+			});
+		} else if (kind === 'book') {
+			const component = (await import('@/components/HatadyBookForm.vue')).default;
+			if (signal?.aborted) return;
+			const { dispose } = popup(component, {}, {
+				done: refresh, closed: () => dispose(),
+			});
+		} else {
+			const component = (await import('@/components/HatadyActivityRecordChooser.vue')).default;
+			if (signal?.aborted) return;
+			const { dispose } = popup(component, { initialKind: goesRecordKind, variant: 'hatady' }, {
+				done: refresh, closed: () => dispose(),
+			});
+		}
+	},
+	refresh,
+	async openResult(kind, id) {
+		if (!props.paneActive) return;
+		if (kind === 'book' || kind === 'books') await openBookDetail(id);
+		else if (kind === 'user' || kind === 'users') await openProfile(id);
+		else if (kind === 'work' || kind === 'mediaWork' || kind === 'mediaWorks') await openMediaDetailById(id);
+		else if (kind === 'session' || kind === 'mediaSession') await openSession(id);
+		else if (kind === 'log') await openConversation(id);
+		else await dialogs.alert({ type: 'error', text: 'この検索結果の詳細を表示できません。' });
+	},
+}) : undefined;
+onUnmounted(() => unregisterHataGoes?.());
 onUnmounted(() => {
 	tutorialActive = false;
 	stopTutorial?.();
@@ -1268,7 +1394,7 @@ onUnmounted(() => {
 	window.removeEventListener('focus', onFocus);
 	window.document.removeEventListener('visibilitychange', onFocus);
 });
-definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
+definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2', hataApp: 'hatady' }));
 </script>
 
 <style lang="scss" module>
@@ -1294,6 +1420,9 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 	z-index: 5;
 }
 .brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
 	justify-self: start;
 	margin-top: 5px;
 	min-height: 44px;
@@ -1402,6 +1531,29 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 	background: var(--hy-soft);
 	color: var(--hy-accent);
 }
+.embeddedRecordToolbar {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	width: 100%;
+	flex: 1 1 100%;
+}
+.embeddedPeriodButton {
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	min-height: 68px;
+	padding: 8px 10px;
+	border: 1px solid var(--hy-border);
+	border-radius: 12px;
+	background: var(--hy-surface);
+	color: inherit;
+}
+.embeddedPeriodButton { width: 100%; text-align: left; cursor: pointer; }
+.embeddedPeriodButton > i { flex: none; font-size: 18px; }
+.embeddedPeriodText { display: grid; flex: 1; min-width: 0; gap: 2px; font-size: 13px; line-height: 1.35; }
+.embeddedPeriodText > small { overflow: hidden; color: var(--hy-muted); text-overflow: ellipsis; white-space: nowrap; }
 .entries {
 	display: grid;
 	gap: 14px;
@@ -1416,6 +1568,13 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 	background: var(--hy-surface);
 	border-radius: 22px;
 }
+.embeddedFilterContent {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+}
 .periodTools {
 	display: flex;
 	flex-wrap: wrap;
@@ -1428,6 +1587,25 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 	border-radius: 20px;
 	background: var(--hy-surface);
 }
+.periodTools.embeddedFilterContent {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 14px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+}
+.embeddedPeriodHeading { margin: 0; font-size: 14px; }
+.periodTools.embeddedFilterContent .periodRange { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
+.periodTools.embeddedFilterContent .periodRange > span { display: none; }
+.periodTools.embeddedFilterContent .periodRange > .dateField { display: grid; gap: 4px; padding: 8px 10px; }
+.periodTools.embeddedFilterContent .periodRange input { min-height: 36px; }
+.periodTools.embeddedFilterContent .periodActions { display: grid; grid-template-columns: minmax(0, 1fr) auto 44px; gap: 8px; width: 100%; }
+.periodTools.embeddedFilterContent .periodPreset { width: 100%; }
+.periodTools.embeddedFilterContent .dateJump { display: grid; grid-template-columns: 20px auto minmax(0, 1fr); gap: 8px; width: 100%; padding: 10px 12px; }
+.periodTools.embeddedFilterContent .dateJump input { min-width: 0; width: 100%; }
 .periodRange {
 	display: flex;
 	align-items: center;
@@ -1522,6 +1700,33 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 	align-items: stretch;
 	gap: 16px;
 }
+.gallery.embeddedGallery,
+.gallery.embeddedGallery[data-kind='work'] {
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+	gap: 10px;
+}
+.embeddedGallery .workCard {
+	min-height: 0;
+	padding: 14px;
+	flex-direction: row;
+	align-items: center;
+	gap: 14px;
+	border-radius: var(--card-radius, 18px);
+}
+.embeddedGallery .coverWrap {
+	flex: 0 0 118px;
+	padding: 0;
+}
+.embeddedGallery .workMeta { flex: 1; }
+.embeddedGallery .workMeta h2 { margin-top: 2px; font-size: 16px; }
+.embeddedGallery .workMeta p { margin-bottom: 6px; }
+.embeddedGallery .workCard[data-kind='work'] {
+	display: block;
+	min-height: 0;
+}
+.embeddedGallery .workCard[data-kind='work'] > h2 { margin-top: 8px; font-size: 18px; }
+.embeddedGallery .workCard[data-kind='work'] > p { margin-block: 8px; line-height: 1.5; }
+.embeddedGallery .workFoot { padding-top: 8px; }
 .workCard {
 	min-width: 0;
 	position: relative;

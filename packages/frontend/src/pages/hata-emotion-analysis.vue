@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <PageWithHeader>
-	<div :class="$style.root">
+	<div :class="$style.root" :data-goes-host="inHataGoes ? 'true' : undefined">
 		<header v-if="!initializing && (!allowed || consentAccepted)" :class="$style.productBar">
 			<div :class="$style.productIdentity">
 				<span :class="$style.productMark" aria-hidden="true">H</span>
@@ -36,8 +36,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<nav v-if="consentAccepted && allowed" :class="$style.tabs" :aria-label="copy.title">
-			<button v-for="item in tabs" :key="item.key" type="button" :class="$style.tab" :data-active="activeTab === item.key" :aria-current="activeTab === item.key ? 'page' : undefined" @click="activeTab = item.key">
-				<i :class="item.icon"></i>{{ item.label }}
+			<button v-for="item in tabs" :key="item.key" type="button" :class="$style.tab" :data-active="activeTab === item.key" :aria-current="activeTab === item.key ? 'page' : undefined" :aria-label="item.label" :title="item.label" @click="activeTab = item.key">
+				<i :class="item.icon"></i><span v-if="!inHataGoes || activeTab === item.key">{{ item.label }}</span>
 			</button>
 		</nav>
 		<p v-if="consentAccepted && allowed && activeTab !== 'new' && errorMessage" :class="$style.errorBanner" role="alert">{{ errorMessage }}</p>
@@ -99,7 +99,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 										<label :class="$style.choiceOption"><input v-model="periodChoice" type="radio" value="30"><span><strong>{{ copy.period30 }}</strong><small>{{ copy.period30Hint }}</small></span></label>
 										<label :class="$style.choiceOption"><input v-model="periodChoice" type="radio" value="90"><span><strong>{{ copy.period90 }}</strong><small>{{ copy.period90Hint }}</small></span></label>
 									</fieldset>
-									<label :class="$style.field"><span>{{ copy.visibility }}</span><select v-model="conditions.visibility"><option value="publicHome">{{ copy.visibilityPublicHome }}</option><option value="followers">{{ copy.visibilityFollowers }}</option><option value="all">{{ copy.visibilityAll }}</option></select></label>
+									<label v-if="!inHataGoes" :class="$style.field"><span>{{ copy.visibility }}</span><select v-model="conditions.visibility"><option value="publicHome">{{ copy.visibilityPublicHome }}</option><option value="followers">{{ copy.visibilityFollowers }}</option><option value="all">{{ copy.visibilityAll }}</option></select></label>
 									<p :class="$style.minimumHint"><i class="ti ti-notebook" aria-hidden="true"></i>{{ copy.minimumNotesHint.replace('{minimum}', String(HATA_EMOTION_ANALYSIS_MIN_NOTES)) }}</p>
 									<div :class="$style.stepActions">
 										<button type="button" :class="[$style.actionButton, $style.primaryButton]" @click="goToAnalysisStep(2)">{{ i18n.ts.next }}<i class="ti ti-arrow-right" aria-hidden="true"></i></button>
@@ -111,6 +111,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 										<span :class="$style.conversationIcon" aria-hidden="true"><i :class="analysisStepIcon"></i></span>
 										<div><h3>{{ analysisStepTitle }}</h3><p>{{ analysisStepBody }}</p></div>
 									</header>
+									<label v-if="inHataGoes" :class="$style.field"><span>{{ copy.visibility }}</span><select v-model="conditions.visibility"><option value="publicHome">{{ copy.visibilityPublicHome }}</option><option value="followers">{{ copy.visibilityFollowers }}</option><option value="all">{{ copy.visibilityAll }}</option></select></label>
 									<fieldset :class="[$style.choiceFieldset, $style.historyChoiceFieldset]">
 										<legend>{{ copy.saveHistory }}</legend>
 										<label :class="$style.choiceOption"><input v-model="conditions.saveToHistory" type="radio" :value="true"><span><strong>{{ copy.saveHistoryChoice }}</strong><small>{{ copy.saveHistoryChoiceHint }}</small></span></label>
@@ -147,6 +148,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 										<div><dt>{{ copy.period }}</dt><dd>{{ analysisConditionSummary.period }}</dd></div>
 										<div><dt>{{ copy.visibility }}</dt><dd>{{ analysisConditionSummary.visibility }}</dd></div>
 										<div><dt>{{ copy.saveHistory }}</dt><dd>{{ analysisConditionSummary.history }}</dd></div>
+										<template v-if="inHataGoes"><div><dt>{{ copy.includeReplies }}</dt><dd>{{ analysisConditionSummary.replies }}</dd></div><div><dt>{{ copy.includeCw }}</dt><dd>{{ analysisConditionSummary.cw }}</dd></div></template>
 									</dl>
 									<div :class="$style.reason"><h3><i class="ti ti-help-circle" aria-hidden="true"></i>{{ copy.reasonTitle }}</h3><p>{{ copy.reasonText }}</p></div>
 									<div :class="$style.ratebox"><div><b>{{ copy.analysisInterval }}</b><small>{{ copy.waitingBody }}</small></div><span>{{ serviceReady ? copy.availableNow : copy.serviceUnavailable }}</span></div>
@@ -182,7 +184,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<section :class="$style.scoreCard"><strong>{{ emotionScore(selected) }}</strong><b>{{ emotionLabel(selected) }}</b><small>{{ copy.nonMedical }}</small></section>
 								<div :class="$style.resultGrid"><div :class="$style.resultItem"><span>{{ copy.positiveRate }}</span><strong>{{ positiveRate(selected) }}</strong><small>{{ levelDetail(selected, 'positive') }}</small></div><div :class="$style.resultItem"><span>{{ copy.neutralRate }}</span><strong>{{ neutralRate(selected) }}</strong><small>{{ copy.neutralDescription }}</small></div><div :class="$style.resultItem"><span>{{ copy.negativeRate }}</span><strong>{{ negativeRate(selected) }}</strong><small>{{ levelDetail(selected, 'negative') }}</small></div><div :class="$style.resultItem"><span>{{ copy.emotionalPostRate }}</span><strong>{{ metricValue(selected, 'emotionalPostRate', true) }}</strong></div><div :class="$style.resultItem"><span>{{ copy.calmestHour }}</span><strong>{{ calmestHour(selected) }}</strong></div><div :class="$style.resultItem"><span>{{ copy.analyzedPosts }}</span><strong>{{ metricValue(selected, 'accepted', false, 'input') }}</strong></div></div>
 							</div>
-							<section v-if="selectedDaily.length" :class="$style.trendSection"><h3>{{ copy.dailyTrend }}</h3><svg :class="$style.resultChart" viewBox="0 0 700 180" preserveAspectRatio="none" :aria-label="copy.dailyTrend"><line x1="0" y1="90" x2="700" y2="90" stroke="currentColor" opacity=".2"/><polyline :points="chartPoints(selected)" fill="none" stroke="var(--MI_THEME-accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></section>
+							<section v-if="selectedDaily.length" :class="$style.trendSection"><h3>{{ copy.dailyTrend }}</h3><div v-if="inHataGoes" :class="$style.dailyBars" role="list" :aria-label="copy.dailyTrend"><div v-for="day in selectedDaily.slice(-14)" :key="day.date" :class="$style.dailyBarItem" role="listitem" :aria-label="`${day.date}: ${dailyScore(day.averageScore).toFixed(2)}`"><span :class="$style.dailyBarTrack"><span :class="$style.dailyBarPositive"><i v-if="dailyScore(day.averageScore) >= 0" :style="{ height: `${Math.max(3, dailyScore(day.averageScore) * 100)}%` }"></i></span><span :class="$style.dailyBarNegative"><i v-if="dailyScore(day.averageScore) < 0" :style="{ height: `${Math.max(3, -dailyScore(day.averageScore) * 100)}%` }"></i></span></span><small>{{ formatDailyWeekday(day.date) }}<b>{{ dailyScore(day.averageScore).toFixed(2) }}</b></small></div></div><svg v-else :class="$style.resultChart" viewBox="0 0 700 180" preserveAspectRatio="none" :aria-label="copy.dailyTrend"><line x1="0" y1="90" x2="700" y2="90" stroke="currentColor" opacity=".2"/><polyline :points="chartPoints(selected)" fill="none" stroke="var(--MI_THEME-accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></section>
 							<section v-if="selectedEvidence.length" :class="$style.evidence"><h3>{{ copy.resultReason }}</h3><p>{{ copy.reasonText }}</p><div :class="$style.evidenceGrid"><div v-for="group in selectedEvidence" :key="group.label" :class="$style.evidenceGroup"><b>{{ group.label }}</b><ul><li v-for="item in group.items.slice(0, 8)" :key="`${group.label}-${item.label}`"><span>{{ item.label }}</span><span>{{ evidenceValue(item) }}</span></li></ul></div></div></section>
 							<!-- 旗鯖fork(HATAlyze 2.0.0): 感情の8軸。⚠️棒はその分析内での相対値(絶対量ではない)。 -->
 							<section v-if="selectedEmotions.length" :class="$style.breakdown">
@@ -278,7 +280,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div v-else :class="$style.empty"><i class="ti ti-chart-dots"></i><p>{{ copy.emptyHistory }}</p><button type="button" :class="[$style.actionButton, $style.primaryButton]" @click="activeTab = 'new'">{{ copy.start }}</button></div>
 					</section>
 
-					<section v-else :class="$style.card">
+					<section v-else :class="[$style.card, inHataGoes && $style.goesHistory]">
 						<div :class="$style.historyHeader"><div><h2>{{ copy.history }}</h2><p>{{ copy.comparePrompt }}</p><p :class="$style.limitHint"><i class="ti ti-archive"></i><span>{{ historyLimitNote }}</span></p></div><button type="button" :class="[$style.actionButton, $style.secondaryButton, $style.subtleButton]" @click="refreshHistory"><i class="ti ti-refresh"></i>{{ copy.refresh }}</button></div>
 						<div v-if="history.length > 1" :class="$style.compareBar"><label>{{ copy.compareBase }}<select v-model="baseId"><option v-for="item in history" :key="`base-${item.id}`" :value="item.id">{{ formatDate(item.createdAt) }} · {{ conditionLabel(item) }}</option></select></label><span aria-hidden="true"><i class="ti ti-arrows-left-right"></i></span><label>{{ copy.compareWith }}<select v-model="compareId"><option v-for="item in history" :key="`compare-${item.id}`" :value="item.id">{{ formatDate(item.createdAt) }} · {{ conditionLabel(item) }}</option></select></label></div>
 						<div v-if="comparePair" :class="$style.metrics"><div :class="$style.metric"><span>{{ copy.emotionBalance }}</span><strong>{{ emotionScore(comparePair.current) }}</strong><small>{{ copy.compareDelta }} {{ emotionDelta(comparePair.current, comparePair.baseline) }}</small></div><div :class="$style.metric"><span>{{ copy.positiveRate }}</span><strong>{{ positiveRate(comparePair.current) }}</strong><small>{{ copy.compareDelta }} {{ rateDelta(comparePair.current, comparePair.baseline, 'positive') }}</small></div><div :class="$style.metric"><span>{{ copy.neutralRate }}</span><strong>{{ neutralRate(comparePair.current) }}</strong><small>{{ copy.compareDelta }} {{ rateDelta(comparePair.current, comparePair.baseline, 'neutral') }}</small></div><div :class="$style.metric"><span>{{ copy.analyzedPosts }}</span><strong>{{ metricValue(comparePair.current, 'accepted', false, 'input') }}</strong><small>{{ copy.compareDelta }} {{ acceptedDelta(comparePair.current, comparePair.baseline) }}</small></div></div>
@@ -309,8 +311,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { HataEmotionAnalysisInputNote, HataEmotionAnalysisSaveScope } from '@/utility/hata-emotion-analysis.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+import { useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { definePage } from '@/page.js';
 import { useRouter } from '@/router.js';
 import { i18n } from '@/i18n.js';
@@ -318,13 +322,17 @@ import { $i } from '@/i.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
 import { analyzeHataEmotion, buildHataEmotionAnalysisSavePayload, canStartHatalyzeAnalysis, classifyHatalyzeFailure, countHataEmotionAnalyzableNotes, getHatalyzeCooldownUntil, HATA_EMOTION_ANALYSIS_MIN_NOTES, HATA_EMOTION_HISTORY_LIMIT, hatalyzeCooldownStorageKey, hatalyzeNoticeStorageKey, hatalyzeNoticeSyncedStorageKey } from '@/utility/hata-emotion-analysis.js';
 
 type EvidenceItem = { label: string; count: number; weight?: number; polarity?: string };
 type AnalysisRecord = { id: string | null; createdAt: string; analysisVersion: string; lexiconVersion: string; scope: Record<string, unknown>; source: Record<string, unknown>; summary: Record<string, unknown>; result: Record<string, unknown> };
+const dialogs = useHataGoesDialogs();
 const copy = i18n.ts._hata._emotionAnalysis;
 const copyx = i18n.tsx._hata._emotionAnalysis;
 const router = useRouter();
+const inHataGoes = inject(HATA_GOES_HOST, null) != null;
+const popupMenu = useHataGoesPopupMenu();
 const activeTab = ref<'new' | 'result' | 'history'>('new');
 const analysisStep = ref<1 | 2 | 3>(1);
 const history = ref<AnalysisRecord[]>([]);
@@ -373,6 +381,8 @@ const analysisConditionSummary = computed(() => ({
 	period: conditions.value.mode === 'latest' ? copy.latest1000 : [conditions.value.periodDays, copy.days].join(''),
 	visibility: visibilityLabel(conditions.value.visibility),
 	history: conditions.value.saveToHistory ? copy.historySaved : copy.historyNotSaved,
+	replies: conditions.value.includeReplies ? i18n.ts.yes : i18n.ts.no,
+	cw: conditions.value.includeCw ? i18n.ts.yes : i18n.ts.no,
 }));
 const waiting = computed(() => waitingUntil.value !== null && waitingUntil.value > now.value);
 const initializing = computed(() => checking.value || consentChecking.value);
@@ -423,7 +433,11 @@ const selectedEvidence = computed(() => {
 	const words = [...(evidence.phrases ?? []), ...(evidence.shortcodes ?? [])];
 	return [{ label: copy.evidencePositive, items: words.filter(item => item.polarity === 'positive' && item.count > 0) }, { label: copy.evidenceNegative, items: words.filter(item => item.polarity === 'negative' && item.count > 0) }, { label: copy.contextCorrection, items: [...(evidence.negations ?? []), ...(evidence.excludedContexts ?? []), ...(evidence.intensifiers ?? [])].filter(item => item.count > 0) }].filter(group => group.items.length);
 });
-const selectedDaily = computed(() => (selected.value?.result?.daily as Array<{ averageScore?: number }> | undefined) ?? []);
+const selectedDaily = computed(() => (selected.value?.result?.daily as Array<{ date: string; averageScore?: number }> | undefined) ?? []);
+
+function formatDailyWeekday(date: string) { const parsed = new Date(`${date}T12:00:00`); return Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(parsed) : date; }
+
+function dailyScore(value: number | undefined) { const score = Number(value); return Number.isFinite(score) ? Math.max(-1, Math.min(1, score)) : 0; }
 
 // ===== 旗鯖fork(HATAlyze 2.0.0): 集計済みなのに出していなかった内訳を表示する =====
 type AxisSummary = { axis: string; polarity: 'positive' | 'negative'; count: number; weight: number; averageScore: number };
@@ -578,7 +592,7 @@ async function select(item: AnalysisRecord) {
 
 function openResultMenu(item: AnalysisRecord, event: MouseEvent) {
 	if (!item.id) return;
-	os.popupMenu([{
+	popupMenu([{
 		text: copy.delete,
 		icon: 'ti ti-trash',
 		danger: true,
@@ -588,7 +602,7 @@ function openResultMenu(item: AnalysisRecord, event: MouseEvent) {
 
 async function remove(item: AnalysisRecord) {
 	if (!item.id) return;
-	const confirmation = await os.confirm({ type: 'warning', title: copy.delete, text: copy.deleteConfirm });
+	const confirmation = await dialogs.confirm({ type: 'warning', title: copy.delete, text: copy.deleteConfirm });
 	if (confirmation.canceled) return;
 	const deletedId = item.id;
 	try {
@@ -968,7 +982,7 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer); });
 	.tab { padding-inline: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-	.root *, .root *::before, .root *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+	.root:not([data-goes-host="true"]) *, .root:not([data-goes-host="true"]) *::before, .root:not([data-goes-host="true"]) *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
 
 /* ===== 旗鯖fork(HATAlyze 2.0.0): 内訳の表示 ===== */
@@ -1865,14 +1879,37 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer); });
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.panelEnterActive,
-	.panelLeaveActive,
-	.stepEnterActive,
-	.stepLeaveActive,
-	.stepTrack span,
-	.choiceCard,
-	.historyItem {
+	.root:not([data-goes-host="true"]) .panelEnterActive,
+	.root:not([data-goes-host="true"]) .panelLeaveActive,
+	.root:not([data-goes-host="true"]) .stepEnterActive,
+	.root:not([data-goes-host="true"]) .stepLeaveActive,
+	.root:not([data-goes-host="true"]) .stepTrack span,
+	.root:not([data-goes-host="true"]) .choiceCard,
+	.root:not([data-goes-host="true"]) .historyItem {
 		transition: none !important;
 	}
 }
+.root[data-goes-host="true"] .dailyBars { display:flex;align-items:end;gap:7px;min-height:184px;padding:8px 0 0;overflow-x:auto; }
+.root[data-goes-host="true"] .panelEnterActive,.root[data-goes-host="true"] .panelLeaveActive { transition-duration:.16s; }
+.root[data-goes-host="true"] .stepEnterActive,.root[data-goes-host="true"] .stepLeaveActive { transition-duration:.12s; }
+.root[data-goes-host="true"] .dailyBarItem { display:grid;align-content:end;justify-items:center;gap:6px;flex:1 0 30px;min-width:30px; }
+.root[data-goes-host="true"] .dailyBarTrack { display:grid;grid-template-rows:65px 65px;width:100%;border-top:1px solid var(--MI_THEME-divider);border-bottom:1px solid var(--MI_THEME-divider); }
+.root[data-goes-host="true"] .dailyBarPositive,.root[data-goes-host="true"] .dailyBarNegative { display:flex;justify-content:center;min-height:0; }
+.root[data-goes-host="true"] .dailyBarPositive { align-items:end;border-bottom:1px solid var(--MI_THEME-fgTransparent); }
+.root[data-goes-host="true"] .dailyBarNegative { align-items:start; }
+.root[data-goes-host="true"] .dailyBarTrack i { display:block;width:min(100%,24px);min-height:3px;background:var(--MI_THEME-accent);transition:height .24s ease; }
+.root[data-goes-host="true"] .dailyBarPositive i { border-radius:5px 5px 0 0; }
+.root[data-goes-host="true"] .dailyBarNegative i { border-radius:0 0 5px 5px;background:var(--MI_THEME-warn); }
+.root[data-goes-host="true"] .dailyBarItem small { display:grid;justify-items:center;gap:2px;font-size:.66rem;white-space:nowrap;opacity:.7; }
+.root[data-goes-host="true"] .dailyBarItem small b { font-variant-numeric:tabular-nums;font-weight:600; }
+.goesHistory { display:flex;flex-direction:column; }
+.goesHistory .historyHeader { order:0; }
+.goesHistory .historyList { order:1; }
+.goesHistory .empty { order:1; }
+.goesHistory .compareBar { order:2;margin-top:24px; }
+.goesHistory .metrics { order:3; }
+.goesHistory .versionWarning { order:4; }
+.goesHistory .trendSection { order:5; }
+.goesHistory .insightSection { order:6; }
+.goesHistory .compareButton { order:7; }
 </style>

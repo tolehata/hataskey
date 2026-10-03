@@ -36,12 +36,14 @@ import type { HataFeedEmojiRequest } from '@/utility/hatafeed.js';
 import MkWindow from '@/components/MkWindow.vue';
 import HataFeedEmojiChangeList from '@/components/HataFeedEmojiChangeList.vue';
 import HfQuotaMeter from '@/components/HfQuotaMeter.vue';
-import * as os from '@/os.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
 import { activeEmojiChange, emojiChangeLabel, emojiRequestDisplayStatus, emojiStatusIcon, emojiStatusLabel } from '@/utility/hatafeed.js';
 import '@/components/hatafeed-ui.css';
 import { i18n } from '@/i18n.js';
+
+const popup = useHataGoesPopup();
 const copy = i18n.ts._hata._hatafeed._emojiHistory;
 const props = defineProps<{ requestId?: string }>();
 const emit = defineEmits<{ closed: []; changed: [] }>();
@@ -86,7 +88,7 @@ function setFilter(value: Filter) { filter.value = value; selectedId.value = und
 function changed() { load(); emit('changed'); }
 
 async function change(request: HataFeedEmojiRequest, kind: 'updateImage' | 'withdraw' | 'cancel') {
-	const { dispose } = os.popup((await import('@/components/HataFeedEmojiChangeWizard.vue')).default, { request, kind }, { done: changed, closed: () => dispose() });
+	const { dispose } = popup((await import('@/components/HataFeedEmojiChangeWizard.vue')).default, { request, kind }, { done: changed, closed: () => dispose() });
 }
 
 onMounted(() => { load(); misskeyApi('hata/feedback/emoji-quota', {}).then(value => { quota.value = value; }).catch(() => {}); });

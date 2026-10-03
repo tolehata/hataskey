@@ -25,24 +25,26 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div
 		class="_popup _shadow hatady-scope hatafeed-scope"
 		:data-hatady-theme="hataFeedTheme"
-		:class="$style.panel" :data-type="type"
+		:class="$style.panel" :data-type="type" :data-hatagoes="!!hataGoes"
 		:style="{ maxHeight: maxHeight ? maxHeight + 'px' : undefined, width: type === 'drawer' ? undefined : '360px' }"
 	>
-		<div :class="$style.header">
+		<div :class="$style.header" :inert="!!hataGoes && filterOpen">
+			<button v-if="hataGoes" type="button" :class="$style.goesBack" class="hf-icon" :aria-label="i18n.ts._hata._hatady._controls.back" @click="modal?.close()"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
 			<span :class="$style.title"><i class="ti ti-bell"></i> {{ copy.title }}</span>
 			<button type="button" class="hf-icon" :aria-label="copy.markRead" :title="copy.markRead" :disabled="!unreadCount || markingAll" @click="markAllRead"><i class="ti ti-checks" aria-hidden="true"></i></button>
 			<button ref="filterButton" type="button" class="hf-icon" :aria-label="filter ? copyx.filterCurrent({ type: notifTypeLabel[filter] ?? filter }) : copy.filter" :title="copy.filter" :data-active="!!filter" :aria-expanded="filterOpen" :aria-controls="filterId" @click="filterOpen = !filterOpen"><i class="ti ti-filter" aria-hidden="true"></i></button>
 			<button type="button" class="hf-icon" :class="$style.closeBtn" :aria-label="copy.close" @click="modal?.close()"><i class="ti ti-x" aria-hidden="true"></i></button>
 		</div>
-		<label v-if="filterOpen" :id="filterId" :class="$style.bar"><span>{{ copy.filterType }}</span><select :value="filter ?? ''" @change="chooseFilter"><option value="">{{ copy.all }}</option><option v-for="(label, value) in notifTypeLabel" :key="value" :value="value">{{ label }}</option></select></label>
-		<p v-if="error" :class="$style.state" role="alert">{{ error }}<button type="button" class="hy-secondary" @click="reload">{{ copy.reload }}</button></p>
+		<label v-if="filterOpen && !hataGoes" :id="filterId" :class="$style.bar"><span>{{ copy.filterType }}</span><select :value="filter ?? ''" @change="chooseFilter"><option value="">{{ copy.all }}</option><option v-for="(label, value) in notifTypeLabel" :key="value" :value="value">{{ label }}</option></select></label>
+		<Transition name="hf-notif-filter"><div v-if="hataGoes && filterOpen" :id="filterId" class="hf-notif-filter-backdrop" @click.self="filterOpen = false"><section ref="filterSheet" class="hf-notif-filter-sheet" role="dialog" aria-modal="true" :aria-label="copy.filterType" @keydown.tab="trapFilterTab" @keydown.esc.stop.prevent="filterOpen = false"><header><strong>{{ copy.filterType }}</strong><button type="button" :aria-label="copy.close" @click="filterOpen = false"><i class="ti ti-x" aria-hidden="true"></i></button></header><button type="button" :aria-pressed="filter == null" @click="chooseFilterValue(null)">{{ copy.all }}</button><button v-for="(label, value) in notifTypeLabel" :key="value" type="button" :aria-pressed="filter === value" @click="chooseFilterValue(value)">{{ label }}</button></section></div></Transition>
+		<p v-if="error" :class="$style.state" role="alert" :inert="!!hataGoes && filterOpen">{{ error }}<button type="button" class="hy-secondary" @click="reload">{{ copy.reload }}</button></p>
 
-		<div v-if="loading" :class="$style.state">{{ copy.loading }}</div>
-		<div v-else-if="items.length === 0" :class="$style.state">
+		<div v-if="loading" :class="$style.state" :inert="!!hataGoes && filterOpen">{{ copy.loading }}</div>
+		<div v-else-if="items.length === 0" :class="$style.state" :inert="!!hataGoes && filterOpen">
 			<i class="ti ti-bell-off" :class="$style.stateIcon"></i>
 			<div>{{ filter ? copy.noNotificationsOfType : copy.noNotifications }}</div>
 		</div>
-		<div v-else :class="$style.list">
+		<div v-else :class="$style.list" :inert="!!hataGoes && filterOpen">
 			<!-- 旗鯖fork(通知グルーピング): 本体 reaction:grouped の流儀で、同種・同一対象の通知を1行にまとめる。
 			     count===1 は従来どおりの単一行。count>1 はまとめ行で、クリックで下に個別行を展開する。 -->
 			<template v-for="g in groups" :key="g.key">
@@ -90,7 +92,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</template>
 		</div>
 
-		<div v-if="page > 0 || hasNext" :class="$style.pager">
+		<div v-if="page > 0 || hasNext" :class="$style.pager" :inert="!!hataGoes && filterOpen">
 			<button :class="$style.pagerBtn" :disabled="loading || page === 0" :aria-label="copy.previousPage" @click="prevPage"><i class="ti ti-chevron-left"></i></button>
 			<span :class="$style.pagerPage">{{ page + 1 }}</span>
 			<button :class="$style.pagerBtn" :disabled="loading || !hasNext" :aria-label="copy.nextPage" @click="nextPage"><i class="ti ti-chevron-right"></i></button>
@@ -100,9 +102,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, useId, useTemplateRef, onMounted, onUnmounted } from 'vue';
+import { inject, ref, computed, useId, useTemplateRef, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
 import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { openHataFeedEmojiNotification } from '@/utility/hatafeed-emoji-notification.js';
 import '@/components/hatafeed-ui.css';
 import type { HataFeedNotif } from '@/utility/hatafeed.js';
@@ -113,6 +117,9 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import { markHataFeedNotificationsRead, hataFeedUnreadCount, notifIcon, notifTypeLabel, groupHataFeedNotifications, groupSummary, notificationDisplayMessage } from '@/utility/hatafeed.js';
 import { i18n } from '@/i18n.js';
+
+const popup = useHataGoesPopup();
+const hataGoes = inject(HATA_GOES_HOST, null);
 
 defineProps<{ anchorElement?: HTMLElement | null }>();
 const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'read', unreadCount: number): void }>();
@@ -133,7 +140,22 @@ const hasNext = ref(false);
 const nextCursor = ref<string>();
 const filterOpen = ref(false);
 const filterButton = useTemplateRef('filterButton');
+const filterSheet = useTemplateRef('filterSheet');
 const filterId = useId();
+watch(filterOpen, async open => {
+	if (!hataGoes) return;
+	await nextTick();
+	if (open) filterSheet.value?.querySelector<HTMLElement>('button')?.focus();
+	else filterButton.value?.focus();
+});
+
+function trapFilterTab(event: KeyboardEvent) {
+	const buttons = [...(filterSheet.value?.querySelectorAll<HTMLButtonElement>('button') ?? [])];
+	if (!buttons.length) return;
+	const first = buttons[0], last = buttons[buttons.length - 1];
+	if (event.shiftKey && window.document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && window.document.activeElement === last) { event.preventDefault(); first.focus(); }
+}
+
 const error = ref('');
 let generation = 0;
 onUnmounted(() => { generation++; });
@@ -190,7 +212,11 @@ async function prevPage() {
 }
 
 function chooseFilter(event: Event) {
-	filter.value = (event.target as HTMLSelectElement).value || null;
+	chooseFilterValue((event.target as HTMLSelectElement).value || null);
+}
+
+function chooseFilterValue(value: string | null) {
+	filter.value = value;
 	filterOpen.value = false;
 	filterButton.value?.focus();
 	reload();
@@ -245,7 +271,7 @@ async function onClick(n: HataFeedNotif) {
 		router.push('/hatafeed/:issueId', { params: { issueId: feedbackId } });
 		modal.value?.close();
 	} else if (n.emojiRequestId || n.emojiChangeRequestId) {
-		await openHataFeedEmojiNotification(n);
+		await openHataFeedEmojiNotification(n, undefined, popup);
 	}
 }
 
@@ -302,4 +328,23 @@ onMounted(reload);
 .pagerBtn:hover:not(:disabled) { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
 .pagerBtn:disabled { opacity: .35; cursor: default; }
 .pagerPage { min-width: 2em; text-align: center; font-weight: 700; }
+.goesBack { display: none; }
+@media (max-width: 700px) {
+	.panel[data-hatagoes='true'] { position: fixed; inset: 0; width: 100dvw !important; height: 100dvh; max-width: none; max-height: none !important; border-radius: 0; border: 0; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+	.panel[data-hatagoes='true'] .list { flex: 1; }
+	.goesBack { display: inline-flex; }
+}
+
+</style>
+
+<style scoped>
+.hf-notif-filter-backdrop { position:fixed; inset:0; z-index:100; display:flex; align-items:end; justify-content:center; background:rgba(0,0,0,.36); }
+.hf-notif-filter-sheet { box-sizing:border-box; display:flex; flex-direction:column; gap:8px; width:min(100%,480px); max-height:75dvh; overflow:auto; padding:18px 20px max(20px,env(safe-area-inset-bottom)); border-radius:22px 22px 0 0; background:var(--MI_THEME-panel); color:var(--MI_THEME-fg); box-shadow:0 -12px 36px rgba(0,0,0,.2); }
+.hf-notif-filter-sheet header { display:flex; align-items:center; justify-content:space-between; margin-bottom:5px; }
+.hf-notif-filter-sheet button { padding:10px 12px; border:1px solid var(--MI_THEME-divider); border-radius:12px; background:transparent; color:inherit; text-align:start; cursor:pointer; }
+.hf-notif-filter-sheet button[aria-pressed='true'] { border-color:var(--MI_THEME-accent); color:var(--MI_THEME-accent); }
+.hf-notif-filter-enter-active, .hf-notif-filter-leave-active { transition:opacity 180ms ease; }
+.hf-notif-filter-enter-active .hf-notif-filter-sheet, .hf-notif-filter-leave-active .hf-notif-filter-sheet { transition:transform 180ms ease; }
+.hf-notif-filter-enter-from, .hf-notif-filter-leave-to { opacity:0; }
+.hf-notif-filter-enter-from .hf-notif-filter-sheet, .hf-notif-filter-leave-to .hf-notif-filter-sheet { transform:translateY(14px); }
 </style>

@@ -97,7 +97,7 @@ function deferred<T>() {
 	return { promise, succeed, fail };
 }
 
-function fixture(options: { settings?: unknown; removeReadGuard?: boolean } = {}) {
+function fixture(options: { settings?: unknown; removeReadGuard?: boolean; embedded?: boolean; paneActive?: boolean } = {}) {
 	const saved = { theme: 'kisetsu', tutorialDone: true, v2Onboarded: true, animations: true, akatsukiNoticeShown: false, hatakyuNoticeShown: false, customPreference: { keep: ['saved'] } };
 	const readSettings = vi.fn(async (): Promise<unknown> => Object.hasOwn(options, 'settings') ? options.settings : saved);
 	const writeSettings = vi.fn(async (_value: unknown): Promise<void> => undefined);
@@ -110,7 +110,7 @@ function fixture(options: { settings?: unknown; removeReadGuard?: boolean } = {}
 	const nextTick = vi.fn((callback: () => unknown) => Promise.resolve(callback()));
 	const variables = ['SCOPE', 'loadedKeys', 'settings', 'hataskPageActive', 'hataskIntroductionReady', 'showTutorial', 'showTutTheme', 'tutStep', 'tutThemes'].map(name => declaration(name)).join('\n');
 	// Execute the actual relevant mount/activation statements, leaving unrelated clocks, flowers and network subscriptions outside this fixture.
-	const activation = [/^hataskPageActive = true;/u, /^showHataskIntroduction\(\);$/u].map(pattern => statementMatching(lifecycle('onActivated').statements, pattern).getText(page)).join('\n');
+	const activation = [/^hataskPageActive = !props\.embedded \|\| props\.paneActive;/u, /^showHataskIntroduction\(\);$/u].map(pattern => statementMatching(lifecycle('onActivated').statements, pattern).getText(page)).join('\n');
 	const code = `${variables}\n${sourceFunctions(options.removeReadGuard)}
 	async function loadFromMount() { ${mountSettingsStatements.join('\n')} }
 	function activate() { ${activation} }
@@ -121,7 +121,9 @@ function fixture(options: { settings?: unknown; removeReadGuard?: boolean } = {}
 		loadFromMount, activate, deactivate, unmount, acceptLoadedHataskSettings, showHataskIntroduction, startTutFromTheme, skipTutorial, reopenTutorial });`;
 
 	const compiled = ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } });
+	const documentFixture = { body: { dataset: {} }, querySelectorAll: () => [] };
 	const state = runInNewContext(compiled.outputText, {
+		props: { embedded: options.embedded ?? false, paneActive: options.paneActive ?? true },
 		ref, computed, nextTick, misskeyApi,
 		isPlannerCollectionKey: () => false, defaultFlower: {}, HATASK_MEAL_TEMPLATE_KEY: 'meal-templates',
 		copy: {},
@@ -129,13 +131,23 @@ function fixture(options: { settings?: unknown; removeReadGuard?: boolean } = {}
 		os: { popup },
 		closeFlowerDetail: vi.fn(), closeFlowerCollection: vi.fn(), closeEventDetail: vi.fn(), closeBlankCalendarActions: vi.fn(), hatakMascotActive: ref(true), stopMascotCardRotation: vi.fn(),
 		hfTimer: null, eqPollTimer: null, eqStream: null, showMobileNav: ref(true), navProtectionObserver: null, navVisibilityTimer: null,
-		['document']: { body: { dataset: {} }, querySelectorAll: () => [] },
+		['document']: documentFixture,
+		window: { document: documentFixture },
 	}, { timeout: 1000 }) as State;
 
 	return { state, readSettings, writeSettings, misskeyApi, popup };
 }
 
 describe('Hataskの初回導入と設定読込', () => {
+	test('埋め込みの非表示ペインは再活性化しても導入画面を開かない', async () => {
+		const current = fixture({ settings: { theme: 'akatsuki', tutorialDone: false }, embedded: true, paneActive: false });
+		await current.state.loadFromMount();
+		current.state.deactivate();
+		current.state.activate();
+		expect(current.state.active).toBe(false);
+		expect(current.state.showTutorial.value).toBe(false);
+	});
+
 	test('旧版の案内を未読でも、既存利用者には再訪・再読込で告知せず設定済みの5テーマを保持する', async () => {
 		const themes = ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu'];
 		for (const theme of themes) {

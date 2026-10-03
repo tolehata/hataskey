@@ -30,18 +30,20 @@
 </MkWindow>
 </template>
 <script setup lang="ts">
+import { useHataGoesPickers } from '@/utility/hatagoes-pickers.js';
 import { computed, ref, useTemplateRef } from 'vue';
 import type { entities } from 'cherrypick-js';
 import type { HataFeedEmojiRequest } from '@/utility/hatafeed.js';
 import MkWindow from '@/components/MkWindow.vue';
 import HfEmojiPreviewPair from '@/components/HfEmojiPreviewPair.vue';
-import { chooseDriveFile } from '@/utility/drive.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
 import { emojiChangeError } from '@/utility/hatafeed.js';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
 import { i18n } from '@/i18n.js';
 import '@/components/hatafeed-ui.css';
+const pickers = useHataGoesPickers();
+const dialogs = useHataGoesDialogs();
 const copy = i18n.ts._hata._hatafeed._emojiChangeWizard;
 const props = defineProps<{ request: HataFeedEmojiRequest; kind: 'updateImage' | 'withdraw' | 'cancel' }>();
 const emit = defineEmits<{ done: []; closed: [] }>();
@@ -62,11 +64,11 @@ const valid = computed(() => props.kind === 'cancel' || (!!reason.value.trim() &
 async function beforeClose() {
 	if (busy.value) return false;
 	if (completed.value || (!reason.value && !file.value && !acknowledged.value)) return true;
-	return !(await os.confirm({ type: 'warning', text: copy.discardConfirm })).canceled;
+	return !(await dialogs.confirm({ type: 'warning', text: copy.discardConfirm })).canceled;
 }
 
 async function pickImage() {
-	const chosen = (await chooseDriveFile({ multiple: false }).catch(() => []))[0];
+	const chosen = (await pickers.selectDriveFiles({ multiple: false }).catch(() => []))[0];
 	if (!chosen) return;
 	if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(chosen.type) || chosen.size > 5 * 1024 * 1024) { error.value = copy.invalidImage; return; }
 	file.value = chosen; acknowledged.value = false; error.value = '';

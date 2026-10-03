@@ -6,6 +6,7 @@ import type { Ref } from 'vue';
 const fixture = vi.hoisted(() => ({ guide: vi.fn(), stopGuide: vi.fn(), api: vi.fn(), popup: vi.fn(), menu: vi.fn(), path: null as Ref<string> | null }));
 vi.mock('@/router.js', () => ({ useRouter: () => ({ push: (path: string) => { fixture.path!.value = path; } }) }));
 vi.mock('@/utility/hatafeed-tutorial-launcher.js', () => ({ showHataFeedTutorial: fixture.guide }));
+vi.mock('@/utility/hatagoes-pickers.js', () => ({ useHataGoesPickers: () => ({ selectUser: vi.fn() }) }));
 vi.mock('@/page.js', () => ({ definePage: vi.fn() }));
 vi.mock('@/i.js', () => ({ $i: { id: 'staff' }, iAmModerator: true }));
 vi.mock('@/preferences.js', async () => ({ prefer: { r: { animation: (await import('vue')).ref(false), 'hatafeed.leaves': (await import('vue')).ref(false) } } }));
@@ -15,10 +16,7 @@ vi.mock('@/os.js', () => ({ popup: fixture.popup, popupMenu: fixture.menu, toast
 vi.mock('@/utility/hatafeed.js', async () => ({
 	hataFeedUnreadCount: (await import('vue')).ref(0), categoryLabel: {}, categoryKeys: [], staffOnlyCategoryKeys: [], statusLabel: {}, statusKeys: [], emojiStatusLabel: {}, emojiStatusIcon: {},
 }));
-vi.mock('@/i18n.js', () => ({ i18n: {
-	ts: { export: 'エクスポート', _hata: { _hatafeed: { _home: new Proxy({}, { get: (_, key) => String(key) }) } } },
-	tsx: { _hata: { _hatafeed: { _home: new Proxy({}, { get: () => () => '' }) } } },
-} }));
+vi.mock('@/i18n.js', async () => ({ i18n: (await import('@/utility/hatask-test-i18n.js')).createTestHataskI18n() }));
 vi.mock('@/components/MkHataskeyNotificationToasts.vue', () => ({ default: { template: '<div/>' } }));
 vi.mock('@/components/HataFeedBeta.vue', () => ({ default: { template: '<section data-beta>ベータ機能</section>' } }));
 vi.mock('@/components/HataFeedIssue.vue', () => ({ default: { template: '<div/>' } }));
@@ -50,9 +48,9 @@ beforeEach(() => {
 });
 afterEach(() => { cleanups.splice(0).forEach(fn => fn()); vi.unstubAllGlobals(); });
 
-async function mount(closePageWindow?: () => void) {
+async function mount(closePageWindow?: () => void, embedded = false) {
 	const target = window.document.createElement('div'); window.document.body.append(target);
-	const app = createApp({ render: () => h(KeepAlive, {}, { default: () => fixture.path!.value === '/' ? h('main', { 'data-timeline': true }) : h(fixture.path!.value === '/hatafeed/beta' ? HataFeedBetaPage : HataFeed, { key: fixture.path!.value }) }) });
+	const app = createApp({ render: () => h(KeepAlive, {}, { default: () => fixture.path!.value === '/' ? h('main', { 'data-timeline': true }) : h(fixture.path!.value === '/hatafeed/beta' ? HataFeedBetaPage : HataFeed, { key: fixture.path!.value, ...(embedded ? { embedded: true, requestedTab: 'issues' } : {}) }) }) });
 	if (closePageWindow) app.provide(DI.pageWindowClose, closePageWindow);
 	app.component('MkTime', { template: '<time/>' }); app.component('MkUserName', { template: '<span/>' });
 	app.mount(target); cleanups.push(() => { app.unmount(); target.remove(); });
@@ -65,6 +63,19 @@ async function click(target: HTMLElement, label: string) {
 }
 
 describe('HataFeed page navigation and header actions', () => {
+	test('embedded issue filters stay visible and drive the paged issue request', async () => {
+		const target = await mount(undefined, true);
+		const filters = target.querySelector<HTMLElement>('section[aria-busy]')!;
+		expect([...filters.querySelectorAll('button')].some(button => button.textContent?.includes('受付終了も含む'))).toBe(true);
+		const include = [...filters.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.includes('受付終了も含む'))!;
+		include.click();
+		await vi.waitFor(() => expect(fixture.api.mock.calls.some(([endpoint, params]) => endpoint === 'hata/feedback/issues' && params.includeClosed === true && params.limit === 11)).toBe(true));
+		const dropdowns = filters.querySelectorAll<HTMLButtonElement>('button');
+		const category = [...dropdowns].find(button => button.textContent?.includes('カテゴリ'))!;
+		category.click();
+		await nextTick();
+		expect(target.querySelector('[role="dialog"][aria-label="絞り込み"]')).not.toBeNull();
+	});
 	test.each([false, true])('exit returns to the timeline or closes the containing window (window=%s)', async inWindow => {
 		const close = vi.fn();
 		const target = await mount(inWindow ? close : undefined);
@@ -126,7 +137,7 @@ describe('HataFeed page navigation and header actions', () => {
 		await fixture.popup.mock.calls[0][2].projectsChanged(); await nextTick();
 		expect(target.querySelector('[aria-label^="プロジェクトを切り替え"]')?.getAttribute('title')).toBe('編集したプロジェクト');
 		target.querySelector<HTMLButtonElement>('[aria-label^="プロジェクトを切り替え"]')!.click();
-		expect(fixture.menu.mock.calls[0][0].filter(Boolean).map((item: { text: string }) => item.text)).toEqual(['編集したプロジェクト', 'overview']);
+		expect(fixture.menu.mock.calls[0][0].filter(Boolean).map((item: { text: string }) => item.text)).toEqual(['編集したプロジェクト', '概要']);
 	});
 	test('refresh shows its busy state and reports completion to the navbar', async () => {
 		const target = await mount();

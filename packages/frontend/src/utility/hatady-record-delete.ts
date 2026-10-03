@@ -7,11 +7,11 @@ import { pushHk3Toast } from '@/components/hataskey3/hk3-state.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 
-export async function confirmHatadyAction(variant: HatadySurfaceVariant, text: string, type: 'warning' | 'question' = 'warning'): Promise<boolean> {
-	if (variant === 'hatady') return !(await os.confirm({ type, text })).canceled;
+export async function confirmHatadyAction(variant: HatadySurfaceVariant, text: string, type: 'warning' | 'question' = 'warning', launch: typeof os.popup = os.popup): Promise<boolean> {
+	if (variant === 'hatady') return !(await (launch === os.popup ? os.confirm({ type, text }) : os.confirm({ type, text }, launch))).canceled;
 	const component = (await import('@/components/HatadyDeleteConfirm.vue')).default;
 	return await new Promise<boolean>(resolve => {
-		const { dispose } = os.popup(component, { variant, text, danger: type === 'warning' }, {
+		const { dispose } = launch(component, { variant, text, danger: type === 'warning' }, {
 			done: (confirmed: boolean) => resolve(confirmed),
 			closed: () => { resolve(false); dispose(); },
 		});
@@ -19,7 +19,7 @@ export async function confirmHatadyAction(variant: HatadySurfaceVariant, text: s
 }
 
 /** Return true only after the confirmed record has been deleted successfully. */
-export async function confirmHatadyRecordDeletion(activity: HatadyActivity, variant: HatadySurfaceVariant = 'hatady'): Promise<boolean> {
+export async function confirmHatadyRecordDeletion(activity: HatadyActivity, variant: HatadySurfaceVariant = 'hatady', launch: typeof os.popup = os.popup): Promise<boolean> {
 	if (!activity.isMine || (!activity.study && !activity.media?.session)) return false;
 	const copy = i18n.ts._hata._hatady._home;
 	const notify = (message: string) => {
@@ -32,7 +32,7 @@ export async function confirmHatadyRecordDeletion(activity: HatadyActivity, vari
 	};
 	let confirmed: boolean;
 	try {
-		confirmed = await confirmHatadyAction(variant, copy.recordDeleteBody);
+		confirmed = await confirmHatadyAction(variant, copy.recordDeleteBody, 'warning', launch);
 	} catch {
 		notify(copy.recordDeleteOpenFailed);
 		return false;

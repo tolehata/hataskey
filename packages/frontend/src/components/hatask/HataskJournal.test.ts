@@ -41,7 +41,7 @@ function mountJournal(options: Record<string, unknown> = {}) {
 	const save = vi.fn(async (entry: HataskJournalEntry, existingId?: string) => { entries.value = changeJournalRows(entries.value, { type: 'save', value: entry, existingId }); });
 	const remove = vi.fn(async (id: string) => { entries.value = changeJournalRows(entries.value, { type: 'delete', id }); });
 	const storeTemplate = vi.fn(async (template: HataskMealTemplate, existingId?: string) => { templates.value = changeJournalRows(templates.value, { type: 'save', value: template, existingId }); });
-	const props = reactive({ kind: 'mood' as const, theme: undefined as HataskPlannerTheme | undefined, writable: true, templatesWritable: true, save, remove, storeTemplate, ...options });
+	const props = reactive({ kind: 'mood' as const, theme: undefined as HataskPlannerTheme | undefined, writable: true, templatesWritable: true, captureOnly: false, showCaptureHint: true, save, remove, storeTemplate, ...options });
 	const app = createApp(defineComponent({ setup: () => () => h(HataskJournal, { ...props, ref: journal, entries: entries.value, templates: templates.value }) }));
 	const container = window.document.createElement('div'); window.document.body.append(container); app.mount(container);
 	mounted.push({ app, container });
@@ -80,6 +80,19 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 7, 31, 12
 afterEach(() => { for (const item of mounted.splice(0)) { item.app.unmount(); item.container.remove(); } vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe('Hatask mood and meal journals', () => {
+	test.each(['mood', 'meal'])('%sのクイック作成は同じ入力を保ち、分析・履歴と操作説明を表示しない', async kind => {
+		const f = mountJournal({ kind, captureOnly: true, showCaptureHint: false, entries: [kind === 'mood' ? mood : meal] });
+		const input = await inputNote(f.container, '記録の書きかけ');
+		expect(f.container.querySelector('[data-journal-capture]')).not.toBeNull();
+		expect(f.container.querySelector('[role="tab"]')).toBeNull();
+		expect(f.container.textContent).not.toContain('Ctrl');
+		expect(f.container.textContent).not.toContain('Enter');
+		f.props.captureOnly = false;
+		await flush();
+		expect(f.container.querySelector('[role="tab"]')).not.toBeNull();
+		expect(f.container.querySelector('textarea')).toBe(input);
+		expect(input.value).toBe('記録の書きかけ');
+	});
 	test.each([
 		{ kind: 'mood', title: 'きもち', intro: 'いまのきもちを、ひと息で残そう', info: 'きもち記録について' },
 		{ kind: 'meal', title: 'ごはん', intro: 'きょうのごはんを、あなたのペースで', info: 'ごはん記録について' },

@@ -529,6 +529,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 </template>
 
 <script lang="ts" setup>
+import { useHataGoesEmojiPickers } from '@/utility/hatagoes-emoji-pickers.js';
 import {
 	computed,
 	nextTick,
@@ -552,16 +553,16 @@ import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
 import MkMediaList from '@/components/MkMediaList.vue';
 import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
-import { emojiPicker } from '@/utility/emoji-picker.js';
 import { hatadyNotify, hatadySeconds, hatadyDuration } from '@/utility/hatady-ui.js';
 import MkLink from '@/components/MkLink.vue';
 import HatadyReactionPill from '@/components/HatadyReactionPill.vue';
 import HyMediaCover from '@/components/HyMediaCover.vue';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
 import { confirmHatadyAction } from '@/utility/hatady-record-delete.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { reactionPicker } from '@/utility/reaction-picker.js';
 import { invalidateHatadyReactionUsers } from '@/utility/hatady-reaction-details.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
 import { versatileLang } from '@/utility/intl-const.js';
@@ -579,6 +580,10 @@ import {
 	normalizeMediaList,
 	normalizeMediaSessions,
 } from '@/utility/hatady-media.js';
+
+const popup = useHataGoesPopup();
+const pickers = useHataGoesEmojiPickers();
+const dialogs = useHataGoesDialogs();
 
 const props = withDefaults(defineProps<{ workId: string; kind?: HatadyMediaKind; variant?: 'hatady' | 'ui' | 'uis' }>(), { variant: 'hatady' });
 const timelineActions = useHatadyActivityActions({
@@ -687,7 +692,7 @@ function commentKeydown(e: KeyboardEvent) {
 function insertCommentEmoji(e: MouseEvent) {
 	let start = commentInput.value?.selectionStart ?? commentText.value.length,
 		end = commentInput.value?.selectionEnd ?? start;
-	emojiPicker.show(
+	pickers.showEmojiPicker(
 		e.currentTarget as HTMLElement,
 		(emoji) => {
 			commentText.value = commentText.value.slice(0, start) + emoji + commentText.value.slice(end);
@@ -728,7 +733,7 @@ function logActivity(log: any) {
 }
 
 async function openSessionConversation(sessionId: string) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ sessionId, workId: props.workId, variant: props.variant },
 		{
@@ -743,7 +748,7 @@ async function openSessionConversation(sessionId: string) {
 }
 
 async function openLog(logId: string) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ logId, variant: props.variant },
 		{
@@ -758,7 +763,7 @@ async function openLog(logId: string) {
 }
 
 async function editWorkLog(a: any) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyComposer.vue')).default,
 		{ editLog: a.study, variant: props.variant },
 		{
@@ -778,7 +783,7 @@ async function openProfile(userId: string) {
 		requestClose();
 		return;
 	}
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyProfile.vue')).default,
 		{ userId, variant: props.variant },
 		{ closed: () => dispose() },
@@ -1034,7 +1039,7 @@ async function loadMoreComments() {
 		commentsHasMore.value = page.length === 100 && added.length > 0 && page[0]?.id !== untilId;
 	} catch {
 		commentsHasMore.value = false;
-		os.alert({ type: 'error', text: label('loadFailed') });
+		dialogs.alert({ type: 'error', text: label('loadFailed') });
 	} finally {
 		commentsLoadingMore.value = false;
 	}
@@ -1142,7 +1147,7 @@ function sessionDetailRows(
 
 async function openEdit() {
 	if (!work.value) return;
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyMediaWorkForm.vue')).default,
 		{ kind: kind.value, editWork: work.value, variant: props.variant },
 		{
@@ -1158,7 +1163,7 @@ async function openEdit() {
 async function scheduleMediaViewing(target: HatadyMediaWork) {
 	const now = new Date(),
 		date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-	const { canceled, result } = await os.form(String(copy.detail.scheduleViewing), {
+	const { canceled, result } = await dialogs.form(String(copy.detail.scheduleViewing), {
 		date: { type: 'string', label: String(copy.form.eventDate), default: date },
 		timeStart: { type: 'string', label: String(copy.form.eventTime), default: '20:00' },
 	});
@@ -1174,7 +1179,7 @@ async function scheduleMediaViewing(target: HatadyMediaWork) {
 		parsed.getMonth() + 1 !== Number(eventDate.slice(5, 7)) ||
 		parsed.getDate() !== Number(eventDate.slice(8))
 	) {
-		await os.alert({ type: 'error', text: String(copy.form.invalidDateTime) });
+		await dialogs.alert({ type: 'error', text: String(copy.form.invalidDateTime) });
 		return;
 	}
 	try {
@@ -1193,7 +1198,7 @@ async function deleteWork() {
 	deleting.value = true;
 	try {
 		const name = work.value.kind === 'work' ? detailCopy.work : detailCopy.media;
-		if (!(await confirmHatadyAction(props.variant, i18n.tsx._hata._hatady._mediaWorkDetail.deleteConfirm({ name })))) return;
+		if (!(await confirmHatadyAction(props.variant, i18n.tsx._hata._hatady._mediaWorkDetail.deleteConfirm({ name }), 'warning', popup))) return;
 		await mediaApi('hata/hatady/media/works/delete', { workId: props.workId });
 		hatadyNotify(i18n.tsx._hata._hatady._mediaWorkDetail.deleted({ name }));
 		emit('deleted');
@@ -1220,7 +1225,7 @@ async function recordDeleted(recordId: string) {
 
 async function openSessionForm(session?: HatadyMediaSession) {
 	if (work.value?.kind === 'work') {
-		const { dispose } = os.popup(
+		const { dispose } = popup(
 			(await import('@/components/HatadyComposer.vue')).default,
 			{ kind: 'work', work: work.value, variant: props.variant } as any,
 			{
@@ -1234,7 +1239,7 @@ async function openSessionForm(session?: HatadyMediaSession) {
 		return;
 	}
 	if (!work.value) return;
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyMediaSessionForm.vue')).default,
 		{ work: work.value, editSession: session, variant: props.variant },
 		{
@@ -1249,7 +1254,7 @@ async function openSessionForm(session?: HatadyMediaSession) {
 }
 
 async function deleteSession(session: HatadyMediaSession) {
-	if (!(await confirmHatadyAction(props.variant, label('deleteSessionConfirm')))) return;
+	if (!(await confirmHatadyAction(props.variant, label('deleteSessionConfirm'), 'warning', popup))) return;
 	await mediaApi('hata/hatady/media/sessions/delete', { sessionId: session.id });
 	await loadSessions();
 	emit('changed');
@@ -1266,7 +1271,7 @@ async function toggleReaction(emoji: string) {
 }
 
 function openReactionPicker() {
-	reactionPicker.show(reactionAdd.value ?? null, null, async (reaction) => {
+	pickers.showReactionPicker(reactionAdd.value ?? null, null, async (reaction) => {
 		await mediaApi('hata/hatady/media/reactions/create', mediaReactionPayload('work', props.workId, reaction));
 		invalidateHatadyReactionUsers({ workId: props.workId });
 		await reloadWork();
@@ -1295,7 +1300,7 @@ async function createComment() {
 }
 
 async function deleteComment(comment: HatadyMediaComment) {
-	if (!(await confirmHatadyAction(props.variant, label('deleteCommentConfirm')))) return;
+	if (!(await confirmHatadyAction(props.variant, label('deleteCommentConfirm'), 'warning', popup))) return;
 	await mediaApi('hata/hatady/media/comments/delete', { commentId: comment.id });
 	await loadComments();
 	await reloadWork();
@@ -1303,7 +1308,7 @@ async function deleteComment(comment: HatadyMediaComment) {
 
 function reportComment(comment: HatadyMediaComment) {
 	if (!comment.user) return;
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		defineAsyncComponent(() => import('@/components/MkAbuseReportWindow.vue')),
 		{
 			user: comment.user,
@@ -1321,7 +1326,7 @@ async function toggleCommentReaction(comment: HatadyMediaComment, reaction: stri
 }
 
 function openCommentReactionPicker(comment: HatadyMediaComment, ev: MouseEvent) {
-	reactionPicker.show(ev.currentTarget as HTMLElement, null, async (reaction) => {
+	pickers.showReactionPicker(ev.currentTarget as HTMLElement, null, async (reaction) => {
 		await mediaApi('hata/hatady/media/reactions/create', { targetType: 'comment', targetId: comment.id, reaction });
 		invalidateHatadyReactionUsers({ mediaCommentId: comment.id });
 		await loadComments();

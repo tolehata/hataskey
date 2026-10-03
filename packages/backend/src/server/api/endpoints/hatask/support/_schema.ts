@@ -32,7 +32,7 @@ export const supportSettingsSchema = {
 	...publicSupportSettingsSchema,
 	properties: {
 		...publicSupportSettingsSchema.properties,
-		enabled: bool,
+		enabled: bool, navButtonVisible: bool,
 		benefits: {
 			type: 'array', nullable: false, maxItems: HATASK_SUPPORT_POLICY_KEYS.length,
 			items: {
@@ -42,13 +42,20 @@ export const supportSettingsSchema = {
 				}, required: ['key', 'title', 'description', 'roleId', 'visible', 'showBaseline'], additionalProperties: false,
 			},
 		},
-	}, required: [...publicSupportSettingsSchema.required, 'enabled', 'benefits'],
+	}, required: [...publicSupportSettingsSchema.required, 'enabled', 'navButtonVisible', 'benefits'],
+} as const;
+
+/** Older admin clients may omit the new flag when saving other settings. */
+export const supportUpdateSettingsSchema = {
+	...supportSettingsSchema,
+	properties: { ...supportSettingsSchema.properties, navButtonVisible: bool },
+	required: [...publicSupportSettingsSchema.required, 'enabled', 'benefits'],
 } as const;
 
 export const supportShowSchema = {
 	type: 'object', optional: false, nullable: false,
 	properties: {
-		configured: bool, settings: { ...publicSupportSettingsSchema, nullable: true }, isSupporter: bool,
+		configured: bool, navButtonVisible: bool, settings: { ...publicSupportSettingsSchema, nullable: true }, isSupporter: bool,
 		supporterCount: { type: 'integer', minimum: 0, optional: false, nullable: false },
 		benefits: {
 			type: 'array', optional: false, nullable: false,
@@ -60,7 +67,7 @@ export const supportShowSchema = {
 				}, required: ['key', 'title', 'description', 'showBaseline', 'baseline', 'offered', 'current', 'reflected'],
 			},
 		},
-	}, required: ['configured', 'settings', 'isSupporter', 'supporterCount', 'benefits'],
+	}, required: ['configured', 'navButtonVisible', 'settings', 'isSupporter', 'supporterCount', 'benefits'],
 } as const;
 
 export const supportAdminShowSchema = {

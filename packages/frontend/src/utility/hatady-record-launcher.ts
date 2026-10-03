@@ -11,11 +11,12 @@ export type HatadyRecordKind = 'study' | 'movie' | 'game' | 'exercise' | 'work' 
 export async function openHatadyRecord(options: {
 	kind?: HatadyRecordKind;
 	variant?: HatadySurfaceVariant;
+	popup?: typeof os.popup;
 	onDone?: (value: unknown) => void | Promise<void>;
 } = {}): Promise<void> {
 	await loadHatadyDisplay();
 	const variant = options.variant ?? 'hatady';
-	const { dispose } = os.popup(
+	const { dispose } = (options.popup ?? os.popup)(
 		(await import('@/components/HatadyActivityRecordChooser.vue')).default,
 		{ initialKind: options.kind, variant },
 		{

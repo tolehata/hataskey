@@ -332,8 +332,8 @@
       .hata-intro select { font-size: 16px; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .hata-intro *, .hata-intro *::before, .hata-intro *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-      .hata-intro .hg-course:hover { transform: none; }
+      .hata-intro:not(.hg-host) *, .hata-intro:not(.hg-host) *::before, .hata-intro:not(.hg-host) *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+      .hata-intro:not(.hg-host) .hg-course:hover { transform: none; }
     }
 
     .hata-intro a.hg-btn { text-decoration:none; color:var(--hg-on-accent); }

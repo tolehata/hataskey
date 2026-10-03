@@ -4,10 +4,13 @@
  */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 
 const fixtures = vi.hoisted(() => ({ api: vi.fn(), popup: vi.fn() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixtures.api }));
 vi.mock('@/os.js', () => ({ popup: fixtures.popup }));
+vi.mock('@/utility/check-permissions.js', () => ({ usersSearchAvailable: true }));
+vi.mock('@/components/HatadyProfile.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/HatadyBookDetail.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/HatadyMediaWorkDetail.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/HatadyConversation.vue', () => ({ default: { render: () => null } }));
@@ -56,10 +59,11 @@ async function settle() {
 	await nextTick();
 }
 
-async function mountSearch() {
+async function mountSearch(goes = false) {
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
 	const app = createApp({ render: () => h(HatadySearch) });
+	if (goes) app.provide(HATA_GOES_HOST, { active: { value: true }, register: () => () => {}, changed: () => {} } as any);
 	app.mount(target);
 	cleanups.push(() => { app.unmount(); target.remove(); });
 	await settle();
@@ -143,7 +147,7 @@ describe('Hatady search debounce and stale responses', () => {
 		const cancel = async () => {
 			if (action === 'shorten') await view.enter('一');
 			else {
-				const button = view.target.querySelector<HTMLButtonElement>('[aria-label="検索をクリア"]');
+				const button = view.target.querySelector<HTMLButtonElement>('[aria-label="クリア"]');
 				if (!button) throw new Error('Clear button not mounted');
 				button.click();
 				await nextTick();
@@ -177,9 +181,9 @@ describe('Hatady search scope selection', () => {
 		expect(view.input.parentElement!.contains(group)).toBe(false);
 		const choices = [
 			{ label: 'すべて', types: null },
-			{ label: '記録', types: ['logs'] },
+			{ label: 'ログ', types: ['logs'] },
 			{ label: '本', types: ['books'] },
-			{ label: 'メモ', types: ['bookMemos'] },
+			{ label: '内容メモ', types: ['bookMemos'] },
 			{ label: 'しおり', types: ['bookmarks'] },
 			{ label: '作品・作業', types: ['mediaWorks'] },
 			{ label: '映画・ゲームの記録', types: ['mediaSessions'] },
@@ -203,6 +207,61 @@ describe('Hatady search scope selection', () => {
 		}
 		await vi.advanceTimersByTimeAsync(500);
 		expect(fixtures.api).toHaveBeenCalledTimes(choices.length);
+	});
+});
+
+describe('HataGoes user search', () => {
+	test('adds user scope only in host, keeps legacy results in all, and opens a contextual profile', async () => {
+		fixtures.api.mockImplementation((endpoint: string) => endpoint === 'users/search'
+			? Promise.resolve([{ id: 'u1', username: 'nagi', name: 'なぎ', host: null, avatarUrl: null }])
+			: Promise.resolve(response('残す記録')));
+		const view = await mountSearch(true);
+		const scope = view.target.querySelector('[role="group"][aria-label="検索対象"]')!;
+		expect(scope.querySelector('[aria-label="ユーザー"]')).not.toBeNull();
+		await view.enter('なぎ');
+		await vi.advanceTimersByTimeAsync(300);
+		await settle();
+		expect(fixtures.api).toHaveBeenCalledWith('users/search', { query: 'なぎ', offset: 0, limit: 20, origin: 'combined', detail: false });
+		expect(view.target.textContent).toContain('残す記録');
+		expect(view.target.textContent).toContain('@nagi');
+		view.target.querySelector<HTMLButtonElement>('section[aria-label="ユーザー"] button')!.click();
+		await vi.dynamicImportSettled();
+		expect(fixtures.popup).toHaveBeenCalledWith(expect.anything(), { userId: 'u1' }, expect.any(Object));
+		scope.querySelector<HTMLButtonElement>('[aria-label="ユーザー"]')!.click();
+		await settle();
+		expect(fixtures.api.mock.calls.at(-1)?.[0]).toBe('users/search');
+		expect(view.target.textContent).not.toContain('残す記録');
+	});
+
+	test('user failure keeps existing records and retry/paging use raw offset, while an old reply cannot return', async () => {
+		const old = pendingResponse();
+		const first = Array.from({ length: 20 }, (_, i) => ({ id: `u${i}`, username: `user${i}`, name: `User ${i}`, host: null }));
+		fixtures.api.mockImplementation((endpoint: string, params: { query: string; offset?: number }) => {
+			if (endpoint === 'hata/hatady/search') return Promise.resolve(response('残る記録'));
+			if (params.query === '古い検索') return old.promise;
+			if (params.offset === 0) return Promise.reject(new Error('Denied'));
+			return Promise.resolve([]);
+		});
+		const view = await mountSearch(true);
+		await view.enter('古い検索');
+		await vi.advanceTimersByTimeAsync(300);
+		await view.enter('次の検索');
+		await vi.advanceTimersByTimeAsync(300);
+		await settle();
+		expect(view.target.textContent).toContain('残る記録');
+		expect(view.target.querySelector('section[aria-label="ユーザー"] [role="alert"]')).not.toBeNull();
+		fixtures.api.mockImplementation((endpoint: string, params: { offset?: number }) => endpoint === 'users/search'
+			? Promise.resolve(params.offset === 0 ? first : [{ ...first[0] }, { id: 'new', username: 'new', name: 'New', host: null }])
+			: Promise.resolve(response('残る記録')));
+		view.target.querySelector<HTMLButtonElement>('section[aria-label="ユーザー"] [role="alert"] button')!.click();
+		await settle();
+		view.target.querySelector<HTMLButtonElement>('section[aria-label="ユーザー"] button:last-child')!.click();
+		await settle();
+		expect(fixtures.api).toHaveBeenCalledWith('users/search', { query: '次の検索', offset: 20, limit: 20, origin: 'combined', detail: false });
+		expect(view.target.querySelectorAll('section[aria-label="ユーザー"] button')).toHaveLength(21);
+		old.resolve(response('古い応答'));
+		await settle();
+		expect(view.target.textContent).not.toContain('古い応答');
 	});
 });
 

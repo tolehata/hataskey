@@ -1,11 +1,19 @@
 <template>
-<PageWithHeader :hideHeader="true">
+<component :is="embedded ? 'div' : PageWithHeader" :hideHeader="true" :class="embedded ? 'htk-embedded-page' : undefined">
 <svg width="0" height="0" style="position:absolute"><defs><filter id="htk-gfx" x="0%" y="0%" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.025 0.025" numOctaves="2" seed="92" result="n"/><feGaussianBlur in="n" stdDeviation="2" result="bl"/><feDisplacementMap in="SourceGraphic" in2="bl" scale="65" xChannelSelector="R" yChannelSelector="G"/></filter></defs></svg>
 
-<div ref="rootEl" class="htk-root" :data-mode="themeMode" :data-theme="plannerTheme" :data-window="inPageWindow?'true':'false'" :data-anim="(settings.animations===false)?'off':'on'" :style="hatakyuThemeStyle">
+	<div ref="rootEl" class="htk-root" :data-embedded="embedded" :data-mode="themeMode" :data-theme="plannerTheme" :data-window="inPageWindow?'true':'false'" :data-anim="embedded || settings.animations !== false ? 'on' : 'off'" :style="hatakyuThemeStyle">
+		<Teleport to="body">
+			<div v-if="embedded" v-show="captureKind !== null && !externalCaptureTarget" class="htk-goes-capture-overlay" @keydown.esc.stop="closeGoesCapture" @keydown.tab="trapGoesCaptureFocus">
+				<section class="htk-root htk-goes-capture" role="dialog" aria-modal="true" aria-label="Hatask の記録" data-embedded="true" :data-theme="plannerTheme" :data-mode="themeMode" :style="hatakyuThemeStyle">
+					<header class="htk-goes-capture-heading"><span>Hatask の記録 · 入力中の内容を引き継ぎます</span><button ref="captureCloseButton" type="button" class="htk-btn" @click="closeGoesCapture">閉じる</button></header>
+					<div ref="captureTarget" class="htk-goes-capture-body"></div>
+				</section>
+			</div>
+		</Teleport>
 
 <!-- 旗鯖fork(v2 §16①): 共通の起動表示 -->
-<div v-if="showBoot" :key="bootKey" class="htk-boot" :style="isAkatsuki ? getHataskDaylightStyle(akatsukiNow, themeMode) : undefined" aria-hidden="true"><div class="htk-boot-inner"><div class="htk-boot-logo">Hatask</div></div></div>
+<div v-if="showBoot && !embedded" :key="bootKey" class="htk-boot" :style="isAkatsuki ? getHataskDaylightStyle(akatsukiNow, themeMode) : undefined" aria-hidden="true"><div class="htk-boot-inner"><div class="htk-boot-logo"><HataAppLogo app="hatask" :size="64" :monochrome="themeMode === 'dark'"/><HataAppWordmark app="hatask" :onDark="themeMode === 'dark'"/></div></div></div>
 
 <div class="htk-app">
 <!-- 全テーマ共通の暁レイアウト -->
@@ -13,9 +21,11 @@
 <HataskAkatsukiLayout
   v-model:searchQuery="searchQuery"
   :enabled="true"
+					:embedded="embedded"
+					:bootVisible="showBoot"
   :activeTab="activeTab as HataskAkatsukiTab"
   :mode="themeMode"
-  :animations="settings.animations!==false && prefer.r.animation.value"
+  :animations="embedded || (settings.animations!==false && prefer.r.animation.value)"
   :model="akatsukiModel"
   :now="akatsukiNow"
   :searchOpen="showSearch"
@@ -41,6 +51,15 @@
 	  <i :class="['ti',hfIcon(n.type)]" aria-hidden="true"></i><HataFeedNotificationBody :text="notificationDisplayMessage(n)"/>
 	</button>
 </template>
+<template v-if="showGoesLauncher" #home-launcher>
+	<section class="htk-goes-launcher" aria-label="よく使う App">
+		<div class="htk-goes-launcher-row">
+			<h2><i class="ti ti-apps" aria-hidden="true"></i>よく使う App</h2>
+			<div class="htk-goes-launcher-grid"><button v-for="app in goesHataskLauncherApps" :key="app.id" type="button" :title="app.label" @click="hataGoesHost?.openLauncherScreen?.(app.id)"><span><i :class="app.icon" aria-hidden="true"></i></span><small>{{ app.label }}</small></button></div>
+			<button type="button" class="htk-goes-launcher-all" @click="hataGoesHost?.openAllApps?.()"><i class="ti ti-layout-grid" aria-hidden="true"></i>すべての App</button>
+		</div>
+	</section>
+</template>
 <template #home-extra>
   <div class="htk-akatsuki-extras">
     <div v-if="completedUndoItems.length" class="htk-planner-undo htk-complete-undo" role="status">
@@ -59,19 +78,14 @@
       <MkEarthquakeTicker :quakes="rawQuakes" :tsunami="tsunami" mode="compact" :showEmpty="false" @click="openEarthquake"/>
       <small>{{copy.jmaSourceNote}}</small>
     </section>
-    <section v-if="canUseMascot && mascotCardUrl" class="htk-akatsuki-extra">
-      <h3>{{copy.mascot}}</h3>
-      <button class="htk-akatsuki-mascot" @click="onMascotCardClick">
-        <img :src="mascotCardUrl" :alt="mascotCardName" draggable="false" width="96" height="96">
-        <span><strong>{{mascotCardName}}</strong><span>{{mascotCardPhrase}}</span></span>
-      </button>
-    </section>
   </div>
 </template>
 <HataskAkatsukiApps
   v-if="activeTab==='hataskapps' || activeTab==='apps'"
   :kind="activeTab==='hataskapps'?'hatask':'tools'"
+  :embedded="embedded"
   :animations="settings.animations!==false"
+  :monochrome="themeMode === 'dark'"
   :counts="akatsukiAppCounts"
   :canAccessHataFeed="canAccessHataFeed"
   :canUseMascot="canUseMascot"
@@ -80,17 +94,21 @@
 />
 <HataskRecordReview v-if="activeTab === 'review' && canReviewRecords" ref="recordReview" :theme="plannerTheme" :mode="themeMode"/>
 <HataskSupport v-if="activeTab === 'support'" :theme="plannerTheme" :mode="themeMode" :animations="settings.animations !== false"/>
-<HataskRecipe v-if="recipeMounted" v-show="activeTab === 'recipe'" ref="recipeView" :theme="plannerTheme" :mode="themeMode" :consented="settings.recipeConsentShown === true" :settingsReady="dataLoaded && loadedKeys.has('settings')" @consent="ackRecipeConsent" @close="closeRecipe" @hatadyCookingSaved="offerHatadyReturn"/>
+					<Teleport :to="captureDestination" :disabled="captureKind !== 'recipe'">
+						<HataskRecipe v-if="recipeMounted" v-show="activeTab === 'recipe' || captureKind === 'recipe'" ref="recipeView" :theme="plannerTheme" :mode="themeMode" :consented="settings.recipeConsentShown === true" :settingsReady="dataLoaded && loadedKeys.has('settings')" @consent="ackRecipeConsent" @close="captureKind === 'recipe' ? closeGoesCapture() : closeRecipe()" @hatadyCookingSaved="onGoesCookingSaved"/>
+					</Teleport>
 <HataskRanking v-if="activeTab === 'ranking'" :theme="plannerTheme" :mode="themeMode" :showAchievementNotice="dataLoaded && loadedKeys.has('settings') && settings.showRankingAchievementNotice !== false"/>
 
 <!-- ========== CALENDAR ========== -->
-<div v-if="activeTab==='cal'" class="htk-tabpage htk-calendar-page htk-panels">
+					<Teleport :to="captureDestination" :disabled="captureKind !== 'cal'">
+						<div v-if="activeTab==='cal' || captureKind === 'cal'" class="htk-tabpage htk-calendar-page htk-panels">
   <div class="htk-planner-shell htk-anim">
     <div v-if="plannerStorageState==='loading'||plannerStorageState==='saving'||plannerStorageState==='blocked'||plannerStorageState==='conflict'" class="htk-planner-status" :data-state="plannerStorageState" role="status" aria-live="polite">
       <i :class="plannerStorageState==='loading'||plannerStorageState==='saving'?'ti ti-loader-2':'ti ti-shield-exclamation'" aria-hidden="true"></i>
       <span>{{plannerStorageState==='loading'?plannerCopy.loading:plannerStorageState==='saving'?plannerCopy.saving:plannerStorageDetail||plannerCopy.readOnly}}</span>
       <button v-if="plannerReadOnly" type="button" class="htk-btn htk-xs" @click="retryPlannerStorage">{{plannerCopy.retry}}</button>
     </div>
+    <Teleport :to="calendarInlineCaptureTarget ?? 'body'" :disabled="!embedded || captureKind !== null || !calendarInlineCaptureTarget">
     <HataskQuickCapture
     :theme="plannerTheme"
       ref="eventCaptureRef"
@@ -109,7 +127,7 @@
 	      :chipLabel="plannerCopy.captureChips"
 	      :toolLabel="plannerCopy.captureTools"
 	      :removeChipLabel="label=>plannerCopyx.removeCaptureChip({label})"
-	      :hint="plannerCopy.eventCaptureHint"
+	      :hint="embedded ? undefined : plannerCopy.eventCaptureHint"
       @update:modelValue="updateEventCapture"
       @submit="submitEventCapture"
       @tool="handleEventCaptureTool"
@@ -154,7 +172,9 @@
         />
       </div>
     </Transition>
+    </Teleport>
     <HataskCalendarPlanner
+      :embedded="embedded"
       :colorMode="themeMode"
       :theme="plannerTheme"
       :view="plannerCalendarView"
@@ -176,6 +196,7 @@
       @show-more="showPlannerDay"
       @drop-event="handleCalendarEventDrop"
       @trash-event="handleCalendarEventTrash"
+      @captureTarget="calendarInlineCaptureTarget=$event"
     />
     <HataskEventMoveDialog
       :colorMode="themeMode"
@@ -220,7 +241,7 @@
 
 					<Teleport to="body">
 						<div
-							v-if="showEventDetails"
+							v-if="showEventDetails && (!embedded || paneActive || captureKind !== null)"
 							class="htk-modal-ov"
 								:style="{ zIndex: eventDetailsZIndex }"
 							:data-theme="plannerTheme"
@@ -307,10 +328,13 @@
 					</Teleport>
 </div>
 
+					</Teleport>
 <!-- ========== TODO ========== -->
-				<div v-if="activeTab==='todo'" class="htk-tabpage htk-todo-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
+					<Teleport :to="captureDestination" :disabled="captureKind !== 'todo'">
+						<div v-if="activeTab==='todo' || captureKind === 'todo'" class="htk-tabpage htk-todo-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
 	<div class="htk-planner-shell htk-anim">
 	  <div v-if="plannerStorageState==='loading'||plannerStorageState==='saving'||plannerStorageState==='blocked'||plannerStorageState==='conflict'" class="htk-planner-status" :data-state="plannerStorageState" role="status" aria-live="polite"><i :class="plannerStorageState==='loading'||plannerStorageState==='saving'?'ti ti-loader-2':'ti ti-shield-exclamation'" aria-hidden="true"></i><span>{{plannerStorageState==='loading'?plannerCopy.loading:plannerStorageState==='saving'?plannerCopy.saving:plannerStorageDetail||plannerCopy.readOnly}}</span><button v-if="plannerReadOnly" type="button" class="htk-btn htk-xs" @click="retryPlannerStorage">{{plannerCopy.retry}}</button></div>
+						<Teleport :to="todoInlineCaptureTarget ?? 'body'" :disabled="!embedded || captureKind !== null || !todoInlineCaptureTarget">
 						<div class="htk-todo-capture-row">
 							<HataskQuickCapture
     :theme="plannerTheme"
@@ -330,7 +354,7 @@
 								:chipLabel="plannerCopy.captureChips"
 								:toolLabel="plannerCopy.captureTools"
 								:removeChipLabel="label=>plannerCopyx.removeCaptureChip({label})"
-								:hint="plannerCopy.todoCaptureHint"
+								:hint="embedded ? undefined : plannerCopy.todoCaptureHint"
 								@update:modelValue="updateTodoCapture"
 								@submit="submitTodoCapture"
 								@tool="handleTodoCaptureTool"
@@ -393,7 +417,9 @@
 	  </Transition>
 	  <div v-if="completedUndoItems.length" class="htk-planner-undo htk-complete-undo" role="status"><i class="ti ti-circle-check-filled" aria-hidden="true"></i><span>{{plannerCopyx.completedCount({count:completedUndoItems.length.toString()})}}</span><button type="button" class="htk-btn htk-xs" :disabled="plannerReadOnly" @click="undoCompletedTodos">{{plannerCopy.restore}}</button></div>
 		  <div v-if="lastArchivedTodoId" class="htk-planner-undo" role="status"><span>{{plannerCopy.archivedNotice}}</span><button type="button" class="htk-btn htk-xs" :disabled="plannerReadOnly" @click="restoreTodo(lastArchivedTodoId)">{{plannerCopy.restore}}</button></div>
+	  </Teleport>
 	  <HataskTodoPlanner
+	    :embedded="embedded"
 	    :colorMode="themeMode"
 	    :theme="plannerTheme"
 	    :view="plannerTodoView"
@@ -423,6 +449,7 @@
 	    @manage-folder="managePlannerFolder"
 	    @drop-target="handleTodoDropTarget"
 	    @bulk-action="handleTodoBulkAction"
+	    @captureTarget="todoInlineCaptureTarget=$event"
 	  >
 	    <template #templates>
 	      <HataskTemplateLibrary
@@ -442,10 +469,12 @@
 	</div>
 </div>
 
+					</Teleport>
 <!-- ========== NOTIFICATIONS ========== -->
 
 <!-- ========== MOOD / MEAL: 切替でも入力中の記録を保持する ========== -->
-<div v-show="activeTab==='mood'" class="htk-tabpage htk-journal-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
+					<Teleport :to="captureDestination" :disabled="captureKind !== 'mood'">
+						<div v-show="activeTab==='mood' || captureKind === 'mood'" class="htk-tabpage htk-journal-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
   <HataskJournal
     ref="akatsukiMoodJournal"
     :theme="plannerTheme"
@@ -453,8 +482,10 @@
     :entries="moodJournalRows"
     :writable="journalWritable('moods')"
     :loading="!dataLoaded"
-    :active="activeTab==='mood'"
-    :motion="settings.animations!==false && prefer.r.animation.value"
+								:active="captureKind === 'mood' || (activeTab==='mood' && paneActive)"
+    :motion="embedded || (settings.animations!==false && prefer.r.animation.value)"
+    :captureOnly="captureKind === 'mood'"
+    :showCaptureHint="!embedded"
     :save="saveMoodEntry"
     :remove="deleteMoodEntry"
     @info="showMoodDisclaimer=true"
@@ -462,7 +493,9 @@
   />
 </div>
 
-<div v-show="activeTab==='meal'" class="htk-tabpage htk-journal-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
+					</Teleport>
+					<Teleport :to="captureDestination" :disabled="captureKind !== 'meal'">
+						<div v-show="activeTab==='meal' || captureKind === 'meal'" class="htk-tabpage htk-journal-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
   <HataskJournal
     ref="akatsukiMealJournal"
     kind="meal"
@@ -470,8 +503,10 @@
     :entries="mealJournalRows"
     :writable="journalWritable('meals')"
     :loading="!dataLoaded"
-    :active="activeTab==='meal'"
-    :motion="settings.animations!==false && prefer.r.animation.value"
+								:active="captureKind === 'meal' || (activeTab==='meal' && paneActive)"
+    :motion="embedded || (settings.animations!==false && prefer.r.animation.value)"
+    :captureOnly="captureKind === 'meal'"
+    :showCaptureHint="!embedded"
     :templates="mealTemplates"
     :templatesWritable="journalWritable(HATASK_MEAL_TEMPLATE_KEY)"
     :summary="mealSummaryMessage"
@@ -485,7 +520,9 @@
 </div>
 
 <!-- ========== GARDEN ========== -->
-<div v-if="activeTab==='garden'" class="htk-tabpage htk-garden-page htk-panels" data-garden-layout="streams">
+					</Teleport>
+					<Teleport :to="captureDestination" :disabled="captureKind !== 'garden'">
+						<div v-if="activeTab==='garden' || captureKind === 'garden'" class="htk-tabpage htk-garden-page htk-panels" data-garden-layout="streams">
   <HataskFlowerCare ref="flowerCare" :todos="todos" :folders="folders" :animations="flowerAnimations" :theme="plannerTheme" :mode="themeMode" :readOnly="plannerReadOnly" :completeTodo="completeGardenTodo" @state="applyFlowerState" @harvested="onFlowerHarvested" @hatady="routeRouter.push('/hatady')"/>
   <section class="htk-lg htk-anim htk-seasonal-tree-panel" data-garden-group="seasonal-tree"><div class="htk-gc">
     <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{seasonalTreeCopy.title}}</h3><p class="htk-flower-summary">{{seasonalTreeCopy.description}}</p></div></header>
@@ -518,6 +555,7 @@
 </div>
 
 <!-- ========== END TAB PAGES ========== -->
+					</Teleport>
 </HataskAkatsukiLayout>
 </div><!-- /htk-shell -->
 </div><!-- /htk-app -->
@@ -525,17 +563,17 @@
 <!-- 旗鯖fork(#37): 設定モーダルは HataskSettings.vue に統合(openHataskSettings()でpopup) -->
 
 <!-- MOOD DISCLAIMER MODAL -->
-<Teleport to="body"><div v-if="showMoodDisclaimer" class="htk-modal-ov" :data-theme="plannerTheme" :data-mode="themeMode" @click.self="showMoodDisclaimer=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.aboutMoodRecords}}</div><div class="htk-popup-b">{{copy.moodDisclaimerIntro}}<br><br>{{copy.moodDisclaimerMedicalPrefix}}<strong>{{copy.moodDisclaimerMedicalStrong}}</strong><br><br>{{copy.moodDisclaimerConsult}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showMoodDisclaimer=false">{{copy.accept}}</button></div></div></div></div></Teleport>
-<Teleport to="body"><div v-if="showMealDisclaimer" class="htk-modal-ov" :data-theme="plannerTheme" :data-mode="themeMode" @click.self="ackMealDisclaimer"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.aboutMealRecords}}</div><div class="htk-popup-b">{{mealDisclaimerText}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="ackMealDisclaimer">{{copy.accept}}</button></div></div></div></div></Teleport>
+<Teleport to="body"><div v-if="showMoodDisclaimer && (!embedded || paneActive || captureKind !== null)" class="htk-modal-ov" :data-theme="plannerTheme" :data-mode="themeMode" @click.self="showMoodDisclaimer=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.aboutMoodRecords}}</div><div class="htk-popup-b">{{copy.moodDisclaimerIntro}}<br><br>{{copy.moodDisclaimerMedicalPrefix}}<strong>{{copy.moodDisclaimerMedicalStrong}}</strong><br><br>{{copy.moodDisclaimerConsult}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showMoodDisclaimer=false">{{copy.accept}}</button></div></div></div></div></Teleport>
+<Teleport to="body"><div v-if="showMealDisclaimer && (!embedded || paneActive || captureKind !== null)" class="htk-modal-ov" :data-theme="plannerTheme" :data-mode="themeMode" @click.self="ackMealDisclaimer"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.aboutMealRecords}}</div><div class="htk-popup-b">{{mealDisclaimerText}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="ackMealDisclaimer">{{copy.accept}}</button></div></div></div></div></Teleport>
 
 <!-- FLOWER INFO MODAL -->
-<Teleport to="body"><div v-if="showFlowerInfo" class="htk-modal-ov" :data-theme="plannerTheme" :data-mode="themeMode" @click.self="showFlowerInfo=false"><div class="htk-lg htk-modal-c htk-flower-info"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none;color:var(--accent)"><i class="ti ti-plant-2"></i></div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.howToGrowFlowers}}</div><div class="htk-popup-b">{{copy.flowerInfoGrowth}}<br><br>{{copy.flowerInfoTime}}<br><br>{{copy.flowerInfoNaming}}<br><br>{{copy.flowerInfoVariety}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showFlowerInfo=false">{{copy.understoodExcited}}</button></div></div></div></div></Teleport>
+<Teleport to="body"><div v-if="showFlowerInfo && (!embedded || paneActive || captureKind !== null)" class="htk-modal-ov" :data-theme="plannerTheme" :data-mode="themeMode" @click.self="showFlowerInfo=false"><div class="htk-lg htk-modal-c htk-flower-info"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none;color:var(--accent)"><i class="ti ti-plant-2"></i></div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.howToGrowFlowers}}</div><div class="htk-popup-b">{{copy.flowerInfoGrowth}}<br><br>{{copy.flowerInfoTime}}<br><br>{{copy.flowerInfoNaming}}<br><br>{{copy.flowerInfoVariety}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showFlowerInfo=false">{{copy.understoodExcited}}</button></div></div></div></div></Teleport>
 
 <!-- 旗鯖fork(v2 §14): テーマ選択(設計 .tpickwrap を忠実移植)。picker自身の light/dark トグルを持つ。 -->
-<Teleport to="body"><div v-if="showTutTheme" class="htk-tut-ov htk-tpick-ov">
+<Teleport to="body"><div v-if="showTutTheme && (!embedded || paneActive || captureKind !== null)" class="htk-tut-ov htk-tpick-ov">
   <div class="tpickwrap" :data-mode="themeMode">
     <div class="tpick-cap">{{copy.welcomeTo}}</div>
-    <div class="tpick-logo">Hatask</div>
+    <div class="tpick-logo"><HataAppLogo app="hatask" :size="36" :monochrome="themeMode === 'dark'"/><HataAppWordmark app="hatask" :onDark="themeMode === 'dark'"/></div>
     <div class="tpick-sub">{{copy.chooseAppearance}}<br><span class="tpick-sub2">{{copy.changeAppearanceLater}}</span></div>
     <div class="tpick-seg">
       <button :class="[themeMode!=='dark'&&'on']" @click="setTutMode(false)"><i class="ti ti-sun"></i>{{copy.light}}</button>
@@ -554,7 +592,7 @@
 </div></Teleport>
 
 <!-- TUTORIAL OVERLAY -->
-<Teleport to="body"><div v-if="showTutorial" class="htk-tut-ov" :data-theme="plannerTheme" :data-mode="themeMode">
+<Teleport to="body"><div v-if="showTutorial && (!embedded || paneActive || captureKind !== null)" class="htk-tut-ov" :data-theme="plannerTheme" :data-mode="themeMode">
   <!-- Step 0: Welcome (full-screen) -->
   <div v-if="tutStep===0" class="htk-tut-center" @click.self="skipTutorial">
     <div class="htk-tut-welcome">
@@ -604,13 +642,14 @@
 </div></Teleport>
 
 </div>
-</PageWithHeader>
+</component>
 <Teleport to="body">
 	<HataskEventDetailsDialog
 		class="htk-event-details-theme"
 		:data-theme="plannerTheme"
 		:data-mode="themeMode"
 		:isOpen="viewingEvent !== null"
+		:active="!embedded || paneActive"
 		:event="viewingEventDetails"
 		:labels="eventViewLabels"
 		:readOnly="plannerReadOnly"
@@ -630,6 +669,7 @@
 		:data-theme="plannerTheme"
 		:data-mode="themeMode"
 		:isOpen="blankCalendarTarget !== null"
+		:active="!embedded || paneActive"
 		:targetLabel="blankCalendarTargetLabel"
 		:events="blankCalendarEvents"
 		:labels="blankCalendarLabels"
@@ -650,7 +690,10 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, inject, onMounted, onUnmounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, watch, defineAsyncComponent } from 'vue';
+import { ref, shallowRef, computed, inject, onMounted, onUnmounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, watch, defineAsyncComponent } from 'vue';
+import PageWithHeader from '@/components/global/PageWithHeader.vue';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+import { useHataMascotSuppression } from '@/utility/hata-mascot-suppression.js';
 import type * as Misskey from 'cherrypick-js';
 import type { HataskGrowingFlower } from '@/utility/hatask-flower-growth.js';
 import type { HataskEventDetails, HataskEventDetailsLabels } from '@/components/hatask/hatask-event-details-types.js';
@@ -658,6 +701,8 @@ import type { HataskCalendarBlankEvent, HataskCalendarBlankLabels } from '@/comp
 import type { HataskSearchGroup } from '@/components/hatask/HataskSearchResults.vue';
 import { definePage } from '@/page.js';
 import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { useHataGoesPopup, useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { claimAchievement } from '@/utility/achievements.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { createHatadyCookingReturnPrompt } from '@/utility/hatady-cooking-return.js';
@@ -677,7 +722,7 @@ import HataskEmoji from '@/components/HataskEmoji.vue';
 import HataskFlowerStream from '@/components/hatask/HataskFlowerStream.vue';
 import HataskFlowerCare from '@/components/hatask/HataskFlowerCare.vue';
 import HataskFlowerFestival from '@/components/hatask/HataskFlowerFestival.vue';
-import { HATASK_FLOWER_STATE_EVENT, getHataskFlowerState, refreshHataskFlowerStateAfterUpdate, renameHataskFlower, hataskDropRewardMessage } from '@/utility/hatask-flower-v2.js';
+import { HATASK_FLOWER_STATE_EVENT, getHataskFlowerState, refreshHataskFlowerStateAfterUpdate, renameHataskFlower, hataskDropRewardMessage, pourHataskFlower } from '@/utility/hatask-flower-v2.js';
 import { enqueuePageStatusToast } from '@/utility/hataskey-notification-toast.js';
 import type { HataskFlowerState } from '@/utility/hatask-flower-v2.js';
 import HataskCommunityGarden from '@/components/hatask/HataskCommunityGarden.vue';
@@ -698,6 +743,8 @@ import type { HataskEventMoveDialogLabels } from '@/components/hatask/HataskEven
 import HataskTodoPlanner from '@/components/hatask/HataskTodoPlanner.vue';
 import HataskThemePreview from '@/components/hatask/HataskThemePreview.vue';
 import HataskAkatsukiLayout from '@/components/hatask/HataskAkatsukiLayout.vue';
+import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import HataskAkatsukiApps from '@/components/hatask/HataskAkatsukiApps.vue';
 import type { HataskAkatsukiAction, HataskAkatsukiFavoriteId, HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';
 import { buildHataskAkatsukiModel } from '@/utility/hatask-akatsuki.js';
@@ -705,7 +752,7 @@ import { normalizeHataskAkatsukiFavorites } from '@/utility/hatask-akatsuki-favo
 import { readAkatsukiUsage, recordAkatsukiUsage } from '@/utility/hatask-akatsuki-usage.js';
 import HataskQuickCapture from '@/components/hatask/HataskQuickCapture.vue';
 import HataskJournal from '@/components/hatask/HataskJournal.vue';
-import { HATASK_MEAL_TEMPLATE_KEY, isJournalEntry, persistJournalChange } from '@/utility/hatask-journal.js';
+import { HATASK_MEAL_TEMPLATE_KEY, isJournalEntry, journalLocalDateTime, persistJournalChange } from '@/utility/hatask-journal.js';
 import type { HataskJournalChange, HataskJournalEntry, HataskMealTemplate } from '@/utility/hatask-journal.js';
 import type { HataskCaptureChip, HataskCaptureTool } from '@/components/hatask/HataskQuickCapture.vue';
 import HataskTemplateLibrary from '@/components/hatask/HataskTemplateLibrary.vue';
@@ -726,18 +773,37 @@ import { normalizeHataskPlannerTemplates } from '@/utility/hatask-planner-templa
 import { parseHataskCapture } from '@/utility/hatask-capture-parser.js';
 import { expandHataskEventOccurrences } from '@/utility/hatask-planner-recurrence.js';
 import { completeHataskTodos } from '@/utility/hatask-todo-completion.js';
-import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive, currentExpression as mascotCurrentExpression, currentPhrase as mascotCurrentPhrase, pickRandomPhrase as mascotPickRandomPhrase, displaySettings as mascotDisplaySettings, loadDisplaySettings as loadMascotDisplaySettings, nextIdleDelayMs as mascotNextIdleDelayMs, escapeText as mascotEscapeText } from '@/utility/mascot-store.js';
+import { hatakMascotActive } from '@/utility/mascot-store.js';
+
+const popup = useHataGoesPopup();
+const dialogs = useHataGoesDialogs();
+const popupMenu = useHataGoesPopupMenu();
 const copy = i18n.ts._hata._hatask._main;
 const SeasonalTreeScene = defineAsyncComponent(() => import('@/components/MkSeasonalTree.vue'));
 const seasonalTreeCopy = i18n.ts._hata._seasonalTree;
 const copyx = i18n.tsx._hata._hatask._main;
 const plannerCopy = i18n.ts._hata._hatask._planner;
 const plannerCopyx = i18n.tsx._hata._hatask._planner;
+const props = withDefaults(defineProps<{ embedded?: boolean; requestedTab?: string; paneActive?: boolean }>(), { embedded: false, requestedTab: undefined, paneActive: true });
+const emit = defineEmits<{ exit: []; tabChange: [tab: string]; appearanceChange: [appearance: { theme: string; cssVars?: Record<string, string> }] }>();
+const hataGoesHost = inject(HATA_GOES_HOST, null);
+useHataMascotSuppression(computed(() => !props.embedded || props.paneActive));
+const showGoesLauncher = computed(() => props.embedded && !!hataGoesHost);
+const goesHataskLauncherApps = computed(() => hataGoesHost?.launcherApps?.value.filter(app => app.app === 'hatask').slice(0, 12) ?? []);
+const captureKind = ref<'cal' | 'todo' | 'mood' | 'meal' | 'recipe' | 'garden' | null>(null);
+const captureTarget = ref<HTMLElement | null>(null);
+const calendarInlineCaptureTarget = shallowRef<HTMLElement>();
+const todoInlineCaptureTarget = shallowRef<HTMLElement>();
+const externalCaptureTarget = shallowRef<HTMLElement>();
+const captureDestination = computed(() => externalCaptureTarget.value ?? captureTarget.value ?? 'body');
+const captureCloseButton = ref<HTMLButtonElement | null>(null);
+let captureReturnFocus: HTMLElement | null = null;
+let captureOriginTab = 'home';
 const inPageWindow = inject<boolean>('inWindow', false);
 const closePageWindow = inject(DI.pageWindowClose, null);
 const emotionCopy = (i18n.ts._hata as unknown as { _emotionAnalysis: { title: string } })._emotionAnalysis;
 const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return getDefaultPhrase(); } };
-definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
+definePage(()=>({title:'Hatask',icon:'ti ti-checklist',hataApp:'hatask'}));
 const SCOPE=['client','hatask'];
 const canReviewRecords = computed(() => !!$i && ($i.isAdmin || $i.isModerator));
 const recordReview = ref<InstanceType<typeof HataskRecordReview>>();
@@ -851,6 +917,7 @@ async function registrySet(key:string,value:unknown):Promise<void>{
 			plannerRevisions[key] = result?.revision ?? plannerRevisions[key];
 			plannerStorageState.value = 'saved';
 			plannerStorageDetail.value = '';
+			if (props.embedded && dataLoaded.value) queueMicrotask(() => hataGoesHost?.changed());
 			return;
 		} catch (error) {
 			storePlannerRecoveryCopy(key, value);
@@ -869,6 +936,7 @@ async function registrySet(key:string,value:unknown):Promise<void>{
 	}
 	try {
 		await misskeyApi('i/registry/set',{key,value,scope:SCOPE});
+		if (props.embedded && dataLoaded.value) queueMicrotask(() => hataGoesHost?.changed());
 	} catch (error) {
 		if ((error as { code?: string } | null)?.code === 'HATASK_RECORD_MODERATED') {
 			plannerStorageState.value = 'blocked';
@@ -977,6 +1045,7 @@ watch(activeTab, (nv, ov) => {
 // タブ切り替え時にスクロール状態をリセット
 watch(activeTab, () => {
   nextTick(() => {
+		if (props.embedded) return;
     const root = rootEl.value;
     if (root) {
       root.style.removeProperty('overflow');
@@ -1005,6 +1074,7 @@ const rootEl = ref<HTMLElement | null>(null);
 const showBoot=ref(false);const bootKey=ref(0);let bootTimer:ReturnType<typeof setTimeout>|null=null;let bootUsedActivated=false;
 function playBoot(){
   if(bootTimer){clearTimeout(bootTimer);bootTimer=null;}
+  if(props.embedded){showBoot.value=false;return;}
   const animOff = settings.value.animations===false;
   const reduce = typeof window!=='undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(animOff||reduce){showBoot.value=false;return;}
@@ -1019,7 +1089,7 @@ const isHatakyu = computed(() => settings.value.theme === 'hatakyu');
 const isAkatsuki = computed(() => (settings.value.theme || 'akatsuki') === 'akatsuki');
 const hatakyuThemeStyle = computed(() => isHatakyu.value ? getHataskHatakyuStyle() : undefined);
 
-let hataskPageActive = true;
+let hataskPageActive = !props.embedded || props.paneActive;
 let hataskIntroductionReady = false;
 
 function acceptLoadedHataskSettings(value: unknown): boolean {
@@ -1148,7 +1218,7 @@ function startTutFromTheme(){
 
 function openDrawingTool(){
   showMobileNav.value=false;
-	  os.popup(defineAsyncComponent(()=>import('@/components/MkDrawingTool.vue')),{},{closed:()=>{showMobileNav.value=true}});
+	  popup(defineAsyncComponent(()=>import('@/components/MkDrawingTool.vue')),{},{closed:()=>{showMobileNav.value=true}});
 }
 
 function openHataCard() {
@@ -1157,16 +1227,16 @@ function openHataCard() {
 }
 // ===== Hatask page swipe navigation =====
 
-function cleanupHataskState(){
+function cleanupHataskState(preserveInput = props.embedded) {
 	hataskPageActive = false;
+	if (!preserveInput) {
   closeFlowerDetail();
   closeFlowerCollection();
   closeEventDetail();
   closeBlankCalendarActions();
+	}
   // 旗鯖fork(タスク8): Hataskを離れたらフローティング連動フラグを下げる(フローティング復活)
-  hatakMascotActive.value=false;
-  // 旗鯖fork(タスク2): カードの文言ローテタイマーを停止(残留防止)
-  stopMascotCardRotation();
+	if (!props.embedded) hatakMascotActive.value = false;
 	// 旗鯖fork(#36): 通知・地震ポーリング/購読を停止
   if(hfTimer){clearInterval(hfTimer);hfTimer=null}
   if(eqPollTimer){clearInterval(eqPollTimer);eqPollTimer=null}
@@ -1174,8 +1244,13 @@ function cleanupHataskState(){
   showMobileNav.value=false;
   if(navProtectionObserver){navProtectionObserver.disconnect();navProtectionObserver=null}
   if(navVisibilityTimer){clearInterval(navVisibilityTimer);navVisibilityTimer=null}
-  try{delete document.body.dataset.hataskActive;document.querySelectorAll<HTMLElement>('[data-htask-hidden]').forEach(el=>{el.style.removeProperty('display');delete el.dataset.htaskHidden})}catch{}
-  nextTick(()=>{document.querySelectorAll('.htk-nav-mobile').forEach(el=>el.remove());document.querySelectorAll('.htk-nav-pad').forEach(el=>el.remove())});
+	if (!props.embedded) {
+		try {
+			delete window.document.body.dataset.hataskActive;
+			window.document.querySelectorAll<HTMLElement>('[data-htask-hidden]').forEach(el => { el.style.removeProperty('display'); delete el.dataset.htaskHidden; });
+		} catch { /* Cleanup is best effort. */ }
+		nextTick(() => { window.document.querySelectorAll('.htk-nav-mobile').forEach(el => el.remove()); window.document.querySelectorAll('.htk-nav-pad').forEach(el => el.remove()); });
+	}
 }
 function openHataSettings(){cleanupHataskState();routeRouter.push('/settings/hata-custom')}
 
@@ -1186,7 +1261,7 @@ function openHataIntro() {
 
 function openHataSideStudio(){cleanupHataskState();routeRouter.push('/hata-side-studio')}
 function openHataWhatsNew(){
-  const {dispose}=os.popup(defineAsyncComponent(()=>import('@/components/MkHataWhatsNew.vue')),{}, {closed:()=>dispose()});
+  const {dispose}=popup(defineAsyncComponent(()=>import('@/components/MkHataWhatsNew.vue')),{}, {closed:()=>dispose()});
 }
 function openHatalyze(){cleanupHataskState();routeRouter.push('/hatask/emotion-analysis')}
 // 旗鯖fork: HataFeed / 地震・津波情報ビューアを旗鯖独自アプリから開く
@@ -1222,10 +1297,11 @@ function eventDateRangeLabel(ev:any):string {
 // 旗鯖fork(v2): 季ホーム末尾に並べる旗鯖独自セクション。
 // 旗鯖fork(#37): 設定UIは HataskSettings.vue に一本化(旗鯖独自設定と同じpopup)
 //   reopenTutorial イベントを受けて Hatask本体側のチュートリアル再表示を実行する
-function openHataskSettings(focus?: 'moodReminder'){
+function openHataskSettings(focus?: 'moodReminder', initialSection?: string){
   // focus: きもち画面のリマインドボタンなど、開いた直後に見せたい設定項目。
   // イベントハンドラとして直接渡される箇所があるため、引数は既知の値だけ通す。
-  os.popup(defineAsyncComponent(()=>import('@/pages/HataskSettings.vue')), { focus: focus === 'moodReminder' ? focus : undefined }, {
+  const { dispose } = popup(defineAsyncComponent(()=>import('@/pages/HataskSettings.vue')), { focus: focus === 'moodReminder' ? focus : undefined, initialSection }, {
+    closed: () => dispose(),
     reopenTutorial: () => { setTimeout(reopenTutorial, 250); },
     // 旗鯖fork(v2): 設定変更を即時反映(theme/darkMode/animations 等 → data-theme/data-anim/themeMode が反応)。
     changed: (s:any) => { if (s && typeof s === 'object') { settings.value = { ...settings.value, ...s }; } },
@@ -1314,6 +1390,7 @@ function onEqStreamConn(){streamConnected.value=true;stopEqPoll()}
 function onEqStreamDisc(){streamConnected.value=false;startEqPoll()}
 
 function exitHatask(): void {
+	if (props.embedded) { emit('exit'); return; }
 	if (closePageWindow) {
 		closePageWindow();
 		return;
@@ -1371,49 +1448,11 @@ function scheduleEventNotifications(){
 const currentTime=ref('');const currentDate=ref('');const eyePhrase=ref(getDefaultPhrase());const editingEvent=ref<any>(null);let eyeTimer:ReturnType<typeof setInterval>|null=null;
 // 旗鯖fork(v2): テーマ別の時計まわり日付パーツ(季=1月9日/金曜日, 刷=2026.01.09/FRIDAY)。
 const clockMD=ref('');const clockDow=ref('');const clockDot=ref('');const clockEn=ref('');
-// 旗鯖fork(タスク8/タスク2): マスコットカード(ミニ版)。
-// 静止画ではなく現在の表情(currentExpression)に追従させ、設定文言をランダムローテで吹き出しに出す。
-// 吹き出し座標・motionはフローティング(MkMascotFloating)と同じロジック・同じグローバルmotionクラスを共有する。
-// announce(通知/誕生日/未読)はカードでは出さず、設定文言のみをローテする(論点①: 通知/誕生日除外)。
-const mascotCardName=computed(()=>mascotActiveCharacter.value?.name ?? '');
-// 旗鯖fork: マスコット機能の利用可否(ロールポリシー)。未許可ならホームのマスコットカードを出さない。
+// 旗鯖fork: マスコット機能の利用可否(ロールポリシー)。App一覧のアクセス制御に使う。
 	const canUseMascot=computed(() => ($i?.policies as Record<string, unknown> | undefined)?.canUseMascot === true);
-const mascotCardUrl=computed(()=>{const c=mascotActiveCharacter.value;if(!c||c.expressions.length===0)return '';return expressionDisplayUrl(mascotCurrentExpression.value ?? c.expressions[0]);});
-// 表示する文言(設定文言のローテのみ。announceは無視)。tellRandomPhrasesがOFFなら出さない。
-const mascotCardPhrase=computed(()=>{
-  if(mascotDisplaySettings.value.tellRandomPhrases===false)return '';
-  const t=mascotCurrentPhrase.value?.text ?? '';
-  return t ? mascotEscapeText(t) : '';
-});
-// 吹き出し座標(フローティングの bubbleStyle と同一ロジック)。表情ごとの bubbleX/Y/scale を枠基準%で配置。
-const mascotCardBubbleStyle=computed(()=>{
-  const e=mascotCurrentExpression.value;
-  const x=(typeof e?.bubbleX==='number'?e.bubbleX:0.5);
-  const y=(typeof e?.bubbleY==='number'?e.bubbleY:0.1);
-  const scale=(typeof e?.bubbleScale==='number'?e.bubbleScale:1);
-  const s:Record<string,string>={left:(x*100)+'%',top:(y*100)+'%',fontSize:(0.85*scale)+'rem'};
-  if(e?.textColor)s.color=e.textColor;
-  return s;
-});
-const mascotCardBubbleTail=computed<'left'|'right'>(()=>(mascotCurrentExpression.value?.bubbleTail==='right'?'right':'left'));
-// 立ち絵モーション(フローティングが定義済みのグローバルクラスをそのまま流用。論点②: 同じmotionをそのまま出す)。
-const mascotCardMotionClass=computed(()=>{
-  const m=mascotCurrentExpression.value?.motion ?? 'none';
-  return m==='bounce'?'htkFloatMotionBounce':m==='shake'?'htkFloatMotionShake':m==='sway'?'htkFloatMotionSway':m==='spin'?'htkFloatMotionSpin':'';
-});
-// カードのクリックで次の文言へ(フローティングと同じ操作感)。announceは使わないのでpickRandomPhraseのみ。
-function onMascotCardClick(){mascotPickRandomPhrase();}
 // マスコット専用設定(論点③)。/mascot は表示ページなので、設定は hata-custom と同じく
 // MkMascotSettings をポップアップで開く(Haskを離れないのでcleanup不要)。
-	function goToMascotSettings(){os.popup(defineAsyncComponent(()=>import('@/pages/MkMascotSettings.vue')),{},{});}
-// カードの文言ローテ(論点①)。フローティングが非表示の間はフローティング側のローテが回らないため、カードが自前で回す。
-let mascotCardRotateTimer:ReturnType<typeof setTimeout>|null=null;
-function startMascotCardRotation(){
-  stopMascotCardRotation();
-  const delay=mascotNextIdleDelayMs();
-  mascotCardRotateTimer=setTimeout(()=>{mascotPickRandomPhrase();startMascotCardRotation();},delay);
-}
-function stopMascotCardRotation(){if(mascotCardRotateTimer){clearTimeout(mascotCardRotateTimer);mascotCardRotateTimer=null;}}
+	function goToMascotSettings(){popup(defineAsyncComponent(()=>import('@/pages/MkMascotSettings.vue')),{},{});}
 const closedRsvpNotifs=ref<{eventId:string,emoji:string,title:string,goCount:number}[]>([]);
 const dismissedRsvpNotifs=ref<string[]>([]);
 const sharedEvents=ref<any[]>([]);
@@ -1757,7 +1796,7 @@ function closeRecipe(): void {
 }
 
 const offerHatadyReturn = createHatadyCookingReturnPrompt(
-	options => os.confirm(options),
+	options => dialogs.confirm(options),
 	() => { if (hataskPageActive) { cleanupHataskState(); routeRouter.push('/hatady'); } },
 );
 // 旗鯖fork: HataSideStudio・Hatask通知・HataIntroから、許可したタブへ直接移動する。
@@ -1767,6 +1806,7 @@ watch([
 	() => routeRouter.currentRef.value.props.get('tab'),
 	() => routeRouter.currentRef.value.props.get('notice'),
 ], ([explicitTab, notice]) => {
+	if (props.embedded) return;
 	const requestedTab = explicitTab ?? (notice === 'mood' ? 'mood' : notice === 'calendar' ? 'cal' : undefined);
 	activeTab.value = typeof requestedTab === 'string' && (tabs.value.some(tab => tab.id === requestedTab)
 		|| requestedTab === 'hataskapps') ? requestedTab : 'home';
@@ -1875,7 +1915,7 @@ async function deleteEventById(id:string,options:{skipConfirm?:boolean}={}){
 	const local=events.value.find(event=>event.id===sourceId||event.serverEventId===sourceId);
 	const shared=sharedEventData(local?.id||sourceId);
 	if(shared&&shared.userId!==$i?.id){os.toast(copy.cannotDeleteOthersEvent);return}
-	if(!options.skipConfirm){const {canceled}=await os.confirm({type:'warning',text:plannerCopy.confirmDeleteEvent});if(canceled)return}
+	if(!options.skipConfirm){const {canceled}=await dialogs.confirm({type:'warning',text:plannerCopy.confirmDeleteEvent});if(canceled)return}
 
 	let serverEventId=local?.serverEventId||(!local&&shared?.userId===$i?.id?shared.id:null);
 	let serverEventRevision=String(local?.serverEventRevision||shared?.revision||'')||undefined;
@@ -2001,7 +2041,7 @@ function setEventVisibility(visibility:'private' | 'public' | 'specified'):void 
 }
 
 function toggleEventCaptureVisibility(anchor?:HTMLElement):void{
-	void os.popupMenu([
+	void popupMenu([
 		{ text: copy.private, icon: 'ti ti-lock', action: () => setEventVisibility('private') },
 		{ text: copy.public, icon: 'ti ti-world', action: () => setEventVisibility('public') },
 		{ text: plannerCopy.memberVisibility, icon: 'ti ti-users', action: () => setEventVisibility('specified') },
@@ -2036,7 +2076,7 @@ async function handleEventCaptureTool(id:string, anchor?:HTMLElement):Promise<vo
 }
 async function saveEventCaptureAsTemplate():Promise<void>{
 	applyEventCaptureSyntax(newEvent.value.title,true);const title=newEvent.value.title.trim();if(!title){eventCaptureRef.value?.focus();return}
-	const {canceled,result}=await os.inputText({title:plannerCopy.saveTemplate,text:plannerCopy.templateNamePrompt,default:title,minLength:1,maxLength:80});const name=typeof result==='string'?result.trim():'';if(canceled||!name)return;
+	const {canceled,result}=await dialogs.inputText({title:plannerCopy.saveTemplate,text:plannerCopy.templateNamePrompt,default:title,minLength:1,maxLength:80});const name=typeof result==='string'?result.trim():'';if(canceled||!name)return;
 	const start=parseIsoDate(newEvent.value.date);const end=parseIsoDate(newEvent.value.dateEnd||newEvent.value.date);const durationDays=Math.max(0,Math.round((end.getTime()-start.getTime())/86400000));
 	const template:HataskPlannerTemplate = { id: generateId(), kind: 'event', name, position: plannerTemplatePosition(), archivedAt: null, createdAt: new Date().toISOString(), payload: { title, visibility: newEvent.value.visibility === 'specified' ? 'specified' : 'private', visibleUserIds: newEvent.value.visibility === 'specified' ? [...newEvent.value.visibleUserIds] : [], rsvp: newEvent.value.visibility === 'specified' && newEvent.value.rsvp, emoji: newEvent.value.emoji, timeStart: newEvent.value.timeStart, timeEnd: newEvent.value.timeEnd, durationDays, allDay: newEvent.value.allDay, color: newEvent.value.color, notify: newEvent.value.notify, notifyTimings: [...newEvent.value.notifyTimings], recurrence: { ...newEvent.value.recurrence } } };
 	await savePlannerTemplates([...plannerTemplates.value,template]);os.toast(plannerCopy.templateSaved);
@@ -2202,17 +2242,17 @@ function removeTodoCaptureChip(id:string):void{
 	else if(id==='recurrence')newTodoRecurrence.value='none';
 }
 async function chooseTodoFolder():Promise<void>{
-	const {canceled,result}=await os.actions({type:'question',title:copy.folder,actions:[{value:'',text:copy.noFolder},...activeFolders.value.map(folder=>({value:folder.id,text:`${folder.emoji||'📁'} ${folder.name}`}))]});
+	const {canceled,result}=await dialogs.actions({type:'question',title:copy.folder,actions:[{value:'',text:copy.noFolder},...activeFolders.value.map(folder=>({value:folder.id,text:`${folder.emoji||'📁'} ${folder.name}`}))]});
 	if(!canceled&&typeof result==='string')newTodoFolder.value=result;
 }
 async function chooseTodoPriority():Promise<void>{
 	const priorities=['none','low','medium','high'] as const;
-	const {canceled,result}=await os.actions({type:'question',title:plannerCopy.priority,actions:priorities.map(value=>({value,text:plannerTodoPriorityLabel(value)}))});
+	const {canceled,result}=await dialogs.actions({type:'question',title:plannerCopy.priority,actions:priorities.map(value=>({value,text:plannerTodoPriorityLabel(value)}))});
 	if(!canceled&&priorities.includes(result as typeof priorities[number]))newTodoPriority.value=result as typeof priorities[number];
 }
 async function chooseTodoRecurrence():Promise<void>{
 	const frequencies:HataskRecurrenceFrequency[]=['none','daily','weekly','monthly','yearly'];
-	const {canceled,result}=await os.actions({type:'question',title:plannerCopy.recurrence,actions:frequencies.map(value=>({value,text:recurrenceLabel(value)}))});
+	const {canceled,result}=await dialogs.actions({type:'question',title:plannerCopy.recurrence,actions:frequencies.map(value=>({value,text:recurrenceLabel(value)}))});
 	if(!canceled&&frequencies.includes(result as HataskRecurrenceFrequency))newTodoRecurrence.value=result as HataskRecurrenceFrequency;
 }
 async function handleTodoCaptureChip(id:string):Promise<void>{
@@ -2231,7 +2271,7 @@ async function handleTodoCaptureTool(id:string):Promise<void>{
 
 function openPlannerCaptureTemplates(kind: 'todo' | 'event', event: MouseEvent): void {
 	if (plannerReadOnly.value || !plannerTemplatesLoaded.value) return;
-	os.popupMenu([
+	popupMenu([
 		{ text: plannerCopy.useTemplates, icon: 'ti ti-template', action: () => {
 			if (kind === 'todo') {
 				templateKindFilter.value = 'todo';
@@ -2266,7 +2306,7 @@ function resolvedTodoTemplateDue(payload:Record<string,unknown>):string{
 async function saveTodoCaptureAsTemplate():Promise<void>{
 	applyTodoCaptureSyntax(newTodo.value,true);
 	const text=newTodo.value.trim();if(!text){todoCaptureRef.value?.focus();return}
-	const {canceled,result}=await os.inputText({title:plannerCopy.saveTemplate,text:plannerCopy.templateNamePrompt,default:text,minLength:1,maxLength:80});
+	const {canceled,result}=await dialogs.inputText({title:plannerCopy.saveTemplate,text:plannerCopy.templateNamePrompt,default:text,minLength:1,maxLength:80});
 	const name=typeof result==='string'?result.trim():'';if(canceled||!name)return;
 	const duePreset=todoTemplateDuePreset(newTodoDue.value);
 	const template:HataskPlannerTemplate={
@@ -2311,7 +2351,7 @@ async function duplicatePlannerTemplate(template:HataskPlannerTemplate):Promise<
 	await savePlannerTemplates([...plannerTemplates.value,duplicate]);
 }
 async function archivePlannerTemplate(template:HataskPlannerTemplate):Promise<void>{
-	const {canceled}=await os.confirm({type:'warning',text:plannerCopyx.confirmArchiveTemplate({name:template.name})});if(canceled)return;
+	const {canceled}=await dialogs.confirm({type:'warning',text:plannerCopyx.confirmArchiveTemplate({name:template.name})});if(canceled)return;
 	const next=plannerTemplates.value.map(item=>item.id===template.id?{...item,archivedAt:new Date().toISOString(),updatedAt:new Date().toISOString()}:item);await savePlannerTemplates(next);
 }
 async function movePlannerTemplate(template:HataskPlannerTemplate,direction:-1|1):Promise<void>{
@@ -2516,7 +2556,7 @@ function activatePlannerEvent(event: HataskCalendarEvent, day: HataskCalendarDay
 	const source = findPlannerCalendarSource(event);
 	if (source) openEventDetail(source, trigger);
 }
-	function plannerScrollBehavior():ScrollBehavior{return settings.value.animations===false||!prefer.r.animation.value||window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}
+	function plannerScrollBehavior():ScrollBehavior{return props.embedded ? 'smooth' : settings.value.animations===false||!prefer.r.animation.value||window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}
 
 function editPlannerEvent(event: HataskCalendarEvent, day: HataskCalendarDay): void {
 	if (plannerReadOnly.value) return;
@@ -2556,10 +2596,10 @@ function handleCalendarEventDrop(event:HataskCalendarEvent,day:HataskCalendarDay
 }
 async function handleCalendarMoveRequest(event:HataskCalendarEvent):Promise<void>{
 	if(plannerReadOnly.value||event.draggable===false)return;
-	const {canceled,result}=await os.inputText({title:plannerCopy.reschedule,text:plannerCopy.dateInputHint,default:event.date||localDateKey(),maxLength:10});
+	const {canceled,result}=await dialogs.inputText({title:plannerCopy.reschedule,text:plannerCopy.dateInputHint,default:event.date||localDateKey(),maxLength:10});
 	const date=typeof result==='string'?result.trim():'';if(canceled)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){os.toast(plannerCopy.invalidDate);return}
 	let targetTime:string|undefined;
-	if(!event.isAllDay){const timeResult=await os.inputText({title:copy.time,text:plannerCopy.timeInputHint,default:event.timeStart||'09:00',maxLength:5});if(timeResult.canceled)return;const value=typeof timeResult.result==='string'?timeResult.result.trim():'';if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)){os.toast(plannerCopy.invalidTime);return}targetTime=value}
+	if(!event.isAllDay){const timeResult=await dialogs.inputText({title:copy.time,text:plannerCopy.timeInputHint,default:event.timeStart||'09:00',maxLength:5});if(timeResult.canceled)return;const value=typeof timeResult.result==='string'?timeResult.result.trim():'';if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)){os.toast(plannerCopy.invalidTime);return}targetTime=value}
 	pendingCalendarAction.value={mode:'reschedule',event,targetDate:date,...(targetTime?{targetTime}:{})};
 }
 function handleCalendarEventTrash(event:HataskCalendarEvent):void{if(!plannerReadOnly.value&&event.draggable!==false)pendingCalendarAction.value={mode:'trash',event}}
@@ -2668,7 +2708,7 @@ async function createBlankCalendarEvent(): Promise<void> {
 		// Unmount the chooser/focus trap before opening another dialog.
 		await nextTick();
 		if (discardDraft) {
-			const { canceled } = await os.confirm({ type: 'warning', text: plannerCopy._blankCalendar.replaceDraft });
+			const { canceled } = await dialogs.confirm({ type: 'warning', text: plannerCopy._blankCalendar.replaceDraft });
 			if (canceled) return;
 		}
 		if (generation !== blankCalendarGeneration || plannerReadOnly.value || activeTab.value !== 'cal') return;
@@ -2934,7 +2974,7 @@ const communityFlowerTotal = ref(0);
 const communityFlowersLoading = ref(false);
 const communityFlowersError = ref(false);
 const flowerVisibilitySaving = ref(false);
-const flowerAnimations = computed(() => settings.value.animations !== false && prefer.r.animation.value && !showFlowerInfo.value);
+const flowerAnimations = computed(() => (props.embedded || (settings.value.animations !== false && prefer.r.animation.value)) && !showFlowerInfo.value);
 const flowerDataWritable = computed(() => dataLoaded.value && loadedKeys.has('flower') && loadedKeys.has('gallery'));
 const flowerVisibilityLabel = computed(() => flowerVisibilityOptions.value.find(option => option.value === flowerVisibility.value)?.label ?? '');
 const seasonFlowerLabel = computed(() => ({ spring: copy.flowerSeasonSpring, summer: copy.flowerSeasonSummer, autumn: copy.flowerSeasonAutumn, winter: copy.flowerSeasonWinter })[getHataskFlowerSeason(akatsukiNow.value)]);
@@ -2992,7 +3032,7 @@ function openFlowerCollection(kind: 'personal' | 'community', event: MouseEvent)
 	const owner = { showing: ref(true), kind, closed };
 	activeFlowerCollection = owner;
 	flowerCollectionKind.value = kind;
-	const { dispose } = os.popup(HataskFlowerCollection, {
+	const { dispose } = popup(HataskFlowerCollection, {
 		items: personal ? personalFlowerViews : communityFlowerViews,
 		title: personal ? copy.flowerGallery : copy.communityFlowerGallery,
 		summary: computed(() => copyx.flowerCount({ count: (personal ? gallery.value.length : communityFlowerTotal.value).toString() })),
@@ -3047,7 +3087,7 @@ function openFlowerDetail(kind: FlowerStreamKind, selection: HataskFlowerSelecti
 	activeFlowerPopup = owner;
 	flowerDialogOpen.value = true;
 	selectedCommunityFlowerId.value = kind === 'personal' ? null : view.id;
-	const { dispose } = os.popup(HataskFlowerDetail, {
+	const { dispose } = popup(HataskFlowerDetail, {
 		flower: view, source: selection.anchor, returnFocusTo: selection.returnFocusTo,
 		theme: plannerTheme.value, mode: themeMode.value, animations: flowerAnimations.value,
 		isOpen: owner.showing,
@@ -3328,7 +3368,7 @@ async function toggleTodo(id:string,done?:boolean):Promise<CompletedTodoUndoItem
 	todos.value=nextTodos;
 	return[];
 }
-async function deleteTodo(id:string){if(plannerReadOnly.value)return;const{canceled}=await os.confirm({type:'warning',text:copy.confirmDeleteTodo});if(canceled)return;const next=todos.value.filter(t=>t.id!==id);await registrySet('todos',next);todos.value=next}
+async function deleteTodo(id:string){if(plannerReadOnly.value)return;const{canceled}=await dialogs.confirm({type:'warning',text:copy.confirmDeleteTodo});if(canceled)return;const next=todos.value.filter(t=>t.id!==id);await registrySet('todos',next);todos.value=next}
 async function editTodo(id:string){const t=todos.value.find(t=>t.id===id);if(!t)return;editingTodoId.value=id;newTodo.value=t.text;newTodoDue.value=t.due||'';newTodoTime.value=t.time||'';newTodoFolder.value=t.folder||'';newTodoComment.value=t.comment||'';newTodoPriority.value=t.priority||'none';newTodoRecurrence.value=t.recurrence?.frequency||'none';newTodoSubtasks.value=(t.subtasks||[]).map(subtask=>({...subtask}));showTodoExtra.value=true;focusTodoEditor()}
 function cancelEditTodo(){resetTodoEditor()}
 async function archiveTodo(id:string):Promise<void>{if(plannerReadOnly.value)return;const index=todos.value.findIndex(item=>item.id===id);if(index<0)return;const next=[...todos.value];next.splice(index,1,{...todos.value[index],archivedAt:new Date().toISOString()});await registrySet('todos',next);todos.value=next;lastArchivedTodoId.value=id;if(archiveUndoTimer)window.clearTimeout(archiveUndoTimer);archiveUndoTimer=window.setTimeout(()=>{lastArchivedTodoId.value=null;archiveUndoTimer=null},8000)}
@@ -3361,7 +3401,7 @@ async function openFolderActions(folderId:string,index:number):Promise<void>{
 	if(plannerReadOnly.value)return;const folder=activeFolders.value.find(item=>item.id===folderId);if(!folder)return;
 	const actions:Array<{value:'rename'|'color'|'up'|'down'|'archive';text:string}>=[{value:'rename',text:copy.renameFolderTitle},{value:'color',text:copy.changeColor}];
 	if(index>0)actions.push({value:'up',text:plannerCopy.moveUp});if(index<activeFolders.value.length-1)actions.push({value:'down',text:plannerCopy.moveDown});actions.push({value:'archive',text:plannerCopy.archive});
-	const{canceled,result}=await os.actions({type:'question',title:folder.name,actions});if(canceled)return;
+	const{canceled,result}=await dialogs.actions({type:'question',title:folder.name,actions});if(canceled)return;
 	if(result==='rename')await renameFolder(folder.id);else if(result==='color')await changeFolderColor(folder.id);else if(result==='up')await moveFolder(folder.id,-1);else if(result==='down')await moveFolder(folder.id,1);else if(result==='archive')await deleteFolder(folder.id);
 }
 async function saveTodosAsTemplates(ids:readonly string[]):Promise<void>{
@@ -3380,7 +3420,7 @@ async function completePlannerTodos(ids:readonly string[]):Promise<void>{
 	finally{window.setTimeout(()=>{const completedIds=new Set(completed.undo.map(entry=>entry.before.id));todoCompletionIds.value=todoCompletionIds.value.filter(id=>!completedIds.has(id))},520)}
 }
 async function promptPlannerDue(defaultValue:string):Promise<string|null>{
-	const {canceled,result}=await os.inputText({title:copy.dueDate,text:plannerCopy.dateInputHint,default:defaultValue,maxLength:10});if(canceled)return null;
+	const {canceled,result}=await dialogs.inputText({title:copy.dueDate,text:plannerCopy.dateInputHint,default:defaultValue,maxLength:10});if(canceled)return null;
 	const value=typeof result==='string'?result.trim():'';if(value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){os.toast(plannerCopy.invalidDate);return null}return value;
 }
 async function updatePlannerTodos(ids:readonly string[],update:(todo:HataskPlannerTodo)=>HataskPlannerTodo):Promise<void>{
@@ -3402,24 +3442,24 @@ async function handleTodoBulkAction(action:'complete'|'move'|'due'|'priority'|'a
 	if(plannerReadOnly.value||ids.length===0)return;
 	if(action==='complete'){await completePlannerTodos(ids);return}
 	if(action==='move'){
-		const {canceled,result}=await os.actions({type:'question',title:plannerCopy.bulkMove,actions:[{value:'',text:copy.noFolder},...activeFolders.value.map(folder=>({value:folder.id,text:`${folder.emoji||'📁'} ${folder.name}`}))]});
+		const {canceled,result}=await dialogs.actions({type:'question',title:plannerCopy.bulkMove,actions:[{value:'',text:copy.noFolder},...activeFolders.value.map(folder=>({value:folder.id,text:`${folder.emoji||'📁'} ${folder.name}`}))]});
 		if(!canceled&&typeof result==='string')await updatePlannerTodos(ids,todo=>({...todo,folder:result}));return;
 	}
 	if(action==='due'){
 		const due=await promptPlannerDue(localDateKey());if(due!=null)await updatePlannerTodos(ids,todo=>({...todo,due}));return;
 	}
 	if(action==='priority'){
-		const {canceled,result}=await os.actions({type:'question',title:plannerCopy.priority,actions:[{value:'none',text:plannerCopy.priorityNone},{value:'low',text:plannerCopy.priorityLow},{value:'medium',text:plannerCopy.priorityMedium},{value:'high',text:plannerCopy.priorityHigh}]});
+		const {canceled,result}=await dialogs.actions({type:'question',title:plannerCopy.priority,actions:[{value:'none',text:plannerCopy.priorityNone},{value:'low',text:plannerCopy.priorityLow},{value:'medium',text:plannerCopy.priorityMedium},{value:'high',text:plannerCopy.priorityHigh}]});
 		if(!canceled&&(result==='none'||result==='low'||result==='medium'||result==='high'))await updatePlannerTodos(ids,todo=>({...todo,priority:result}));return;
 	}
-	const {canceled}=await os.confirm({type:'warning',text:plannerCopyx.confirmBulkArchive({count:ids.length.toString()})});if(canceled)return;
+	const {canceled}=await dialogs.confirm({type:'warning',text:plannerCopyx.confirmBulkArchive({count:ids.length.toString()})});if(canceled)return;
 	await updatePlannerTodos(ids,todo=>({...todo,archivedAt:new Date().toISOString()}));
 }
 async function addFolder(){if(plannerReadOnly.value||!newFolderName.value.trim())return;const maxPosition=folders.value.reduce((maximum,folder)=>Math.max(maximum,folder.position??-1),-1);const next=[...folders.value,{id:generateId(),name:newFolderName.value.trim(),emoji:newFolderEmoji.value||'📁',color:newFolderColor.value||'',position:maxPosition+1,archivedAt:null}];await registrySet('folders',next);folders.value=next;newFolderName.value='';newFolderEmoji.value='📁';newFolderColor.value='';showFolderCreate.value=false}
-async function deleteFolder(folderId:string){if(plannerReadOnly.value)return;const folder=folders.value.find(item=>item.id===folderId&&item.archivedAt==null);if(!folder)return;const{canceled}=await os.confirm({type:'warning',text:copyx.confirmDeleteFolder({name:folder.name})});if(canceled)return;const next=folders.value.map(item=>item.id===folder.id?{...item,archivedAt:new Date().toISOString()}:item);await registrySet('folders',next);folders.value=next;if(activeFolder.value===folder.id)activeFolder.value='all'}
-async function renameFolder(folderId:string){if(plannerReadOnly.value)return;const folder=folders.value.find(item=>item.id===folderId&&item.archivedAt==null);if(!folder)return;const{canceled,result}=await os.inputText({title:copy.renameFolderTitle,text:copy.newNamePrompt,default:folder.name});if(!canceled&&result){const next=folders.value.map(item=>item.id===folder.id?{...item,name:result}:item);await registrySet('folders',next);folders.value=next}}
+async function deleteFolder(folderId:string){if(plannerReadOnly.value)return;const folder=folders.value.find(item=>item.id===folderId&&item.archivedAt==null);if(!folder)return;const{canceled}=await dialogs.confirm({type:'warning',text:copyx.confirmDeleteFolder({name:folder.name})});if(canceled)return;const next=folders.value.map(item=>item.id===folder.id?{...item,archivedAt:new Date().toISOString()}:item);await registrySet('folders',next);folders.value=next;if(activeFolder.value===folder.id)activeFolder.value='all'}
+async function renameFolder(folderId:string){if(plannerReadOnly.value)return;const folder=folders.value.find(item=>item.id===folderId&&item.archivedAt==null);if(!folder)return;const{canceled,result}=await dialogs.inputText({title:copy.renameFolderTitle,text:copy.newNamePrompt,default:folder.name});if(!canceled&&result){const next=folders.value.map(item=>item.id===folder.id?{...item,name:result}:item);await registrySet('folders',next);folders.value=next}}
 async function moveFolder(folderId:string,direction:number){if(plannerReadOnly.value)return;const ordered=activeFolders.value;const index=ordered.findIndex(folder=>folder.id===folderId);const other=ordered[index+direction];const current=ordered[index];if(!current||!other)return;const next=folders.value.map(folder=>folder.id===current.id?{...folder,position:other.position}:folder.id===other.id?{...folder,position:current.position}:folder);await registrySet('folders',next);folders.value=next}
-async function changeFolderColor(folderId:string){if(plannerReadOnly.value)return;const folder=folders.value.find(item=>item.id===folderId&&item.archivedAt==null);if(!folder)return;const{canceled,result}=await os.actions({type:'question',title:copy.folderColorTitle,actions:[...folderColors.value.map(c=>({value:c.value,text:c.label})),{value:'',text:copy.none}]});if(canceled)return;const next=folders.value.map(item=>item.id===folder.id?{...item,color:result}:item);await registrySet('folders',next);folders.value=next}
+async function changeFolderColor(folderId:string){if(plannerReadOnly.value)return;const folder=folders.value.find(item=>item.id===folderId&&item.archivedAt==null);if(!folder)return;const{canceled,result}=await dialogs.actions({type:'question',title:copy.folderColorTitle,actions:[...folderColors.value.map(c=>({value:c.value,text:c.label})),{value:'',text:copy.none}]});if(canceled)return;const next=folders.value.map(item=>item.id===folder.id?{...item,color:result}:item);await registrySet('folders',next);folders.value=next}
 
 type HataskJournalKey = 'moods' | 'meals' | typeof HATASK_MEAL_TEMPLATE_KEY;
 const journalWrites = new Set<HataskJournalKey>();
@@ -3435,6 +3475,7 @@ async function commitJournalChange(key: HataskJournalKey, change: HataskJournalC
 	try {
 		// Keep the original arrays and drafts until the server acknowledges the write.
 		target.value = await persistJournalChange(target.value, change, next => registrySet(key, next));
+		if (props.embedded) hataGoesHost?.changed();
 	} finally { journalWrites.delete(key); }
 }
 
@@ -3478,7 +3519,7 @@ async function inputFlowerName(props: { title: string; text: string; default: st
 	if (!isSourceTabActive()) return { canceled: true };
 	return new Promise(resolve => {
 		let outcome: { canceled: boolean; result?: string | null } = { canceled: true };
-		const { dispose } = os.popup(component, {
+		const { dispose } = popup(component, {
 			title: props.title, text: props.text,
 			input: { type: 'text', default: props.default, minLength: props.minLength, maxLength: props.maxLength },
 		}, {
@@ -3627,7 +3668,7 @@ async function reportCommunityFlower(item: CommunityFlower): Promise<void> {
 	const component = await import('@/components/MkAbuseReportWindow.vue').then(module => module.default);
 	if (!hataskPageActive || activeTab.value !== 'garden' || !communityFlowers.value.some(flower => flower.id === item.id)) return;
 	await new Promise<void>(resolve => {
-		const { dispose } = os.popup(component, {
+		const { dispose } = popup(component, {
 			user: item.user!,
 			initialComment: copyx.flowerReportComment({ name: localizeFloraName(item.name), date: formatFlowerDate(item) }),
 		}, { closed: () => { dispose(); resolve(); } });
@@ -3675,10 +3716,10 @@ const akatsukiUsageOwner = $i?.id;
 const akatsukiUsage = ref(readAkatsukiUsage(akatsukiUsageOwner));
 const akatsukiTools = computed(() => [
 	...tabs.value.filter(tab => tab.id !== 'home').map(tab => ({ id: tab.id, label: tab.label, icon: tab.icon })),
-	...homeApps.value.map(app => ({ id: app.id, label: app.label, icon: app.icon })),
+	...homeApps.value.filter(app => !props.embedded || app.id !== 'hatasettings').map(app => ({ id: app.id, label: app.label, icon: app.icon })),
 	{ id: 'settings', label: copy.hataskSettings, icon: 'ti ti-palette' },
 	...(canUseMascot.value ? [{ id: 'mascot', label: 'マスコット', icon: 'ti ti-mood-smile' }] : []),
-	{ id: 'games', label: 'ゲーム', icon: 'ti ti-device-gamepad-2' },
+	...(!props.embedded ? [{ id: 'games', label: 'ゲーム', icon: 'ti ti-device-gamepad-2' }] : []),
 ]);
 const akatsukiFeedbackNotifications = computed(() => canAccessHataFeed.value && settings.value.showFeedbackNotif !== false
 	? [...hfNotifs.value].sort((a, b) => Number(a.isRead) - Number(b.isRead)).slice(0, 3) : []);
@@ -3814,7 +3855,7 @@ async function handleAkatsukiAction(action: HataskAkatsukiAction): Promise<void>
     case 'open-app': if (action.id) openAkatsukiApp(action.id); break;
     case 'toggle-todo':
       if (!action.id || plannerReadOnly.value) break;
-      try { registerCompletedUndo(await toggleTodo(action.id, true)); } catch { os.alert({ type: 'error', text: i18n.ts._hata._hatask._journal.saveFailure }); }
+      try { registerCompletedUndo(await toggleTodo(action.id, true)); } catch { dialogs.alert({ type: 'error', text: i18n.ts._hata._hatask._journal.saveFailure }); }
       break;
     case 'snooze-event': {
       const event = allCalendarEvents.value.find(item => item.id === action.id);
@@ -3833,12 +3874,8 @@ onMounted(async () => {
 //   hatask は keep-alive のため遷移復帰では onMounted が走らず、以前は初回リロード時しか出なかった。
 //   keep-alive なら onActivated が初回mount含め必ず走るので、そちらに一本化。
 //   keep-alive でない環境向けの保険として、onActivated が走らなければ onMounted 側で再生する。
-nextTick(()=>{ if(!bootUsedActivated) playBoot(); });
-// 旗鯖fork(タスク8): マスコットカード用にデータを読み込み、Hatask表示中フラグを立てる(フローティング連動非表示)
-loadMascot();
-// 旗鯖fork(タスク2): カードの文言ローテに表示設定が要るためロードし、初期文言を選んでローテ開始(利用許可時のみ)
-if(canUseMascot.value){loadMascotDisplaySettings().then(()=>{mascotPickRandomPhrase();startMascotCardRotation();});}
-hatakMascotActive.value = true;
+if (!props.embedded) nextTick(()=>{ if(!bootUsedActivated) playBoot(); });
+	if (!props.embedded) hatakMascotActive.value = true;
 // 旗鯖fork(#36): HataFeed通知タイル＋地震・津波タイルの起動
 if (canAccessHataFeed.value) { void loadHfNotifs(); hfTimer = window.setInterval(loadHfNotifs, 30_000); }
 loadEq();eqStream=useStream();eqStream.on('earthquakeEvent',onEqEvent);eqStream.on('_connected_',onEqStreamConn);eqStream.on('_disconnected_',onEqStreamDisc);streamConnected.value=eqStream.state==='connected';
@@ -3859,6 +3896,7 @@ const themeObs=new MutationObserver(()=>{misskeyTheme.value=detectMisskeyTheme()
 themeObs.observe(document.documentElement,{attributes:true,attributeFilter:['data-color-mode','class','style']});
 // Protect mobile nav from Misskey's modal system (inert, pointer-events, etc.)
 nextTick(() => {
+		if (props.embedded) return;
   try {
     const navEl = document.querySelector('.htk-nav-mobile') as HTMLElement|null;
     if (navEl) {
@@ -3899,6 +3937,7 @@ nextTick(() => {
 });
 // Hide Misskey page header
 nextTick(() => {
+		if (props.embedded) return;
   try {
     const el = rootEl.value;
     if (el) {
@@ -3912,6 +3951,7 @@ nextTick(() => {
 });
 // Hide Misskey standard mobile navbar (bottom bar)
 nextTick(() => {
+		if (props.embedded) return;
   try {
     // まず外部TLの残骸をクリーンアップ（外部TL→Hatask遷移対策）
     document.querySelectorAll<HTMLElement>('.ext-tl-side-menu-btn').forEach(el => el.remove());
@@ -4037,10 +4077,12 @@ fetchLoginRanking();
 // Eye phrase
 updateEyePhrase();
 eyeTimer = setInterval(updateEyePhrase, 10000);
+	if (props.embedded && !props.paneActive) cleanupHataskState(true);
 });
 
 // KeepAlive対応: ページ離脱時にナビバーを非表示にする
 onDeactivated(() => {
+	if (props.embedded) closeGoesCapture();
 	++sharedEventRequest;
 	sharedEvents.value = sharedEvents.value.filter(event => event.userId === $i?.id);
 	checkClosedRsvps();
@@ -4048,7 +4090,7 @@ onDeactivated(() => {
 invalidateCommunityFlowers();
 });
 onActivated(() => {
-hataskPageActive = true;
+	hataskPageActive = !props.embedded || props.paneActive;
 	refreshSharedEventAccess();
 	invalidateCommunityFlowers();
 // HataFeedから戻ったときも未読とおすすめ表示を更新する。初回のタイマーとは重複させない。
@@ -4059,16 +4101,15 @@ if (!hfTimer && canAccessHataFeed.value) {
 showHataskIntroduction();
 // 旗鯖fork(v2 §16①): hatask が表示されるたび(初回mount含む)ブートを再生。遷移復帰でも出るように。
 bootUsedActivated = true;
-playBoot();
+if (!props.embedded) playBoot();
 // 旗鯖fork(タスク8): keep-alive復帰時もフローティング連動フラグを立て直す
-hatakMascotActive.value = true;
-// 旗鯖fork(タスク2): keep-alive復帰時にカードの文言ローテを再開(onMountedが走らないため。利用許可時のみ)
-if(canUseMascot.value)startMascotCardRotation();
+	if (!props.embedded) hatakMascotActive.value = true;
 // 旗鯖fork: keep-alive復帰やウィンドウ遷移で onMounted が走らない場合に備え、
 // onActivated でも実績を解除する(claimAchievementは冪等)。
 claimAchievement('welcomeToHatask');
 scheduleEventNotifications();
-showMobileNav.value = true;
+	showMobileNav.value = !props.embedded;
+	if (props.embedded) return;
 document.body.dataset.hataskActive = '1';
 // KeepAlive復帰時にMisskeyフッターを再非表示
 nextTick(() => {
@@ -4123,9 +4164,227 @@ if (mediaQuery) mediaQuery.removeEventListener('change', onMediaChange);
 stopHtkThemeWatch();
 eventTimerIds.forEach(id => clearTimeout(id));
 });
+
+let clearGoesCaptureAbort: (() => void) | undefined;
+
+function closeGoesCapture(): void {
+	clearGoesCaptureAbort?.();
+	clearGoesCaptureAbort = undefined;
+	captureKind.value = null;
+	externalCaptureTarget.value = undefined;
+	nextTick(() => { if (captureReturnFocus?.isConnected) captureReturnFocus.focus(); });
+}
+
+function trapGoesCaptureFocus(event: KeyboardEvent): void {
+	const dialog = captureTarget.value?.closest('[role="dialog"]');
+	if (!dialog) return;
+	const controls = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]')].filter(el => el.getClientRects().length > 0);
+	const first = controls[0], last = controls[controls.length - 1];
+	if (event.shiftKey && window.document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && window.document.activeElement === last) { event.preventDefault(); first.focus(); }
+}
+
+async function openGoesCapture(kind: string, signal?: AbortSignal, surface?: HTMLElement): Promise<void> {
+	if (signal?.aborted) return;
+	const target = kind === 'event' ? 'cal' : kind === 'cooking' ? 'recipe' : kind;
+	if (target !== 'cal' && target !== 'todo' && target !== 'mood' && target !== 'meal' && target !== 'recipe' && target !== 'garden') return;
+	if (!await waitForGoesOwner() || signal?.aborted) return;
+	if (captureKind.value === null) {
+		captureOriginTab = activeTab.value;
+		captureReturnFocus = window.document.activeElement instanceof HTMLElement ? window.document.activeElement : null;
+	}
+	if (target === 'recipe') recipeMounted.value = true;
+	clearGoesCaptureAbort?.();
+	signal?.addEventListener('abort', closeGoesCapture, { once: true });
+	clearGoesCaptureAbort = () => signal?.removeEventListener('abort', closeGoesCapture);
+	externalCaptureTarget.value = surface;
+	captureKind.value = target;
+	await nextTick();
+	if (signal?.aborted) return;
+	if (kind === 'cooking') recipeView.value?.openRecord();
+	else if (kind === 'recipe') recipeView.value?.openCreate();
+	if (surface) surface.querySelector<HTMLElement>('input:not(:disabled), textarea:not(:disabled), button:not(:disabled)')?.focus({ preventScroll: true });
+	else captureCloseButton.value?.focus();
+}
+
+function onGoesCookingSaved(): void {
+	if (props.embedded && captureKind.value !== null) hataGoesHost?.changed();
+	else void offerHatadyReturn();
+}
+
+watch(() => props.requestedTab, tab => {
+	if (!props.embedded || captureKind.value !== null) return;
+	const requested = tab ?? 'home';
+	if (tabs.value.some(item => item.id === requested) || requested === 'hataskapps') navigateAkatsuki(requested as HataskAkatsukiTab);
+}, { immediate: true });
+watch(activeTab, tab => {
+	if (!props.embedded) return;
+	if (captureKind.value !== null) {
+		if (tab !== captureOriginTab) activeTab.value = captureOriginTab;
+		return;
+	}
+	if (props.paneActive && tab !== (props.requestedTab ?? 'home')) emit('tabChange', tab);
+}, { flush: 'sync' });
+watch([plannerTheme, themeMode, dataLoaded], async () => {
+	if (!props.embedded) return;
+	await nextTick();
+	const themeSurface = rootEl.value?.querySelector<HTMLElement>('.htk-akatsuki-layout') ?? rootEl.value;
+	const style = themeSurface ? getComputedStyle(themeSurface) : null;
+	const cssVars: Record<string, string> = {};
+	for (const key of ['--bg', '--surface', '--fg', '--fg-2', '--fg2', '--accent', '--accent-ink', '--rule', '--card-radius', '--case-radius', '--control-radius', '--shadow', '--bg-image', '--htk-font-head', '--on-accent']) {
+		const value = style?.getPropertyValue(key).trim();
+		if (value) cssVars[key] = value;
+	}
+	emit('appearanceChange', { theme: plannerTheme.value, cssVars });
+}, { immediate: true });
+watch(() => props.paneActive, active => {
+	if (!props.embedded) return;
+	hataskPageActive = active;
+	if (!active) cleanupHataskState(true);
+	else {
+		refreshSharedEventAccess(); invalidateCommunityFlowers();
+		if (!hfTimer && canAccessHataFeed.value) { void loadHfNotifs(); hfTimer = window.setInterval(loadHfNotifs, 30_000); }
+		if (!eqStream) {
+			eqStream = useStream();
+			eqStream.on('earthquakeEvent', onEqEvent);
+			eqStream.on('_connected_', onEqStreamConn);
+			eqStream.on('_disconnected_', onEqStreamDisc);
+			streamConnected.value = eqStream.state === 'connected';
+			if (!streamConnected.value) startEqPoll();
+		}
+	}
+});
+let goesOwnerDisposed = false;
+const goesReadyWaiters = new Set<() => void>();
+
+watch(dataLoaded, ready => {
+	if (ready) { for (const resolve of goesReadyWaiters) resolve(); goesReadyWaiters.clear(); }
+});
+
+async function waitForGoesOwner(): Promise<boolean> {
+	if (!dataLoaded.value && !goesOwnerDisposed) await new Promise<void>(resolve => goesReadyWaiters.add(resolve));
+	return !goesOwnerDisposed && dataLoaded.value;
+}
+
+onUnmounted(() => {
+	goesOwnerDisposed = true;
+	for (const resolve of goesReadyWaiters) resolve();
+	goesReadyWaiters.clear();
+});
+
+async function openGoesServerRecord(kind: 'event' | 'flower' | 'cookingRecord', id: string): Promise<void> {
+	const result = await misskeyApi<{ kind: string; item: Record<string, unknown> }>('hata/hatagoes/show', { kind, id });
+	if (!props.paneActive) return;
+	const component = (await import('@/components/hatagoes/HatagoesRecordDetail.vue')).default;
+	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The active pane can change while import awaits.
+	if (!props.paneActive) return;
+	const { dispose } = popup(component, { kind, item: result.item }, {
+		closed: () => dispose(),
+		related: async (relatedKind, relatedId) => {
+			if (!props.paneActive) return;
+			if (relatedKind === 'recipe') {
+				navigateAkatsuki('recipe');
+				await nextTick();
+				await recipeView.value?.openById(relatedId);
+			} else {
+				const { dispose: disposeLog } = popup((await import('@/components/HatadyConversation.vue')).default,
+					{ logId: relatedId, variant: 'hatady' }, { closed: () => disposeLog(), changed: () => hataGoesHost?.changed() });
+			}
+		},
+	});
+}
+
+// eslint-disable-next-line vue/no-setup-props-reactivity-loss -- The owner registration is fixed for this mounted pane.
+const unregisterHataGoes = props.embedded ? hataGoesHost?.register('hatask', {
+	openSettings: section => openHataskSettings(undefined, section),
+	async recordMood(level) {
+		if (!await waitForGoesOwner() || !journalWritable('moods')) throw new Error('Hatask mood journal unavailable');
+		const { date, time } = journalLocalDateTime();
+		await saveMoodEntry({ id: generateId(), date, time, level, emoji: '', note: '（ひとことなし）' });
+	},
+	async water(day) {
+		if (!await waitForGoesOwner()) throw new Error('Hatask owner unavailable');
+		await pourHataskFlower('self', day ? `hatagoes-home-water:${day}` : undefined);
+	},
+	async recordMeal(slot, signal, surface) {
+		if (!await waitForGoesOwner() || !journalWritable('meals')) throw new Error('Hatask meal journal unavailable');
+		await openGoesCapture('meal', signal, surface);
+		if (signal?.aborted || captureKind.value !== 'meal') return;
+		await nextTick();
+		if (!akatsukiMealJournal.value) throw new Error('Hatask meal capture unavailable');
+		akatsukiMealJournal.value.focusFromHome(slot);
+	},
+	async toggleTodo(id) {
+		if (!await waitForGoesOwner()) throw new Error('Hatask owner unavailable');
+		if (!plannerMigrationReady || !loadedKeys.has('todos') || !loadedKeys.has('events')) throw new Error('Hatask planner is not ready');
+		if (!todos.value.some(todo => todo.id === id)) throw new Error('ToDo unavailable');
+		registerCompletedUndo(await toggleTodo(id));
+	},
+	openTool: tool => { if (tool === 'drawing-tool') openDrawingTool(); else openHataWhatsNew(); },
+	create: openGoesCapture,
+	// This owner already applies its own writes; do not rehydrate mutable arrays
+	// from a second load while an editor or storage transaction is in progress.
+	refresh: () => { refreshSharedEventAccess(); invalidateCommunityFlowers(); },
+	async openResult(kind, id) {
+		if (!await waitForGoesOwner() || !props.paneActive) return;
+		try {
+			if (kind === 'event' || kind === 'events') {
+				const local = events.value.find(item => item.id === id || item.serverEventId === id);
+				if (local) goToEvent(allCalendarEvents.value.find(item => item.id === id || item.sourceEventId === local.id) ?? local);
+				else await openGoesServerRecord('event', id);
+			} else if (kind === 'todo' || kind === 'todos') {
+				const todo = todos.value.find(item => item.id === id);
+				if (!todo) throw new Error('unavailable');
+				navigateAkatsuki('todo');
+				plannerTodoView.value = todo.done || isTodoArchived(todo) ? 'completed' : 'all';
+				activeFolder.value = 'all';
+				plannerTodoSearch.value = '';
+				await nextTick();
+				const row = [...(rootEl.value?.querySelectorAll<HTMLElement>('[data-todo-id]') ?? [])].find(item => item.dataset.todoId === id);
+				row?.scrollIntoView({ block: 'center' });
+				row?.setAttribute('tabindex', '-1');
+				row?.focus({ preventScroll: true });
+				if (!row) throw new Error('unavailable');
+			} else if (kind === 'mood' || kind === 'meal') {
+				navigateAkatsuki(kind);
+				await nextTick();
+				if (!await (kind === 'mood' ? akatsukiMoodJournal.value : akatsukiMealJournal.value)?.openById(id)) throw new Error('unavailable');
+			} else if (kind === 'recipe') {
+				navigateAkatsuki('recipe');
+				await nextTick();
+				if (!recipeView.value) throw new Error('unavailable');
+				await recipeView.value.openById(id);
+			} else if (kind === 'flower') {
+				navigateAkatsuki('garden');
+				await nextTick();
+				const matchingFlower = personalFlowerViews.value.find(item => item.id === id);
+				const anchor = rootEl.value;
+				if (matchingFlower && anchor) openFlowerDetail('personal', { flower: matchingFlower, anchor, returnFocusTo: anchor });
+				else await openGoesServerRecord('flower', id);
+			} else if (kind === 'cookingRecord') {
+				await openGoesServerRecord('cookingRecord', id);
+			} else throw new Error('unavailable');
+		} catch {
+			// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The active pane can change across the awaited record lookup.
+			if (props.paneActive) await dialogs.alert({ type: 'error', text: 'この記録は見つからないか、表示できません。' });
+		}
+	},
+}) : undefined;
+onUnmounted(() => unregisterHataGoes?.());
 </script>
 
 <style lang="scss" src="../components/hatask/hatask-themes.scss"></style>
+<style>
+.htk-goes-capture-overlay { position: fixed; inset: 0; z-index: 2000000; background: #0008; display: grid; place-items: center; padding: 16px; }
+.htk-root.htk-goes-capture { position: relative; inset: auto; width: min(980px, 100%); height: auto; min-height: 0; max-height: 90dvh; overflow: auto; background: var(--bg, var(--MI_THEME-panel)); border-radius: 16px; padding: 16px; }
+.htk-goes-capture-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.htk-root[data-embedded='true'] { position: relative; inset: auto; min-height: 0; height: 100%; }
+.htk-embedded-page { width: 100%; height: 100%; min-height: 0; overflow: hidden; }
+.htk-root[data-embedded='true']:not(.htk-goes-capture) > .htk-app,
+.htk-root[data-embedded='true']:not(.htk-goes-capture) > .htk-app > .htk-shell { height: 100%; min-height: 0; }
+.htk-root.htk-goes-inline { position: relative; inset: auto; width: 100%; min-height: 0; height: auto; padding: 0; background: transparent; }
+.htk-goes-inline [data-hatask-component='calendar'], .htk-goes-inline [data-hatask-component='todo'] { display: none; }
+.htk-goes-inline .htk-tabpage { margin: 0; padding: 0; }
+</style>
 <style lang="scss" src="../components/hatask/hatask-hatakyu.scss"></style>
 
 <style lang="scss" scoped>
@@ -4192,13 +4451,13 @@ eventTimerIds.forEach(id => clearTimeout(id));
 @keyframes htkBootFade{0%, 72%{opacity:1}100%{opacity:0}}
 
 /* アニメーションOFF(設定 animations=false) と reduced-motion では一切のアニメ/トランジションを無効化 */
-.htk-root[data-anim="off"] *{animation:none !important;transition:none !important}
+.htk-root[data-anim="off"] *:not([data-hata-app-logo], [data-hata-app-logo] *){animation:none !important;transition:none !important}
 @media (prefers-reduced-motion: reduce){
-  .htk-root[data-theme] *{animation:none !important}
+  .htk-root[data-theme]:not([data-embedded="true"]) *:not([data-hata-app-logo], [data-hata-app-logo] *){animation:none !important}
 }
 .htk-boot{position:fixed;inset:0;z-index:90000;background:var(--bg);display:flex;align-items:center;justify-content:center}
 .htk-boot-inner{text-align:center;position:relative}
-.htk-boot-logo{font-family:'Righteous',system-ui,sans-serif;font-size:2.7rem;color:var(--fg);line-height:1}
+.htk-boot-logo{display:flex;flex-direction:column;align-items:center;gap:16px;font-family:'Righteous',system-ui,sans-serif;font-size:2.7rem;color:var(--fg);line-height:1}
 .htk-root[data-anim="on"] .htk-boot{animation:htkBootFade 1.2s ease both}
 
 /* 旗鯖fork(v2): 構造トークンのみ。色/背景は .htk-root[data-theme] (v2) が供給する。 */
@@ -4217,6 +4476,21 @@ eventTimerIds.forEach(id => clearTimeout(id));
 .htk-root[data-theme] .htk-primary, .htk-modal-ov[data-theme] .htk-primary{background:var(--accent-ink);color:var(--on-accent)}
 .htk-root[data-theme] .htk-journal-page{min-width:0}
 .htk-akatsuki-extras{display:grid;gap:20px;margin-top:28px}
+.htk-goes-launcher{container:htk-goes-launcher / inline-size;min-width:0;margin:0 0 18px;border:var(--card-border);border-radius:var(--card-radius,20px);background:var(--surface);box-shadow:var(--card-shadow)}
+.htk-goes-launcher-row{display:flex;align-items:center;gap:18px;padding:14px 18px 14px 22px}
+.htk-goes-launcher h2{display:flex;flex:0 0 118px;align-items:center;gap:7px;margin:0;font:400 15px/1.2 Righteous,var(--htk-font-head,sans-serif)}
+.htk-goes-launcher h2 i{font-size:18px}
+.htk-goes-launcher-grid{display:grid;flex:1;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;min-width:0}
+.htk-goes-launcher-grid button{display:flex;min-width:0;flex-direction:column;align-items:center;gap:5px;padding:6px 0;border:0;border-radius:16px;background:transparent;color:var(--fg);text-align:center;cursor:pointer}
+.htk-goes-launcher-grid button:hover{background:var(--fill)}
+.htk-goes-launcher-grid button>span{display:grid;place-items:center;width:48px;height:48px;border-radius:16px;background:var(--fill);color:var(--accent-ink)}
+.htk-goes-launcher-grid button>span i{font-size:23px}
+.htk-goes-launcher-grid small{max-width:100%;overflow:hidden;font-size:11px;font-weight:800;text-overflow:ellipsis;white-space:nowrap}
+.htk-goes-launcher-all{display:inline-flex;flex:none;align-items:center;gap:6px;min-height:44px;padding:0 16px;border:1.5px solid var(--rule);border-radius:var(--control-radius,999px);background:transparent;color:var(--fg);font-size:13px;font-weight:800;cursor:pointer}
+.htk-goes-launcher-all i{font-size:17px}
+.htk-goes-launcher button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+@container htk-goes-launcher (max-width:1100px){.htk-goes-launcher-row{display:grid;grid-template-columns:minmax(0,1fr) auto}.htk-goes-launcher h2{grid-column:1;grid-row:1}.htk-goes-launcher-all{grid-column:2;grid-row:1}.htk-goes-launcher-grid{grid-column:1/-1;grid-row:2;width:100%}}
+@container htk-goes-launcher (max-width:660px){.htk-goes-launcher-row{gap:12px;padding:14px 12px}.htk-goes-launcher-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 4px}.htk-goes-launcher-grid button>span{width:44px;height:44px}.htk-goes-launcher-all{padding:0 10px;font-size:11px}}
 .htk-akatsuki-extra{min-width:0;padding:20px;border:var(--card-border);border-radius:24px;background:var(--surface)}
 .htk-akatsuki-extra h3{margin:0 0 14px;font:700 17px/1.5 var(--htk-font-head);color:var(--fg)}
 .htk-akatsuki-rsvp{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0}
@@ -4435,7 +4709,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-anim:nth-child(2){animation-delay:.05s}.htk-anim:nth-child(3){animation-delay:.1s}.htk-anim:nth-child(4){animation-delay:.15s}.htk-anim:nth-child(5){animation-delay:.2s}.htk-anim:nth-child(6){animation-delay:.25s}.htk-anim:nth-child(7){animation-delay:.3s}.htk-anim:nth-child(n+8){animation-delay:.35s}
 /* data-anim=off でも opacity:0 のまま消えないよう明示的に戻す */
 .htk-root[data-anim="off"] .htk-anim{opacity:1 !important;animation:none !important}
-@media (prefers-reduced-motion: reduce){ .htk-root[data-theme] .htk-anim{opacity:1 !important;animation:none !important} }
+@media (prefers-reduced-motion: reduce){ .htk-root[data-theme]:not([data-embedded="true"]) .htk-anim{opacity:1 !important;animation:none !important} }
 @keyframes htkScIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
 /* Mobile: hide desktop nav, add padding */
 @media(max-width:1024px){
@@ -4466,7 +4740,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .tpickwrap{width:520px;max-width:calc(100vw - 32px);max-height:92dvh;overflow-y:auto;border-radius:24px;box-shadow:0 18px 50px -16px rgba(0,0,0,.5);background:#faf8f3;font-family:'Zen Kaku Gothic New',var(--htk-fallback);color:#211d18;padding:30px 28px 26px;position:relative;animation:htkTutIn .5s cubic-bezier(.34,1.56,.64,1) both}
 .tpickwrap[data-mode="dark"]{background:#16151b;color:#ece7dc}
 .tpick-cap{text-align:center;font-family:'Bebas Neue',sans-serif;letter-spacing:.26em;font-size:.72rem;opacity:.6}
-.tpick-logo{font-family:'Righteous',system-ui,sans-serif;font-size:2.2rem;text-align:center;line-height:1.1}
+.tpick-logo{display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Righteous',system-ui,sans-serif;font-size:2.2rem;text-align:center;line-height:1.1}
 .tpick-sub{font-size:.86rem;opacity:.8;margin:8px 0 18px;text-align:center;line-height:1.6}
 .tpick-sub2{display:inline-block;font-size:.74rem;opacity:.55;margin-top:2px}
 .tpick-seg{display:flex;gap:4px;justify-content:center;background:rgba(0,0,0,.06);border-radius:999px;padding:4px;width:max-content;margin:0 auto 20px}

@@ -8,6 +8,15 @@ import { resolve } from 'node:path';
 import { compileStyleAsync, parse } from '@vue/compiler-sfc';
 import { createApp, defineComponent, h, nextTick, reactive } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+
+vi.mock('@/i18n.js', async () => {
+	const { load } = await import('js-yaml');
+	const locale = load(readFileSync(resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')) as { _hata: { _hatask: { _akatsukiApps: Record<string, string> } } };
+	const strings = locale._hata._hatask._akatsukiApps;
+	const format = new Proxy({}, { get: (_target, key) => (params: Record<string, string>) => strings[String(key)].replace(/\{(\w+)\}/gu, (_match, name: string) => params[name]) });
+	return { i18n: { ts: locale, tsx: { _hata: { _hatask: { _akatsukiApps: format } } } } };
+});
+
 import HataskAkatsukiApps from './HataskAkatsukiApps.vue';
 import type { App } from 'vue';
 
@@ -18,6 +27,7 @@ type Props = {
 	countsKnown?: boolean;
 	canAccessHataFeed: boolean;
 	canUseMascot: boolean;
+	embedded?: boolean;
 };
 type Mounted = { app: App<Element>; container: HTMLDivElement };
 const mounted: Mounted[] = [];
@@ -133,6 +143,16 @@ function appIds(container: HTMLElement, layout: 'mobile' | 'desktop'): string[] 
 async function tick(): Promise<void> { await vi.advanceTimersByTimeAsync(4200); await nextTick(); }
 
 describe('HataskAkatsukiApps', () => {
+	test('埋込のHataskey App一覧からゲームと全体設定を除き、単独表示では残す', () => {
+		const embedded = mountApps({ kind: 'tools', embedded: true });
+		const standalone = mountApps({ kind: 'tools', embedded: false });
+		for (const layout of ['mobile', 'desktop'] as const) {
+			expect(appIds(embedded.container, layout)).not.toContain('games');
+			expect(appIds(embedded.container, layout)).not.toContain('hatasettings');
+			expect(appIds(standalone.container, layout)).toContain('games');
+			expect(appIds(standalone.container, layout)).toContain('hatasettings');
+		}
+	});
 	test.each(['hatask', 'tools'] as const)('%sのPC・モバイル見出しはApp名だけを表示し、分類の階層を保つ', kind => {
 		const { container } = mountApps({ kind });
 		const title = kind === 'hatask' ? 'Hatask App' : 'Hataskey App';

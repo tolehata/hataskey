@@ -11,6 +11,7 @@ vi.mock('@/preferences.js', () => ({ prefer: { s: {
 	get 'simpleUi.sidebar'() { return fixture.sidebar; },
 	useBlurEffect: false, useBlurEffectForModal: false, removeModalBgColorForBlur: false,
 } } }));
+vi.mock('@/store.js', async () => ({ store: { r: { darkMode: (await import('vue')).ref(false) } } }));
 vi.mock('@/navbar.js', () => ({ navbarItemDef: {
 	drive: { title: 'Drive', to: '/drive', icon: 'drive', show: true },
 	ui: { title: 'UI settings', to: '/ui', icon: 'ui', show: true },
@@ -26,6 +27,8 @@ vi.mock('@/components/MkModal.vue', () => ({ default: { template: '<section><slo
 
 import MkLaunchPad from './MkLaunchPad.vue';
 import { hataSideStudioStore } from '@/utility/hata-side-studio.js';
+import { navbarItemDef } from '@/navbar.js';
+import { store } from '@/store.js';
 
 const cleanups: Array<() => void> = [];
 const studioStore = hataSideStudioStore as unknown as Ref<{ menuIds: string[] }>;
@@ -50,6 +53,7 @@ beforeEach(() => {
 	fixture.menu = ['drive', 'ui', 'hidden'];
 	fixture.sidebar = [{ id: 'drive' }, { id: 'ui' }];
 	studioStore.value = { menuIds: ['drive', 'uiSetup'] };
+	store.r.darkMode.value = false;
 });
 afterEach(() => { cleanups.splice(0).forEach(cleanup => cleanup()); });
 
@@ -79,5 +83,20 @@ describe('MkLaunchPad menu placement', () => {
 		fixture.ui = 'deck';
 		const deck = await mount();
 		expect(labels(deck)).toEqual([]);
+	});
+
+	test('brand logo follows dark mode while the menu is open', async () => {
+		const definitions = navbarItemDef as unknown as Record<string, unknown>;
+		definitions.hatask = { title: 'Hatask', to: '/hatask', icon: 'ti ti-layout-dashboard', show: true };
+		try {
+			const target = await mount();
+			const logo = target.querySelector<HTMLElement>('[data-hata-app-logo]');
+			expect(logo?.dataset.monochrome).toBe('false');
+			store.r.darkMode.value = true;
+			await nextTick();
+			expect(logo?.dataset.monochrome).toBe('true');
+		} finally {
+			delete definitions.hatask;
+		}
 	});
 });

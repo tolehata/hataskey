@@ -54,7 +54,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button type="button" :aria-label="copy.nextRequest" @click="showNext"><i class="ti ti-chevron-right"></i></button>
 			</div>
 
-			<Transition :css="prefer.r.animation.value" :name="slideDirection === 'next' ? 'hfEmojiNext' : 'hfEmojiPrev'" :mode="prefer.r.animation.value ? 'out-in' : undefined">
+			<Transition :css="goesMotion || prefer.r.animation.value" :name="goesMotion ? 'hfGoesEmoji' : slideDirection === 'next' ? 'hfEmojiNext' : 'hfEmojiPrev'" :mode="goesMotion || prefer.r.animation.value ? 'out-in' : undefined">
 				<div :key="currentReq.id" :class="$style.reviewGrid">
 					<section :class="$style.previewColumn">
 						<div :class="$style.sectionLabel">{{ copy.appearanceAndSource }}</div>
@@ -125,7 +125,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, onMounted, ref, useTemplateRef, watch } from 'vue';
 import type { HataFeedEmojiRequest } from '@/utility/hatafeed.js';
 import MkWindow from '@/components/MkWindow.vue';
 import { useHataFeedDraft } from '@/utility/hatafeed-draft.js';
@@ -140,8 +140,11 @@ import MkInfo from '@/components/MkInfo.vue';
 import HataFeedCategorySelect from '@/components/HataFeedCategorySelect.vue';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+const dialogs = useHataGoesDialogs();
+const goesMotion = !!inject(HATA_GOES_HOST, null);
 
 const props = defineProps<{ req?: HataFeedEmojiRequest; requests?: HataFeedEmojiRequest[] }>();
 const emit = defineEmits<{ (ev: 'done'): void; (ev: 'closed'): void }>();
@@ -253,7 +256,7 @@ function removeCurrent(): void {
 async function holdAndNext(): Promise<void> {
 	const req = currentReq.value;
 	if (busy.value || req == null) return;
-	const { canceled, result } = await os.inputText({ title: copy.holdReason, default: '' });
+	const { canceled, result } = await dialogs.inputText({ title: copy.holdReason, default: '' });
 	if (canceled) return;
 	busy.value = true;
 	error.value = '';
@@ -334,7 +337,7 @@ async function approve(): Promise<void> {
 async function reject(): Promise<void> {
 	const req = currentReq.value;
 	if (busy.value || req == null) return;
-	const { canceled, result } = await os.inputText({ title: copy.rejectReason, default: '' });
+	const { canceled, result } = await dialogs.inputText({ title: copy.rejectReason, default: '' });
 	if (canceled) return;
 	busy.value = true;
 	error.value = '';
@@ -420,6 +423,10 @@ function notifyReviewResult(req: HataFeedEmojiRequest, result: string) {
 </style>
 
 <style lang="scss" scoped>
+.hfGoesEmoji-enter-active { transition: opacity 160ms ease, transform 160ms ease; }
+.hfGoesEmoji-leave-active { transition: opacity 120ms ease; }
+.hfGoesEmoji-enter-from { opacity: .35; transform: translateY(4px); }
+.hfGoesEmoji-leave-to { opacity: 0; }
 .hfEmojiNext-enter-active, .hfEmojiNext-leave-active,
 .hfEmojiPrev-enter-active, .hfEmojiPrev-leave-active {
 	transition: opacity .18s ease, transform .18s ease;

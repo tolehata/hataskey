@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	ref="rootEl"
 	:class="$style.root"
 	data-hatask-component="todo"
+	:data-embedded="embedded"
 	:data-hatask-theme="theme"
 	:data-view="view"
 	:data-state="componentState"
@@ -67,6 +68,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</button>
 		</div>
 	</header>
+	<div v-if="embedded" ref="inlineCaptureTarget" data-hatagoes-inline-capture="todo"></div>
 
 	<p v-if="readOnly" :class="$style.notice"><i class="ti ti-lock" aria-hidden="true"></i><span>{{ labels.readOnly }}</span></p>
 
@@ -178,7 +180,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { HataskPlannerFilter, HataskPlannerTheme, HataskTodoItem, HataskTodoLabels, HataskTodoMobileTab, HataskTodoSort, HataskTodoView } from './hatask-planner-types.js';
-import * as os from '@/os.js';
+import { useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { HATASK_TODO_DEFAULT_MOBILE_TABS, HATASK_TODO_MAX_MOBILE_TABS, normalizeHataskTodoMobileTabs } from '@/utility/hatask-todo-tabs.js';
 
 const props = withDefaults(defineProps<{
@@ -195,7 +197,8 @@ const props = withDefaults(defineProps<{
 	completionIds?: string[];
 	loading?: boolean;
 	readOnly?: boolean;
-}>(), { theme: undefined, colorMode: undefined, filters: () => [], searchQuery: '', viewCounts: undefined, mobileTabOrder: () => [...HATASK_TODO_DEFAULT_MOBILE_TABS], sort: 'manual', completionIds: () => [], loading: false, readOnly: false });
+	embedded?: boolean;
+}>(), { theme: undefined, colorMode: undefined, filters: () => [], searchQuery: '', viewCounts: undefined, mobileTabOrder: () => [...HATASK_TODO_DEFAULT_MOBILE_TABS], sort: 'manual', completionIds: () => [], loading: false, readOnly: false, embedded: false });
 
 const emit = defineEmits<{
 	(ev: 'update:view', view: HataskTodoView): void;
@@ -214,7 +217,12 @@ const emit = defineEmits<{
 	(ev: 'manage-folder', filterId: string): void;
 	(ev: 'drop-target', itemIds: string[], targetId: string): void;
 	(ev: 'bulk-action', action: 'complete' | 'move' | 'due' | 'priority' | 'archive', itemIds: string[]): void;
+	(ev: 'captureTarget', target: HTMLElement | undefined): void;
 }>();
+
+const popupMenu = useHataGoesPopupMenu();
+const inlineCaptureTarget = ref<HTMLElement | null>(null);
+watch(inlineCaptureTarget, target => emit('captureTarget', target ?? undefined), { flush: 'post' });
 
 const viewOptions: Array<{ id: HataskTodoView; icon: string; acceptsDrop: boolean }> = [
 	{ id: 'today', icon: 'ti ti-calendar-event', acceptsDrop: true }, { id: 'upcoming', icon: 'ti ti-calendar-time', acceptsDrop: true },
@@ -297,7 +305,7 @@ async function openSortMenu(event: MouseEvent): Promise<void> {
 	if (sortOpen.value) return;
 	sortOpen.value = true;
 	try {
-		await os.popupMenu(sortOptions.map(option => ({
+		await popupMenu(sortOptions.map(option => ({
 			type: 'radioOption' as const,
 			text: props.labels.sortOptions[option.id],
 			active: props.sort === option.id,
@@ -485,8 +493,8 @@ onBeforeUnmount(() => {
 :global(.mobile-tab-order-move), :global(.mobile-tab-order-enter-active), :global(.mobile-tab-order-leave-active){transition:transform .3s var(--ease-spring,ease),opacity .18s ease}:global(.mobile-tab-order-enter-from), :global(.mobile-tab-order-leave-to){opacity:0;transform:scale(.88)}
 :global(.todo-view-forward-enter-active), :global(.todo-view-forward-leave-active), :global(.todo-view-back-enter-active), :global(.todo-view-back-leave-active){transition:opacity .18s ease,transform .28s var(--ease-smooth,ease)}:global(.todo-view-forward-enter-from){opacity:0;transform:translateX(18px)}:global(.todo-view-forward-leave-to){opacity:0;transform:translateX(-12px)}:global(.todo-view-back-enter-from){opacity:0;transform:translateX(-18px)}:global(.todo-view-back-leave-to){opacity:0;transform:translateX(12px)}
 :global(.todo-row-move), :global(.todo-row-enter-active), :global(.todo-row-leave-active){transition:transform .3s var(--ease-smooth,ease),opacity .22s ease}:global(.todo-row-enter-from){opacity:0;transform:translateY(-8px) scale(.985)}:global(.todo-row-leave-to){opacity:0;transform:translateX(18px) scale(.96)}:global(.todo-row-leave-active){position:absolute;width:calc(100% - 24px)}:global(.selection-dock-enter-active), :global(.selection-dock-leave-active), :global(.organizer-sheet-enter-active), :global(.organizer-sheet-leave-active), :global(.planner-popover-enter-active), :global(.planner-popover-leave-active){transition:opacity .2s ease,transform .25s var(--ease-smooth,ease)}:global(.selection-dock-enter-from), :global(.selection-dock-leave-to){opacity:0;transform:translateY(12px) scale(.97)}:global(.organizer-sheet-enter-from), :global(.organizer-sheet-leave-to){opacity:0}:global(.organizer-sheet-enter-from) .mobileOrganizer, :global(.organizer-sheet-leave-to) .mobileOrganizer{transform:translateY(24px) scale(.985)}:global(.planner-popover-enter-from), :global(.planner-popover-leave-to){opacity:0;transform:translateY(-5px) scale(.98)}
-@media (prefers-reduced-motion:reduce){.item, .checkVisual, .mobileTab, :global(.mobile-tab-order-move), :global(.mobile-tab-order-enter-active), :global(.mobile-tab-order-leave-active), :global(.todo-view-forward-enter-active), :global(.todo-view-forward-leave-active), :global(.todo-view-back-enter-active), :global(.todo-view-back-leave-active), :global(.todo-row-move), :global(.todo-row-enter-active), :global(.todo-row-leave-active), :global(.selection-dock-enter-active), :global(.selection-dock-leave-active), :global(.organizer-sheet-enter-active), :global(.organizer-sheet-leave-active), :global(.planner-popover-enter-active), :global(.planner-popover-leave-active){transition:none!important;animation:none!important}}
-@media (prefers-reduced-motion:reduce){.mobileTabChoice{transition:none!important}}
+@media (prefers-reduced-motion:reduce){.root:not([data-embedded='true']){.item, .checkVisual, .mobileTab, :global(.mobile-tab-order-move), :global(.mobile-tab-order-enter-active), :global(.mobile-tab-order-leave-active), :global(.todo-view-forward-enter-active), :global(.todo-view-forward-leave-active), :global(.todo-view-back-enter-active), :global(.todo-view-back-leave-active), :global(.todo-row-move), :global(.todo-row-enter-active), :global(.todo-row-leave-active), :global(.selection-dock-enter-active), :global(.selection-dock-leave-active), :global(.organizer-sheet-enter-active), :global(.organizer-sheet-leave-active), :global(.planner-popover-enter-active), :global(.planner-popover-leave-active){transition:none!important;animation:none!important}}}
+@media (prefers-reduced-motion:reduce){.root:not([data-embedded='true']){.mobileTabChoice{transition:none!important}}}
 .root[data-hatask-theme] {
 	--accent: var(--accent-ink);
 	--fg-3: var(--fg-2);

@@ -5,6 +5,8 @@ import type * as Misskey from 'cherrypick-js';
 
 const mocks = vi.hoisted(() => ({ drive: vi.fn(), pick: vi.fn(), upload: vi.fn() }));
 vi.mock('@/utility/drive.js', () => ({ chooseDriveFile: mocks.drive }));
+vi.mock('@/utility/hatagoes-pickers.js', () => ({ useHataGoesPickers: () => ({ selectDriveFiles: mocks.drive }) }));
+vi.mock('@/i18n.js', async () => ({ i18n: (await import('@/utility/hatask-test-i18n.js')).createTestHataskI18n() }));
 vi.mock('@/os.js', () => ({ chooseFileFromPc: mocks.pick, launchUploader: mocks.upload }));
 vi.mock('@/components/MkDriveFileThumbnail.vue', () => ({ default: { render: () => null } }));
 import HatadyImageAttachments from './HatadyImageAttachments.vue';

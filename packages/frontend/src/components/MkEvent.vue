@@ -35,7 +35,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<template v-if="eventMetadata && 'url' in eventMetadata && eventMetadata.url">
 			<dt :class="$style.key">URL</dt>
-			<dd :class="$style.value"><a :href="eventMetadata.url as string">{{ eventMetadata.url }}</a></dd>
+			<dd :class="$style.value">
+				<a v-if="safeUrl" :href="safeUrl">{{ eventMetadata.url }}</a>
+				<span v-else>{{ eventMetadata.url }}</span>
+			</dd>
 		</template>
 
 		<template v-if="eventMetadata && 'organizer' in eventMetadata && eventMetadata.organizer">
@@ -65,7 +68,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<template v-if="eventMetadata && 'offers' in eventMetadata && (eventMetadata.offers as { url?: string })?.url">
 			<dt :class="$style.key">{{ i18n.ts._event.ticketsUrl }}</dt>
-			<dd :class="$style.value"><a :href="(eventMetadata.offers as { url: string }).url">{{ (eventMetadata.offers as { url: string }).url }}</a></dd>
+			<dd :class="$style.value">
+				<a v-if="safeTicketsUrl" :href="safeTicketsUrl">{{ (eventMetadata.offers as { url: string }).url }}</a>
+				<span v-else>{{ (eventMetadata.offers as { url: string }).url }}</span>
+			</dd>
 		</template>
 
 		<template v-if="eventMetadata && 'isAccessibleForFree' in eventMetadata && eventMetadata.isAccessibleForFree">
@@ -107,6 +113,22 @@ const props = defineProps<{
 
 const eventMetadata = computed(() => {
 	return props.note?.event?.metadata as Record<string, unknown> | undefined;
+});
+
+function safeEventUrl(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	try {
+		const url = new URL(value);
+		return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+	} catch {
+		return null;
+	}
+}
+
+const safeUrl = computed(() => safeEventUrl(eventMetadata.value?.url));
+const safeTicketsUrl = computed(() => {
+	const offers = eventMetadata.value?.offers;
+	return safeEventUrl(offers !== null && typeof offers === 'object' && 'url' in offers ? offers.url : null);
 });
 </script>
 

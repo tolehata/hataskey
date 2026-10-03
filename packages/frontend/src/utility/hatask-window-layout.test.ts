@@ -25,7 +25,7 @@ describe('Hatask deck window layout contract', () => {
 	test('PCのカレンダーは親の全列を使い、ハタキュToDoにも共通レイアウトを使う', () => {
 		const source = frontendSource('src/pages/hatask.vue');
 		expect(source).toContain('.htk-calendar-page > .htk-planner-shell{grid-column:1/-1;grid-row:1}');
-		const todo = source.match(/<div v-if="activeTab==='todo'"[^>]+>/u)?.[0];
+		const todo = source.match(/<div v-if="activeTab==='todo' \|\| captureKind === 'todo'"[^>]+>/u)?.[0];
 		expect(todo).toContain('class="htk-tabpage htk-todo-page"');
 		const legacyGrid = /hk-panels|htk-panels/u;
 		expect(legacyGrid.test('<div class="hk-panels">')).toBe(true);
@@ -37,7 +37,7 @@ describe('Hatask deck window layout contract', () => {
 		const calendar = frontendSource('src/components/hatask/HataskCalendarPlanner.vue');
 		expect(todo).toContain('v-if="reorderMode || isMobileTabActive(tab)"');
 		expect(todo).toMatch(/\.mobileTabs\{[^}]*flex-wrap:wrap[^}]*border-radius:999px/u);
-		expect(todo).toContain('await os.popupMenu(');
+		expect(todo).toContain('await popupMenu(');
 		expect(calendar).toContain('@container (max-width: 720px)');
 		expect(calendar).toContain('.filters button[data-active="false"] .filterText { display: none; }');
 	});
@@ -88,7 +88,7 @@ describe('Hatask deck window layout contract', () => {
 
 	test('カレンダー詳細はドラフトを残したまま閉じられるモーダルで表示する', () => {
 		const source = frontendSource('src/pages/hatask.vue');
-		expect(source).toMatch(/<Teleport to="body">\s*<div\s+v-if="showEventDetails"[\s\S]*?class="htk-lg htk-modal-c htk-event-editor htk-event-editor-modal"/u);
+		expect(source).toMatch(/<Teleport to="body">\s*<div\s+v-if="showEventDetails && \(!embedded \|\| paneActive \|\| captureKind !== null\)"[\s\S]*?class="htk-lg htk-modal-c htk-event-editor htk-event-editor-modal"/u);
 		expect(source).toContain('role="dialog"');
 		expect(source).toContain('aria-modal="true"');
 		expect(source).toContain('@click.self="closeEventDetailsModal"');
@@ -123,10 +123,10 @@ describe('Hatask deck window layout contract', () => {
 		expect(garden.querySelector('HataskCommunityGarden')?.getAttribute(':theme')).toBe('plannerTheme');
 		expect(garden.querySelector('[data-garden-group="community"]')).not.toBeNull();
 		expect(garden.querySelector('[data-garden-group="personal"]')).not.toBeNull();
+		expect(garden.querySelector('HataskFlowerCare')?.getAttribute('@harvested')).toBe('onFlowerHarvested');
 		const handlers = [...garden.querySelectorAll('button')].map(button => button.getAttribute('@click'));
-		expect(handlers).toContain('handleFlowerHarvest');
 		expect(handlers.filter(handler => handler === 'loadCommunityFlowers')).toHaveLength(2);
-		expect(source).toContain('os.popup(HataskFlowerCollection,');
+		expect(source).toContain('popup(HataskFlowerCollection,');
 		expect(frontendSource('src/components/hatask/HataskFlowerCollection.vue')).toContain('data-flower-collection-action="order"');
 	});
 });

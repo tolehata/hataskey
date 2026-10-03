@@ -24,7 +24,7 @@ vi.mock('@/i18n.js', async () => ({ i18n: (await import('@/utility/hatask-test-i
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api }));
 vi.mock('@/os.js', () => ({
 	toast: mocks.toast, alert: mocks.alert, confirm: mocks.confirm, select: mocks.select, selectUser: mocks.selectUser,
-	popupMenu: vi.fn(), inputText: vi.fn(),
+	popup: vi.fn(), popupMenu: vi.fn(), inputText: vi.fn(),
 }));
 vi.mock('@/utility/drive.js', () => ({ selectFile: mocks.fileSelect }));
 vi.mock('@/components/global/MkAvatar.vue', () => ({ default: { props: ['user'], setup: (props: { user: { id: string } }) => () => h('span', { 'data-avatar': props.user.id }) } }));

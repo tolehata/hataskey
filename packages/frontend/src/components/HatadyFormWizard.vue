@@ -5,7 +5,7 @@
 	<p v-if="error" ref="errorBox" role="alert" tabindex="-1" :class="$style.error">{{ error }}</p>
 	<form ref="form" novalidate @submit.prevent="next">
 		<fieldset :disabled="saving || hasSaved" :class="$style.formBody">
-			<section v-for="page in pages" v-show="page.id === currentPage" :key="page.id" :inert="page.id !== currentPage" :data-page="page.id" :data-direction="direction" :class="$style.page" :aria-labelledby="`${id}-${page.id}`">
+			<section v-for="page in pages" v-show="page.id === currentPage" :key="page.id" :inert="page.id !== currentPage" :data-page="page.id" :data-direction="direction" :data-hatagoes="goesMotion" :class="$style.page" :aria-labelledby="`${id}-${page.id}`">
 				<h3 :id="`${id}-${page.id}`" tabindex="-1">{{ page.title }}</h3>
 				<p v-if="page.description" :class="$style.description">{{ page.description }}</p>
 				<div v-if="page.choices" :class="$style.extras">
@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useId, useTemplateRef } from 'vue';
+import { computed, inject, nextTick, onMounted, ref, useId, useTemplateRef } from 'vue';
 import type { HatadyFormPage, HatadyFormValues } from '@/utility/hatady-form.js';
 import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 import HyDialog from '@/components/HyDialog.vue';
@@ -40,6 +40,8 @@ import { HatadyFormPartialError, commitFormLists, formServerError, formValidatio
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { HATADY_RECORD_TAGS, hatadyDuration, hatadyNotify } from '@/utility/hatady-ui.js';
 import { i18n } from '@/i18n.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+const goesMotion = !!inject(HATA_GOES_HOST, null);
 const copy = i18n.ts._hata._hatady._formWizard;
 
 const values = defineModel<HatadyFormValues>({ required: true });
@@ -67,6 +69,8 @@ function groupHasValue(group: string): boolean { return props.pages.some(page =>
 
 const draft = useHataFormDraft<HatadyFormValues>({
 	id: props.draftId, autoSave: false,
+	preserveOnExit: () => !hasSaved.value,
+	onPreserveFailure: () => hatadyNotify(copy.draftSaveFailed),
 	capture: () => ({ ...values.value, __wizard: { page: currentPage.value, selected: [...selectedGroups.value] } }),
 	restore: stored => {
 		Object.assign(values.value, props.restore ? props.restore(stored) : stored);
@@ -211,6 +215,10 @@ defineExpose({ requestClose, hasChanges: draft.hasChanges, restored: draft.resto
 .facts dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 @keyframes forward { from { opacity: .3; transform: translateX(12px); } to { opacity: 1; transform: none; } }
 @keyframes backward { from { opacity: .3; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+.page[data-hatagoes='true'] { animation-name: goes-forward; animation-duration: 160ms; }
+.page[data-hatagoes='true'][data-direction='-1'] { animation-name: goes-backward; }
+@keyframes goes-forward { from { opacity: .35; transform: translateX(4px); } to { opacity: 1; transform: none; } }
+@keyframes goes-backward { from { opacity: .35; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
 @container hy-dialog (max-width: 560px) { .extras { grid-template-columns: 1fr; } .page { gap: 20px; } }
-@media (prefers-reduced-motion: reduce) { .page { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .page:not([data-hatagoes='true']) { animation: none; } }
 </style>

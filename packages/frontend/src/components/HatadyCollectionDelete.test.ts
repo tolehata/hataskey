@@ -9,7 +9,8 @@ vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: (endpoint: string, para
 	const result = fixture.api(endpoint, params);
 	return Promise.resolve(result === undefined ? endpoint === 'i/registry/keys' ? [] : endpoint === 'i/registry/get-all' ? {} : undefined : result);
 } }));
-vi.mock('@/os.js', () => ({ confirm: fixture.confirm, popup: fixture.popup }));
+vi.mock('@/os.js', () => ({ confirm: fixture.confirm, popup: fixture.popup, popupMenu: vi.fn() }));
+vi.mock('@/components/hataskey3/hk3-composer-menu.js', () => ({ captureHk3ComposerMenu: vi.fn() }));
 vi.mock('@/router.js', () => ({ mainRouter: { pushByPath: vi.fn() }, useRouter: () => ({ pushByPath: vi.fn() }) }));
 vi.mock('@/i.js', () => ({ $i: { id: 'owner', isAdmin: false, isModerator: false } }));
 vi.mock('@/i18n.js', async () => {

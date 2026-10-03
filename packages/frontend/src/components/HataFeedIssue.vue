@@ -218,16 +218,22 @@ import HfCategoryBadge from '@/components/HfCategoryBadge.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { useHataGoesPickers } from '@/utility/hatagoes-pickers.js';
+import { useHataGoesEmojiPickers } from '@/utility/hatagoes-emoji-pickers.js';
+import { useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { chooseDriveFile } from '@/utility/drive.js';
 import { $i } from '@/i.js';
-import { reactionPicker } from '@/utility/reaction-picker.js';
-import { emojiPicker } from '@/utility/emoji-picker.js';
 import { statusLabel, editableStatusKeys, priorityLabel } from '@/utility/hatafeed.js';
 
+const popupMenu = useHataGoesPopupMenu();
+const dialogs = useHataGoesDialogs();
+const { selectUser, selectDriveFiles } = useHataGoesPickers();
+const { showReactionPicker, showEmojiPicker } = useHataGoesEmojiPickers();
+
 const props = defineProps<{ issueId: string; isStaff: boolean }>();
-const emit = defineEmits<{ (ev: 'back'): void }>();
+const emit = defineEmits<{ (ev: 'back'): void; (ev: 'changed'): void }>();
 const copy = i18n.ts._hata._hatafeed._issue;
 const copyx = i18n.tsx._hata._hatafeed._issue;
 
@@ -250,7 +256,7 @@ function insertCommentEmoji(ev: MouseEvent) {
 	let pos = commentTextarea.value?.selectionStart ?? newComment.value.length;
 	let posEnd = commentTextarea.value?.selectionEnd ?? newComment.value.length;
 	// emojiPicker は投稿フォームと同じ挙動。focus-trap 対策で直接テキストへ差し込む。
-	emojiPicker.show(target, (emoji: string) => {
+	showEmojiPicker(target, (emoji: string) => {
 		const before = newComment.value.substring(0, pos);
 		const after = newComment.value.substring(posEnd);
 		newComment.value = before + emoji + after;
@@ -284,7 +290,7 @@ function linkifyRefs(text: string): string {
 }
 
 async function attachCommentFiles() {
-	const chosen = await chooseDriveFile({ multiple: true }).catch(() => []);
+	const chosen = await selectDriveFiles({ multiple: true }).catch(() => []);
 	for (const f of chosen) {
 		if (!commentFiles.value.some(x => x.id === f.id)) commentFiles.value.push(f);
 	}
@@ -318,7 +324,7 @@ async function load() {
 // 引用やバグ再現に再利用しやすくするユーザー要望に対応。空テキストは noop。
 function copyText(text: string | null | undefined, label: string) {
 	if (!text || text === '') {
-		os.alert({ type: 'warning', text: copyx.emptyCannotCopy({ label }) });
+		dialogs.alert({ type: 'warning', text: copyx.emptyCannotCopy({ label }) });
 		return;
 	}
 	writeClipboard(text, copyx.copied({ label }));
@@ -339,6 +345,7 @@ async function toggleAgree() {
 	const res = await misskeyApi('hata/feedback/agree', { issueId: props.issueId });
 	issue.value.isAgreed = res.isAgreed;
 	issue.value.agreementsCount += res.isAgreed ? 1 : -1;
+	emit('changed');
 }
 
 function onCommentKeydown(event: KeyboardEvent) {
@@ -359,6 +366,7 @@ async function sendComment() {
 		// 自分を会話参加者として即時反映。
 		const me = $i;
 		if (me && !participants.value.some(p => p.id === me.id)) participants.value.push(me);
+		emit('changed');
 	} finally {
 		sending.value = false;
 	}
@@ -387,11 +395,12 @@ async function setMark(c: any, mark: 'important' | 'question' | null) {
 }
 
 async function removeComment(c: any) {
-	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteCommentConfirm });
+	const { canceled } = await dialogs.confirm({ type: 'warning', text: copy.deleteCommentConfirm });
 	if (canceled) return;
 	await os.apiWithDialog('hata/feedback/comments/delete', { commentId: c.id });
 	comments.value = comments.value.filter(x => x.id !== c.id);
 	if (issue.value && typeof issue.value.commentsCount === 'number') issue.value.commentsCount = Math.max(0, issue.value.commentsCount - 1);
+	emit('changed');
 }
 
 function copyComment(c: any) {
@@ -414,7 +423,7 @@ function openCommentMenu(c: any, ev: MouseEvent) {
 		items.push({ type: 'divider' });
 		items.push({ text: copy.delete, icon: 'ti ti-trash', danger: true, action: () => removeComment(c) });
 	}
-	os.popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement);
+	popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement);
 }
 
 async function react(c: any, emoji: string) {
@@ -435,7 +444,7 @@ async function react(c: any, emoji: string) {
 }
 
 function openReactionPicker(ev: MouseEvent, c: any) {
-	reactionPicker.show(ev.currentTarget as HTMLElement, null, (reaction) => {
+	showReactionPicker(ev.currentTarget as HTMLElement, null, (reaction) => {
 		react(c, reaction);
 	});
 }
@@ -443,12 +452,13 @@ function openReactionPicker(ev: MouseEvent, c: any) {
 async function changeStatus() {
 	await misskeyApi('hata/feedback/issues/update', { issueId: props.issueId, status: editStatus.value });
 	issue.value.status = editStatus.value;
+	emit('changed');
 }
 
 // 2e サイドバー: ステータスをメニューで選ぶ(スタッフのみ)。
 function openStatusSelect(ev: MouseEvent) {
 	if (!canManage.value) return;
-	os.popupMenu(editableStatusKeys.map(s => ({
+	popupMenu(editableStatusKeys.map(s => ({
 		text: statusLabel[s],
 		active: issue.value.status === s,
 		action: () => { editStatus.value = s; changeStatus(); },
@@ -458,12 +468,13 @@ function openStatusSelect(ev: MouseEvent) {
 async function changePriority() {
 	await misskeyApi('hata/feedback/issues/update', { issueId: props.issueId, priority: editPriority.value });
 	issue.value.priority = editPriority.value;
+	emit('changed');
 }
 
 // 2e サイドバー: 優先度をメニューで選ぶ(スタッフのみ)。
 function openPrioritySelect(ev: MouseEvent) {
 	if (!canManage.value) return;
-	os.popupMenu((['low', 'normal', 'high'] as const).map(p => ({
+	popupMenu((['low', 'normal', 'high'] as const).map(p => ({
 		text: copy.priorityPrefix + ' ' + priorityLabel[p],
 		active: (issue.value.priority ?? 'normal') === p,
 		action: () => { editPriority.value = p; changePriority(); },
@@ -474,16 +485,18 @@ async function togglePin() {
 	const next = !issue.value.pinned;
 	await misskeyApi('hata/feedback/issues/update', { issueId: props.issueId, pinned: next });
 	issue.value.pinned = next;
+	emit('changed');
 }
 
 async function toggleClose() {
 	const next = !issue.value.closed;
 	await misskeyApi('hata/feedback/issues/close', { issueId: props.issueId, close: next });
 	issue.value.closed = next;
+	emit('changed');
 }
 
 async function grantModerator() {
-	const user = await os.selectUser({ includeSelf: false });
+	const user = await selectUser({ includeSelf: false });
 	if (!user) return;
 	await misskeyApi('hata/feedback/moderators/grant', { issueId: props.issueId, userId: user.id });
 	hataFeedNotify('保存しました');
@@ -492,10 +505,11 @@ async function grantModerator() {
 }
 
 async function removeIssue() {
-	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteIssueConfirm });
+	const { canceled } = await dialogs.confirm({ type: 'warning', text: copy.deleteIssueConfirm });
 	if (canceled) return;
 	await misskeyApi('hata/feedback/issues/delete', { issueId: props.issueId });
 	hataFeedNotify('保存しました');
+	emit('changed');
 	emit('back');
 }
 

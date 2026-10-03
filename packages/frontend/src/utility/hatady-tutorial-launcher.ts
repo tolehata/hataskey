@@ -14,6 +14,7 @@ export async function showHatadyTutorial(options: {
 	replay?: boolean;
 	kind?: HatadyTutorialKind;
 	anchorElement?: HTMLElement | null;
+	popup?: typeof os.popup;
 }): Promise<(() => void) | undefined> {
 	const account = $i;
 	if (activeGuide && !activeGuide.isActive()) {
@@ -43,7 +44,7 @@ export async function showHatadyTutorial(options: {
 			dispose();
 			release();
 		};
-		const popup = os.popup(component, { kind, anchorElement: options.anchorElement, cancelSignal: cancellation.signal }, {
+		const popup = (options.popup ?? os.popup)(component, { kind, anchorElement: options.anchorElement, cancelSignal: cancellation.signal }, {
 			done: async () => {
 				if (completed || disposed || options.replay || !canOpen()) return;
 				completed = true;

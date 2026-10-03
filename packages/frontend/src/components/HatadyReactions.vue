@@ -37,7 +37,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, watch, useTemplateRef } from 'vue';
 import HatadyReactionPill from '@/components/HatadyReactionPill.vue';
 import { i18n } from '@/i18n.js';
-import { reactionPicker } from '@/utility/reaction-picker.js';
+import { useHataGoesEmojiPickers } from '@/utility/hatagoes-emoji-pickers.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
 import { invalidateHatadyReactionUsers } from '@/utility/hatady-reaction-details.js';
@@ -45,6 +45,7 @@ import type { HatadyReactionTarget } from '@/utility/hatady-reaction-details.js'
 import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 
 const copy = i18n.ts._hata._hatady._reactions;
+const { showReactionPicker } = useHataGoesEmojiPickers();
 
 const props = withDefaults(defineProps<{
 	target: HatadyReactionTarget;
@@ -124,7 +125,7 @@ async function toggle(emoji: string) {
 }
 
 function openPicker() {
-	if (!busy.value) reactionPicker.show(addEl.value ?? null, null, (reaction) => {
+	if (!busy.value) showReactionPicker(addEl.value ?? null, null, (reaction) => {
 		void toggle(reaction);
 	});
 }

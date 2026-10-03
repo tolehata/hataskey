@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:class="$style.root"
 	:data-mode="mode"
 	:data-hatask-theme="theme"
+	:data-hatagoes="goesMotion"
 	:data-open="isOpen"
 	:data-state="state"
 	:aria-label="label"
@@ -107,8 +108,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, ref, useId } from 'vue';
+import { computed, inject, nextTick, ref, useId } from 'vue';
 import type { HataskPlannerTheme } from './hatask-planner-types.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+
+const goesMotion = inject(HATA_GOES_HOST, null) != null;
 
 export type HataskCaptureChip = {
 	id: string;
@@ -460,7 +464,9 @@ textarea.input { box-sizing: border-box; height: auto; min-height: 44px; max-hei
 :global(.capture-tools-enter-from), :global(.capture-tools-leave-to) { opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-	.pill, .submit, .tool, :global(.capture-tools-enter-active), :global(.capture-tools-leave-active) { transition: none !important; animation: none !important; }
+	.root:not([data-hatagoes='true']) {
+		.pill, .submit, .tool, :global(.capture-tools-enter-active), :global(.capture-tools-leave-active) { transition: none !important; animation: none !important; }
+	}
 }
 .root[data-hatask-theme] { --accent: var(--accent-ink); --fg-3: var(--fg-2); }
 .root[data-hatask-theme] .pill {

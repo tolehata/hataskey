@@ -5,8 +5,8 @@
 		<div ref="canvas" :class="$style.hatafeedPreviewCanvas" :style="canvasStyle" aria-hidden="true" inert>
 			<div :class="feedStyle.root" :style="{ minHeight: '0px' }" class="hatady-scope hatafeed-scope" :data-hatady-theme="mode">
 				<div :class="feedStyle.page">
-					<HataFeedHeader preview tab="home" projectName="Hataskey" :staff="false" :unread="0"/>
-					<main :class="feedStyle.main"><HataFeedHome :isStaff="false" :roadmap="[sampleIssues[0], sampleIssues[2]]" :ownEmojiRequests="sampleRequests" :emojiRequests="[]" :emojiQuota="{ remaining: 4, limit: 5 }" :activity="sampleActivity" :issues="sampleIssues"/></main>
+					<HataFeedHeader preview tab="home" projectName="Hataskey" :staff="false" :unread="0" :onDark="mode === 'dark'"/>
+					<main :class="feedStyle.main"><HataFeedHome :isStaff="false" :roadmap="[sampleIssues[0], sampleIssues[2]]" :ownEmojiRequests="sampleRequests" :emojiRequests="[]" :emojiQuota="{ remaining: 4, limit: 5 }" :activity="sampleActivity" :issues="sampleIssues" :monochrome="mode === 'dark'"/></main>
 				</div>
 			</div>
 		</div>

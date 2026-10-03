@@ -85,7 +85,8 @@ describe('Archivo の自己ホストと配布ライセンス', () => {
 	const assets = resolve(process.cwd(), 'assets/fonts');
 	const page = parse(readFileSync(resolve(process.cwd(), 'src/pages/hatask.vue'), 'utf8')).descriptor;
 	const globalStyles = page.styles.filter(style => !style.scoped && !style.module).map(style => style.src ? readFileSync(resolve(process.cwd(), 'src/pages', style.src), 'utf8') : style.content).join('\n');
-	const faces = globalStyles.match(/@font-face\s*\{[^}]+\}/gu)?.filter(face => face.includes("font-family: 'Archivo'")) ?? [];
+	const fontStyle = readFileSync(resolve(directory, 'hatask-fonts.scss'), 'utf8');
+	const faces = fontStyle.match(/@font-face\s*\{[^}]+\}/gu)?.filter(face => face.includes("font-family: 'Archivo'")) ?? [];
 	const originals = [
 		{ file: 'archivo-latin-wght.woff2', bytes: 34928, sha256: '8f704806dbedeaaeca334b11ec348bc3ac3a439d6431544b3afb54f534ee4967' },
 		{ file: 'archivo-latin-ext-wght.woff2', bytes: 32608, sha256: 'ff4f17d21930e36d6d93baba663e624cb767afc3feebf7adaebd82242638de05' },
@@ -95,6 +96,7 @@ describe('Archivo の自己ホストと配布ライセンス', () => {
 	const localFontUrls = (style: string) => [...style.matchAll(/url\(['"]?([^'"\s)]+)['"]?\)/gu)].every(([, url]) => url.startsWith('/client-assets/fonts/archivo-') && url.endsWith('.woff2'));
 
 	test('モックの400–900を含む可変ウェイトを通常幅で登録し、外部CDNは使わない', () => {
+		expect(globalStyles).toContain('@use "../components/hatask/hatask-fonts.scss";');
 		expect(localFontUrls("src: url('https://fonts.gstatic.com/archivo.woff2')")).toBe(false);
 		expect(faces).toHaveLength(3);
 		for (const face of faces) {

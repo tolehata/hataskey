@@ -95,10 +95,10 @@ function change(endpoint: string, params: Record<string, unknown>): Promise<Hata
 	return mutation;
 }
 
-export function pourHataskFlower(target: 'self' | 'festival'): Promise<HataskFlowerState> {
+export function pourHataskFlower(target: 'self' | 'festival', requestId?: string): Promise<HataskFlowerState> {
 	if (mutation) return Promise.reject(new Error('An update is already in progress.'));
 	// Retain the id after an uncertain network result; a retry cannot spend twice.
-	if (!pendingPour) pendingPour = { target, requestId: crypto.randomUUID() };
+	if (!pendingPour) pendingPour = { target, requestId: requestId ?? crypto.randomUUID() };
 	if (pendingPour.target !== target) return Promise.reject(new Error('Retry the previous watering action first.'));
 	const request = pendingPour;
 	return change('hatask/flowers/drops/pour', request).then(state => {

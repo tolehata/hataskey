@@ -2,15 +2,15 @@
 <template>
 <HyDialog ref="dialog" :title="chooserTitle" :variant="variant" :instantClose="closing" :centerTitle="variant !== 'hatady' && stage === 'categories'" :bare="hasForm" :back="stage === 'works' || stage === 'cooking'" @close="requestClose" @back="back" @closed="emit('closed')">
 	<template v-if="variant !== 'hatady' && stage === 'categories'" #header><span :class="$style.chooserTitle"><i class="ti ti-book-2" aria-hidden="true"></i>{{ chooserTitle }}</span></template>
-	<div v-if="stage === 'categories'" :class="$style.types" :data-direction="direction" :data-closing="closing">
+	<div v-if="stage === 'categories'" :class="$style.types" :data-hatagoes="goesMotion" :data-direction="direction" :data-closing="closing">
 		<button v-for="option in recordChoices" :key="option.value" type="button" :class="$style.type" :data-variant="variant" @click="selectKind(option.value)"><i :class="option.icon" aria-hidden="true"></i><span><strong>{{ option.label }}</strong><small v-if="variant === 'hatady'">{{ descriptions[option.value] }}</small></span></button>
 	</div>
-	<section v-else-if="stage === 'cooking'" :class="$style.cooking">
+	<section v-else-if="stage === 'cooking'" :class="$style.cooking" :data-hatagoes="goesMotion">
 		<h3>{{ copy.cookingQuestion }}</h3>
 		<p>{{ copy.cookingDescription }}</p>
 		<div :class="$style.cookingActions"><button type="button" class="hy-secondary" @click="back">{{ i18n.ts.cancel }}</button><button type="button" class="hy-primary" @click="confirmCooking">{{ copy.recordInHatask }}</button></div>
 	</section>
-	<section v-else-if="stage === 'works'" :class="$style.works" :data-direction="direction">
+	<section v-else-if="stage === 'works'" :class="$style.works" :data-hatagoes="goesMotion" :data-direction="direction">
 		<h3>{{ selectedKind === 'movie' ? copy.movieQuestion : copy.gameQuestion }}</h3>
 		<form :class="$style.search" @submit.prevent="applySearch"><label :class="$style.searchInput"><i class="ti ti-search" aria-hidden="true"></i><input v-model="queryDraft" name="work-search" :aria-label="copy.searchWork" :placeholder="copy.findWork" maxlength="256"></label><button type="submit" class="hy-secondary">{{ i18n.ts._hata._hatady._media.search }}</button></form>
 		<button type="button" class="hy-secondary" @click="stage = 'create'"><i class="ti ti-plus" aria-hidden="true"></i>{{ copy.addWork }}</button>
@@ -20,13 +20,13 @@
 		<div :class="$style.workList"><button v-for="work in works" :key="work.id" type="button" :class="$style.work" @click="selectWork(work)"><HyMediaCover :kind="work.kind" :title="work.title" :subtitle="work.creator || work.developer" :colorIndex="work.coverColorIndex" :width="48"/><span><strong>{{ work.title }}</strong><small>{{ work.creator || work.developer || work.publisher }}</small></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button></div>
 		<button v-if="hasMore && !loading" type="button" class="hy-secondary" @click="loadWorks(true)">{{ copy.showMore }}</button>
 	</section>
-	<HatadyComposer v-else-if="stage === 'composer'" ref="composer" :kind="composerKind" :variant="variant" embedded @done="emit('done', $event)" @back="back" @closed="dialog?.close()"/>
+	<HatadyComposer v-else-if="stage === 'composer'" ref="composer" :kind="composerKind" :initialBookId="initialBookId" :variant="variant" embedded @done="emit('done', $event)" @back="back" @closed="dialog?.close()"/>
 	<HatadyMediaSessionForm v-else-if="stage === 'session' && selectedWork" ref="session" :work="selectedWork" :variant="variant" embedded @done="emit('done', $event)" @back="back" @closed="dialog?.close()"/>
 	<HatadyMediaWorkForm v-else-if="stage === 'create'" ref="workForm" :kind="mediaKind" :variant="variant" embedded @done="createdWork = $event" @back="back" @closed="finishWorkCreation"/>
 </HyDialog>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, ref, useTemplateRef } from 'vue';
 import type { HatadyRecordKind, HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 import type { HatadyMediaWork } from '@/utility/hatady-media.js';
 import HyDialog from '@/components/HyDialog.vue';
@@ -39,8 +39,11 @@ import { normalizeMediaWorks } from '@/utility/hatady-media.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import { i18n } from '@/i18n.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+const goesMotion = !!inject(HATA_GOES_HOST, null);
 const copy = i18n.ts._hata._hatady._activityChooser;
-const props = withDefaults(defineProps<{ initialKind?: HatadyRecordKind; variant?: HatadySurfaceVariant }>(), { variant: 'hatady' });
+const props = withDefaults(defineProps<{ initialKind?: HatadyRecordKind; initialBookId?: string; variant?: HatadySurfaceVariant }>(), { variant: 'hatady' });
+const initialBookId = props.initialBookId;
 const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void }>();
 const routeRouter = useRouter();
 const dialog = useTemplateRef('dialog'), composer = useTemplateRef('composer'), session = useTemplateRef('session'), workForm = useTemplateRef('workForm');
@@ -91,6 +94,7 @@ function requestClose() {
 	if (stage.value === 'composer') composer.value?.requestClose();
 	else if (stage.value === 'session') session.value?.requestClose();
 	else if (stage.value === 'create') workForm.value?.requestClose();
+	else if (goesMotion) dialog.value?.close();
 	else if (stage.value === 'categories' && props.variant !== 'hatady' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 		if (closing.value) return;
 		closing.value = true;
@@ -145,6 +149,10 @@ onBeforeUnmount(() => { requestId++; if (closeTimer) window.clearTimeout(closeTi
 .types[data-direction="-1"], .works[data-direction="-1"] { animation-name: leave; }
 @keyframes enter { from { opacity: .4; transform: translateX(12px); } }
 @keyframes leave { from { opacity: .4; transform: translateX(-12px); } }
+.types[data-hatagoes='true'], .works[data-hatagoes='true'], .cooking[data-hatagoes='true'] { animation: goes-enter 160ms ease-out; }
+.types[data-hatagoes='true'][data-direction='-1'], .works[data-hatagoes='true'][data-direction='-1'] { animation-name: goes-back; }
+@keyframes goes-enter { from { opacity: .35; transform: translateX(4px); } }
+@keyframes goes-back { from { opacity: .35; transform: translateX(-4px); } }
 @container hy-dialog (max-width: 400px) { .type { gap: 9px; padding: 12px; } .type strong { font-size: 14px; } .type > i { width: 36px; height: 40px; } }
-@media (prefers-reduced-motion: reduce) { .types, .works { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .types:not([data-hatagoes='true']), .works:not([data-hatagoes='true']) { animation: none; } }
 </style>

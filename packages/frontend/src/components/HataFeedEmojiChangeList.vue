@@ -14,8 +14,10 @@ import { onMounted, ref } from 'vue';
 import type { HataFeedEmojiChangeRequest } from '@/utility/hatafeed.js';
 import { emojiChangeLabel, emojiStatusLabel } from '@/utility/hatafeed.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import * as os from '@/os.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { i18n } from '@/i18n.js';
+
+const popup = useHataGoesPopup();
 const copy = i18n.ts._hata._hatafeed._emojiChangeList;
 const props = withDefaults(defineProps<{ originalRequestId?: string; isStaff?: boolean; showTitle?: boolean }>(), { showTitle: true });
 const emit = defineEmits<{ changed: [] }>();
@@ -42,7 +44,7 @@ async function load(target = page.value) {
 function setFilter(value: Filter) { filter.value = value; cursors = [undefined]; load(0); }
 
 async function open(request: HataFeedEmojiChangeRequest) {
-	const { dispose } = os.popup((await import('@/components/HataFeedEmojiChangeReview.vue')).default, { request, isStaff: props.isStaff }, { done: () => { load(); emit('changed'); }, closed: () => dispose() });
+	const { dispose } = popup((await import('@/components/HataFeedEmojiChangeReview.vue')).default, { request, isStaff: props.isStaff }, { done: () => { load(); emit('changed'); }, closed: () => dispose() });
 }
 
 onMounted(() => load());

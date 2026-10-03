@@ -271,11 +271,15 @@ import HyMediaCover from '@/components/HyMediaCover.vue';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import * as os from '@/os.js';
+import { useHataGoesPopup, useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { confirmHatadyAction } from '@/utility/hatady-record-delete.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { HY_BANNER_PRESETS } from '@/utility/hatady.js';
 import { hatadyTheme, hatadyTzOffset } from '@/utility/hatady-prefs.js';
 import { isOwnHatadyProfile, openOwnHatadyProfileIfNeeded, useHatadyActivityActions } from '@/utility/hatady-activity-actions.js';
+
+const popup = useHataGoesPopup();
+const popupMenu = useHataGoesPopupMenu();
 
 const props = defineProps<{
 	userId?: string | null;
@@ -371,7 +375,7 @@ function bookStatus(status: string): string {
 
 async function openUserList(type: 'following' | 'followers') {
 	if (!profile.value) return;
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyUserList.vue')).default,
 		{
 			userId: profile.value.user.id,
@@ -514,7 +518,7 @@ async function toggleFollow() {
 	if (!profile.value || profile.value.isMe) return;
 	const uname = profile.value.user.name || profile.value.user.username;
 	// フォロー / 解除の前に確認する。
-	if (!(await confirmHatadyAction(props.variant ?? 'hatady', following.value ? copyx.unfollowConfirm({ name: uname }) : copyx.followConfirm({ name: uname }), following.value ? 'warning' : 'question'))) return;
+	if (!(await confirmHatadyAction(props.variant ?? 'hatady', following.value ? copyx.unfollowConfirm({ name: uname }) : copyx.followConfirm({ name: uname }), following.value ? 'warning' : 'question', popup))) return;
 	followBusy.value = true;
 	const target = profile.value.user.id;
 	try {
@@ -649,7 +653,7 @@ function openDay(day: any) {
 }
 
 async function openMediaSession(sessionId: string, workId: string) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ sessionId, workId, variant: props.variant },
 		{
@@ -678,7 +682,7 @@ async function onActivityDeleted(activity: HatadyActivity): Promise<void> {
 
 async function editActivity(activity: any) {
 	if (activity.study) {
-		const { dispose } = os.popup(
+		const { dispose } = popup(
 			(await import('@/components/HatadyComposer.vue')).default,
 			{ editLog: activity.study, variant: props.variant },
 			{
@@ -690,7 +694,7 @@ async function editActivity(activity: any) {
 			},
 		);
 	} else if (activity.media?.work) {
-		const { dispose } = os.popup(
+		const { dispose } = popup(
 			(await import('@/components/HatadyMediaSessionForm.vue')).default,
 			{ work: activity.media.work, editSession: activity.media.session, variant: props.variant },
 			{
@@ -706,13 +710,13 @@ async function editActivity(activity: any) {
 
 function activityMenu(activity: any, event: MouseEvent) {
 	if (props.variant && props.variant !== 'hatady') { timelineActions.openActivityMenu(activity, event); return; }
-	os.popupMenu(
+	popupMenu(
 		[
 			{
 				text: i18n.ts.reportAbuse,
 				icon: 'ti ti-flag',
 				action: () => {
-					const { dispose } = os.popup(
+					const { dispose } = popup(
 						defineAsyncComponent(() => import('@/components/MkAbuseReportWindow.vue')),
 						{
 							user: activity.user,
@@ -728,7 +732,7 @@ function activityMenu(activity: any, event: MouseEvent) {
 }
 
 async function openLog(logId: string) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyConversation.vue')).default,
 		{ logId, variant: props.variant },
 		{
@@ -743,7 +747,7 @@ async function openLog(logId: string) {
 }
 
 async function openBook(bookId: string) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyBookDetail.vue')).default,
 		{ bookId, variant: props.variant },
 		{
@@ -761,7 +765,7 @@ async function openBook(bookId: string) {
 }
 
 async function openMedia(workId: string) {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyMediaWorkDetail.vue')).default,
 		{ workId, variant: props.variant },
 		{
@@ -791,7 +795,7 @@ async function openProfile(userId: string) {
 		dialog.value?.close();
 		return;
 	}
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		defineAsyncComponent(() => import('@/components/HatadyProfile.vue')),
 		{ userId, variant: props.variant },
 		{

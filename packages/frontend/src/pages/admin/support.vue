@@ -20,6 +20,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>{{ copy.enabled }}</template>
 						<template #caption>{{ copy.enabledCaption }}</template>
 					</MkSwitch>
+					<MkSwitch v-model="draft.navButtonVisible" data-support-field="navButtonVisible">
+						<template #label>{{ copy.navButtonVisible }}</template>
+					</MkSwitch>
 				</section>
 
 				<section class="_gaps_m" :class="$style.section">
@@ -202,6 +205,7 @@ type Supporter = Misskey.Endpoints['admin/hatask/support/supporters']['res']['us
 const copy = {
 	title: '支援管理', information: '支援情報', description: 'Hataskの支援情報タブに表示する内容と、支援者を管理します',
 	enabled: '支援情報を表示する', enabledCaption: 'OFFの間も設定・支援者の登録は保持されます。\n変更は保存後に反映されます',
+	navButtonVisible: 'Hatask上部ナビに支援情報を表示',
 	destination: '支援先', platform: '支援先の名前', url: '支援のURL', urlCaption: 'HTTPSのURLを指定します。\n空欄の場合は、支援情報が未設定の案内だけを表示します',
 	manageUrl: '停止・変更の案内URL', manageUrlCaption: '未設定の場合は、支援のURLを案内します', intro: '支援の説明', lineBreakCaption: '改行もそのまま表示します',
 	banner: '感謝のバナー', bannerVisible: '感謝のバナーを表示する', bannerTitle: 'バナーの見出し', bannerMessage: '感謝のメッセージ',

@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { createApp, h, nextTick } from 'vue';
+import { createApp, h, nextTick, ref } from 'vue';
 import { parse } from '@vue/compiler-sfc';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 
 const fixtures = vi.hoisted(() => ({
 	save: vi.fn(), notify: vi.fn(), menu: vi.fn(), api: vi.fn(), dialogClose: vi.fn(),
@@ -13,7 +14,12 @@ vi.mock('@/utility/hatady-prefs.js', async () => ({
 }));
 vi.mock('@/utility/hatady-ui.js', () => ({ hatadyNotify: fixtures.notify }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixtures.api }));
+vi.mock('@/i18n.js', async () => {
+	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
+	return { i18n: createTestHataskI18n() };
+});
 vi.mock('@/os.js', () => ({ popupMenu: fixtures.menu }));
+vi.mock('@/components/hataskey3/hk3-composer-menu.js', () => ({ captureHk3ComposerMenu: vi.fn() }));
 vi.mock('@/components/HyDialog.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
 	return { default: defineComponent({
@@ -94,12 +100,13 @@ async function pageNumber(target: HTMLElement, index: number): Promise<void> {
 	await settle();
 }
 
-async function mountTutorial(kind: HatadyTutorialKind, motion = false, cancelSignal?: AbortSignal) {
+async function mountTutorial(kind: HatadyTutorialKind, motion = false, cancelSignal?: AbortSignal, hatagoes = false) {
 	prefer.r.animation.value = motion;
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
 	const done = vi.fn(), closed = vi.fn();
 	const app = createApp({ render: () => h(HatadyTutorial, { kind, cancelSignal, onDone: done, onClosed: closed }) });
+	if (hatagoes) app.provide(HATA_GOES_HOST, { active: ref(true), register: () => () => {}, changed: () => {} });
 	app.mount(target);
 	let unmounted = false;
 	const unmount = () => {
@@ -328,6 +335,22 @@ describe('Hatady tutorial transitions', () => {
 			expect(rafCallbacks.size).toBe(0);
 			expect(animations).toHaveLength(2);
 		} else expect(mounted.target.querySelector('[data-leaving]')).toBeNull();
+	});
+
+	test('HataGoesではアニメーション設定を無視し、短いページ遷移を使う', async () => {
+		reduced.matches = true;
+		const { target } = await mountTutorial('initial', false, undefined, true);
+		await click(target, '.actions .hy-primary');
+		expect(animations).toHaveLength(2);
+		expect(animations[0].options.duration).toBe(160);
+		expect(animations[1].frames[0].transform).toBe('translateX(4px)');
+		prefer.r.animation.value = true;
+		reduced.dispatchEvent(new window.Event('change'));
+		await settle();
+		expect(animations.every(animation => animation.cancel.mock.calls.length === 0)).toBe(true);
+		animations.forEach(animation => animation.complete());
+		await settle();
+		expect(target.querySelector('[data-leaving]')).toBeNull();
 	});
 
 	test('OSの動きを減らす設定ではアニメーションも旧ページも作らず移動する', async () => {

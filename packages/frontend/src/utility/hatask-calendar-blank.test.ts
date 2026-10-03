@@ -103,7 +103,7 @@ function fixture(initial = [source()], positiveControl = false) {
 		HTMLButtonElement, HTMLElement, 'window': window, console: { error: vi.fn() },
 		computed: <T>(callback: () => T) => ({ get value() { return callback(); } }),
 		nextTick: async () => {}, localDateKey: iso, addCalendarDays: (date: Date, days: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days),
-		registrySet, os: { confirm, toast: vi.fn() }, openEventDetailsModal, closeEventDetail, scheduleEventNotifications, processPublicEventOutbox, loadSharedEvents, findUniqueOwnedServerId,
+		registrySet, os: { confirm, toast: vi.fn() }, dialogs: { confirm }, openEventDetailsModal, closeEventDetail, scheduleEventNotifications, processPublicEventOutbox, loadSharedEvents, findUniqueOwnedServerId,
 		setPlannerAnchor: (date: Date) => { selectedDateStr.value = iso(date); },
 		plannerCalendarEvent: (event: HataskPlannerEvent) => ({ ...event, draggable: true }),
 		blankCalendarScheduleLabel: (event: HataskPlannerEvent) => `${event.date} ${event.timeStart} — ${event.dateEnd} ${event.timeEnd}${event.allDay ? ' 終日' : ''}`,

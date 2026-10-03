@@ -51,6 +51,7 @@
 		<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
 	</form>
 	<template #actions>
+		<button v-if="hataGoesHost && goal" class="hy-secondary" :disabled="busy" @click="removeGoal">{{ goalsCopy.delete }}</button>
 		<button class="hy-secondary" :disabled="busy" @click="requestClose">{{ copy.close }}</button>
 		<button class="hy-primary" :disabled="busy || !valid" @click="save">
 			{{ goal ? copy.save : copy.createGoal }}
@@ -68,7 +69,7 @@
 />
 </template>
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, inject, reactive, ref } from 'vue';
 import HyDialog from '@/components/HyDialog.vue';
 import HyCapsule from '@/components/HyCapsule.vue';
 import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
@@ -77,8 +78,13 @@ import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
 import { localDateKey } from '@/utility/hatady-home.js';
 import { i18n } from '@/i18n.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 const copy = i18n.ts._hata._hatady._goalEditor;
+const goalsCopy = i18n.ts._hata._hatady._goals;
 const props = defineProps<{ goal?: any }>();
+const hataGoesHost = inject(HATA_GOES_HOST, null);
+const dialogs = useHataGoesDialogs();
 const emit = defineEmits<{ (e: 'closed'): void; (e: 'done'): void }>();
 const dialog = ref<any>(),
 	busy = ref(false),
@@ -152,6 +158,27 @@ async function save() {
 		);
 		if (!draft.clearDraft()) hatadyNotify(copy.savedDraftDeleteFailed);
 		else hatadyNotify(copy.saved);
+		emit('done');
+		dialog.value?.close();
+	} catch {
+		error.value = copy.saveFailed;
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function removeGoal() {
+	if (busy.value || !props.goal || !hataGoesHost) return;
+	busy.value = true;
+	error.value = '';
+	try {
+		const { canceled } = await dialogs.confirm({
+			type: 'warning',
+			text: i18n.tsx._hata._hatady._goals.confirmDelete({ title: props.goal.title }),
+		});
+		if (canceled) return;
+		await misskeyApi('hata/hatady/goals/delete', { goalId: props.goal.id });
+		if (!draft.clearDraft()) hatadyNotify(copy.savedDraftDeleteFailed);
 		emit('done');
 		dialog.value?.close();
 	} catch {

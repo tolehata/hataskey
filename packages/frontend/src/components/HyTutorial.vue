@@ -10,7 +10,7 @@
 	@close="requestClose"
 	@closed="emit('closed')"
 >
-	<div class="guide" :data-kind="kind">
+	<div class="guide" :data-kind="kind" :data-hatagoes="goesMotion">
 		<header class="head">
 			<slot name="headerAction"><span></span></slot>
 			<h2>{{ title }}</h2>
@@ -72,14 +72,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef, watch } from 'vue';
 import type { HyTutorialPage } from '@/utility/hy-tutorial.js';
 import type { HatadyTheme } from '@/utility/hatady-prefs.js';
 import { i18n } from '@/i18n.js';
 import HyDialog from '@/components/HyDialog.vue';
 import { prefer } from '@/preferences.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 
 const copy = i18n.ts._hata._hatady._controls;
+const goesMotion = inject(HATA_GOES_HOST, null) != null;
 
 const props = withDefaults(defineProps<{
 	kind: 'initial' | 'update';
@@ -175,7 +177,7 @@ async function navigate(version: number): Promise<void> {
 		const direction = target > index.value ? 1 : -1;
 		const current = view.value;
 		const animate =
-			current && typeof current.animate === 'function' && !reducedMotion.matches && prefer.r.animation.value;
+			current && typeof current.animate === 'function' && (goesMotion || !reducedMotion.matches && prefer.r.animation.value);
 		if (animate) {
 			leavingPage = current.cloneNode(true) as HTMLElement;
 			leavingPage.removeAttribute('id');
@@ -191,18 +193,19 @@ async function navigate(version: number): Promise<void> {
 		fitPreview();
 		heading.value?.focus({ preventScroll: true });
 		if (!animate || !leavingPage) continue;
-		const timing: KeyframeAnimationOptions = { duration: 320, easing: 'cubic-bezier(.22,.7,.25,1)', fill: 'both' };
+		const distance = goesMotion ? 4 : 12;
+		const timing: KeyframeAnimationOptions = { duration: goesMotion ? 160 : 320, easing: 'cubic-bezier(.22,.7,.25,1)', fill: 'both' };
 		animations = [
 			leavingPage.animate(
 				[
 					{ opacity: 1, transform: 'translateX(0)' },
-					{ opacity: 1, transform: `translateX(${-direction * 12}px)` },
+					{ opacity: goesMotion ? 0 : 1, transform: `translateX(${-direction * distance}px)` },
 				],
 				timing,
 			),
 			current.animate(
 				[
-					{ opacity: 0, transform: `translateX(${direction * 12}px)` },
+					{ opacity: 0, transform: `translateX(${direction * distance}px)` },
 					{ opacity: 1, transform: 'translateX(0)' },
 				],
 				timing,
@@ -266,11 +269,11 @@ onMounted(() => {
 	window.addEventListener('resize', settleLayout);
 	window.addEventListener('orientationchange', settleLayout);
 	window.visualViewport?.addEventListener('resize', settleLayout);
-	reducedMotion.addEventListener('change', settleLayout);
+	if (!goesMotion) reducedMotion.addEventListener('change', settleLayout);
 	void window.document.fonts?.ready.then(scheduleFit);
 	window.document.fonts?.addEventListener('loadingdone', scheduleFit);
 });
-watch(prefer.r.animation, settleLayout);
+watch(prefer.r.animation, () => { if (!goesMotion) settleLayout(); });
 onUnmounted(() => {
 	props.cancelSignal?.removeEventListener('abort', cancelFromOwner);
 	closing = true;
@@ -721,7 +724,7 @@ onUnmounted(() => {
 	}
 }
 @media (prefers-reduced-motion: reduce) {
-	.steps button::after {
+	.guide:not([data-hatagoes='true']) .steps button::after {
 		transition: none;
 	}
 }

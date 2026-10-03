@@ -1,13 +1,14 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
-const fixture = vi.hoisted(() => ({ records: new Map<string, string>(), failWrite: false, account: { id: 'one' }, notify: vi.fn(), pending: null as null | { props: { save: () => boolean; discard: () => boolean }; events: { done: (leave: boolean) => void; closed: () => void } } }));
+const fixture = vi.hoisted(() => ({ records: new Map<string, string>(), failWrite: false, account: { id: 'one' }, notify: vi.fn(), popup: vi.fn(), pending: null as null | { props: { save: () => boolean; discard: () => boolean }; events: { done: (leave: boolean) => void; closed: () => void } } }));
 vi.mock('@/i.js', () => ({ $i: fixture.account }));
 vi.mock('@/local-storage.js', () => ({ miLocalStorage: {
 	getItemAsJson(key: string) { const value = fixture.records.get(key); return value == null ? undefined : JSON.parse(value); },
 	setItemAsJson(key: string, value: unknown) { if (fixture.failWrite) throw new Error('quota'); fixture.records.set(key, JSON.stringify(value)); },
 } }));
-vi.mock('@/os.js', () => ({ toast: fixture.notify, popup: (_component: unknown, props: NonNullable<typeof fixture.pending>['props'], events: NonNullable<typeof fixture.pending>['events']) => { fixture.pending = { props, events }; return { dispose: vi.fn() }; } }));
+vi.mock('@/os.js', () => ({ toast: fixture.notify, popup: fixture.popup }));
+vi.mock('@/utility/hatagoes-popup.js', () => ({ useHataGoesPopup: () => fixture.popup }));
 vi.mock('@/components/HataFeedDraftPrompt.vue', () => ({ default: { template: '<div/>' } }));
 import { useHataFeedDraft } from './hatafeed-draft.js';
 import { hataFeedDraftPromptOpen } from './hatafeed-ui.js';
@@ -24,7 +25,7 @@ function editor() {
 	cleanups.push(() => { app.unmount(); target.remove(); }); return { value, busy, draft, target };
 }
 
-beforeEach(() => { fixture.records.clear(); fixture.failWrite = false; fixture.account.id = 'one'; fixture.pending = null; fixture.notify.mockReset(); });
+beforeEach(() => { fixture.records.clear(); fixture.failWrite = false; fixture.account.id = 'one'; fixture.pending = null; fixture.notify.mockReset(); fixture.popup.mockReset().mockImplementation((_component: unknown, props: NonNullable<typeof fixture.pending>['props'], events: NonNullable<typeof fixture.pending>['events']) => { fixture.pending = { props, events }; return { dispose: vi.fn() }; }); });
 afterEach(() => { cleanups.splice(0).forEach(fn => fn()); });
 
 async function prompt() { await vi.waitFor(() => expect(fixture.pending).not.toBeNull()); return fixture.pending!; }

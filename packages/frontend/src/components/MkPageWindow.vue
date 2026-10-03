@@ -18,8 +18,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 >
 	<template #header>
 		<template v-if="pageMetadata">
-			<i v-if="pageMetadata.icon" :class="pageMetadata.icon" style="margin-right: 0.5em;"></i>
-			<span>{{ pageMetadata.title }}</span>
+			<HataAppLogo v-if="pageMetadata.hataApp" :app="pageMetadata.hataApp" :size="20" :monochrome="store.r.darkMode.value" style="margin-right: 0.5em;"/><i v-else-if="pageMetadata.icon" :class="pageMetadata.icon" style="margin-right: 0.5em;"></i>
+			<HataAppWordmark v-if="isExactHataAppTitle(pageMetadata)" :app="pageMetadata.hataApp!" inheritColor/><span v-else>{{ pageMetadata.title }}</span>
 		</template>
 	</template>
 
@@ -34,6 +34,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef } from 'vue';
 import { url } from '@@/js/config.js';
 import type { PageMetadata } from '@/page.js';
+import { isExactHataAppTitle } from '@/page.js';
+import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import { store } from '@/store.js';
 import RouterView from '@/components/global/RouterView.vue';
 import MkWindow from '@/components/MkWindow.vue';
 import { popout as _popout } from '@/utility/popout.js';

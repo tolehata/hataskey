@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { compileStyleAsync, parse } from '@vue/compiler-sfc';
 import { computed, createApp, defineComponent, h, KeepAlive, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+vi.mock('@/i18n.js', async () => ({ i18n: (await import('@/utility/hatask-test-i18n.js')).createTestHataskI18n() }));
 import HataskAkatsukiLayout from './HataskAkatsukiLayout.vue';
 import type { App } from 'vue';
 import type { HataskAkatsukiFavoriteId, HataskAkatsukiHomeSectionId, HataskAkatsukiLayoutProps } from './hatask-akatsuki-types.js';
@@ -50,7 +51,7 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-async function mountLayout(options: Partial<HataskAkatsukiLayoutProps> = {}, context?: HataskeyNotificationToasts) {
+async function mountLayout(options: Partial<HataskAkatsukiLayoutProps> & { embedded?: boolean } = {}, context?: HataskeyNotificationToasts) {
 	const liveProps = reactive<HataskAkatsukiLayoutProps>({ enabled: true, activeTab: 'home', model: {}, now: new Date(2026, 8, 5, 13, 24), searchQuery: '', searchOpen: false, ...options });
 	const handlers = { navigate: vi.fn(), settings: vi.fn(), search: vi.fn(), closeSearch: vi.fn(), action: vi.fn(), saveFavorites: vi.fn(), slotMounted: vi.fn(), slotUnmounted: vi.fn() };
 	const Child = defineComponent({ setup() { onMounted(handlers.slotMounted); onUnmounted(handlers.slotUnmounted); return () => h('input', { 'data-draft': '', value: '' }); } });
@@ -740,6 +741,23 @@ describe('HataskAkatsukiLayout', () => {
 		expect(required(container, '[data-home-select="todo"]').getAttribute('aria-pressed')).toBe('true');
 	});
 
+	test('embedded navigation leaves the fade to HataGoes and keeps draft ownership with motion settings disabled', async () => {
+		prefersReducedMotion = true;
+		const { container, liveProps, handlers } = await mountLayout({ embedded: true, animations: false });
+		const { animate } = observeTabMotion(container);
+		const draft = required<HTMLInputElement>(container, '[data-draft]');
+		draft.value = '入力を保持する';
+		liveProps.activeTab = 'cal';
+		await nextTick();
+		await nextTick();
+		expect(required(container, '.htk-akatsuki-layout').getAttribute('data-motion')).toBe('on');
+		expect(animate).not.toHaveBeenCalled();
+		expect(required(container, '[data-draft]')).toBe(draft);
+		expect(draft.value).toBe('入力を保持する');
+		expect(handlers.slotMounted).toHaveBeenCalledTimes(1);
+		expect(handlers.slotUnmounted).not.toHaveBeenCalled();
+	});
+
 	test('all categories fade without remounting the draft or making visibility depend on finish', async () => {
 		const { container, liveProps, handlers } = await mountLayout();
 		const { animate, animations } = observeTabMotion(container);
@@ -1046,7 +1064,7 @@ describe('HataskAkatsukiLayout', () => {
 		expect(required(header, '.hak-rail-menu').getAttribute('aria-label')).toBe('メニューを開閉');
 		const source = readFileSync(resolve(process.cwd(), 'src/components/hatask/HataskAkatsukiLayout.vue'), 'utf8');
 		expect(source).toMatch(/\.hak-rail-head\s*\{\s*display:\s*flex;\s*align-items:\s*center;/u);
-		expect(source).toMatch(/\.hak-rail-brand\s*\{\s*font-size:\s*20px;\s*white-space:\s*nowrap;\s*\}/u);
+		expect(source).toMatch(/\.hak-rail-brand\s*\{[^}]*display:\s*inline-flex;[^}]*align-items:\s*center;[^}]*font-size:\s*20px;[^}]*white-space:\s*nowrap;\s*\}/u);
 		expect(source).toMatch(/\.hak-brand\s*\{[^}]*font-family:\s*'Righteous'/u);
 	});
 
@@ -1079,9 +1097,14 @@ describe('HataskAkatsukiLayout', () => {
 		for (const button of buttons) {
 			expect(button.getAttribute('aria-label')?.length).toBeGreaterThan(0);
 			const icons = [...button.querySelectorAll('.ti')];
-			expect(icons).toHaveLength(1);
-			expect(icons[0].parentElement).toBe(button);
-			expect(icons[0].getAttribute('aria-hidden')).toBe('true');
+			if (button.getAttribute('aria-label') === 'ホーム') {
+				expect(icons).toHaveLength(0);
+				expect(button.querySelector('svg')?.closest('[aria-hidden="true"]')).not.toBeNull();
+			} else {
+				expect(icons).toHaveLength(1);
+				expect(icons[0].parentElement).toBe(button);
+				expect(icons[0].getAttribute('aria-hidden')).toBe('true');
+			}
 		}
 		const source = readFileSync(resolve(process.cwd(), 'src/components/hatask/HataskAkatsukiLayout.vue'), 'utf8');
 		const menuIcon = source.match(/\.hak-rail-menu > \.ti\s*\{([^}]+)\}/u)?.[1];

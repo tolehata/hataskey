@@ -315,8 +315,10 @@ describe('Hataskの予定詳細はクリックした予定を非破壊で開く'
 		const body = functionNode('cleanupHataskState').body;
 		if (!body) throw new Error('Missing cleanup body');
 		const statements = body.statements;
-		const closing = statements.find(statement => statement.getText(script) === 'closeEventDetail();');
-		const deferred = statements.find(statement => statement.getText(script).startsWith('nextTick('));
+		const preserveGuard = statements.find(statement => ts.isIfStatement(statement) && statement.expression.getText(script) === '!preserveInput');
+		const closing = preserveGuard && ts.isIfStatement(preserveGuard) && ts.isBlock(preserveGuard.thenStatement)
+			? preserveGuard.thenStatement.statements.find(statement => statement.getText(script) === 'closeEventDetail();') : undefined;
+		const deferred = statements.find(statement => ts.isIfStatement(statement) && statement.expression.getText(script) === '!props.embedded');
 		if (!closing || !deferred) throw new Error('Missing cleanup sequence');
 		expect(closing.pos).toBeLessThan(deferred.pos);
 		const hook = script.statements.find(statement => ts.isExpressionStatement(statement) && ts.isCallExpression(statement.expression) && statement.expression.expression.getText(script) === 'onDeactivated');
@@ -324,7 +326,7 @@ describe('Hataskの予定詳細はクリックした予定を非破壊で開く'
 		const cleanupHataskState = vi.fn();
 		const callbacks: Array<() => void> = [];
 		const compiled = ts.transpileModule(hook.getText(script), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } });
-		runInNewContext(compiled.outputText, { cleanupHataskState, invalidateCommunityFlowers: vi.fn(), sharedEventRequest: 0, sharedEvents: { value: [] }, $i: { id: 'me' }, checkClosedRsvps: vi.fn(), onDeactivated: (callback: () => void) => callbacks.push(callback) }, { timeout: 1000 });
+		runInNewContext(compiled.outputText, { cleanupHataskState, closeGoesCapture: vi.fn(), props: { embedded: false }, invalidateCommunityFlowers: vi.fn(), sharedEventRequest: 0, sharedEvents: { value: [] }, $i: { id: 'me' }, checkClosedRsvps: vi.fn(), onDeactivated: (callback: () => void) => callbacks.push(callback) }, { timeout: 1000 });
 		expect(callbacks).toHaveLength(1); callbacks[0](); expect(cleanupHataskState).toHaveBeenCalledTimes(1);
 	});
 });

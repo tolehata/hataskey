@@ -33,7 +33,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:to="navbarItemDef[item].to"
 					v-on="navbarItemDef[item].action ? { click: navbarItemDef[item].action } : {}"
 				>
-					<i class="ti-fw" :class="[$style.itemIcon, navbarItemDef[item].icon]" :style="{ viewTransitionName: 'navbar-item-' + item }"></i><span :class="$style.itemText">{{ navbarItemDef[item].title }}</span>
+					<HataAppNavIcon v-if="hataAppForMenuIcon(item)" :app="hataAppForMenuIcon(item)!" :size="24" :monochrome="store.r.darkMode.value" :class="$style.itemIcon" :style="{ viewTransitionName: 'navbar-item-' + item }"/><i v-else class="ti-fw" :class="[$style.itemIcon, navbarItemDef[item].icon]" :style="{ viewTransitionName: 'navbar-item-' + item }"></i><HataAppWordmark v-if="hataAppForMenuLabel(item, navbarItemDef[item].title)" :app="hataAppForMenuLabel(item, navbarItemDef[item].title)!" :class="$style.itemText" inheritColor/><span v-else :class="$style.itemText">{{ navbarItemDef[item].title }}</span>
 					<span v-if="navbarItemDef[item].indicated" :class="$style.itemIndicator" class="_blink">
 						<span v-if="navbarItemDef[item].indicateValue && prefer.s.showUnreadNotificationsCount" class="_indicateCounter" :class="$style.itemIndicateValueIcon">{{ navbarItemDef[item].indicateValue }}</span>
 						<i v-else class="_indicatorCircle"></i>
@@ -119,6 +119,9 @@ import { getAccountMenu } from '@/accounts.js';
 import { $i } from '@/i.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { haptic } from '@/utility/haptic.js';
+import HataAppNavIcon from '@/components/HataAppNavIcon.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import { hataAppForMenuIcon, hataAppForMenuLabel } from '@/utility/hata-app-brand.js';
 
 const router = useRouter();
 

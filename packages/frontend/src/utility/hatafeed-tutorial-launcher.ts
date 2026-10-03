@@ -16,6 +16,7 @@ export async function showHataFeedTutorial(options: {
 	isStaff?: boolean;
 	hasExistingActivity?: boolean;
 	anchorElement?: HTMLElement | null;
+	popup?: typeof os.popup;
 }): Promise<(() => void) | undefined> {
 	const owner = $i;
 	if (active && !active.isActive()) { active.stop(); active = null; }
@@ -38,7 +39,7 @@ export async function showHataFeedTutorial(options: {
 		if (!canPresent()) { release(); return; }
 		let completed = false, disposed = false;
 		let dispose = () => {};
-		const popup = os.popup(component, { kind, isStaff: options.isStaff, anchorElement: options.anchorElement, cancelSignal: cancellation.signal }, {
+		const popup = (options.popup ?? os.popup)(component, { kind, isStaff: options.isStaff, anchorElement: options.anchorElement, cancelSignal: cancellation.signal }, {
 			done: async () => {
 				if (completed || disposed || options.replay || !canOpen()) return;
 				completed = true;

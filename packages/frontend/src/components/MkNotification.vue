@@ -15,15 +15,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else-if="notification.type === 'renote:grouped'" :class="[$style.icon, $style.icon_renoteGroup]"><i class="ti ti-repeat" style="line-height: 1;"></i></div>
 		<div v-else-if="notification.type === 'note:grouped'" :class="[$style.icon, $style.icon_noteGroup]"><i class="ti ti-pencil" style="line-height: 1;"></i></div>
 		<button v-else-if="notification.type === 'hatady' && notification.user" type="button" :class="[$style.icon, $style.hatadyAvatarButton]" :aria-label="`${notification.user.name || notification.user.username} — ${i18n.ts.profile}`" @click="void hatadyActions.openProfile(notification.user.id)"><MkAvatar :class="$style.icon" :user="notification.user"/></button>
-		<div v-else-if="notification.type === 'hatady'" :class="[$style.icon, $style.icon_hatady]"><i class="ti ti-book-2"></i></div>
+		<HataAppLogo v-else-if="notification.type === 'hatady'" app="hatady" :size="toast ? 32 : 42" :monochrome="store.r.darkMode.value" :class="$style.icon"/>
 		<MkAvatar v-else-if="'user' in notification" :class="$style.icon" :user="notification.user" link preview/>
 		<div v-else-if="notification.type === 'app' && notification.id === NOTIFICATION_FILTER_POLICY_NOTICE_ID" :class="[$style.icon, $style.icon_filterPolicy]"><i class="ti ti-filter-cog"></i></div>
 		<div v-else-if="notification.type === 'app' && notification.link === '/admin/registration-applications' && notification.icon == null" :class="[$style.icon, $style.icon_registrationApplication]"><i class="ti ti-user-plus" aria-hidden="true"></i></div>
 		<!-- 旗鯖fork: Hatask 通知は言語非依存の link subtype で判別。旧通知向けに日本語 header 判定も残す。 -->
 		<div v-else-if="notification.type === 'app' && !notification.icon && ((notification.link?.includes('notice=calendar') ?? false) || (notification.header != null && /カレンダー|イベント|スケジュール|予定/.test(notification.header)))" :class="[$style.icon, $style.icon_hataskCalendar]"><i class="ti ti-calendar-event"></i></div>
 		<div v-else-if="notification.type === 'app' && !notification.icon && ((notification.link?.includes('notice=mood') ?? false) || (notification.header != null && /きもち|感情|気分|ムード|記録/.test(notification.header)))" :class="[$style.icon, $style.icon_hataskHeart]"><i class="ti ti-mood-smile"></i></div>
+		<HataAppLogo v-else-if="notification.type === 'app' && !notification.icon && notification.header === 'Hatask'" app="hatask" :size="toast ? 32 : 42" :monochrome="store.r.darkMode.value" :class="$style.icon"/>
 		<!-- 旗鯖fork: HataFeed 通知のアイコン (header='HataFeed' で判別) -->
-		<div v-else-if="notification.type === 'hataFeed' || (notification.type === 'app' && !notification.icon && notification.header === 'HataFeed')" :class="[$style.icon, $style.icon_hatafeed]"><i class="ti ti-message-report"></i></div>
+		<HataAppLogo v-else-if="notification.type === 'hataFeed' || (notification.type === 'app' && !notification.icon && notification.header === 'HataFeed')" app="hatafeed" :size="toast ? 32 : 42" :monochrome="store.r.darkMode.value" :class="$style.icon"/>
 		<!-- 旗鯖fork: 地震・津波情報の通知アイコン -->
 		<div v-else-if="notification.type === 'earthquake'" :class="[$style.icon, $style.icon_earthquake]"><i class="ti ti-activity"></i></div>
 		<div v-else-if="notification.type === 'hataskFlowerReady'" :class="[$style.icon, $style.icon_hataskFlower]"><i class="ti ti-flower"></i></div>
@@ -89,7 +90,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 	<div :class="$style.tail">
 		<header :class="$style.header">
-			<span :class="$style.brandTag" :data-brand="brand">{{ i18n.ts._hata._notificationBrands[brand] }}</span>
+			<span :class="$style.brandTag" :data-brand="brand" data-notification-brand-label>{{ i18n.ts._hata._notificationBrands[brand] }}</span>
 			<span v-if="notification.type === 'pollEnded'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.pollEnded" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'scheduledNotePosted'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.scheduledNotePosted" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'scheduledNotePostFailed'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.scheduledNotePostFailed" :wrap="toast"/></span>
@@ -103,7 +104,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-else-if="notification.type === 'exportCompleted'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.exportOfXCompleted({ x: exportEntityName[notification.exportedEntity] })" :wrap="toast"/></span>
 			<MkA v-else-if="notification.type === 'follow' || notification.type === 'mention' || notification.type === 'reply' || notification.type === 'renote' || notification.type === 'quote' || notification.type === 'reaction' || notification.type === 'receiveFollowRequest' || notification.type === 'followRequestAccepted'" v-user-preview="notification.user.id" :class="$style.headerName" :to="userPage(notification.user)"><MkUserName :nowrap="!toast" :user="notification.user"/></MkA>
 			<button v-else-if="notification.type === 'hatady' && notification.user" type="button" :class="$style.hatadyUser" @click="void hatadyActions.openProfile(notification.user.id)"><MkUserName :nowrap="!toast" :user="notification.user"/></button>
-			<span v-else-if="notification.type === 'hatady'" :class="$style.headerText">{{ i18n.ts._hata._notificationBrands.hatady }}</span>
+			<span v-else-if="notification.type === 'hatady'" :class="$style.headerText"><HataAppWordmark app="hatady" inheritColor/></span>
 			<I18n v-else-if="notification.type === 'groupInvited'" :class="$style.headerText" :src="i18n.ts._notification.youWereInvitedToGroup" textTag="span"><template #userName><MkUserName :nowrap="!toast" :user="notification.user"/></template></I18n>
 			<span v-else-if="notification.type === 'reaction:grouped' && notification.note.reactionAcceptance === 'likeOnly'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.likedBySomeUsers({ n: getActualReactedUsersCount(notification) })" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'reaction:grouped'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.reactedBySomeUsers({ n: getActualReactedUsersCount(notification) })" :wrap="toast"/></span>
@@ -112,7 +113,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-if="notification.type === 'reaction:groupedByUser'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.reactedToMultipleNotes({ n: notification.reactions.length })" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'renote:grouped'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.renotedBySomeUsers({ n: notification.users.length })" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'note:grouped'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.notedBySomeUsers({ n: notification.noteIds.length })" :wrap="toast"/></span>
-			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.headerText"><MkNotificationText :text="customNotificationHeader(notification)" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.headerText"><HataAppWordmark v-if="customNotificationHeader(notification) === 'HataFeed'" app="hatafeed" inheritColor/><HataAppWordmark v-else-if="customNotificationHeader(notification) === 'Hatask'" app="hatask" inheritColor/><MkNotificationText v-else :text="customNotificationHeader(notification)" :wrap="toast"/></span>
 			<MkTime v-if="withTime" :time="notification.createdAt" :class="$style.headerTime" :mode="prefer.s.enableAbsoluteTime ? 'absolute' : 'relative'"/>
 		</header>
 		<div :data-reaction-content="toast && notification.type === 'reaction'">
@@ -222,9 +223,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div v-else-if="privateChannelInviteResult === 'rejected'" :class="$style.invitationResult"><i class="ti ti-circle-x"></i> <MkNotificationText :text="i18n.ts._hata._privateChannels.declinedResult" :wrap="toast"/></div>
 			</template>
 			<span v-else-if="notification.type === 'test'" :class="$style.text"><MkNotificationText :text="i18n.ts._notification.notificationWillBeDisplayedLikeThis" :wrap="toast"/></span>
-			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.text">
+			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.text" data-notification-body>
 				<!-- 旗鯖fork: notification.link があればクリックで該当画面に遷移 (hatask/HataFeed 等の旗鯖独自機能向け) -->
-				<MkA v-if="notification.link" :to="notification.link" :class="$style.appLink">
+				<MkA v-if="notification.link" :to="notification.link" :class="$style.appLink" data-notification-body-link>
 					<HataFeedNotificationBody v-if="isHataFeedNotification(notification)" :punctuationWrap="toast" :text="customNotificationBody(notification)"/>
 					<Mfm v-else :punctuationWrap="toast" :text="customNotificationBody(notification)" :nowrap="false"/>
 				</MkA>
@@ -284,6 +285,9 @@ import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import MkFollowButton from '@/components/MkFollowButton.vue';
 import MkButton from '@/components/MkButton.vue';
 import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
+import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import { store } from '@/store.js';
 import { getNoteSummary } from '@/utility/get-note-summary.js';
 import { notePage } from '@/filters/note.js';
 import { userPage } from '@/filters/user.js';

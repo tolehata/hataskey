@@ -8,6 +8,10 @@ import { mainRouter } from '@/router.js';
 
 vi.mock('@@/js/scroll.js', () => ({ getScrollPosition: () => 0, scrollToTop: vi.fn() }));
 vi.mock('@/utility/device-kind.js', () => ({ deviceKind: 'desktop' }));
+vi.mock('@/store.js', async () => {
+	const { ref } = await import('vue');
+	return { store: { r: { darkMode: ref(false) } } };
+});
 vi.mock('@/events.js', () => ({ globalEvents: {} }));
 vi.mock('@/accounts.js', () => ({ getAccountMenu: vi.fn() }));
 vi.mock('@/i.js', () => ({ $i: { id: 'self' } }));
@@ -69,6 +73,18 @@ function mount(Header: Component, omission: boolean | Ref<boolean>, extra: Recor
 }
 
 describe.each([{ name: 'MkPageHeader', Header: MkPageHeader }, { name: 'CPPageHeader', Header: CPPageHeader }])('$name title omission', ({ Header }) => {
+	it('renders an explicit app identity while preserving custom titles', () => {
+		const home = mount(Header, false, { overridePageMetadata: { title: 'Hatask', icon: 'ti ti-checklist', hataApp: 'hatask' } });
+		expect(home.querySelector('[data-hata-app-logo][data-app="hatask"]')).not.toBeNull();
+		expect(home.querySelector('[data-app="hatask"][data-inherit-color="true"]')).not.toBeNull();
+		expect(home.querySelector('i.ti-checklist')).toBeNull();
+
+		const detail = mount(Header, false, { overridePageMetadata: { title: 'Record details', icon: 'ti ti-checklist', hataApp: 'hatask' } });
+		expect(detail.querySelector('[data-hata-app-logo][data-app="hatask"]')).not.toBeNull();
+		expect(detail.textContent).toContain('Record details');
+		expect(detail.querySelector('[data-inherit-color="true"]')).toBeNull();
+	});
+
 	it('reacts to a provided ref instead of treating the ref itself as true', async () => {
 		const omission = ref(false);
 		const host = mount(Header, omission);

@@ -155,6 +155,22 @@ afterEach(async () => {
 });
 
 describe('HataskCalendarPlanner', () => {
+	test('埋め込み時は操作列と予定本体の間に入力フォームの移動先を渡す', async () => {
+		const captureTarget = vi.fn();
+		const { container } = mountCalendar({ embedded: true, onCaptureTarget: captureTarget });
+		await nextTick();
+		const root = container.querySelector<HTMLElement>('[data-hatask-component="calendar"]');
+		const target = root?.querySelector<HTMLElement>('[data-hatagoes-inline-capture="calendar"]');
+		expect(target).toBeInstanceOf(HTMLElement);
+		expect(captureTarget).toHaveBeenCalledWith(target);
+		const header = root?.querySelector('header');
+		if (!root || !header || !target) throw new Error('Missing inline capture layout');
+		expect(header.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(target.compareDocumentPosition(root.querySelector('[role="grid"]') as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		const legacy = mountCalendar();
+		expect(legacy.container.querySelector('[data-hatagoes-inline-capture]')).toBeNull();
+	});
+
 	test('テーマと月グリッドの意味を公開し、操作をデータ変更なしで通知する', async () => {
 		const { container, handlers } = mountCalendar();
 		await nextTick();

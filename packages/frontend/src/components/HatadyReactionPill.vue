@@ -26,7 +26,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import type { Ref } from 'vue';
-import * as os from '@/os.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import HatadyReactionDetails from '@/components/HatadyReactionDetails.vue';
 import { useTooltip } from '@/composables/use-tooltip.js';
@@ -34,6 +34,8 @@ import { ReactionTouchGesture } from '@/utility/reaction-touch-gesture.js';
 import { getHatadyReactionUsers } from '@/utility/hatady-reaction-details.js';
 import type { HatadyReactionTarget } from '@/utility/hatady-reaction-details.js';
 import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
+
+const popup = useHataGoesPopup();
 
 const props = withDefaults(defineProps<{
 	target: HatadyReactionTarget;
@@ -78,7 +80,7 @@ async function showDetails(showing: Ref<boolean>) {
 		if (![...reasons.keys()].some(reason => reason.value) || buttonEl.value == null || !buttonEl.value.isConnected || target !== JSON.stringify(props.target) || reaction !== props.reaction || popupShowing.value) return;
 		popupShowing.value = true;
 		popupOpened = true;
-		const { dispose } = os.popup(HatadyReactionDetails, {
+		const { dispose } = popup(HatadyReactionDetails, {
 			showing: popupShowing,
 			anchorElement: buttonEl.value,
 			reaction: props.reaction,

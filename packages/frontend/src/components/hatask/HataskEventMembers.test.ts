@@ -10,8 +10,8 @@ import HataskEventMembers from './HataskEventMembers.vue';
 import type { App } from 'vue';
 import type { HataskPlannerTemplate } from '@/utility/hatask-planner-storage.js';
 
-const mocks = vi.hoisted(() => ({ selectUser: vi.fn(), inputText: vi.fn(), confirm: vi.fn(), api: vi.fn() }));
-vi.mock('@/os.js', () => ({ selectUser: mocks.selectUser, inputText: mocks.inputText, confirm: mocks.confirm }));
+const mocks = vi.hoisted(() => ({ popup: vi.fn(), selectUser: vi.fn(), inputText: vi.fn(), confirm: vi.fn(), api: vi.fn() }));
+vi.mock('@/os.js', () => ({ popup: mocks.popup, selectUser: mocks.selectUser, inputText: mocks.inputText, confirm: mocks.confirm }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: load(readFileSync(`${process.cwd()}/../../locales/ja-JP.yml`, 'utf8')) } }));
 

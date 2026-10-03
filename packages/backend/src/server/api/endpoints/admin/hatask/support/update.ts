@@ -6,7 +6,7 @@
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { HataskSupportService, HATASK_SUPPORT_ERRORS } from '@/core/HataskSupportService.js';
-import { supportSettingsSchema } from '@/server/api/endpoints/hatask/support/_schema.js';
+import { supportUpdateSettingsSchema } from '@/server/api/endpoints/hatask/support/_schema.js';
 
 export const meta = {
 	tags: ['admin', 'hatask'],
@@ -19,7 +19,7 @@ export const meta = {
 	res: { type: 'object', properties: { saved: { type: 'boolean' } }, required: ['saved'] },
 } as const;
 
-export const paramDef = { type: 'object', properties: { settings: supportSettingsSchema }, required: ['settings'], additionalProperties: false } as const;
+export const paramDef = { type: 'object', properties: { settings: supportUpdateSettingsSchema }, required: ['settings'], additionalProperties: false } as const;
 
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export

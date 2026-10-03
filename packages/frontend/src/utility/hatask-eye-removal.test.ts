@@ -36,8 +36,8 @@ function routeFixture(tab?: string, notice?: string, legacyEye = false) {
 	const code = `const tabs = ${tabsSource}; ${legacyEye ? 'tabs.value.push({ id: \'eye\' });' : ''}\n${routeWatchSource}\ntabs.value.map(tab => tab.id);`;
 	const compiled = ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 	const ids = scope.run(() => runInNewContext(compiled, {
-		computed, watch, activeTab, routeRouter: { currentRef: route }, copy: {},
-		i18n: { ts: { _hata: { _hatask: { _ranking: { title: 'ランキング' } } } } },
+		computed, watch, activeTab, routeRouter: { currentRef: route }, props: { embedded: false }, copy: {}, canReviewRecords: ref(false),
+		i18n: { ts: { _hata: { _hatask: { _ranking: { title: 'ランキング' }, _akatsuki: { recipeTab: 'レシピ', supportTab: 'おうえん', reviewTab: '審査' } } } } },
 	}, { timeout: 1000 })) as string[];
 	return { activeTab, route, ids };
 }
@@ -71,7 +71,7 @@ describe('Hatask EYEタブの削除', () => {
 		expect(detectRetiredTab(page)).toBe(false);
 		expect(template).not.toContain('{{eyePhrase}}');
 		expect(page).toContain('function updateEyePhrase()');
-		expect(template).toContain('{{currentFlowerHanakotoba}}');
+		expect(template).toContain('<HataskFlowerCare');
 		expect(page).not.toMatch(/\.o1a \.eye\{[^}]*cursor:pointer/u);
 	});
 

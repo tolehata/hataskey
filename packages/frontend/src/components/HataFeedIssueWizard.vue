@@ -131,7 +131,7 @@ import MkSwitch from '@/components/MkSwitch.vue';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { chooseDriveFile } from '@/utility/drive.js';
+import { useHataGoesPickers } from '@/utility/hatagoes-pickers.js';
 import { iAmModerator } from '@/i.js';
 import { categoryLabel, creatableCategoryKeys, staffOnlyCategoryKeys, categoryDesc, categoryIcon } from '@/utility/hatafeed.js';
 import type { HataFeedCategory, HataFeedPriority } from '@/utility/hatafeed.js';
@@ -141,6 +141,7 @@ const props = defineProps<{ projectId: string | null; projects: any[] }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
 
 const dialog = useTemplateRef('dialog');
+const { selectDriveFiles } = useHataGoesPickers();
 const copy = i18n.ts._hata._hatafeed._issueWizard;
 
 const step = ref(1);
@@ -231,7 +232,7 @@ const descHint = computed(() => {
 const descCaption = computed(() => category.value === 'security' ? copy.securityDescriptionCaption : '');
 
 async function addFiles() {
-	const chosen = await chooseDriveFile({ multiple: true }).catch(() => []);
+	const chosen = await selectDriveFiles({ multiple: true }).catch(() => []);
 	for (const f of chosen) {
 		if (!files.value.some(x => x.id === f.id)) files.value.push(f);
 	}

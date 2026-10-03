@@ -16,6 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		:class="$style.root"
 		data-hatadint
 		role="dialog"
+		:data-hatagoes="!!hataGoesHost"
 		aria-modal="true"
 		aria-label="Hatadint"
 		@pointerdown.capture="dismissOutside"
@@ -782,11 +783,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<dialog
 			:id="popupTitleId + '-dialog'"
 			ref="popupEl"
-			:open="!!popupKind"
+			:open="!!displayPopupKind"
 			:class="$style.popover"
+			:data-sheet="hostSheet"
+			:data-closing="hostSheet && !popupKind"
+			:inert="hostSheet && !popupKind"
 			:style="popupStyle"
 			:aria-labelledby="popupTitleId"
-			:aria-describedby="popupKind === 'draft' ? popupTitleId + '-draft-description' : undefined"
+			:aria-describedby="displayPopupKind === 'draft' ? popupTitleId + '-draft-description' : undefined"
 			aria-modal="false"
 			@cancel.prevent="closePopup()"
 			@click.stop
@@ -805,7 +809,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</button>
 				</div>
 				<div ref="popupPanelHost"></div>
-				<div v-if="popupKind === 'tools'" :class="$style.popupTools">
+				<div v-if="displayPopupKind === 'tools'" :class="$style.popupTools">
 					<button
 						v-for="t in tools"
 						:key="t.id"
@@ -816,7 +820,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<i :class="t.icon"></i><span>{{ t.name }}</span>
 					</button>
 				</div>
-				<template v-if="popupKind === 'size'">
+				<template v-if="displayPopupKind === 'size'">
 					<label>{{ copy.brushSize
 					}}<input
 						v-model.number="brushSize"
@@ -832,7 +836,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						@change="setBrushSize"
 					/></label>
 				</template>
-				<template v-if="popupKind === 'opacity'">
+				<template v-if="displayPopupKind === 'opacity'">
 					<label>{{ copy.opacity
 					}}<input
 						v-model.number="brushOpacity"
@@ -848,7 +852,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						@change="setBrushOpacity"
 					/></label>
 				</template>
-				<form v-if="popupKind === 'rename'" @submit.prevent="commitRename">
+				<form v-if="displayPopupKind === 'rename'" @submit.prevent="commitRename">
 					<label>{{ ui.artworkName
 					}}<input
 						ref="renameInput"
@@ -867,7 +871,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</form>
 				<form
-					v-if="popupKind === 'dimensions'"
+					v-if="displayPopupKind === 'dimensions'"
 					@submit.prevent="resizeCanvas"
 				>
 					<label>{{ copy.width
@@ -893,7 +897,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</button>
 					</div>
 				</form>
-				<div v-if="popupKind === 'export'" :class="$style.destinations">
+				<div v-if="displayPopupKind === 'export'" :class="$style.destinations">
 					<button
 						type="button"
 						:disabled="saving"
@@ -914,7 +918,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<i class="ti ti-note"></i><span>{{ ui.attachNote }}</span>
 					</button>
 				</div>
-				<template v-if="popupKind === 'consent'">
+				<template v-if="displayPopupKind === 'consent'">
 					<p>{{ ui.terms }}</p>
 					<a
 						v-if="instance.tosUrl"
@@ -940,14 +944,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</button>
 					</div>
 				</template>
-				<div v-if="popupKind === 'import'" :class="$style.destinations">
+				<div v-if="displayPopupKind === 'import'" :class="$style.destinations">
 					<button type="button" @click="importFromDevice">
 						<i class="ti ti-device-laptop"></i>{{ ui.fromDevice }}
 					</button><button type="button" @click="importImage">
 						<i class="ti ti-cloud"></i>{{ ui.fromDrive }}
 					</button>
 				</div>
-				<template v-if="popupKind === 'help'">
+				<template v-if="displayPopupKind === 'help'">
 					<p>{{ ui.help }}</p>
 					<p>B / E / I / H · Ctrl / ⌘ + Z</p>
 					<p>
@@ -957,7 +961,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</p>
 					<p :class="$style.muted">Righteous · SIL OFL 1.1</p>
 				</template>
-				<template v-if="popupKind === 'confirm'">
+				<template v-if="displayPopupKind === 'confirm'">
 					<p>{{ confirmText }}</p>
 					<div :class="$style.actions">
 						<button type="button" @click="closePopup()">
@@ -971,7 +975,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</button>
 					</div>
 				</template>
-				<template v-if="popupKind === 'draft'">
+				<template v-if="displayPopupKind === 'draft'">
 					<p :id="popupTitleId + '-draft-description'">{{ ui.draftLocalOnly }}</p>
 					<p v-if="draftExists" :class="$style.muted">{{ ui.replaceDraft }}</p>
 					<div :class="$style.draftActions">
@@ -1013,6 +1017,7 @@ import {
 	onMounted,
 	onUnmounted,
 	nextTick,
+	inject,
 	useCssModule,
 	useId,
 } from 'vue';
@@ -1020,6 +1025,7 @@ import type { CSSProperties } from 'vue';
 import type { entities } from 'cherrypick-js';
 import type { HatadintDraft } from '@/utility/hatadint-document.js';
 import MkModal from '@/components/MkModal.vue';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { $i } from '@/i.js';
@@ -1045,6 +1051,7 @@ import {
 const props = withDefaults(defineProps<{ canAttach?: boolean }>(), {
 	canAttach: false,
 });
+const hataGoesHost = inject(HATA_GOES_HOST, null);
 const emit = defineEmits<{
 	(ev: 'closed'): void;
 	(ev: 'done', file: entities.DriveFile): void;
@@ -1170,15 +1177,19 @@ const mobilePanels = [
 ];
 const desktopPanel = ref('color'),
 	popupKind = ref('');
+const renderedPopupKind = ref('');
+const hostSheet = computed(() => !!hataGoesHost && isMobile.value);
+const displayPopupKind = computed(() => popupKind.value || (hostSheet.value ? renderedPopupKind.value : ''));
+let popupCloseTimer: number | undefined;
 const panelPopup = computed(() =>
-	panelTabs.some((p) => p.id === popupKind.value),
+	panelTabs.some((p) => p.id === displayPopupKind.value),
 );
 const visiblePanel = computed(() =>
-	panelPopup.value ? popupKind.value : desktopPanel.value,
+	panelPopup.value ? displayPopupKind.value : desktopPanel.value,
 );
 const popupTitle = computed(
 	() =>
-		panelTabs.find((p) => p.id === popupKind.value)?.name ??
+		panelTabs.find((p) => p.id === displayPopupKind.value)?.name ??
 		(
 			{
 				rename: ui.rename,
@@ -1193,7 +1204,7 @@ const popupTitle = computed(
 				confirm: copy.confirmation,
 				draft: ui.draftTitle,
 			} as Record<string, string>
-		)[popupKind.value],
+		)[displayPopupKind.value],
 );
 const popupTitleId = `hatadint-popup-${useId()}`;
 const popupStyle = ref<CSSProperties>({});
@@ -2405,6 +2416,9 @@ async function openPopup(
 	// Panel contents can move into the popup and hide the original button on the next tick.
 	const anchorBounds = measurePopupAnchor(anchor) ?? popupAnchorBounds;
 	closePopup(false);
+	if (popupCloseTimer != null) window.clearTimeout(popupCloseTimer);
+	popupCloseTimer = undefined;
+	renderedPopupKind.value = kind;
 	popupAnchor = anchor;
 	popupAnchorBounds = anchorBounds;
 	popupKind.value = kind;
@@ -2440,6 +2454,13 @@ function closePopup(restoreFocus = true) {
 	popupAnchor = null;
 	popupAnchorBounds = null;
 	popupKind.value = '';
+	if (popupCloseTimer != null) window.clearTimeout(popupCloseTimer);
+	if (hostSheet.value && renderedPopupKind.value) {
+		popupCloseTimer = window.setTimeout(() => { renderedPopupKind.value = ''; popupCloseTimer = undefined; }, 140);
+	} else {
+		renderedPopupKind.value = '';
+		popupCloseTimer = undefined;
+	}
 	pendingDestination = null;
 	confirmation = null;
 	anchor?.setAttribute('aria-expanded', 'false');
@@ -2463,6 +2484,10 @@ function positionPopup() {
 	const root = rootEl.value,
 		el = popupEl.value;
 	if (!root || !el || !popupKind.value) return;
+	if (hostSheet.value) {
+		popupStyle.value = { left: '0', top: 'auto', bottom: '0', width: '100%', maxHeight: 'min(78dvh, 620px)', '--popup-height': 'min(78dvh, 620px)' } as CSSProperties;
+		return;
+	}
 	const r = root.getBoundingClientRect(), scale = r.width / root.clientWidth || 1;
 	popupAnchorBounds = measurePopupAnchor(popupAnchor) ?? popupAnchorBounds;
 	const a = popupAnchorBounds ?? { left: 0, top: 0, width: root.clientWidth, height: 0 };
@@ -2700,6 +2725,7 @@ onMounted(async () => {
 });
 onUnmounted(() => {
 	disposed = true;
+	if (popupCloseTimer != null) window.clearTimeout(popupCloseTimer);
 	observer?.disconnect();
 	window.clearTimeout(noticeTimer);
 	abortUpload?.();
@@ -4484,6 +4510,9 @@ function cleanupEngineDrags() {
 	box-shadow: 0 12px 42px #0003;
 	overflow: visible;
 }
+.popover[data-sheet='true'] { right:0; margin:0; max-width:none; border-radius:24px 24px 0 0; transform:translateY(0); opacity:1; transition:transform 140ms ease, opacity 140ms ease; }
+.popover[data-sheet='true'][data-closing='true'] { transform:translateY(18px); opacity:0; pointer-events:none; }
+.popover[data-sheet='true']::before { display:none; }
 .popover::before {
 	content: '';
 	position: absolute;

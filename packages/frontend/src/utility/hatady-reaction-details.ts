@@ -14,6 +14,7 @@ export type HatadyReactionTarget = {
 	workId?: string | null;
 };
 
+export type HatadyReactionRow = { id: string; createdAt: string; reaction: string; user: Misskey.entities.UserLite };
 type ReactionRow = { user: Misskey.entities.UserLite };
 
 const CACHE_MS = 30_000;
@@ -33,6 +34,18 @@ function requestFor(target: HatadyReactionTarget) {
 function targetKey(target: HatadyReactionTarget): string | null {
 	const request = requestFor(target);
 	return request == null ? null : `${request.endpoint}:${JSON.stringify(request.payload)}`;
+}
+
+/** Read a full page for the details sheet; the ten-user tooltip cache is deliberately separate. */
+export async function listHatadyReactionPage(target: HatadyReactionTarget, reaction?: string, untilId?: string): Promise<HatadyReactionRow[]> {
+	const request = requestFor(target);
+	if (request == null) return [];
+	return (misskeyApi as unknown as (endpoint: string, payload: Record<string, unknown>) => Promise<HatadyReactionRow[]>)(request.endpoint, {
+		...request.payload,
+		...(reaction ? { reaction } : {}),
+		...(untilId ? { untilId } : {}),
+		limit: 100,
+	});
 }
 
 export async function getHatadyReactionUsers(target: HatadyReactionTarget, reaction: string): Promise<Misskey.entities.UserLite[]> {

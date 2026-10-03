@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <HataskEventDetailsDialog
 	v-bind="$attrs"
 	:isOpen="isOpen"
+	:active="active"
 	:event="null"
 	:labels="frameLabels"
 	:readOnly="readOnly"
@@ -19,7 +20,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@focusFallback="emit('focus-fallback')"
 >
 	<template #body>
-		<div :class="$style.content" :data-motion="animations !== false" :data-hatask-calendar-blank-step="step">
+		<div ref="content" :class="$style.content" :data-motion="goesMotion || animations !== false" :data-hatagoes="goesMotion" :data-hatask-calendar-blank-step="step">
 			<div :class="$style.destination" data-hatask-calendar-blank="destination"><i class="ti ti-calendar-plus" aria-hidden="true"></i><div><span>{{ labels.target }}</span><strong>{{ targetLabel }}</strong></div></div>
 			<p :id="scopeId" :class="$style.hint">{{ labels.scopeHint }}</p>
 			<p v-if="error" :id="errorId" :class="$style.error" role="alert" data-hatask-calendar-blank="error"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>{{ error }}</span></p>
@@ -66,10 +67,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
 import HataskEventDetailsDialog from './HataskEventDetailsDialog.vue';
 import type { HataskEventDetailsLabels } from './hatask-event-details-types.js';
 import HataskEmoji from '@/components/HataskEmoji.vue';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+import { captureHatagoesPageTurn } from '@/utility/hatagoes-page-motion.js';
+const goesMotion = !!inject(HATA_GOES_HOST, null);
+const content = ref<HTMLElement>();
+let stepMotion: ReturnType<typeof captureHatagoesPageTurn> | undefined;
 
 export type HataskCalendarBlankEvent = {
 	id: string;
@@ -110,6 +116,7 @@ type Mode = 'copy' | 'move';
 defineOptions({ inheritAttrs: false });
 const props = withDefaults(defineProps<{
 	isOpen: boolean;
+	active?: boolean;
 	targetLabel: string;
 	events: HataskCalendarBlankEvent[];
 	labels: HataskCalendarBlankLabels;
@@ -121,7 +128,7 @@ const props = withDefaults(defineProps<{
 	getAnchor?: () => HTMLElement | null;
 	getAnchorRect?: (anchor: HTMLElement) => { left: number; right: number; top: number; bottom: number };
 	animations?: boolean;
-}>(), { returnFocusTo: null, getAnchor: () => null, getAnchorRect: undefined, animations: true });
+}>(), { active: true, returnFocusTo: null, getAnchor: () => null, getAnchorRect: undefined, animations: true });
 const emit = defineEmits<{
 	create: [];
 	confirm: [eventId: string, mode: Mode];
@@ -218,6 +225,15 @@ function confirmSelection(): void {
 	emit('confirm', selectedEvent.value.id, mode.value);
 }
 
+watch(step, async () => {
+	stepMotion?.cancel();
+	if (!goesMotion || !props.isOpen) return;
+	const motion = captureHatagoesPageTurn(content.value);
+	stepMotion = motion;
+	await nextTick();
+	if (props.isOpen) motion.play();
+});
+onBeforeUnmount(() => stepMotion?.cancel());
 watch(query, () => { visibleCount.value = 30; });
 watch(selectedEvent, event => {
 	if (selectedId.value != null && !event) {
@@ -278,6 +294,6 @@ onBeforeUnmount(() => { focusCycle++; });
 	.cancel { grid-column: 1 / -1; margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-	.choices .choice, .events .event { transition: none; }
+	.content:not([data-hatagoes='true']) .choice, .content:not([data-hatagoes='true']) .event { transition: none; }
 }
 </style>

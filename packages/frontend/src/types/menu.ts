@@ -18,6 +18,7 @@ export type MenuAction = (ev: MouseEvent) => void;
 export interface MenuButton {
 	type?: 'button';
 	text: Text;
+	textFont?: 'righteous';
 	caption?: Text | null | undefined | ComputedRef<null | undefined>;
 	icon?: string;
 	indicate?: boolean;

@@ -5,9 +5,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <MkModal ref="modal" v-slot="{ type }" :preferType="deviceKind === 'smartphone' ? 'drawer' : 'dialog'" @click="onBgClick" @closed="emit('closed')" @esc="emit('esc')">
-	<div ref="rootEl" :class="[$style.root, panelClass, type === 'drawer' ? $style.asDrawer : null]" :style="{ width: type === 'drawer' ? '' : `${width}px`, height: type === 'drawer' ? '' : `min(${height}px, 100%)` }">
+	<div ref="rootEl" :data-mobile-fullscreen="fullScreenOnMobile" :data-hatask-theme="panelTheme" :data-hatask-mode="panelMode" :class="[$style.root, panelClass, type === 'drawer' ? $style.asDrawer : null]" :style="{ width: type === 'drawer' ? '' : `${width}px`, height: type === 'drawer' ? '' : `min(${height}px, 100%)` }">
 		<div :class="$style.header">
-			<button v-if="withCloseButton" :class="$style.headerButton" class="_button" data-testid="modal-window-close" @click="emit('close')"><i class="ti ti-x"></i></button>
+			<button v-if="withCloseButton" :class="$style.headerButton" class="_button" data-testid="modal-window-close" :aria-label="i18n.ts.close" @click="emit('close')"><i class="ti ti-x" aria-hidden="true"></i></button>
 			<span :class="$style.title">
 				<slot name="header"></slot>
 			</span>
@@ -35,13 +35,17 @@ import { deviceKind } from '@/utility/device-kind.js';
 const props = withDefaults(defineProps<{
 	withOkButton?: boolean;
 	withCloseButton?: boolean;
+	fullScreenOnMobile?: boolean;
 	okButtonDisabled?: boolean;
 	panelClass?: string;
+	panelTheme?: string;
+	panelMode?: string;
 	width?: number;
 	height?: number;
 }>(), {
 	withOkButton: false,
 	withCloseButton: true,
+	fullScreenOnMobile: false,
 	okButtonDisabled: false,
 	panelClass: '',
 	width: 400,
@@ -102,6 +106,17 @@ defineExpose({
 		.footer {
 			padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
 		}
+	}
+}
+
+@media (max-width: 700px) {
+	.root[data-mobile-fullscreen='true'] {
+		position: fixed; inset: 0; margin: 0;
+		width: 100dvw !important; height: 100dvh !important;
+		max-width: none; max-height: none; border-radius: 0;
+		padding-top: env(safe-area-inset-top);
+		background: var(--MI_THEME-panel);
+		.body { padding-bottom: env(safe-area-inset-bottom); }
 	}
 }
 

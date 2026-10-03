@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { createApp, h, nextTick } from 'vue';
+import { createApp, defineComponent, h, nextTick, reactive, ref } from 'vue';
 
-const fixture = vi.hoisted(() => ({ api: vi.fn() }));
+const fixture = vi.hoisted(() => ({ api: vi.fn(), changed: vi.fn(), capturePageTurn: vi.fn(() => ({ play: vi.fn(), cancel: vi.fn() })) }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
 vi.mock('@/router.js', async () => {
 	const { ref } = await import('vue');
@@ -21,7 +21,7 @@ vi.mock('@/utility/hatady.js', () => ({ hyBookmarkColor: () => '' }));
 vi.mock('@/utility/hatady-subjects.js', () => ({ loadHySubjects: vi.fn().mockResolvedValue([]) }));
 vi.mock('@/utility/hatady-prefs.js', async () => ({ hatadyTheme: (await import('vue')).ref('light'), hatadyTzOffset: () => 0, loadHatadyDisplay: vi.fn() }));
 vi.mock('@/utility/hatady-tutorial-launcher.js', () => ({ showHatadyTutorial: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('@/utility/hatady-motion.js', () => ({ captureHatadyPageTurn: () => ({ play: vi.fn(), cancel: vi.fn() }) }));
+vi.mock('@/utility/hatady-motion.js', () => ({ captureHatadyPageTurn: fixture.capturePageTurn }));
 vi.mock('@/utility/hatady-list-motion.js', () => ({ createHatadyListEntrance: () => ({ play: vi.fn(), finish: vi.fn(), cancel: vi.fn() }) }));
 vi.mock('@/utility/haptic.js', () => ({ haptic: vi.fn() }));
 vi.mock('@/utility/touch.js', async () => ({ isHorizontalSwipeSwiping: (await import('vue')).ref(false) }));
@@ -38,8 +38,8 @@ vi.mock('@/components/HyCapsule.vue', () => ({ default: {
 	template: '<div :aria-label="label"><button v-for="option in options" :data-value="option.value" @click="$emit(\'update:modelValue\', option.value)">{{ option.label }}</button></div>',
 } }));
 vi.mock('@/components/hatady/HyCategorySelect.vue', () => ({ default: {
-	props: ['options', 'modelValue', 'label'], emits: ['update:modelValue'],
-	template: '<div :aria-label="label"><button v-for="option in options" :data-value="option.value" @click="$emit(\'update:modelValue\', option.value)">{{ option.label }}</button></div>',
+	props: ['options', 'modelValue', 'label', 'card'], emits: ['update:modelValue'],
+	template: '<div :aria-label="label"><button v-if="card" data-card-trigger :aria-label="label + \': \' + modelValue"><span>{{ label }}</span><small>{{ options.find(option => option.value === modelValue)?.label ?? label }}</small></button><button v-for="option in options" :data-value="option.value" @click="$emit(\'update:modelValue\', option.value)">{{ option.label }}</button></div>',
 } }));
 vi.mock('@/components/HyBookCover.vue', () => ({ default: { template: '<span/>' } }));
 vi.mock('@/components/HyMediaCover.vue', () => ({ default: { template: '<span/>' } }));
@@ -51,6 +51,7 @@ import Hatady from './hatady.vue';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 import { hatadyMediaCopy } from '@/utility/hatady-media.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 
 const cleanups: Array<() => void> = [];
 const row = (id: string) => ({ id, type: 'study', occurredAt: '2026-09-18T00:00:00Z', study: { id, title: id, kind: 'study' } });
@@ -87,10 +88,12 @@ async function chooseRecordKind(target: HTMLElement, value: string) {
 	choice!.click();
 }
 
-async function mount() {
+async function mount(embedded = false) {
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
-	const app = createApp(Hatady);
+	const pageProps = reactive({ embedded, paneActive: true, requestedTab: 'records' });
+	const app = createApp(defineComponent({ setup: () => () => h(Hatady, pageProps) }));
+	if (embedded) app.provide(HATA_GOES_HOST, { active: ref(true), register: () => () => {}, changed: fixture.changed });
 	app.component('MkStickyContainer', { setup: (_, { slots }) => () => h('div', slots.default?.()) });
 	app.component('MkLoading', { template: '<span role="status">更新中</span>' });
 	// Happy DOM does not lay out imported CSS. Supply only the existing .main overflow rule;
@@ -104,7 +107,7 @@ async function mount() {
 	const unmount = () => { app.unmount(); target.remove(); };
 	cleanups.push(unmount);
 	await settle();
-	return { target, main: target.querySelector('main')!, list: target.querySelector<HTMLElement>('main > div')!, unmount };
+	return { target, main: target.querySelector('main')!, list: target.querySelector<HTMLElement>('main > div')!, pageProps, unmount };
 }
 
 beforeEach(() => {
@@ -115,6 +118,8 @@ beforeEach(() => {
 	window.localStorage.removeItem('hatadyCollectionKind');
 	prefer.r.enablePullToRefresh.value = true;
 	fixture.api.mockReset().mockImplementation(async endpoint => endpoint === 'hata/hatady/activities' ? page('kept', 'old-cursor') : { count: 0 });
+	fixture.changed.mockReset();
+	fixture.capturePageTurn.mockClear();
 });
 afterEach(() => {
 	cleanups.splice(0).forEach(cleanup => cleanup());
@@ -125,6 +130,25 @@ afterEach(() => {
 	window.localStorage.removeItem('hatadyActiveTab');
 	window.localStorage.removeItem('hatadyLogKinds');
 	window.localStorage.removeItem('hatadyCollectionKind');
+});
+
+test('embedded record controls keep readable period and kind labels', async () => {
+	const { target } = await mount(true);
+	const period = target.querySelector<HTMLButtonElement>(`button[aria-label="${i18n.ts._hata._hatady._home.period}"]`)!;
+	expect(period).not.toBeNull();
+	expect(period.classList.contains('hy-icon-button')).toBe(false);
+	expect(period.textContent).toContain('すべて');
+	expect(target.querySelector('[data-card-trigger]')?.textContent).toContain('活動の種類');
+});
+
+test('Hatadyの埋込タブ変更は初回表示を動かさず、外側からの遷移で既存motionを起動する', async () => {
+	const { target, pageProps } = await mount(true);
+	expect(fixture.capturePageTurn).not.toHaveBeenCalled();
+	pageProps.requestedTab = 'collection';
+	await settle();
+	expect(target.querySelector('main h1')?.textContent).toBe('コレクション');
+	expect(fixture.capturePageTurn).toHaveBeenCalledTimes(1);
+	expect(fixture.capturePageTurn).toHaveBeenCalledWith(expect.any(HTMLElement), 1);
 });
 
 test.each(['mine', 'recent', 'following'])('refreshes the selected %s scope with activity and date filters, replacing rather than appending', async scope => {
@@ -173,6 +197,15 @@ test('a failed pull retains entries and pagination, and a pending refresh cannot
 	loadMore!.click();
 	await settle();
 	expect(calls().at(-1)![1]).toMatchObject({ cursor: 'old-cursor' });
+});
+
+test('an embedded record deletion notifies the shared home once after success', async () => {
+	const { target } = await mount(true);
+	expect(target.querySelector('[data-delete-record]')).not.toBeNull();
+	expect(fixture.changed).not.toHaveBeenCalled();
+	target.querySelector<HTMLButtonElement>('[data-delete-record]')!.click();
+	await settle();
+	expect(fixture.changed).toHaveBeenCalledOnce();
 });
 
 test('does not fetch from a scrolled position, a horizontal gesture, or a cancelled touch', async () => {

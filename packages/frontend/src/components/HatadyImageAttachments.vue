@@ -20,11 +20,12 @@
 import { onScopeDispose, ref } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import MkDriveFileThumbnail from '@/components/MkDriveFileThumbnail.vue';
-import { chooseDriveFile } from '@/utility/drive.js';
+import { useHataGoesPickers } from '@/utility/hatagoes-pickers.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 
 const copy = i18n.ts._hata._hatady._imageAttachments;
+const { selectDriveFiles } = useHataGoesPickers();
 
 const files = defineModel<Misskey.entities.DriveFile[]>({ required: true });
 defineProps<{ label: string }>();
@@ -37,7 +38,7 @@ async function add(fromDrive: boolean): Promise<void> {
 	try {
 		let selected: Misskey.entities.DriveFile[];
 		if (fromDrive) {
-			selected = await chooseDriveFile({ multiple: true });
+			selected = await selectDriveFiles({ multiple: true });
 		} else {
 			const picked = await os.chooseFileFromPc({ multiple: true, accept: 'image/*' });
 			if (!active || !picked.length) return;

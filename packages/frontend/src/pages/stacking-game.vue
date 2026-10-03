@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <PageWithHeader>
 	<div class="_spacer" style="--MI_SPACER-w: 800px;">
-		<div :class="$style.root">
+		<div :class="[$style.root, inHataGoes && $style.hostRoot]">
 			<div class="_gaps">
 				<div class="_panel" :class="$style.hero">
 					<div :class="$style.heroInner">
@@ -133,14 +133,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, watch } from 'vue';
+import { inject, ref, onMounted, watch } from 'vue';
 import MkButton from '@/components/MkButton.vue';
 import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 
+const inHataGoes = inject(HATA_GOES_HOST, null) != null;
 const router = useRouter();
 const common = i18n.ts._hata._games._common;
 const copy = i18n.ts._hata._games._stacking._home;
@@ -210,6 +212,16 @@ definePage(() => ({
 
 <style lang="scss" module>
 .root { max-width: 500px; margin: 0 auto; }
+.hostRoot { max-width: 800px; container-type: inline-size; }
+.hostRoot > :global(._gaps) { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.hostRoot > :global(._gaps) > * { min-width: 0; }
+.hostRoot .heroInner { padding: 22px 20px; }
+.hostRoot > :global(._gaps) > .menuCard:nth-child(2) { display: grid; place-items: center; }
+.hostRoot > :global(._gaps) > .menuCard:nth-child(2) > * { width: 100%; }
+.hostRoot .modeBtn { transition-duration: .16s; }
+@container (min-width: 620px) {
+	.hostRoot > :global(._gaps) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .hero {
 	background: linear-gradient(135deg, var(--MI_THEME-accent), color-mix(in srgb, var(--MI_THEME-accent) 60%, #ff8800));
 	border-radius: 16px; overflow: hidden;

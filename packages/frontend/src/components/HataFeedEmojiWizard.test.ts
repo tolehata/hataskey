@@ -7,7 +7,8 @@ vi.mock('@/local-storage.js', () => ({ miLocalStorage: { getItemAsJson: () => ({
 vi.mock('@/utility/hatasaba-device-prefs.js', async () => ({ hataFeedTheme: (await import('vue')).ref('light') }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
 vi.mock('@/utility/drive.js', () => ({ chooseDriveFile: fixture.choose }));
-vi.mock('@/os.js', () => ({ toast: vi.fn(), confirm: async () => ({ canceled: false }) }));
+vi.mock('@/os.js', () => ({ popup: vi.fn(), toast: vi.fn(), confirm: async () => ({ canceled: false }) }));
+vi.mock('@/components/hataskey3/hk3-composer-menu.js', () => ({ captureHk3ComposerMenu: vi.fn() }));
 vi.mock('@/i18n.js', async () => {
 	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
 	const i18n = createTestHataskI18n();

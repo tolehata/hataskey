@@ -14,6 +14,7 @@ import { SUPPORT_POLICIES } from '@/utility/hatask-support.js';
 
 const { api, selectUser, confirm } = vi.hoisted(() => ({ api: vi.fn(), selectUser: vi.fn(), confirm: vi.fn() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: api }));
+vi.mock('@/i18n.js', async () => ({ i18n: (await import('@/utility/hatask-test-i18n.js')).createTestHataskI18n() }));
 vi.mock('@/os.js', () => ({ selectUser, confirm }));
 vi.mock('@/page.js', () => ({ definePage: vi.fn() }));
 vi.mock('@/components/MkInput.vue', () => ({ default: defineComponent({
@@ -57,7 +58,7 @@ function snapshot(value: number | boolean | null, overrides: Partial<SupportSnap
 
 function settingsFixture() {
 	return {
-		enabled: false, platform: '支援先の名前', url: 'https://support.example.org/', manageUrl: '', intro: '支援の説明',
+		enabled: false, navButtonVisible: true, platform: '支援先の名前', url: 'https://support.example.org/', manageUrl: '', intro: '支援の説明',
 		bannerVisible: true, bannerTitle: 'ご支援ありがとうございます！', bannerMessage: 'みなさんのご支援が、\nサーバーの運営を支えています。',
 		benefits: SUPPORT_POLICIES.map(policy => ({ key: policy.key, title: policy.name, description: policy.description, roleId: 'role-standard' as string | null, visible: true, showBaseline: true })),
 	};
@@ -159,6 +160,19 @@ afterEach(() => {
 });
 
 describe('コンパネのHatask支援管理', () => {
+	test('Hatask上部ナビの支援情報ボタンを独立して切り替え、保存する', async () => {
+		const { container } = await mount();
+		const toggle = find<HTMLInputElement>(container, '[data-support-field="navButtonVisible"] input');
+		expect(toggle.checked).toBe(true);
+		toggle.checked = false;
+		toggle.dispatchEvent(new Event('change', { bubbles: true }));
+		await settle();
+		find<HTMLButtonElement>(container, '[data-save-support]').click();
+		await settle();
+		expect(callsTo('admin/hatask/support/update')[0][1].settings.navButtonVisible).toBe(false);
+		expect(callsTo('admin/hatask/support/update')[0][1].settings.enabled).toBe(false);
+	});
+
 	test('初期OFF・未設定でも14項目を非公開の編集行として用意し、実際の標準値を読み取り専用で表示する', async () => {
 		initialResponse.settings.benefits = [];
 		const { container } = await mount();

@@ -40,6 +40,7 @@ export const paramDef = {
 		// 旗鯖fork: 検索。タイトル・説明・会話(コメント本文)を横断して絞り込む。
 		query: { type: 'string', nullable: true },
 		includeClosed: { type: 'boolean', default: false },
+		order: { type: 'string', enum: ['pinned', 'recent'], default: 'pinned' },
 		limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
 		sinceId: { type: 'string', format: 'misskey:id' },
 		untilId: { type: 'string', format: 'misskey:id' },
@@ -74,7 +75,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			applyFeedbackIssueListFilter(query, ps, await this.feedbackService.isStaff(me.id));
 
-			query.orderBy('issue.pinned', 'DESC').addOrderBy('issue.id', 'DESC');
+			// An ID cursor needs a matching sort for the cross-app feed; preserve the normal pinned list.
+			if (ps.order === 'recent') query.orderBy('issue.id', 'DESC');
+			else query.orderBy('issue.pinned', 'DESC').addOrderBy('issue.id', 'DESC');
 
 			const issues = await query.limit(ps.limit).getMany();
 			// 旗鯖fork: N+1 解消のため packIssues でバッチ pack。

@@ -71,11 +71,11 @@ function collectionFixture() {
 		...state, ref, computed, HataskFlowerCollection: {},
 		copy: { flowerGallery: 'フラワーギャラリー', communityFlowerGallery: 'みんなのお花' },
 		copyx: { flowerCount: ({ count }: { count: string }) => `${count}本` }, i18n: { ts: { close: '閉じる' } },
-		os: { popup: (_component: unknown, props: Record<string, unknown>, events: CollectionEvents) => {
+		popup: (_component: unknown, props: Record<string, unknown>, events: CollectionEvents) => {
 			const dispose = vi.fn();
 			popups.push({ props, events, dispose });
 			return { dispose };
-		} },
+		},
 		openFlowerDetail: select, loadCommunityFlowers: retry,
 	};
 	const source = [
@@ -122,7 +122,7 @@ function fixture() {
 	const fixtureDocument = Object.assign(new EventTarget(), { hidden: false });
 	const fixtureWindow = Object.assign(new EventTarget(), { ['document']: fixtureDocument });
 	const bindings = {
-		...state, initialPopup: popup, initialCollection: collection, misskeyApi: request, ['document']: fixtureDocument, ['window']: fixtureWindow, console: { warn: vi.fn() },
+		...state, initialPopup: popup, initialCollection: collection, misskeyApi: request, props: { embedded: false, paneActive: true }, ['document']: fixtureDocument, ['window']: fixtureWindow, console: { warn: vi.fn() },
 		useGlobalEvent: (name: string, callback: () => void) => localEvents.on(name, callback),
 		useStream: () => Object.assign(connection, { useChannel: () => Object.assign(main, { dispose: () => main.removeAllListeners() }) }),
 	};
@@ -139,7 +139,7 @@ function fixture() {
 		...['normalizeFlowerDate', 'stableHarvestedAt', 'closeFlowerDetail', 'closeFlowerCollection', 'invalidateCommunityFlowers', 'loadCommunityFlowers'].map(functionSource),
 		...registrations,
 		hookSource('onMounted', value => value.includes('addEventListener') && value.includes('invalidateCommunityFlowers')),
-		`function activate() { ${hookSource('onActivated', value => value.includes('hataskPageActive = true') || value === 'invalidateCommunityFlowers();')} }`,
+		`function activate() { ${hookSource('onActivated', value => value.includes('hataskPageActive = !props.embedded || props.paneActive') || value === 'invalidateCommunityFlowers();')} }`,
 		`function deactivate() { ${hookSource('onDeactivated', value => value === 'cleanupHataskState();' || value === 'invalidateCommunityFlowers();')} }`,
 		`function unmount() { ${hookSource('onUnmounted', value => value.includes('flowerMainConnection.dispose') || value.includes('invalidateCommunityFlowers'))} }`,
 		'return { load: loadCommunityFlowers, invalidate: invalidateCommunityFlowers, activate, deactivate, unmount, setPopup(value) { activeFlowerPopup = value; }, setCollection(value) { activeFlowerCollection = value; } };',
@@ -375,10 +375,10 @@ describe('Hatask flower collection integration', () => {
 			flowerAnimations: f.state.flowerAnimations, HataskFlowerDetail: {}, copy: {}, i18n: { ts: {} },
 			closeFlowerCollection: f.close, communityFlowers: ref([item]), reportCommunityFlower: report,
 			communityFlowerStream: ref(null),
-			os: { popup: (_component: unknown, _props: unknown, events: { action: () => Promise<void> }) => {
+			popup: (_component: unknown, _props: unknown, events: { action: () => Promise<void> }) => {
 				action = events.action;
 				return { dispose: vi.fn() };
-			} },
+			},
 		};
 		const code = ts.transpileModule(`let activeFlowerPopup = null; ${functionSource('openFlowerDetail')}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 		const showDetail = new Function(...Object.keys(bindings), `${code}; return openFlowerDetail;`)(...Object.values(bindings)) as (kind: string, selection: unknown) => void;

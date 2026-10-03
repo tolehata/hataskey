@@ -54,7 +54,7 @@ describe('Hatask flower push notification', () => {
 	test.each(Object.keys(notificationCopy) as FlowerNotificationType[])('%sの通知クリックで対象アカウントの「おはな」を開く', async type => {
 		const listeners = new Map<string, (event: unknown) => void>();
 		const client = { focus: vi.fn() };
-		const operations = { openClient: vi.fn().mockResolvedValue(client), sendMarkAllAsRead: vi.fn() };
+		const operations = { openClient: vi.fn().mockResolvedValue(client), sendMarkAllAsRead: vi.fn(), api: vi.fn().mockResolvedValue(undefined) };
 		loadSwModule('sw.ts', {
 			'idb-keyval': {}, 'cherrypick-js': {}, '@/scripts/create-notification.js': {},
 			'@/scripts/lang.js': {}, '@/scripts/operations.js': operations,
@@ -67,6 +67,7 @@ describe('Hatask flower push notification', () => {
 		});
 		await completion;
 		expect(operations.openClient).toHaveBeenCalledExactlyOnceWith('push', '/hatask?tab=garden', 'alice');
+		expect(operations.api).toHaveBeenCalledExactlyOnceWith('notifications/mark-as-read', 'alice', { notificationIds: ['flower-notice'] });
 		expect(client.focus).toHaveBeenCalledTimes(1);
 		expect(close).toHaveBeenCalledTimes(1);
 	});

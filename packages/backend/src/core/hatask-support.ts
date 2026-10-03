@@ -24,6 +24,7 @@ export interface HataskSupportBenefit {
 }
 export interface HataskSupportSettings {
 	enabled: boolean;
+	navButtonVisible: boolean;
 	platform: string;
 	url: string;
 	manageUrl: string;
@@ -43,7 +44,7 @@ export interface HataskSupportSnapshot {
 
 export function defaultHataskSupportSettings(): HataskSupportSettings {
 	return {
-		enabled: false, platform: '', url: '', manageUrl: '', intro: '',
+		enabled: false, navButtonVisible: true, platform: '', url: '', manageUrl: '', intro: '',
 		bannerTitle: 'ご支援ありがとうございます！',
 		bannerMessage: 'みなさんのご支援が、\nサーバーの運営を支えています。\nいつもこの場所を大切にしてくださり、\nありがとうございます',
 		bannerVisible: true, benefits: [],

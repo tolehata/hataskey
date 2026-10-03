@@ -122,11 +122,12 @@ import MkInput from '@/components/MkInput.vue';
 import MkSelect from '@/components/MkSelect.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import { i18n } from '@/i18n.js';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { categoryKeys, categoryLabel, statusKeys, statusLabel } from '@/utility/hatafeed.js';
 import { downloadHataFeedJson, localDayEndIso, localDayStartIso, validateHataFeedExportRange } from '@/utility/hatafeed-export.js';
 
+const dialogs = useHataGoesDialogs();
 const props = defineProps<{ projectId: string | null; projectName: string }>();
 const emit = defineEmits<{ (ev: 'closed'): void }>();
 const copy = i18n.ts._hata._hatafeed._exportWindow;
@@ -230,7 +231,7 @@ async function runExport() {
 		succeeded = true;
 	} catch (error) {
 		console.error(error);
-		os.alert({ type: 'error', title: copy.exportFailed, text: copy.exportFailedDescription });
+		dialogs.alert({ type: 'error', title: copy.exportFailed, text: copy.exportFailedDescription });
 	} finally {
 		exporting.value = false;
 	}

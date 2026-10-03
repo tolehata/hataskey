@@ -35,6 +35,9 @@ beforeEach(() => {
 			if (element.hasAttribute('data-toast-id')) {
 				vi.spyOn(element, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 320, 64));
 				this.callback();
+			} else if (element.querySelector('[data-hy-page-controls]')) {
+				vi.spyOn(element, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 320, 120));
+				this.callback();
 			}
 		}
 		disconnect() {}

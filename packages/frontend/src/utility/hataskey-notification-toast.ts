@@ -17,8 +17,14 @@ export type HataskeyToastSurface = {
 	target: Readonly<Ref<HTMLElement | null>>;
 	outline: Readonly<Ref<HTMLElement | null>>;
 	animations: Readonly<Ref<boolean>>;
+	/** A host such as HataGoes may opt its own notice motion out of global reductions. */
+	forceAnimations?: Readonly<Ref<boolean>>;
 	paused?: Readonly<Ref<boolean>>;
 };
+
+export function hataskeyToastMotionEnabled(surface: HataskeyToastSurface | undefined, animationPreference: boolean, reducedMotion: boolean): boolean {
+	return surface?.forceAnimations?.value === true || (animationPreference && !reducedMotion && (surface?.animations.value ?? true));
+}
 
 export type HataskeyToast = {
 	id: number;

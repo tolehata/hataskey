@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { createApp, defineComponent, h, nextTick, reactive } from 'vue';
+import { createApp, defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import HataIntro from './HataIntro.vue';
 import { features, guideDetails } from './content.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 import type { App } from 'vue';
 
 // Deliberately independent of the content registry: removing a chapter must fail.
@@ -52,7 +53,7 @@ afterEach(() => {
 	expect(runtimeErrors).toEqual([]);
 });
 
-function mountGuides(count = 1, darkMode = false, initialPage: 'home' | 'index' = 'home') {
+function mountGuides(count = 1, darkMode = false, initialPage: 'home' | 'index' = 'home', inHataGoes = false) {
 	const props = reactive({ darkMode, animation: false, initialPage });
 	const navigate = vi.fn();
 	const exit = vi.fn();
@@ -60,6 +61,7 @@ function mountGuides(count = 1, darkMode = false, initialPage: 'home' | 'index' 
 		setup: () => () => h('div', Array.from({ length: count }, (_, index) => h(HataIntro, { ...props, key: index, onExit: exit }))),
 	}));
 	app.config.errorHandler = error => { runtimeErrors.push(error); };
+	if (inHataGoes) app.provide(HATA_GOES_HOST, { active: ref(true), register: () => () => {}, changed: vi.fn() });
 	app.component('MkA', defineComponent({
 		props: { to: { type: String, required: true } },
 		setup: (link, { slots }) => () => h('a', {
@@ -126,6 +128,24 @@ function duplicateIds(root: ParentNode): string[] {
 }
 
 describe('HataIntroの目次と承認済みガイドの章', () => {
+	test('HataGoesホームは最初の3導線とカテゴリを表示し、選択時も導線を残す', async () => {
+		const { root } = mountGuides(1, false, 'home', true);
+		expect(root.classList.contains('hg-host')).toBe(true);
+		expect(root.querySelectorAll('.hg-host-shortcut-grid > *')).toHaveLength(3);
+		expect(element(root, '.hg-host-shortcut-grid [data-id="timeline"]')).toBeTruthy();
+		expect(element(root, '.hg-host-shortcut-grid [data-id="reaction"]')).toBeTruthy();
+		expect(element(root, '.hg-host-shortcut-grid a').getAttribute('href')).toBe('/settings/profile');
+		expect(root.querySelectorAll('.hg-topic-card')).toHaveLength(10);
+		await click(root, '.hg-filter [data-id="timeline"]');
+		expect(element(root, '.hg-filter [data-id="timeline"]').getAttribute('aria-pressed')).toBe('true');
+		expect(root.querySelectorAll('.hg-topic-card')).toHaveLength(1);
+		expect(element(root, '.hg-topic-card h3').textContent).toBe('タイムライン');
+		expect(element(root, '[data-guide-home-content]').hidden).toBe(false);
+		expect(root.querySelectorAll('.hg-host-shortcut-grid > *')).toHaveLength(3);
+		await click(root, '.hg-filter [data-id="all"]');
+		expect(root.querySelectorAll('.hg-topic-card')).toHaveLength(10);
+	});
+
 	test.each(['home', 'index'] as const)('%s: 上部の重複案内と下部ボタンを除き、目次のHataIntroだけブランド書体で表示する', async initialPage => {
 		const { root } = mountGuides(1, false, initialPage);
 		const removed = '.hg-chrome, .hg-mock-notice, .hg-logo-mark, .hg-breadcrumb, [data-guide-theme], .hg-footer button, .hg-footer nav, .hg-footer a';

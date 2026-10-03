@@ -19,7 +19,10 @@ vi.mock('@/utility/hatady-prefs.js', () => ({ hatadyTheme: fixtures.theme, saveH
 vi.mock('@/utility/hatady-ui.js', () => ({ hatadyNotify: fixtures.notify, registerHatadySurface: () => () => {} }));
 vi.mock('@/utility/hatady-tutorial-launcher.js', () => ({ showHatadyTutorial: vi.fn(async () => () => {}) }));
 vi.mock('@/os.js', () => ({ popup: vi.fn() }));
+vi.mock('@/utility/hatagoes-popup.js', () => ({ useHataGoesPopup: () => vi.fn() }));
 vi.mock('@/local-storage.js', () => ({ miLocalStorage: {
+	getItem(key: string) { return fixtures.records.get(key) ?? null; },
+	setItem(key: string, value: string) { fixtures.records.set(key, value); },
 	getItemAsJson(key: string) { const value = fixtures.records.get(key); return value == null ? undefined : JSON.parse(value); },
 	setItemAsJson(key: string, value: unknown) { fixtures.records.set(key, JSON.stringify(value)); },
 } }));
@@ -82,7 +85,9 @@ describe('Hatady theme selection', () => {
 		expect(target.querySelector('h2')?.textContent).toBe('Hatady設定');
 		expect(target.querySelectorAll('button[aria-label="閉じる"]')).toHaveLength(embedded ? 0 : 1);
 		expect(target.querySelectorAll('[data-modal-host]')).toHaveLength(embedded ? 0 : 1);
-		expect(target.textContent).not.toContain('表示言語');
+		// The explanatory theme hint mentions the inherited language; no local
+		// language selector should be introduced by the settings surface.
+		expect(target.querySelector('select[aria-label="表示言語"], [role="combobox"][aria-label="表示言語"]')).toBeNull();
 		expect(target.querySelector('[to="/settings/preferences"], [href="/settings/preferences"]')).toBeNull();
 		await click(target, '[data-theme="dark"]');
 		expect(closed).not.toHaveBeenCalled();

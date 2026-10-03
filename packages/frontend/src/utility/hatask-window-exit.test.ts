@@ -71,18 +71,27 @@ function extractExitFunctions(legacyControl = false): string {
 	}).join('\n');
 }
 
-function fixture(options: { tab?: string; inWindow?: boolean; legacyControl?: boolean; providedClose?: () => void } = {}) {
+function fixture(options: { tab?: string; inWindow?: boolean; embedded?: boolean; legacyControl?: boolean; providedClose?: () => void } = {}) {
 	const activeTab = { value: options.tab ?? 'home' };
 	const route = { value: '/hatask' };
 	const operations: string[] = [];
 	const cleanupHataskState = vi.fn(() => { operations.push('cleanup'); });
 	const closePageWindow = options.inWindow ? vi.fn(() => { operations.push('close'); options.providedClose?.(); }) : null;
+	const emit = vi.fn((event: string) => { operations.push(`emit:${event}`); });
 	const routeRouter = { push: vi.fn((path: string) => { operations.push(`push:${path}`); route.value = path; }) };
-	const functions = evaluate<ExitFunctions>(`${extractExitFunctions(options.legacyControl)}\n({ exitHatask, handleBack, goBackToTimeline, handleAkatsukiAction });`, { activeTab, closePageWindow, cleanupHataskState, routeRouter });
-	return { ...functions, activeTab, route, operations, cleanupHataskState, closePageWindow, routeRouter };
+	const functions = evaluate<ExitFunctions>(`${extractExitFunctions(options.legacyControl)}\n({ exitHatask, handleBack, goBackToTimeline, handleAkatsukiAction });`, { activeTab, closePageWindow, cleanupHataskState, routeRouter, props: { embedded: options.embedded ?? false }, emit });
+	return { ...functions, activeTab, route, operations, cleanupHataskState, closePageWindow, routeRouter, emit };
 }
 
 describe('Hataskの明示終了と従来の戻る操作', () => {
+	test('埋め込み画面の終了は親へ伝え、旧ルートと保存中のタブを保つ', async () => {
+		const current = fixture({ tab: 'todo', embedded: true });
+		await current.handleAkatsukiAction({ type: 'exit' });
+		expect(current.operations).toEqual(['emit:exit']);
+		expect(current.route.value).toBe('/hatask');
+		expect(current.activeTab.value).toBe('todo');
+		expect(current.cleanupHataskState).not.toHaveBeenCalled();
+	});
 	test.each(['home', 'cal', 'todo'])('ウィンドウの%sからの明示終了はcloseだけを呼び、routeとタブを変更しない', async tab => {
 		const current = fixture({ tab, inWindow: true });
 		await current.handleAkatsukiAction({ type: 'exit' });
@@ -282,7 +291,8 @@ function introReturnFixture(options: { inWindow?: boolean; theme?: string; tab?:
 		callStatement(page, 'watch', '() => settings.value.theme').getText(page),
 	].join('\n'), {
 		computed, watch, activeTab, settings, useRouter: () => currentRouter,
-		copy: {}, i18n: { ts: { _hata: { _hatask: { _ranking: { title: 'ランキング' } } } } },
+		props: { embedded: false },
+		copy: {}, canReviewRecords: ref(false), i18n: { ts: { _hata: { _hatask: { _akatsuki: { recipeTab: 'レシピ', supportTab: 'おうえん', reviewTab: '記録確認' }, _ranking: { title: 'ランキング' } } } } },
 		showBoot: ref(false), bootKey: ref(0),
 	}));
 	return { activeTab, settings, currentRouter, otherRouter };

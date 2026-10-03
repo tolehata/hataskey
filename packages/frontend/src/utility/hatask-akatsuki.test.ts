@@ -236,8 +236,8 @@ describe('暁の親結線', () => {
 		expect(page).toContain('settings.value = { ...defaultSettings, ...settings.value }');
 	});
 	test('きもち・ごはんの同一インスタンスと既存保存関数を再利用する', () => {
-		expect(page).toContain('v-show="activeTab===\'mood\'"');
-		expect(page).toContain('v-show="activeTab===\'meal\'"');
+		expect(page).toContain('v-show="activeTab===\'mood\' || captureKind === \'mood\'"');
+		expect(page).toContain('v-show="activeTab===\'meal\' || captureKind === \'meal\'"');
 		expect(page).toContain('registerCompletedUndo(await toggleTodo(action.id, true))');
 		const forbiddenWrite = /(?:localStorage\.setItem|misskeyApi\(['"]i\/registry\/set)/;
 		expect(forbiddenWrite.test('localStorage.setItem(\'todos\', \'[]\')')).toBe(true);

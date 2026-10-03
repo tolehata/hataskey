@@ -47,11 +47,16 @@ import HyDialog from '@/components/HyDialog.vue';
 import HyCapsule from '@/components/HyCapsule.vue';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { userPage } from '@/filters/user.js';
 import { $i } from '@/i.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
+
+const dialogs = useHataGoesDialogs();
+const popupMenu = useHataGoesPopupMenu();
 
 const props = defineProps<{ userId?: string | null; type: 'following' | 'followers' }>();
 const emit = defineEmits<{ (ev: 'openProfile', userId: string): void; (ev: 'changed'): void; (ev: 'closed'): void }>();
@@ -84,7 +89,7 @@ function openRowMenu(it: any, ev: MouseEvent) {
 			icon: 'ti ti-user-minus',
 			danger: true,
 			action: async () => {
-				const { canceled } = await os.confirm({ type: 'warning', text: copy.removeFollowerConfirm });
+				const { canceled } = await dialogs.confirm({ type: 'warning', text: copy.removeFollowerConfirm });
 				if (canceled) return;
 				try {
 					await misskeyApi('hata/hatady/followers/remove', { userId: it.user.id });
@@ -97,7 +102,7 @@ function openRowMenu(it: any, ev: MouseEvent) {
 			},
 		});
 	}
-	os.popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement);
+	popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement);
 }
 
 function items_remove(it: any) {
@@ -122,7 +127,7 @@ async function reload() {
 
 async function toggle(it: any) {
 	const uname = it.user.name || it.user.username;
-	const { canceled } = await os.confirm({
+	const { canceled } = await dialogs.confirm({
 		type: it.isFollowing ? 'warning' : 'question',
 		text: it.isFollowing ? copyx.unfollowConfirm({ name: uname }) : copyx.followConfirm({ name: uname }),
 	});

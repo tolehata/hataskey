@@ -9,14 +9,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div class="main">
 			<template v-for="item in items" :key="item.text">
 				<button v-if="item.action" v-click-anime class="_button item" @click="$event => { item.action($event); close(); }">
-					<i class="icon" :class="item.icon"></i>
-					<div class="text">{{ item.text }}</div>
+					<HataAppNavIcon v-if="item.brandApp" :app="item.brandApp" :size="24" :monochrome="onDark" class="icon"/><i v-else class="icon" :class="item.icon"></i>
+				<div class="text"><HataAppWordmark v-if="hataAppForMenuLabel(item.id, item.text)" :app="hataAppForMenuLabel(item.id, item.text)!" inheritColor/><template v-else>{{ item.text }}</template></div>
 					<span v-if="item.indicate && item.indicateValue" class="_indicateCounter indicatorWithValue">{{ item.indicateValue }}</span>
 					<span v-else-if="item.indicate" class="indicator _blink"><i class="_indicatorCircle"></i></span>
 				</button>
 				<MkA v-else :key="item.text" v-click-anime :to="item.to" class="item" @click.passive="close()">
-					<i class="icon" :class="item.icon"></i>
-					<div class="text">{{ item.text }}</div>
+					<HataAppNavIcon v-if="item.brandApp" :app="item.brandApp" :size="24" :monochrome="onDark" class="icon"/><i v-else class="icon" :class="item.icon"></i>
+				<div class="text"><HataAppWordmark v-if="hataAppForMenuLabel(item.id, item.text)" :app="hataAppForMenuLabel(item.id, item.text)!" inheritColor/><template v-else>{{ item.text }}</template></div>
 					<span v-if="item.indicate && item.indicateValue" class="_indicateCounter indicatorWithValue">{{ item.indicateValue }}</span>
 					<span v-else-if="item.indicate" class="indicator _blink"><i class="_indicatorCircle"></i></span>
 				</MkA>
@@ -34,6 +34,10 @@ import { deviceKind } from '@/utility/device-kind.js';
 import { prefer } from '@/preferences.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { getActiveHataSideStudioMenuIds, hataSideStudioStore, normalizeHataSideStudioMenuId } from '@/utility/hata-side-studio.js';
+import HataAppNavIcon from '@/components/HataAppNavIcon.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import { hataAppForMenuIcon, hataAppForMenuLabel } from '@/utility/hata-app-brand.js';
+import { store } from '@/store.js';
 
 const props = withDefaults(defineProps<{
 	anchorElement?: HTMLElement | null;
@@ -52,6 +56,7 @@ const preferedModalType = (deviceKind === 'desktop' && props.anchorElement != nu
 	'dialog';
 
 const modal = useTemplateRef('modal');
+const onDark = store.r.darkMode;
 
 const menu = prefer.s.menu;
 
@@ -93,10 +98,12 @@ const hiddenFromLaunchPad = computed(() => {
 	];
 });
 
-const items = computed(() => Object.keys(navbarItemDef).filter(k => !hiddenFromLaunchPad.value.includes(k)).map(k => navbarItemDef[k]).filter(def => def.show ?? true).map(def => ({
+const items = computed(() => Object.keys(navbarItemDef).filter(k => !hiddenFromLaunchPad.value.includes(k)).map(k => ({ id: k, def: navbarItemDef[k] })).filter(({ def }) => def.show ?? true).map(({ id, def }) => ({
+	id,
 	type: def.to ? 'link' : 'button',
 	text: def.title,
 	icon: def.icon,
+	brandApp: hataAppForMenuIcon(id),
 	to: def.to,
 	action: def.action,
 	indicate: def.indicated,

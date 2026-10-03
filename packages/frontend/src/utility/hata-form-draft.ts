@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Ref, WatchStopHandle } from 'vue';
 import { $i } from '@/i.js';
 import { miLocalStorage } from '@/local-storage.js';
+import { HATA_GOES_POPUP_SCOPE, HATA_GOES_SESSION } from '@/utility/hatagoes-context.js';
 
 type StoredDraft = {
 	version: 1;
@@ -57,6 +58,9 @@ export function useHataFormDraft<T>(options: {
 	delay?: number;
 	/** Hatady の明示保存。既存のフォームは従来の自動保存を維持する。 */
 	autoSave?: boolean;
+	/** A server save can finish before deleting the local draft succeeds. */
+	preserveOnExit?: () => boolean;
+	onPreserveFailure?: () => void;
 }): {
 		restored: Ref<boolean>;
 		hasChanges: () => boolean;
@@ -74,6 +78,9 @@ export function useHataFormDraft<T>(options: {
 	let initialSnapshot = '';
 	let timer: number | null = null;
 	let stopWatch: WatchStopHandle | null = null;
+	const popupScope = inject(HATA_GOES_POPUP_SCOPE, null);
+	const session = inject(HATA_GOES_SESSION, null);
+	let stopPreserving: (() => void) | null = null;
 
 	const cancelTimer = () => {
 		if (timer != null) window.clearTimeout(timer);
@@ -137,10 +144,19 @@ export function useHataFormDraft<T>(options: {
 			cancelTimer();
 			timer = window.setTimeout(flushDraft, options.delay ?? 600);
 		}, { deep: true });
+		if (options.autoSave === false) {
+			stopPreserving = (popupScope ?? session)?.preserveDraft(() => {
+				if (hasChanges() && options.preserveOnExit?.() !== false && !flushDraft()) {
+					options.onPreserveFailure?.();
+					throw new Error('Failed to save HataGoes form draft');
+				}
+			}) ?? null;
+		}
 		window.addEventListener('beforeunload', beforeUnload);
 	});
 
 	onBeforeUnmount(() => {
+		stopPreserving?.();
 		stopWatch?.();
 		window.removeEventListener('beforeunload', beforeUnload);
 		if (options.autoSave !== false) flushDraft();

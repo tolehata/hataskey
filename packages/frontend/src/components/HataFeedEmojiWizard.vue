@@ -176,6 +176,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
+import { useHataGoesPickers } from '@/utility/hatagoes-pickers.js';
 import { computed, ref, onMounted, useTemplateRef } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
@@ -188,11 +189,12 @@ import HataFeedCategorySelect from '@/components/HataFeedCategorySelect.vue';
 import HfQuotaMeter from '@/components/HfQuotaMeter.vue';
 import HfEmojiPreviewPair from '@/components/HfEmojiPreviewPair.vue';
 import { i18n } from '@/i18n.js';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { chooseDriveFile } from '@/utility/drive.js';
 import { useHataFeedDraft } from '@/utility/hatafeed-draft.js';
 
+const pickers = useHataGoesPickers();
+const dialogs = useHataGoesDialogs();
 const props = defineProps<{ isStaff?: boolean }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
 const dialog = useTemplateRef('dialog');
@@ -292,7 +294,7 @@ function deriveName(src: string) {
 
 async function pickImage() {
 	if (quotaEmpty.value) return;
-	const chosen = await chooseDriveFile({ multiple: false }).catch(() => []);
+	const chosen = await pickers.selectDriveFiles({ multiple: false }).catch(() => []);
 	const f = chosen[0];
 	if (!f) return;
 	sourceType.value = 'image';
@@ -372,11 +374,11 @@ function resetForNextRequest() {
 async function submit(closeAfter: boolean) {
 	if (submitting.value || !name.value.trim()) return;
 	if (quotaEmpty.value) {
-		os.alert({ type: 'warning', text: copy.quotaReached });
+		dialogs.alert({ type: 'warning', text: copy.quotaReached });
 		return;
 	}
 	if (!license.value.trim()) {
-		const { canceled } = await os.confirm({ type: 'warning', text: copy.emptyLicenseConfirm });
+		const { canceled } = await dialogs.confirm({ type: 'warning', text: copy.emptyLicenseConfirm });
 		if (canceled) return;
 	}
 	submitting.value = true;
@@ -403,7 +405,7 @@ async function submit(closeAfter: boolean) {
 			resetForNextRequest();
 			finishSubmission({ resume: true });
 			if (quotaEmpty.value) {
-				await os.alert({ type: 'info', text: copy.quotaReached });
+				await dialogs.alert({ type: 'info', text: copy.quotaReached });
 				submitting.value = false;
 				dialog.value?.close();
 			}

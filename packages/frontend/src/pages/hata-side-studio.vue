@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
-<div :class="$style.root" :data-deck-ui="isHatasabaDeckUi ? 'on' : undefined" :data-ui-s="isUiS ? 'true' : undefined" :style="hk3ThemeContext">
+<div :class="$style.root" :data-deck-ui="isHatasabaDeckUi ? 'on' : undefined" :data-ui-s="isUiS ? 'true' : undefined" :data-goes-host="inHataGoes ? 'true' : undefined" :style="hk3ThemeContext">
 	<header :class="[$style.header, tutorialStep?.target === 'save' && $style.tutorialFocus]">
 		<div :class="$style.brand">
 			<button v-if="!isHatasabaDeckUi" type="button" class="_button" :class="$style.backButton" :aria-label="copy.back" @click.stop="closeStudio"><i class="ti ti-chevron-left"></i></button>
@@ -22,7 +22,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.historyActions">
 					<div :class="$style.resetWrap">
 						<button class="_button" :class="$style.historyButton" :aria-label="copy.restoreDefaults" @click="resetConfirmOpen = !resetConfirmOpen"><i class="ti ti-restore"></i></button>
-						<div v-if="resetConfirmOpen" :class="$style.resetConfirm"><b>{{ copy.resetProfileQuestion }}</b><span>{{ copy.notFinalUntilSaved }}</span><div><button class="_button" @click="resetConfirmOpen = false">{{ copy.cancel }}</button><button class="_buttonPrimary" @click="resetProfile">{{ copy.reset }}</button></div></div>
+						<Transition :enterActiveClass="$style.sheetEnterActive" :enterFromClass="$style.sheetEnterFrom" :leaveActiveClass="$style.sheetLeaveActive" :leaveToClass="$style.sheetLeaveTo"><div v-if="resetConfirmOpen" :class="$style.resetConfirm"><b>{{ copy.resetProfileQuestion }}</b><span>{{ copy.notFinalUntilSaved }}</span><div><button class="_button" @click="resetConfirmOpen = false">{{ copy.cancel }}</button><button class="_buttonPrimary" @click="resetProfile">{{ copy.reset }}</button></div></div></Transition>
 					</div>
 					<button class="_button" :class="$style.historyButton" :disabled="historyIndex <= 0" :aria-label="copy.undo" @click="undo"><i class="ti ti-arrow-back-up"></i></button>
 					<button class="_button" :class="$style.historyButton" :disabled="historyIndex >= history.length - 1" :aria-label="copy.redo" @click="redo"><i class="ti ti-arrow-forward-up"></i></button>
@@ -40,11 +40,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.previewHeadActions">
 					<div :class="$style.copyWrap">
 						<button class="_button" :class="$style.copyButton" :aria-expanded="copyMenuOpen" @click="copyMenuOpen = !copyMenuOpen"><i class="ti ti-copy"></i>{{ copy.copyOrder }}<i class="ti ti-chevron-down"></i></button>
-						<div v-if="copyMenuOpen" :class="$style.copyMenu">
+						<Transition :enterActiveClass="$style.sheetEnterActive" :enterFromClass="$style.sheetEnterFrom" :leaveActiveClass="$style.sheetLeaveActive" :leaveToClass="$style.sheetLeaveTo"><div v-if="copyMenuOpen" :class="$style.copyMenu">
 							<button class="_button" @click="copyLayout('expandedToCollapsed')"><i class="ti ti-layout-sidebar-left-collapse"></i><span><b>{{ copy.expandedToCollapsed }}</b><small>{{ copy.copyButtonsIntoOneColumn }}</small></span></button>
 							<button class="_button" @click="copyLayout('collapsedToExpanded')"><i class="ti ti-layout-sidebar-left-expand"></i><span><b>{{ copy.collapsedToExpanded }}</b><small>{{ copy.copyCollapsedOrderToExpanded }}</small></span></button>
 							<button class="_button" @click="importCurrentSidebar"><i class="ti ti-list-check"></i><span><b>{{ copy.importCurrentOrder }}</b><small>{{ copy.applyExistingSidebarSettings }}</small></span></button>
-						</div>
+						</div></Transition>
 					</div>
 					<div :class="$style.modeTabs"><button class="_button" :aria-pressed="editMode === 'expanded'" @click="setEditMode('expanded')">{{ copy.expanded }}</button><button class="_button" :aria-pressed="editMode === 'collapsed'" @click="setEditMode('collapsed')">{{ copy.collapsed }}</button></div>
 				</div>
@@ -61,18 +61,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 
 				<Teleport to="body">
-				<div :class="$style.teleportTheme" :data-ui-s="isUiS ? 'true' : undefined" :style="hk3ThemeContext">
+				<div v-show="!inHataGoes || hataGoesHost?.active.value" :class="$style.teleportTheme" :data-ui-s="isUiS ? 'true' : undefined" :data-goes-host="inHataGoes ? 'true' : undefined" :style="hk3ThemeContext">
+				<Transition :enterActiveClass="$style.sheetEnterActive" :enterFromClass="$style.sheetEnterFrom" :leaveActiveClass="$style.sheetLeaveActive" :leaveToClass="$style.sheetLeaveTo">
 				<div v-if="buttonPickerOpen" :class="$style.creationPicker">
 					<div :class="$style.pickerHead"><strong>{{ copy.createButton }}</strong><button class="_button" @click="buttonPickerOpen = false"><i class="ti ti-x"></i></button></div>
-					<label>{{ copy.feature }}<select v-model="newButtonMenuId" :class="$style.select"><option v-for="item in availableMenuItems" :key="item.id" :value="item.id">{{ getHataSideStudioMenuDisplayLabel(item.id, item.label) }}</option></select></label>
+					<label v-if="!inHataGoes">{{ copy.feature }}<select v-model="newButtonMenuId" :class="$style.select"><option v-for="item in availableMenuItems" :key="item.id" :value="item.id">{{ getHataSideStudioMenuDisplayLabel(item.id, item.label) }}</option></select></label>
+						<template v-else><label>{{ copy.feature }}<input v-model="buttonSearch" type="search" :class="$style.input" placeholder="機能をさがす"></label><div :class="$style.featureList" role="radiogroup" :aria-label="copy.feature"><button v-for="item in filteredMenuItems" :key="item.id" type="button" class="_button" role="radio" :aria-checked="newButtonMenuId === item.id" @click="newButtonMenuId = item.id"><HataAppNavIcon v-if="hataAppForMenuIcon(item.id, item.icon)" :app="hataAppForMenuIcon(item.id, item.icon)!" :size="22" :monochrome="studioDark"/><i v-else :class="item.icon"></i><span>{{ getHataSideStudioMenuDisplayLabel(item.id, item.label) }}</span><i v-if="newButtonMenuId === item.id" class="ti ti-check"></i></button><p v-if="!filteredMenuItems.length">一致する機能はありません</p></div></template>
 					<span v-if="!isUiS">{{ copy.buttonShape }}</span><div v-if="!isUiS" :class="$style.shapePicker"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :aria-pressed="newButtonShape === shape.value" @click="newButtonShape = shape.value"><span :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div>
-					<div :class="$style.pickerActions"><button class="_button" @click="buttonPickerOpen = false">{{ copy.cancel }}</button><button class="_buttonPrimary" :disabled="!newButtonMenuId" @click="confirmAddButton">{{ copy.add }}</button></div>
+					<div :class="$style.pickerActions"><button class="_button" @click="buttonPickerOpen = false">{{ copy.cancel }}</button><button class="_buttonPrimary" :disabled="!newButtonMenuId || (inHataGoes && !filteredMenuItems.some(item => item.id === newButtonMenuId))" @click="confirmAddButton">{{ copy.add }}</button></div>
 				</div>
+				</Transition>
+				<Transition :enterActiveClass="$style.sheetEnterActive" :enterFromClass="$style.sheetEnterFrom" :leaveActiveClass="$style.sheetLeaveActive" :leaveToClass="$style.sheetLeaveTo">
 				<div v-if="widgetPickerOpen" :class="$style.creationPicker">
 					<div :class="$style.pickerHead"><strong>{{ copy.createWidget }}</strong><button class="_button" @click="widgetPickerOpen = false"><i class="ti ti-x"></i></button></div>
-					<label>{{ copy.type }}<select v-model="newWidgetKind" :class="$style.select"><option v-for="widget in availableWidgetChoices" :key="widget.kind" :value="widget.kind">{{ widget.label }}</option></select></label>
-					<div :class="$style.pickerActions"><button class="_button" @click="widgetPickerOpen = false">{{ copy.cancel }}</button><button class="_buttonPrimary" @click="confirmAddWidget">{{ copy.add }}</button></div>
+					<label v-if="!inHataGoes">{{ copy.type }}<select v-model="newWidgetKind" :class="$style.select"><option v-for="widget in availableWidgetChoices" :key="widget.kind" :value="widget.kind">{{ widget.label }}</option></select></label>
+					<template v-else><label>{{ copy.type }}<input v-model="widgetSearch" type="search" :class="$style.input" placeholder="機能をさがす"></label><div :class="$style.featureList" role="radiogroup" :aria-label="copy.type"><button v-for="widget in filteredWidgetChoices" :key="widget.kind" type="button" class="_button" role="radio" :aria-checked="newWidgetKind === widget.kind" @click="newWidgetKind = widget.kind"><i :class="widget.icon"></i><span>{{ widget.label }}</span><i v-if="newWidgetKind === widget.kind" class="ti ti-check"></i></button><p v-if="!filteredWidgetChoices.length">一致する機能はありません</p></div></template>
+					<div :class="$style.pickerActions"><button class="_button" @click="widgetPickerOpen = false">{{ copy.cancel }}</button><button class="_buttonPrimary" :disabled="inHataGoes && !filteredWidgetChoices.some(item => item.kind === newWidgetKind)" @click="confirmAddWidget">{{ copy.add }}</button></div>
 				</div>
+				</Transition>
+				<Transition :enterActiveClass="$style.sheetEnterActive" :enterFromClass="$style.sheetEnterFrom" :leaveActiveClass="$style.sheetLeaveActive" :leaveToClass="$style.sheetLeaveTo">
 				<div v-if="reorderOpen" :class="$style.reorderWindow">
 					<div :class="$style.pickerHead"><div><strong>{{ copy.advancedReorder }}</strong><small>{{ copy.moveOneStepWithArrows }}</small></div><button class="_button" :aria-label="copy.close" @click="reorderOpen = false"><i class="ti ti-x"></i></button></div>
 					<section v-for="section in reorderSections" :key="section.id" :class="$style.reorderSection" :data-container="section.id">
@@ -84,6 +91,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 					</section>
 				</div>
+				</Transition>
+				<Transition :enterActiveClass="$style.sheetEnterActive" :enterFromClass="$style.sheetEnterFrom" :leaveActiveClass="$style.sheetLeaveActive" :leaveToClass="$style.sheetLeaveTo">
 				<div v-if="quickEditorOpen && selected != null" :class="$style.quickEditor">
 					<p v-if="isUiS" :class="$style.uiSAppearanceNote">{{ uiSAppearanceNote }}</p>
 					<div :class="$style.pickerHead"><div><strong>{{ selected.type === 'group' ? copy.adjustGroupHere : copy.adjustHere }}</strong><small>{{ selectedDisplayName }}</small></div><button class="_button" :aria-label="copy.close" @click="quickEditorOpen = false"><i class="ti ti-x"></i></button></div>
@@ -106,6 +115,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<GradientEditor v-if="!isUiS" :modelValue="selected"/>
 					<div :class="$style.pickerActions"><button class="_button" @click="quickEditorOpen = false">{{ copy.close }}</button><button class="_buttonPrimary" @click="openSelectedInspector"><i class="ti ti-adjustments-horizontal"></i>{{ copy.advancedSettings }}</button></div>
 				</div>
+				</Transition>
 				<div v-if="dragHintVisible" :class="$style.dragHint" :style="dragHintStyle"><i class="ti ti-hand-move"></i><span>{{ copy.dragTimelineHint }}</span></div>
 				<aside v-if="dragHintVisible" :class="$style.dragTimeline" :style="dragTimelineStyle" :aria-label="copy.dragTimelineAria" @pointerleave="timelineDropTarget = null">
 					<div :class="$style.dragTimelineHead"><i class="ti ti-timeline"></i><span><b>{{ copy.order }}</b><small>{{ copy.dropAtDesiredPosition }}</small></span></div>
@@ -166,7 +176,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</template>
 						</draggable>
 						<draggable v-else v-model="activeProfile.collapsed.buttons" itemKey="id" handle=".hssDrag" :animation="180" :fallbackOnBody="true" :forceFallback="isTouch" :delay="isTouch ? 180 : 0" :delayOnTouchOnly="true" :class="$style.collapsedButtons" @start="onDragStart" @end="onDragEnd">
-						<template #item="{ element: button }"><div class="_button hssDrag" :class="$style.collapsedButton" :data-node-id="button.id" :data-shape="isUiS ? undefined : button.shape" :data-selected="selectedId === button.id" :style="nodeStyle(button)" role="button" tabindex="0" :aria-label="getHataSideStudioMenuDisplayLabel(button.menuId, button.label)" @click.stop="selectNode(button.id)" @keydown.enter.stop="selectNode(button.id)"><i :class="button.icon"></i><button v-if="!deleteMode" class="_button" :class="$style.quickTrigger" :aria-label="copy.editHere" @click.stop="openQuickEditor(button.id)"><i class="ti ti-pencil"></i></button><button v-if="deleteMode" class="_button" :class="$style.deleteItem" :aria-label="copy.delete" @click.stop="requestRemoveNode(button.id)"><i class="ti ti-x"></i></button></div></template>
+						<template #item="{ element: button }"><div class="_button hssDrag" :class="$style.collapsedButton" :data-node-id="button.id" :data-shape="isUiS ? undefined : button.shape" :data-selected="selectedId === button.id" :style="nodeStyle(button)" role="button" tabindex="0" :aria-label="getHataSideStudioMenuDisplayLabel(button.menuId, button.label)" @click.stop="selectNode(button.id)" @keydown.enter.stop="selectNode(button.id)"><HataAppNavIcon v-if="hataAppForMenuIcon(button.menuId, button.icon)" :app="hataAppForMenuIcon(button.menuId, button.icon)!" :size="20" :monochrome="studioDark"/><i v-else :class="button.icon"></i><button v-if="!deleteMode" class="_button" :class="$style.quickTrigger" :aria-label="copy.editHere" @click.stop="openQuickEditor(button.id)"><i class="ti ti-pencil"></i></button><button v-if="deleteMode" class="_button" :class="$style.deleteItem" :aria-label="copy.delete" @click.stop="requestRemoveNode(button.id)"><i class="ti ti-x"></i></button></div></template>
 						</draggable>
 					</div>
 					<div v-if="!isUiS" :class="$style.fixedArea"><button class="_button"><i class="ti ti-dots"></i><span v-if="editMode === 'expanded'">{{ copy.more }}</span></button><button class="_button"><i class="ti ti-settings"></i><span v-if="editMode === 'expanded'">{{ copy.settings }}</span></button><button class="_button"><i class="ti ti-bolt"></i><span v-if="editMode === 'expanded'">{{ copy.realtime }}</span></button><button v-if="$i?.isAdmin || $i?.isModerator" class="_button"><i class="ti ti-dashboard"></i><span v-if="editMode === 'expanded'">{{ copy.controlPanel }}</span></button></div>
@@ -196,7 +206,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<section ref="inspectorPaneEl" :class="[$style.pane, inspectorAttention && $style.inspectorAttention, tutorialStep?.target === 'customize' && $style.tutorialFocus]" :aria-label="copy.studioSettingsAria" tabindex="-1">
 			<div :class="$style.paneHead"><div><h2>{{ copy.studioSettings }}</h2><span>{{ selected?.type === 'button' ? copy.button : selected?.type === 'widget' ? copy.widget : selected?.type === 'group' ? copy.group : copy.overall }}</span></div></div>
 			<div :class="$style.inspector">
-				<div :class="$style.selectedSummary"><i :class="selected?.type === 'button' ? selected.icon : selected?.type === 'group' ? 'ti ti-category' : selected?.type === 'widget' ? 'ti ti-app-window' : 'ti ti-layout-sidebar-left'"></i><div><b>{{ selectedDisplayName }}</b><small>{{ copy.selectPreviewItemHint }}</small></div></div>
+				<div :class="$style.selectedSummary"><HataAppNavIcon v-if="selected?.type === 'button' && hataAppForMenuIcon(selected.menuId, selected.icon)" :app="hataAppForMenuIcon(selected.menuId, selected.icon)!" :size="24" :monochrome="studioDark"/><i v-else :class="selected?.type === 'button' ? selected.icon : selected?.type === 'group' ? 'ti ti-category' : selected?.type === 'widget' ? 'ti ti-app-window' : 'ti ti-layout-sidebar-left'"></i><div><b><HataAppWordmark v-if="selected?.type === 'button' && hataAppForMenuLabel(selected.menuId, selectedDisplayName, selected.icon)" :app="hataAppForMenuLabel(selected.menuId, selectedDisplayName, selected.icon)!" :onDark="studioDark"/><template v-else>{{ selectedDisplayName }}</template></b><small>{{ copy.selectPreviewItemHint }}</small></div></div>
 				<p v-if="isUiS" :class="$style.uiSAppearanceNote">{{ uiSAppearanceNote }}</p>
 				<nav :class="$style.inspectorTabs"><button class="_button" :aria-pressed="inspectorTab === 'layout'" @click="inspectorTab = 'layout'">{{ copy.placement }}</button><button class="_button" :disabled="selected?.type !== 'button'" :aria-pressed="inspectorTab === 'button'" @click="inspectorTab = 'button'">{{ copy.button }}</button><button class="_button" :disabled="selected?.type !== 'widget'" :aria-pressed="inspectorTab === 'widget'" @click="inspectorTab = 'widget'">{{ copy.widget }}</button><button class="_button" :disabled="selected?.type !== 'group'" :aria-pressed="inspectorTab === 'group'" @click="inspectorTab = 'group'">{{ copy.group }}</button><button class="_button" :aria-pressed="inspectorTab === 'role'" @click="inspectorTab = 'role'">{{ copy.limits }}</button></nav>
 
@@ -266,7 +276,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</main>
 
 	<Teleport to="body">
-	<div :class="$style.teleportTheme" :data-ui-s="isUiS ? 'true' : undefined" :style="hk3ThemeContext">
+	<div v-show="!inHataGoes || hataGoesHost?.active.value" :class="$style.teleportTheme" :data-ui-s="isUiS ? 'true' : undefined" :style="hk3ThemeContext">
 	<div v-if="studioDialog" :class="$style.studioDialogWindow" role="dialog" aria-modal="false" :aria-label="studioDialog.title">
 		<header><span><i :class="studioDialog.icon"></i><b>{{ studioDialog.title }}</b></span><button class="_button" :aria-label="copy.close" @click="resolveStudioDialog(false)"><i class="ti ti-x"></i></button></header>
 		<p>{{ studioDialog.text }}</p>
@@ -294,7 +304,7 @@ import type { HataSideButton, HataSideButtonShape, HataSideButtonSize, HataSideG
 import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
 import { instance } from '@/instance.js';
-import { mainRouter } from '@/router.js';
+import { mainRouter, useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { navbarItemDef } from '@/navbar.js';
 import { prefer } from '@/preferences.js';
@@ -314,12 +324,23 @@ import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
 import HataSideStudioEarthquake from '@/components/HataSideStudioEarthquake.vue';
 import HataSideStudioFlowers from '@/components/HataSideStudioFlowers.vue';
 import { HK3_THEME_CONTEXT } from '@/components/hataskey3/hk3-theme.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
+import HataAppNavIcon from '@/components/HataAppNavIcon.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import { hataAppForMenuIcon, hataAppForMenuLabel } from '@/utility/hata-app-brand.js';
+import { store } from '@/store.js';
 
 const copy = i18n.ts._hata._hataSideStudio._main;
 const copyx = i18n.tsx._hata._hataSideStudio._main;
 const $style = useCssModule();
 const emptyGroupDropText = JSON.stringify(copy.dropButtonOrWidgetHere);
 const hk3ThemeContext = inject(HK3_THEME_CONTEXT, null);
+const studioDark = computed(() => hk3ThemeContext != null ? hk3ThemeContext['color-scheme'] === 'dark' : store.r.darkMode.value);
+const hataGoesHost = inject(HATA_GOES_HOST, null);
+const inHataGoes = hataGoesHost != null;
+const popup = useHataGoesPopup();
+const studioRouter = inHataGoes ? useRouter() : mainRouter;
 const isUiS = hk3ThemeContext != null;
 const uiSCopy = i18n.ts._hata._hataskeyUi3;
 const uiSPreviewDeck = ref(false);
@@ -383,8 +404,8 @@ const ButtonPreview = defineComponent({
 			const large = button.size === 'large' && (isUiS || button.shape !== 'circle');
 			const unreadCount = button.menuId === 'notifications' ? Number($i?.unreadNotificationsCount ?? 0) : 0;
 			return h('div', { class: large ? $style.largeButtonPreview : $style.buttonPreviewBody }, [
-				h('i', { class: button.icon }),
-				button.showLabel || (!isUiS && large) ? h('span', [h('b', getHataSideStudioMenuDisplayLabel(button.menuId, button.label)), large ? h('small', buttonDetail(button.menuId)) : null]) : null,
+				hataAppForMenuIcon(button.menuId, button.icon) ? h(HataAppNavIcon, { app: hataAppForMenuIcon(button.menuId, button.icon)!, size: 22, monochrome: studioDark.value }) : h('i', { class: button.icon }),
+				button.showLabel || (!isUiS && large) ? h('span', [h('b', hataAppForMenuLabel(button.menuId, getHataSideStudioMenuDisplayLabel(button.menuId, button.label), button.icon) ? [h(HataAppWordmark, { app: hataAppForMenuLabel(button.menuId, getHataSideStudioMenuDisplayLabel(button.menuId, button.label), button.icon)!, onDark: studioDark.value })] : getHataSideStudioMenuDisplayLabel(button.menuId, button.label)), large ? h('small', buttonDetail(button.menuId)) : null]) : null,
 				large && ['hatask', 'hatady', 'hatafeed'].includes(button.menuId) ? h('em', button.menuId === 'hatask' ? copy.scheduleAndTodo : button.menuId === 'hatady' ? copy.todayStudy : copy.applicationStatus) : null,
 				unreadCount > 0 ? h('span', { class: $style.previewBadge, 'aria-label': copyx.unreadCount({ count: unreadCount.toString() }) }, unreadCount > 99 ? '99+' : String(unreadCount)) : null,
 			]);
@@ -463,6 +484,8 @@ let dragConstraintNoticeShown = false;
 const deleteDropArmed = ref(false);
 const timelineDropTarget = ref<{ containerId: string; index: number } | null>(null);
 const newButtonMenuId = ref('');
+const buttonSearch = ref('');
+const widgetSearch = ref('');
 const newButtonShape = ref<HataSideButtonShape>('rounded');
 const newWidgetKind = ref<HataSideWidgetKind>('clock');
 const selectedId = ref<string | null>(null);
@@ -510,6 +533,7 @@ const availableGroups = computed(() => activeProfile.value.expanded.nodes.filter
 const availableWidgetChoices = computed(() => Object.entries(HATA_SIDE_WIDGET_REGISTRY)
 	.filter(([kind, definition]) => kind !== 'flowers' && (!definition.availability.requiresFederation || instance.federation !== 'none') && (!definition.availability.adminOnly || $i?.isAdmin || $i?.isModerator))
 	.map(([kind, definition]) => ({ kind: kind as HataSideWidgetKind, label: widgetDisplayLabel(kind as HataSideWidgetKind, definition.label), icon: definition.icon })));
+const filteredWidgetChoices = computed(() => availableWidgetChoices.value.filter(item => item.label.toLocaleLowerCase().includes(widgetSearch.value.trim().toLocaleLowerCase())));
 const buttonShapes: { value: HataSideButtonShape; label: string }[] = [{ value: 'rounded', label: copy.rounded }, { value: 'circle', label: copy.circle }, { value: 'pill', label: copy.capsule }];
 const sizes: { value: HataSideButtonSize; label: string }[] = [{ value: 'small', label: copy.small }, { value: 'normal', label: copy.normal }, { value: 'large', label: copy.large }];
 const expandedDragGroup = { name: 'hata-side-items', pull: true, put: true };
@@ -526,6 +550,7 @@ const usedMenuIds = computed(() => new Set(editMode.value === 'collapsed'
 	? activeProfile.value.collapsed.buttons.map(button => button.menuId)
 	: activeProfile.value.expanded.nodes.flatMap(node => node.type === 'button' ? [node.menuId] : node.type === 'group' ? node.children.filter((child): child is HataSideButton => child.type === 'button').map(child => child.menuId) : [])));
 const availableMenuItems = computed(() => menuCatalog.value.filter(item => !usedMenuIds.value.has(item.id)));
+const filteredMenuItems = computed(() => availableMenuItems.value.filter(item => `${getHataSideStudioMenuDisplayLabel(item.id, item.label)} ${item.id}`.toLocaleLowerCase().includes(buttonSearch.value.trim().toLocaleLowerCase())));
 const previewCount = computed(() => {
 	const nodes = activeProfile.value.expanded.nodes;
 	const buttons = nodes.reduce((count, node) => count + (node.type === 'button' ? 1 : node.type === 'group' ? node.children.filter(child => child.type === 'button').length : 0), 0);
@@ -1006,11 +1031,13 @@ function moveReorderItem(sectionId: string, index: number, direction: -1 | 1) {
 function openButtonPicker() {
 	widgetPickerOpen.value = false;
 	buttonPickerOpen.value = true;
+	buttonSearch.value = '';
 	newButtonMenuId.value = availableMenuItems.value[0]?.id ?? '';
 	newButtonShape.value = editMode.value === 'collapsed' ? 'circle' : 'rounded';
 }
 
 function confirmAddButton() {
+	if (!availableMenuItems.value.some(item => item.id === newButtonMenuId.value)) return;
 	const source = menuCatalog.value.find(item => item.id === newButtonMenuId.value);
 	if (!source) return;
 	const button = createButton(source, editMode.value === 'collapsed' ? { shape: newButtonShape.value, size: 'small', showLabel: false, borderVisible: false } : { shape: newButtonShape.value });
@@ -1024,9 +1051,11 @@ function openWidgetPicker() {
 	if (editMode.value === 'collapsed') return;
 	buttonPickerOpen.value = false;
 	widgetPickerOpen.value = true;
+	widgetSearch.value = '';
 }
 
 function confirmAddWidget() {
+	if (!availableWidgetChoices.value.some(item => item.kind === newWidgetKind.value)) return;
 	const widget = createWidget(newWidgetKind.value);
 	activeProfile.value.expanded.nodes.push(widget);
 	widgetPickerOpen.value = false;
@@ -1102,7 +1131,7 @@ async function importCurrentSidebar() {
 }
 
 function openSettingsTransfer() {
-	const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkHataSettingsTransfer.vue')), {}, { closed: () => dispose() });
+	const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkHataSettingsTransfer.vue')), {}, { closed: () => dispose() });
 }
 
 function moveSelectedTo(groupId: string) {
@@ -1176,7 +1205,7 @@ function buttonDetail(menuId: string): string {
 
 function runPreviewSearch(query: string) {
 	const normalized = query.trim();
-	mainRouter.pushByPath(normalized ? `/search?q=${encodeURIComponent(normalized)}` : '/search');
+	studioRouter.pushByPath(normalized ? `/search?q=${encodeURIComponent(normalized)}` : '/search');
 }
 
 function startTutorial() {
@@ -1203,8 +1232,18 @@ function finishTutorial(skipped: boolean) {
 const leaveConfirmOpen = ref(false);
 const pendingPath = ref<string | null>(null);
 const pendingNavigationMode = ref<'push' | 'replace'>('push');
-const previousNavHook = mainRouter.navHook;
-mainRouter.navHook = (fullPath, flag) => { if (previousNavHook?.(fullPath, flag)) return true; if (!hasChanges.value) return false; pendingPath.value = fullPath; pendingNavigationMode.value = 'push'; leaveConfirmOpen.value = true; return true; };
+const previousNavHook = studioRouter.navHook;
+let bypassNavigation = false;
+const studioNavHook: NonNullable<typeof studioRouter.navHook> = (fullPath, flag) => {
+	if (!bypassNavigation && hasChanges.value && (!inHataGoes || hataGoesHost?.active.value)) {
+		pendingPath.value = fullPath;
+		pendingNavigationMode.value = 'push';
+		leaveConfirmOpen.value = true;
+		return true;
+	}
+	return previousNavHook?.(fullPath, flag) ?? false;
+};
+studioRouter.navHook = studioNavHook;
 
 function onBeforeUnload(event: BeforeUnloadEvent) { if (!hasChanges.value) return; event.preventDefault(); event.returnValue = ''; }
 
@@ -1212,10 +1251,9 @@ window.addEventListener('beforeunload', onBeforeUnload);
 onMounted(() => {
 	if (miLocalStorage.getItem('hataSideStudioTutorialDone') !== '1') startTutorial();
 });
-onBeforeUnmount(() => { if (historyTimer) window.clearTimeout(historyTimer); if (mainRouter.navHook === studioNavHook) mainRouter.navHook = previousNavHook; window.removeEventListener('beforeunload', onBeforeUnload); window.removeEventListener('pointermove', updateDragPointer); window.document.removeEventListener('dragover', updateDragPointer); window.removeEventListener('touchmove', updateDragPointer); window.removeEventListener('resize', updateDragTimelinePosition); });
-const studioNavHook = mainRouter.navHook;
+onBeforeUnmount(() => { if (historyTimer) window.clearTimeout(historyTimer); if (studioRouter.navHook === studioNavHook) studioRouter.navHook = previousNavHook; window.removeEventListener('beforeunload', onBeforeUnload); window.removeEventListener('pointermove', updateDragPointer); window.document.removeEventListener('dragover', updateDragPointer); window.removeEventListener('touchmove', updateDragPointer); window.removeEventListener('resize', updateDragTimelinePosition); });
 
-function navigatePending() { const path = pendingPath.value ?? '/settings/hata-custom'; const mode = pendingNavigationMode.value; pendingPath.value = null; pendingNavigationMode.value = 'push'; leaveConfirmOpen.value = false; mainRouter.navHook = previousNavHook; if (mode === 'replace' && path === '/settings/hata-custom') mainRouter.replace('/settings/hata-custom'); else mainRouter.pushByPath(path); }
+function navigatePending() { const path = pendingPath.value ?? '/settings/hata-custom'; const mode = pendingNavigationMode.value; pendingPath.value = null; pendingNavigationMode.value = 'push'; leaveConfirmOpen.value = false; bypassNavigation = true; try { if (mode === 'replace' && path === '/settings/hata-custom') studioRouter.replace('/settings/hata-custom'); else studioRouter.pushByPath(path); } finally { bypassNavigation = false; } }
 
 function confirmLeave(saveFirst: boolean) { if (saveFirst && !save()) return; navigatePending(); }
 
@@ -1223,9 +1261,9 @@ function saveAndLeave() { confirmLeave(true); }
 
 function cancelLeave() { pendingPath.value = null; pendingNavigationMode.value = 'push'; leaveConfirmOpen.value = false; }
 
-function closeStudio() { if (hasChanges.value) { pendingPath.value = '/settings/hata-custom'; pendingNavigationMode.value = 'replace'; leaveConfirmOpen.value = true; } else mainRouter.replace('/settings/hata-custom'); }
+function closeStudio() { if (hasChanges.value) { pendingPath.value = '/settings/hata-custom'; pendingNavigationMode.value = 'replace'; leaveConfirmOpen.value = true; } else studioRouter.replace('/settings/hata-custom'); }
 
-function openRoleSettings() { mainRouter.push('/admin/roles'); }
+function openRoleSettings() { studioRouter.push('/admin/roles'); }
 
 definePage(() => ({
 	title: 'HataSideStudio',
@@ -1235,6 +1273,17 @@ definePage(() => ({
 
 <style lang="scss" module>
 @use '../components/hataskey3/side-nav-item' as sideNavItem;
+.root[data-goes-host="true"] .sheetEnterActive,.root[data-goes-host="true"] .sheetLeaveActive,.teleportTheme[data-goes-host="true"] .sheetEnterActive,.teleportTheme[data-goes-host="true"] .sheetLeaveActive { transition:opacity .16s ease,transform .16s ease !important; }
+.root[data-goes-host="true"] .sheetEnterFrom,.root[data-goes-host="true"] .sheetLeaveTo,.teleportTheme[data-goes-host="true"] .sheetEnterFrom,.teleportTheme[data-goes-host="true"] .sheetLeaveTo { opacity:0; }
+.featureList { display:grid;gap:4px;max-height:250px;overflow:auto;padding:4px;border:1px solid var(--studioLine);border-radius:11px;background:var(--studioSurface); }
+.featureList button { display:grid;grid-template-columns:24px minmax(0,1fr) 18px;align-items:center;gap:8px;min-height:42px;padding:8px;text-align:left;border-radius:8px; }
+.featureList button[aria-checked="true"] { color:var(--studioAccentFg);background:var(--studioAccent); }
+.featureList button span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.featureList p { margin:8px;color:var(--studioMuted);font-size:.8rem; }
+.root[data-goes-host="true"] .copyMenu,.root[data-goes-host="true"] .resetConfirm { position:fixed;z-index:3500010;top:auto;right:0;bottom:0;left:0;width:auto;max-height:75dvh;overflow:auto;padding:20px;border-radius:20px 20px 0 0;box-shadow:0 -14px 42px #0004; }
+.teleportTheme[data-goes-host="true"] .creationPicker,.teleportTheme[data-goes-host="true"] .quickEditor,.teleportTheme[data-goes-host="true"] .reorderWindow { top:auto;bottom:0;left:50%;width:min(100%,560px);max-height:78dvh;border-radius:20px 20px 0 0;transform:translateX(-50%);box-shadow:0 -14px 42px #0004; }
+.root[data-goes-host="true"] .sheetEnterFrom,.root[data-goes-host="true"] .sheetLeaveTo,.teleportTheme[data-goes-host="true"] .sheetEnterFrom,.teleportTheme[data-goes-host="true"] .sheetLeaveTo { transform:translateY(6px); }
+.teleportTheme[data-goes-host="true"] .sheetEnterFrom,.teleportTheme[data-goes-host="true"] .sheetLeaveTo { transform:translate(-50%,6px); }
 
 @font-face {
 	font-family:'Righteous';

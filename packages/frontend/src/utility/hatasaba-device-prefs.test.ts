@@ -75,3 +75,28 @@ describe('UI S の端末ローカルな表示サイズ', () => {
 		expect(storage.setItem).toHaveBeenLastCalledWith('hataskeyUiSDisplaySize', 'standard');
 	});
 });
+
+describe('HataGoes紹介の端末・アカウント別記録', () => {
+	test('独立したキーを閉じた後の完了時だけ保存でき、同時表示を防ぐ', async () => {
+		vi.resetModules();
+		const values = new Map<string, string>();
+		storage.getItem.mockImplementation(key => values.get(key) ?? null);
+		storage.setItem.mockImplementation((key, value) => { values.set(key, value); });
+		const intro = await import('./hatasaba-device-prefs.js');
+		expect(intro.claimHatagoesIntroduction('account-a')).toBe(true);
+		expect(intro.claimHatagoesIntroduction('account-a')).toBe(false);
+		expect(intro.claimHatagoesIntroduction('account-b')).toBe(true);
+		intro.releaseHatagoesIntroduction('account-a');
+		expect(intro.claimHatagoesIntroduction('account-a')).toBe(true);
+		expect(intro.hasSeenHatagoesIntroduction('account-a')).toBe(false);
+		intro.markHatagoesIntroductionSeen('account-a');
+		expect(values.get('hatagoes:introduction-seen:account-a')).toBe('true');
+		expect(intro.hasSeenHatagoesIntroduction('account-a')).toBe(true);
+		intro.releaseHatagoesIntroduction('account-a');
+		expect(intro.claimHatagoesIntroduction('account-a')).toBe(false);
+		expect(intro.claimHatagoesIntroduction('account-a', true)).toBe(true);
+		expect(intro.claimHatagoesIntroduction('account-a', true)).toBe(false);
+		intro.releaseHatagoesIntroduction('account-a');
+		intro.releaseHatagoesIntroduction('account-b');
+	});
+});

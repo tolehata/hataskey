@@ -10,9 +10,11 @@ import { $i } from '@/i.js';
 
 const mocks = vi.hoisted(() => ({ api: vi.fn(), selectUser: vi.fn() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api }));
-vi.mock('@/os.js', () => ({ selectUser: mocks.selectUser }));
+vi.mock('@/os.js', () => ({ selectUser: mocks.selectUser, popup: vi.fn() }));
+vi.mock('@/components/hataskey3/hk3-composer-menu.js', () => ({ captureHk3ComposerMenu: vi.fn(() => null) }));
 vi.mock('@/i.js', async () => ({ $i: (await import('vue')).reactive({ id: 'moderator', isAdmin: false, isModerator: true }) }));
 vi.mock('@/components/global/MkAvatar.vue', () => ({ default: { props: ['user'], setup: (props: { user: { id: string } }) => () => h('span', { 'data-avatar': props.user.id }) } }));
+vi.mock('@/components/RecordModerationActions.vue', () => ({ default: { render: () => null } }));
 
 const id = 'a'.repeat(64);
 const item = (extra = {}) => ({ id, kind: 'todo', user: { id: 'owner', username: 'owner', name: '所有者' }, title: '非公開の予定', body: '<script>機密の本文</script>', date: '2026-09-16', time: '09:30', visibility: 'private', state: 'unread', stale: false, revision: 0, contentVersion: 'b'.repeat(64), reviewer: null, reviewedAt: null, dateFallback: false, ...extra });

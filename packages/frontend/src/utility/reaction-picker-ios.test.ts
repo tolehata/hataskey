@@ -17,7 +17,9 @@ describe('iOS PWAの絵文字ピッカー', () => {
 			const code = source(fileName);
 
 			expect(code).toContain('import MkEmojiPickerDialog from \'@/components/MkEmojiPickerDialog.vue\';');
-			expect(code).toContain('popup(MkEmojiPickerDialog, {');
+			expect(code).toContain('launcher: typeof popup = popup');
+			expect(code).toContain('launcher(MkEmojiPickerDialog, {');
+			expect(code.slice(code.indexOf('public show('))).not.toMatch(/\bawait\b/);
 			expect(code).not.toMatch(/import\s*\{[^}]*defineAsyncComponent/);
 			expect(code).not.toMatch(/defineAsyncComponent\s*\(/);
 			expect(code).not.toContain('import(\'@/components/MkEmojiPickerDialog.vue\')');

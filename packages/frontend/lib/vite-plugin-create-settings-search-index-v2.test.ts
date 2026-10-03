@@ -584,10 +584,10 @@ describe('settings control search index V2', () => {
 		// Keep the raw population separate from the smaller catalog-descriptor
 		// count so new visible buttons cannot disappear behind an old total.
 		expect(inventory.files).toHaveLength(59);
-		expect(inventory.items).toHaveLength(686);
+		expect(inventory.items).toHaveLength(684);
 		expect(Object.fromEntries(classifications.map(classification => [classification, inventory.items.filter(item => item.classification === classification).length]))).toEqual({
 			'user-facing-setting': 447,
-			'navigation-action': 150,
+			'navigation-action': 148,
 			'save-cancel': 26,
 			'disabled-display-only': 17,
 			'runtime-collection': 45,
@@ -599,7 +599,7 @@ describe('settings control search index V2', () => {
 			'src/components/HataFeedDisplaySettings.vue': { 'user-facing-setting': 3, 'navigation-action': 4, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/HatadyDisplaySettings.vue': { 'user-facing-setting': 1, 'navigation-action': 7, 'save-cancel': 2, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/MkUISetup.vue': { 'user-facing-setting': 4, 'navigation-action': 1, 'save-cancel': 2, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
-			'src/pages/HataskSettings.vue': { 'user-facing-setting': 11, 'navigation-action': 9, 'save-cancel': 2, 'disabled-display-only': 1, 'runtime-collection': 1, destructive: 0 },
+			'src/pages/HataskSettings.vue': { 'user-facing-setting': 11, 'navigation-action': 7, 'save-cancel': 2, 'disabled-display-only': 1, 'runtime-collection': 1, destructive: 0 },
 			'src/pages/MkMascotSettings.vue': { 'user-facing-setting': 77, 'navigation-action': 16, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 12, destructive: 0 },
 			'src/pages/settings/hata-custom.vue': { 'user-facing-setting': 29, 'navigation-action': 13, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 1, destructive: 0 },
 		});
@@ -609,7 +609,7 @@ describe('settings control search index V2', () => {
 		expect(inventory.items.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		// Carousel arrows and dots remain in the raw inventory even when a
 		// static theme group owns their search destination.
-		expect(resolved).toHaveLength(686);
+		expect(resolved).toHaveLength(684);
 		expect(resolved.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		const descriptorIds = new Set(controls.descriptors.filter(descriptor => descriptor.searchable).map(descriptor => descriptor.stableId));
 		expect(resolved.filter(item => item.descriptorStableId != null).every(item => descriptorIds.has(item.descriptorStableId!))).toBe(true);
@@ -626,7 +626,7 @@ describe('settings control search index V2', () => {
 		expect(find('src/pages/settings/hata-custom.vue', '!isDeckLike&&(noteSpacing=opt.value)')).toMatchObject({ classification: 'user-facing-setting' });
 		expect(find('src/pages/settings/hata-custom.vue', 'activeCat=cat.id')).toMatchObject({ classification: 'navigation-action' });
 		expect(find('src/pages/HataskSettings.vue', "toggle('autoTheme')")).toMatchObject({ classification: 'user-facing-setting' });
-		expect(find('src/pages/HataskSettings.vue', "view='theme'")).toMatchObject({ classification: 'navigation-action' });
+		expect(find('src/pages/HataskSettings.vue', 'slideTheme(-1)')).toMatchObject({ classification: 'user-facing-setting' });
 		expect(find('src/components/MkUISetup.vue', "choose('simple')")).toMatchObject({ classification: 'user-facing-setting' });
 		expect(find('src/components/MkUISetup.vue', 'backFromConfirm')).toMatchObject({ classification: 'navigation-action' });
 		expect(find('src/pages/MkMascotSettings.vue', "toggleDisplay('tellNotifications')")).toMatchObject({ classification: 'user-facing-setting' });
@@ -729,7 +729,7 @@ describe('settings control search index V2', () => {
 		expect(storageTargets('reactionAcceptance').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		expect(storageTargets('realtimeMode').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		const audit = collectSettingsStorageKeyAuditV2(input);
-		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 103 });
+		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 105 });
 		expect(audit.items.find(item => item.kind === 'local' && item.key === 'hataskeyUiSDisplaySize')).toMatchObject({
 			disposition: 'catalog-control', descriptorStableIds: ['settings.control.device.hataskey-ui-s-display-size'],
 		});
@@ -778,7 +778,7 @@ describe('settings control search index V2', () => {
 			expect(old[0]?.storageRefs, key).toContainEqual({ kind: 'pref', key });
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key), key).toMatchObject({ disposition: 'catalog-control', descriptorStableIds: old.map(item => item.stableId) });
 		}
-		expect(audit.items).toHaveLength(499);
+		expect(audit.items).toHaveLength(501);
 		expect(audit.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(audit.items.every(item => item.descriptorStableIds.length > 0
 			? item.disposition === 'catalog-control' || item.disposition === 'catalog-group'
@@ -791,7 +791,7 @@ describe('settings control search index V2', () => {
 			'pizzax:catalog-control': 8, 'pizzax:catalog-group': 1, 'pizzax:runtime': 9,
 			'pizzax:migration': 3, 'pizzax:cache': 2, 'pizzax:deprecated': 78, 'pizzax:internal': 4,
 			'local:catalog-control': 14, 'local:catalog-group': 1, 'local:runtime': 12, 'local:migration': 22,
-			'local:cache': 29, 'local:deprecated': 6, 'local:internal': 19,
+			'local:cache': 30, 'local:deprecated': 6, 'local:internal': 20,
 		});
 		expect(audit.items.filter(item => item.kind === 'pizzax' && item.disposition === 'catalog-control')
 			.map(item => item.key).sort()).toEqual([
@@ -846,7 +846,7 @@ describe('settings control search index V2', () => {
 	test('実Vite入力でもstorage key XOR監査を実行し、runtime evidence変更を再生成対象にする', async () => {
 		const inventory = await collectRealSettingsInventory();
 		const audit = await collectSettingsStorageKeyAuditFromRepositoryV2(process.cwd(), inventory.files, inventory.descriptors);
-		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 103 });
+		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 105 });
 		for (const key of ['emojiAdditionNotice', 'hourlyTimeNotice']) {
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key)).toMatchObject({
 				disposition: 'catalog-control',
@@ -964,6 +964,46 @@ describe('settings control search index V2', () => {
 				? { ...source, code: source.code.replaceAll(key, 'redactedNotificationView') }
 				: source),
 		})).toThrow('explicit local key has invalid evidence: hataNotificationView');
+	});
+
+	test('HataGoesの端末キャッシュは型と保存実装を証拠に分類し、未登録・証拠消失を拒否する', async () => {
+		const input = await collectStorageAuditInput();
+		const key = "hatagoes:${'state' | 'create' | 'scroll'}:${string}";
+		const audit = collectSettingsStorageKeyAuditV2(input);
+		expect(audit.items.find(item => item.kind === 'local' && item.key === key)).toMatchObject({
+			disposition: 'cache', descriptorStableIds: [],
+			reason: expect.stringContaining('[src/utility/hatasaba-device-prefs.ts]'),
+		});
+		expect(() => collectSettingsStorageKeyAuditV2({
+			...input,
+			localStorageDefinition: input.localStorageDefinition.replace(key, 'hatagoes:unreviewed:${string}'),
+		})).toThrow('unclassified local key: hatagoes:unreviewed:${string}');
+		expect(() => collectSettingsStorageKeyAuditV2({
+			...input,
+			runtimeSources: input.runtimeSources.map(source => source.file === 'src/utility/hatasaba-device-prefs.ts'
+				? { ...source, code: source.code.replaceAll('hatagoes:', 'unreviewed:') }
+				: source),
+		})).toThrow('explicit local key has invalid evidence: ' + key);
+	});
+
+	test('HataGoes紹介表示済み印は独立したinternal keyとして分類し、未登録・証拠消失を拒否する', async () => {
+		const input = await collectStorageAuditInput();
+		const key = 'hatagoes:introduction-seen:${string}';
+		const audit = collectSettingsStorageKeyAuditV2(input);
+		expect(audit.items.find(item => item.kind === 'local' && item.key === key)).toMatchObject({
+			disposition: 'internal', descriptorStableIds: [],
+			reason: expect.stringContaining('[src/utility/hatasaba-device-prefs.ts]'),
+		});
+		expect(() => collectSettingsStorageKeyAuditV2({
+			...input,
+			localStorageDefinition: input.localStorageDefinition.replace(key, 'hatagoes:unreviewed-introduction:${string}'),
+		})).toThrow('unclassified local key: hatagoes:unreviewed-introduction:${string}');
+		expect(() => collectSettingsStorageKeyAuditV2({
+			...input,
+			runtimeSources: input.runtimeSources.map(source => source.file === 'src/utility/hatasaba-device-prefs.ts'
+				? { ...source, code: source.code.replaceAll('hatagoes:introduction-seen:', 'hatagoes:redacted-introduction:') }
+				: source),
+		})).toThrow('explicit local key has invalid evidence: ' + key);
 	});
 
 	test('settings import閉包の独立設定操作はtarget化し、親従属generic componentは理由付きで除外する', async () => {
@@ -1151,7 +1191,7 @@ describe('settings control search index V2', () => {
 		const descriptors = collectSettingsControlDescriptorsV2(sourceFile, source, currentRoutes, targetMetadata(sourceFile));
 		validateSettingsControlDescriptorsV2(descriptors, 11);
 		expect(descriptors.some(entry => entry.labelI18nKeys?.includes('i18n.ts._hata._hatask._settings.hatakyuWind'))).toBe(false);
-		const excludedIds = ['settings.control.button-kg9tm1', 'settings.control.button-pynbuh', 'settings.control.button-650kxk', 'settings.control.button-dup9ub'];
+		const excludedIds = ['settings.control.button-dm8pje', 'settings.control.button-1j0olqa', 'settings.control.button-1vx3yo3', 'settings.control.button-1t26f6w'];
 		expect(descriptors.filter(entry => entry.intentionallyExcluded).map(entry => entry.stableId)).toEqual(excludedIds);
 		expect(descriptors.find(entry => entry.labelI18nKeys?.includes('i18n.ts._hata._hatask._settings.autoAppearanceTheme'))).toMatchObject({
 			searchable: true,
@@ -1178,6 +1218,23 @@ describe('settings control search index V2', () => {
 			exclusionReason: 'v-for または draggable の実行時コレクションに属し、個別対象はビルド時に固定できない（安全な静的設定グループを確定できないため検索対象外）',
 		});
 		expect(resolved.filter(entry => entry.classification === 'disabled-display-only')).toHaveLength(1);
+	});
+
+	test('Hataskの条件付きダークモード検索は常設の設定グループへ到達する', async () => {
+		const sourceFile = 'src/pages/HataskSettings.vue';
+		const source = await fs.readFile(sourceFile, 'utf8');
+		const currentRoutes = readSettingsRoutesV2(await fs.readFile('src/router.definition.ts', 'utf8'));
+		const descriptors = collectSettingsSearchDescriptorsV2(sourceFile, source, currentRoutes, targetMetadata(sourceFile));
+		const darkMode = descriptors.find(descriptor => descriptor.labelI18nKeys?.includes('i18n.ts._hata._hatask._settings.darkMode'));
+		expect(darkMode).toMatchObject({
+			searchable: true,
+			focusId: 'settings.group.hatask-runtime-settings',
+			unmet: [{ kind: 'runtime-data', id: 'conditional-setting', behavior: 'explain' }],
+		});
+		expect(collectSettingsDescriptorReachabilityAuditV2(descriptors).find(item => item.stableId === darkMode?.stableId)).toMatchObject({
+			disposition: 'parent-static-group',
+			focusId: 'settings.group.hatask-runtime-settings',
+		});
 	});
 
 	test('HataFeed settings search reaches the embedded theme and preserves the leaves preference scope', async () => {

@@ -22,6 +22,7 @@ vi.mock('@/utility/hatafeed.js', () => ({
 vi.mock('@/os.js', () => ({ popup: (_component: unknown, props: NonNullable<typeof fixture.pending>['props'], events: NonNullable<typeof fixture.pending>['events']) => {
 	fixture.pending = { props, events }; return { dispose: vi.fn() };
 } }));
+vi.mock('@/utility/hatagoes-popup.js', async () => { const os = await import('@/os.js'); return { useHataGoesPopup: () => os.popup }; });
 vi.mock('@/components/HataFeedDraftPrompt.vue', () => ({ default: { template: '<div/>' } }));
 vi.mock('@/i18n.js', async () => {
 	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
@@ -42,6 +43,7 @@ vi.mock('@/components/MkTextarea.vue', () => ({ default: defineComponent({ props
 vi.mock('@/components/MkSelect.vue', () => ({ default: { template: '<div><slot name="label"/></div>' } }));
 vi.mock('@/components/MkSwitch.vue', () => ({ default: { template: '<div/>' } }));
 import HataFeedIssueWizard from './HataFeedIssueWizard.vue';
+import { i18n } from '@/i18n.js';
 
 const cleanups: Array<() => void> = [];
 const storageKey = 'hataFormDrafts:environment-user';
@@ -83,12 +85,12 @@ async function details() {
 
 describe('HataFeed issue environment', () => {
 	test('optional empty fields leave the existing description unchanged', async () => {
-		const target = await details(); await enter(target, 'description', '既存の説明\n');
+		const target = await details(); await enter(target, i18n.ts._hata._hatafeed._issueWizard.description, '既存の説明\n');
 		await click(target, '次へ'); await click(target, '送信');
 		await vi.waitFor(() => expect(fixture.api).toHaveBeenCalledExactlyOnceWith('hata/feedback/issues/create', expect.objectContaining({ description: '既存の説明\n', title: '表示が崩れる', category: 'bug', projectId: null })));
 	});
 	test('reviews and submits the manually entered device, OS and browser with the issue', async () => {
-		const target = await details(); await enter(target, 'description', 'タブを開くと崩れる');
+		const target = await details(); await enter(target, i18n.ts._hata._hatafeed._issueWizard.description, 'タブを開くと崩れる');
 		await enter(target, '使用端末', ' iPhone '); await enter(target, 'OS・バージョン', 'iOS テスト版'); await enter(target, 'ブラウザ・開き方', 'ホーム画面から起動');
 		await click(target, '次へ');
 		expect(target.textContent).toContain('iPhone'); expect(target.textContent).toContain('iOS テスト版'); expect(target.textContent).toContain('ホーム画面から起動');
@@ -113,10 +115,10 @@ describe('HataFeed issue environment', () => {
 		await vi.waitFor(() => expect(fixture.api).toHaveBeenCalledExactlyOnceWith('hata/feedback/issues/create', expect.objectContaining({ description: '内容' })));
 	});
 	test('the combined description limit prevents submitting an oversized environment section', async () => {
-		const target = await details(); await enter(target, 'description', '文'.repeat(8180)); await enter(target, '使用端末', 'iPhone');
+		const target = await details(); await enter(target, i18n.ts._hata._hatafeed._issueWizard.description, '文'.repeat(8180)); await enter(target, '使用端末', 'iPhone');
 		expect(target.querySelector('[role="alert"]')?.textContent).toContain('8,192');
 		await click(target, '次へ'); expect(target.querySelector('textarea')).not.toBeNull(); expect(fixture.api).not.toHaveBeenCalled();
-		await enter(target, 'description', '短い説明'); expect(target.querySelector('[role="alert"]')).toBeNull();
+		await enter(target, i18n.ts._hata._hatafeed._issueWizard.description, '短い説明'); expect(target.querySelector('[role="alert"]')).toBeNull();
 		await click(target, '次へ'); await click(target, '送信'); await vi.waitFor(() => expect(fixture.api).toHaveBeenCalledTimes(1));
 	});
 });

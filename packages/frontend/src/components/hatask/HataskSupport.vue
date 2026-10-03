@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
-<section ref="rootEl" :class="$style.page" :data-theme="theme" :data-mode="mode" :data-motion="animations ? 'on' : 'off'" data-hatask-support :aria-label="copy.title" :aria-busy="loading">
+<section ref="rootEl" :class="$style.page" :data-theme="theme" :data-mode="mode" :data-motion="goesMotion || animations ? 'on' : 'off'" :data-hatagoes="goesMotion" data-hatask-support :aria-label="copy.title" :aria-busy="loading">
 	<p v-if="loading" :class="$style.empty" role="status">{{ copy.loading }}</p>
 	<div v-else-if="error" :class="$style.empty" role="alert"><p>{{ copy.loadFailed }}</p><button type="button" :class="$style.secondaryButton" @click="load">{{ copy.retry }}</button></div>
 	<div v-else-if="!data?.configured || !data.settings" :class="$style.empty" data-section="unconfigured-support"><p>{{ copy.unconfiguredBefore }}<br>{{ copy.unconfiguredAfter }}</p></div>
@@ -58,7 +58,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, inject, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, useId, useTemplateRef, watch } from 'vue';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 import type { Endpoints } from 'cherrypick-js';
 import { instance } from '@/instance.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -69,6 +70,7 @@ import MkAvatar from '@/components/global/MkAvatar.vue';
 import MkUserName from '@/components/global/MkUserName.vue';
 import MkA from '@/components/global/MkA.vue';
 
+const goesMotion = !!inject(HATA_GOES_HOST, null);
 const props = withDefaults(defineProps<{ theme: string; mode: 'light' | 'dark'; animations?: boolean }>(), { animations: true });
 const copy = i18n.ts._hata._hatask._support;
 type SupportData = Endpoints['hatask/support/show']['res'];
@@ -216,7 +218,7 @@ function toggleBenefits(): void {
 	expanded.value = !expanded.value;
 	if (closing && benefitPanelEl.value && benefitPanelEl.value.getBoundingClientRect().top < 0) {
 		const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		benefitPanelEl.value.scrollIntoView({ block: 'start', behavior: props.animations && !reducedMotion ? 'smooth' : 'instant' });
+		benefitPanelEl.value.scrollIntoView({ block: 'start', behavior: goesMotion || props.animations && !reducedMotion ? 'smooth' : 'instant' });
 	}
 }
 
@@ -355,7 +357,7 @@ onBeforeUnmount(() => { disposed = true; generation++; observer?.disconnect(); w
 	.hero { flex-direction: column-reverse; align-items: flex-start; gap: 12px; } .heroCopy { align-self: stretch; } .heroArt { width: 64px; flex-basis: auto; margin: 0; } .page .heroArt .heroMark, .heroIllustration { width: 64px; height: 64px; } .page .heroArt .heroMark { font-size: 34px; }
 }
 .page[data-motion='off'] :is(.benefitViewport, .primaryButton, .secondaryButton), .page[data-motion='off'] .benefitViewport::after { transition: none; }
-@media (prefers-reduced-motion: reduce) { .page :is(.benefitViewport, .primaryButton, .secondaryButton), .page .benefitViewport::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .page:not([data-hatagoes='true']) :is(.benefitViewport, .primaryButton, .secondaryButton), .page:not([data-hatagoes='true']) .benefitViewport::after { transition: none; } }
 
 :global(.htk-root:not([data-theme='akatsuki'])) .panel { border-radius: var(--card-radius); border-color: var(--rule); box-shadow: var(--shadow); }
 </style>

@@ -115,7 +115,7 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 		<div :class="$style.actions">
 			<button type="button" class="hy-icon-button" :aria-label="activityCopy.openReplies" @click="openRecord">
 				<i class="ti ti-message-circle-2"></i>
-				<span>{{ sourceRecord.commentsCount ?? 0 }}</span>
+				<span v-if="(sourceRecord.commentsCount ?? 0) > 0">{{ sourceRecord.commentsCount }}</span>
 			</button>
 			<button v-if="variant !== 'hatady'" type="button" class="hy-icon-button" :aria-label="i18n.ts.options" @click="emit('menu', activity, $event)"><i class="ti ti-dots"></i></button>
 			<button
@@ -157,6 +157,7 @@ import { hyTagLabel } from '@/utility/hatady.js';
 import { HATADY_RECORD_TAGS, hatadyDuration as secondsLabel } from '@/utility/hatady-ui.js';
 import { HATADY_STAT_FIELDS, hatadyMediaCopy, mediaSessionDisplayFacts } from '@/utility/hatady-media.js';
 import { confirmHatadyRecordDeletion } from '@/utility/hatady-record-delete.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 
 const props = withDefaults(
@@ -176,12 +177,13 @@ const emit = defineEmits<{
 
 const styles = useCssModule();
 const deleting = ref(false);
+const popup = useHataGoesPopup();
 
 async function deleteRecord(): Promise<void> {
 	if (deleting.value) return;
 	deleting.value = true;
 	try {
-		if (await confirmHatadyRecordDeletion(props.activity, props.variant)) emit('deleted');
+		if (await confirmHatadyRecordDeletion(props.activity, props.variant, popup)) emit('deleted');
 	} finally { deleting.value = false; }
 }
 

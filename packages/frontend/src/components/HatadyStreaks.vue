@@ -32,6 +32,29 @@
 				></progress>
 			</div>
 		</section>
+		<section v-if="inHataGoes" :class="$style.calendar" aria-label="記録カレンダー">
+			<div :class="$style.calendarHead">
+				<button type="button" aria-label="前の月" @click="moveMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+				<h3>{{ monthLabel(calendarMonth) }}</h3>
+				<button type="button" aria-label="次の月" @click="moveMonth(1)"><i class="ti ti-chevron-right"></i></button>
+			</div>
+			<div :key="calendarMonth" :class="$style.calendarGrid">
+				<span v-for="weekday in weekdays" :key="weekday" :class="$style.weekday">{{ weekday }}</span>
+				<span v-for="n in calendarLeading" :key="`blank-${n}`" aria-hidden="true"></span>
+				<button v-for="date in calendarDates" :key="date.key" type="button" :aria-label="`${date.key}・${date.recorded ? '記録あり' : '記録なし'}`" :data-date="date.key" :aria-pressed="selected?.start === date.key && selected?.end === date.key" :data-recorded="date.recorded" :class="$style.calendarDay" @click="openPeriod({ start: date.key, end: date.key, days: 1 })">{{ date.day }}</button>
+			</div>
+		</section>
+		<section v-if="inHataGoes && selected" :key="`${selected.start}-${selected.end}`" :class="$style.selectedDay" :aria-label="`${range(selected)}の記録`">
+			<h3>{{ selected.start === selected.end ? `この日の記録 · ${range(selected)}` : i18n.tsx._hata._hatady._streaks.periodRecords({ range: range(selected) }) }}</h3>
+			<p v-if="periodLoading" class="hy-empty">{{ copy.loading }}</p>
+			<p v-if="periodError" class="hy-error" role="alert">{{ periodError }} <button type="button" :class="$style.retry" @click="openPeriod(selected, true)">再試行</button></p>
+			<p v-if="!periodLoading && !periodError && periodRows.length === 0" class="hy-empty">{{ copy.empty }}</p>
+			<HatadyActivityCard
+				v-for="a in periodRows" :key="a.id" :activity="a"
+				@openLog="openLog" @openSession="openSession" @openBook="openBook" @openMedia="openMedia"
+				@openProfile="openProfile" @edit="edit" @deleted="recordDeleted(a)"
+			/>
+		</section>
 		<section :class="$style.milestones" :aria-label="copy.streakMilestones">
 			<ol>
 				<li
@@ -114,7 +137,7 @@
 	</template>
 </HyDialog>
 <HyDialog
-	v-if="selected"
+	v-if="selected && !inHataGoes"
 	ref="periodDialog"
 	:title="i18n.tsx._hata._hatady._streaks.periodRecords({ range: range(selected) })"
 	@close="periodDialog?.close()"
@@ -137,7 +160,7 @@
 </HyDialog>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, inject, onMounted, onUnmounted, ref } from 'vue';
 import type { HatadyActivity } from '@/utility/hatady-media.js';
 import HyDialog from '@/components/HyDialog.vue';
 import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
@@ -145,9 +168,13 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatadyTzOffset } from '@/utility/hatady-prefs.js';
 import { requireHatadyActivityPage } from '@/utility/hatady-media.js';
 import { collectActivityPages, localDateKey } from '@/utility/hatady-home.js';
-import * as os from '@/os.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+
+const contextualPopup = useHataGoesPopup();
+const inHataGoes = inject(HATA_GOES_HOST, null) != null;
 const copy = i18n.ts._hata._hatady._streaks;
 const emit = defineEmits<{ (e: 'closed'): void }>();
 const dialog = ref<any>(),
@@ -160,6 +187,7 @@ const dialog = ref<any>(),
 let periodSeq = 0;
 let streakSeq = 0;
 let disposed = false;
+let calendarInitialized = false;
 type Period = { start: string; end: string; days: number };
 const data = ref<{ current: number; best: number; periods: Period[] }>({ current: 0, best: 0, periods: [] }),
 	selected = ref<Period | null>(null);
@@ -181,6 +209,34 @@ const days = computed(() => {
 	}
 	return [...out].sort();
 });
+const calendarMonth = ref(localDateKey(new Date()).slice(0, 7));
+const weekdays = ['月', '火', '水', '木', '金', '土', '日'];
+const calendarLeading = computed(() => {
+	const [year, month] = calendarMonth.value.split('-').map(Number);
+	return (new Date(year, month - 1, 1).getDay() + 6) % 7;
+});
+const calendarDates = computed(() => {
+	const [year, month] = calendarMonth.value.split('-').map(Number);
+	const count = new Date(year, month, 0).getDate();
+	const recorded = new Set(days.value);
+	return Array.from({ length: count }, (_, index) => {
+		const day = index + 1;
+		const key = `${calendarMonth.value}-${String(day).padStart(2, '0')}`;
+		return { day, key, recorded: recorded.has(key) };
+	});
+});
+
+function moveMonth(delta: number) {
+	const [year, month] = calendarMonth.value.split('-').map(Number);
+	const date = new Date(year, month - 1 + delta, 1);
+	calendarMonth.value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+	periodSeq++;
+	selected.value = null;
+	periodRows.value = [];
+	periodLoading.value = false;
+	periodError.value = '';
+}
+
 const months = computed(() =>
 	[...new Set(days.value.map((d) => d.slice(0, 7)))].reverse().map((key) => {
 		const count = new Date(Number(key.slice(0, 4)), Number(key.slice(5)), 0).getDate(),
@@ -274,7 +330,7 @@ async function popup(name: string, props: any) {
 		session: () => import('@/components/HatadyMediaSessionForm.vue'),
 	};
 	const component = await components[name as keyof typeof components]();
-	const { dispose } = os.popup(component.default as any, props, {
+	const { dispose } = contextualPopup(component.default as any, props, {
 		closed: () => dispose(),
 		done: refresh,
 		changed: refresh,
@@ -314,7 +370,15 @@ async function loadStreaks() {
 	error.value = '';
 	try {
 		const result = await misskeyApi<typeof data.value>('hata/hatady/streaks', { tzOffset: hatadyTzOffset() });
-		if (request === streakSeq) data.value = result;
+		if (request === streakSeq) {
+			data.value = result;
+			if (inHataGoes && !calendarInitialized && days.value.length) {
+				calendarInitialized = true;
+				const latest = days.value.at(-1)!;
+				calendarMonth.value = latest.slice(0, 7);
+				void openPeriod({ start: latest, end: latest, days: 1 });
+			}
+		}
 	} catch {
 		if (request === streakSeq) error.value = copy.loadFailed;
 	} finally {
@@ -335,6 +399,83 @@ onUnmounted(() => {
 	grid-template-columns: 1.4fr 1fr;
 	gap: 24px;
 	padding: 12px;
+}
+.calendar, .selectedDay {
+	margin: 16px 0;
+	padding: 14px;
+	border: 1px solid var(--hy-border);
+	border-radius: 16px;
+	background: var(--hy-surface);
+}
+.calendarHead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+.calendarHead h3, .selectedDay h3 {
+	margin: 0;
+	font-size: 15px;
+}
+.calendarHead button {
+	width: 34px;
+	height: 34px;
+	border: 0;
+	border-radius: 50%;
+	background: var(--hy-surface-2);
+	color: var(--hy-ink);
+	cursor: pointer;
+}
+.calendarGrid {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 3px;
+	margin-top: 12px;
+	text-align: center;
+	animation: calendarIn 140ms ease-out;
+}
+.weekday {
+	padding: 5px 0;
+	font-size: 11px;
+	color: var(--hy-muted);
+}
+.calendarDay {
+	position: relative;
+	min-width: 0;
+	min-height: 38px;
+	border: 0;
+	border-radius: 9px;
+	background: transparent;
+	color: var(--hy-ink);
+	cursor: pointer;
+}
+.calendarDay[data-recorded='true']::after {
+	content: '';
+	position: absolute;
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--hy-accent);
+	bottom: 3px;
+	left: calc(50% - 2.5px);
+}
+.calendarDay[aria-pressed='true'] {
+	background: var(--hy-accent);
+	color: #fff;
+}
+.calendarDay[aria-pressed='true']::after { background: #fff; }
+.calendarDay:not([aria-pressed='true']):hover { background: var(--hy-surface-2); }
+.selectedDay > h3 { margin-bottom: 12px; }
+.selectedDay { animation: calendarIn 140ms ease-out; }
+.retry {
+	border: 0;
+	background: transparent;
+	color: var(--hy-accent-ink);
+	cursor: pointer;
+}
+@keyframes calendarIn {
+	from { opacity: 0; transform: translateY(3px); }
+	to { opacity: 1; transform: translateY(0); }
 }
 .hero > div {
 	display: flex;

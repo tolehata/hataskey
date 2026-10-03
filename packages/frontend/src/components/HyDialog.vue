@@ -20,6 +20,7 @@
 		:data-hatady-theme="props.theme ?? theme"
 		:data-wide="wide"
 		:data-floating="floating"
+		:data-hatagoes="!!hataGoes"
 		:data-embedded="embedded"
 		:data-bare="bare"
 		:inert="inert"
@@ -31,12 +32,13 @@
 	>
 		<header v-if="!bare" :class="$style.head" :data-actions="!!$slots.headerActions" :data-title-centered="centerTitle && !$slots.headerActions">
 			<button
-				v-if="back"
+				v-if="back || hataGoes"
+				:class="{ [$style.goesBack]: !back }"
 				type="button"
 				class="hy-icon-button"
 				:aria-label="i18n.ts._hata._hatady._controls.back"
 				:disabled="busy"
-				@click="emit('back')"
+				@click="back ? emit('back') : requestClose()"
 			>
 				<i class="ti ti-arrow-left" aria-hidden="true"></i>
 			</button>
@@ -70,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef, watch } from 'vue';
+import { inject, nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef, watch } from 'vue';
 import type { HatadyTheme } from '@/utility/hatady-prefs.js';
 import type { HatadySurfaceVariant } from '@/utility/hatady-record-launcher.js';
 import { i18n } from '@/i18n.js';
@@ -78,6 +80,9 @@ import MkModal from '@/components/MkModal.vue';
 import { hatadyTheme as theme } from '@/utility/hatady-prefs.js';
 import { registerHatadySurface } from '@/utility/hatady-ui.js';
 import '@/components/hatady-ui.css';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+
+const hataGoes = inject(HATA_GOES_HOST, null);
 
 const props = withDefaults(
 	defineProps<{
@@ -343,4 +348,15 @@ defineExpose({ close, bodyEl, panel });
 		padding: 13px 19px;
 	}
 }
+.goesBack { display: none; }
+@media (max-width: 700px) {
+	.goesBack { display: inline-flex; }
+	.panel[data-hatagoes='true'][data-floating='false'][data-embedded='false'] {
+		position: fixed; inset: 0; margin: 0;
+		width: 100dvw; height: 100dvh; max-width: none; max-height: none;
+		border: 0; border-radius: 0;
+		padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+	}
+}
+
 </style>

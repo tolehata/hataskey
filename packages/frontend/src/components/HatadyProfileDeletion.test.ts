@@ -4,7 +4,8 @@ import { createApp, h, nextTick, ref } from 'vue';
 
 const fixture = vi.hoisted(() => ({ api: vi.fn() }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
-vi.mock('@/os.js', () => ({}));
+vi.mock('@/os.js', () => ({ popup: vi.fn(), popupMenu: vi.fn() }));
+vi.mock('@/components/hataskey3/hk3-composer-menu.js', () => ({ captureHk3ComposerMenu: vi.fn() }));
 vi.mock('@/utility/hatady.js', () => ({ HY_BANNER_PRESETS: [] }));
 vi.mock('@/utility/hatady-ui.js', () => ({
 	hatadyDuration: () => '30分', hatadyNotify: vi.fn(), HATADY_RECORD_TAGS: [], HATADY_ACTIVITY_CHOICES: [],

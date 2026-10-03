@@ -23,10 +23,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hataFeedNotify, hataFeedProjectId } from '@/utility/hatafeed-ui.js';
+
+const dialogs = useHataGoesDialogs();
+const popup = useHataGoesPopup();
 
 type Project = { id: string; name: string; ownerId: string | null; isOfficial: boolean; suspended: boolean; description: string; genre: string | null; url: string | null; color: string | null };
 const emit = defineEmits<{ changed: [] }>();
@@ -90,7 +95,7 @@ async function edited() {
 }
 
 async function createProject() {
-	const { canceled, result } = await os.form(copy.addProject, {
+	const { canceled, result } = await dialogs.form(copy.addProject, {
 		name: { type: 'string', label: copy.name, required: true },
 		genre: { type: 'string', label: copy.genreExample },
 		description: { type: 'string', label: copy.description, multiline: true },
@@ -105,7 +110,7 @@ async function createProject() {
 async function editProject() {
 	const project = currentProject.value;
 	if (!project) return;
-	const { canceled, result } = await os.form(copy.editProject, {
+	const { canceled, result } = await dialogs.form(copy.editProject, {
 		name: { type: 'string', label: copy.name, required: true, default: project.name },
 		genre: { type: 'string', label: copy.genreExample, default: project.genre ?? '' },
 		description: { type: 'string', label: copy.description, multiline: true, default: project.description ?? '' },
@@ -120,7 +125,7 @@ async function editProject() {
 async function removeProject() {
 	const project = currentProject.value;
 	if (!project || project.isOfficial) return;
-	const { canceled } = await os.confirm({ type: 'warning', title: copy.deleteProjectTitle, text: copyx.deleteProjectText({ name: project.name }) });
+	const { canceled } = await dialogs.confirm({ type: 'warning', title: copy.deleteProjectTitle, text: copyx.deleteProjectText({ name: project.name }) });
 	if (canceled) return;
 	await misskeyApi('hata/feedback/projects/delete', { projectId: project.id });
 	await edited();
@@ -130,7 +135,7 @@ async function toggleSuspendProject() {
 	const project = currentProject.value;
 	if (!project || project.isOfficial) return;
 	if (!project.suspended) {
-		const { canceled } = await os.confirm({ type: 'warning', title: copy.suspendProjectTitle, text: copyx.suspendProjectText({ name: project.name }) });
+		const { canceled } = await dialogs.confirm({ type: 'warning', title: copy.suspendProjectTitle, text: copyx.suspendProjectText({ name: project.name }) });
 		if (canceled) return;
 	}
 	await misskeyApi('hata/feedback/projects/update', { projectId: project.id, suspended: !project.suspended });
@@ -144,7 +149,7 @@ async function openExport() {
 	const projectId = selectedId.value || null;
 	const projectName = currentProject.value?.name ?? 'Hataskey';
 	try {
-		const { dispose } = os.popup((await import('@/components/HataFeedExportWindow.vue')).default, { projectId, projectName }, {
+		const { dispose } = popup((await import('@/components/HataFeedExportWindow.vue')).default, { projectId, projectName }, {
 			closed: () => { exportOpen.value = false; dispose(); },
 		});
 	} catch {

@@ -56,6 +56,12 @@ export const navbarItemDef = reactive({
 		indicated: computed(() => $i != null && $i.hasPendingReceivedFollowRequest),
 		to: '/my/follow-requests',
 	},
+	hatagoes: {
+		title: 'HataGoes',
+		icon: 'ti ti-sparkles',
+		show: computed(() => $i != null),
+		to: '/hatagoes',
+	},
 	hatask: {
 		title: 'Hatask',
 		icon: 'ti ti-layout-dashboard',

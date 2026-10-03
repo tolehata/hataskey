@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <PageWithHeader>
 	<div class="_spacer" style="--MI_SPACER-w: 800px;">
-		<div :class="$style.root">
+		<div :class="[$style.root, inHataGoes && $style.hostRoot]">
 			<div class="_gaps">
 				<div class="_panel" :class="$style.hero">
 					<div :class="$style.heroInner">
@@ -52,7 +52,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</div>
 						</div>
 
-						<MkButton primary gradate large rounded inline @click="startGame" style="margin-top: 12px;">
+						<MkButton primary gradate large rounded inline style="margin-top: 12px;" @click="startGame">
 							<i class="ti ti-player-play"></i> {{ common.startGame }}
 						</MkButton>
 					</div>
@@ -158,14 +158,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue';
+import { inject, ref, onMounted } from 'vue';
 import MkButton from '@/components/MkButton.vue';
 import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 
+const inHataGoes = inject(HATA_GOES_HOST, null) != null;
 const router = useRouter();
 const common = i18n.ts._hata._games._common;
 const commonx = i18n.tsx._hata._games._common;
@@ -192,24 +194,21 @@ async function fetchRanking() {
 	rankingLoading.value = true;
 	try {
 		ranking.value = await misskeyApi('whack-emoji/ranking', { difficulty: rankDiff.value }) as any;
-	} catch { ranking.value = []; }
-	finally { rankingLoading.value = false; }
+	} catch { ranking.value = []; } finally { rankingLoading.value = false; }
 }
 
 async function fetchMyScores() {
 	myScoresLoading.value = true;
 	try {
 		myScores.value = await misskeyApi('whack-emoji/my-scores', { limit: 10 }) as any;
-	} catch { myScores.value = []; }
-	finally { myScoresLoading.value = false; }
+	} catch { myScores.value = []; } finally { myScoresLoading.value = false; }
 }
 
 async function fetchEndlessRanking() {
 	endlessRankingLoading.value = true;
 	try {
 		endlessRanking.value = await misskeyApi('whack-emoji/endless-ranking', {}) as any;
-	} catch { endlessRanking.value = []; }
-	finally { endlessRankingLoading.value = false; }
+	} catch { endlessRanking.value = []; } finally { endlessRankingLoading.value = false; }
 }
 
 function startGame() {
@@ -230,6 +229,15 @@ definePage(() => ({ title: copy.title, icon: 'ti ti-hammer' }));
 
 <style lang="scss" module>
 .root { max-width: 500px; margin: 0 auto; }
+.hostRoot { max-width: 800px; container-type: inline-size; }
+.hostRoot > :global(._gaps) { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.hostRoot > :global(._gaps) > * { min-width: 0; }
+.hostRoot .heroInner { padding: 22px 20px; }
+.hostRoot > :global(._gaps) > .menuCard:nth-child(2) { text-align: left; }
+.hostRoot .diffBtn, .hostRoot .rankDiffTab { transition-duration: .16s; }
+@container (min-width: 620px) {
+	.hostRoot > :global(._gaps) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .hero { background: linear-gradient(135deg, #a29bfe, #6c5ce7); border-radius: 16px; overflow: hidden; }
 .heroInner { padding: 32px 24px; text-align: center; }
 .heroTitle { font-size: 1.8rem; font-weight: 900; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.2); margin-bottom: 8px; }

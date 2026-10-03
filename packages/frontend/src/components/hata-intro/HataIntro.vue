@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div class="hata-intro" lang="ja" data-theme="system" :style="{ colorScheme }" aria-label="HataIntro・Hataskey はじめてガイド">
+<div class="hata-intro" :class="{ 'hg-host': inHataGoes }" lang="ja" data-theme="system" :style="{ colorScheme }" aria-label="HataIntro・Hataskey はじめてガイド">
 	<a class="hg-skip" :href="`#${instance}-main`" @click.prevent="main?.focus()">ガイド本文へ</a>
 	<main :id="`${instance}-main`" ref="main" class="hg-main" tabindex="-1">
 		<div class="hg-browse-head">
@@ -13,8 +13,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-else-if="page === 'reference' && reference"><span v-html="brandName(categoryLabels[reference.course])"></span> · 機能解説</span>
 		</div>
 		<template v-if="page === 'home' || page === 'index'">
-			<section class="hg-hero"><div><div class="hg-eyebrow"><i class="ti ti-book" aria-hidden="true"></i><span v-if="page === 'home'" class="hg-brand">HataIntro</span><span v-else>必要なときに引けるガイド</span></div><h1 data-guide-title tabindex="-1">{{ page === 'home' ? '気になる画面から、ひとつずつ' : '検索・用語から探す' }}</h1><p class="hg-intro" v-html="prose(page === 'home' ? 'ログインしたばかりの人も、操作に迷った人も。開く場所・手順・画面の見方を、必要なところだけ読めるよ' : '操作の言葉でも、アプリの名前でも検索できるよ。知らない用語はこのページの下でも調べられる')"></p></div></section>
-			<aside v-if="page === 'home'" class="hg-integration-note"><strong>はじめの操作も、使い慣れてからの疑問も</strong><p>最初は下の3つから。<br>機能の仕組みや注意点を知りたくなったら、同じページの詳しい解説へ進めるよ</p></aside>
+			<section class="hg-hero"><div><div class="hg-eyebrow"><i class="ti ti-book" aria-hidden="true"></i><span v-if="page === 'home'" class="hg-brand">HataIntro</span><span v-else>必要なときに引けるガイド</span></div><h1 data-guide-title tabindex="-1">{{ page === 'home' ? (inHataGoes ? '必要なときに引けるガイド' : '気になる画面から、ひとつずつ') : '検索・用語から探す' }}</h1><p class="hg-intro" v-html="prose(page === 'home' ? 'ログインしたばかりの人も、操作に迷った人も。開く場所・手順・画面の見方を、必要なところだけ読めるよ' : '操作の言葉でも、アプリの名前でも検索できるよ。知らない用語はこのページの下でも調べられる')"></p></div></section>
+			<aside v-if="page === 'home' && !inHataGoes" class="hg-integration-note"><strong>はじめの操作も、使い慣れてからの疑問も</strong><p>最初は下の3つから。<br>機能の仕組みや注意点を知りたくなったら、同じページの詳しい解説へ進めるよ</p></aside>
+			<section v-if="page === 'home' && inHataGoes" class="hg-host-shortcuts" aria-label="最初はここから">
+				<h2>最初はここから</h2>
+				<div class="hg-host-shortcut-grid">
+					<button type="button" data-action="feature" data-id="timeline" @click="openFeature('timeline')"><i class="ti ti-news" aria-hidden="true"></i><span><strong>まずは、流れてくるノートを見よう</strong><small>タイムラインの見方へ</small></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+					<MkA to="/settings/profile"><i class="ti ti-user-edit" aria-hidden="true"></i><span><strong>呼んでほしい名前を設定する</strong><small>プロフィール設定を開く</small></span><i class="ti ti-chevron-right" aria-hidden="true"></i></MkA>
+					<button type="button" data-action="feature" data-id="reaction" @click="openFeature('reaction')"><i class="ti ti-mood-smile" aria-hidden="true"></i><span><strong>絵文字で反応する</strong><small>リアクションの使い方へ</small></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+				</div>
+			</section>
 			<form class="hg-search-form" data-guide-search-form role="search" @submit.prevent="submitSearch">
 				<label :for="`${instance}-search`">知りたいことから探す</label>
 				<div class="hg-search-box">
@@ -24,9 +32,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 				<p :id="`${instance}-hint`" class="hg-search-hint">機能名が分からなくても、「取り消し」「保存」などの言葉で探せるよ</p>
 			</form>
-			<nav v-if="page === 'index'" class="hg-filter" aria-label="ガイドのカテゴリ">
-				<button type="button" data-action="filter" data-id="all" :aria-pressed="filter === 'all'" @click="filter = 'all'">すべて</button>
-				<button v-for="c in allCourses" :key="c.id" type="button" data-action="filter" :data-id="c.id" :aria-pressed="filter === c.id" @click="filter = c.id"><span v-html="brandName(c.label)"></span></button>
+			<nav v-if="page === 'index' || (page === 'home' && inHataGoes)" class="hg-filter" aria-label="ガイドのカテゴリ">
+				<template v-if="inHataGoes">
+					<button type="button" data-action="filter" data-id="all" :aria-pressed="filter === 'all'" aria-label="すべて" title="すべて" @click="setFilter('all')"><i class="ti ti-apps" aria-hidden="true"></i><span v-if="filter === 'all'">すべて</span></button>
+					<button v-for="c in allCourses" :key="c.id" type="button" data-action="filter" :data-id="c.id" :aria-pressed="filter === c.id" :aria-label="c.label" :title="c.label" @click="setFilter(c.id)"><i :class="iconClass(c.icon)" aria-hidden="true"></i><span v-if="filter === c.id" v-html="brandName(c.label)"></span></button>
+				</template>
+				<template v-else>
+					<button type="button" data-action="filter" data-id="all" :aria-pressed="filter === 'all'" @click="filter = 'all'">すべて</button>
+					<button v-for="c in allCourses" :key="c.id" type="button" data-action="filter" :data-id="c.id" :aria-pressed="filter === c.id" @click="filter = c.id"><span v-html="brandName(c.label)"></span></button>
+				</template>
 			</nav>
 			<section data-guide-search-panel :hidden="!showResults">
 				<template v-if="showResults">
@@ -43,7 +57,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<section class="hg-profile-shortcut"><div><strong>呼んでほしい名前を設定する</strong><p>名前・アイコン・自己紹介は、本体のプロフィール設定で変更できるよ</p></div><MkA class="hg-link" to="/settings/profile"><i class="ti ti-user-edit" aria-hidden="true"></i> プロフィール設定を開く <i class="ti ti-arrow-up-right" aria-hidden="true"></i></MkA></section>
 				<div class="hg-section-head"><h2>必要なときは、この目次から</h2><p>同じ画面の操作をまとめているよ</p></div>
 				<div class="hg-courses">
-					<section v-for="c in allCourses" :key="c.id" class="hg-topic-card">
+					<section v-for="c in homeCourses" :key="c.id" class="hg-topic-card">
 						<div class="hg-topic-head"><span class="hg-icon" :data-tone="c.tone"><i :class="iconClass(c.icon)" aria-hidden="true"></i></span><h3 v-html="brandName(c.title)"></h3></div><p v-html="prose(c.desc)"></p>
 						<ul v-if="c.features.length" class="hg-topic-links"><li v-for="id in c.features" :key="id"><button type="button" data-action="feature" :data-id="id" @click="openFeature(id, true)"><span><span v-html="brandName(features[id].name)"></span>{{ read.has(id) ? ' · 読んだ' : '' }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul>
 						<component :is="c.features.length ? 'details' : 'div'" v-if="referencesByCourse[c.id].length" :class="c.features.length ? 'hg-reference-fold' : undefined">
@@ -87,15 +101,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, ref, useId, useTemplateRef } from 'vue';
+import { computed, inject, nextTick, onActivated, onBeforeUnmount, onDeactivated, ref, useId, useTemplateRef } from 'vue';
 import HataIntroScene from './HataIntroScene.vue';
 import HataIntroReference from './HataIntroReference.vue';
 import { features, guideDetails, courses, glossary, destinations } from './content.js';
 import { references, referenceById, allCourses } from './reference-content.js';
 import { brandName, hataskGuideProse as prose, iconClass } from './prose.js';
 import { findFeatures, findReferences } from './search.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 
 const props = withDefaults(defineProps<{ darkMode?: boolean; animation?: boolean; initialPage?: 'home' | 'index' }>(), { darkMode: false, animation: true, initialPage: 'home' });
+const inHataGoes = inject(HATA_GOES_HOST, null) != null;
 const emit = defineEmits<{ exit: [] }>();
 const instance = useId();
 const main = useTemplateRef<HTMLElement>('main');
@@ -128,11 +144,24 @@ const relatedReferences = computed(() => references.filter(r => r.related.includ
 const categoryLabels = Object.fromEntries(allCourses.map(c => [c.id, c.label]));
 const referencesByCourse = Object.fromEntries(allCourses.map(c => [c.id, references.filter(r => r.course === c.id)]));
 const showResults = computed(() => page.value === 'index' || Boolean(committedQuery.value));
+const homeCourses = computed(() => page.value === 'home' && inHataGoes && filter.value !== 'all' ? allCourses.filter(c => c.id === filter.value) : allCourses);
 const featureCount = Object.keys(features).length;
 const startingPoints = [['timeline', '読む場所を知る'], ['reaction', '絵文字で気持ちを伝える'], ['visibility', '投稿する前に、届く相手を確認']];
 const supportLinks = [['reaction', '絵文字を変更・取り消し'], ['theme', '配色を戻したい'], ['feed', '不具合や要望を伝える']];
 let navigation = 0;
 let motion: Animation | undefined;
+let filterMotion: Animation | undefined;
+
+async function setFilter(id: string) {
+	if (filter.value === id) return;
+	filter.value = id;
+	await nextTick();
+	if (!active.value) return;
+	filterMotion?.cancel();
+	const target = main.value?.querySelector<HTMLElement>(showResults.value ? '[data-guide-search-panel]' : '.hg-courses');
+	filterMotion = target?.animate?.([{ opacity: .55 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
+	void filterMotion?.finished.catch(() => {});
+}
 
 function snapshot(returnId?: string) {
 	guideHistory.value.push({ page: page.value, referenceId: referenceId.value, courseId: courseId.value, step: step.value, query: query.value, filter: filter.value, expanded: expanded.value, returnId });
@@ -143,8 +172,9 @@ async function afterNavigate(selector = '[data-guide-title]') {
 	await nextTick();
 	if (revision !== navigation || !active.value || !main.value) return;
 	motion?.cancel();
-	if (props.animation && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+	if (inHataGoes || (props.animation && !window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
 		motion = main.value.animate?.([{ opacity: .4, transform: 'translateY(5px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 180, easing: 'cubic-bezier(.2,.7,.2,1)' });
+		void motion?.finished.catch(() => {});
 	}
 	const target = main.value.querySelector<HTMLElement>(selector);
 	// A return link may be inside a category that collapsed when its page remounted.
@@ -237,7 +267,7 @@ function toggleRead() {
 	status.value = `${feature.value.name}${read.value.has(id) ? 'を読んだ項目にしたよ' : 'の読んだ印を外したよ'}`;
 }
 
-function suspend() { active.value = false; navigation++; motion?.cancel(); }
+function suspend() { active.value = false; navigation++; motion?.cancel(); filterMotion?.cancel(); }
 
 onActivated(() => { active.value = true; });
 onDeactivated(suspend);
@@ -246,3 +276,26 @@ onBeforeUnmount(suspend);
 
 <style src="./hata-intro.css"></style>
 <style src="./reference.css"></style>
+<style scoped>
+.hg-host .hg-host-shortcuts { margin: 0 0 22px; }
+.hg-host .hg-host-shortcuts h2 { margin-bottom: 12px; }
+.hg-host .hg-host-shortcut-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.hg-host .hg-host-shortcut-grid > :is(button, a) {
+	display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 72px;
+	padding: 12px; border: 1px solid var(--hg-line); border-radius: 14px;
+	background: var(--hg-panel); color: var(--hg-fg); text-align: left; text-decoration: none;
+	transition: border-color .16s, transform .16s;
+}
+.hg-host .hg-host-shortcut-grid > :is(button, a):hover { border-color: var(--hg-accent); transform: translateY(-2px); }
+.hg-host .hg-host-shortcut-grid > :is(button, a) > i:first-child { color: var(--hg-accent); font-size: 19px; }
+.hg-host .hg-host-shortcut-grid > :is(button, a) > i:last-child { margin-left: auto; color: var(--hg-muted); }
+.hg-host .hg-host-shortcut-grid span { display: grid; min-width: 0; gap: 3px; }
+.hg-host .hg-host-shortcut-grid strong { font-size: 13px; line-height: 1.4; }
+.hg-host .hg-host-shortcut-grid small { color: var(--hg-muted); font-size: 11px; }
+.hg-host .hg-filter button { justify-content: center; min-width: 44px; }
+.hg-host .hg-filter button i { font-size: 16px; }
+@container (max-width: 650px) {
+	.hg-host .hg-host-shortcut-grid { grid-template-columns: 1fr; }
+	.hg-host .hg-host-shortcut-grid > :is(button, a) { min-height: 56px; }
+}
+</style>

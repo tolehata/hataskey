@@ -20,7 +20,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { entities } from 'cherrypick-js';
 import type { HataskeyNotificationToasts } from '@/utility/hataskey-notification-toast.js';
-import { getNotificationPageContext, getToastDuration } from '@/utility/hataskey-notification-toast.js';
+import { getNotificationPageContext, getToastDuration, hataskeyToastMotionEnabled } from '@/utility/hataskey-notification-toast.js';
 import MkHataskeyNotificationToast from '@/components/MkHataskeyNotificationToast.vue';
 import MkNotificationToastRing from '@/components/MkNotificationToastRing.vue';
 import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
@@ -39,7 +39,7 @@ const integrated = computed<boolean>(previous => {
 const active = computed(() => context.items.value[0]);
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const reducedMotion = ref(reducedMotionQuery.matches);
-const motion = computed(() => prefer.r.animation.value && !reducedMotion.value && (context.surface.value?.animations.value ?? true));
+const motion = computed(() => hataskeyToastMotionEnabled(context.surface.value, prefer.r.animation.value, reducedMotion.value));
 const paused = new Set<number>();
 const heights = new Map<number, number>();
 let frame = 0;

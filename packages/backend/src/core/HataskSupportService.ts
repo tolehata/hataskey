@@ -35,7 +35,7 @@ export class HataskSupportService {
 		const settings = (await this.metaService.fetch()).hataskSupport ?? defaultHataskSupportSettings();
 		// 廃止したポリシーを特典として保存した旧設定は、表示・再保存の対象から外す。
 		const known = new Set<string>(HATASK_SUPPORT_POLICY_KEYS);
-		return { ...settings, benefits: settings.benefits.filter(benefit => known.has(benefit.key)) };
+		return { ...settings, navButtonVisible: settings.navButtonVisible ?? true, benefits: settings.benefits.filter(benefit => known.has(benefit.key)) };
 	}
 
 	private async basePolicies() {
@@ -56,7 +56,7 @@ export class HataskSupportService {
 
 	public async show(me: MiUser) {
 		const settings = await this.settings();
-		if (!supportConfigured(settings)) return { configured: false, settings: null, isSupporter: false, benefits: [], supporterCount: 0 };
+		if (!supportConfigured(settings)) return { configured: false, navButtonVisible: settings.navButtonVisible, settings: null, isSupporter: false, benefits: [], supporterCount: 0 };
 		const [base, current, user, roles, supporterCount] = await Promise.all([
 			this.basePolicies(), this.roleService.getUserPolicies(me.id),
 			this.users.findOneBy({ id: me.id, host: IsNull(), isSuspended: false, isDeleted: false }),
@@ -75,7 +75,7 @@ export class HataskSupportService {
 			};
 		});
 		// Do not serialize settings wholesale: role identifiers and hidden benefits are admin-only.
-		return { configured: true, settings: {
+		return { configured: true, navButtonVisible: settings.navButtonVisible, settings: {
 			platform: settings.platform, url: settings.url, manageUrl: settings.manageUrl, intro: settings.intro,
 			bannerTitle: settings.bannerTitle, bannerMessage: settings.bannerMessage, bannerVisible: settings.bannerVisible,
 		}, isSupporter: user?.hataskSupporter === true, benefits, supporterCount };
@@ -100,12 +100,13 @@ export class HataskSupportService {
 		};
 	}
 
-	public async update(settings: HataskSupportSettings) {
+	public async update(settings: Omit<HataskSupportSettings, 'navButtonVisible'> & { navButtonVisible?: boolean }) {
 		if (!safeSupportUrl(settings.url) || !safeSupportUrl(settings.manageUrl) || new Set(settings.benefits.map(b => b.key)).size !== settings.benefits.length) {
 			throw new ApiError(HATASK_SUPPORT_ERRORS.invalidSettings);
 		}
 		// A removed reference is deliberately retained and shown as unavailable, never assigned.
-		await this.metaService.update({ hataskSupport: settings });
+		const current = await this.settings();
+		await this.metaService.update({ hataskSupport: { ...settings, navButtonVisible: settings.navButtonVisible ?? current.navButtonVisible } });
 		return { saved: true };
 	}
 

@@ -6,13 +6,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div :class="$style.root">
 	<div :class="$style.head">
-		<div :class="$style.icon"><i class="ti ti-message-report"></i></div>
+		<div :class="$style.icon"><HataAppLogo app="hatafeed" :size="42" :monochrome="store.r.darkMode.value"/></div>
 		<span :class="$style.corner"><i class="ti ti-message-report"></i></span>
 	</div>
 	<div :class="$style.tail">
 		<header :class="$style.header">
 			<span :class="$style.brandTag">{{ i18n.ts._hata._notificationBrands.hataFeed }}</span>
-			<span :class="$style.headerText">HataFeed</span>
+			<span :class="$style.headerText"><HataAppWordmark app="hatafeed" inheritColor/></span>
 			<MkTime v-if="withTime" :time="group.createdAt" :class="$style.headerTime" :mode="prefer.s.enableAbsoluteTime ? 'absolute' : 'relative'"/>
 		</header>
 		<button
@@ -48,6 +48,9 @@ import { hataFeedNotificationDisplayBody } from '@/utility/hatafeed-bell-group.j
 import { prefer } from '@/preferences.js';
 import { i18n } from '@/i18n.js';
 import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
+import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import { store } from '@/store.js';
 
 withDefaults(defineProps<{
 	group: HataFeedBellGroup;
@@ -148,12 +151,7 @@ const copyx = i18n.tsx._hata._hatafeed._notificationGroup;
 	width: 100%;
 	height: 100%;
 	border-radius: 100%;
-	background: #8fc0ff;
-	color: #1b2d43;
-	font-size: 22px;
 }
-
-:global(html[data-color-scheme=light]) .icon { background: #2e62a8; color: #fff; }
 
 .tail {
 	flex: 1;

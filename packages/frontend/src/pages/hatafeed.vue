@@ -5,16 +5,16 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 	<HataFeedLeaves v-if="leavesEnabled"/>
 	<div :class="$style.page">
 		<HataFeedHeader
-			v-if="canAccess" :tab="issueId ? 'issues' : activeTab" :projectName="currentProject?.name ?? 'Hataskey'" :staff="isStaff" :unread="unreadCount" :refreshing="refreshing"
-			@navigate="navigateTab" @create="handleCreate" @project="openProjectSwitch" @notifications="openNotifications" @refresh="refreshAll" @settings="openDisplaySettings" @exit="exitHataFeed"
+			v-if="canAccess && !embedded" :tab="issueId ? 'issues' : activeTab" :projectName="currentProject?.name ?? 'Hataskey'" :staff="isStaff" :unread="unreadCount" :refreshing="refreshing" :onDark="hataFeedTheme === 'dark' || hataFeedTheme === 'espresso'"
+			@navigate="navigateTab" @create="handleCreate" @project="openProjectSwitch" @notifications="openNotifications" @refresh="refreshAll" @settings="openDisplaySettings()" @exit="exitHataFeed"
 		/>
-		<p v-if="loading" class="hf-empty" role="status">{{ pageCopy.loading }}</p>
+		<div v-if="loading" class="hf-empty"><HataAppLoading app="hatafeed" :size="36" :monochrome="hataFeedTheme === 'dark' || hataFeedTheme === 'espresso'" :active="!embedded || paneActive" :label="pageCopy.loading"/></div>
 		<div v-else-if="error" class="hf-empty" role="alert">{{ error }}<button type="button" class="hy-secondary" @click="error = ''; init()">{{ pageCopy.reload }}</button></div>
 		<p v-else-if="!canAccess" class="hf-empty">{{ pageCopy.unavailable }}</p>
-		<HataFeedIssue v-else-if="issueId" :key="issueId" ref="issueView" :issueId="issueId" :isStaff="isStaff" @back="goList"/>
+		<HataFeedIssue v-else-if="issueId" :key="issueId" ref="issueView" :issueId="issueId" :isStaff="isStaff" @back="goList" @changed="onIssueChanged"/>
 		<main v-else :class="$style.main">
 			<HataFeedHome
-				v-if="activeTab === 'home'" :isStaff="isStaff" :roadmap="roadmap" :ownEmojiRequests="ownEmojiRequests" :emojiRequests="emojiRequests" :emojiChangeRequests="emojiChangeRequests" :emojiQuota="emojiQuota" :activity="activity" :issues="issues" :issuesHasNext="issuesHasNext" :loading="issuePageLoading"
+				v-if="activeTab === 'home'" :isStaff="isStaff" :roadmap="roadmap" :ownEmojiRequests="ownEmojiRequests" :emojiRequests="emojiRequests" :emojiChangeRequests="emojiChangeRequests" :emojiQuota="emojiQuota" :activity="activity" :issues="issues" :issuesHasNext="issuesHasNext" :loading="issuePageLoading" :active="!embedded || paneActive" :monochrome="hataFeedTheme === 'dark' || hataFeedTheme === 'espresso'"
 				@issue="openIssue" @navigate="navigateTab" @approve="openApprove" @addRoadmap="addRoadmap" @ownHistory="openOwnHistory" @reviewQueue="openReviewQueue" @changed="loadEmojiRequests"
 			/>
 			<HataFeedBeta v-if="activeTab === 'beta'" @createIssue="createIssue"/>
@@ -74,7 +74,8 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					<button v-if="activeTab === 'roadmap' && isStaff" type="button" class="hy-secondary hf-roadmap-add" @click="addRoadmap"><i class="ti ti-plus" aria-hidden="true"></i>{{ pageCopy.addPlan }}</button>
 					<form :class="$style.search" role="search" @submit.prevent="reloadIssues"><i class="ti ti-search" aria-hidden="true"></i><input v-model="searchQuery" type="search" :aria-label="copy.searchPlaceholder" :placeholder="copy.searchPlaceholder"><button type="submit" class="hf-icon" :aria-label="pageCopy.search"><i class="ti ti-arrow-right" aria-hidden="true"></i></button></form>
 				</header>
-				<div :class="$style.filters"><div :class="$style.segment"><button type="button" :aria-pressed="!includeClosed" @click="setClosed(false)">{{ pageCopy.excludeClosed }}</button><button type="button" :aria-pressed="includeClosed" @click="setClosed(true)">{{ pageCopy.includeClosed }}</button></div><div :class="$style.dropdowns"><button type="button" @click="openCategoryMenu">{{ filterCategory ? categoryLabel[filterCategory] : copy.category }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openStatusMenu">{{ filterStatus ? statusLabel[filterStatus] : copy.status }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openAuthorMenu">{{ authorFilter ? (authorFilter.name ?? authorFilter.username) : copy.author }}<i class="ti ti-chevron-down"></i></button></div></div>
+				<div v-if="!embedded || activeTab === 'issues'" :class="$style.filters"><div :class="$style.segment"><button type="button" :aria-pressed="!includeClosed" @click="setClosed(false)">{{ pageCopy.excludeClosed }}</button><button type="button" :aria-pressed="includeClosed" @click="setClosed(true)">{{ pageCopy.includeClosed }}</button></div><div :class="$style.dropdowns"><button type="button" @click="openCategoryMenu">{{ filterCategory ? categoryLabel[filterCategory] : copy.category }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openStatusMenu">{{ filterStatus ? statusLabel[filterStatus] : copy.status }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openAuthorMenu">{{ authorFilter ? (authorFilter.name ?? authorFilter.username) : copy.author }}<i class="ti ti-chevron-down"></i></button></div></div>
+				<Transition name="hf-goes-filter"><div v-if="embedded && filterSheetOpen" class="hf-goes-filter-backdrop" @click.self="filterSheetOpen = false"><section ref="filterSheetEl" class="hf-goes-filter-sheet" role="dialog" aria-modal="true" aria-label="絞り込み" @keydown.tab="trapFilterSheetTab" @keydown.esc.stop.prevent="filterSheetOpen = false"><header><strong>絞り込み</strong><button type="button" :aria-label="i18n.ts.close" @click="filterSheetOpen = false"><i class="ti ti-x" aria-hidden="true"></i></button></header><fieldset><legend>{{ copy.category }}</legend><button type="button" :aria-pressed="filterCategory == null" @click="chooseCategory(null)">{{ copy.allCategories }}</button><button v-for="category in filterCategoryKeys" :key="category" type="button" :aria-pressed="filterCategory === category" @click="chooseCategory(category)">{{ categoryLabel[category] }}</button></fieldset><fieldset><legend>{{ copy.status }}</legend><button type="button" :aria-pressed="filterStatus == null" @click="chooseStatus(null)">{{ copy.allStatuses }}</button><button v-for="status in statusKeys" :key="status" type="button" :aria-pressed="filterStatus === status" @click="chooseStatus(status)">{{ statusLabel[status] }}</button></fieldset><fieldset><legend>{{ copy.author }}</legend><button type="button" @click="pickAuthor">{{ authorFilter ? (authorFilter.name ?? authorFilter.username) : copy.author }}</button><button v-if="authorFilter" type="button" @click="authorFilter = null; reloadIssues()">{{ copy.clearAuthorFilter }}</button></fieldset><fieldset><legend>{{ pageCopy.includeClosed }}</legend><button type="button" :aria-pressed="!includeClosed" @click="setClosed(false)">{{ pageCopy.excludeClosed }}</button><button type="button" :aria-pressed="includeClosed" @click="setClosed(true)">{{ pageCopy.includeClosed }}</button></fieldset><button type="button" class="hf-goes-filter-done" @click="filterSheetOpen = false">{{ i18n.ts.close }}</button></section></div></Transition>
 				<div v-if="!visibleIssues.length" class="hf-empty"><p>{{ activeTab === 'roadmap' ? copy.noPublishedPlans : pageCopy.noIssues }}</p></div>
 				<div v-else ref="issueListEl" :class="$style.listCard">
 					<button
@@ -126,12 +127,16 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 
 <script lang="ts" setup>
 import * as Misskey from 'cherrypick-js';
-import { computed, inject, onActivated, onDeactivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import type { HataFeedEmojiRequest, HataFeedEmojiChangeRequest } from '@/utility/hatafeed.js';
 import type { HataFeedTab } from '@/utility/hatafeed-ui.js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
+import { HATAGOES_CATALOG } from '@/utility/hatagoes-catalog.js';
+import { recordHatagoesScreenUsage } from '@/utility/hatagoes-launcher-usage.js';
 import HataFeedEmojiChangeList from '@/components/HataFeedEmojiChangeList.vue';
 import { openHataFeedEmojiNotification } from '@/utility/hatafeed-emoji-notification.js';
 import HataFeedHeader from '@/components/HataFeedHeader.vue';
+import HataAppLoading from '@/components/HataAppLoading.vue';
 import HataFeedBeta from '@/components/HataFeedBeta.vue';
 import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
 import { hataFeedNotify, hataFeedProjectId, hataFeedTab } from '@/utility/hatafeed-ui.js';
@@ -142,7 +147,10 @@ import HfStatusPill from '@/components/HfStatusPill.vue';
 import HfCategoryBadge from '@/components/HfCategoryBadge.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
 import HataFeedHome from '@/components/HataFeedHome.vue';
-import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { useHataGoesPickers } from '@/utility/hatagoes-pickers.js';
+import { useHataGoesPopup, useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
+import { useHataMascotSuppression } from '@/utility/hata-mascot-suppression.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { fetchHataFeedIssuePage } from '@/utility/hatafeed-issue-page.js';
 import { showHataFeedTutorial } from '@/utility/hatafeed-tutorial-launcher.js';
@@ -157,7 +165,15 @@ import {
 import { $i, iAmModerator } from '@/i.js';
 import { i18n } from '@/i18n.js';
 
-const props = defineProps<{ issueId?: string; number?: string; initialTab?: HataFeedTab; emojiRequestId?: string; emojiChangeRequestId?: string }>();
+const popup = useHataGoesPopup();
+const popupMenu = useHataGoesPopupMenu();
+
+const props = withDefaults(defineProps<{ issueId?: string; number?: string; initialTab?: HataFeedTab; emojiRequestId?: string; emojiChangeRequestId?: string; embedded?: boolean; requestedTab?: string; paneActive?: boolean }>(), { issueId: undefined, number: undefined, initialTab: undefined, emojiRequestId: undefined, emojiChangeRequestId: undefined, embedded: false, requestedTab: undefined, paneActive: true });
+useHataMascotSuppression(computed(() => !props.embedded || props.paneActive));
+const emit = defineEmits<{ exit: []; tabChange: [tab: string]; appearanceChange: [appearance: { theme: string; projectName?: string; cssVars?: Record<string, string> }] }>();
+const hataGoesHost = inject(HATA_GOES_HOST, null);
+const dialogs = useHataGoesDialogs();
+const { selectUser } = useHataGoesPickers();
 const copy = i18n.ts._hata._hatafeed._home;
 const copyx = i18n.tsx._hata._hatafeed._home;
 const pageCopy = i18n.ts._hata._hatafeed._page;
@@ -168,16 +184,20 @@ const router = useRouter();
 const closePageWindow = inject(DI.pageWindowClose, null);
 
 function exitHataFeed() {
+	if (props.embedded) { emit('exit'); return; }
 	if (closePageWindow) closePageWindow();
 	else router.push('/');
 }
 
 // 旗鯖fork: 「#番号」リンク(/hatafeed/n/:number)から来た場合、番号→idを解決して該当イシューへ。
 async function resolveNumber() {
+	const requestedNumber = props.number;
 	try {
-		const res = await misskeyApi('hata/feedback/issues/show', { number: parseInt(props.number as string, 10) });
+		const res = await misskeyApi('hata/feedback/issues/show', { number: parseInt(requestedNumber as string, 10) });
+		if (props.number !== requestedNumber) return;
 		router.replace('/hatafeed/:issueId', { params: { issueId: res.issue.id } });
 	} catch {
+		if (props.number !== requestedNumber) return;
 		router.replace('/hatafeed');
 	}
 }
@@ -207,6 +227,21 @@ const filterStatus = ref<string | null>(null);
 const authorFilter = ref<any>(null);
 const includeClosed = ref(false);
 const searchQuery = ref('');
+const filterSheetOpen = ref(false);
+const filterSheetEl = ref<HTMLElement | null>(null);
+const filterEntry = ref<HTMLButtonElement | null>(null);
+watch(filterSheetOpen, async open => {
+	await nextTick();
+	if (open) filterSheetEl.value?.querySelector<HTMLButtonElement>('button')?.focus();
+	else filterEntry.value?.focus();
+});
+
+function trapFilterSheetTab(event: KeyboardEvent) {
+	const buttons = [...(filterSheetEl.value?.querySelectorAll<HTMLButtonElement>('button') ?? [])];
+	if (!buttons.length) return;
+	const first = buttons[0], last = buttons[buttons.length - 1];
+	if (event.shiftKey && window.document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && window.document.activeElement === last) { event.preventDefault(); first.focus(); }
+}
 
 // 旗鯖fork: バッジは共有の状態を見る(標準通知から既読にしたときも消えるように)。
 const unreadCount = hataFeedUnreadCount;
@@ -225,11 +260,22 @@ const currentProject = computed(() => projects.value.find(p => currentProjectId.
 // 'emoji' はスタッフ専用の絵文字申請管理ビュー(本体を差し替える)。
 const activeTab = ref<HataFeedTab>(props.initialTab ?? hataFeedTab.value);
 watch(activeTab, tab => { if (tab !== 'beta') hataFeedTab.value = tab; }, { flush: 'sync' });
+const hataFeedUsageScreenIds: Partial<Record<HataFeedTab, string>> = {
+	home: 'hatafeed.home', issues: 'hatafeed.issues', roadmap: 'hatafeed.roadmap', beta: 'hatafeed.beta', emoji: 'hatafeed.emoji',
+};
+watch([activeTab, canAccess, isStaff], ([tab, allowed, staff]) => {
+	if (!allowed || props.embedded) return;
+	const screenId = hataFeedUsageScreenIds[tab];
+	if (!screenId) return;
+	const available = HATAGOES_CATALOG.filter(screen => screen.app === 'hatafeed' && (screen.access !== 'hatafeedStaff' || staff));
+	recordHatagoesScreenUsage($i?.id, screenId, available);
+}, { immediate: true });
 // RouterView caches both URLs. A cached beta page may have last navigated away
 // through the admin tab; restore the tab belonging to the activated URL.
 onActivated(() => {
-	tutorialActive = true;
-	const tab = props.initialTab === 'beta' ? 'beta' : hataFeedTab.value;
+	tutorialActive = !props.embedded || props.paneActive;
+	if (props.embedded && loading.value) return;
+	const tab = props.embedded ? embeddedTab() : props.initialTab === 'beta' ? 'beta' : hataFeedTab.value;
 	if (activeTab.value !== tab) selectTab(tab);
 	if (canAccess.value && !loading.value) refreshProjects();
 	maybeShowTutorial();
@@ -246,13 +292,13 @@ const visibleIssues = computed(() => activeTab.value === 'home' ? issues.value.s
 const ownEmojiRequests = ref<HataFeedEmojiRequest[]>([]);
 const error = ref('');
 
-let tutorialActive = true;
+let tutorialActive = !props.embedded || props.paneActive;
 let stopTutorial: (() => void) | undefined;
 
 async function maybeShowTutorial() {
 	if (!tutorialActive || loading.value || !canAccess.value || error.value || issueId.value || props.number) return;
 	const hasExistingActivity = ownEmojiRequests.value.length > 0 || issues.value.some(issue => issue.createdBy?.id === $i?.id) || projects.value.some(project => project.ownerId === $i?.id);
-	const stop = await showHataFeedTutorial({ isActive: () => tutorialActive && !issueId.value, isStaff: isStaff.value, hasExistingActivity });
+	const stop = await showHataFeedTutorial({ isActive: () => tutorialActive && !issueId.value, isStaff: isStaff.value, hasExistingActivity, popup });
 	if (!stop) return;
 	if (tutorialActive) stopTutorial = stop;
 	else stop?.();
@@ -340,7 +386,7 @@ async function fetchIssuePage(untilId: string | undefined) {
 	} catch (error) {
 		if (requestId === issuePageRequestId) {
 			console.error(error);
-			os.alert({ type: 'error', text: i18n.ts.somethingHappened });
+			dialogs.alert({ type: 'error', text: i18n.ts.somethingHappened });
 		}
 		return null;
 	} finally {
@@ -402,7 +448,18 @@ async function loadRoadmap() {
 }
 
 // 旗鯖fork(2a/3a): ツールバー/フィルタのメニュー・トグル群。
-function openProjectSwitch(ev: MouseEvent) {
+async function openProjectSwitch(ev: MouseEvent) {
+	if (props.embedded) {
+		const component = (await import('@/components/HataFeedProjectSheet.vue')).default;
+		const { dispose } = popup(component, {
+			title: 'プロジェクト', currentId: currentProjectId.value,
+			projects: [
+				{ id: null, name: projects.value.find(project => project.isOfficial)?.name ?? 'Hataskey', icon: 'ti ti-flag-2' },
+				...ownProjects.value.map(project => ({ id: project.id, name: project.name + (project.suspended ? copy.suspendedSuffix : ''), icon: project.suspended ? 'ti ti-player-pause' : 'ti ti-cube' })),
+			],
+		}, { select: selectProject, overview: () => { void showProjectOverview(currentProject.value ?? { name: 'Hataskey' }); }, closed: () => dispose() });
+		return;
+	}
 	const items: any[] = [
 		{ text: projects.value.find(p => p.isOfficial)?.name ?? 'Hataskey', icon: 'ti ti-flag-2', active: currentProjectId.value == null, action: () => selectProject(null) },
 		...ownProjects.value.map(p => ({
@@ -413,18 +470,20 @@ function openProjectSwitch(ev: MouseEvent) {
 		})),
 	];
 	items.push(null, { text: copy.overview, icon: 'ti ti-info-circle', action: () => showProjectOverview(currentProject.value ?? { name: 'Hataskey' }) });
-	os.popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement);
+	popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement);
 }
 
 function openCategoryMenu(ev: MouseEvent) {
-	os.popupMenu([
+	if (props.embedded) { filterSheetOpen.value = true; return; }
+	popupMenu([
 		{ text: copy.allCategories, active: filterCategory.value == null, action: () => { filterCategory.value = null; reloadIssues(); } },
 		...filterCategoryKeys.value.map(c => ({ text: categoryLabel[c], active: filterCategory.value === c, action: () => { filterCategory.value = c; reloadIssues(); } })),
 	], (ev.currentTarget ?? ev.target) as HTMLElement);
 }
 
 function openStatusMenu(ev: MouseEvent) {
-	os.popupMenu([
+	if (props.embedded) { filterSheetOpen.value = true; return; }
+	popupMenu([
 		{ text: copy.allStatuses, active: filterStatus.value == null, action: () => { filterStatus.value = null; reloadIssues(); } },
 		...statusKeys.map(s => ({ text: statusLabel[s], active: filterStatus.value === s, action: () => { filterStatus.value = s; reloadIssues(); } })),
 	], (ev.currentTarget ?? ev.target) as HTMLElement);
@@ -432,9 +491,10 @@ function openStatusMenu(ev: MouseEvent) {
 
 // 旗鯖fork(2a): 作成者で絞り込む。ユーザー選択ダイアログで作成者を指定/解除する。
 async function openAuthorMenu(ev: MouseEvent) {
+	if (props.embedded) { filterSheetOpen.value = true; return; }
 	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
 	if (authorFilter.value) {
-		os.popupMenu([
+		popupMenu([
 			{ text: copyx.filteringByAuthor({ name: authorFilter.value.name ?? authorFilter.value.username }), icon: 'ti ti-user', action: () => {} },
 			{ type: 'divider' },
 			{ text: copy.clearAuthorFilter, icon: 'ti ti-x', action: () => { authorFilter.value = null; reloadIssues(); } },
@@ -445,8 +505,20 @@ async function openAuthorMenu(ev: MouseEvent) {
 	}
 }
 
+function chooseCategory(value: string | null) {
+	if (filterCategory.value === value) return;
+	filterCategory.value = value;
+	reloadIssues();
+}
+
+function chooseStatus(value: string | null) {
+	if (filterStatus.value === value) return;
+	filterStatus.value = value;
+	reloadIssues();
+}
+
 async function pickAuthor() {
-	const user = await os.selectUser({});
+	const user = await selectUser({});
 	if (!user) return;
 	authorFilter.value = user;
 	reloadIssues();
@@ -548,7 +620,7 @@ async function loadNotifications() {
 async function openNotifications(event: MouseEvent) {
 	// currentTarget is cleared as soon as dispatch ends, before the import resolves.
 	const anchorElement = event.currentTarget as HTMLElement;
-	const { dispose } = os.popup((await import('@/components/HataFeedNotifications.vue')).default, {
+	const { dispose } = popup((await import('@/components/HataFeedNotifications.vue')).default, {
 		anchorElement,
 	}, {
 		read: (count: number) => { unreadCount.value = count; },
@@ -585,25 +657,39 @@ function openBeta() {
 
 function goList() { navigateTab('issues'); }
 
-async function createIssue() {
-	const { dispose } = os.popup((await import('@/components/HataFeedIssueWizard.vue')).default, {
+function onIssueChanged() {
+	if (props.embedded) hataGoesHost?.changed();
+}
+
+async function createIssue() { await createIssueWithSignal(); }
+
+async function createIssueWithSignal(signal?: AbortSignal) {
+	if (signal?.aborted) return;
+	const component = (await import('@/components/HataFeedIssueWizard.vue')).default;
+	if (signal?.aborted) return;
+	const { dispose } = popup(component, {
 		projectId: currentProjectId.value,
 		projects: projects.value,
 	}, {
-		done: () => { reloadIssues(); },
+		done: () => { reloadIssues(); if (props.embedded) hataGoesHost?.changed(); },
 		closed: () => dispose(),
 	});
 }
 
-async function requestEmoji() {
-	const { dispose } = os.popup((await import('@/components/HataFeedEmojiWizard.vue')).default, { isStaff: isStaff.value }, {
-		done: () => { loadEmojiRequests(); },
+async function requestEmoji() { await requestEmojiWithSignal(); }
+
+async function requestEmojiWithSignal(signal?: AbortSignal) {
+	if (signal?.aborted) return;
+	const component = (await import('@/components/HataFeedEmojiWizard.vue')).default;
+	if (signal?.aborted) return;
+	const { dispose } = popup(component, { isStaff: isStaff.value }, {
+		done: () => { loadEmojiRequests(); if (props.embedded) hataGoesHost?.changed(); },
 		closed: () => dispose(),
 	});
 }
 
 async function openApprove(r: any) {
-	const { dispose } = os.popup((await import('@/components/HataFeedEmojiApprove.vue')).default, { req: r }, {
+	const { dispose } = popup((await import('@/components/HataFeedEmojiApprove.vue')).default, { req: r }, {
 		done: () => { loadEmojiRequests(); if (activeTab.value === 'emoji') reloadEmojiAdmin(); },
 		closed: () => dispose(),
 	});
@@ -619,20 +705,24 @@ async function openReviewQueue() {
 		if (activeTab.value === 'emoji') await reloadEmojiAdmin();
 		return;
 	}
-	const { dispose } = os.popup((await import('@/components/HataFeedEmojiApprove.vue')).default, { requests: pending }, {
+	const { dispose } = popup((await import('@/components/HataFeedEmojiApprove.vue')).default, { requests: pending }, {
 		done: () => { loadEmojiRequests(); if (activeTab.value === 'emoji') reloadEmojiAdmin(); },
 		closed: () => { loadEmojiRequests(); if (activeTab.value === 'emoji') reloadEmojiAdmin(); dispose(); },
 	});
 }
 
 // 旗鯖fork: プロジェクトの概要(タイトル/ジャンル/説明/リポジトリURL)を表示する。
-function showProjectOverview(project: any) {
+async function showProjectOverview(project: any) {
 	const lines: string[] = [];
 	if (project.genre) lines.push(copyx.genreValue({ genre: project.genre }));
 	if (project.description) lines.push(project.description);
 	if (project.url) lines.push(copyx.repositoryValue({ url: project.url }));
 	if (lines.length === 0) lines.push(copy.noProjectDescription);
-	os.alert({
+	if (props.embedded) {
+		const { dispose } = popup((await import('@/components/HataFeedProjectSheet.vue')).default, { title: project.name, lines }, { closed: () => dispose() });
+		return;
+	}
+	dialogs.alert({
 		type: 'info',
 		title: project.name,
 		text: lines.join('\n\n'),
@@ -641,8 +731,8 @@ function showProjectOverview(project: any) {
 
 // スタッフ: 近々の修正・改善予定を掲示する。ロードマップ専用の作成画面(ウィザード)を開く。
 async function addRoadmap() {
-	const { dispose } = os.popup((await import('@/components/HataFeedRoadmapWizard.vue')).default, {}, {
-		done: () => { loadRoadmap(); if (filterCategory.value === 'improvement') reloadIssues(); },
+	const { dispose } = popup((await import('@/components/HataFeedRoadmapWizard.vue')).default, {}, {
+		done: () => { loadRoadmap(); if (filterCategory.value === 'improvement') reloadIssues(); if (props.embedded) hataGoesHost?.changed(); },
 		closed: () => dispose(),
 	});
 }
@@ -650,14 +740,20 @@ async function addRoadmap() {
 watch(() => props.issueId, (v, old) => {
 	if (old != null && v == null) { reloadIssues(); loadRoadmap(); loadNotifications(); maybeShowTutorial(); }
 });
+watch(() => props.number, (number, previous) => {
+	if (number && number !== previous) void resolveNumber();
+});
 
 onMounted(() => {
-	if (props.number) { resolveNumber(); return; }
-	init().then(openLinkedEmojiRequest);
+	if (props.number) { void resolveNumber(); if (!props.embedded) return; }
+	init().then(() => {
+		if (props.embedded) selectTab(embeddedTab());
+		openLinkedEmojiRequest();
+	});
 });
 
 function openLinkedEmojiRequest() {
-	if (canAccess.value && (props.emojiRequestId || props.emojiChangeRequestId)) openHataFeedEmojiNotification(props, loadEmojiRequests);
+	if (canAccess.value && (props.emojiRequestId || props.emojiChangeRequestId)) openHataFeedEmojiNotification(props, loadEmojiRequests, popup);
 }
 
 watch([() => props.emojiRequestId, () => props.emojiChangeRequestId], openLinkedEmojiRequest);
@@ -679,6 +775,7 @@ async function refreshAll() {
 definePage(() => ({
 	title: 'HataFeed',
 	icon: 'ti ti-message-report',
+	hataApp: 'hatafeed',
 }));
 
 function navigateTab(tab: HataFeedTab) {
@@ -689,6 +786,7 @@ function navigateTab(tab: HataFeedTab) {
 }
 
 function selectTab(tab: HataFeedTab) {
+	if (props.embedded && tab === activeTab.value) return;
 	if (tab === 'beta') { activeTab.value = 'beta'; return; }
 	if (tab === 'issues') goIssuesTab();
 	else if (tab === 'roadmap') goRoadmapTab();
@@ -709,19 +807,99 @@ function handleCreate(kind: 'emoji' | 'issue') {
 	else createIssue();
 }
 
-async function openDisplaySettings() {
-	const { dispose } = os.popup((await import('@/components/HataFeedDisplaySettings.vue')).default, {}, { projectsChanged: refreshProjects, closed: () => dispose() });
+async function openDisplaySettings(initialSection?: string) {
+	const { dispose } = popup((await import('@/components/HataFeedDisplaySettings.vue')).default, { initialSection }, { projectsChanged: refreshProjects, closed: () => dispose() });
 }
 
 async function openOwnHistory() {
-	const { dispose } = os.popup((await import('@/components/HataFeedEmojiHistory.vue')).default, {}, { changed: loadEmojiRequests, closed: () => { loadEmojiRequests(); dispose(); } });
+	const { dispose } = popup((await import('@/components/HataFeedEmojiHistory.vue')).default, {}, { changed: loadEmojiRequests, closed: () => { loadEmojiRequests(); dispose(); } });
 }
+
+function embeddedTab(): HataFeedTab {
+	const tab = props.requestedTab;
+	return tab === 'home' || tab === 'issues' || tab === 'roadmap' || tab === 'beta' || (tab === 'emoji' && isStaff.value) ? tab : 'home';
+}
+
+watch(() => props.requestedTab, () => {
+	if (props.embedded && !loading.value && canAccess.value) selectTab(embeddedTab());
+});
+watch(activeTab, tab => { if (props.embedded && props.paneActive && tab !== embeddedTab()) emit('tabChange', tab); });
+watch([hataFeedTheme, currentProject], ([theme, project]) => { if (props.embedded) emit('appearanceChange', { theme, projectName: project?.name ?? 'Hataskey' }); }, { immediate: true });
+watch(() => props.paneActive, active => {
+	if (!props.embedded) return;
+	if (!active) stopOwnedTutorial();
+	else { tutorialActive = true; void loadNotifications(); }
+});
+let goesOwnerDisposed = false;
+const goesReadyWaiters = new Set<() => void>();
+
+watch(loading, pending => {
+	if (!pending) { for (const resolve of goesReadyWaiters) resolve(); goesReadyWaiters.clear(); }
+});
+
+async function waitForGoesOwner(signal?: AbortSignal): Promise<boolean> {
+	if (loading.value && !goesOwnerDisposed) await new Promise<void>(resolve => goesReadyWaiters.add(resolve));
+	if (goesOwnerDisposed || signal?.aborted) return false;
+	if (!canAccess.value || error.value) { await dialogs.alert({ type: 'error', text: error.value || pageCopy.unavailable }); return false; }
+	return true;
+}
+
+onUnmounted(() => {
+	goesOwnerDisposed = true;
+	for (const resolve of goesReadyWaiters) resolve();
+	goesReadyWaiters.clear();
+});
+// eslint-disable-next-line vue/no-setup-props-reactivity-loss -- The owner registration is fixed for this mounted pane.
+const unregisterHataGoes = props.embedded ? hataGoesHost?.register('hatafeed', {
+	openSettings: openDisplaySettings,
+	async openProjectSwitch(event) {
+		// currentTarget is cleared once event dispatch ends; retain the anchor before waiting.
+		const anchor = (event.currentTarget ?? event.target) as HTMLElement;
+		if (!await waitForGoesOwner() || !props.paneActive) return;
+		await openProjectSwitch({ currentTarget: anchor, target: anchor } as unknown as MouseEvent);
+	},
+	async create(kind, signal?: AbortSignal) {
+		if (signal?.aborted || !await waitForGoesOwner(signal) || signal?.aborted) return;
+		if (kind === 'emoji') await requestEmojiWithSignal(signal);
+		else await createIssueWithSignal(signal);
+	},
+	refresh: refreshAll,
+	async openResult(kind, id) {
+		if (!await waitForGoesOwner() || !props.paneActive) return;
+		if (kind === 'issue') openIssue(id);
+		else if (kind === 'emojiRequest') await openHataFeedEmojiNotification({ emojiRequestId: id }, loadEmojiRequests, popup);
+		else if (kind === 'emojiChangeRequest') await openHataFeedEmojiNotification({ emojiChangeRequestId: id }, loadEmojiRequests, popup);
+		else if (kind === 'project') {
+			await refreshProjects();
+			// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The active pane can change while refreshProjects awaits.
+			if (!props.paneActive) return;
+			const project = projects.value.find(item => item.id === id);
+			if (!project) { await dialogs.alert({ type: 'error', text: 'このプロジェクトは見つからないか、表示できません。' }); return; }
+			selectProject(project.isOfficial ? null : project.id);
+			navigateTab('issues');
+		} else await dialogs.alert({ type: 'error', text: 'この検索結果の詳細を表示できません。' });
+	},
+}) : undefined;
+onUnmounted(() => unregisterHataGoes?.());
 
 </script>
 
 <style module src="../components/hatafeed-page.module.css"></style>
 
 <style scoped>
+.hf-goes-filter-entry { display:flex; align-items:center; gap:8px; margin:12px 0; padding:10px 14px; border:1px solid var(--MI_THEME-divider); border-radius:14px; background:var(--MI_THEME-panel); color:inherit; cursor:pointer; }
+.hf-goes-filter-backdrop { position:fixed; inset:0; z-index:10000; display:flex; align-items:end; justify-content:center; background:rgba(0,0,0,.38); }
+.hf-goes-filter-sheet { box-sizing:border-box; width:min(100%,560px); max-height:min(86dvh,780px); overflow:auto; padding:18px 20px 24px; border-radius:24px 24px 0 0; background:var(--MI_THEME-panel); color:var(--MI_THEME-fg); box-shadow:0 -18px 50px rgba(0,0,0,.2); }
+.hf-goes-filter-sheet header { display:flex; justify-content:space-between; align-items:center; }
+.hf-goes-filter-sheet fieldset { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; padding:0; border:0; }
+.hf-goes-filter-sheet legend { width:100%; margin-bottom:8px; font-weight:700; }
+.hf-goes-filter-sheet button { padding:8px 12px; border:1px solid var(--MI_THEME-divider); border-radius:999px; background:transparent; color:inherit; cursor:pointer; }
+.hf-goes-filter-sheet button[aria-pressed='true'] { border-color:var(--MI_THEME-accent); color:var(--MI_THEME-accent); }
+.hf-goes-filter-sheet .hf-goes-filter-done { width:100%; border-color:var(--MI_THEME-accent); background:var(--MI_THEME-accent); color:var(--MI_THEME-fgOnAccent); }
+.hf-goes-filter-enter-active, .hf-goes-filter-leave-active { transition:opacity 180ms ease; }
+.hf-goes-filter-enter-active .hf-goes-filter-sheet, .hf-goes-filter-leave-active .hf-goes-filter-sheet { transition:transform 180ms ease; }
+.hf-goes-filter-enter-from, .hf-goes-filter-leave-to { opacity:0; }
+.hf-goes-filter-enter-from .hf-goes-filter-sheet, .hf-goes-filter-leave-to .hf-goes-filter-sheet { transform:translateY(16px); }
 header[data-roadmap-actions='true'] { flex-wrap: wrap; }
 header[data-roadmap-actions='true'] > form { margin-left: auto; }
 .hf-roadmap-add { flex-shrink: 0; white-space: nowrap; }

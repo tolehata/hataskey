@@ -654,6 +654,14 @@ import type {
 	HataHatadyTimelineResponse,
 	HataHatadyUsersShowRequest,
 	HataHatadyUsersShowResponse,
+	HataHatagoesHomeDailyRequest,
+	HataHatagoesHomeDailyResponse,
+	HataHatagoesHomeIssuesResponse,
+	HataHatagoesNotificationsUnreadCountResponse,
+	HataHatagoesSearchRequest,
+	HataHatagoesSearchResponse,
+	HataHatagoesShowRequest,
+	HataHatagoesShowResponse,
 	HataHataskEmotionAnalysisCreateRequest,
 	HataHataskEmotionAnalysisCreateResponse,
 	HataHataskEmotionAnalysisDeleteRequest,
@@ -1466,6 +1474,11 @@ export type Endpoints = {
 	'hata/hatady/subjects/save': { req: HataHatadySubjectsSaveRequest; res: HataHatadySubjectsSaveResponse };
 	'hata/hatady/timeline': { req: HataHatadyTimelineRequest; res: HataHatadyTimelineResponse };
 	'hata/hatady/users/show': { req: HataHatadyUsersShowRequest; res: HataHatadyUsersShowResponse };
+	'hata/hatagoes/home/daily': { req: HataHatagoesHomeDailyRequest; res: HataHatagoesHomeDailyResponse };
+	'hata/hatagoes/home/issues': { req: EmptyRequest; res: HataHatagoesHomeIssuesResponse };
+	'hata/hatagoes/notifications/unread-count': { req: EmptyRequest; res: HataHatagoesNotificationsUnreadCountResponse };
+	'hata/hatagoes/search': { req: HataHatagoesSearchRequest; res: HataHatagoesSearchResponse };
+	'hata/hatagoes/show': { req: HataHatagoesShowRequest; res: HataHatagoesShowResponse };
 	'hata/hatask/emotion-analysis/create': { req: HataHataskEmotionAnalysisCreateRequest; res: HataHataskEmotionAnalysisCreateResponse };
 	'hata/hatask/emotion-analysis/delete': { req: HataHataskEmotionAnalysisDeleteRequest; res: HataHataskEmotionAnalysisDeleteResponse };
 	'hata/hatask/emotion-analysis/list': { req: HataHataskEmotionAnalysisListRequest; res: HataHataskEmotionAnalysisListResponse };

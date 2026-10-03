@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<PageWithHeader v-model:tab="tab" :actions="[]" :tabs="[]" :user="user" :swipable="true">
+<PageWithHeader v-model:tab="tab" :actions="[]" :tabs="[]" :user="user" :swipable="true" :disableFollowButton="tab === 'home'">
 	<div v-if="user">
 		<!-- 旗鯖fork: プロフィールタブをピルケース型に (Hataskey UI 統一デザイン) -->
 		<div :class="$style.htkPillTabs">
@@ -214,7 +214,7 @@ definePage(() => ({
 /* 旗鯖fork: ピル型タブ (Hataskey UI 統一デザイン) */
 .htkPillTabs {
 	position: sticky;
-	top: 0;
+	top: var(--MI-stickyTop, 0px);
 	z-index: 50;
 	display: flex;
 	justify-content: center;

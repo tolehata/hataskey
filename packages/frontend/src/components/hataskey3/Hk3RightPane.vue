@@ -7,7 +7,7 @@ Hataskey UI 3: 右ペイン。「ウィジェット」(Hataskey UI と共通)と
 <aside :class="$style.root" :data-glass="prefer.r.hataskeyUi3RightPaneBackground.value ? 'true' : undefined" :data-mobile="mobile ? 'true' : undefined">
 	<header v-if="mobile" :class="$style.mobileHead">
 		<div :class="$style.mobileTitle">
-			<strong :class="tab === 'hatask' ? $style.mobileBrand : undefined">{{ tab === 'widgets' ? copy.paneWidgets : 'Hatask' }}</strong>
+			<strong v-if="tab === 'widgets'">{{ copy.paneWidgets }}</strong><strong v-else :class="$style.mobileBrand"><HataAppLogo app="hatask" :size="23" :monochrome="store.r.darkMode.value"/><HataAppWordmark app="hatask" inheritColor/></strong>
 			<button
 				v-if="tab === 'widgets'" type="button" :class="$style.editButton" data-cy-widget-edit
 				:disabled="!widgetControls"
@@ -25,7 +25,7 @@ Hataskey UI 3: 右ペイン。「ウィジェット」(Hataskey UI と共通)と
 		<div :class="$style.tabs" role="tablist">
 			<button type="button" role="tab" :class="$style.tab" :aria-selected="tab === 'widgets'" @click="setTab('widgets')"><LayoutGrid :size="18"/>{{ copy.paneWidgets }}</button>
 			<button type="button" role="tab" :class="$style.tab" :aria-selected="tab === 'hatask'" @click="setTab('hatask')">
-				<CalendarCheck :size="18"/><span :class="$style.brand">Hatask</span>
+				<HataAppLogo app="hatask" :size="20" :monochrome="store.r.darkMode.value"/><span :class="$style.brand"><HataAppWordmark app="hatask" inheritColor/></span>
 				<span v-if="pendingTodos.length > 0" :class="$style.badge">{{ pendingTodos.length > 99 ? '99+' : pendingTodos.length }}</span>
 			</button>
 		</div>
@@ -53,7 +53,7 @@ Hataskey UI 3: 右ペイン。「ウィジェット」(Hataskey UI と共通)と
 			<section :class="$style.view" :data-on="tab === 'hatask' ? 'true' : undefined" :inert="tab !== 'hatask'">
 				<div :class="$style.day">
 					<b>{{ dayLabel }}</b><span>{{ weekdayLabel }}</span>
-					<MkA to="/hatask" :class="$style.open" :title="copy.openInHatask"><span :class="$style.brandSm">Hatask</span><ChevronRight :size="16" :class="$style.openArrow"/></MkA>
+					<MkA to="/hatask" :class="$style.open" :title="copy.openInHatask"><HataAppLogo app="hatask" :size="20" :monochrome="store.r.darkMode.value"/><span :class="$style.brandSm"><HataAppWordmark app="hatask" inheritColor/></span><ChevronRight :size="16" :class="$style.openArrow"/></MkA>
 				</div>
 
 				<div :class="$style.stats">
@@ -128,8 +128,11 @@ Hataskey UI 3: 右ペイン。「ウィジェット」(Hataskey UI と共通)と
 
 <script lang="ts" setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Calendar, CalendarCheck, Check, ChevronRight, Flower2, LayoutGrid, ListChecks, Pencil, Smile, Soup } from '@lucide/vue';
+import { Calendar, Check, ChevronRight, Flower2, LayoutGrid, ListChecks, Pencil, Smile, Soup } from '@lucide/vue';
 import HataskEmoji from '@/components/HataskEmoji.vue';
+import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import { store } from '@/store.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
@@ -436,7 +439,7 @@ onBeforeUnmount(() => {
 
 .mobileTitle { display: flex; align-items: center; gap: calc(8px * var(--hk3-ui-scale, 1)); min-width: 0; }
 .mobileTitle strong { font-size: calc(15px * var(--hk3-ui-scale, 1)); }
-.mobileTitle .mobileBrand { font-family: 'Righteous', system-ui, sans-serif; font-weight: 400; font-size: calc(18px * var(--hk3-ui-scale, 1)); }
+.mobileTitle .mobileBrand { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; font-size: calc(18px * var(--hk3-ui-scale, 1)); }
 
 .head {
 	position: relative;

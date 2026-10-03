@@ -305,6 +305,12 @@ export class HataskRecipeService {
 	}
 
 	@bindThis
+	public async showCookingRecord(me: MiUser, recordId: string) {
+		const record = await this.records.findOneBy({ id: recordId, userId: me.id });
+		return record == null ? null : await this.packRecord(record);
+	}
+
+	@bindThis
 	public async deleteCookingRecord(me: MiUser, recordId: string): Promise<void> {
 		const record = await this.records.findOneBy({ id: recordId, userId: me.id });
 		if (record == null) throw new ApiError(HATASK_RECIPE_ERRORS.noSuchRecord);

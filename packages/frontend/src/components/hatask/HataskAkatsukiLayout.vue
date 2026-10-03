@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	ref="rootEl"
 	class="htk-akatsuki-layout"
 	:data-enabled="enabled"
+	:data-embedded="embedded"
 	:data-mode="mode"
 	:data-motion="enabled ? (motionEnabled ? 'on' : 'off') : undefined"
 	:data-rail-collapsed="railCollapsed"
@@ -19,15 +20,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:aria-busy="enabled ? model.loading : undefined"
 	@keydown.esc="closeTransient"
 >
-	<aside v-if="enabled" class="hak-rail" :aria-label="copy.railNav">
+	<aside v-if="enabled && !embedded" class="hak-rail" :aria-label="copy.railNav">
 		<div class="hak-rail-head">
 			<button class="hak-rail-menu hak-icon" type="button" :aria-expanded="!railCollapsed" :aria-label="copy.toggleMenu" @click="railExpanded = railCollapsed">
 				<i class="ti ti-menu-2" aria-hidden="true"></i>
 			</button>
-			<div class="hak-rail-brand hak-brand">Hatask</div>
+			<div class="hak-rail-brand hak-brand"><HataAppLogo app="hatask" :size="24" motion="startup" :monochrome="mode === 'dark'" :active="!bootVisible"/><HataAppWordmark app="hatask" :onDark="mode === 'dark'"/></div>
 		</div>
 		<button v-for="tab in desktopTabs" :key="tab.id" class="hak-rail-tab" type="button" :aria-label="tab.label" :title="railCollapsed ? tab.label : undefined" :aria-current="activeTab === tab.id ? 'page' : undefined" @click="navigate(tab.id)">
-			<i :class="tab.icon" aria-hidden="true"></i><span class="hak-rail-label">{{ tab.label }}</span>
+			<HataAppLogo v-if="tab.id === 'home'" app="hatask" :size="20" :monochrome="mode === 'dark'" :tapSequence="brandTapSequence"/><i v-else :class="tab.icon" aria-hidden="true"></i><span :class="['hak-rail-label', (tab.id === 'apps' || tab.id === 'hataskapps') && 'hak-brand']">{{ tab.label }}</span>
 		</button>
 		<div class="hak-rail-space"></div>
 		<button class="hak-rail-tab" type="button" :aria-label="copy.exit" :title="railCollapsed ? copy.exit : undefined" @click="dispatch({ type: 'exit' })">
@@ -35,7 +36,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</button>
 	</aside>
 	<div ref="scrollEl" class="hak-scroll" :data-scroll-more="scrollMore" @scroll.passive="onScroll">
-		<header v-if="enabled" class="hak-desktop-top">
+		<header v-if="enabled && !embedded" class="hak-desktop-top">
 			<div ref="desktopNotificationOutlineEl" class="hak-desktop-bar" :data-notification="notificationActive">
 				<div class="hak-desktop-surface">
 					<div ref="desktopNotificationTargetEl" class="hak-notification-viewport" :style="{ height: `${!isMobile && ownsNotificationSurface ? notificationToasts?.height.value ?? 0 : 0}px` }"></div>
@@ -49,12 +50,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 		</header>
-		<header v-if="enabled" class="hak-mobile-head" :data-notification-pinned="notificationPinned">
+		<header v-if="enabled && !embedded" class="hak-mobile-head" :data-notification-pinned="notificationPinned">
 			<div ref="notificationOutlineEl" class="hak-mobile-bar" :data-notification="notificationActive">
 				<div class="hak-mobile-case hak-mobile-surface">
 					<div ref="notificationTargetEl" class="hak-notification-viewport" :style="{ height: `${isMobile && ownsNotificationSurface ? notificationToasts?.height.value ?? 0 : 0}px` }"></div>
 					<form class="hak-mobile-case" role="search" @submit.prevent="submitSearch">
-						<span class="hak-mobile-brand hak-brand">Hatask</span>
+						<span class="hak-mobile-brand hak-brand"><HataAppLogo app="hatask" :size="20" motion="startup" :monochrome="mode === 'dark'" :active="!bootVisible"/><HataAppWordmark app="hatask" :onDark="mode === 'dark'"/></span>
 						<label class="hak-mobile-search" :aria-hidden="!searching"><i class="ti ti-search" aria-hidden="true"></i><input ref="mobileSearchEl" v-model="searchQuery" type="search" :placeholder="copy.searchHatask" :aria-label="copy.searchHatask" :aria-controls="searchOpen ? searchResultsId : undefined" :disabled="!searching"></label>
 						<button ref="searchToggleEl" class="hak-icon hak-search-toggle" type="button" :aria-expanded="searching" :aria-label="searching ? copy.closeSearch : copy.search" @click="toggleSearch"><i :class="searching ? 'ti ti-x' : 'ti ti-search'" aria-hidden="true"></i></button>
 						<button class="hak-icon hak-mobile-gear" type="button" :aria-label="copy.settings" :tabindex="searching ? -1 : undefined" :aria-hidden="searching" @click="emit('settings')"><i class="ti ti-settings" aria-hidden="true"></i></button>
@@ -72,11 +73,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<div ref="bodyEl" class="hak-body">
 			<div ref="centerEl" class="hak-center" :role="enabled ? 'main' : undefined">
-				<section v-if="enabled" v-show="activeTab === 'home'" class="hak-home" :aria-label="copy.home">
+				<section v-if="enabled" v-show="activeTab === 'home'" class="hak-home" :class="{ 'hak-has-launcher': $slots['home-launcher'] }" :aria-label="copy.home">
 					<div class="hak-home-summary">
 						<div class="hak-mobile-date"><span class="hak-date hak-round">{{ dateLabel }}</span><span class="hak-dow">{{ weekdayLabel }}</span><span v-if="model.dayCountLabel" class="hak-day-count hak-num">{{ model.dayCountLabel }}</span><button v-if="activeTab === 'home'" type="button" class="hak-icon" data-home-display-options="mobile" :aria-label="copy.chooseDisplay" :title="copy.chooseDisplay" :aria-expanded="manualHome === 'favorites' && favoritesEditing" :disabled="!favoritesReady || favoritesSaving || (manualHome === 'favorites' && favoritesEditing)" @click="manualHome = 'favorites'; if (!favoritesEditing) editFavorites()"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i></button></div>
 						<p>{{ model.loading ? copy.loadingRecords : model.summary || copy.heroFallback }}</p>
 					</div>
+					<div v-if="$slots['home-launcher']" class="hak-home-launcher"><slot name="home-launcher"/></div>
 					<section class="hak-focus" :aria-label="copy.focusArea" @pointerenter="homeHovered = true" @pointerleave="homeHovered = false" @focusin="homeFocused = true" @focusout="onHomeFocusOut">
 						<div class="hak-focus-toolbar">
 							<div class="hak-focus-options" role="group" :aria-label="copy.homeDisplay">
@@ -110,7 +112,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div class="hak-home-panes" :data-two-panes="manualHome === 'favorites' && homePanes.length === 2">
 							<div v-for="pane in homePanes" :key="pane.id" class="hak-focus-panel" :data-home-panel="pane.id">
 								<header v-if="pane.id !== 'intro'" class="hak-focus-head"><h2 class="hak-round"><i :class="pane.icon" aria-hidden="true"></i>{{ pane.label }}</h2><span>{{ pane.reason }}</span></header>
-								<p v-if="model.loading && pane.id !== 'intro'" class="hak-empty" role="status">{{ copy.loadingRecords }}</p>
+								<div v-if="model.loading && pane.id !== 'intro'" class="hak-empty"><HataAppLoading app="hatask" :size="28" :monochrome="mode === 'dark'" :label="copy.loadingRecords"/>{{ copy.loadingRecords }}</div>
 								<template v-else>
 									<div v-if="pane.id === 'intro'" class="hak-intro-feature">
 										<div class="hak-intro-copy"><p class="hak-intro-kicker">{{ copy.introReason }}</p><h2 class="hak-intro-brand">HataIntro</h2><p class="hak-intro-description">{{ copy.introLedeFirst }}<br>{{ copy.introLedeSecond }}</p></div>
@@ -189,7 +191,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<aside v-if="enabled" class="hak-side" :aria-label="copy.records">
 				<section class="hak-side-case hak-record-case">
 					<h2 class="hak-side-heading hak-round">{{ copy.records }}</h2>
-					<p v-if="model.loading" class="hak-empty">{{ copy.loadingRecords }}</p>
+					<div v-if="model.loading" class="hak-empty"><HataAppLoading app="hatask" :size="28" :monochrome="mode === 'dark'" :label="copy.loadingRecords"/>{{ copy.loadingRecords }}</div>
 					<div v-else-if="model.week?.length" class="hak-week" :aria-label="copy.weekMood"><button v-for="day in model.week" :key="day.id" class="hak-week-day" type="button" :data-today="day.today" :data-pending="day.pending" :aria-label="`${day.label} ${day.description}`" @click="navigate('mood')"><span>{{ day.label }}</span><span v-if="day.emoji" class="hak-week-emoji">{{ day.emoji }}</span><i v-else :class="day.icon || 'ti ti-point'" aria-hidden="true"></i></button></div>
 				</section>
 				<template v-if="!model.loading">
@@ -201,7 +203,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</template>
 			</aside>
 			<nav v-if="enabled && activeTab === 'home' && missingMobileAppTabs.length" class="hak-app-return hak-desktop-case" :aria-label="copy.removedTabs">
-				<button v-for="tab in missingMobileAppTabs" :key="tab.id" class="hak-small-button" type="button" :data-app-return="tab.id" @click="navigate(tab.id)">{{ tab.label }}</button>
+				<button v-for="tab in missingMobileAppTabs" :key="tab.id" class="hak-small-button hak-brand" type="button" :data-app-return="tab.id" @click="navigate(tab.id)">{{ tab.label }}</button>
 			</nav>
 		</div>
 	</div>
@@ -213,7 +215,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<nav v-if="enabled" ref="bottomEl" class="hak-bottom" :aria-label="copy.bottomNav" @focusin="restoreNav">
 		<button class="hak-exit" type="button" :aria-label="copy.exit" @click="dispatch({ type: 'exit' })"><i class="ti ti-logout-2" aria-hidden="true"></i></button>
 		<div class="hak-bottom-case">
-			<button v-for="tab in mobileTabs" :key="tab.id" class="hak-mobile-tab" type="button" :aria-label="tab.label" :aria-current="isMobileTabActive(tab.id) ? 'page' : undefined" :tabindex="navHidden ? -1 : undefined" :aria-hidden="navHidden" @click="navigate(tab.id)"><i :class="tab.icon" aria-hidden="true"></i></button>
+			<button v-for="tab in mobileTabs" :key="tab.id" class="hak-mobile-tab" type="button" :aria-label="tab.label" :aria-current="isMobileTabActive(tab.id) ? 'page' : undefined" :tabindex="navHidden ? -1 : undefined" :aria-hidden="navHidden" @click="navigate(tab.id)"><HataAppLogo v-if="tab.id === 'home'" app="hatask" :size="20" :monochrome="mode === 'dark'" :tapSequence="brandTapSequence"/><i v-else :class="tab.icon" aria-hidden="true"></i></button>
 			<button ref="fabEl" class="hak-fab" type="button" :aria-label="fabOpen ? copy.closeRecordMenu : copy.recordMeal" :aria-expanded="fabOpen" @click="toggleFab"><i class="ti ti-plus" aria-hidden="true"></i></button>
 		</div>
 	</nav>
@@ -222,6 +224,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script setup lang="ts">
 import { computed, inject, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, onUpdated, ref, shallowRef, useId, watch } from 'vue';
+import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataAppWordmark from '@/components/HataAppWordmark.vue';
+import HataAppLoading from '@/components/HataAppLoading.vue';
 import type { HataskAkatsukiAction, HataskAkatsukiEvent, HataskAkatsukiFavoriteId, HataskAkatsukiHomeSection, HataskAkatsukiHomeSectionId, HataskAkatsukiLayoutProps, HataskAkatsukiTab } from './hatask-akatsuki-types.js';
 import { normalizeHataskAkatsukiMobileTabs } from '@/utility/hatask-akatsuki-navigation.js';
 import { HATASK_AKATSUKI_FAVORITES, normalizeHataskAkatsukiFavorites } from '@/utility/hatask-akatsuki-favorites.js';
@@ -233,7 +238,8 @@ import { hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-t
 
 const copy = i18n.ts._hata._hatask._akatsuki;
 
-const props = withDefaults(defineProps<HataskAkatsukiLayoutProps>(), { mode: 'light', animations: true, favoritesReady: true, favoritesSaving: false, favoritesError: '' });
+const props = withDefaults(defineProps<HataskAkatsukiLayoutProps & { embedded?: boolean; bootVisible?: boolean }>(), { embedded: false, bootVisible: false, mode: 'light', animations: true, favoritesReady: true, favoritesSaving: false, favoritesError: '' });
+const brandTapSequence = ref(0);
 const emit = defineEmits<{
 	navigate: [tab: HataskAkatsukiTab];
 	settings: [];
@@ -266,7 +272,7 @@ const desktopNotificationOutlineEl = shallowRef<HTMLElement | null>(null);
 const notificationPinned = ref(false);
 let notificationCollapseTimer: number | undefined;
 const notificationSurface = {
-	active: computed(() => props.enabled && pageActive.value && pageVisible.value),
+	active: computed(() => props.enabled && !props.embedded && pageActive.value && pageVisible.value),
 	target: computed(() => isMobile.value ? notificationTargetEl.value : desktopNotificationTargetEl.value),
 	outline: computed(() => isMobile.value ? notificationOutlineEl.value : desktopNotificationOutlineEl.value),
 	animations: computed(() => props.animations),
@@ -370,7 +376,7 @@ const searchQuery = defineModel<string>('searchQuery', { default: '' });
 const fabOpen = ref(false);
 const navHidden = ref(false);
 const reducedMotion = ref(false);
-const motionEnabled = computed(() => props.animations && !reducedMotion.value);
+const motionEnabled = computed(() => props.embedded || (props.animations && !reducedMotion.value));
 const daylightDuration = ref('0s');
 const layoutStyle = computed(() => props.enabled ? {
 	...getHataskDaylightStyle(props.now ?? new Date(NaN), props.mode),
@@ -460,7 +466,8 @@ function animateTab() {
 	const target = centerEl.value;
 	const previousOpacity = target && tabAnimation ? Number.parseFloat(window.getComputedStyle(target).opacity) : .2;
 	cancelTabAnimation();
-	if (!props.enabled || !connected || !motionEnabled.value || !target?.animate) return;
+	// HataGoes animates route changes at the pane boundary, once per navigation.
+	if (props.embedded || !props.enabled || !connected || !motionEnabled.value || !target?.animate) return;
 	// The new tab is already active. Motion never owns visibility, input state,
 	// or mounting; cancellation therefore always leaves an operable page.
 	const animation = target.animate([
@@ -487,6 +494,7 @@ function isMobileTabActive(tab: HataskAkatsukiTab) {
 
 function navigate(tab: HataskAkatsukiTab) {
 	if (tab === 'review' && !props.model.canModerate) return;
+	if (tab === 'home') brandTapSequence.value++;
 	closeFab(false);
 	restoreNav();
 	emit('navigate', tab);
@@ -747,7 +755,7 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 /* The menu center shares the tab's 12px padding + 20px icon column. */
 .htk-akatsuki-layout .hak-rail-menu { width: 44px; height: 40px; }
 .htk-akatsuki-layout .hak-rail-menu > .ti { width: 21px; height: 21px; display: grid; place-items: center; font-size: 21px; vertical-align: baseline; }
-.hak-rail-brand { font-size: 20px; white-space: nowrap; }
+.hak-rail-brand { display: inline-flex; align-items: center; gap: 6px; font-size: 20px; white-space: nowrap; }
 .hak-rail-tab { display: flex; align-items: center; gap: 11px; min-height: 42px; padding: 0 12px !important; border-radius: 999px; color: var(--fg-2) !important; font-weight: 800 !important; }
 .hak-rail-tab > .ti { width: 20px; height: 20px; flex: 0 0 20px; display: grid; place-items: center; font-size: 18px; vertical-align: baseline; }
 .hak-rail :is(.hak-rail-menu, .hak-rail-tab) > .ti::before { display: block; font-size: 1em; line-height: 1; }
@@ -786,6 +794,8 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 .hak-body { display: flex; min-width: 0; min-height: calc(100% - 82px); container: hatask-akatsuki-body / inline-size; }
 .hak-center { flex: 1; min-width: 0; padding: 26px 30px; }
 .hak-home { display: grid; grid-template-areas: 'summary' 'focus' 'stats' 'extra'; animation: hak-up .35s cubic-bezier(.2, 0, 0, 1) both; }
+.hak-home.hak-has-launcher { grid-template-areas: 'summary' 'launcher' 'focus' 'stats' 'extra'; }
+.hak-home-launcher { grid-area: launcher; min-width: 0; }
 .hak-focus { grid-area: focus; min-width: 0; }
 .hak-focus-options { display: flex; align-items: center; gap: 2px; width: max-content; max-width: 100%; margin: 0 auto 12px; padding: 4px 6px; border: var(--border); border-radius: 999px; background: var(--masthead); box-shadow: var(--shadow); overflow-x: auto; scrollbar-width: none; }
 .hak-focus-options::-webkit-scrollbar { display: none; }
@@ -952,7 +962,7 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 	// Notifications expand over the page without shifting its content.
 	.hak-mobile-head { display: block; height: 74px; flex: none; padding: 12px 12px 10px; position: relative; z-index: 30; }
 	.hak-mobile-case { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 8px 0 16px; border: var(--border); border-radius: 999px; background: var(--masthead); box-shadow: 0 14px 28px -20px rgba(0, 0, 0, .4), var(--shadow); transition: padding .26s cubic-bezier(.2, 0, 0, 1); }
-	.hak-mobile-brand { max-width: 120px; overflow: hidden; font-size: 19px; white-space: nowrap; transition: max-width .26s cubic-bezier(.2, 0, 0, 1), opacity .16s; }
+	.hak-mobile-brand { display: inline-flex; align-items: center; gap: 5px; max-width: 120px; overflow: hidden; font-size: 19px; white-space: nowrap; transition: max-width .26s cubic-bezier(.2, 0, 0, 1), opacity .16s; }
 	.htk-akatsuki-layout .hak-search-toggle { margin-left: auto; }
 	.hak-mobile-search { display: flex; align-items: center; gap: 8px; flex: 0 1 0; width: 0; min-width: 0; overflow: hidden; opacity: 0; pointer-events: none; color: var(--accent-ink); transition: flex-grow .26s cubic-bezier(.2, 0, 0, 1), width .26s, opacity .2s; }
 	.hak-mobile-search input { font-size: 16px; }
@@ -966,6 +976,7 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 	.hak-center { flex: none; width: 100%; padding: 4px 20px 0; }
 	[data-tab='apps'] .hak-center, [data-tab='hataskapps'] .hak-center { padding-inline: 14px; }
 	.hak-home { grid-template-areas: 'summary' 'focus' 'stats' 'extra'; }
+	.hak-home.hak-has-launcher { grid-template-areas: 'summary' 'launcher' 'focus' 'stats' 'extra'; }
 	.hak-home-summary { margin-bottom: 16px; }
 	.hak-mobile-date { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 	.hak-mobile-date .hak-dow { font-size: 12px; }
@@ -1037,9 +1048,9 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 }
 @keyframes hak-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes hak-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
-.htk-akatsuki-layout[data-motion='off'], .htk-akatsuki-layout[data-motion='off'] *, .htk-akatsuki-layout[data-motion='off'] *::before, .htk-akatsuki-layout[data-motion='off'] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+.htk-akatsuki-layout[data-motion='off'], .htk-akatsuki-layout[data-motion='off'] *:not([data-hata-app-logo], [data-hata-app-logo] *), .htk-akatsuki-layout[data-motion='off'] *:not([data-hata-app-logo], [data-hata-app-logo] *)::before, .htk-akatsuki-layout[data-motion='off'] *:not([data-hata-app-logo], [data-hata-app-logo] *)::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 @media (prefers-reduced-motion: reduce) {
-	.htk-akatsuki-layout[data-enabled='true'], .htk-akatsuki-layout[data-enabled='true'] *, .htk-akatsuki-layout[data-enabled='true'] *::before, .htk-akatsuki-layout[data-enabled='true'] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+	.htk-akatsuki-layout[data-enabled='true']:not([data-embedded='true']), .htk-akatsuki-layout[data-enabled='true']:not([data-embedded='true']) *:not([data-hata-app-logo], [data-hata-app-logo] *), .htk-akatsuki-layout[data-enabled='true']:not([data-embedded='true']) *:not([data-hata-app-logo], [data-hata-app-logo] *)::before, .htk-akatsuki-layout[data-enabled='true']:not([data-embedded='true']) *:not([data-hata-app-logo], [data-hata-app-logo] *)::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
 .htk-akatsuki-layout[data-enabled='false'] { display: none; }
 .hak-scroll { scrollbar-width: none; }
@@ -1078,4 +1089,10 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 @container hatask-akatsuki (max-width: 599px) {
 	.hak-mobile-head[data-notification-pinned='true'] { position: sticky; top: 0; z-index: 30; }
 }
+.htk-akatsuki-layout[data-embedded='true'] {
+	height: 100%;
+	max-height: none;
+}
+.htk-akatsuki-layout[data-embedded='true'] :is(.hak-search-disclosure, .hak-side, .hak-app-return, .hak-fab-scrim, .hak-fab-sheet, .hak-bottom) { display: none; }
+.htk-akatsuki-layout[data-embedded='true'] .hak-scroll { padding-bottom: 0; }
 </style>

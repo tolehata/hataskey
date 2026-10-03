@@ -237,6 +237,20 @@ describe('Hatask recipe reference links', () => {
 });
 
 describe('Hatask cooking records', () => {
+	test('direct detail lookup is owner scoped and reuses the complete record pack', async () => {
+		const { service, records } = setup();
+		records.findOneBy.mockResolvedValueOnce({
+			id: 'record', userId: 'owner', createdAt: new Date('2026-09-22T19:42:00Z'), cookedAt: new Date('2026-09-22T20:00:00Z'),
+			recipeId: 'recipe', title: '夕食', durationSeconds: 1200, servings: 2, mealSlot: 'dinner', cost: 620,
+			memo: '記録', fileId: null, visibility: 'private', visibleUserIds: [], hatadyLogId: 'log',
+		});
+		await expect(service.showCookingRecord(me('owner'), 'record')).resolves.toMatchObject({ id: 'record', title: '夕食', memo: '記録', cookedAt: '2026-09-22T20:00:00.000Z' });
+		expect(records.findOneBy).toHaveBeenCalledWith({ id: 'record', userId: 'owner' });
+		records.findOneBy.mockResolvedValueOnce(null);
+		await expect(service.showCookingRecord(me('outsider'), 'record')).resolves.toBeNull();
+		expect(records.findOneBy).toHaveBeenLastCalledWith({ id: 'record', userId: 'outsider' });
+	});
+
 	test.each([
 		['public', 'public'],
 		['followers', 'followers'],

@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<div :class="$style.root" role="group" data-hy-page-controls :aria-label="label">
+<div :class="[$style.root, { [$style.card]: card }]" role="group" data-hy-page-controls :aria-label="label">
 	<button
 		ref="trigger"
 		type="button"
-		:class="$style.trigger"
+		:class="[$style.trigger, { [$style.cardTrigger]: card }]"
 		:aria-label="`${label}: ${selected?.label ?? label}`"
 		aria-haspopup="dialog"
 		:aria-expanded="shown && !closing"
@@ -15,7 +15,8 @@
 		@keydown.up.prevent="open"
 	>
 		<i :class="selected?.icon ?? 'ti ti-filter'" aria-hidden="true"></i>
-		<span :class="$style.selectedLabel">{{ selected?.label ?? label }}</span>
+		<span v-if="card" :class="$style.cardCopy"><span>{{ label }}</span><small>{{ selected?.label ?? label }}</small></span>
+		<span v-else :class="$style.selectedLabel">{{ selected?.label ?? label }}</span>
 		<i class="ti ti-chevron-down" :class="$style.chevron" aria-hidden="true"></i>
 	</button>
 	<Teleport to="body">
@@ -61,6 +62,7 @@ const props = defineProps<{
 	modelValue: string;
 	options: ReadonlyArray<{ value: string; label: string; icon: string }>;
 	label: string;
+	card?: boolean;
 }>();
 const emit = defineEmits<{ (event: 'update:modelValue', value: string): void }>();
 const selected = computed(() => props.options.find(option => option.value === props.modelValue));
@@ -130,6 +132,7 @@ function onKeydown(event: KeyboardEvent): void {
 	min-width: 0;
 	max-width: 100%;
 }
+.card { width: 100%; }
 .trigger {
 	box-sizing: border-box;
 	display: inline-flex;
@@ -162,6 +165,10 @@ function onKeydown(event: KeyboardEvent): void {
 	min-width: 0;
 	overflow-wrap: anywhere;
 }
+.cardTrigger { justify-content: flex-start; width: 100%; min-height: 68px; padding: 8px 10px; border-radius: 12px; text-align: left; }
+.cardCopy { display: grid; flex: 1; min-width: 0; line-height: 1.35; }
+.cardCopy > span { font-size: 13px; }
+.cardCopy > small { overflow: hidden; color: var(--hy-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .trigger[aria-expanded='true'] {
 	background: var(--hy-soft);
 	color: var(--hy-accent);

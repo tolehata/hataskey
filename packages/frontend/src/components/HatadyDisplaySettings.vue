@@ -13,8 +13,8 @@
 	@closed="emit('closed')"
 >
 	<h2 v-if="embedded" :class="$style.embeddedTitle">{{ copy.title }}</h2>
-	<div :class="$style.settings" data-settings-search-group-id="settings.group.hatady-display-settings">
-		<section>
+	<div ref="settingsRoot" :class="$style.settings" data-settings-search-group-id="settings.group.hatady-display-settings">
+		<section data-hatagoes-setting="theme">
 			<h3>{{ copy.theme }}</h3>
 			<div :class="$style.carousel" :aria-label="settingsCopy.chooseAppearance">
 				<button type="button" :class="[$style.arrow, 'hy-icon-button']" :aria-label="settingsCopy.previousTheme" :disabled="saving || themeIndex === 0" @click="move(-1)">
@@ -59,7 +59,7 @@
 			</div>
 			<p class="hy-muted">{{ copy.themeHint }}</p>
 		</section>
-		<section>
+		<section data-hatagoes-setting="manage">
 			<h3>{{ copy.manage }}</h3>
 			<div :class="$style.menu">
 				<button @click="openSubjectManager">
@@ -84,7 +84,7 @@
 				</button>
 			</div>
 		</section>
-		<section>
+		<section data-hatagoes-setting="sync">
 			<h3>
 				<i class="ti ti-refresh"></i>
 				{{ copy.sync }}
@@ -127,19 +127,25 @@
 />
 </template>
 <script setup lang="ts">
-import { computed, ref, nextTick, onUnmounted } from 'vue';
+import { computed, ref, nextTick, onUnmounted, onMounted, watch } from 'vue';
+import { revealHatagoesSetting } from '@/utility/hatagoes-setting-section.js';
 import { showHatadyTutorial } from '@/utility/hatady-tutorial-launcher.js';
 import type { HatadyTutorialKind } from '@/utility/hatady-tutorial.js';
 import type { HatadyTheme } from '@/utility/hatady-prefs.js';
 import HyDialog from '@/components/HyDialog.vue';
 import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
 import { i18n } from '@/i18n.js';
-import * as os from '@/os.js';
+import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { hatadyTheme, saveHatadyDisplay } from '@/utility/hatady-prefs.js';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
 import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { $i } from '@/i.js';
-defineProps<{ embedded?: boolean }>();
+
+const popup = useHataGoesPopup();
+const props = defineProps<{ embedded?: boolean; initialSection?: string }>();
+const settingsRoot = ref<HTMLElement>();
+onMounted(() => revealHatagoesSetting(settingsRoot.value, props.initialSection));
+watch(() => props.initialSection, section => revealHatagoesSetting(settingsRoot.value, section), { flush: 'post' });
 const emit = defineEmits<{ (ev: 'closed'): void }>();
 const dialog = ref<any>(),
 	viewport = ref<HTMLElement>(),
@@ -258,7 +264,7 @@ async function save() {
 }
 
 async function openSubjectManager() {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadySubjectManager.vue')).default,
 		{},
 		{ closed: () => dispose() },
@@ -266,7 +272,7 @@ async function openSubjectManager() {
 }
 
 async function doExportAll() {
-	const { dispose } = os.popup(
+	const { dispose } = popup(
 		(await import('@/components/HatadyExportDialog.vue')).default,
 		{},
 		{ closed: () => dispose() },
@@ -280,6 +286,7 @@ async function rerunTutorial(event: MouseEvent, kind: HatadyTutorialKind = 'init
 	const stop = await showHatadyTutorial({
 		kind, replay: true, isActive: () => tutorialActive,
 		anchorElement: event.currentTarget as HTMLElement,
+		popup,
 	});
 	if (!stop) return;
 	if (tutorialActive) stopTutorial = stop;

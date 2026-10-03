@@ -6,6 +6,35 @@
 import { ref } from 'vue';
 import { miLocalStorage } from '@/local-storage.js';
 
+/** HataGoes caches never use the account-synchronized preference store. */
+export type HatagoesDeviceKey = `hatagoes:${'state' | 'create' | 'scroll'}:${string}`;
+export function readHatagoesDeviceCache(key: HatagoesDeviceKey): string | null {
+	try { return miLocalStorage.getItem(key); } catch { return null; }
+}
+
+export function writeHatagoesDeviceCache(key: HatagoesDeviceKey, value: unknown): void {
+	try { miLocalStorage.setItem(key, JSON.stringify(value)); } catch { /* Optional device cache. */ }
+}
+
+/** The introduction is independent of the shell's transient state/create/scroll caches. */
+export type HatagoesIntroductionKey = `hatagoes:introduction-seen:${string}`;
+const introductionClaims = new Set<string>();
+export function hasSeenHatagoesIntroduction(accountId: string): boolean {
+	try { return miLocalStorage.getItem(`hatagoes:introduction-seen:${accountId}`) === 'true'; } catch { return false; }
+}
+export function markHatagoesIntroductionSeen(accountId: string): void {
+	try { miLocalStorage.setItem(`hatagoes:introduction-seen:${accountId}`, 'true'); } catch { /* The introduction may recur if device storage is unavailable. */ }
+}
+/** Prevent two HataGoes windows in the same app session from opening the tour together. */
+export function claimHatagoesIntroduction(accountId: string, replay = false): boolean {
+	if (introductionClaims.has(accountId) || (!replay && hasSeenHatagoesIntroduction(accountId))) return false;
+	introductionClaims.add(accountId);
+	return true;
+}
+export function releaseHatagoesIntroduction(accountId: string): void {
+	introductionClaims.delete(accountId);
+}
+
 export type HataNotificationBrand = 'all' | 'standard' | 'hatady' | 'hatask' | 'hataFeed';
 export const HATA_NOTIFICATION_CATEGORIES = ['standard', 'hatady', 'hatask', 'hataFeed'] as const;
 export type HataNotificationCategory = typeof HATA_NOTIFICATION_CATEGORIES[number];

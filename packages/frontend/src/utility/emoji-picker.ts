@@ -33,11 +33,12 @@ class EmojiPicker {
 		anchorElement: HTMLElement,
 		onChosen?: (emoji: string) => void,
 		onClosed?: () => void,
+		launcher: typeof popup = popup,
 	) {
 		const anchorRef = shallowRef(anchorElement);
 
 		// リアクションピッカーと同じく、iOS PWAのタップ中に同期的に開く。
-		const { dispose } = popup(MkEmojiPickerDialog, {
+		const { dispose } = launcher(MkEmojiPickerDialog, {
 			anchorElement: anchorRef,
 			pinnedEmojis: this.emojisRef,
 			asReactionPicker: false,

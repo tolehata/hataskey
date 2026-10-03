@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { createApp, h, nextTick } from 'vue';
+import { createApp, h, nextTick, provide, ref } from 'vue';
 import type { entities } from 'cherrypick-js';
+import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 
 const fixtures = vi.hoisted(() => ({
 	records: new Map<string, string>(),
@@ -26,6 +27,10 @@ vi.mock('@/local-storage.js', () => ({ miLocalStorage: {
 } }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixtures.api }));
 vi.mock('@/utility/hatady-ui.js', () => ({ hatadyNotify: fixtures.notify }));
+vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatady: {
+	_report: { title: '通報', reason: '通報の理由・詳細', reasonExample: '理由', closeSent: '端末の下書きを削除して閉じる', submit: '通報する', draftQuestion: '書きかけの通報をどうする？', draftDescription: '下書き', sentDraftCleanupFailed: '通報を送信しましたが、端末の下書きを削除できませんでした', draftUpdateFailed: '更新失敗', draftSaved: '下書きを保存しました', sent: '通報を送信しました', sendFailed: '通報を送信できませんでした。入力内容は残っています' },
+	_controls: { back: '戻る', draftTitle: '下書き', draftDescription: '下書き', draftSaveClose: '端末に下書きを保存して閉じる', draftDiscardClose: '下書きを破棄して閉じる', draftReturn: '編集に戻る' },
+} } }, tsx: { _hata: { _hatady: { _report: { personContent: ({ name }: { name: string }) => `${name}さんの内容` } } } } } }));
 vi.mock('@/components/HyDialog.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
 	return { default: defineComponent({
@@ -59,15 +64,18 @@ function seed() {
 
 function readDrafts() { return JSON.parse(fixtures.records.get(storeKey) ?? '{}'); }
 
-async function mountReport(initialComment = `${reference}\n対象の返信`) {
+async function mountReport(initialComment = `${reference}\n対象の返信`, embedded = false) {
 	const closed = vi.fn();
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
-	const app = createApp({ render: () => h(HatadyReport, {
+	const app = createApp({ setup() {
+		if (embedded) provide(HATA_GOES_HOST, { active: ref(true), register: vi.fn(), changed: vi.fn() });
+		return () => h(HatadyReport, {
 		user: { id: 'target-user', name: '相手', username: 'other' } as entities.UserLite,
 		initialComment,
 		onClosed: closed,
-	}) });
+		});
+	} });
 	app.mount(target);
 	const unmount = () => { app.unmount(); target.remove(); };
 	cleanups.push(unmount);
@@ -190,5 +198,30 @@ describe('Hatady report submission and explicit drafts', () => {
 		const payload = fixtures.api.mock.calls[0][1];
 		expect(payload.comment.startsWith(`${reference}\n`)).toBe(true);
 		expect(payload.comment.length).toBe(2048);
+	});
+
+	test('embedded report submits selected reason with optional detail and keeps the target reference first', async () => {
+		fixtures.api.mockResolvedValue(undefined);
+		const { target, textarea } = await mountReport(`${reference}\n対象の返信`, true);
+		const option = Array.from(target.querySelectorAll<HTMLInputElement>('input[type="radio"]')).find(input => input.value === 'spoiler');
+		expect(option).toBeDefined();
+		option!.click();
+		await nextTick();
+		expect(textarea.required).toBe(false);
+		await submit(target);
+		expect(fixtures.api).toHaveBeenCalledWith('users/report-abuse', {
+			userId: 'target-user', comment: `${reference}\n対象の返信\n\nネタバレの指定がない`,
+		});
+	});
+
+	test('embedded report restores a legacy reason draft without losing its text', async () => {
+		seed();
+		const { target, textarea } = await mountReport(`${reference}\n対象の返信`, true);
+		expect(textarea.value).toBe('保存していた理由');
+		expect(target.querySelector('button[type="submit"]')?.hasAttribute('disabled')).toBe(true);
+		const option = target.querySelector<HTMLInputElement>('input[value="other"]');
+		option!.click();
+		await nextTick();
+		expect(target.querySelector('button[type="submit"]')?.hasAttribute('disabled')).toBe(false);
 	});
 });

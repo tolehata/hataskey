@@ -761,6 +761,13 @@ function explicitEvidenceMentionsStorageKeyV2(
 	key: string,
 	source: SettingsStorageKeyAuditSourceV2,
 ): boolean {
+	// A template-key type with a literal union has no single runtime spelling.
+	// Its reviewed device helper must declare the exact family and use storage.
+	if (kind === 'local' && key.includes("${'")) {
+		const clean = stripCommentsForSettingsAuditV2(source.code);
+		return clean.includes('`' + key + '`')
+			&& /\bmiLocalStorage\.(?:getItem|setItem|removeItem)\(/u.test(clean);
+	}
 	if (keyMentionedBySourceV2(kind, key, source.code)) return true;
 	const clean = stripCommentsForSettingsAuditV2(source.code);
 	const keyPattern = storageKeyMatcherSourceV2(key);
@@ -916,6 +923,10 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'通知画面のブランド・種別・BOT除外フィルターを保持する端末ローカル表示状態', ['src/utility/hatasaba-device-prefs.ts', 'src/pages/notifications.vue']);
 	add('local', ['hataskAkatsukiUsage:' + dynamicKey], 'cache',
 		'暁ホームの優先表示に使う端末・アカウント別のツール利用履歴で、設定項目ではない', ['src/utility/hatask-akatsuki-usage.ts']);
+	add('local', ["hatagoes:${'state' | 'create' | 'scroll'}:" + dynamicKey], 'cache',
+		'HataGoesの画面復元・最近の作成・スクロール位置を保持する端末・アカウント別キャッシュ', ['src/utility/hatasaba-device-prefs.ts']);
+	add('local', ['hatagoes:introduction-seen:' + dynamicKey], 'internal',
+		'HataGoesの初回紹介を表示済みか端末・アカウント別に記録する内部状態', ['src/utility/hatasaba-device-prefs.ts']);
 	add('local', [
 		'account', 'aiscriptSecure:' + dynamicKey, 'debug', 'hataNotificationFilterPolicyNoticeShown:' + dynamicKey,
 		'hataSideStudioTutorialDone', 'hataWhatsNewShownVersion', 'hata_muted_reactions_notice_shown', 'hatafeedIntroShown',

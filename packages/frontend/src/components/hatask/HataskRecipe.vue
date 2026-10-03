@@ -346,9 +346,12 @@ Hatask レシピ。一覧・詳細・調理中・料理の記録・作成編集�
 </template>
 
 <script lang="ts" setup>
+import { useHataGoesPickers } from '@/utility/hatagoes-pickers.js';
 import { computed, nextTick, onBeforeUnmount, onDeactivated, reactive, ref, useTemplateRef, watch } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import * as os from '@/os.js';
+import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
+import { useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { selectFile } from '@/utility/drive.js';
@@ -368,7 +371,11 @@ import {
 } from '@/utility/hatask-recipe.js';
 import type { HataskCookingMealSlot, HataskCookingVisibility, HataskRecipe, HataskRecipeCategory, HataskRecipeList, HataskRecipeVisibility } from '@/utility/hatask-recipe.js';
 
+const pickers = useHataGoesPickers();
 const copy = i18n.ts._hata._hatask._recipe;
+
+const popupMenu = useHataGoesPopupMenu();
+const dialogs = useHataGoesDialogs();
 
 const props = defineProps<{
 	theme: string;
@@ -473,7 +480,7 @@ function selectScope(next: Scope): void {
 }
 
 function openSortMenu(ev: MouseEvent): void {
-	os.popupMenu(SORTS.map(item => ({ text: item.label, active: sort.value === item.id, action: () => { sort.value = item.id; } })), ev.currentTarget ?? ev.target);
+	popupMenu(SORTS.map(item => ({ text: item.label, active: sort.value === item.id, action: () => { sort.value = item.id; } })), ev.currentTarget ?? ev.target);
 }
 
 function visibilityFact(visibility: HataskRecipeVisibility): string {
@@ -511,7 +518,7 @@ function scaledAmount(amount: string): string {
 async function deleteRecipe(): Promise<void> {
 	const recipe = current.value;
 	if (!recipe || busy.value) return;
-	const { canceled } = await os.confirm({ type: 'warning', text: i18n.tsx._hata._hatask._recipe.recipeDeleteConfirm({ title: recipe.title }) });
+	const { canceled } = await dialogs.confirm({ type: 'warning', text: i18n.tsx._hata._hatask._recipe.recipeDeleteConfirm({ title: recipe.title }) });
 	if (canceled) return;
 	busy.value = true;
 	try {
@@ -519,7 +526,7 @@ async function deleteRecipe(): Promise<void> {
 		current.value = null;
 		showList();
 	} catch {
-		os.alert({ type: 'error', text: copy.deleteFailed });
+		dialogs.alert({ type: 'error', text: copy.deleteFailed });
 	} finally {
 		busy.value = false;
 	}
@@ -653,7 +660,7 @@ async function confirmDiscard(): Promise<boolean> {
 	if (confirmPending.value || busy.value) return false;
 	confirmPending.value = true;
 	try {
-		const { canceled } = await os.confirm({ type: 'warning', text: copy.discardConfirm });
+		const { canceled } = await dialogs.confirm({ type: 'warning', text: copy.discardConfirm });
 		return !canceled && !busy.value;
 	} finally {
 		confirmPending.value = false;
@@ -672,14 +679,14 @@ async function chooseRecordRecipe(): Promise<void> {
 	try {
 		recipes = (await misskeyApi('hatask/recipes/list', { scope: 'mine', sort: 'cooked', limit: 100 })).items.filter(recipe => !recipe.isDraft);
 	} catch {
-		os.alert({ type: 'error', text: copy.loadFailed });
+		dialogs.alert({ type: 'error', text: copy.loadFailed });
 		return;
 	}
 	if (!recipes.length) {
-		os.alert({ type: 'info', text: copy.noRecordRecipe });
+		dialogs.alert({ type: 'info', text: copy.noRecordRecipe });
 		return;
 	}
-	const { canceled, result } = await os.select({ title: copy.chooseCookedRecipe, default: recordRecipe.value?.id ?? recipes[0].id, items: recipes.map(recipe => ({ value: recipe.id, label: recipe.title })) });
+	const { canceled, result } = await dialogs.select({ title: copy.chooseCookedRecipe, default: recordRecipe.value?.id ?? recipes[0].id, items: recipes.map(recipe => ({ value: recipe.id, label: recipe.title })) });
 	if (canceled || result == null) return;
 	const chosen = recipes.find(recipe => recipe.id === result) ?? null;
 	if (chosen && chosen.id !== recordRecipe.value?.id) record.servings = chosen.servings;
@@ -690,11 +697,11 @@ async function saveRecord(): Promise<void> {
 	if (!recordRecipe.value || busy.value || confirmPending.value) return;
 	const cookedAt = new Date(record.cookedAt).getTime();
 	if (!Number.isFinite(cookedAt)) {
-		os.alert({ type: 'error', text: copy.invalidCookedAt });
+		dialogs.alert({ type: 'error', text: copy.invalidCookedAt });
 		return;
 	}
 	if (record.visibility === 'specified' && !record.visibleUserIds.length) {
-		os.alert({ type: 'error', text: copy.memberRequired });
+		dialogs.alert({ type: 'error', text: copy.memberRequired });
 		return;
 	}
 	busy.value = true;
@@ -719,7 +726,7 @@ async function saveRecord(): Promise<void> {
 			emit('hatadyCookingSaved');
 		}
 	} catch {
-		os.alert({ type: 'error', text: copy.recordSaveFailed });
+		dialogs.alert({ type: 'error', text: copy.recordSaveFailed });
 	} finally {
 		busy.value = false;
 	}
@@ -830,16 +837,16 @@ function dropIngredient(index: number): void {
 }
 
 async function editTimer(step: EditorStep): Promise<void> {
-	const time = await os.inputText({ title: copy.timer, text: copy.timerHelp, default: step.timerSeconds ? formatRecipeTimer(step.timerSeconds) : '' });
+	const time = await dialogs.inputText({ title: copy.timer, text: copy.timerHelp, default: step.timerSeconds ? formatRecipeTimer(step.timerSeconds) : '' });
 	if (time.canceled) return;
 	const seconds = parseRecipeTimer(time.result ?? '');
 	if (seconds == null) {
-		if ((time.result ?? '').trim()) os.alert({ type: 'error', text: copy.timerInvalid });
+		if ((time.result ?? '').trim()) dialogs.alert({ type: 'error', text: copy.timerInvalid });
 		step.timerSeconds = null;
 		step.timerLabel = '';
 		return;
 	}
-	const label = await os.inputText({ title: copy.timerName, text: copy.timerNameHelp, default: step.timerLabel, maxLength: 32 });
+	const label = await dialogs.inputText({ title: copy.timerName, text: copy.timerNameHelp, default: step.timerLabel, maxLength: 32 });
 	step.timerSeconds = seconds;
 	step.timerLabel = label.canceled ? step.timerLabel : (label.result ?? '').trim();
 }
@@ -847,12 +854,12 @@ async function editTimer(step: EditorStep): Promise<void> {
 async function saveRecipe(isDraft: boolean): Promise<void> {
 	if (busy.value || !editor.title.trim()) return;
 	if (editor.visibility === 'specified' && !editor.visibleUserIds.length) {
-		os.alert({ type: 'error', text: copy.memberRequired });
+		dialogs.alert({ type: 'error', text: copy.memberRequired });
 		return;
 	}
 	const tags = [...new Set(editor.tags.split(/[\s,、]+/).map(item => item.replace(/^#+/, '').trim()).filter(Boolean))];
 	if (tags.length > 10 || tags.some(item => item.length > 32)) {
-		os.alert({ type: 'error', text: copy.tagsInvalid });
+		dialogs.alert({ type: 'error', text: copy.tagsInvalid });
 		return;
 	}
 	const referenceLinks: { title: string; url: string }[] = [];
@@ -861,18 +868,18 @@ async function saveRecipe(isDraft: boolean): Promise<void> {
 		if (!title && !link.url.trim()) continue;
 		const number = String(index + 1);
 		if (title.length > 120) {
-			os.alert({ type: 'error', text: i18n.tsx._hata._hatask._recipe.referenceTitleInvalid({ number }) });
+			dialogs.alert({ type: 'error', text: i18n.tsx._hata._hatask._recipe.referenceTitleInvalid({ number }) });
 			return;
 		}
 		const url = normalizeRecipeReferenceUrl(link.url);
 		if (!url) {
-			os.alert({ type: 'error', text: i18n.tsx._hata._hatask._recipe.referenceUrlInvalid({ number }) });
+			dialogs.alert({ type: 'error', text: i18n.tsx._hata._hatask._recipe.referenceUrlInvalid({ number }) });
 			return;
 		}
 		referenceLinks.push({ title, url });
 	}
 	if (referenceLinks.length > 10) {
-		os.alert({ type: 'error', text: copy.referenceLimit });
+		dialogs.alert({ type: 'error', text: copy.referenceLimit });
 		return;
 	}
 	const params = {
@@ -902,7 +909,7 @@ async function saveRecipe(isDraft: boolean): Promise<void> {
 		servings.value = saved.servings;
 		void showScreen('detail');
 	} catch {
-		os.alert({ type: 'error', text: copy.recipeSaveFailed });
+		dialogs.alert({ type: 'error', text: copy.recipeSaveFailed });
 	} finally {
 		busy.value = false;
 	}
@@ -917,7 +924,7 @@ async function pickPhoto(ev: MouseEvent, target: 'record' | 'editor'): Promise<v
 		return;
 	}
 	if (!file.type.startsWith('image/')) {
-		os.alert({ type: 'error', text: copy.chooseImage });
+		dialogs.alert({ type: 'error', text: copy.chooseImage });
 		return;
 	}
 	const photo = { id: file.id, url: file.url, thumbnailUrl: file.thumbnailUrl };
@@ -926,7 +933,8 @@ async function pickPhoto(ev: MouseEvent, target: 'record' | 'editor'): Promise<v
 
 async function addMember(ids: string[]): Promise<void> {
 	if (ids.length >= 100) return;
-	const user = await os.selectUser({ localOnly: true, includeSelf: false });
+	const user = await pickers.selectUser({ localOnly: true, includeSelf: false });
+	if (!user) return;
 	memberNames[user.id] = user.name ? `${user.name} (@${user.username})` : `@${user.username}`;
 	if (!ids.includes(user.id)) ids.push(user.id);
 }
@@ -951,7 +959,16 @@ onBeforeUnmount(() => {
 });
 
 defineExpose({
+	async openById(id: string): Promise<void> {
+		// Resolve through the existing permission-checked endpoint before showing
+		// data from a search result. The current editing fields stay untouched.
+		const recipe = await misskeyApi('hatask/recipes/show', { recipeId: id });
+		current.value = recipe;
+		servings.value = recipe.servings;
+		await showScreen('detail');
+	},
 	/** Opens the cooking record sheet from Hatask's record menu. */
+	openCreate: () => openEditor(null),
 	openRecord: () => openRecord(current.value),
 	openRecordFromHatady: () => openRecord(null, null, true),
 });

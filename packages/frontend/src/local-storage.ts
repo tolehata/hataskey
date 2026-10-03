@@ -107,6 +107,8 @@ export type Keys = (
 	'showPushNotificationDialog'
 	| `hataFormDrafts:${string}` // 旗鯖fork: HataFeed/Hatady 独自フォームの端末・アカウント別下書き
 	| `hataskAkatsukiUsage:${string}` // 暁ホームのツール利用頻度（端末・アカウント別）
+	| `hatagoes:${'state' | 'create' | 'scroll'}:${string}` // HataGoes の端末・アカウント別画面キャッシュ
+	| `hatagoes:introduction-seen:${string}` // HataGoes の端末・アカウント別紹介表示済み印
 );
 
 // セッション毎に廃棄されるLocalStorage代替（セーフモードなどで使用できそう）

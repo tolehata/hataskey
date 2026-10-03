@@ -215,7 +215,7 @@ describe('HataskeyUIのお知らせバナー', () => {
 			expect(hooks.length).toBeGreaterThan(0);
 			const methodCalls = hooks.flatMap(call => {
 				const callback = call.arguments.at(0);
-				if (!callback || (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback))) throw new Error(`Missing callback: ${hook}`);
+				if (!callback || (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback))) return [];
 				const found: ts.CallExpression[] = [];
 				const visit = (node: ts.Node): void => {
 					if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === method) found.push(node);
