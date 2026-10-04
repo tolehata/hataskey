@@ -877,7 +877,6 @@ export const PREF_DEF = definePreferences({
 			{ id: 'home', icon: 'ti ti-home', label: 'ホーム', visible: true },
 			{ id: 'notifications', icon: 'ti ti-bell', label: '通知', visible: true },
 			{ id: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes', visible: true },
-			{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', visible: false },
 			{ id: 'widgets', icon: 'ti ti-apps', label: 'ウィジェット', visible: false },
 		] as { id: string; icon: string; label: string; visible: boolean }[],
 	},

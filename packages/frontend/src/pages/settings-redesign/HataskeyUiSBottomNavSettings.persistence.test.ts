@@ -68,22 +68,43 @@ beforeEach(async () => { window.localStorage.removeItem(storageKey); await boot(
 afterEach(() => { cleanups.splice(0).forEach(cleanup => cleanup()); vi.restoreAllMocks(); window.localStorage.removeItem(storageKey); });
 
 describe('UI S bottom navigation settings', () => {
-	it('normalizes restored Hatask and Hatady candidates before editing and saving', async () => {
+	it('normalizes restored Hatask, Hatady, and HataFeed candidates before editing and saving', async () => {
 		manager.commit('hataskeyUi3BottomNav', [
 			{ id: 'home', visible: true },
 			{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', visible: true },
 			{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', visible: true },
+			{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', visible: true },
 		]);
 		const mounted = await mount();
 		expect(rows(mounted.host)).toContain('hatagoes');
 		expect(rows(mounted.host)).not.toContain('hatask');
 		expect(rows(mounted.host)).not.toContain('hatady');
+		expect(rows(mounted.host)).not.toContain('hatafeed');
 		expect(rows(mounted.host).filter(id => id === 'hatagoes')).toHaveLength(1);
 		checkbox(mounted.host, 'hatagoes').checked = false;
 		checkbox(mounted.host, 'hatagoes').dispatchEvent(new Event('change', { bubbles: true }));
 		await settle();
-		expect(manager.s.hataskeyUi3BottomNav?.some(item => item.id === 'hatask' || item.id === 'hatady')).toBe(false);
+		expect(manager.s.hataskeyUi3BottomNav?.some(item => ['hatask', 'hatady', 'hatafeed'].includes(item.id))).toBe(false);
 		expect(manager.s.hataskeyUi3BottomNav?.find(item => item.id === 'hatagoes')?.visible).toBe(false);
+	});
+
+	it('converts a saved HataFeed-only candidate into a selectable HataGoes row across reloads', async () => {
+		manager.commit('hataskeyUi3BottomNav', [{ id: 'home', visible: true }, { id: 'hatafeed', visible: false, extra: 'feed' }] as typeof manager.s.hataskeyUi3BottomNav);
+		const first = await mount();
+		expect(rows(first.host)).not.toContain('hatafeed');
+		expect(rows(first.host)).toContain('hatagoes');
+		expect(checkbox(first.host, 'hatagoes').checked).toBe(false);
+		checkbox(first.host, 'hatagoes').checked = true;
+		checkbox(first.host, 'hatagoes').dispatchEvent(new Event('change', { bubbles: true }));
+		await settle();
+		expect(manager.s.hataskeyUi3BottomNav?.find(item => item.id === 'hatagoes')).toMatchObject({ visible: true, extra: 'feed' });
+		expect(manager.s.hataskeyUi3BottomNav?.some(item => item.id === 'hatafeed')).toBe(false);
+		first.unmount();
+		cleanups.pop();
+		await boot();
+		const restored = await mount();
+		expect(rows(restored.host)).not.toContain('hatafeed');
+		expect(checkbox(restored.host, 'hatagoes').checked).toBe(true);
 	});
 
 	it.each([false, true])('keeps home on and reorderable without enabling it in shared settings (missing: %s)', async missing => {
@@ -112,8 +133,7 @@ describe('UI S bottom navigation settings', () => {
 		checkbox(mounted.host, 'widgets').checked = true;
 		checkbox(mounted.host, 'widgets').dispatchEvent(new Event('change', { bubbles: true }));
 		await settle();
-		expect(checkbox(mounted.host, 'widgets').checked).toBe(false);
-		expect(commit).not.toHaveBeenCalled();
+		expect(checkbox(mounted.host, 'widgets').checked).toBe(true);
 		const oldIndex = rows(mounted.host).indexOf('home');
 		mounted.host.querySelector<HTMLButtonElement>('[data-nav-id="home"] .bottomNavHandle')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
 		await settle();
@@ -172,13 +192,15 @@ describe('UI S bottom navigation settings', () => {
 		expect(second.errors).toEqual([]);
 	});
 
-	it('defaults to Widgets, allows five items, blocks a sixth, and resets only the UI S order', async () => {
+	it('defaults to Widgets, offers only five unified candidates, and resets only the UI S order', async () => {
 		const legacy = manager.s['simpleUi.bottomNav'].map(item => ({ ...item }));
 		const mounted = await mount();
 		expect(mounted.host.querySelector('.warning')).toBeNull();
 		expect(mounted.host.querySelector('.saveHint')?.textContent).toContain('ウィジェット');
 		expect(checkbox(mounted.host, 'hatagoes').checked).toBe(true);
 		expect(rows(mounted.host).slice(0, 5)).toEqual(['search', 'home', 'notifications', 'hatagoes', 'widgets']);
+		expect(rows(mounted.host)).toHaveLength(5);
+		expect(rows(mounted.host)).not.toContain('hatafeed');
 		checkbox(mounted.host, 'widgets').checked = false;
 		checkbox(mounted.host, 'widgets').dispatchEvent(new Event('change', { bubbles: true }));
 		await settle();
@@ -188,11 +210,7 @@ describe('UI S bottom navigation settings', () => {
 		expect(checkbox(mounted.host, 'widgets').checked).toBe(true);
 		expect(manager.s.hataskeyUi3BottomNav?.filter(item => item.visible !== false)).toHaveLength(5);
 		expect(mounted.host.querySelector('.saveHint')?.textContent).toContain('ウィジェット');
-		checkbox(mounted.host, 'hatafeed').checked = true;
-		checkbox(mounted.host, 'hatafeed').dispatchEvent(new Event('change', { bubbles: true }));
-		await settle();
-		expect(checkbox(mounted.host, 'hatafeed').checked).toBe(false);
-		expect(mounted.host.querySelector('.warning')?.textContent).toContain('5つまで');
+		expect(mounted.host.querySelector('.warning')).toBeNull();
 		const handle = mounted.host.querySelector<HTMLButtonElement>('[data-nav-id="home"] .bottomNavHandle')!;
 		handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
 		await settle();

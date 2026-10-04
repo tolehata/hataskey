@@ -21,11 +21,12 @@ import {
 } from './hatasaba-navigation.js';
 
 describe('Hataskey UI navigation helpers', () => {
-	test('旧2項目と既存 HataGoes を最初の表示中の位置へ一つに統合し、入力と追加情報を保つ', () => {
+	test('旧3項目と既存 HataGoes を最初の表示中の位置へ一つに統合し、入力と追加情報を保つ', () => {
 		const items = Object.freeze([
 			Object.freeze({ id: 'hatask', visible: false, extra: 'hidden' }),
 			Object.freeze({ id: 'search', visible: true, extra: 'search' }),
 			Object.freeze({ id: 'hatady', icon: 'old', label: 'old', visible: true, extra: 'chosen' }),
+			Object.freeze({ id: 'hatafeed', visible: true, extra: 'later-feed' }),
 			Object.freeze({ id: 'hatagoes', visible: true, extra: 'later' }),
 			Object.freeze({ id: 'widgets', visible: false, extra: 'widgets' }),
 		]);
@@ -33,7 +34,7 @@ describe('Hataskey UI navigation helpers', () => {
 		expect(result).toEqual([
 			items[1],
 			{ id: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes', visible: true, extra: 'chosen' },
-			items[4],
+			items[5],
 		]);
 		expect(items[2]).toEqual({ id: 'hatady', icon: 'old', label: 'old', visible: true, extra: 'chosen' });
 		expect(normalizeBottomNavItems(result)).toEqual(result);
@@ -44,8 +45,20 @@ describe('Hataskey UI navigation helpers', () => {
 			{ id: 'home' },
 			{ id: 'hatask', visible: false, extra: 1 },
 			{ id: 'hatady', visible: false, extra: 2 },
+			{ id: 'hatafeed', visible: false, extra: 3 },
 		]);
 		expect(result).toEqual([{ id: 'home' }, { id: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes', visible: false, extra: 1 }]);
+	});
+
+	test('HataFeed 単独を HataGoes に置換し、表示中の HataFeed を非表示の旧項目より優先する', () => {
+		expect(normalizeBottomNavItems([{ id: 'hatafeed', visible: true, extra: 'feed' }])).toEqual([
+			{ id: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes', visible: true, extra: 'feed' },
+		]);
+		expect(normalizeBottomNavItems([
+			{ id: 'hatask', visible: false },
+			{ id: 'hatafeed', visible: true, extra: 'visible' },
+			{ id: 'hatagoes', visible: false },
+		])).toEqual([{ id: 'hatagoes', icon: 'ti ti-sparkles', label: 'HataGoes', visible: true, extra: 'visible' }]);
 	});
 
 	test('既存の並びと表示状態を保ち、新しい下部ナビ候補だけを末尾へ補う', () => {
@@ -82,7 +95,7 @@ describe('Hataskey UI navigation helpers', () => {
 		const items = Array.from({ length: 6 }, (_, i) => ({ id: String(i), icon: '', label: String(i), visible: true }));
 		expect(HATASABA_BOTTOM_NAV_MAX).toBe(4);
 		expect(getVisibleBottomNav(items).map(item => item.id)).toEqual(['0', '1', '2', '3']);
-		expect(getVisibleBottomNav([{ id: 'hatask' }, { id: 'hatady' }, { id: 'home' }]).map(item => item.id)).toEqual(['hatagoes', 'home']);
+		expect(getVisibleBottomNav([{ id: 'hatask' }, { id: 'hatady' }, { id: 'hatafeed' }, { id: 'home' }]).map(item => item.id)).toEqual(['hatagoes', 'home']);
 	});
 
 	test('リスト本体ボタンは一覧先頭へ直接遷移し、空なら遷移先を返さない', () => {
@@ -97,8 +110,9 @@ describe('UI S bottom navigation normalization', () => {
 	test.each([
 		{ name: 'missing home', items: [{ id: 'search' }, { id: 'notifications' }], expected: ['search', 'notifications', 'home'] },
 		{ name: 'hidden home in its saved position', items: [{ id: 'search' }, { id: 'home', visible: false }, { id: 'hatask' }], expected: ['search', 'home', 'hatagoes'] },
-		{ name: 'home beyond five visible slots', items: ['search', 'notifications', 'hatask', 'widgets', 'hatady', 'home'].map(id => ({ id })), expected: ['search', 'notifications', 'hatagoes', 'widgets', 'home'] },
-		{ name: 'missing home with five occupied slots', items: ['search', 'notifications', 'hatask', 'widgets', 'hatady'].map(id => ({ id })), expected: ['search', 'notifications', 'hatagoes', 'widgets', 'home'] },
+		{ name: 'HataFeed replaces the old candidate', items: [{ id: 'home' }, { id: 'hatafeed' }, { id: 'hatagoes' }], expected: ['home', 'hatagoes'] },
+		{ name: 'duplicate legacy entries before home', items: ['search', 'notifications', 'hatask', 'widgets', 'hatady', 'home'].map(id => ({ id })), expected: ['search', 'notifications', 'hatagoes', 'widgets', 'home'] },
+		{ name: 'missing home after duplicate legacy entries', items: ['search', 'notifications', 'hatask', 'widgets', 'hatady'].map(id => ({ id })), expected: ['search', 'notifications', 'hatagoes', 'widgets', 'home'] },
 		{ name: 'reordered home and hidden alternatives', items: [{ id: 'home' }, { id: 'search', visible: false }, { id: 'widgets' }, { id: 'notifications' }], expected: ['home', 'widgets', 'notifications'] },
 		{ name: 'unknown and duplicate entries', items: [{ id: 'future' }, { id: 'search' }, { id: 'search' }, { id: 'home', visible: false }, { id: 'home' }, { id: 'widgets' }], expected: ['search', 'home', 'widgets'] },
 	])('$name', ({ items, expected }) => {
@@ -114,7 +128,7 @@ describe('UI S bottom navigation normalization', () => {
 	});
 
 	const sharedDefaults = ['search', 'home', 'notifications', 'hatask', 'hatady', 'hatafeed', 'widgets'].map((id, index) => ({ id, visible: index < 4 }));
-	test('旧7件と新6件の共有既定を同じものとして扱い、HataGoes の右に Widgets を表示する', () => {
+	test('旧7件と新5件の共有既定を同じものとして扱い、HataGoes の右に Widgets を表示する', () => {
 		const before = sharedDefaults.map(item => ({ ...item }));
 		const newDefaults = normalizeBottomNavItems(sharedDefaults);
 		for (const defaults of [sharedDefaults, newDefaults]) {

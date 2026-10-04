@@ -27,12 +27,14 @@ function fixture() {
 		{ id: 'home', visible: true },
 		{ id: 'hatask', visible: false, extra: 'old' },
 		{ id: 'hatady', visible: true, extra: 'chosen' },
+		{ id: 'hatafeed', visible: true, extra: 'later-feed' },
 		{ id: 'widgets', visible: false },
 	];
 	const dedicated = [
 		{ id: 'hatagoes', visible: false },
 		{ id: 'search', visible: true },
 		{ id: 'hatask', visible: true, extra: 'chosen' },
+		{ id: 'hatafeed', visible: true, extra: 'later-feed' },
 	];
 	const commit = vi.fn(async (key: string, value: unknown) => {
 		Reflect.set(preferences.s, key, value);
@@ -156,8 +158,9 @@ describe('HataGoes 下部ナビの保存移行', () => {
 			{ id: 'home', icon: 'ti ti-home', label: 'ホーム', visible: true },
 			{ id: 'hatask', icon: 'ti ti-eye', label: '独自機能', visible: true },
 			{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', visible: false },
+			{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', visible: true },
 		];
-		const oldDedicated = [{ id: 'hatady', visible: true }];
+		const oldDedicated = [{ id: 'hatafeed', visible: true, extra: 'feed' }];
 		await seed.commit('simpleUi.bottomNav', oldSimple);
 		await seed.commit('hataskeyUi3BottomNav', oldDedicated);
 		for (const key of ['simpleUi.bottomNav', 'hataskeyUi3BottomNav'] as const) {
@@ -171,8 +174,9 @@ describe('HataGoes 下部ナビの保存移行', () => {
 		expect(io.cloudSet).toHaveBeenCalledTimes(2);
 		for (const key of ['simpleUi.bottomNav', 'hataskeyUi3BottomNav'] as const) {
 			expect((remote.get(key) as { id: string }[]).filter(item => item.id === 'hatagoes')).toHaveLength(1);
-			expect((remote.get(key) as { id: string }[]).some(item => item.id === 'hatask' || item.id === 'hatady')).toBe(false);
+			expect((remote.get(key) as { id: string }[]).some(item => ['hatask', 'hatady', 'hatafeed'].includes(item.id))).toBe(false);
 		}
+		expect((remote.get('hataskeyUi3BottomNav') as { id: string; extra?: string }[])[0]).toMatchObject({ id: 'hatagoes', extra: 'feed' });
 		const reloaded = new PreferencesManager(io, { id: 'user' });
 		await migrateHatagoesBottomNav(reloaded);
 		expect(io.cloudSet).toHaveBeenCalledTimes(2);

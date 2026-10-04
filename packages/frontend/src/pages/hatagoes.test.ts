@@ -662,6 +662,31 @@ describe('HataGoes common create', () => {
 		expect(target.querySelector('header button[class*=brand]')?.textContent).toBe('Hatady');
 	});
 
+	test('uses the two-row mobile Hatask navigation only for its capsule view', async () => {
+		const target = await mount(hatagoesUrl('/hatask?tab=todo'));
+		const shell = target.querySelector<HTMLElement>('[data-hatagoes-root]')!;
+		const nav = shell.querySelector<HTMLElement>('nav[aria-label="画面一覧"]')!;
+		Object.defineProperty(shell, 'clientWidth', { configurable: true, value: 320 });
+		window.dispatchEvent(new Event('resize'));
+		await settle();
+		expect(nav.dataset.mobileHatask).toBe('true');
+		for (const label of ['戻る', '全てのアプリ', '支援情報', 'モデレーション']) {
+			const actions = nav.querySelectorAll<HTMLButtonElement>(`:scope > button[aria-label="${label}"]`);
+			expect(actions).toHaveLength(1);
+		}
+		expect(nav.querySelector('button[aria-label="ToDo"]')?.getAttribute('aria-current')).toBe('page');
+		(target.querySelector('button[aria-label="Hatady"]') as HTMLButtonElement).click();
+		await settle();
+		expect(nav.dataset.mobileHatask).toBe('false');
+		(target.querySelector('button[aria-label="Hatask"]') as HTMLButtonElement).click();
+		await settle();
+		expect(nav.dataset.mobileHatask).toBe('true');
+		Object.defineProperty(shell, 'clientWidth', { configurable: true, value: 1000 });
+		window.dispatchEvent(new Event('resize'));
+		await settle();
+		expect(nav.dataset.mobileHatask).toBe('false');
+	});
+
 	test.each([
 	[hatagoesUrl('/hatask?tab=todo'), 'Hatask', hatagoesUrl('/hatask')],
 	[hatagoesUrl('/hatafeed?tab=issues'), 'HataFeed', hatagoesUrl('/hatafeed')],

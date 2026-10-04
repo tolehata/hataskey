@@ -19,7 +19,7 @@
 			<button type="button" aria-label="再読み込み" title="再読み込み" :disabled="refreshing" @click="refresh"><i class="ti ti-refresh" aria-hidden="true"></i></button>
 		</div>
 	</header>
-	<nav ref="screenNav" :class="$style.screenNav" :data-home="location.view === 'home'" :data-notification="noticeGlowVisible" aria-label="画面一覧">
+	<nav ref="screenNav" :class="$style.screenNav" :data-home="location.view === 'home'" :data-mobile-hatask="narrowShell && location.view === 'app' && location.app === 'hatask' && hasScreenCapsule" :data-notification="noticeGlowVisible" aria-label="画面一覧">
 		<button v-if="location.view !== 'home'" type="button" :class="$style.navBack" aria-label="戻る" title="戻る" @click="back"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
 		<div v-show="hasScreenCapsule" :class="$style.screenCapsuleSlot"><div ref="mobileNoticeSurface" :class="$style.mobileNoticeSurface" @pointerenter="onNoticePointerEnter" @pointerleave="noticeHovered = false" @pointercancel="noticeHovered = false" @focusin="onNoticeFocusIn" @focusout="onNoticeFocusOut">
 			<div v-if="shellActive && !dialogNoticeTarget && noticeGlowVisible && narrowShell && hasScreenCapsule && noticeGeometryReady" :class="$style.noticeBloom" :data-leaving="noticeGlowLeaving" aria-hidden="true"><svg :viewBox="noticeViewBox" :style="noticeSvgStyle"><path v-for="path in noticePaths" :key="path" :d="path" pathLength="100" :style="{ strokeDashoffset: noticeProgress }"/></svg></div>
@@ -1128,6 +1128,8 @@ provideMetadataReceiver(() => undefined);
 	.fallbackNoticeSurface { position: absolute; display: block; top: 100%; left: 50%; transform: translateX(-50%); width: min(320px, calc(100% - 24px)); min-height: 54px; padding: 5px; border: 1px solid var(--rule); border-radius: min(var(--hg-case), 30px); background: var(--surface); box-shadow: var(--shadow, 0 12px 32px -24px #0004); box-sizing: border-box; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 350ms ease, visibility 0s 350ms; }
 	.fallbackNoticeSurface[data-notification='true'] { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 350ms ease, visibility 0s; }
 	.screenNav { flex-wrap: wrap; }
+	.screenNav[data-mobile-hatask='true'] .screenCapsuleSlot { order: 1; flex: 0 0 100%; width: 100%; }
+	.screenNav[data-mobile-hatask='true'] .screenCapsule { justify-content: safe center; }
 	.screenCapsule { max-width: 100%; }
 	.screenCapsule button { padding: 7px 9px; font-size: 12px; }
 	.actions { margin-left: auto; }

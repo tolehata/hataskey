@@ -78,20 +78,22 @@ afterEach(() => {
 });
 
 describe('useHatasabaUi2Draft', () => {
-	test('normalizes restored bottom navigation before merging and saving the draft', () => {
+	test.each([false, true])('normalizes all three legacy bottom navigation candidates before saving visible=%s', visible => {
 		vi.useFakeTimers();
 		const original = fixture.prefer.s['simpleUi.bottomNav'];
 		fixture.prefer.s['simpleUi.bottomNav'] = [
-			{ id: 'hatask', visible: true }, { id: 'hatady', visible: true }, { id: 'search', visible: true },
+			{ id: 'hatask', visible: false }, { id: 'hatady', visible: false }, { id: 'hatafeed', visible: !visible }, { id: 'search', visible: true },
 		];
 		try {
 			const { editor, unmount } = mountEditor();
 			expect(editor.draft.editedBottomNav.map(item => item.id)).toEqual(['hatagoes', 'search']);
 			expect(editor.navDisplayLabel(editor.draft.editedBottomNav[0]!)).toBe('HataGoes');
-			editor.draft.editedBottomNav[0]!.visible = false;
+			expect(editor.draft.editedBottomNav[0]!.visible).toBe(!visible);
+			editor.draft.editedBottomNav[0]!.visible = visible;
 			expect(editor.save()).toBe(true);
-			const saved = fixture.commits.find(([key]) => key === 'simpleUi.bottomNav')?.[1] as { id: string }[];
+			const saved = fixture.commits.find(([key]) => key === 'simpleUi.bottomNav')?.[1] as { id: string; visible: boolean }[];
 			expect(saved.map(item => item.id)).toEqual(['hatagoes', 'search']);
+			expect(saved[0]?.visible).toBe(visible);
 			unmount();
 		} finally {
 			fixture.prefer.s['simpleUi.bottomNav'] = original;

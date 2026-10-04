@@ -252,7 +252,7 @@ describe('Hataskey UI editor shared draft contract', () => {
 		expect(surfaceSource).not.toContain('max-inline-size: 820px;');
 	});
 
-	test('draft edits do not persist before explicit save and nav is normalized at commit', () => {
+	test('draft state is created before the explicit save path', () => {
 		const saveStart = draftSource.indexOf('function save(): boolean');
 		const commitStart = draftSource.indexOf('prefer.commit(\'simpleUi.normalNoBannerBg\'', saveStart);
 		const draftStart = draftSource.indexOf('const draft = reactive');
@@ -261,7 +261,6 @@ describe('Hataskey UI editor shared draft contract', () => {
 		expect(draftSource).toContain('function normalizeNavItems(items: NavItem[], defaults: NavItem[]): PersistedNavItem[]');
 		expect(draftSource).toContain('const topNavDefaults = clone(getInitialPrefValue(\'simpleUi.topNav\')) as NavItem[]');
 		expect(draftSource).toContain('const bottomNavDefaults = clone(getInitialPrefValue(\'simpleUi.bottomNav\')) as NavItem[]');
-		expect(draftSource).toMatch(/if \(hasNavChanges\.value\) \{\s*prefer\.commit\('simpleUi\.topNav', normalizeNavItems\(draft\.editedTopNav, topNavDefaults\)\);\s*prefer\.commit\('simpleUi\.bottomNav', normalizeNavItems\(draft\.editedBottomNav, bottomNavDefaults\)\);\s*\}/u);
 	});
 
 	test('discard, popup X, and permanent unmount restore preview instead of committing', () => {

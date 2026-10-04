@@ -13,7 +13,7 @@ export type HatasabaNavItem = {
 export const HATASABA_BOTTOM_NAV_MAX = 4;
 export const UI_S_BOTTOM_NAV_MAX = 5;
 
-const HATAGOES_NAV_IDS = new Set(['hatask', 'hatady', 'hatagoes']);
+const HATAGOES_NAV_IDS = new Set(['hatask', 'hatady', 'hatafeed', 'hatagoes']);
 
 /** 旧項目と HataGoes を一つに統合し、表示中の最初の項目の位置と設定を優先する。 */
 export function normalizeBottomNavItems<T extends HatasabaNavItem>(items: readonly T[]): T[] {
@@ -44,7 +44,7 @@ export function getVisibleBottomNav<T extends HatasabaNavItem>(items: readonly T
 	return normalizeBottomNavItems(items).filter(item => item.visible !== false).slice(0, HATASABA_BOTTOM_NAV_MAX);
 }
 
-const UI_S_BOTTOM_NAV_IDS = new Set(['search', 'home', 'notifications', 'hatagoes', 'hatafeed', 'widgets']);
+const UI_S_BOTTOM_NAV_IDS = new Set(['search', 'home', 'notifications', 'hatagoes', 'widgets']);
 
 /** 共有の既定を引き継ぎ、UI S では HataGoes の右隣にウィジェットも表示する。 */
 export function getUiSBottomNavDefaults(sharedDefaults: readonly HatasabaNavItem[]): HatasabaNavItem[] {
