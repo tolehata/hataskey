@@ -98,7 +98,7 @@
 				</div>
 			</section>
 		</HatagoesDialog>
-		<HatagoesDialog :open="exitConfirmOpen" @close="cancelExit" @closed="restoreExitFocus">
+		<HatagoesDialog :open="exitConfirmOpen" preferType="dialog" @close="cancelExit" @closed="restoreExitFocus">
 			<section :class="[$style.choiceMenu, $style.overlayTheme, themeClasses]" :data-hatask-theme="hataskPaletteTheme" :data-hatask-mode="hataskPaletteMode" :data-hatady-theme="activeTheme" :style="shellStyle" role="dialog" aria-label="HataGoesの終了確認">
 				<h2 :class="$style.exitChoiceTitle"><i class="ti ti-logout-2" aria-hidden="true"></i>HataGoesを終了しますか？</h2>
 				<div :class="$style.choiceActions">
