@@ -66,7 +66,7 @@ export function createNavbarPullRefresh(enabled: Readonly<Ref<boolean>>, motion:
 	};
 }
 export type NavbarPullRefresh = ReturnType<typeof createNavbarPullRefresh>;
-export const navbarPullRefreshKey: InjectionKey<NavbarPullRefresh> = Symbol('navbar-pull-refresh');
+export const navbarPullRefreshKey: InjectionKey<NavbarPullRefresh | null> = Symbol('navbar-pull-refresh');
 
 type NavbarPullGestureOptions = {
 	/** The mobile dock pulls upward and can refresh from any scroll position. */

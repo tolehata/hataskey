@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick } from 'vue';
 import MkStreamingNotificationsTimeline from './MkStreamingNotificationsTimeline.vue';
+import { forgetNotificationUnreadState } from '@/utility/notification-unread-state.js';
 
 const fixture = vi.hoisted(() => ({
 	api: vi.fn(),
@@ -9,12 +10,19 @@ const fixture = vi.hoisted(() => ({
 	streamEvents: new Map<string, () => void>(),
 	intersection: null as IntersectionObserverCallback | null,
 	observed: new Set<Element>(),
+	account: null as null | { id: string; hasUnreadNotification: boolean; unreadNotificationsCount: number },
+	accountUpdates: vi.fn(),
+	realtimeMode: true,
 }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: (...args: unknown[]) => fixture.api(...args) }));
 vi.mock('@/preferences.js', () => ({ prefer: { s: { useGroupedNotifications: false, enablePullToRefresh: false, animation: false, enableInfiniteScroll: false, enableAbsoluteTime: false, pollingInterval: 3 } } }));
-vi.mock('@/store.js', () => ({ store: { s: { realtimeMode: true } } }));
+vi.mock('@/store.js', () => ({ store: { s: { get realtimeMode() { return fixture.realtimeMode; } } } }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { noNotifications: 'empty', loadMore: 'more' } } }));
-vi.mock('@/i.js', () => ({ $i: null }));
+vi.mock('@/i.js', () => ({ get $i() { return fixture.account; } }));
+vi.mock('@/accounts.js', () => ({ updateCurrentAccountPartial: (partial: object) => {
+	Object.assign(fixture.account!, partial);
+	fixture.accountUpdates(partial);
+} }));
 vi.mock('@/local-storage.js', () => ({ miLocalStorage: { getItem: () => null, setItem: vi.fn() } }));
 vi.mock('@/events.js', () => ({ globalEvents: { on: vi.fn(), off: vi.fn() } }));
 vi.mock('@/stream.js', () => ({ useStream: () => ({
@@ -57,13 +65,77 @@ function title() { return host.querySelector('article')?.getAttribute('data-titl
 
 beforeEach(() => {
 	fixture.api.mockReset(); fixture.events.clear(); fixture.streamEvents.clear(); fixture.intersection = null; fixture.observed.clear();
+	fixture.account = null; fixture.accountUpdates.mockClear(); fixture.realtimeMode = true;
 	vi.stubGlobal('IntersectionObserver', class {
 		constructor(callback: IntersectionObserverCallback) { fixture.intersection = callback; }
 		observe(target: Element) { fixture.observed.add(target); }
 		disconnect() { fixture.observed.clear(); }
 	});
 });
-afterEach(() => { app?.unmount(); app = null; host?.remove(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+afterEach(() => { app?.unmount(); app = null; host?.remove(); vi.unstubAllGlobals(); vi.useRealTimers(); forgetNotificationUnreadState('owner-a'); });
+
+test('a visible read reconciles the badge without a stream event while realtime is disabled', async () => {
+	vi.useFakeTimers();
+	fixture.realtimeMode = false;
+	fixture.account = { id: 'owner-a', hasUnreadNotification: true, unreadNotificationsCount: 2 };
+	let countRequests = 0;
+	fixture.api.mockImplementation((endpoint: string) => endpoint === 'i/notifications'
+		? Promise.resolve([item('one', 'shown'), item('two', 'hidden')])
+		: endpoint === 'notifications/unread-count'
+			? Promise.resolve({ unreadNotificationsCount: ++countRequests === 1 ? 1 : 0, revision: String(countRequests) })
+			: Promise.resolve());
+	mount(); await settle();
+	const rows = [...fixture.observed].filter(element => element.hasAttribute('data-notification-ids'));
+	expect(rows).toHaveLength(2);
+	const first = rows.find(row => row.getAttribute('data-notification-ids') === '["one"]')!;
+	const second = rows.find(row => row.getAttribute('data-notification-ids') === '["two"]')!;
+	fixture.intersection!([{ target: first, isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+	vi.advanceTimersByTime(80); await settle();
+	expect(fixture.api.mock.calls.filter(([endpoint]) => endpoint === 'notifications/mark-as-read')).toHaveLength(1);
+	expect(fixture.api.mock.calls.find(([endpoint]) => endpoint === 'notifications/mark-as-read')?.[1]).toEqual({ notificationIds: ['one'] });
+	expect(fixture.api.mock.calls.filter(([endpoint]) => endpoint === 'notifications/unread-count')).toHaveLength(1);
+	expect(fixture.account).toMatchObject({ hasUnreadNotification: true, unreadNotificationsCount: 1 });
+	fixture.intersection!([{ target: second, isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+	vi.advanceTimersByTime(80); await settle();
+	expect(fixture.api.mock.calls.filter(([endpoint]) => endpoint === 'notifications/mark-as-read').at(-1)?.[1]).toEqual({ notificationIds: ['two'] });
+	expect(fixture.account).toMatchObject({ hasUnreadNotification: false, unreadNotificationsCount: 0 });
+});
+
+test('two visible rows share one read batch and one unread snapshot', async () => {
+	vi.useFakeTimers();
+	fixture.realtimeMode = false;
+	fixture.account = { id: 'owner-a', hasUnreadNotification: true, unreadNotificationsCount: 2 };
+	fixture.api.mockImplementation((endpoint: string) => endpoint === 'i/notifications'
+		? Promise.resolve([item('one', 'first'), item('two', 'second')])
+		: endpoint === 'notifications/unread-count'
+			? Promise.resolve({ unreadNotificationsCount: 0, revision: '1' })
+			: Promise.resolve());
+	mount(); await settle();
+	const rows = [...fixture.observed].filter(element => element.hasAttribute('data-notification-ids'));
+	fixture.intersection!(rows.map(target => ({ target, isIntersecting: true } as IntersectionObserverEntry)), {} as IntersectionObserver);
+	vi.advanceTimersByTime(80); await settle();
+	expect(fixture.api.mock.calls.filter(([endpoint]) => endpoint === 'notifications/mark-as-read')).toHaveLength(1);
+	expect(fixture.api.mock.calls.find(([endpoint]) => endpoint === 'notifications/mark-as-read')?.[1]).toEqual({ notificationIds: ['one', 'two'] });
+	expect(fixture.api.mock.calls.filter(([endpoint]) => endpoint === 'notifications/unread-count')).toHaveLength(1);
+	expect(fixture.account).toMatchObject({ hasUnreadNotification: false, unreadNotificationsCount: 0 });
+});
+
+test('a failed visible read does not reconcile the badge', async () => {
+	vi.useFakeTimers();
+	fixture.realtimeMode = false;
+	fixture.account = { id: 'owner-a', hasUnreadNotification: true, unreadNotificationsCount: 1 };
+	fixture.api.mockImplementation((endpoint: string) => endpoint === 'i/notifications'
+		? Promise.resolve([item('one', 'shown')])
+		: endpoint === 'notifications/mark-as-read'
+			? Promise.reject(new Error('failed'))
+			: Promise.resolve());
+	mount(); await settle();
+	const row = [...fixture.observed].find(element => element.hasAttribute('data-notification-ids'))!;
+	fixture.intersection!([{ target: row, isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+	vi.advanceTimersByTime(80); await settle();
+	expect(fixture.api.mock.calls.filter(([endpoint]) => endpoint === 'notifications/unread-count')).toHaveLength(0);
+	expect(fixture.accountUpdates).not.toHaveBeenCalled();
+});
 
 test('an intersecting row that leaves before the read delay remains unread', async () => {
 	vi.useFakeTimers();

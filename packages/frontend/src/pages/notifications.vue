@@ -34,7 +34,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, markRaw, onMounted, ref } from 'vue';
+import { computed, markRaw, onMounted, provide, ref } from 'vue';
 import { notificationTypes, hatadyNotificationSubtypes } from 'cherrypick-js';
 import MkStreamingNotificationsTimeline from '@/components/MkStreamingNotificationsTimeline.vue';
 import MkNotesTimeline from '@/components/MkNotesTimeline.vue';
@@ -49,6 +49,12 @@ import type { HataNotificationBrand, HataNotificationCategory } from '@/utility/
 import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
 import { Paginator } from '@/utility/paginator.js';
+import { navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
+import { $i } from '@/i.js';
+import { refreshNotificationUnreadState } from '@/utility/notification-unread-sync.js';
+
+// This page has no visible navbar pull indicator; its timelines own pull refresh.
+provide(navbarPullRefreshKey, null);
 
 onMounted(() => {
 	if (miLocalStorage.getItem('hataNotificationView') == null) {
@@ -175,8 +181,14 @@ const headerActions = computed(() => [deviceKind === 'desktop' && !props.disable
 } : undefined, isNotificationTab.value ? {
 	text: i18n.ts.markAllAsRead,
 	icon: 'ti ti-check',
-	handler: () => {
-		os.apiWithDialog('notifications/mark-all-as-read', {});
+	handler: async () => {
+		const ownerId = $i?.id;
+		try {
+			await os.apiWithDialog('notifications/mark-all-as-read', {});
+			await refreshNotificationUnreadState(ownerId);
+		} catch {
+			// apiWithDialog reports the failed read request.
+		}
 	},
 } : undefined].filter(x => x !== undefined));
 

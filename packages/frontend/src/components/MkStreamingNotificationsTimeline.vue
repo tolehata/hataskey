@@ -68,6 +68,7 @@ import { NOTIFICATION_FILTER_POLICY_NOTICE, NOTIFICATION_FILTER_POLICY_NOTICE_ID
 import { matchesNotificationView } from '@/utility/notification-brand.js';
 import type { HataNotificationBrand, HataNotificationCategory } from '@/utility/hatasaba-device-prefs.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { refreshNotificationUnreadState } from '@/utility/notification-unread-sync.js';
 
 const props = defineProps<{
 	excludeTypes?: typeof notificationTypes[number][] | null;
@@ -193,9 +194,11 @@ async function flushVisibleReads() {
 		const batch = ids.slice(index, index + 100).filter(id => stillVisible.has(id) && !readIds.has(id) && !inflightReadIds.has(id));
 		if (batch.length === 0) continue;
 		for (const id of batch) inflightReadIds.add(id);
+		const ownerId = $i?.id;
 		try {
 			await misskeyApi('notifications/mark-as-read', { notificationIds: batch });
 			for (const id of batch) readIds.add(id);
+			await refreshNotificationUnreadState(ownerId);
 		} catch {
 			// A later intersection can retry. Failed requests never mark IDs locally.
 		} finally {

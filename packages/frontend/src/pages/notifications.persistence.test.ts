@@ -1,15 +1,18 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
-import { createApp, defineComponent, h, nextTick } from 'vue';
+import { createApp, defineComponent, h, nextTick, onUnmounted, provide, ref } from 'vue';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { notificationTypes } from 'cherrypick-js';
 import Notifications from './notifications.vue';
 import { hataNotificationView, readHataNotificationView, setHataNotificationView } from '@/utility/hatasaba-device-prefs.js';
 import { miLocalStorage } from '@/local-storage.js';
+import { createNavbarPullRefresh, navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
+import { prefer } from '@/preferences.js';
 import type { App, PropType, WritableComputedRef } from 'vue';
 
-const mocks = vi.hoisted(() => ({ popupMenu: vi.fn() }));
+const mocks = vi.hoisted(() => ({ popupMenu: vi.fn(), apiWithDialog: vi.fn(), refreshUnread: vi.fn(), brandReload: vi.fn().mockResolvedValue(undefined), notesReload: vi.fn().mockResolvedValue(undefined), navbarReload: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: {
 	filter: 'filter', reload: 'reload', markAllAsRead: 'markAllAsRead', notifications: 'notifications',
+	pullDownToRefresh: 'Pull to refresh', releaseToRefresh: 'Release to refresh', refreshing: 'Refreshing',
 	mentions: 'Mentions', directNotes: 'Direct notes',
 	_notification: { _types: new Proxy({}, { get: (_, key) => String(key) }) },
 	_hata: {
@@ -18,35 +21,52 @@ vi.mock('@/i18n.js', () => ({ i18n: { ts: {
 		_notificationFilter: { botNotifications: 'bots', types: 'types', hatadyTypes: 'hatadyTypes', otherHatask: 'otherHatask', selectAll: 'selectAll', clearSelection: 'clearSelection' },
 	},
 } } }));
-vi.mock('@/os.js', () => ({ popupMenu: mocks.popupMenu, apiWithDialog: vi.fn() }));
-vi.mock('@/preferences.js', async () => { const { ref } = await import('vue'); return { prefer: { r: { notificationExcludeBots: ref(false) } } }; });
+vi.mock('@/os.js', () => ({ popupMenu: mocks.popupMenu, apiWithDialog: mocks.apiWithDialog }));
+vi.mock('@/i.js', () => ({ $i: { id: 'owner-a' } }));
+vi.mock('@/utility/notification-unread-sync.js', () => ({ refreshNotificationUnreadState: mocks.refreshUnread }));
+vi.mock('@/preferences.js', async () => { const { ref } = await import('vue'); return { prefer: { r: { notificationExcludeBots: ref(false) }, s: { enablePullToRefresh: true } } }; });
+vi.mock('@/utility/touch.js', async () => ({ isHorizontalSwipeSwiping: (await import('vue')).ref(false) }));
+vi.mock('@/utility/haptic.js', () => ({ haptic: vi.fn() }));
 vi.mock('@/page.js', () => ({ definePage: vi.fn() }));
 vi.mock('@/events.js', () => ({ globalEvents: { emit: vi.fn() } }));
 vi.mock('@/utility/paginator.js', () => ({ Paginator: class {
 	constructor(public endpoint: string, public options: { limit: number; params?: { visibility: string } }) {}
+	reload() { return mocks.notesReload(this.endpoint, this.options.params?.visibility); }
 } }));
-vi.mock('@/components/MkStreamingNotificationsTimeline.vue', () => ({ default: defineComponent({
+vi.mock('@/components/MkStreamingNotificationsTimeline.vue', async () => {
+	const { default: MkPullToRefresh } = await import('@/components/MkPullToRefresh.vue');
+	const { prefer } = await import('@/preferences.js');
+	return { default: defineComponent({
 	props: ['brand', 'includeBrands', 'includeHataskApp', 'excludeBots', 'excludeTypes', 'includeHatadySubtypes'],
 	setup(props) {
-		return () => h('div', {
+		const content = () => h('div', {
 			'data-timeline': '', 'data-brand': props.brand, 'data-bots': String(props.excludeBots),
 			'data-brands': JSON.stringify(props.includeBrands), 'data-hatask-app': String(props.includeHataskApp),
 			'data-exclude-types': JSON.stringify(props.excludeTypes),
 			'data-hatady-subtypes': JSON.stringify(props.includeHatadySubtypes),
 		});
+		return () => prefer.s.enablePullToRefresh
+			? h(MkPullToRefresh, { refresher: mocks.brandReload }, { default: content })
+			: h('div', [content()]);
 	},
-}) }));
-vi.mock('@/components/MkNotesTimeline.vue', () => ({ default: defineComponent({
+}) }; });
+vi.mock('@/components/MkNotesTimeline.vue', async () => {
+	const { default: MkPullToRefresh } = await import('@/components/MkPullToRefresh.vue');
+	const { prefer } = await import('@/preferences.js');
+	return { default: defineComponent({
 	props: ['paginator', 'notification'],
 	setup(props) {
-		return () => h('div', {
+		const content = () => h('div', {
 			'data-notes-timeline': '', 'data-endpoint': props.paginator.endpoint,
 			'data-limit': String(props.paginator.options.limit),
 			'data-visibility': props.paginator.options.params?.visibility ?? '',
 			'data-notification': String(props.notification),
 		});
+		return () => prefer.s.enablePullToRefresh
+			? h(MkPullToRefresh, { refresher: () => props.paginator.reload() }, { default: content })
+			: h('div', [content()]);
 	},
-}) }));
+}) }; });
 
 type HeaderAction = { text: string; handler: (ev: MouseEvent) => void };
 type FilterItem = { text?: string; type?: string; ref?: WritableComputedRef<boolean>; action?: () => void };
@@ -62,9 +82,18 @@ const PageWithHeader = defineComponent({
 const mounted: Array<{ app: App; container: HTMLDivElement }> = [];
 
 function mountPage() {
-	const app = createApp(Notifications, { disableRefreshButton: true });
+	const app = createApp({ setup() {
+		const navbarPull = createNavbarPullRefresh(ref(false), ref(false), { refresher: mocks.navbarReload });
+		provide(navbarPullRefreshKey, navbarPull);
+		onUnmounted(navbarPull.dispose);
+		return () => h(Notifications, { disableRefreshButton: true });
+	} });
 	app.component('PageWithHeader', PageWithHeader);
-	const container = window.document.createElement('div'); window.document.body.append(container); app.mount(container);
+	app.component('MkLoading', { template: '<span>Refreshing</span>' });
+	const container = window.document.createElement('div');
+	container.style.overflowY = 'auto';
+	window.document.body.append(container);
+	app.mount(container);
 	mounted.push({ app, container });
 	return {
 		container,
@@ -83,12 +112,91 @@ function switchFor(page: ReturnType<typeof mountPage>, text: string) {
 }
 
 beforeEach(() => {
+	mocks.apiWithDialog.mockReset().mockResolvedValue(undefined);
+	mocks.refreshUnread.mockReset().mockResolvedValue(undefined);
+	prefer.s.enablePullToRefresh = true;
 	setHataNotificationView({ brand: 'all', includeBrands: null, includeTypes: null, includeHatadySubtypes: null, includeHataskApp: true, excludeBots: false });
+});
+
+test('mark all as read refreshes the captured account count only after a successful request', async () => {
+	const page = mountPage();
+	page.container.querySelector<HTMLButtonElement>('[data-action="markAllAsRead"]')!.click();
+	await nextTick();
+	expect(mocks.apiWithDialog).toHaveBeenCalledExactlyOnceWith('notifications/mark-all-as-read', {});
+	expect(mocks.refreshUnread).toHaveBeenCalledExactlyOnceWith('owner-a');
+});
+
+test('a failed mark all as read request leaves the unread count untouched', async () => {
+	mocks.apiWithDialog.mockRejectedValue(new Error('failed'));
+	const page = mountPage();
+	page.container.querySelector<HTMLButtonElement>('[data-action="markAllAsRead"]')!.click();
+	await nextTick();
+	expect(mocks.refreshUnread).not.toHaveBeenCalled();
 });
 afterEach(() => {
 	for (const { app, container } of mounted.splice(0)) { app.unmount(); container.remove(); }
 	miLocalStorage.removeItem('hataNotificationView');
+	vi.clearAllTimers();
+	vi.useRealTimers();
 	vi.clearAllMocks();
+});
+
+function touch(target: EventTarget, type: string, y: number) {
+	const event = new Event(type, { bubbles: true });
+	Object.defineProperty(event, 'touches', { value: type === 'touchend' ? [] : [{ screenX: 0, screenY: y, identifier: 1 }] });
+	target.dispatchEvent(event);
+}
+
+async function pull(root: HTMLElement) {
+	touch(root, 'touchstart', 0);
+	touch(window, 'touchmove', 220);
+	touch(window, 'touchend', 220);
+	await vi.advanceTimersByTimeAsync(250);
+}
+
+test('a branded notification pull refreshes once through the page timeline and preserves its filters', async () => {
+	vi.useFakeTimers();
+	let finish!: () => void;
+	mocks.brandReload.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+	const page = mountPage();
+	page.tabs[4].click(); await nextTick();
+	switchFor(page, 'bots').value = false; await nextTick();
+	const saved = miLocalStorage.getItem('hataNotificationView');
+	const root = page.timeline.parentElement!;
+	await pull(root);
+	expect(mocks.brandReload).toHaveBeenCalledOnce();
+	expect(mocks.navbarReload).not.toHaveBeenCalled();
+	// A second pull while the first request is pending must not start another request.
+	await pull(root);
+	expect(mocks.brandReload).toHaveBeenCalledOnce();
+	finish();
+	await vi.advanceTimersByTimeAsync(250);
+	expect(page.timeline.dataset.brand).toBe('hatady');
+	expect(page.timeline.dataset.bots).toBe('true');
+	expect(miLocalStorage.getItem('hataNotificationView')).toBe(saved);
+});
+
+test.each([['Mentions', ''], ['Direct notes', 'specified']])('%s pull refreshes its own paginator with a disabled ancestor controller', async (label, visibility) => {
+	vi.useFakeTimers();
+	const page = mountPage();
+	page.tabs.find(button => button.getAttribute('aria-label') === label)!.click(); await nextTick();
+	await pull(page.notesTimeline!.parentElement!);
+	expect(mocks.notesReload).toHaveBeenCalledOnce();
+	expect(mocks.notesReload).toHaveBeenCalledWith('notes/mentions', visibility || undefined);
+	expect(mocks.brandReload).not.toHaveBeenCalled();
+	expect(mocks.navbarReload).not.toHaveBeenCalled();
+});
+
+test('disabling pull refresh leaves notification and note timelines inert', async () => {
+	vi.useFakeTimers();
+	prefer.s.enablePullToRefresh = false;
+	const page = mountPage();
+	await pull(page.timeline.parentElement!);
+	page.tabs[1].click(); await nextTick();
+	await pull(page.notesTimeline!.parentElement!);
+	expect(mocks.brandReload).not.toHaveBeenCalled();
+	expect(mocks.notesReload).not.toHaveBeenCalled();
+	expect(mocks.navbarReload).not.toHaveBeenCalled();
 });
 
 test('seven capsules show only the selected label and persist the selected brand on this device', async () => {
@@ -112,14 +220,16 @@ test('mention and direct note tabs use their own paginator and preserve the save
 	const savedBeforeNotes = miLocalStorage.getItem('hataNotificationView');
 	page.tabs[1].click(); await nextTick();
 	expect(page.timeline).toBeNull();
-	expect(page.notesTimeline?.dataset).toMatchObject({ endpoint: 'notes/mentions', limit: '10', visibility: '', notification: 'false' });
+	expect(page.notesTimeline?.dataset).toMatchObject({ endpoint: 'notes/mentions', limit: '10', notification: 'false' });
+	expect(page.notesTimeline?.getAttribute('data-visibility')).toBe('');
 	expect(page.tabs.filter(button => button.textContent?.trim()).map(button => button.textContent?.trim())).toEqual(['Mentions']);
 	expect(page.tabs[1].getAttribute('aria-current')).toBe('page');
 	expect(page.container.querySelector('[data-action="filter"]')).toBeNull();
 	expect(page.container.querySelector('[data-action="markAllAsRead"]')).toBeNull();
 	expect(miLocalStorage.getItem('hataNotificationView')).toBe(savedBeforeNotes);
 	page.tabs[2].click(); await nextTick();
-	expect(page.notesTimeline?.dataset).toMatchObject({ endpoint: 'notes/mentions', limit: '10', visibility: 'specified', notification: 'true' });
+	expect(page.notesTimeline?.dataset).toMatchObject({ endpoint: 'notes/mentions', limit: '10', notification: 'true' });
+	expect(page.notesTimeline?.getAttribute('data-visibility')).toBe('specified');
 	expect(page.tabs.filter(button => button.textContent?.trim()).map(button => button.textContent?.trim())).toEqual(['Direct notes']);
 	expect(page.container.querySelector('[data-action="filter"]')).toBeNull();
 	expect(page.container.querySelector('[data-action="markAllAsRead"]')).toBeNull();
