@@ -10991,7 +10991,7 @@ _hata:
       removeFromList: "リストから削除"
       postFormBorder: "投稿フォームの枠色（投稿範囲別）"
       colorByVisibility: "投稿範囲に応じて枠の色を変える"
-      colorByVisibilityCaption: "公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変えます。UI Sでは、自分と他のユーザーのノートの左辺にも公開範囲に応じた色を表示します。色とオン・オフは投稿フォームと共通です。"
+      colorByVisibilityCaption: "公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変えます。Hataskey UIとUI Sのウィジェット・デッキの投稿フォームにも適用されます。UI Sでは、自分と他のユーザーのノートの左辺にも公開範囲に応じた色を表示します。色とオン・オフは投稿フォームと共通です。"
       borderWidth: "枠の太さ（px）"
       public: "公開"
       home: "ホーム"

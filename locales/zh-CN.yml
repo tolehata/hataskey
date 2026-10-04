@@ -10201,7 +10201,7 @@ _hata:
       removeFromList: "从列表移除"
       postFormBorder: "按发布范围设置发帖框边框颜色"
       colorByVisibility: "根据发布范围更改边框颜色"
-      colorByVisibilityCaption: "分别为公开、首页、关注者和指定用户设置发帖框边框颜色。在 UI S 中，自己和其他用户的帖文左侧也会按各帖文的可见范围显示颜色。颜色及开关与发帖框共用。"
+      colorByVisibilityCaption: "分别为公开、首页、关注者和指定用户设置发帖框边框颜色，也适用于 Hataskey UI 和 UI S 的小组件及分栏中的发帖框。在 UI S 中，自己和其他用户的帖文左侧也会按各帖文的可见范围显示颜色。颜色及开关与发帖框共用。"
       borderWidth: "边框宽度（px）"
       public: "公开"
       home: "首页"

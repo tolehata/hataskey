@@ -78,7 +78,7 @@ describe('redesigned preferences inventory', () => {
 			expect(preferenceControls.find(control => control.key === key)).toMatchObject({ destinationId: 'hataskey-ui-s', canonicalSearchId: generatedPreferenceSearchId(key), cherry: false });
 			expect(surfaceSource.match(/const ui3ComposerResetKeys = \[([\s\S]*?)\] as const/u)?.[1]).not.toContain(key);
 		}
-		expect(preferenceControls.find(control => control.key === visibilityBorderKeys[0])).toMatchObject({ kind: 'switch', label: '投稿範囲に応じて枠の色を変える', caption: ['公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変えます。UI Sでは、自分と他のユーザーのノートの左辺にも公開範囲に応じた色を表示します。色とオン・オフは投稿フォームと共通です。'] });
+		expect(preferenceControls.find(control => control.key === visibilityBorderKeys[0])).toMatchObject({ kind: 'switch', label: '投稿範囲に応じて枠の色を変える', caption: ['公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変えます。Hataskey UIとUI Sのウィジェット・デッキの投稿フォームにも適用されます。UI Sでは、自分と他のユーザーのノートの左辺にも公開範囲に応じた色を表示します。色とオン・オフは投稿フォームと共通です。'] });
 		expect(preferenceControls.find(control => control.key === visibilityBorderKeys[1])).toMatchObject({ kind: 'range', min: 1, max: 12 });
 		expect(legacyCustomSource).toContain('v-model="pfvbWidth" type="number" :min="1" :max="12"');
 		expect(visibilityBorderKeys.slice(2).map(key => preferenceControls.find(control => control.key === key)?.kind)).toEqual(['color', 'color', 'color', 'color']);

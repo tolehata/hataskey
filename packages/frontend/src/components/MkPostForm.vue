@@ -6,6 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div
 	data-htk-weather-postform
+	:data-post-form-visibility-border="visibilityBorderStyle ? 'on' : null"
 	:class="[$style.root, { [$style.modal]: modal, [$style.postDelayActive]: postDelay.active.value, _popup: modal && (!prefer.s.useBlurEffect || !prefer.s.useBlurEffectForModal || !prefer.s.removeModalBgColorForBlur), _popupAcrylic: modal && prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]"
 	:style="visibilityBorderStyle"
 	@dragover.stop="onDragover"

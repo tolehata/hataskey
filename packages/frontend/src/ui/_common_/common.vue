@@ -535,26 +535,31 @@ if ($i) {
 	user-select: none;
 }
 
-/* 旗鯖独自: ウィジェット枠線（data-widget-border="on"時のみ） */
+/* 旗鯖独自: ウィジェット枠線 */
 [data-widget-border="on"] ._panel {
 	border: none !important;
 	border-radius: 14px !important;
-	box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--MI_THEME-accent) 45%, transparent), 0 0 16px color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent), 0 2px 8px rgba(0,0,0,.06) !important;
 	transition: box-shadow .3s ease;
 	margin-bottom: 10px;
 }
-[data-widget-border="on"] ._panel:hover {
+/* 公開範囲の色枠が有効な投稿フォームでは、フォーム自身の影を優先する。 */
+[data-widget-border="on"] ._panel:not([data-post-form-visibility-border="on"]) {
+	box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--MI_THEME-accent) 45%, transparent), 0 0 16px color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent), 0 2px 8px rgba(0,0,0,.06) !important;
+}
+[data-widget-border="on"] ._panel:not([data-post-form-visibility-border="on"]):hover {
 	box-shadow: 0 0 0 2.5px var(--MI_THEME-accent), 0 0 24px color-mix(in srgb, var(--MI_THEME-accent) 30%, transparent), 0 4px 16px rgba(0,0,0,.08) !important;
 }
 /* 旗鯖fork: OFF時は淡い灰色枠で表示（ON時の見た目と統一感を保ちつつ色だけ無彩色に） */
 [data-widget-border="off"] ._panel {
 	border: none !important;
 	border-radius: 14px !important;
-	box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--MI_THEME-fg) 18%, transparent), 0 2px 8px rgba(0,0,0,.05) !important;
 	transition: box-shadow .3s ease;
 	margin-bottom: 10px;
 }
-[data-widget-border="off"] ._panel:hover {
+[data-widget-border="off"] ._panel:not([data-post-form-visibility-border="on"]) {
+	box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--MI_THEME-fg) 18%, transparent), 0 2px 8px rgba(0,0,0,.05) !important;
+}
+[data-widget-border="off"] ._panel:not([data-post-form-visibility-border="on"]):hover {
 	box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--MI_THEME-fg) 28%, transparent), 0 4px 12px rgba(0,0,0,.06) !important;
 }
 </style>

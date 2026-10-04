@@ -10837,7 +10837,7 @@ _hata:
       removeFromList: "Remove from list"
       postFormBorder: "Post form border color by visibility"
       colorByVisibility: "Change border color by visibility"
-      colorByVisibilityCaption: "Colors the post form border for Public, Home, Followers, and Direct. In UI S, the left edge of your notes and other users' notes also indicates each note's visibility. Colors and the on/off setting are shared with the post form."
+      colorByVisibilityCaption: "Colors the post form border for Public, Home, Followers, and Direct, including post forms in widgets and decks in Hataskey UI and UI S. In UI S, the left edge of your notes and other users' notes also indicates each note's visibility. Colors and the on/off setting are shared with the post form."
       borderWidth: "Border width (px)"
       public: "Public"
       home: "Home"
