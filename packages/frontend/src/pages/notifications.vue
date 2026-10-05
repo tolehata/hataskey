@@ -255,6 +255,7 @@ definePage(() => !props.notification ? {
 
 .htkPillTab {
 	display: inline-flex;
+	flex: 0 0 auto;
 	align-items: center;
 	gap: 6px;
 	padding: 6px 16px;
