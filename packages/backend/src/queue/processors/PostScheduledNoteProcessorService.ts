@@ -53,6 +53,7 @@ export class PostScheduledNoteProcessorService {
 				reactionAcceptance: draft.reactionAcceptance,
 				disableRightClick: draft.disableRightClick,
 				visibility: draft.visibility,
+				deliveryTargets: draft.deliveryTargets,
 				visibleUserIds: draft.visibleUserIds,
 				channelId: draft.channelId,
 				event: draft.hasEvent && draft.eventTitle && draft.eventStart ? {
