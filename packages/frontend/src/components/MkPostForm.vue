@@ -1704,7 +1704,7 @@ async function openAccountMenu(ev: MouseEvent) {
 				reactionAcceptance.value = draft.reactionAcceptance;
 				scheduledAt.value = draft.scheduledAt ?? null;
 				deliveryTargets.value = normalizeDeliveryTargets(draft.deliveryTargets);
-						targetChannel.value = draft.channel ? draft.channel as unknown as Misskey.entities.Channel : null;
+				targetChannel.value = draft.channel ? draft.channel as unknown as Misskey.entities.Channel : null;
 
 				serverDraftId.value = draft.id;
 			},
