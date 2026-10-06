@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { FeedbackService } from '@/core/FeedbackService.js';
 import { FeedbackEntityService } from '@/core/entities/FeedbackEntityService.js';
 import type { MiUser } from '@/models/User.js';
-import type { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
+import { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
 import type { MiFeedbackComment } from '@/models/FeedbackComment.js';
 import type { MiFeedbackEmojiRequest } from '@/models/FeedbackEmojiRequest.js';
 
@@ -20,11 +20,12 @@ function setup() {
 	const driveFilesRepository = { findBy: vi.fn(async ({ id }: { id: { _value: string[] } }) => files.filter(file => id._value.includes(file.id))) };
 	const issues = { insert: vi.fn(async () => {}), createQueryBuilder: () => ({ select: () => ({ getRawOne: async () => ({ max: 0 }) }) }), update: vi.fn(async () => {}), increment: vi.fn(async () => {}) };
 	const comments = { insert: vi.fn(async () => {}) };
+	Object.assign(issues, { manager: { transaction: async (run: (manager: unknown) => Promise<unknown>) => run({ getRepository: (entity: unknown) => entity === MiFeedbackIssue ? issues : comments }) } });
 	const emojiRequests = { insert: vi.fn(async () => {}), update: vi.fn(async () => {}) };
 	const customEmoji = { checkDuplicate: vi.fn(async () => false), add: vi.fn(async () => ({ id: 'new-emoji' })), addDirect: vi.fn(async () => ({ id: 'new-emoji' })) };
 	const notifyStaff = vi.fn(async () => {});
 	const notify = vi.fn(async () => {});
-	const service = Object.assign(Object.create(FeedbackService.prototype) as FeedbackService, {
+	const service: FeedbackService = Object.assign(Object.create(FeedbackService.prototype), {
 		driveFilesRepository,
 		feedbackIssuesRepository: issues,
 		feedbackCommentsRepository: comments,
@@ -117,7 +118,7 @@ function setupPacker() {
 	const driveFilesRepository = { findBy: vi.fn(async ({ id }: { id: { _value: string[] } }) => files.filter(file => id._value.includes(file.id))) };
 	const packMany = vi.fn(async (sourceFiles: typeof files) => sourceFiles.map(file => ({ id: file.id, url: file.url })));
 	const changesQuery = { distinctOn: () => changesQuery, where: () => changesQuery, orderBy: () => changesQuery, addOrderBy: () => changesQuery, getMany: async () => [] };
-	const service = Object.assign(Object.create(FeedbackEntityService.prototype) as FeedbackEntityService, {
+	const service: FeedbackEntityService = Object.assign(Object.create(FeedbackEntityService.prototype), {
 		driveFilesRepository, driveFileEntityService: { packMany },
 		feedbackIssueModeratorsRepository: { findBy: async () => [] },
 		feedbackCommentReactionsRepository: { findBy: async () => [] },

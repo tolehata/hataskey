@@ -5,7 +5,7 @@
  * 件数を agreementsCount に非正規化して保持する(一覧取得を高速にするため)。
  */
 
-import { PrimaryColumn, Entity, Index, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { PrimaryColumn, Entity, Index, Column, Generated, ManyToOne, JoinColumn } from 'typeorm';
 import { id } from './util/id.js';
 import { MiUser } from './User.js';
 
@@ -25,11 +25,11 @@ export class MiFeedbackIssue {
 	public updatedAt: Date;
 
 	// 旗鯖fork: イシュー番号(連番)。会話内で「#番号」として参照・リンクできる。
-	@Index()
+	@Index('IDX_feedback_issue_number_unique', { unique: true })
 	@Column('integer', {
-		default: 0,
 		comment: 'Sequential issue number for #-reference.',
 	})
+	@Generated('increment')
 	public number: number;
 
 	@Column('varchar', {

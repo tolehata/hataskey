@@ -21,9 +21,10 @@ import type {
 	DriveFilesRepository,
 } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
-import type { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
+import { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
+import { MiFeedbackAgree } from '@/models/FeedbackAgree.js';
 import type { MiFeedbackProject } from '@/models/FeedbackProject.js';
-import type { MiFeedbackComment } from '@/models/FeedbackComment.js';
+import { MiFeedbackComment } from '@/models/FeedbackComment.js';
 import type { MiFeedbackEmojiRequest } from '@/models/FeedbackEmojiRequest.js';
 import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
@@ -352,14 +353,9 @@ export class FeedbackService {
 		await validateFeedbackFiles(this.driveFilesRepository, params.fileIds ?? [], creator.id);
 		const now = new Date();
 		const id = this.idService.gen();
-		// 連番のイシュー番号を採番(低頻度なので max+1 方式)。
-		const maxRow = await this.feedbackIssuesRepository.createQueryBuilder('issue')
-			.select('MAX(issue.number)', 'max')
-			.getRawOne<{ max: number | null }>();
-		const number = (maxRow?.max ?? 0) + 1;
+		// PostgreSQL assigns a unique number, including concurrent creations.
 		await this.feedbackIssuesRepository.insert({
 			id,
-			number,
 			createdAt: now,
 			updatedAt: now,
 			title: params.title,
@@ -471,21 +467,22 @@ export class FeedbackService {
 	// 賛同のトグル。戻り値は操作後に賛同済みか。
 	@bindThis
 	public async toggleAgree(user: MiUser, issue: MiFeedbackIssue): Promise<boolean> {
-		const existing = await this.feedbackAgreesRepository.findOneBy({ feedbackId: issue.id, userId: user.id });
-		if (existing != null) {
-			await this.feedbackAgreesRepository.delete(existing.id);
-			await this.feedbackIssuesRepository.decrement({ id: issue.id }, 'agreementsCount', 1);
-			return false;
-		} else {
-			await this.feedbackAgreesRepository.insert({
-				id: this.idService.gen(),
-				createdAt: new Date(),
-				feedbackId: issue.id,
-				userId: user.id,
-			});
-			await this.feedbackIssuesRepository.increment({ id: issue.id }, 'agreementsCount', 1);
+		return this.feedbackIssuesRepository.manager.transaction(async manager => {
+			const issues = manager.getRepository(MiFeedbackIssue);
+			const agrees = manager.getRepository(MiFeedbackAgree);
+			// Serialize toggles before reading their state. Both the row and its count
+			// commit together, so retries and concurrent requests cannot double-count.
+			await issues.findOneOrFail({ where: { id: issue.id }, lock: { mode: 'pessimistic_write' } });
+			const existing = await agrees.findOneBy({ feedbackId: issue.id, userId: user.id });
+			if (existing != null) {
+				const deleted = await agrees.delete(existing.id);
+				if (deleted.affected === 1) await issues.decrement({ id: issue.id }, 'agreementsCount', 1);
+				return false;
+			}
+			await agrees.insert({ id: this.idService.gen(), createdAt: new Date(), feedbackId: issue.id, userId: user.id });
+			await issues.increment({ id: issue.id }, 'agreementsCount', 1);
 			return true;
-		}
+		});
 	}
 
 	//#endregion
@@ -502,18 +499,21 @@ export class FeedbackService {
 		if (replyToId != null) {
 			replyTarget = await this.feedbackCommentsRepository.findOneBy({ id: replyToId, feedbackId: issue.id });
 		}
-		await this.feedbackCommentsRepository.insert({
-			id,
-			createdAt: now,
-			updatedAt: null,
-			feedbackId: issue.id,
-			userId: user.id,
-			text,
-			fileIds,
-			replyToId: replyTarget ? replyTarget.id : null,
+		await this.feedbackIssuesRepository.manager.transaction(async manager => {
+			const issues = manager.getRepository(MiFeedbackIssue);
+			await manager.getRepository(MiFeedbackComment).insert({
+				id,
+				createdAt: now,
+				updatedAt: null,
+				feedbackId: issue.id,
+				userId: user.id,
+				text,
+				fileIds,
+				replyToId: replyTarget ? replyTarget.id : null,
+			});
+			await issues.update(issue.id, { lastCommentedAt: now });
+			await issues.increment({ id: issue.id }, 'commentsCount', 1);
 		});
-		await this.feedbackIssuesRepository.update(issue.id, { lastCommentedAt: now });
-		await this.feedbackIssuesRepository.increment({ id: issue.id }, 'commentsCount', 1);
 		const notified = new Set<MiUser['id']>([user.id]);
 		// 旗鯖fork: 返信先コメントの投稿者へ「返信が来ています」通知。
 		if (replyTarget != null && !notified.has(replyTarget.userId)) {
@@ -581,8 +581,12 @@ export class FeedbackService {
 	// 旗鯖fork: コメントを削除する(関連リアクションはFK CASCADE)。commentsCountを減算する。
 	@bindThis
 	public async deleteComment(comment: MiFeedbackComment): Promise<void> {
-		await this.feedbackCommentsRepository.delete(comment.id);
-		await this.feedbackIssuesRepository.decrement({ id: comment.feedbackId }, 'commentsCount', 1);
+		await this.feedbackIssuesRepository.manager.transaction(async manager => {
+			const deleted = await manager.getRepository(MiFeedbackComment).delete({ id: comment.id, feedbackId: comment.feedbackId });
+			if (deleted.affected === 1) {
+				await manager.getRepository(MiFeedbackIssue).decrement({ id: comment.feedbackId }, 'commentsCount', 1);
+			}
+		});
 	}
 
 	//#endregion
