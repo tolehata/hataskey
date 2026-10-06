@@ -14,6 +14,7 @@ import type { MiLocalUser, MiRemoteUser } from '@/models/User.js';
 import { MiUser } from '@/models/User.js';
 import { truncate } from '@/misc/truncate.js';
 import type { CacheService } from '@/core/CacheService.js';
+import type { HttpRequestService } from '@/core/HttpRequestService.js';
 import { normalizeForSearch } from '@/misc/normalize-for-search.js';
 import { isDuplicateKeyValueError } from '@/misc/is-duplicate-key-value-error.js';
 import type Logger from '@/logger.js';
@@ -64,6 +65,7 @@ export class ApPersonService implements OnModuleInit {
 	private federatedInstanceService: FederatedInstanceService;
 	private fetchInstanceMetadataService: FetchInstanceMetadataService;
 	private cacheService: CacheService;
+	private httpRequestService: HttpRequestService;
 	private apResolverService: ApResolverService;
 	private apNoteService: ApNoteService;
 	private apImageService: ApImageService;
@@ -118,6 +120,7 @@ export class ApPersonService implements OnModuleInit {
 		this.federatedInstanceService = this.moduleRef.get('FederatedInstanceService');
 		this.fetchInstanceMetadataService = this.moduleRef.get('FetchInstanceMetadataService');
 		this.cacheService = this.moduleRef.get('CacheService');
+		this.httpRequestService = this.moduleRef.get('HttpRequestService');
 		this.apResolverService = this.moduleRef.get('ApResolverService');
 		this.apNoteService = this.moduleRef.get('ApNoteService');
 		this.apImageService = this.moduleRef.get('ApImageService');
@@ -364,10 +367,7 @@ export class ApPersonService implements OnModuleInit {
 
 		if (typeof person.followers === 'string') {
 			try {
-				const data = await fetch(person.followers, {
-					headers: { Accept: 'application/json' },
-				});
-				const jsonData = JSON.parse(await data.text());
+				const jsonData = await this.httpRequestService.getJson<{ totalItems?: number }>(person.followers, 'application/json');
 
 				followersCount = jsonData.totalItems;
 			} catch {
@@ -379,10 +379,7 @@ export class ApPersonService implements OnModuleInit {
 
 		if (typeof person.following === 'string') {
 			try {
-				const data = await fetch(person.following, {
-					headers: { Accept: 'application/json' },
-				});
-				const jsonData = JSON.parse(await data.text());
+				const jsonData = await this.httpRequestService.getJson<{ totalItems?: number }>(person.following, 'application/json');
 
 				followingCount = jsonData.totalItems;
 			} catch (e) {
@@ -394,10 +391,7 @@ export class ApPersonService implements OnModuleInit {
 
 		if (typeof person.outbox === 'string') {
 			try {
-				const data = await fetch(person.outbox, {
-					headers: { Accept: 'application/json' },
-				});
-				const jsonData = JSON.parse(await data.text());
+				const jsonData = await this.httpRequestService.getJson<{ totalItems?: number }>(person.outbox, 'application/json');
 
 				notesCount = jsonData.totalItems;
 			} catch (e) {
@@ -641,10 +635,7 @@ export class ApPersonService implements OnModuleInit {
 
 		if (typeof person.followers === 'string') {
 			try {
-				const data = await fetch(person.followers, {
-					headers: { Accept: 'application/json' },
-				});
-				const jsonData = JSON.parse(await data.text());
+				const jsonData = await this.httpRequestService.getJson<{ totalItems?: number }>(person.followers, 'application/json');
 
 				followersCount = jsonData.totalItems;
 			} catch {
@@ -656,10 +647,7 @@ export class ApPersonService implements OnModuleInit {
 
 		if (typeof person.following === 'string') {
 			try {
-				const data = await fetch(person.following, {
-					headers: { Accept: 'application/json' },
-				});
-				const jsonData = JSON.parse(await data.text());
+				const jsonData = await this.httpRequestService.getJson<{ totalItems?: number }>(person.following, 'application/json');
 
 				followingCount = jsonData.totalItems;
 			} catch {
@@ -671,10 +659,7 @@ export class ApPersonService implements OnModuleInit {
 
 		if (typeof person.outbox === 'string') {
 			try {
-				const data = await fetch(person.outbox, {
-					headers: { Accept: 'application/json' },
-				});
-				const jsonData = JSON.parse(await data.text());
+				const jsonData = await this.httpRequestService.getJson<{ totalItems?: number }>(person.outbox, 'application/json');
 
 				notesCount = jsonData.totalItems;
 			} catch (e) {
