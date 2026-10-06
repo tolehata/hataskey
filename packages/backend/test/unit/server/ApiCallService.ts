@@ -13,6 +13,7 @@ import { meta as voteMeta } from '@/server/api/endpoints/admin/vote-registration
 import { meta as approveMeta } from '@/server/api/endpoints/admin/approve-registration.js';
 import { meta as rejectMeta } from '@/server/api/endpoints/admin/reject-registration.js';
 import { meta as cleanupMeta } from '@/server/api/endpoints/admin/cleanup-legacy-rejected-registrations.js';
+import { meta as hatagoesSearchMeta } from '@/server/api/endpoints/hata/hatagoes/search.js';
 import Logger from '@/logger.js';
 import { envOption } from '@/env.js';
 import { logManager } from '@/logging/logging-runtime.js';
@@ -67,6 +68,29 @@ function createService() {
 	);
 	return { service, telemetryService, authenticateService, roleService };
 }
+
+describe('HataGoes native Registry search authorization', () => {
+	test.each(['native', 'app', 'flash', 'anonymous'])('%s credentials cannot escape their Registry domain', async actor => {
+		const { service, authenticateService } = createService();
+		try {
+			const user = actor === 'anonymous' ? null : { id: 'owner', isSuspended: false };
+			authenticateService.authenticate.mockResolvedValue([user,
+				actor === 'app' ? { permission: ['read:account'] } : null,
+				actor === 'flash' ? { permissions: ['read:account'] } : null,
+			]);
+			const endpoint = { name: 'hata/hatagoes/search', meta: hatagoesSearchMeta, params: {}, exec: vi.fn().mockResolvedValue({ items: ['private-record'] }) };
+			const reply = createReply();
+			await service.handleRequest(endpoint as never, { method: 'POST', body: { i: 'credential', query: 'memo' }, query: {}, headers: {}, ip: '127.0.0.1' } as never, reply as never);
+			if (actor === 'native') {
+				expect(endpoint.exec).toHaveBeenCalledOnce();
+				expect(reply.send).toHaveBeenCalledWith({ items: ['private-record'] });
+			} else {
+				expect(endpoint.exec).not.toHaveBeenCalled();
+				expect(reply.send).toHaveBeenCalledWith(expect.objectContaining({ error: expect.objectContaining({ code: 'ACCESS_DENIED' }) }));
+			}
+		} finally { service.dispose(); }
+	});
+});
 
 describe('ApiCallService structured error logging', () => {
 	test.each(['hata/emoji-vote/show', 'hata/emoji-vote/vote'])('keeps diagnostics but no vote content for %s', async name => {

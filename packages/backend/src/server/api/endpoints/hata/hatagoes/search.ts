@@ -11,6 +11,8 @@ const count = { type: 'integer', optional: false, nullable: false } as const;
 export const meta = {
 	tags: ['hata'],
 	requireCredential: true,
+	// Searches the native client's private Registry, not an application's domain.
+	secure: true,
 	kind: 'read:account',
 	limit: { duration: 60 * 1000, max: 60 },
 	res: {
