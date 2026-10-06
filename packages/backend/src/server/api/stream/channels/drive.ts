@@ -13,7 +13,7 @@ class DriveChannel extends Channel {
 	public readonly chName = 'drive';
 	public static shouldShare = true;
 	public static requireCredential = true as const;
-	public static kind = 'read:account';
+	public static kind = 'read:drive';
 
 	@bindThis
 	public async init(params: JsonObject) {

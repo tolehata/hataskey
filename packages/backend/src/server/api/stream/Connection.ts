@@ -8,6 +8,7 @@ import promiseLimit from 'promise-limit';
 import type { NoteStreamingHidingService } from './NoteStreamingHidingService.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiAccessToken } from '@/models/AccessToken.js';
+import type { FlashToken } from '@/misc/flash-token.js';
 import type { Packed } from '@/misc/json-schema.js';
 import type { NotificationService } from '@/core/NotificationService.js';
 import { bindThis } from '@/decorators.js';
@@ -56,9 +57,19 @@ export default class Connection {
 		user: MiUser | null | undefined,
 		token: MiAccessToken | null | undefined,
 		public noteStreamingHidingService: NoteStreamingHidingService,
+		public readonly flashToken: FlashToken | null = null,
 	) {
 		if (user) this.user = user;
 		if (token) this.token = token;
+	}
+
+	/** A null permission denotes an operation reserved for a native session. */
+	public hasPermission(permission: string | null): boolean {
+		if (this.user == null) return false;
+		if (this.token == null && this.flashToken == null) return true;
+		if (permission == null) return false;
+		return (this.token == null || this.token.permission.includes(permission))
+			&& (this.flashToken == null || this.flashToken.permissions.includes(permission));
 	}
 
 	@bindThis
@@ -143,7 +154,7 @@ export default class Connection {
 
 	@bindThis
 	private onReadNotification(payload: JsonValue | undefined) {
-		if (this.user == null || (this.token != null && !this.token.permission.includes('read:notifications'))) return;
+		if (this.user == null || !this.hasPermission('read:notifications')) return;
 		if (!isJsonObject(payload) || typeof payload.id !== 'string' || !/^[a-zA-Z0-9]{1,80}$/.test(payload.id)) return;
 		void this.notificationService.markNotificationRead(this.user.id, payload.id).catch(() => {});
 	}
@@ -263,8 +274,8 @@ export default class Connection {
 			return;
 		}
 
-		if (this.token && ((channelService.kind && !this.token.permission.some(p => p === channelService.kind))
-			|| (!channelService.kind && channelService.requireCredential))) {
+		if ((channelService.kind && !this.hasPermission(channelService.kind))
+			|| (!channelService.kind && channelService.requireCredential && !this.hasPermission(null))) {
 			return;
 		}
 

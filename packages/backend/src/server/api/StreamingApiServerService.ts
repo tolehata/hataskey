@@ -15,6 +15,7 @@ import { CacheService } from '@/core/CacheService.js';
 import { MiLocalUser } from '@/models/User.js';
 import { UserService } from '@/core/UserService.js';
 import { ChannelFollowingService } from '@/core/ChannelFollowingService.js';
+import type { FlashToken } from '@/misc/flash-token.js';
 import { AuthenticateService, AuthenticationError } from './AuthenticateService.js';
 import MainStreamConnection from './stream/Connection.js';
 import { NoteStreamingHidingService } from './stream/NoteStreamingHidingService.js';
@@ -61,6 +62,7 @@ export class StreamingApiServerService {
 
 			let user: MiLocalUser | null = null;
 			let app: MiAccessToken | null = null;
+			let flashToken: FlashToken | null = null;
 
 			// https://datatracker.ietf.org/doc/html/rfc6750.html#section-2.1
 			// Note that the standard WHATWG WebSocket API does not support setting any headers,
@@ -70,9 +72,9 @@ export class StreamingApiServerService {
 				: q.get('i');
 
 			try {
-				[user, app] = await this.authenticateService.authenticate(token);
+				[user, app, flashToken] = await this.authenticateService.authenticate(token);
 
-				if (app !== null && !app.permission.some(p => p === 'read:account')) {
+				if ((app !== null && !app.permission.includes('read:account')) || (flashToken !== null && !flashToken.permissions.includes('read:account'))) {
 					throw new AuthenticationError('Your app does not have necessary permissions to use websocket API.');
 				}
 			} catch (e) {
@@ -101,6 +103,7 @@ export class StreamingApiServerService {
 				this.channelFollowingService,
 				user, app,
 				this.noteStreamingHidingService,
+				flashToken,
 			);
 
 			await stream.init();

@@ -116,7 +116,7 @@ describe('パスキーのサーバー発行コンテキスト', () => {
 describe('WebSocketチャンネルの購読解除', () => {
 	test.each(['admin', 'drive', 'main'])('%s は接続中に配信し、切断後は配信を止める', async (name) => {
 		const subscriber = new EventEmitter();
-		const connection = { user: { id: 'owner' }, subscriber, sendMessageToWs: vi.fn(), userIdsWhoMeMuting: new Set(), userProfile: { mutedInstances: [] } };
+		const connection = { user: { id: 'owner' }, hasPermission: () => true, subscriber, sendMessageToWs: vi.fn(), userIdsWhoMeMuting: new Set(), userProfile: { mutedInstances: [] } };
 		const factory = name === 'admin' ? new AdminChannelService() : name === 'drive' ? new DriveChannelService() : new MainChannelService({} as any);
 		const channel = factory.create('channel', connection as any);
 		const eventName = `${name}Stream:owner`;

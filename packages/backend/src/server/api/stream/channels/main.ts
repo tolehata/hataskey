@@ -11,6 +11,37 @@ import type { JsonObject } from '@/misc/json-value.js';
 import type { EventTypesToEventPayload, MainEventTypes } from '@/core/GlobalEventService.js';
 import Channel, { type MiChannelService } from '../channel.js';
 
+// Native Registry and sign-in events have no third-party API equivalent.
+// Keep this exhaustive so new events require an explicit authorization decision.
+const eventPermissions = {
+	notification: 'read:notifications',
+	mention: 'read:notifications',
+	reply: 'read:notifications',
+	renote: 'read:notifications',
+	follow: 'read:following',
+	followed: 'read:following',
+	unfollow: 'read:following',
+	meUpdated: 'read:account',
+	pageEvent: 'read:pages',
+	urlUploadFinished: 'read:drive',
+	readAllNotifications: 'read:notifications',
+	readNotification: 'read:notifications',
+	notificationChanged: 'read:notifications',
+	notificationFlushed: 'read:notifications',
+	unreadNotification: 'read:notifications',
+	unreadAntenna: 'read:account',
+	newChatMessage: 'read:chat',
+	readAllAnnouncements: 'read:account',
+	myTokenRegenerated: null,
+	signin: null,
+	registryUpdated: null,
+	driveFileCreated: 'read:drive',
+	readAntenna: 'read:account',
+	receiveFollowRequest: 'read:following',
+	announcementCreated: 'read:account',
+	mutingImportCompleted: 'read:mutes',
+} satisfies Record<keyof MainEventTypes, string | null>;
+
 class MainChannel extends Channel {
 	public readonly chName = 'main';
 	public static shouldShare = true;
@@ -34,6 +65,9 @@ class MainChannel extends Channel {
 
 	@bindThis
 	private async onData(data: EventTypesToEventPayload<MainEventTypes>) {
+		// Unknown events fail closed for scoped tokens, including Play tokens.
+		const permission = Object.hasOwn(eventPermissions, data.type) ? eventPermissions[data.type] : null;
+		if (!this.connection.hasPermission(permission)) return;
 		switch (data.type) {
 			case 'notification': {
 				// Ignore notifications from instances the user has muted
