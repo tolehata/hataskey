@@ -100,6 +100,12 @@ export const meta = {
 			id: 'b1653923-5453-4edc-b786-7c4f39bb0bbb',
 		},
 
+		invalidChannelVisibility: {
+			message: 'Channel notes must have public visibility.',
+			code: 'INVALID_CHANNEL_VISIBILITY',
+			id: 'b7fc0efe-8a94-4cbb-bf2e-9b34fdfc4e30',
+		},
+
 		youHaveBeenBlocked: {
 			message: 'You have been blocked by this user.',
 			code: 'YOU_HAVE_BEEN_BLOCKED',
@@ -302,6 +308,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			} catch (err) {
 				// TODO: 他のErrorもここでキャッチしてエラーメッセージを当てるようにしたい
 				if (err instanceof IdentifiableError) {
+					if (err.id === meta.errors.invalidChannelVisibility.id) {
+						throw new ApiError(meta.errors.invalidChannelVisibility);
+					}
 					if (err.id === '689ee33f-f97c-479a-ac49-1b9f8140af99') {
 						throw new ApiError(meta.errors.containsProhibitedWords);
 					} else if (err.id === '9f466dab-c856-48cd-9e65-ff90ff750580') {

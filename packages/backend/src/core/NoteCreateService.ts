@@ -502,9 +502,12 @@ export class NoteCreateService implements OnApplicationShutdown {
 
 		if (data.createdAt == null) data.createdAt = new Date();
 		if (data.visibility == null) data.visibility = 'public';
+		// A channel must never widen a private draft, reply, or API request.
+		if (data.channel != null && data.visibility !== 'public') {
+			throw new IdentifiableError('b7fc0efe-8a94-4cbb-bf2e-9b34fdfc4e30', 'Channel notes must have public visibility');
+		}
 		if (data.localOnly == null) data.localOnly = false;
 		if (data.disableRightClick == null) data.disableRightClick = false;
-		if (data.channel != null) data.visibility = 'public';
 		if (data.channel != null) data.visibleUsers = [];
 		if (data.channel != null) data.localOnly = true;
 

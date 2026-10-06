@@ -58,7 +58,7 @@ function setup() {
 		visibility: ref('public'), localOnly: ref(false), useCw: ref(false), cw: ref(null),
 		files: ref<Misskey.entities.DriveFile[]>([]), poll: ref(null), event: ref(null), quoteId: ref(null),
 		replyTargetNote: ref({ id: 'reply-note', userId: 'alice', visibility: 'specified', visibleUserIds: ['me', 'alice', 'bob'], user: user('alice') }),
-		renoteTargetNote: ref(null), targetChannel: ref(null), scheduledAt: ref<number | null>(null),
+		renoteTargetNote: ref(null), targetChannel: ref<{ id: string } | null>(null), scheduledAt: ref<number | null>(null),
 		scheduledNoteDelete: ref(null), saveToDraft: ref(false), posting: ref(false), posted: ref(false),
 		submitMotionState: ref('idle'), reactionAcceptance: ref(null), disableRightClick: ref(false),
 		deliveryTargets: ref(null), withHashtags: ref(false), hashtags: ref(''), postAccount: ref(null),
@@ -106,6 +106,28 @@ async function settleUsers(view: ReturnType<typeof setup>): Promise<void> {
 }
 
 describe('standard composer direct-recipient submission', () => {
+	it.each(['specified', 'followers'] as const)('restores a %s draft outside the previous channel without widening its audience', async visibility => {
+		const view = setup();
+		await settleUsers(view);
+		view.values.targetChannel.value = { id: 'old-channel' };
+		await view.form.restoreServerDraft({ id: 'draft', text: 'private draft', visibility, visibleUserIds: visibility === 'specified' ? ['bob'] : [] });
+		await settleUsers(view);
+		await view.form.post();
+		expect(view.values.targetChannel.value).toBeNull();
+		expect(view.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({
+			visibility, channelId: undefined, visibleUserIds: visibility === 'specified' ? ['bob'] : undefined,
+		}), undefined);
+	});
+
+	it('keeps the saved channel for an ordinary public channel draft', async () => {
+		const view = setup();
+		await settleUsers(view);
+		await view.form.restoreServerDraft({ id: 'draft', text: 'channel draft', visibility: 'public', channel: { id: 'saved-channel' } as Misskey.entities.NoteDraft['channel'] });
+		await settleUsers(view);
+		await view.form.post();
+		expect(view.api).toHaveBeenCalledWith('notes/create', expect.objectContaining({ visibility: 'public', channelId: 'saved-channel' }), undefined);
+	});
+
 	it('disables fast send and refuses a programmatic post while reply recipients are unresolved', async () => {
 		const view = setup();
 		await view.form.post();
