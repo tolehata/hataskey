@@ -15,7 +15,7 @@ export type HataGoesBridge = {
 	openTool?: (tool: 'drawing-tool' | 'whats-new') => void | Promise<void>;
 	create: (kind: string, signal?: AbortSignal, surface?: HTMLElement) => void | Promise<void>;
 	refresh: () => void | Promise<void>;
-	openResult?: (kind: string, id: string) => void | Promise<void>;
+	openResult?: (kind: string, id: string, onClosed?: () => void) => void | Promise<void>;
 };
 export type HataGoesAppearance = { theme: string; projectName?: string; cssVars?: Record<string, string> };
 /** Palette captured from the pane that launched a detached popup. */

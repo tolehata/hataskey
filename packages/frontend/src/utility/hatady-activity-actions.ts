@@ -41,16 +41,16 @@ export function useHatadyActivityActions(options: {
 	const changed = () => { void options.onChanged?.(); };
 	const deleted = (activity: HatadyActivity) => { options.onDeleted?.(activity); changed(); };
 
-	async function openConversation(logId: string): Promise<void> {
+	async function openConversation(logId: string, onClosed?: () => void): Promise<void> {
 		await loadHatadyDisplay();
 		const { dispose } = popup((await import('@/components/HatadyConversation.vue')).default,
-			{ logId, variant }, { deleted, changed, closed: () => dispose() });
+			{ logId, variant }, { deleted, changed, closed: () => { dispose(); onClosed?.(); } });
 	}
 
-	async function openSession(sessionId: string, workId?: string): Promise<void> {
+	async function openSession(sessionId: string, workId?: string, onClosed?: () => void): Promise<void> {
 		await loadHatadyDisplay();
 		const { dispose } = popup((await import('@/components/HatadyConversation.vue')).default,
-			{ sessionId, workId, variant }, { deleted, changed, closed: () => dispose() });
+			{ sessionId, workId, variant }, { deleted, changed, closed: () => { dispose(); onClosed?.(); } });
 	}
 
 	function openActivity(activity: HatadyActivity): void {
@@ -58,27 +58,28 @@ export function useHatadyActivityActions(options: {
 		else if (activity.media) void openSession(activity.media.session.id, activity.media.session.workId || undefined);
 	}
 
-	async function openBookDetail(bookId: string): Promise<void> {
+	async function openBookDetail(bookId: string, onClosed?: () => void): Promise<void> {
 		await loadHatadyDisplay();
 		const { dispose } = popup((await import('@/components/HatadyBookDetail.vue')).default,
-			{ bookId, variant }, { deleted: () => options.onBookDeleted?.(bookId), changed, openLog: openConversation, closed: () => dispose() });
+			{ bookId, variant }, { deleted: () => options.onBookDeleted?.(bookId), changed, openLog: openConversation, closed: () => { dispose(); onClosed?.(); } });
 	}
 
-	async function openMediaDetailById(workId: string, kind?: HatadyMediaKind): Promise<void> {
+	async function openMediaDetailById(workId: string, kind?: HatadyMediaKind, onClosed?: () => void): Promise<void> {
 		await loadHatadyDisplay();
 		const { dispose } = popup((await import('@/components/HatadyMediaWorkDetail.vue')).default,
-			{ workId, kind, variant }, { deleted: () => options.onMediaDeleted?.(workId), changed, closed: () => dispose() });
+			{ workId, kind, variant }, { deleted: () => options.onMediaDeleted?.(workId), changed, closed: () => { dispose(); onClosed?.(); } });
 	}
 
-	async function openProfile(userId?: string | null): Promise<void> {
+	async function openProfile(userId?: string | null, onClosed?: () => void): Promise<void> {
 		if (!userId || userId === $i?.id) {
 			if (options.onOwnProfile) options.onOwnProfile();
 			else router.pushByPath('/hatady?tab=profile');
+			onClosed?.();
 			return;
 		}
 		await loadHatadyDisplay();
 		const { dispose } = popup((await import('@/components/HatadyProfile.vue')).default,
-			{ userId, variant }, { changed, openLog: openConversation, openProfile, openBook: openBookDetail, openMedia: openMediaDetailById, closed: () => dispose() });
+			{ userId, variant }, { changed, openLog: openConversation, openProfile, openBook: openBookDetail, openMedia: openMediaDetailById, closed: () => { dispose(); onClosed?.(); } });
 	}
 
 	async function editActivity(activity: HatadyActivity): Promise<void> {

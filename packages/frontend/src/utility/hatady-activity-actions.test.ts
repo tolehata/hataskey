@@ -1,10 +1,14 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createApp, defineComponent, h, provide, ref } from 'vue';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
 import type { HatadyActivity, HatadyMediaSession } from './hatady-media.js';
 import { HATA_GOES_HOST } from './hatagoes-context.js';
 
-const fixture = vi.hoisted(() => ({ menu: vi.fn(), clipboard: vi.fn(), push: vi.fn() }));
+const fixture = vi.hoisted(() => ({ menu: vi.fn(), clipboard: vi.fn(), push: vi.fn(), popup: vi.fn(() => ({ dispose: vi.fn() })) }));
 vi.mock('@@/js/config.js', () => ({ url: 'https://example.test' }));
 vi.mock('@/i.js', () => ({ $i: { id: 'me' } }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: {
@@ -15,7 +19,11 @@ vi.mock('@/router.js', () => ({ mainRouter: { pushByPath: fixture.push }, useRou
 vi.mock('@/utility/hatady-home.js', () => ({ activityData: () => ({ title: '', body: '' }) }));
 vi.mock('@/utility/hatady-prefs.js', () => ({ loadHatadyDisplay: vi.fn() }));
 vi.mock('@/utility/hatady-record-delete.js', () => ({ confirmHatadyRecordDeletion: vi.fn() }));
-vi.mock('@/utility/hatagoes-popup.js', () => ({ useHataGoesPopup: () => vi.fn(), useHataGoesPopupMenu: () => fixture.menu }));
+vi.mock('@/utility/hatagoes-popup.js', () => ({ useHataGoesPopup: () => fixture.popup, useHataGoesPopupMenu: () => fixture.menu }));
+vi.mock('@/components/HatadyBookDetail.vue', () => ({ default: {} }));
+vi.mock('@/components/HatadyConversation.vue', () => ({ default: {} }));
+vi.mock('@/components/HatadyMediaWorkDetail.vue', () => ({ default: {} }));
+vi.mock('@/components/HatadyProfile.vue', () => ({ default: {} }));
 vi.mock('@/utility/copy-to-clipboard.js', () => ({ copyToClipboard: fixture.clipboard }));
 import { useHatadyActivityActions } from './hatady-activity-actions.js';
 
@@ -42,7 +50,7 @@ function menu(host: boolean, activity: HatadyActivity): Menu {
 	return fixture.menu.mock.lastCall?.[0] as Menu;
 }
 
-beforeEach(() => { fixture.menu.mockReset(); fixture.clipboard.mockReset(); fixture.push.mockReset(); });
+beforeEach(() => { fixture.menu.mockReset(); fixture.clipboard.mockReset(); fixture.push.mockReset(); fixture.popup.mockClear(); });
 afterEach(() => cleanup.splice(0).forEach(fn => fn()));
 
 test('HataGoes owner menu orders edit, copy, breakdown and guarded delete', () => {
@@ -64,4 +72,59 @@ test('HataGoes other-user menu offers report and a session-specific link', () =>
 test('legacy menu does not gain HataGoes actions', () => {
 	expect(menu(false, record(true)).map(item => item.text)).toEqual(['編集', '削除']);
 	expect(menu(false, record(false)).map(item => item.text)).toEqual(['プロフィール', '通報']);
+});
+
+function actions() {
+	let result!: ReturnType<typeof useHatadyActivityActions>;
+	const app = createApp(defineComponent({ setup() { result = useHatadyActivityActions({}); return () => null; } }));
+	app.mount(window.document.createElement('div'));
+	cleanup.push(() => app.unmount());
+	return result;
+}
+
+test.each(['book', 'work', 'log', 'session', 'profile'])('notifies the owner when its %s detail closes', async kind => {
+	const current = actions();
+	const closed = vi.fn();
+	if (kind === 'book') await current.openBookDetail('book', closed);
+	else if (kind === 'work') await current.openMediaDetailById('work', undefined, closed);
+	else if (kind === 'log') await current.openConversation('log', closed);
+	else if (kind === 'session') await current.openSession('session', undefined, closed);
+	else await current.openProfile('other', closed);
+	const events = (fixture.popup.mock.calls[0] as unknown as [unknown, unknown, { closed: () => void }])[2];
+	expect(closed).not.toHaveBeenCalled();
+	events.closed();
+	expect(closed).toHaveBeenCalledOnce();
+});
+
+test('closing a nested log keeps the parent book result open', async () => {
+	const current = actions();
+	const closed = vi.fn();
+	await current.openBookDetail('book', closed);
+	const book = (fixture.popup.mock.calls[0] as unknown as [unknown, unknown, { closed: () => void; openLog: (id: string) => Promise<void> }])[2];
+	await book.openLog('log');
+	const log = (fixture.popup.mock.calls[1] as unknown as [unknown, unknown, { closed: () => void }])[2];
+	log.closed();
+	expect(closed).not.toHaveBeenCalled();
+	book.closed();
+	expect(closed).toHaveBeenCalledOnce();
+});
+
+test.each(['book', 'books', 'work', 'mediaWork', 'mediaWorks', 'log', 'session', 'mediaSession', 'user', 'users'])('the Hatady page bridge forwards the %s close callback to the real popup', async kind => {
+	const source = readFileSync(resolve(process.cwd(), 'src/pages/hatady.vue'), 'utf8').match(/<script[^>]*>([\s\S]*?)<\/script>/)![1];
+	const ast = ts.createSourceFile('hatady.ts', source, ts.ScriptTarget.Latest, true);
+	let method: ts.MethodDeclaration | undefined;
+	const visit = (node: ts.Node) => {
+		if (ts.isMethodDeclaration(node) && node.name.getText(ast) === 'openResult') method = node;
+		ts.forEachChild(node, visit);
+	};
+	visit(ast);
+	if (!method) throw new Error('Missing Hatady bridge');
+	const production = method.getText(ast).replace('async openResult', 'async function openResult');
+	const context = { activityActions: actions(), props: { paneActive: true }, output: undefined as unknown };
+	runInNewContext(ts.transpileModule(`${production}; output = openResult;`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
+	const closed = vi.fn();
+	await (context.output as (kind: string, id: string, closed: () => void) => Promise<void>)(kind, 'record', closed);
+	const events = (fixture.popup.mock.lastCall as unknown as [unknown, unknown, { closed: () => void }])[2];
+	events.closed();
+	expect(closed).toHaveBeenCalledOnce();
 });

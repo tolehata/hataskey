@@ -3079,10 +3079,10 @@ function closeFlowerDetail(): void {
 	selectedCommunityFlowerId.value = null;
 }
 
-function openFlowerDetail(kind: FlowerStreamKind, selection: HataskFlowerSelection): void {
-	if (flowerDialogOpen.value || !selection.anchor.isConnected) return;
+function openFlowerDetail(kind: FlowerStreamKind, selection: HataskFlowerSelection, onClosed?: () => void): void {
+	if (flowerDialogOpen.value || !selection.anchor.isConnected) { onClosed?.(); return; }
 	const view = (kind === 'personal' ? personalFlowerViews.value : communityFlowerViews.value).find(item => item.id === selection.flower.id);
-	if (!view || (kind !== 'personal' && (communityFlowersLoading.value || communityFlowersError.value))) return;
+	if (!view || (kind !== 'personal' && (communityFlowersLoading.value || communityFlowersError.value))) { onClosed?.(); return; }
 	const owner = { showing: ref(true), kind, id: view.id };
 	activeFlowerPopup = owner;
 	flowerDialogOpen.value = true;
@@ -3096,6 +3096,7 @@ function openFlowerDetail(kind: FlowerStreamKind, selection: HataskFlowerSelecti
 		closed: () => {
 			dispose();
 			if (activeFlowerPopup === owner) { activeFlowerPopup = null; flowerDialogOpen.value = false; selectedCommunityFlowerId.value = null; }
+			onClosed?.();
 		},
 		action: async () => {
 			if (!hataskPageActive || activeTab.value !== 'garden') return;
@@ -4272,14 +4273,17 @@ onUnmounted(() => {
 	goesReadyWaiters.clear();
 });
 
-async function openGoesServerRecord(kind: 'event' | 'flower' | 'cookingRecord', id: string): Promise<void> {
+const goesResultWatchers = new Set<() => void>();
+onUnmounted(() => { for (const stop of goesResultWatchers) stop(); });
+
+async function openGoesServerRecord(kind: 'event' | 'flower' | 'cookingRecord', id: string, onClosed?: () => void): Promise<void> {
 	const result = await misskeyApi<{ kind: string; item: Record<string, unknown> }>('hata/hatagoes/show', { kind, id });
 	if (!props.paneActive) return;
 	const component = (await import('@/components/hatagoes/HatagoesRecordDetail.vue')).default;
 	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The active pane can change while import awaits.
 	if (!props.paneActive) return;
 	const { dispose } = popup(component, { kind, item: result.item }, {
-		closed: () => dispose(),
+		closed: () => { dispose(); onClosed?.(); },
 		related: async (relatedKind, relatedId) => {
 			if (!props.paneActive) return;
 			if (relatedKind === 'recipe') {
@@ -4325,13 +4329,22 @@ const unregisterHataGoes = props.embedded ? hataGoesHost?.register('hatask', {
 	// This owner already applies its own writes; do not rehydrate mutable arrays
 	// from a second load while an editor or storage transaction is in progress.
 	refresh: () => { refreshSharedEventAccess(); invalidateCommunityFlowers(); },
-	async openResult(kind, id) {
+	async openResult(kind, id, onClosed) {
 		if (!await waitForGoesOwner() || !props.paneActive) return;
+		for (const stop of goesResultWatchers) stop();
+		goesResultWatchers.clear();
 		try {
 			if (kind === 'event' || kind === 'events') {
 				const local = events.value.find(item => item.id === id || item.serverEventId === id);
-				if (local) goToEvent(allCalendarEvents.value.find(item => item.id === id || item.sourceEventId === local.id) ?? local);
-				else await openGoesServerRecord('event', id);
+				if (local) {
+					goToEvent(allCalendarEvents.value.find(item => item.id === id || item.sourceEventId === local.id) ?? local);
+					const current = viewingEvent.value;
+					const stop = watch(viewingEvent, value => {
+						if (value === current) return;
+						stop(); goesResultWatchers.delete(stop); onClosed?.();
+					});
+					goesResultWatchers.add(stop);
+				} else await openGoesServerRecord('event', id, onClosed);
 			} else if (kind === 'todo' || kind === 'todos') {
 				const todo = todos.value.find(item => item.id === id);
 				if (!todo) throw new Error('unavailable');
@@ -4345,28 +4358,32 @@ const unregisterHataGoes = props.embedded ? hataGoesHost?.register('hatask', {
 				row?.setAttribute('tabindex', '-1');
 				row?.focus({ preventScroll: true });
 				if (!row) throw new Error('unavailable');
+				onClosed?.(); // An inline row selection has no detail popup to close.
 			} else if (kind === 'mood' || kind === 'meal') {
 				navigateAkatsuki(kind);
 				await nextTick();
 				if (!await (kind === 'mood' ? akatsukiMoodJournal.value : akatsukiMealJournal.value)?.openById(id)) throw new Error('unavailable');
+				onClosed?.();
 			} else if (kind === 'recipe') {
 				navigateAkatsuki('recipe');
 				await nextTick();
 				if (!recipeView.value) throw new Error('unavailable');
 				await recipeView.value.openById(id);
+				onClosed?.(); // The recipe screen owns its own inline back navigation.
 			} else if (kind === 'flower') {
 				navigateAkatsuki('garden');
 				await nextTick();
 				const matchingFlower = personalFlowerViews.value.find(item => item.id === id);
 				const anchor = rootEl.value;
-				if (matchingFlower && anchor) openFlowerDetail('personal', { flower: matchingFlower, anchor, returnFocusTo: anchor });
-				else await openGoesServerRecord('flower', id);
+				if (matchingFlower && anchor) openFlowerDetail('personal', { flower: matchingFlower, anchor, returnFocusTo: anchor }, onClosed);
+				else await openGoesServerRecord('flower', id, onClosed);
 			} else if (kind === 'cookingRecord') {
-				await openGoesServerRecord('cookingRecord', id);
+				await openGoesServerRecord('cookingRecord', id, onClosed);
 			} else throw new Error('unavailable');
 		} catch {
 			// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The active pane can change across the awaited record lookup.
 			if (props.paneActive) await dialogs.alert({ type: 'error', text: 'この記録は見つからないか、表示できません。' });
+			onClosed?.();
 		}
 	},
 }) : undefined;

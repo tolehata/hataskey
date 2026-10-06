@@ -1369,14 +1369,17 @@ const unregisterHataGoes = props.embedded ? hataGoesHost?.register('hatady', {
 		}
 	},
 	refresh,
-	async openResult(kind, id) {
+	async openResult(kind, id, onClosed) {
 		if (!props.paneActive) return;
-		if (kind === 'book' || kind === 'books') await openBookDetail(id);
-		else if (kind === 'user' || kind === 'users') await openProfile(id);
-		else if (kind === 'work' || kind === 'mediaWork' || kind === 'mediaWorks') await openMediaDetailById(id);
-		else if (kind === 'session' || kind === 'mediaSession') await openSession(id);
-		else if (kind === 'log') await openConversation(id);
-		else await dialogs.alert({ type: 'error', text: 'この検索結果の詳細を表示できません。' });
+		if (kind === 'book' || kind === 'books') await activityActions.openBookDetail(id, onClosed);
+		else if (kind === 'user' || kind === 'users') await activityActions.openProfile(id, onClosed);
+		else if (kind === 'work' || kind === 'mediaWork' || kind === 'mediaWorks') await activityActions.openMediaDetailById(id, undefined, onClosed);
+		else if (kind === 'session' || kind === 'mediaSession') await activityActions.openSession(id, undefined, onClosed);
+		else if (kind === 'log') await activityActions.openConversation(id, onClosed);
+		else {
+			await dialogs.alert({ type: 'error', text: 'この検索結果の詳細を表示できません。' });
+			onClosed?.();
+		}
 	},
 }) : undefined;
 onUnmounted(() => unregisterHataGoes?.());

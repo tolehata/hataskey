@@ -673,14 +673,26 @@ async function openTarget(app: HatagoesApp, path: string) {
 	const kind = url.searchParams.get('hgKind');
 	const id = url.searchParams.get('hgId');
 	if (!kind || !id) return;
+	const closed = () => {
+		// A delayed close must not replace a newer result or another screen.
+		if (!shellActive.value || request !== targetRequest || location.value.view !== 'app' || location.value.path !== path) return;
+		url.searchParams.delete('hgKind');
+		url.searchParams.delete('hgId');
+		router.replaceByPath(hatagoesUrl(`${url.pathname}${url.search}${url.hash}`));
+	};
 	try {
 		const bridge = await ensureBridge(app);
 		await nextTick();
 		if (request === targetRequest && location.value.view === 'app' && location.value.path === path) {
 			if (!bridge.openResult) throw new Error('detail');
-			await bridge.openResult(kind, id);
+			await bridge.openResult(kind, id, closed);
 		}
-	} catch { if (request === targetRequest) message.value = '指定された情報を開けませんでした。画面を再読み込みしてお試しください。'; }
+	} catch {
+		if (request === targetRequest) {
+			message.value = '指定された情報を開けませんでした。画面を再読み込みしてお試しください。';
+			closed();
+		}
+	}
 }
 
 function openSearchResult(item: Endpoints['hata/hatagoes/search']['res']['items'][number]) {

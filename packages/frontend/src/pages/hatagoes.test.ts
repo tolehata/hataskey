@@ -17,6 +17,8 @@ const fixture = vi.hoisted(() => ({
 	registrations: new Map<string, () => void>(),
 	created: [] as { app: string; kind: string; signal: AbortSignal; surface?: HTMLElement }[],
 	settingsCalls: [] as string[],
+	results: [] as { kind: string; id: string; closed: () => void }[],
+	failResult: false,
 	homeActions: [] as string[],
 	homeScrolls: 0,
 	refreshCount: 0,
@@ -64,6 +66,13 @@ vi.mock('@/components/hatagoes/HatagoesPane.vue', async () => {
 			const session = inject(HATA_GOES_SESSION, null);
 			definePage(() => ({ title: `Embedded ${props.app}` }));
 			const bridge = {
+				openResult(kind: string, id: string, closed: () => void) {
+					if (fixture.failResult) throw new Error('unavailable');
+					let untrack = () => {};
+					const notifyClosed = () => { untrack(); closed(); };
+					untrack = session?.track(notifyClosed) ?? untrack;
+					fixture.results.push({ kind, id, closed: notifyClosed });
+				},
 				recordMood: async (level: number) => { fixture.homeActions.push(`mood:${level}`); },
 				water: async (day: string) => { fixture.homeActions.push(`water:${day}`); },
 				recordMeal: async (slot: string, signal?: AbortSignal, surface?: HTMLElement) => {
@@ -170,6 +179,8 @@ beforeEach(() => {
 	fixture.registrations.clear();
 	fixture.created.length = 0;
 	fixture.settingsCalls.length = 0;
+	fixture.results.length = 0;
+	fixture.failResult = false;
 	fixture.homeActions.length = 0;
 	fixture.homeScrolls = 0;
 	fixture.refreshCount = 0;
@@ -187,6 +198,58 @@ beforeEach(() => {
 afterEach(() => { cleanup?.(); cleanup = undefined; });
 
 describe('HataGoes search popup', () => {
+	test.each(['book', 'mediaWork', 'mediaSession', 'log'])('closing %s synchronizes the URL and allows the same result to reopen', async kind => {
+		const path = `/hatady?tab=records&hgKind=${kind}&hgId=record`;
+		const target = await mount(hatagoesUrl(path));
+		expect(fixture.results).toHaveLength(1);
+		const capsule = () => target.querySelector<HTMLElement>('[aria-label="画面一覧"] > div')!;
+		expect(capsule().style.display).toBe('none');
+		fixture.results[0].closed(); await settle();
+		expect(router().getCurrentFullPath()).toBe(hatagoesUrl('/hatady?tab=records'));
+		expect(capsule().style.display).not.toBe('none');
+		router().pushByPath(hatagoesUrl(path)); await settle();
+		expect(fixture.results).toHaveLength(2);
+	});
+
+	test('an old result close cannot replace a new result or another app', async () => {
+		await mount(hatagoesUrl('/hatady?tab=records&hgKind=book&hgId=first'));
+		const previous = fixture.results[0];
+		const next = hatagoesUrl('/hatady?tab=records&hgKind=book&hgId=second');
+		router().pushByPath(next); await settle();
+		previous.closed(); await settle();
+		expect(router().getCurrentFullPath()).toBe(next);
+		router().pushByPath(hatagoesUrl('/hatask?tab=todo')); await settle();
+		fixture.results[1].closed(); await settle();
+		expect(router().getCurrentFullPath()).toBe(hatagoesUrl('/hatask?tab=todo'));
+	});
+
+	test('a failed detail open releases the URL so it can be retried', async () => {
+		fixture.failResult = true;
+		const path = hatagoesUrl('/hatady?tab=records&hgKind=log&hgId=missing');
+		await mount(path);
+		expect(router().getCurrentFullPath()).toBe(hatagoesUrl('/hatady?tab=records'));
+		fixture.failResult = false;
+		router().pushByPath(path); await settle();
+		expect(fixture.results).toHaveLength(1);
+	});
+
+	test('forced detail disposal on KeepAlive exit cannot navigate the inactive shell', async () => {
+		const active = ref(true);
+		const path = hatagoesUrl('/hatady?tab=records&hgKind=book&hgId=first');
+		fixture.initialPath = path;
+		const target = window.document.createElement('div');
+		window.document.body.append(target);
+		const app = createApp({ setup: () => () => h(KeepAlive, null, { default: () => active.value ? h(Hatagoes) : null }) });
+		app.mount(target);
+		cleanup = () => { app.unmount(); target.remove(); };
+		await settle();
+		const replace = vi.spyOn(router(), 'replaceByPath');
+		active.value = false; await settle();
+		expect(replace).not.toHaveBeenCalled();
+		expect(router().getCurrentFullPath()).toBe(path);
+		replace.mockRestore();
+	});
+
 	test('opens above the current app without changing its route and returns focus on close', async () => {
 		const path = hatagoesUrl('/hatask?tab=todo');
 		const target = await mount(path);
