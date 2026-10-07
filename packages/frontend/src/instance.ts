@@ -40,7 +40,7 @@ export async function fetchInstance(force = false): Promise<Misskey.entities.Met
 
 	const meta = await misskeyApi('meta', {
 		detail: true,
-	});
+	}, null);
 
 	for (const [k, v] of Object.entries(meta)) {
 		instance[k] = v;
