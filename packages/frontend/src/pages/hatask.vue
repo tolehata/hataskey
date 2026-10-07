@@ -529,6 +529,19 @@
     <div class="htk-seasonal-tree-scene"><SeasonalTreeScene :animated="flowerAnimations" :windStrength="60" :showCaption="true"/></div>
   </div></section>
   <div class="htk-garden-collections">
+    <section v-if="flowerState?.zukan.archivedEntries?.length" class="htk-lg htk-anim" data-garden-group="imported-flowers"><div class="htk-gc">
+      <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{ i18n.ts._hata._hatask._records.archiveTitle }}</h3><p class="htk-flower-summary">{{ i18n.ts._hata._hatask._records.archiveDescription }}</p></div></header>
+      <ul class="htk-record-archive-list">
+        <li v-for="entry in flowerState.zukan.archivedEntries.slice(0, archiveVisibleCount)" :key="entry.id">
+          <details><summary><span aria-hidden="true">{{ entry.emoji }}</span> {{ entry.nickname || entry.name }} <time :datetime="entry.harvestedAt">{{ entry.harvestedAt.slice(0, 10) }}</time></summary>
+            <dl><div><dt>{{ i18n.ts._hata._hatask._records.archiveName }}</dt><dd>{{ entry.name }}</dd></div>
+            <div><dt>{{ i18n.ts._hata._hatask._records.archiveMeaning }}</dt><dd>{{ entry.hanakotoba }}</dd></div>
+            <div><dt>{{ i18n.ts._hata._hatask._records.archiveMemory }}</dt><dd>{{ entry.memory?.join('、') || '—' }}</dd></div></dl>
+          </details>
+        </li>
+      </ul>
+      <button v-if="flowerState.zukan.archivedEntries.length > archiveVisibleCount" type="button" class="htk-btn htk-xs" @click="archiveVisibleCount += 100">{{ i18n.ts._hata._hatask._records.archiveMore }}</button>
+    </div></section>
     <section class="htk-lg htk-anim" data-garden-group="community"><div class="htk-gc">
       <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{copy.communityFlowerGallery}}</h3><p class="htk-flower-summary">{{copyx.flowerCount({count:communityFlowerTotal.toString()})}} · {{seasonFlowerLabel}}</p></div><button type="button" class="htk-flower-icon-button" data-flower-collection-button="community" :aria-label="flowerCollectionLabel('community')" :title="flowerCollectionLabel('community')" aria-haspopup="dialog" :aria-expanded="flowerCollectionKind==='community'" @click="openFlowerCollection('community', $event)"><i class="ti ti-layout-grid" aria-hidden="true"></i></button><button type="button" class="htk-flower-icon-button" :aria-label="flowerPauseLabel('community')" :title="flowerPauseLabel('community')" :aria-pressed="flowerStreamPaused.community" :disabled="!flowerAnimations" @click="toggleFlowerStream('community')"><i :class="flowerStreamPaused.community?'ti ti-player-play':'ti ti-player-pause'" aria-hidden="true"></i></button></header>
       <div v-if="communityFlowersLoading" class="htk-gal-state" role="status"><i class="ti ti-loader-2" aria-hidden="true"></i>{{copy.flowerGalleryLoading}}</div>
@@ -691,6 +704,7 @@
 
 <script lang="ts" setup>
 import { ref, shallowRef, computed, inject, onMounted, onUnmounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, watch, defineAsyncComponent } from 'vue';
+import { registerHataskRecordSync } from '@/utility/hatask-record-transfer.js';
 import PageWithHeader from '@/components/global/PageWithHeader.vue';
 import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 import { useHataMascotSuppression } from '@/utility/hata-mascot-suppression.js';
@@ -1121,7 +1135,6 @@ const tutSteps=computed(()=>[
   {emoji:'ti ti-sparkles',title:copy.welcome,body:'',tab:'home',selector:'',tips:[]},
   { emoji: 'ti ti-layout-navbar', title: copy.tutorialNavigationTitle, body: 'PCでは左のメニュー、スマホでは下のタブから移動できます', tab: 'home', selector: '.hak-rail,.hak-bottom', tips: [
     { icon: 'ti ti-device-mobile', text: 'Hatask Appに、カレンダー・ToDo・きもち・ごはんなどをまとめています' },
-    { icon: 'ti ti-settings', text: 'スマホの下部タブはHatask設定から入れ替えられます' },
   ]},
   { emoji: 'ti ti-search', title: copy.tutorialHeaderTitle, body: copy.tutorialHeaderBody, tab: 'home', selector: '.hak-desktop-top,.hak-mobile-head', tips: [
     { icon: 'ti ti-search', text: '検索欄に入力すると、ToDo・きもち・予定をまとめて検索できます' },
@@ -1776,7 +1789,7 @@ const loginMilestones=[3,7,15,30,60,100,200,300,400,500,600,700,800,900,1000];
 const loginNextReward=computed(()=>{const d=loginDays.value;for(const m of loginMilestones){if(d<m)return m-d}return 0});
 const loginMessage=computed(()=>{const d=loginDays.value;if(d<=1)return copy.loginFirst;if(d<7)return copy.loginGettingUsed;if(d<30)return copy.loginRegular;if(d<100)return copy.loginThankYou;if(d<365)return copy.loginAmazing;return copy.loginLegend});
 async function fetchLoginRanking(){try{const res=await misskeyApi('hata/login-ranking',{});if(res&&typeof res.rank==='number'){loginRanking.value=res.rank;loginTotal.value=res.totalUsers??0}}catch(e){console.warn('Login ranking unavailable:',e)}}
-const settings=ref<any>({darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,showFeedbackNotif:true,showEarthquake:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],openOnStart:false,theme:'akatsuki',animations:true,todoSortModes:{},todoMobileTabOrder:['today','upcoming','all','completed','more']});
+const settings=ref<any>({darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,showFeedbackNotif:true,showEarthquake:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],theme:'akatsuki',animations:true,todoSortModes:{},todoMobileTabOrder:['today','upcoming','all','completed','more']});
 const hatadyCookingRoute = computed(() => routeRouter.currentRef.value.props.get('tab') === 'recipe'
 	&& routeRouter.currentRef.value.props.get('from') === 'hatady'
 	&& routeRouter.currentRef.value.props.get('action') === 'cooking');
@@ -2950,6 +2963,7 @@ const flower = ref<HataskGrowingFlower>(createHataskGrowingFlower({ emoji: '🌱
 const gallery=ref<any[]>([]);
 const flowerCare = ref<InstanceType<typeof HataskFlowerCare> | null>(null);
 const flowerState = ref<HataskFlowerState | null>(null);
+const archiveVisibleCount = ref(100);
 const flowerVisibility = ref<FlowerVisibility>('public');
 const flowerVisibilityOptions = computed(() => [
 	{ value: 'public' as const, icon: 'ti-world', label: copy.flowerVisibilityPublic },
@@ -3464,20 +3478,58 @@ async function changeFolderColor(folderId:string){if(plannerReadOnly.value)retur
 
 type HataskJournalKey = 'moods' | 'meals' | typeof HATASK_MEAL_TEMPLATE_KEY;
 const journalWrites = new Set<HataskJournalKey>();
+const pendingJournalSaves = new Set<Promise<void>>();
+const recordImportPending = ref(false);
+
+async function readJournalForImport(key: 'moods' | 'meals'): Promise<unknown[]> {
+	try {
+		const rows: unknown = await misskeyApi('i/registry/get', { scope: SCOPE, key });
+		if (!Array.isArray(rows)) throw new TypeError('Invalid Hatask journal collection');
+		return rows;
+	} catch (error) {
+		if ((error as { code?: string } | null)?.code === 'NO_SUCH_KEY') return [];
+		throw error;
+	}
+}
+
+const unregisterHataskRecordSync = registerHataskRecordSync({
+	beforeImport: async () => {
+		if (!dataLoaded.value) throw new Error('Hatask journals are still loading');
+		recordImportPending.value = true;
+		await Promise.all([...pendingJournalSaves]);
+	},
+	markUnsafe: () => { journalValidKeys.value = journalValidKeys.value.filter(key => key !== 'moods' && key !== 'meals'); },
+	afterImport: async () => {
+		const [nextMoods, nextMeals] = await Promise.all([readJournalForImport('moods'), readJournalForImport('meals')]);
+		moodJournalRows.value = nextMoods;
+		mealJournalRows.value = nextMeals;
+		loadedKeys.add('moods'); loadedKeys.add('meals');
+		journalValidKeys.value.push('moods', 'meals');
+		await refreshHataskFlowerStateAfterUpdate();
+	},
+	finish: () => { recordImportPending.value = false; },
+});
+onUnmounted(unregisterHataskRecordSync);
 
 function journalWritable(key: string): boolean {
-	return dataLoaded.value && loadedKeys.has(key) && journalValidKeys.value.includes(key);
+	return !recordImportPending.value && dataLoaded.value && loadedKeys.has(key) && journalValidKeys.value.includes(key);
 }
 
 async function commitJournalChange(key: HataskJournalKey, change: HataskJournalChange): Promise<void> {
 	if (!journalWritable(key) || journalWrites.has(key)) throw new Error('Hatask journal write is not ready');
 	const target = key === 'moods' ? moodJournalRows : key === 'meals' ? mealJournalRows : mealTemplates;
 	journalWrites.add(key);
-	try {
-		// Keep the original arrays and drafts until the server acknowledges the write.
-		target.value = await persistJournalChange(target.value, change, next => registrySet(key, next));
-		if (props.embedded) hataGoesHost?.changed();
-	} finally { journalWrites.delete(key); }
+	const save = (async () => {
+		try {
+			// Keep the original arrays and drafts until the server acknowledges the write.
+			target.value = await persistJournalChange(target.value, change, next => registrySet(key, next));
+			if (props.embedded) hataGoesHost?.changed();
+		} finally {
+			journalWrites.delete(key);
+		}
+	})();
+	pendingJournalSaves.add(save);
+	try { await save; } finally { pendingJournalSaves.delete(save); }
 }
 
 async function saveMoodEntry(entry: HataskJournalEntry, existingId?: string): Promise<void> {
@@ -4006,7 +4058,7 @@ try {
 
 const initFlower = pickRandomFlora();
 	const defaultFlower = createHataskGrowingFlower({ emoji: initFlower.emoji, name: generateFlowerName(initFlower), speciesId: initFlower.speciesId, rare: initFlower.rare });
-const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, recipeConsentShown: false, theme: 'akatsuki', animations: true, todoSortModes: {}, todoMobileTabOrder: ['today', 'upcoming', 'all', 'completed', 'more'] };
+const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, recipeConsentShown: false, theme: 'akatsuki', animations: true, todoSortModes: {}, todoMobileTabOrder: ['today', 'upcoming', 'all', 'completed', 'more'] };
 
 // 各データを個別に取得（1つの失敗が他に影響しないようにする）
 const loadResults = await Promise.allSettled([
@@ -4567,6 +4619,13 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-calendar-page{align-items:start}
 .htk-calendar-page > .htk-planner-shell{grid-column:1/-1;grid-row:1}
 .htk-journal-page{display:block;min-width:0}
+.htk-record-archive-list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
+.htk-record-archive-list li{padding:8px 10px;border:1px solid var(--htk-rule,rgba(127,127,127,.25));border-radius:10px}
+.htk-record-archive-list summary{cursor:pointer}
+.htk-record-archive-list dl{margin:10px 0 0;padding-left:16px}
+.htk-record-archive-list dl div{display:flex;gap:8px;margin-top:4px}
+.htk-record-archive-list dt{min-width:5em;opacity:.75}
+.htk-record-archive-list time{margin-left:auto;font-size:.82em;opacity:.75}
 @media(max-width:900px){.htk-panels{grid-template-columns:1fr}}
 .htk-rsvp-b{padding:5px 10px;border-radius:8px;font-size:.7rem;font-weight:600;border:1px solid var(--fill-3);background:var(--fill);color:var(--text-2);cursor:pointer;transition:all .2s;font-family:inherit}
 .htk-rsvp-summary{margin-top:12px;padding:14px;background:var(--fill);border-radius:14px;border:1px solid var(--hair)}

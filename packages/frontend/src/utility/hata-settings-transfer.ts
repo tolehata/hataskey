@@ -126,7 +126,7 @@ export const HATA_SETTINGS_CATEGORIES: readonly CategoryDefinition[] = [
 				darkMode: isBoolean, autoTheme: isBoolean, weekStart: value => value === 'mon' || value === 'sun',
 				showClock: isBoolean, showEvents: isBoolean, showFlower: isBoolean, showMoodSummary: isBoolean,
 				showMealSection: isBoolean, showFeedbackNotif: isBoolean, showEarthquake: isBoolean,
-				moodRemind: isBoolean, moodRemindTimes: isStringArray, moodRemindTimeZone: isHataskMoodReminderTimeZone, openOnStart: isBoolean,
+				moodRemind: isBoolean, moodRemindTimes: isStringArray, moodRemindTimeZone: isHataskMoodReminderTimeZone,
 				showMealSummary: isBoolean, theme: isString, animations: isBoolean,
 			},
 		}],

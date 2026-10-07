@@ -16,6 +16,7 @@ export type HataskZukanEntry = HataskFlowerSpecies & {
 };
 export type HataskFlowerZukan = {
 	catalog: HataskFlowerSpecies[]; entries: HataskZukanEntry[];
+	archivedEntries?: Omit<HataskZukanEntry, 'rank' | 'first' | 'firstUser'>[];
 	unlockedSeasons: HataskFlowerSeason[]; seedAvailable: HataskFlowerSeason[];
 	seedClaimed: HataskFlowerSeason[]; rareSeeds: HataskFlowerSeason[];
 };

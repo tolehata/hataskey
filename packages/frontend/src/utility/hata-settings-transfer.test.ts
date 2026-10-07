@@ -365,24 +365,27 @@ describe('旗鯖独自設定の入出力', () => {
 		expect(JSON.parse(local.get('hataSideStudioUiS')!).profiles[0].name).toBe('UI S');
 	});
 
-	test('新しいHatask設定の未知項目は捨て、既存項目を残して既知項目だけを上書きする', async () => {
+	test('廃止した起動時表示と未知項目は捨て、既存項目を残して既知項目だけを上書きする', async () => {
 		api.mockImplementation((endpoint: string, data: { value?: unknown }) => {
-			if (endpoint === 'i/registry/get') return Promise.resolve({ showClock: true, theme: 'kisetsu' });
+			if (endpoint === 'i/registry/get') return Promise.resolve({ showClock: true, theme: 'kisetsu', openOnStart: true });
 			if (endpoint === 'i/registry/set') return Promise.resolve(data.value);
 			return Promise.reject(new Error('unexpected'));
 		});
+		const exported = await createHataSettingsTransfer(['hatask']);
+		expect(exported.categories.hatask?.registry?.settings).toEqual({ showClock: true, theme: 'kisetsu' });
 		const file = parseHataSettingsTransfer(JSON.stringify({
 			format: HATA_SETTINGS_TRANSFER_FORMAT,
 			formatVersion: 2,
 			serverVersion: '2027.1.0-hata.13.0',
 			exportedAt: '2027-01-01T00:00:00.000Z',
-			categories: { hatask: { registry: { settings: { showClock: false, futureSetting: 'unknown' } } } },
+			categories: { hatask: { registry: { settings: { showClock: false, openOnStart: true, futureSetting: 'unknown' } } } },
 		})).file;
 		const result = await applyHataSettingsTransfer(file, ['hatask']);
 		const setCall = api.mock.calls.find(call => call[0] === 'i/registry/set');
-		expect(setCall?.[1].value).toEqual({ showClock: false, theme: 'kisetsu' });
+		expect(setCall?.[1].value).toEqual({ showClock: false, theme: 'kisetsu', openOnStart: true });
 		expect(result.applied).toBe(1);
 		expect(result.skipped).toContainEqual(expect.objectContaining({ key: 'settings.futureSetting' }));
+		expect(result.skipped).toContainEqual(expect.objectContaining({ key: 'settings.openOnStart' }));
 	});
 
 	test('Hatadyはテーマだけを書き出し、読み込み時も旧言語設定を消さない', async () => {

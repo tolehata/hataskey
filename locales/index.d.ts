@@ -27278,6 +27278,80 @@ export interface Locale extends ILocale {
                  */
                 "dataNoChanges": string;
             };
+            "_records": {
+                /**
+                 * きもち・ごはん・お花の記録
+                 */
+                "title": string;
+                /**
+                 * きもち、ごはん、咲かせたお花の記録をJSONで退避・取り込みできます。取り込んだお花は自分だけの保管記録として表示します。
+                 */
+                "description": string;
+                /**
+                 * 記録を書き出す
+                 */
+                "export": string;
+                /**
+                 * 記録を取り込む
+                 */
+                "import": string;
+                /**
+                 * きもち{moods}件・ごはん{meals}件・お花{flowers}件を確認しました。新しいIDだけ追加し、取り込んだ記録からごほうびは発生しません。続けますか？
+                 */
+                "mergeWarning": ParameterizedString<"moods" | "meals" | "flowers">;
+                /**
+                 * 記録の退避ファイルを作成しました
+                 */
+                "exported": string;
+                /**
+                 * 記録を書き出せませんでした
+                 */
+                "exportFailed": string;
+                /**
+                 * {added}件を追加しました（同じ記録 {duplicates}件、内容が異なる同じID {conflicts}件）
+                 */
+                "imported": ParameterizedString<"added" | "duplicates" | "conflicts">;
+                /**
+                 * 記録を取り込めませんでした。ファイルと保存済みデータを確認してください
+                 */
+                "importFailed": string;
+                /**
+                 * 記録は保存されましたが、画面を更新できませんでした。ページを再読み込みしてください
+                 */
+                "refreshFailed": string;
+                /**
+                 * 保存結果を確認できませんでした。記録の編集を止めています。ページを再読み込みして確認してください
+                 */
+                "unknownState": string;
+                /**
+                 * 別の記録操作が進行中です。完了してからもう一度お試しください
+                 */
+                "operationBusy": string;
+                /**
+                 * 取り込んだお花の記録
+                 */
+                "archiveTitle": string;
+                /**
+                 * 以前に咲かせたお花の思い出です。現在の図鑑の発見数やごほうびには含まれません。
+                 */
+                "archiveDescription": string;
+                /**
+                 * お花
+                 */
+                "archiveName": string;
+                /**
+                 * 花言葉
+                 */
+                "archiveMeaning": string;
+                /**
+                 * 思い出
+                 */
+                "archiveMemory": string;
+                /**
+                 * 続きを見る
+                 */
+                "archiveMore": string;
+            };
             "_settings": {
                 /**
                  * Hatask の設定
@@ -27456,14 +27530,6 @@ export interface Locale extends ILocale {
                  */
                 "syncFlower": string;
                 /**
-                 * 起動時
-                 */
-                "startup": string;
-                /**
-                 * アプリ起動時にHataskを表示
-                 */
-                "openOnStartup": string;
-                /**
                  * 通知
                  */
                 "notifications": string;
@@ -27539,14 +27605,6 @@ export interface Locale extends ILocale {
                  * Hatask の主要機能をステップごとにハイライト表示しながら解説します。
                  */
                 "tutorialDescription": string;
-                /**
-                 * Hatask を開く
-                 */
-                "openHatask": string;
-                /**
-                 * Hatask のホーム画面を開きます。
-                 */
-                "openHataskDescription": string;
                 /**
                  * 変更は保存され、次に Hatask を開いたときに反映されます。
                  */
@@ -42377,7 +42435,7 @@ export interface Locale extends ILocale {
                  */
                 "colorByVisibility": string;
                 /**
-                 * 公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変えます。UI Sでは、自分と他のユーザーのノートの左辺にも公開範囲に応じた色を表示します。色とオン・オフは投稿フォームと共通です。
+                 * 公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変えます。Hataskey UIとUI Sのウィジェット・デッキの投稿フォームにも適用されます。UI Sでは、自分と他のユーザーのノートの左辺にも公開範囲に応じた色を表示します。色とオン・オフは投稿フォームと共通です。
                  */
                 "colorByVisibilityCaption": string;
                 /**

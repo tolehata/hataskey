@@ -67,35 +67,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 
-			<section :class="[$style.card, $style.akatsukiNav]" data-akatsuki-navigation data-hatagoes-setting="navigation" aria-label="Hataskのナビゲーション設定">
-				<h2 :class="$style.akNavHeading">スマホの下部タブ</h2>
-				<p :class="$style.akNavNote">左のつまみをドラッグして並べ替え、各項目の↓から表示する機能を選べます。上から順に、下部タブの左から右へ並びます</p>
-				<draggable
-					:modelValue="editableAkatsukiTabs"
-					:class="$style.akTabList"
-					:itemKey="akatsukiTabKey"
-					handle="[data-ak-drag]"
-					ghostClass="hataskTabDragGhost"
-					:animation="0"
-					:disabled="settingsSaving"
-					role="list"
-					aria-label="スマホの下部タブの4枠"
-					@update:modelValue="reorderAkatsukiTabs"
-				>
-					<template #item="{element: tab, index}">
-						<div :class="$style.akTabRow" :data-ak-slot="index" :data-tab="tab" role="listitem">
-							<button type="button" :class="$style.akDragHandle" data-ak-drag tabindex="-1" :disabled="settingsSaving" :aria-label="navigationChoice(tab).label + 'をドラッグして並べ替え'"><i class="ti ti-grip-vertical" aria-hidden="true"></i></button>
-							<span :class="$style.akTabNumber">{{ index+1 }}</span>
-							<i :class="[navigationChoice(tab).icon, $style.akTabIcon]" aria-hidden="true"></i>
-							<div :class="$style.akTabLabel"><span :class="(tab === 'hataskapps' || tab === 'apps') ? $style.akTabWordmark : undefined">{{ navigationChoice(tab).label }}</span><small v-if="isHataskAkatsukiRequiredTab(tab)">常に表示・並べ替えのみ</small></div>
-							<button type="button" :class="$style.akTabMenu" :data-ak-menu="tab" :disabled="settingsSaving" aria-haspopup="menu" :aria-label="navigationChoice(tab).label + 'の下部タブ設定'" @click="openAkatsukiTabMenu(tab, $event)"><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
-						</div>
-					</template>
-				</draggable>
-				<p :class="$style.akNavNote">ホームとHatask Appは常に表示され、位置だけ変えられます。同じ機能は重複して選べません</p>
-				<p :class="$style.akNavNote">設定はアカウントに保存され、スマホ・PCで共通です。PCの左メニューの並びは変わりません</p>
-			</section>
-
 			<!-- カレンダー -->
 			<div :class="$style.card" data-hatagoes-setting="calendar">
 				<div :class="$style.label">{{ copy.calendar }}</div>
@@ -151,10 +122,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div v-if="plannerSafetyMessage" :class="$style.backupMeta" role="status" aria-live="polite">{{ plannerSafetyMessage }}</div>
 			</div>
 
-			<!-- 起動時 -->
-			<div :class="$style.card" data-hatagoes-setting="startup">
-				<div :class="$style.label">{{ copy.startup }}</div>
-					<div :class="$style.row"><span>{{ copy.openOnStartup }}</span><button type="button" :class="[$style.sw, settings.openOnStart && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="copy.openOnStartup" :aria-checked="settings.openOnStart" @click="toggle('openOnStart')"></button></div>
+			<div :class="$style.card" data-hatagoes-setting="recordTransfer">
+				<div :class="$style.label">{{ recordCopy.title }}</div>
+				<div :class="$style.desc">{{ recordCopy.description }}</div>
+				<div :class="$style.safetyActions">
+					<MkButton rounded small :disabled="recordBusy" @click="exportRecordData"><i class="ti ti-download" aria-hidden="true"></i> {{ recordCopy.export }}</MkButton>
+					<MkButton rounded small :disabled="recordBusy" @click="recordImportInput?.click()"><i class="ti ti-file-upload" aria-hidden="true"></i> {{ recordCopy.import }}</MkButton>
+					<input ref="recordImportInput" :class="$style.hiddenInput" type="file" accept="application/json,.json" @change="importRecordData">
+				</div>
+				<div v-if="recordMessage" :class="$style.backupMeta" role="status" aria-live="polite">{{ recordMessage }}</div>
 			</div>
 
 			<!-- 通知 -->
@@ -189,13 +165,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.desc">{{ copy.tutorialDescription }}</div>
 			</div>
 
-			<!-- Hatask本体を開く -->
-			<div :class="$style.card" data-hatagoes-setting="standalone">
-				<div :class="$style.label">{{ copy.openHatask }}</div>
-				<div :class="$style.desc">{{ copy.openHataskDescription }}</div>
-				<MkButton primary rounded @click="openHatask"><i class="ti ti-external-link"></i> {{ copy.openHatask }}</MkButton>
-			</div>
-
 			<div :class="$style.note" role="status">{{ settingsSaving ? plannerCopy.saving : copy.savedNote }}</div>
 		</template>
 	</div>
@@ -206,8 +175,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, shallowRef, computed, nextTick, onMounted, inject, watch } from 'vue';
 import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 import { revealHatagoesSetting } from '@/utility/hatagoes-setting-section.js';
-import draggable from 'vuedraggable';
-import type { MenuItem } from '@/types/menu.js';
 import type { HataskPlannerTheme } from '@/components/hatask/hatask-planner-types.js';
 import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
@@ -217,22 +184,19 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import * as os from '@/os.js';
 import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
-import { useHataGoesPopupMenu } from '@/utility/hatagoes-popup.js';
 import { createHataskPlannerApiStoragePort } from '@/utility/hatask-planner-api.js';
 import { createHataskPlannerIntegrity, HATASK_PLANNER_SCOPE, migrateHataskPlannerStorage, normalizeHataskPlannerData, stablePlannerJson, verifyHataskPlannerIntegrity } from '@/utility/hatask-planner-storage.js';
 import type { HataskPlannerCollectionKey, HataskPlannerEvent, HataskPlannerRawData, HataskPlannerTemplate } from '@/utility/hatask-planner-storage.js';
 import { normalizeHataskPlannerTemplates } from '@/utility/hatask-planner-templates.js';
-import { isHataskAkatsukiRequiredTab, moveHataskAkatsukiMobileTab, normalizeHataskAkatsukiMobileTabs, replaceHataskAkatsukiMobileTab } from '@/utility/hatask-akatsuki-navigation.js';
 import { createHataskMoodReminderPatch, formatHataskTimeZone, getHataskDeviceTimeZone, getHataskMoodReminderTimeZone, HATASK_MOOD_REMINDER_TIMES } from '@/utility/hatask-mood-reminder.js';
 import { $i } from '@/i.js';
 import { instance } from '@/instance.js';
 import { host } from '@@/js/config.js';
 import { store } from '@/store.js';
 import HataskThemePreview from '@/components/hatask/HataskThemePreview.vue';
-import type { HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';
+import { acquireHataskRecordOperation, downloadHataskRecords, exportHataskRecords, finishHataskRecordImport, importHataskRecords, markHataskRecordViewsUnsafe, parseHataskRecordsFile, refreshHataskRecordViews, waitForHataskRecordWrites, HATASK_RECORD_MAX_BYTES } from '@/utility/hatask-record-transfer.js';
 
 const dialogs = useHataGoesDialogs();
-const popupMenu = useHataGoesPopupMenu();
 const emit = defineEmits<{ (ev:'closed'):void; (ev:'reopenTutorial'):void; (ev:'changed', settings:any):void }>();
 /**
  * 旗鯖fork: 窓と埋め込みのどちらでも通る参照の型。
@@ -246,6 +210,8 @@ const copy = i18n.ts._hata._hatask._settings;
 const tx = i18n.tsx._hata._hatask._settings;
 const plannerCopy = i18n.ts._hata._hatask._planner;
 const plannerTx = i18n.tsx._hata._hatask._planner;
+const recordCopy = i18n.ts._hata._hatask._records;
+const recordTx = i18n.tsx._hata._hatask._records;
 
 // Hatask本体と同じ registry スコープ/キーを使うことでデータを共有・同期する
 const SCOPE = ['client', 'hatask'];
@@ -254,7 +220,6 @@ const defaultSettings: any = {
 	autoTheme: true,
 	weekStart: 'mon',
 	moodRemind: false,
-	openOnStart: false,
 	theme: 'akatsuki',
 	animations: true,
 };
@@ -286,76 +251,66 @@ const settings = ref<any>({ ...defaultSettings });
 const isAkatsuki = computed(() => !settings.value.theme || settings.value.theme === 'akatsuki');
 const previewMode = computed<'light' | 'dark'>(() => (settings.value.autoTheme ? store.r.darkMode.value : settings.value.darkMode) ? 'dark' : 'light');
 const autoAppearanceLabel = computed(() => isAkatsuki.value || settings.value.theme === 'koke' ? copy.autoAppearanceTheme : copy.autoAppearance);
-const navigationChoices: { id: HataskAkatsukiTab; label: string; shortLabel: string; icon: string }[] = [
-	{ id: 'home', label: 'ホーム', shortLabel: 'ホーム', icon: 'ti ti-home' },
-	{ id: 'cal', label: 'カレンダー', shortLabel: '予定', icon: 'ti ti-calendar-event' },
-	{ id: 'todo', label: 'ToDo', shortLabel: 'ToDo', icon: 'ti ti-checkbox' },
-	{ id: 'mood', label: 'きもち', shortLabel: 'きもち', icon: 'ti ti-mood-smile' },
-	{ id: 'meal', label: 'ごはん', shortLabel: 'ごはん', icon: 'ti ti-soup' },
-	{ id: 'recipe', label: 'レシピ', shortLabel: 'レシピ', icon: 'ti ti-chef-hat' },
-	{ id: 'garden', label: 'おはな', shortLabel: 'おはな', icon: 'ti ti-flower' },
-	{ id: 'support', label: '支援情報', shortLabel: '支援情報', icon: 'ti ti-heart-handshake' },
-	{ id: 'ranking', label: 'ランキング', shortLabel: 'ランキング', icon: 'ti ti-trophy' },
-	{ id: 'hataskapps', label: 'Hatask App', shortLabel: 'Hatask', icon: 'ti ti-layout-grid' },
-	{ id: 'apps', label: 'Hataskey App', shortLabel: 'Apps', icon: 'ti ti-app-window' },
-];
-const akatsukiTabs = computed(() => normalizeHataskAkatsukiMobileTabs(settings.value.akatsukiMobileTabs, settings.value.akatsukiShortcut));
-const pendingAkatsukiTabs = ref<HataskAkatsukiTab[] | null>(null);
-const editableAkatsukiTabs = computed(() => pendingAkatsukiTabs.value ?? akatsukiTabs.value);
-function akatsukiTabKey(tab: HataskAkatsukiTab): string { return tab; }
-function navigationChoice(id: HataskAkatsukiTab) { return navigationChoices.find(choice => choice.id === id) ?? navigationChoices[0]; }
-
-async function saveAkatsukiNavigation(tabs: HataskAkatsukiTab[], preview = false): Promise<void> {
-	if (!settingsLoaded.value || settingsSaving.value) return;
-	if (tabs.every((tab, index) => tab === akatsukiTabs.value[index])) return;
-	if (preview) pendingAkatsukiTabs.value = tabs;
-	try { await saveSettings({ akatsukiMobileTabs: tabs }); } finally { pendingAkatsukiTabs.value = null; }
-}
-function reorderAkatsukiTabs(value: unknown): void {
-	// A drag may only permute the current four items; never save defaults for an invalid drop.
-	if (!Array.isArray(value) || value.length !== 4 || new Set(value).size !== 4 || !value.every(tab => akatsukiTabs.value.includes(tab))) return;
-	void saveAkatsukiNavigation([...value], true);
-}
-async function openAkatsukiTabMenu(tab: HataskAkatsukiTab, event: MouseEvent): Promise<void> {
-	if (!settingsLoaded.value || settingsSaving.value) return;
-	const anchor = event.currentTarget as HTMLElement;
-	const region = anchor.closest('[data-akatsuki-navigation]');
-	let save: Promise<void> | undefined;
-	let destination = tab;
-	const menu: MenuItem[] = [];
-	if (isHataskAkatsukiRequiredTab(tab)) {
-		menu.push({ type: 'label', text: '常に表示・並べ替えのみ' });
-	} else {
-		menu.push({ type: 'label', text: '表示する機能' });
-		for (const choice of navigationChoices.filter(choice => !akatsukiTabs.value.includes(choice.id))) {
-			menu.push({ text: choice.label, textFont: choice.id === 'apps' || choice.id === 'hataskapps' ? 'righteous' : undefined, icon: choice.icon, action: () => {
-				destination = choice.id;
-				save = saveAkatsukiNavigation(replaceHataskAkatsukiMobileTab(akatsukiTabs.value, akatsukiTabs.value.indexOf(tab), choice.id));
-			} });
-		}
-		menu.push({ type: 'divider' });
-	}
-	// Reuse the requested dropdown for positioning without drag or custom key bindings.
-	menu.push({ type: 'parent', text: '位置を変更', icon: 'ti ti-list-numbers', children: [0, 1, 2, 3].map(index => ({
-		text: `${index + 1}番目${index === 0 ? '（左端）' : index === 3 ? '（右端）' : ''}`,
-		active: akatsukiTabs.value.indexOf(tab) === index,
-		action: () => { save = saveAkatsukiNavigation(moveHataskAkatsukiMobileTab(akatsukiTabs.value, akatsukiTabs.value.indexOf(tab), index)); },
-	})) });
-	await popupMenu(menu, anchor);
-	if (!save) return;
-	await save;
-	await nextTick();
-	// The old anchor can be disabled during saving or removed by replacement.
-	// Restore only lost focus, never steal it from a control the user moved to.
-	if (region?.isConnected && (window.document.activeElement === window.document.body || window.document.activeElement === anchor)) {
-		const target = akatsukiTabs.value.includes(destination) ? destination : tab;
-		region.querySelector<HTMLButtonElement>(`[data-ak-menu="${target}"]`)?.focus({ preventScroll: true });
-	}
-}
 const plannerImportInput = ref<HTMLInputElement|null>(null);
 const plannerSafetyBusy = ref(false);
 const plannerSafetyMessage = ref('');
 const plannerLastBackup = ref('');
+const recordImportInput = ref<HTMLInputElement | null>(null);
+const recordBusy = ref(false);
+const recordMessage = ref('');
+
+async function exportRecordData(): Promise<void> {
+	if (recordBusy.value) return;
+	const token = acquireHataskRecordOperation();
+	if (token == null) { recordMessage.value = recordCopy.operationBusy; return; }
+	recordBusy.value = true; recordMessage.value = '';
+	try {
+		await waitForHataskRecordWrites(token);
+		downloadHataskRecords(await exportHataskRecords());
+		recordMessage.value = recordCopy.exported;
+	} catch (error) {
+		console.error('Hatask records export failed:', error);
+		recordMessage.value = recordCopy.exportFailed;
+	} finally {
+		finishHataskRecordImport(token);
+		recordBusy.value = false;
+	}
+}
+
+async function importRecordData(event: Event): Promise<void> {
+	const input = event.target as HTMLInputElement;
+	const file = input.files?.[0]; input.value = '';
+	if (!file || recordBusy.value) return;
+	recordBusy.value = true; recordMessage.value = '';
+	let saved = false;
+	let sent = false;
+	let token: symbol | null = null;
+	try {
+		if (file.size > HATASK_RECORD_MAX_BYTES) throw new TypeError('File too large');
+		const transfer = parseHataskRecordsFile(await file.text());
+		const counts = transfer.data;
+		const { canceled } = await dialogs.confirm({ type: 'warning', text: recordTx.mergeWarning({ moods: String(counts.moods.length), meals: String(counts.meals.length), flowers: String(counts.flowers.length) }) });
+		if (canceled) return;
+		token = acquireHataskRecordOperation();
+		if (token == null) { recordMessage.value = recordCopy.operationBusy; return; }
+		await waitForHataskRecordWrites(token);
+		markHataskRecordViewsUnsafe(token);
+		sent = true;
+		const result = await importHataskRecords(transfer);
+		saved = true;
+		await refreshHataskRecordViews(token);
+		const total = Object.values(result.added).reduce((sum, count) => sum + count, 0);
+		const duplicates = Object.values(result.duplicates).reduce((sum, count) => sum + count, 0);
+		const conflicts = Object.values(result.conflicts).reduce((sum, count) => sum + count, 0);
+		recordMessage.value = recordTx.imported({ added: String(total), duplicates: String(duplicates), conflicts: String(conflicts) });
+	} catch (error) {
+		console.error('Hatask records import failed:', error);
+		recordMessage.value = saved ? recordCopy.refreshFailed : sent ? recordCopy.unknownState : recordCopy.importFailed;
+	} finally {
+		if (token != null) finishHataskRecordImport(token);
+		recordBusy.value = false;
+	}
+}
 function setV2Theme(id:string) { if (v2Themes.value.some(theme => theme.id === id)) void saveSettings({ theme: id }); }
 
 // 旗鯖fork(v2): テーマ選択カルーセル(左右スライド)。選択中を中央・前後をフェードで両脇に。
@@ -589,8 +544,6 @@ function onWeekStart(ev:Event) {
 	if (value === 'mon' || value === 'sun') void saveSettings({ weekStart: value });
 }
 
-function openHatask() { dialog.value?.close(); if (hataGoesHost?.openStandalone) hataGoesHost.openStandalone('/hatask'); else router.push('/hatask'); }
-
 // 旗鯖fork(#37): チュートリアル再表示。
 //   Hatask本体内で開いた場合は親(hatask.vue)が emit を受けて reopenTutorial を実行する。
 //   旗鯖独自設定から開いた場合は Hatask へ遷移してから手動で再表示してもらう必要がある。
@@ -750,26 +703,6 @@ async function revealFocusedSetting(): Promise<void> {
 .themeJp { font-size:.72rem; line-height:1.6; opacity:.65; white-space:pre-line; overflow-wrap:anywhere; }
 .themeCheck { display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:.76rem; font-weight:700; opacity:.6; margin-top:2px; > i { font-size:1em; } }
 .themeCheckOn { opacity:1; color: var(--MI_THEME-accent); }
-
-/* 暁モックの選択ピルと下部ナビの形。外側の設定画面・旧4テーマは変えない。 */
-.akatsukiNav { color:var(--MI_THEME-fg); font-family:'Zen Kaku Gothic New',system-ui,sans-serif; }
-.akNavHeading { margin:22px 0 0; padding-bottom:10px; border-bottom:1px solid var(--MI_THEME-divider); font-family:'Zen Maru Gothic',system-ui,sans-serif; font-size:12px; font-weight:800; letter-spacing:.08em; }
-.akNavHeading:first-child { margin-top:0; }
-.akNavNote { margin:10px 0 0; color:var(--MI_THEME-fg); font-size:12px; line-height:1.75; text-wrap:pretty; }
-.akTabList { display:grid; gap:8px; margin-top:16px; }
-.akTabRow { display:flex; align-items:center; gap:8px; min-width:0; min-height:60px; padding:4px 6px; border:1px solid var(--MI_THEME-divider); border-radius:14px; background:var(--MI_THEME-panel); }
-.akDragHandle, .akTabMenu { flex:0 0 44px; width:44px; height:44px; display:grid; place-items:center; padding:0; border:0; border-radius:10px; background:transparent; color:var(--MI_THEME-fg); font-size:20px; cursor:pointer; }
-.akDragHandle { cursor:grab; touch-action:none; }
-.akDragHandle:active { cursor:grabbing; }
-.akDragHandle:disabled, .akTabMenu:disabled { opacity:.5; cursor:default; }
-.akTabMenu:hover:not(:disabled) { background:var(--MI_THEME-buttonHoverBg); }
-.akTabMenu:focus-visible { outline:3px solid var(--MI_THEME-accent); outline-offset:2px; }
-.akTabNumber { flex:0 0 1em; font-size:11px; color:var(--MI_THEME-fgMuted); text-align:center; }
-.akTabIcon { flex:0 0 22px; text-align:center; font-size:20px; }
-.akTabLabel { flex:1; min-width:0; display:grid; gap:3px; font-size:13px; font-weight:700; overflow-wrap:anywhere; }
-.akTabWordmark { font-family:'Righteous',system-ui,sans-serif; font-weight:400; font-synthesis:none; }
-.akTabLabel > small { color:var(--MI_THEME-fgMuted); font-size:10px; font-weight:400; }
-.akTabRow:global(.hataskTabDragGhost) { opacity:.35; outline:2px dashed var(--MI_THEME-accent); }
 
 @container (max-width:520px) {
 	.themeCard { width:min(192px,100%); }

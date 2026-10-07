@@ -7,6 +7,7 @@ import { IdService } from '@/core/IdService.js';
 import { HATASK_FLOWER_CATALOG, HATASK_FLOWER_SEASONS, type HataskFlowerSeason } from '@/misc/hatask-flower-catalog.js';
 import { DEFAULT_FLOWER_RULES, flowerDay, flowerResetAt, lockHataskFlowerWallet, normalizeFlowerTodoTitle } from './hatask-flower-v2.js';
 import { validTodayJournalRow } from './hatagoes-daily.js';
+import { FLOWER_ARCHIVE_KEY, RECORD_SCOPE } from '@/server/api/endpoints/hatask/records/_shared.js';
 import type { DataSource, EntityManager } from 'typeorm';
 
 type Flower = { seedKey?: string; id: string; speciesId: string; season: HataskFlowerSeason; emoji: string; name: string; hanakotoba: string; rare: boolean; startedAt: number; lastGrowthAt: number; totalMinutes: number; targetMinutes: number; progress: number; memory: string[] };
@@ -242,6 +243,8 @@ export class HataskFlowerV2Service {
 		const today = { todo: 0, hatady: 0, login: 0 };
 		for (const row of rows) if (row.source in today) today[row.source as keyof typeof today] = row.count;
 		const entries = (await m.query('SELECT entry FROM hatask_flower_harvest WHERE "userId"=$1 ORDER BY id DESC', [w.userId])).map((r: { entry: Record<string, unknown> }) => r.entry);
+		const archiveRows: { value: unknown }[] = await m.query('SELECT value FROM registry_item WHERE "userId"=$1 AND domain IS NULL AND scope=$2 AND key=$3 ORDER BY "updatedAt" ASC,id ASC', [w.userId, [...RECORD_SCOPE], FLOWER_ARCHIVE_KEY]);
+		const archivedEntries = archiveRows.flatMap(row => Array.isArray(row.value) ? row.value : []);
 		const seedAvailable: HataskFlowerSeason[] = [];
 		for (const [i, season] of HATASK_FLOWER_SEASONS.entries()) {
 			const count = new Set(entries.filter((e: { season: string }) => e.season === season).map((e: { speciesId: string }) => e.speciesId).filter((id: string) => HATASK_FLOWER_CATALOG.some(f => f.id === id))).size;
@@ -265,7 +268,7 @@ export class HataskFlowerV2Service {
 							: today.todo >= rules.todoCap ? { granted: false, why: 'cap' } : { granted: false };
 		}
 		await this.save(m, w);
-		return { todoRewards, drops: w.drops, store: 20, today, caps: { todo: rules.todoCap, hatady: rules.hatadyCap, login: rules.loginCap }, resetAt: flowerResetAt(now, w.timezone), rules, flower, zukan: { catalog: HATASK_FLOWER_CATALOG, entries, unlockedSeasons: HATASK_FLOWER_SEASONS.filter(s => s !== 'winter' || w.seeds.includes(s)), seedAvailable, seedClaimed: w.seeds, rareSeeds: w.rareSeeds, festivalSeeds }, festival };
+		return { todoRewards, drops: w.drops, store: 20, today, caps: { todo: rules.todoCap, hatady: rules.hatadyCap, login: rules.loginCap }, resetAt: flowerResetAt(now, w.timezone), rules, flower, zukan: { catalog: HATASK_FLOWER_CATALOG, entries, archivedEntries, unlockedSeasons: HATASK_FLOWER_SEASONS.filter(s => s !== 'winter' || w.seeds.includes(s)), seedAvailable, seedClaimed: w.seeds, rareSeeds: w.rareSeeds, festivalSeeds }, festival };
 	}
 	public async show(userId: string, timezone?: string) {
 		return this.db.transaction(async m => { const w = await this.wallet(m, userId, timezone), now = new Date(), rules = await this.rules(m); const reward = await this.grant(m, w, 'login', flowerDay(now, w.timezone), now, rules); return { ...await this.state(m, w, now, rules), reward }; });

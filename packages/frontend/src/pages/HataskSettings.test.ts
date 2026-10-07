@@ -8,7 +8,7 @@ import { parse } from '@vue/compiler-sfc';
 import { createApp, h, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import HataskSettings from './HataskSettings.vue';
-import type { App, PropType } from 'vue';
+import type { App } from 'vue';
 
 vi.mock('@/i18n.js', async () => {
 	const { readFileSync: readLocaleFile } = await import('node:fs');
@@ -16,36 +16,14 @@ vi.mock('@/i18n.js', async () => {
 	const { load } = await import('js-yaml');
 	const locale = load(readLocaleFile(resolveLocalePath(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')) as { _hata: { _hatask: Record<string, Record<string, string>> } };
 	const format = (strings: Record<string, string>) => new Proxy({}, { get: (_target, key) => (params: Record<string, string>) => strings[String(key)].replace(/\{(\w+)\}/gu, (_match, name: string) => params[name]) });
-	return { i18n: { ts: locale, tsx: { _hata: { _hatask: { _settings: format(locale._hata._hatask._settings), _planner: format(locale._hata._hatask._planner) } } } } };
+	return { i18n: { ts: locale, tsx: { _hata: { _hatask: { _settings: format(locale._hata._hatask._settings), _planner: format(locale._hata._hatask._planner), _records: format(locale._hata._hatask._records) } } } } };
 });
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn() }));
 vi.mock('@/router.js', async () => {
 	const { ref } = await import('vue');
 	return { useRouter: () => ({ push: vi.fn(), currentRoute: ref({ path: '/hatask' }) }) };
 });
-vi.mock('@/os.js', () => ({ toast: vi.fn(), popupMenu: vi.fn(async () => undefined) }));
-vi.mock('vuedraggable', async () => {
-	const { defineComponent, Fragment, h: render } = await import('vue');
-	return { default: defineComponent({
-		inheritAttrs: false,
-		props: {
-			modelValue: { type: Array as PropType<string[]>, required: true },
-			itemKey: { type: Function as PropType<(id: string) => string>, required: true },
-			disabled: Boolean,
-			handle: { type: String, default: undefined },
-		},
-		emits: ['update:modelValue'],
-		setup: (props, { attrs, slots, emit }) => () => render('div', {
-			...attrs,
-			'data-test-draggable': '',
-			'data-disabled': String(props.disabled),
-			'data-handle': props.handle,
-			// Exercise the component's actual model update boundary, including invalid
-			// and concurrent emissions; the fixture does not sanitize these values.
-			onHataskReorder: (event: Event) => emit('update:modelValue', (event as CustomEvent<unknown>).detail),
-		}, props.modelValue.map((element, index) => render(Fragment, { key: props.itemKey(element) }, slots.item?.({ element, index })))),
-	}) };
-});
+vi.mock('@/os.js', () => ({ toast: vi.fn() }));
 vi.mock('@/components/MkModalWindow.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
 	return { default: defineComponent({ props: { panelClass: String, panelTheme: String, panelMode: String }, setup: (props, { slots, expose }) => { expose({ close: vi.fn() }); return () => render('div', { 'data-test-window': 'modal', 'data-panel-theme': props.panelTheme, 'data-panel-mode': props.panelMode, class: props.panelClass }, slots.default?.()); } }) };
@@ -61,7 +39,6 @@ vi.mock('@/components/MkButton.vue', async () => {
 
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { popupMenu } from '@/os.js';
 
 const copy = i18n.ts._hata._hatask._settings;
 const mounted: Array<{ app: App<Element>; container: HTMLDivElement }> = [];
@@ -118,7 +95,7 @@ describe('Hatask theme settings and persistence safety', () => {
 		expect(panel?.className).toMatch(/settingsWindow/u);
 		expect(container.querySelector('[data-hatagoes-setting="theme"]')).not.toBeNull();
 		expect(container.querySelector('[data-hatagoes-setting="appearance"]')).not.toBeNull();
-		expect(container.querySelector('[data-hatagoes-setting="navigation"]')).not.toBeNull();
+		expect(container.querySelector('[data-hatagoes-setting="navigation"]')).toBeNull();
 		themeButton(container, copy.themeSuri).click(); await flush();
 		expect(panel?.getAttribute('data-panel-theme')).toBe('suri');
 		expect(panel?.getAttribute('data-panel-mode')).toBe('dark');
@@ -135,10 +112,18 @@ describe('Hatask theme settings and persistence safety', () => {
 	});
 	test('only a missing settings key selects the new default without writing it', async () => {
 		const { container, changed } = await mountSettings();
-		expect(container.querySelector('[data-akatsuki-navigation]')).not.toBeNull();
+		expect(container.querySelector('[data-akatsuki-navigation]')).toBeNull();
 		await openThemes(container);
 		const names = [copy.themeAkatsuki, copy.themeKoke, copy.themeKisetsu, copy.themeKashin, copy.themeSuri, copy.themeHatakyu];
 		expect(names.map(name => themeButton(container, name).getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false', 'false', 'false']);
+		expect(writes()).toHaveLength(0);
+		expect(changed).not.toHaveBeenCalled();
+	});
+	test('保存済みの起動時表示が有効でも設定欄を出さない', async () => {
+		readSettings = async () => ({ openOnStart: true });
+		const { container, changed } = await mountSettings();
+		expect(container.querySelector('[data-hatagoes-setting="startup"]')).toBeNull();
+		expect(container.querySelector('[role="switch"][aria-label="アプリ起動時にHataskを表示"]')).toBeNull();
 		expect(writes()).toHaveLength(0);
 		expect(changed).not.toHaveBeenCalled();
 	});
@@ -150,7 +135,6 @@ describe('Hatask theme settings and persistence safety', () => {
 		const saved = { theme, darkMode: true, autoTheme: false, weekStart: 'sun', custom: { keep: 'data' } };
 		readSettings = async () => saved;
 		const { container, changed } = await mountSettings();
-		expect(navigationOrder(container)).toHaveLength(4);
 		await openThemes(container);
 		expect(themeButton(container, name).getAttribute('aria-pressed')).toBe('true');
 		expect(writes()).toHaveLength(0);
@@ -379,408 +363,36 @@ describe('テーマ選択カルーセルの内容高と説明文', () => {
 	});
 });
 
-function navigationOrder(container: HTMLElement): string[] {
-	return [...container.querySelectorAll<HTMLElement>('[data-ak-slot]')].map(item => item.dataset.tab!);
-}
-
-function navButton(container: HTMLElement, selector: string): HTMLButtonElement {
-	const button = container.querySelector<HTMLButtonElement>(selector);
-	if (!button) throw new Error(`Missing navigation control: ${selector}`);
-	return button;
-}
-
-type NavigationMenuItem = { type?: string; text?: string; active?: boolean; action?: (event: MouseEvent) => void; children?: NavigationMenuItem[] };
-
-function openTabMenu(container: HTMLElement, tab: string): NavigationMenuItem[] {
-	const button = navButton(container, `[data-ak-menu="${tab}"]`);
-	const before = vi.mocked(popupMenu).mock.calls.length;
-	button.click();
-	expect(popupMenu).toHaveBeenCalledTimes(before + 1);
-	const call = vi.mocked(popupMenu).mock.calls[before];
-	expect(call[1]).toBe(button);
-	return call[0] as unknown as NavigationMenuItem[];
-}
-
-function menuAction(items: NavigationMenuItem[], text: string): void {
-	const item = items.find(candidate => candidate.text === text);
-	if (!item?.action) throw new Error(`Missing menu action: ${text}`);
-	item.action(new MouseEvent('click'));
-}
-
-function positions(items: NavigationMenuItem[]): NavigationMenuItem[] {
-	const parent = items.find(item => item.type === 'parent' && item.text === '位置を変更');
-	if (!Array.isArray(parent?.children)) throw new Error('Missing position submenu');
-	return parent.children;
-}
-
-function dragTabs(container: HTMLElement, value: unknown): void {
-	const list = container.querySelector('[data-test-draggable]');
-	if (!list) throw new Error('Missing draggable tab list');
-	list.dispatchEvent(new CustomEvent('hatask-reorder', { detail: value }));
-}
-
-function deferMenuClose(): () => void {
-	let resolveClosed: () => void = () => { throw new Error('Menu did not open'); };
-	vi.mocked(popupMenu).mockImplementationOnce(() => new Promise<void>(resolve => { resolveClosed = resolve; }));
-	return () => resolveClosed();
-}
-
-describe('下部ナビバー設定はすべてのテーマで共通に表示する', () => {
-	test.each([true, false])('embedded=%sでも本体の有効テーマと同じ条件で表示し、保存済み順序は読むだけ', async embedded => {
-		const savedOrder = ['apps', 'hataskapps', 'home', 'cal'];
-		const themes = ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu', 'unknown', undefined, null, ''];
-		const visible: boolean[] = [];
-		for (const theme of themes) {
-			const saved = { theme, akatsukiMobileTabs: [...savedOrder], akatsukiShortcut: 'meal', custom: 'keep' };
-			readSettings = async () => saved;
-			const { container, changed } = await mountSettings(embedded);
-			expect(container.querySelector('[data-test-window]')?.getAttribute('data-test-window')).toBe(embedded ? 'embedded' : 'modal');
-			const section = container.querySelector('[data-akatsuki-navigation]');
-			visible.push(section != null);
-			expect(navigationOrder(container)).toEqual(section ? savedOrder : []);
-			if (!section) expect(container.textContent).not.toContain('スマホの下部タブ');
-			expect(saved).toEqual({ theme, akatsukiMobileTabs: savedOrder, akatsukiShortcut: 'meal', custom: 'keep' });
-			expect(changed).not.toHaveBeenCalled();
-		}
-		// Saved theme values select paint, so navigation remains available in every case.
-		expect(visible).toEqual(themes.map(() => true));
+describe('削除したスマホ下部タブ設定', () => {
+	test.each([true, false])('embedded=%sで旧設定値があっても欄を表示せず、自動保存しない', async embedded => {
+		const saved = {
+			theme: 'akatsuki', akatsukiMobileTabs: ['apps', 'hataskapps', 'home', 'cal'],
+			akatsukiShortcut: 'meal', custom: { keep: 'data' },
+		};
+		readSettings = async () => saved;
+		const { container, changed } = await mountSettings(embedded);
+		expect(container.querySelector('[data-test-window]')?.getAttribute('data-test-window')).toBe(embedded ? 'embedded' : 'modal');
+		expect(container.querySelector('[data-hatagoes-setting="theme"]')).not.toBeNull();
+		expect(container.querySelector('[data-hatagoes-setting="calendar"]')).not.toBeNull();
+		expect(container.querySelector('[data-hatagoes-setting="navigation"], [data-akatsuki-navigation], [data-ak-slot], [data-ak-menu]')).toBeNull();
+		expect(container.textContent).not.toContain('スマホの下部タブ');
 		expect(writes()).toHaveLength(0);
+		expect(changed).not.toHaveBeenCalled();
+		// Reading a legacy setting must not mutate the object returned by the API.
+		expect(saved.akatsukiMobileTabs).toEqual(['apps', 'hataskapps', 'home', 'cal']);
 	});
 
-	test('本体が暁として扱う空のテーマ値でも並び替えを保存でき、元のテーマ値を補正保存しない', async () => {
-		const saved = { theme: null, akatsukiMobileTabs: ['apps', 'hataskapps', 'home', 'cal'], custom: 'keep' };
+	test('別の設定を保存しても旧ナビ値を保つ', async () => {
+		const saved = {
+			theme: 'akatsuki', akatsukiMobileTabs: ['apps', 'hataskapps', 'home', 'cal'],
+			akatsukiShortcut: 'meal', custom: { keep: 'data' },
+		};
 		readSettings = async () => saved;
 		const { container, changed } = await mountSettings();
-		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
-		expect(writes()).toHaveLength(0);
-		const reordered = ['home', 'apps', 'hataskapps', 'cal'];
-		dragTabs(container, reordered); await flush();
+		themeButton(container, copy.themeSuri).click(); await flush();
 		expect(writes()).toHaveLength(1);
-		expect(writes()[0][1]).toMatchObject({ value: { ...saved, akatsukiMobileTabs: reordered } });
-		expect(changed).toHaveBeenCalledWith(expect.objectContaining({ ...saved, akatsukiMobileTabs: reordered }));
-	});
-
-	test('テーマ変更の保存成功後だけ表示を切り替え、失敗・往復切替でも下部タブ順を保持する', async () => {
-		const saved = { theme: 'kashin', akatsukiMobileTabs: ['apps', 'hataskapps', 'home', 'cal'], akatsukiShortcut: 'meal', custom: 'keep' };
-		readSettings = async () => saved;
-		const { container, changed } = await mountSettings();
-		let rejectSave: (error: Error) => void = () => { throw new Error('Save did not start'); };
-		writeSettings = () => new Promise((_resolve, reject) => { rejectSave = reject; });
-		await openThemes(container); themeButton(container, copy.themeAkatsuki).click(); await flush();
-		expect(writes()).toHaveLength(1);
-		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
-		rejectSave(new Error('Offline')); await flush();
-		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
-		expect(changed).not.toHaveBeenCalled();
-		writeSettings = async () => undefined;
-		await openThemes(container); themeButton(container, copy.themeAkatsuki).click(); await flush();
-		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
-		let resolveSave: () => void = () => { throw new Error('Save did not start'); };
-		writeSettings = () => new Promise<void>(resolve => { resolveSave = resolve; });
-		await openThemes(container); themeButton(container, copy.themeHatakyu).click(); await flush();
-		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
-		expect(navButton(container, '[data-ak-menu="home"]').disabled).toBe(true);
-		resolveSave(); await flush();
-		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
-		expect(changed).toHaveBeenLastCalledWith(expect.objectContaining({ ...saved, theme: 'hatakyu' }));
-		writeSettings = async () => undefined;
-		await openThemes(container); themeButton(container, copy.themeAkatsuki).click(); await flush();
-		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
-		expect(writes()).toHaveLength(4);
-		for (const [, params] of writes()) expect(params).toMatchObject({ value: { akatsukiMobileTabs: saved.akatsukiMobileTabs, akatsukiShortcut: 'meal', custom: 'keep' } });
-	});
-
-	test('テーマ切替後も項目別メニューから下部タブを変更できる', async () => {
-		const saved = { theme: 'akatsuki', akatsukiMobileTabs: ['home', 'todo', 'hataskapps', 'apps'] };
-		readSettings = async () => saved;
-		const { container } = await mountSettings();
-		await openThemes(container); themeButton(container, copy.themeSuri).click(); await flush();
-		const menu = openTabMenu(container, 'todo');
-		menuAction(menu, 'カレンダー'); await flush();
-		expect(navigationOrder(container)).toEqual(['home', 'cal', 'hataskapps', 'apps']);
-		expect(writes()).toHaveLength(2);
-		expect(writes()[1][1]).toMatchObject({ value: { ...saved, theme: 'suri', akatsukiMobileTabs: ['home', 'cal', 'hataskapps', 'apps'] } });
-	});
-});
-
-describe('暁のドラッグと項目別メニューによる4枠設定', () => {
-	test('4行にそれぞれつまみと↓を用意し、旧ショートカット・左右UIを重複表示しない', async () => {
-		const { container, changed } = await mountSettings();
-		const section = container.querySelector('[data-akatsuki-navigation]');
-		if (!section) throw new Error('Missing navigation section');
-		expect(section.querySelectorAll('[data-ak-slot]')).toHaveLength(4);
-		expect(section.querySelectorAll('[data-ak-menu] .ti-chevron-down')).toHaveLength(4);
-		expect(section.querySelectorAll('[data-ak-drag] .ti-grip-vertical')).toHaveLength(4);
-		expect(section.querySelectorAll('[data-ak-shortcut], [data-ak-move], [data-ak-replacement]')).toHaveLength(0);
-		expect(section.querySelectorAll('[aria-haspopup="menu"]')).toHaveLength(4);
-		expect(section.querySelector('[data-test-draggable]')?.getAttribute('data-handle')).toBe('[data-ak-drag]');
-		expect(section.querySelector('[data-test-draggable]')?.getAttribute('data-disabled')).toBe('false');
-		expect(navigationOrder(container)).toEqual(['home', 'todo', 'hataskapps', 'apps']);
-		expect(writes()).toHaveLength(0);
-		expect(changed).not.toHaveBeenCalled();
-	});
-
-	test.each([
-		{ tab: 'home', active: 0, destination: '4番目（右端）', expected: ['todo', 'hataskapps', 'apps', 'home'] },
-		{ tab: 'hataskapps', active: 2, destination: '1番目（左端）', expected: ['hataskapps', 'home', 'todo', 'apps'] },
-	])('必須の$tabは置換項目を持たず、位置メニューからだけ並べ替える', async ({ tab, active, destination, expected }) => {
-		const { container, changed } = await mountSettings();
-		const menu = openTabMenu(container, tab);
-		expect(menu.map(item => item.type)).toEqual(['label', 'parent']);
-		expect(menu[0].text).toBe('常に表示・並べ替えのみ');
-		const children = positions(menu);
-		expect(children.map(item => item.text)).toEqual(['1番目（左端）', '2番目', '3番目', '4番目（右端）']);
-		expect(children.map(item => item.active)).toEqual([0, 1, 2, 3].map(index => index === active));
-		menuAction(children, destination);
-		await flush();
-		expect(navigationOrder(container)).toEqual(expected);
-		expect(writes()).toHaveLength(1);
-		expect(changed).toHaveBeenCalledWith(expect.objectContaining({ akatsukiMobileTabs: expected }));
-	});
-
-	test.each(['todo', 'apps'])('任意の%sにはEYEを含まない未使用の機能だけを置換候補に出す', async tab => {
-		const { container } = await mountSettings();
-		const menu = openTabMenu(container, tab);
-		expect(menu.filter(item => item.action).map(item => item.text)).toEqual(['カレンダー', 'きもち', 'ごはん', 'レシピ', 'おはな', '支援情報', 'ランキング']);
-		expect(positions(menu)).toHaveLength(4);
-		menuAction(menu, 'カレンダー');
-		await flush();
-		expect(navigationOrder(container)).toEqual(['home', 'todo', 'hataskapps', 'apps'].map(id => id === tab ? 'cal' : id));
-		expect(new Set(navigationOrder(container)).size).toBe(4);
-		expect(writes()).toHaveLength(1);
-	});
-
-	test('旧EYE枠だけを補完して表示し、自動では設定を書き換えない', async () => {
-		const saved = { theme: 'akatsuki', akatsukiShortcut: 'eye', akatsukiMobileTabs: ['apps', 'eye', 'home', 'hataskapps'], custom: { keep: 'data' } };
-		const before = JSON.stringify(saved);
-		readSettings = async () => saved;
-		const { container, changed } = await mountSettings();
-		expect(navigationOrder(container)).toEqual(['apps', 'todo', 'home', 'hataskapps']);
-		expect(openTabMenu(container, 'todo').filter(item => item.action).map(item => item.text)).not.toContain('EYE');
-		expect(writes()).toHaveLength(0);
-		expect(changed).not.toHaveBeenCalled();
-		expect(JSON.stringify(saved)).toBe(before);
-	});
-
-	test('保存済みの順序・legacy shortcut・無関係な設定を保って明示した枠だけ保存する', async () => {
-		const saved = { theme: 'akatsuki', akatsukiShortcut: 'mood', akatsukiMobileTabs: ['apps', 'home', 'cal', 'hataskapps'], custom: { keep: 'data' } };
-		const before = JSON.stringify(saved);
-		readSettings = async () => saved;
-		const { container, changed } = await mountSettings();
-		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
-		expect(writes()).toHaveLength(0);
-		menuAction(openTabMenu(container, 'cal'), 'ごはん');
-		await flush();
-		const expected = { ...saved, akatsukiMobileTabs: ['apps', 'home', 'meal', 'hataskapps'] };
-		expect(writes()).toHaveLength(1);
-		expect(writes()[0][1]).toMatchObject({ key: 'settings', scope: ['client', 'hatask'], value: expected });
-		expect(changed).toHaveBeenCalledWith(expect.objectContaining(expected));
-		expect(JSON.stringify(saved)).toBe(before);
-	});
-
-	test('表示用の旧設定補完は自動保存せず、壊れた配列もlegacy shortcutで表示する', async () => {
-		readSettings = async () => ({ theme: 'akatsuki', akatsukiMobileTabs: ['apps', 'mood', 'cal', 'home'], akatsukiShortcut: 'meal' });
-		const legacy = await mountSettings();
-		expect(navigationOrder(legacy.container)).toEqual(['apps', 'mood', 'hataskapps', 'home']);
-		readSettings = async () => ({ theme: 'akatsuki', akatsukiMobileTabs: ['home', 'home'], akatsukiShortcut: 'meal' });
-		const invalid = await mountSettings();
-		expect(navigationOrder(invalid.container)).toEqual(['home', 'meal', 'hataskapps', 'apps']);
-		expect(writes()).toHaveLength(0);
-		expect(legacy.changed).not.toHaveBeenCalled();
-		expect(invalid.changed).not.toHaveBeenCalled();
-	});
-
-	test('読込失敗は並べ替え部品を出さず、明示的な再読込後にも自動保存しない', async () => {
-		readSettings = async () => { throw new Error('Offline'); };
-		const { container, changed } = await mountSettings();
-		expect(container.querySelector('[data-test-draggable]')).toBeNull();
-		readSettings = async () => ({ theme: 'akatsuki', akatsukiMobileTabs: ['home', 'meal', 'hataskapps', 'apps'] });
-		textButton(container, i18n.ts._hata._hatask._planner.retry).click();
-		await flush();
-		expect(navigationOrder(container)).toEqual(['home', 'meal', 'hataskapps', 'apps']);
-		expect(writes()).toHaveLength(0);
-		expect(changed).not.toHaveBeenCalled();
-	});
-
-	test.each([
-		{ order: ['todo', 'hataskapps', 'apps', 'home'] },
-		{ order: ['todo', 'home', 'hataskapps', 'apps'] },
-		{ order: ['hataskapps', 'home', 'todo', 'apps'] },
-		{ order: ['apps', 'home', 'todo', 'hataskapps'] },
-	])('必須を含む各項目をドラッグで移動でき、tab IDに対応する行DOMを維持する: $order', async ({ order }) => {
-		const { container, changed } = await mountSettings();
-		const rows = new Map([...container.querySelectorAll<HTMLElement>('[data-ak-slot]')].map(row => [row.dataset.tab, row]));
-		dragTabs(container, Object.freeze([...order]));
-		await flush();
-		expect(navigationOrder(container)).toEqual(order);
-		for (const row of container.querySelectorAll<HTMLElement>('[data-ak-slot]')) expect(row).toBe(rows.get(row.dataset.tab));
-		expect(writes()).toHaveLength(1);
-		expect(writes()[0][1]).toMatchObject({ value: { akatsukiMobileTabs: order } });
-		expect(changed).toHaveBeenCalledTimes(1);
-	});
-
-	test.each([
-		null, 'home', [], ['home', 'todo', 'hataskapps'], ['home', 'todo', 'hataskapps', 'apps', 'cal'],
-		['home', 'todo', 'todo', 'apps'], ['home', 'todo', 'cal', 'apps'], ['home', 'todo', 'hataskapps', 'games'],
-	].map(value => ({ value })))('不正なdrag入力を既定に置換保存せず拒否する: $value', async ({ value }) => {
-		const { container, changed } = await mountSettings();
-		dragTabs(container, value);
-		await flush();
-		expect(navigationOrder(container)).toEqual(['home', 'todo', 'hataskapps', 'apps']);
-		expect(writes()).toHaveLength(0);
-		expect(changed).not.toHaveBeenCalled();
-	});
-
-	test('同順序のdragと現在位置の選択は保存せず、古いメニューからの重複選択も拒否する', async () => {
-		const { container, changed } = await mountSettings();
-		dragTabs(container, ['home', 'todo', 'hataskapps', 'apps']);
-		menuAction(positions(openTabMenu(container, 'home')), '1番目（左端）');
-		await flush();
-		expect(writes()).toHaveLength(0);
-		const stale = openTabMenu(container, 'todo');
-		menuAction(openTabMenu(container, 'apps'), 'カレンダー');
-		await flush();
-		expect(writes()).toHaveLength(1);
-		menuAction(stale, 'カレンダー');
-		await flush();
-		expect(navigationOrder(container)).toEqual(['home', 'todo', 'hataskapps', 'cal']);
-		expect(writes()).toHaveLength(1);
-		expect(changed).toHaveBeenCalledTimes(1);
-	});
-
-	test('drag保存中は仮の並びだけ表示して全操作を止め、失敗時は元へ戻し成功後だけchangedを通知する', async () => {
-		let rejectSave: (error: Error) => void = () => { throw new Error('Save did not start'); };
-		writeSettings = () => new Promise((_resolve, reject) => { rejectSave = reject; });
-		const { container, changed } = await mountSettings();
-		const stale = openTabMenu(container, 'todo');
-		const order = ['todo', 'hataskapps', 'apps', 'home'];
-		dragTabs(container, order);
-		await flush();
-		expect(writes()).toHaveLength(1); // Positive control: the API write actually began.
-		expect(navigationOrder(container)).toEqual(order);
-		expect(container.querySelector('[data-test-draggable]')?.getAttribute('data-disabled')).toBe('true');
-		expect([...container.querySelectorAll<HTMLButtonElement>('[data-akatsuki-navigation] button')].every(button => button.disabled)).toBe(true);
-		dragTabs(container, ['apps', 'hataskapps', 'todo', 'home']);
-		menuAction(stale, 'カレンダー');
-		navButton(container, '[data-ak-menu="home"]').click();
-		await flush();
-		expect(popupMenu).toHaveBeenCalledTimes(1);
-		expect(writes()).toHaveLength(1);
-		expect(navigationOrder(container)).toEqual(order);
-		expect(changed).not.toHaveBeenCalled();
-		rejectSave(new Error('Offline'));
-		await flush();
-		expect(container.querySelector('[role="alert"]')?.textContent).toBe(copy.saveFailure);
-		expect(navigationOrder(container)).toEqual(['home', 'todo', 'hataskapps', 'apps']);
-		expect(container.querySelector('[data-test-draggable]')?.getAttribute('data-disabled')).toBe('false');
-		expect(changed).not.toHaveBeenCalled();
-		writeSettings = async () => undefined;
-		dragTabs(container, order);
-		await flush();
-		expect(writes()).toHaveLength(2);
-		expect(changed).toHaveBeenCalledTimes(1);
-		expect(changed).toHaveBeenCalledWith(expect.objectContaining({ akatsukiMobileTabs: order }));
-		expect(navigationOrder(container)).toEqual(order);
-	});
-
-	test('メニューの置換は保存成功まで表示を変えず、失敗後もlegacy shortcutと無関係な設定を保つ', async () => {
-		const saved = { theme: 'akatsuki', akatsukiShortcut: 'eye', akatsukiMobileTabs: ['home', 'todo', 'hataskapps', 'apps'], custom: 'keep' };
-		readSettings = async () => saved;
-		let rejectSave: (error: Error) => void = () => { throw new Error('Save did not start'); };
-		writeSettings = () => new Promise((_resolve, reject) => { rejectSave = reject; });
-		const { container, changed } = await mountSettings();
-		menuAction(openTabMenu(container, 'todo'), 'ごはん');
-		await flush();
-		expect(writes()).toHaveLength(1);
-		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
-		expect(changed).not.toHaveBeenCalled();
-		rejectSave(new Error('Offline'));
-		await flush();
-		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
-		expect(changed).not.toHaveBeenCalled();
-		writeSettings = async () => undefined;
-		menuAction(openTabMenu(container, 'todo'), 'ごはん');
-		await flush();
-		expect(writes()).toHaveLength(2);
-		expect(writes()[1][1]).toMatchObject({ value: { ...saved, akatsukiMobileTabs: ['home', 'meal', 'hataskapps', 'apps'] } });
-		expect(changed).toHaveBeenCalledTimes(1);
-	});
-
-	test('メニュー閉鎖後も保存中はフォーカスを戻さず、成功後に新しい項目の↓へ戻す', async () => {
-		let finishSave: () => void = () => { throw new Error('Save did not start'); };
-		writeSettings = () => new Promise<void>(resolve => { finishSave = resolve; });
-		const closeMenu = deferMenuClose();
-		const { container, changed } = await mountSettings();
-		const anchor = navButton(container, '[data-ak-menu="todo"]');
-		anchor.focus();
-		const restoreFocus = vi.spyOn(anchor, 'focus');
-		menuAction(openTabMenu(container, 'todo'), 'カレンダー');
-		await flush();
-		expect(writes()).toHaveLength(1);
-		expect(anchor.disabled).toBe(true);
-		anchor.blur();
-		closeMenu();
-		await flush();
-		// Happy DOM can retain a disabled anchor after blur; assert that the
-		// application has not attempted focus restoration before saving settles.
-		expect(restoreFocus).not.toHaveBeenCalled();
-		expect(changed).not.toHaveBeenCalled();
-		finishSave();
-		await flush(); await flush();
-		expect(anchor.isConnected).toBe(false);
-		expect(window.document.activeElement).toBe(navButton(container, '[data-ak-menu="cal"]'));
-		expect(changed).toHaveBeenCalledTimes(1);
-	});
-
-	test('メニューでの保存失敗時は元の項目の↓へフォーカスを戻す', async () => {
-		let rejectSave: (error: Error) => void = () => { throw new Error('Save did not start'); };
-		writeSettings = () => new Promise((_resolve, reject) => { rejectSave = reject; });
-		const closeMenu = deferMenuClose();
-		const { container, changed } = await mountSettings();
-		const anchor = navButton(container, '[data-ak-menu="todo"]');
-		anchor.focus();
-		menuAction(openTabMenu(container, 'todo'), 'カレンダー');
-		await flush();
-		expect(writes()).toHaveLength(1);
-		anchor.blur(); closeMenu();
-		await flush();
-		rejectSave(new Error('Offline'));
-		await flush(); await flush();
-		expect(window.document.activeElement).toBe(anchor);
-		expect(anchor.disabled).toBe(false);
-		expect(navigationOrder(container)).toEqual(['home', 'todo', 'hataskapps', 'apps']);
-		expect(changed).not.toHaveBeenCalled();
-	});
-
-	test('保存中に利用者が別の操作へ移したフォーカスは奪わない', async () => {
-		let finishSave: () => void = () => { throw new Error('Save did not start'); };
-		writeSettings = () => new Promise<void>(resolve => { finishSave = resolve; });
-		const closeMenu = deferMenuClose();
-		const { container } = await mountSettings();
-		menuAction(openTabMenu(container, 'todo'), 'カレンダー');
-		await flush();
-		const other = window.document.createElement('button');
-		container.append(other);
-		other.focus(); closeMenu();
-		await flush();
-		finishSave();
-		await flush(); await flush();
-		expect(navigationOrder(container)).toEqual(['home', 'cal', 'hataskapps', 'apps']);
-		expect(window.document.activeElement).toBe(other);
-	});
-
-	test('位置だけ変えた場合は同じ項目の↓を新しい位置でフォーカスする', async () => {
-		const closeMenu = deferMenuClose();
-		const { container } = await mountSettings();
-		const anchor = navButton(container, '[data-ak-menu="home"]');
-		anchor.focus();
-		menuAction(positions(openTabMenu(container, 'home')), '4番目（右端）');
-		anchor.blur();
-		await flush();
-		closeMenu();
-		await flush(); await flush();
-		expect(navigationOrder(container)).toEqual(['todo', 'hataskapps', 'apps', 'home']);
-		expect(navButton(container, '[data-ak-menu="home"]')).toBe(anchor);
-		expect(window.document.activeElement).toBe(anchor);
+		expect(writes()[0][1]).toMatchObject({ key: 'settings', scope: ['client', 'hatask'], value: { ...saved, theme: 'suri' } });
+		expect(changed).toHaveBeenCalledWith(expect.objectContaining({ ...saved, theme: 'suri' }));
+		expect(container.querySelector('[data-akatsuki-navigation]')).toBeNull();
 	});
 });

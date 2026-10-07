@@ -733,6 +733,9 @@ import type {
 	HataskRecipesShowResponse,
 	HataskRecipesUpdateRequest,
 	HataskRecipesUpdateResponse,
+	HataskRecordsExportResponse,
+	HataskRecordsImportRequest,
+	HataskRecordsImportResponse,
 	HataskSupportShowResponse,
 	HataskSupportSupportersRequest,
 	HataskSupportSupportersResponse,
@@ -1519,6 +1522,8 @@ export type Endpoints = {
 	'hatask/recipes/list': { req: HataskRecipesListRequest; res: HataskRecipesListResponse };
 	'hatask/recipes/show': { req: HataskRecipesShowRequest; res: HataskRecipesShowResponse };
 	'hatask/recipes/update': { req: HataskRecipesUpdateRequest; res: HataskRecipesUpdateResponse };
+	'hatask/records/export': { req: EmptyRequest; res: HataskRecordsExportResponse };
+	'hatask/records/import': { req: HataskRecordsImportRequest; res: HataskRecordsImportResponse };
 	'hatask/support/show': { req: EmptyRequest; res: HataskSupportShowResponse };
 	'hatask/support/supporters': { req: HataskSupportSupportersRequest; res: HataskSupportSupportersResponse };
 	'i': { req: EmptyRequest; res: IResponse };

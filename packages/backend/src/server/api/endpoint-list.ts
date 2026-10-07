@@ -687,6 +687,8 @@ export * as 'admin/hatask/support/supporters' from './endpoints/admin/hatask/sup
 export * as 'admin/hatask/support/register' from './endpoints/admin/hatask/support/register.js';
 export * as 'admin/hatask/support/unregister' from './endpoints/admin/hatask/support/unregister.js';
 export * as 'hatask/flowers/state' from './endpoints/hatask/flowers/state.js';
+export * as 'hatask/records/export' from './endpoints/hatask/records/export.js';
+export * as 'hatask/records/import' from './endpoints/hatask/records/import.js';
 export * as 'hatask/flowers/drops/pour' from './endpoints/hatask/flowers/drops/pour.js';
 export * as 'hatask/flowers/harvest' from './endpoints/hatask/flowers/harvest.js';
 export * as 'hatask/flowers/zukan/claim-seed' from './endpoints/hatask/flowers/zukan/claim-seed.js';

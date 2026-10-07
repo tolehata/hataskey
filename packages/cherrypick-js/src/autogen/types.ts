@@ -3811,6 +3811,7 @@ export type paths = {
          * hata/hatagoes/search
          * @description No description provided.
          *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
          *     **Credential required**: *Yes* / **Permission**: *read:account*
          */
         post: operations["hata___hatagoes___search"];
@@ -4192,6 +4193,26 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *write:account*
          */
         post: operations["hatask___recipes___update"];
+    };
+    "/hatask/records/export": {
+        /**
+         * hatask/records/export
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations["hatask___records___export"];
+    };
+    "/hatask/records/import": {
+        /**
+         * hatask/records/import
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hatask___records___import"];
     };
     "/hatask/support/show": {
         /**
@@ -44348,6 +44369,235 @@ export interface operations {
                         cookedCount: number;
                         /** Format: date-time */
                         lastCookedAt: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hatask___records___export: {
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        format: string;
+                        version: number;
+                        exportedAt: string;
+                        data: {
+                            moods: {
+                                id: string;
+                                date: string;
+                                time: string;
+                                note?: string;
+                                emoji?: string;
+                                reasons?: string[];
+                                level: number;
+                            }[];
+                            meals: {
+                                id: string;
+                                date: string;
+                                time: string;
+                                note?: string;
+                                emoji?: string;
+                                reasons?: string[];
+                                level: string;
+                                slot: string;
+                            }[];
+                            flowers: {
+                                id: string;
+                                speciesId: string;
+                                season: string;
+                                emoji: string;
+                                name: string;
+                                hanakotoba: string;
+                                nickname: string;
+                                rare: boolean;
+                                harvestedAt: string;
+                                memory: string[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hatask___records___import: {
+        requestBody: {
+            content: {
+                "application/json": {
+                    format: string;
+                    version: number;
+                    exportedAt: string;
+                    data: {
+                        moods: {
+                            id: string;
+                            date: string;
+                            time: string;
+                            note?: string;
+                            emoji?: string;
+                            reasons?: string[];
+                            level: number;
+                        }[];
+                        meals: {
+                            id: string;
+                            date: string;
+                            time: string;
+                            note?: string;
+                            emoji?: string;
+                            reasons?: string[];
+                            level: string;
+                            slot: string;
+                        }[];
+                        flowers: {
+                            id: string;
+                            speciesId: string;
+                            season: string;
+                            emoji: string;
+                            name: string;
+                            hanakotoba: string;
+                            nickname: string;
+                            rare: boolean;
+                            harvestedAt: string;
+                            memory: string[];
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        added: {
+                            moods: number;
+                            meals: number;
+                            flowers: number;
+                        };
+                        duplicates: {
+                            moods: number;
+                            meals: number;
+                            flowers: number;
+                        };
+                        conflicts: {
+                            moods: number;
+                            meals: number;
+                            flowers: number;
+                        };
                     };
                 };
             };
