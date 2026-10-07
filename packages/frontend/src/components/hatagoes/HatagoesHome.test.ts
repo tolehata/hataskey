@@ -37,6 +37,7 @@ function mount(cards: Array<{ id: string; hidden: boolean }>, busyTodoIds: strin
 	const all: HatagoesCardV3Id[] = order ?? ['daily', 'schedule', 'flower', 'todo', 'mood', 'meal', 'reading', 'issues', 'history', 'feed'];
 	const cardsV3: HatagoesCardV3[] = all.map(id => ({ id, hidden: cards.find(card => card.id === id)?.hidden ?? true }));
 	const app = createApp({ render: () => h(HatagoesHome, { ref: home, cardsV3, launcherApps, revision: revision.value, active: active.value, busyTodoIds, onToggleTodo: (id: string) => toggled.push(id), onNavigate: (path: string) => navigated.push(path), onRecordMood: (level: number) => moods.push(level), onRecordMeal: (slot: string) => meals.push(slot), onWater: (day: string) => waters.push(day), onOpenApp: (id: string) => openedApps.push(id), onAllApps: allApps }) });
+	app.component('MkUserName', { props: ['user', 'nowrap'], render: () => h('span') });
 	app.mount(target);
 	cleanup = () => { app.unmount(); target.remove(); };
 	return { target, toggled, navigated, moods, meals, waters, openedApps, allApps, active, revision, home };

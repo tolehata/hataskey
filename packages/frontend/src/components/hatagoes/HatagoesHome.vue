@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button type="button" class="hgh-launcher-all" @click="emit('allApps')"><i class="ti ti-layout-grid" aria-hidden="true"></i>すべての App</button>
 		</section>
 		<section v-if="showV3('daily')" class="hgh-card hgh-card-daily" :style="{ order: v3Order('daily') }" aria-labelledby="hgh-title-daily">
-			<div class="hgh-daily-intro"><small>{{ todayLabel }}<span class="hgh-clock"> · {{ timeLabel }}</span></small><h2 id="hgh-title-daily"><span class="hgh-headline-first">{{ dailyHeadlineParts[0] }}<template v-if="dailyHeadlineParts[1]">、</template></span><template v-if="dailyHeadlineParts[1]"><br class="hgh-mobile-break">{{ dailyHeadlineParts[1] }}</template></h2><small v-if="daily.status === 'ready'" class="hgh-mobile-streak">{{ daily.data?.streakDays ?? 0 }} 日連続</small></div>
+			<div class="hgh-daily-intro"><small>{{ todayLabel }}<span class="hgh-clock"> · {{ timeLabel }}</span></small><h2 id="hgh-title-daily"><template v-for="(part, index) in dailyHeadlineParts" :key="part"><wbr v-if="index > 0"><span class="hgh-headline-first" :class="{ 'hgh-greeting-part': dailyHeadlineParts.length > 1 }">{{ part }}</span></template><template v-if="$i && !dailyComplete">、<wbr><span class="hgh-greeting-name"><MkUserName :user="$i" :nowrap="false"/>さん</span></template></h2><small v-if="daily.status === 'ready'" class="hgh-mobile-streak">{{ daily.data?.streakDays ?? 0 }} 日連続</small></div>
 			<div v-if="daily.status === 'loading'" class="hgh-state"><HataAppLoading app="hatagoes" :size="24" :monochrome="monochrome" :active="active" label="読み込み中"/></div>
 			<div v-else-if="daily.status === 'error'" class="hgh-state" role="alert">記録を読み込めませんでした。<button type="button" @click="loadDaily">再試行</button></div>
 			<template v-else>
@@ -79,6 +79,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { $i } from '@/i.js';
 import HataAppLogo from '@/components/HataAppLogo.vue';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import HataAppLoading from '@/components/HataAppLoading.vue';
@@ -144,14 +145,20 @@ const daily = reactive<{ status: 'loading' | 'ready' | 'error'; data: HatagoesDa
 const wateredDay = ref<string | null>(null);
 const journal = reactive<{ status: 'loading' | 'ready' | 'error'; data: HatagoesJournalV3 | null }>({ status: 'loading', data: null });
 const dailyToday = computed(() => daily.data?.days.find(day => day.date === daily.data?.today));
+const dailyComplete = computed(() => dailyToday.value?.known === true && dailyToday.value.complete === true);
 const waterDone = computed(() => daily.status === 'ready' && !!daily.data?.today && (dailyToday.value?.completed.includes('water') === true || wateredDay.value === daily.data.today));
 const canHomeWater = computed(() => daily.status === 'ready' && !!daily.data?.today && dailyToday.value?.known === true && !waterDone.value && state.flower.data.flower?.canWater === true && !props.busyActions.includes('water'));
 const todayLabel = computed(() => new Intl.DateTimeFormat('ja-JP', { month: 'long', day: 'numeric', weekday: 'long' }).format(daily.data?.today ? new Date(`${daily.data.today}T12:00:00`) : now.value));
 const timeLabel = computed(() => new Intl.DateTimeFormat('ja-JP', { hour: '2-digit', minute: '2-digit' }).format(now.value));
-const dailyHeadline = computed(() => dailyToday.value?.known && dailyToday.value.complete ? 'きょうの記録がそろいました。' : 'きょうの記録を、ひとつずつ。');
+const dailyHeadline = computed(() => {
+	if (dailyComplete.value) return 'きょうの記録がそろいました。';
+	const hour = now.value.getHours();
+	if (hour >= 5 && hour < 11) return 'おはようございます';
+	if (hour >= 11 && hour < 18) return 'こんにちは';
+	return 'こんばんは';
+});
 const dailyHeadlineParts = computed(() => {
-	const index = dailyHeadline.value.indexOf('、');
-	return index < 0 ? [dailyHeadline.value] : [dailyHeadline.value.slice(0, index), dailyHeadline.value.slice(index + 1)];
+	return dailyHeadline.value === 'おはようございます' ? ['おはよう', 'ございます'] : [dailyHeadline.value];
 });
 const historySummary = computed(() => [journal.data?.history.mood ? `きもち「${journal.data.history.mood.emoji ?? journal.data.history.mood.level}」` : null, ...(journal.data?.history.meals ?? []).map(meal => meal.note?.trim() || '食事の記録')].filter(Boolean).join(' · '));
 const rituals: { id: HatagoesRitual; label: string; icon: string }[] = [
@@ -384,7 +391,8 @@ watch(() => showV3('history'), (visible, wasVisible) => { if (props.active && vi
 .hgh-mobile-streak { display: none; }
 .hgh-card-daily .hgh-daily-intro h2 { display: block; margin: 4px 0 0; color: var(--hgh-fg); font-family: var(--htk-font-head, sans-serif); font-size: 26px; line-height: 1.35; }
 .hgh-headline-first { white-space: nowrap; }
-.hgh-mobile-break { display: none; }
+.hgh-headline-first.hgh-greeting-part { white-space: nowrap; }
+.hgh-greeting-name { overflow-wrap: anywhere; }
 .hgh-daily-main { display: contents; }
 .hgh-daily-ring { display: grid; place-items: center; width: 150px; height: 150px; flex: none; border-radius: 50%; background: conic-gradient(var(--hgh-accent) 0 var(--hgh-ring), var(--hgh-faint) var(--hgh-ring) 100%); }
 .hgh-daily-ring > div { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 122px; height: 122px; border-radius: 50%; background: var(--hgh-surface); }
@@ -429,7 +437,6 @@ watch(() => showV3('history'), (visible, wasVisible) => { if (props.active && vi
 .hgh-history-note { margin: 8px 0 0; color: var(--hgh-muted); font-size: 12px; line-height: 1.7; }
 @container (max-width: 540px) { .hgh-card-history { display: none; } }
 @container (max-width: 540px) { .hgh-daily-intro > .hgh-mobile-streak { display: block; margin-top: 2px; color: var(--hgh-accent); font-size: 12px; font-weight: 800; } }
-@container (max-width: 540px) { .hgh-mobile-break { display: inline; } }
 @container (max-width: 1100px) { .hgh-card-daily, .hgh-card-schedule { grid-column: span 6; grid-row: auto; } .hgh-card-flower { grid-column: span 4; grid-row: auto; } .hgh-card-todo { grid-column: span 8; } }
 @container (max-width: 760px) { .hgh-card-daily, .hgh-card-schedule, .hgh-card-todo, .hgh-card-mood, .hgh-card-meal, .hgh-card-issues, .hgh-card-history, .hgh-card-feed { grid-column: span 12; } .hgh-card-flower, .hgh-card-reading { grid-column: span 12; grid-row: auto; } .hgh-tablet-half-pair .hgh-card-flower, .hgh-tablet-half-pair .hgh-card-reading { grid-column: span 6; } .hgh-card-daily { grid-row: auto; } }
 @container (max-width: 540px) { .hgh-card-daily { grid-template-columns: 96px minmax(0, 1fr); align-items: center; padding: 18px; gap: 14px 16px; } .hgh-daily-intro { grid-column: 2; grid-row: 1; } .hgh-clock { display: none; } .hgh-daily-ring { grid-column: 1; grid-row: 1; width: 96px; height: 96px; } .hgh-daily-ring > div { width: 78px; height: 78px; } .hgh-daily-ring strong { font-size: 25px; } .hgh-daily-ring strong span { font-size: 14px; } .hgh-card-daily .hgh-daily-intro h2 { font-size: 18px; } .hgh-rituals { display: grid; grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; } .hgh-rituals button { flex-direction: column; justify-content: center; gap: 2px; min-height: 56px; padding: 4px 2px; font-size: 10px; } .hgh-rituals button i:last-child { display: none; } .hgh-rituals button i:first-child { font-size: 18px; } .hgh-heat { display: none; } .hgh-card-flower, .hgh-card-reading { grid-column: span 12; } .hgh-mobile-half-pair .hgh-card-flower, .hgh-mobile-half-pair .hgh-card-reading { grid-column: span 6; } .hgh-default-order .hgh-card-flower { order: 4 !important; } .hgh-default-order .hgh-card-reading { order: 5 !important; } .hgh-default-order .hgh-card-todo { order: 2 !important; } .hgh-default-order .hgh-card-mood { order: 3 !important; } .hgh-default-order .hgh-card-meal { order: 6 !important; } .hgh-default-order .hgh-card-issues { order: 7 !important; } .hgh-default-order .hgh-card-history { order: 8 !important; } .hgh-default-order .hgh-card-feed { order: 9 !important; } .hgh-card-flower .hgh-tile-body { flex-direction: column; align-items: flex-start; } .hgh-card-flower .hgh-tile-body small { padding-left: 0; } }
