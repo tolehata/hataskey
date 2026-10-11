@@ -113,10 +113,8 @@ async function applyPending() {
 	shownUrl.value = url;
 	shownExpression.value = currentExpression.value;
 }
-// 画像URLだけでなく文言(displayText)の変化でも適用する。
-// (通知/誕生日表情は画像が通常と同じ場合があり、URLだけ監視すると shownExpression が
-//  更新されず吹き出し位置が古い表情のまま=中央固定になるため)
-watch([pendingUrl, displayText], () => { applyPending(); });
+// 同じ画像・文言のまま位置を保存した場合も、新しい表情の設定へ更新する。
+watch([pendingUrl, displayText, currentExpression], () => { applyPending(); });
 
 // ===== 立ち絵モーション(専用ページと同じ。keyframesは下の素styleで固定値定義) =====
 const motionName = computed(() => shownExpression.value?.motion ?? 'none');

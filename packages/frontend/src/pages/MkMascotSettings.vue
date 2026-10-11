@@ -97,37 +97,39 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<!-- ===== プレビュー(吹き出し位置をドラッグで調整) ===== -->
 			<div :class="[$style.preview, $style.colPreview]">
-				<div :class="$style.previewStageWrap" ref="stageWrapEl">
-					<template v-if="previewExpression">
-						<img :src="previewExpression.url" :style="{ '--htk-motion-i': String(previewExpression.motionIntensity ?? 1) }" :class="[$style.previewImg, previewExpression.motion==='bounce' ? $style.motionBounce : previewExpression.motion==='shake' ? $style.motionShake : previewExpression.motion==='sway' ? $style.motionSway : previewExpression.motion==='spin' ? $style.motionSpin : '']" :alt="previewExpression.label" draggable="false" />
-						<!-- 吹き出し(ドラッグで位置調整。位置は表情ごとに保存) -->
-						<div
-							:class="[$style.previewBubble, bubbleTail==='right' ? $style.tail_right : $style.tail_left, draggingBubble && $style.previewBubbleDragging]"
-							:style="bubbleStyle"
-							@pointerdown="onBubblePointerDown"
-						>
-							<span v-if="previewPhraseText">{{ previewPhraseText }}</span>
-							<span v-else :class="$style.bubblePlaceholder">{{ copy.phrase }}</span>
-							<span :class="$style.bubbleGrip" :title="copy.dragPositionTitle"><i class="ti ti-arrows-move"></i></span>
+				<div ref="previewViewportEl" :class="$style.previewStageWrap">
+					<div ref="stageWrapEl" :class="$style.previewStage" :style="{ transform: `scale(${previewScale})` }">
+						<template v-if="previewExpression">
+							<img :src="previewExpression.url" :style="{ '--htk-motion-i': String(previewExpression.motionIntensity ?? 1) }" :class="[$style.previewImg, previewExpression.motion==='bounce' ? $style.motionBounce : previewExpression.motion==='shake' ? $style.motionShake : previewExpression.motion==='sway' ? $style.motionSway : previewExpression.motion==='spin' ? $style.motionSpin : '']" :alt="previewExpression.label" draggable="false" />
+							<!-- 吹き出し(ドラッグで位置調整。位置は表情ごとに保存) -->
+							<div
+								:class="[$style.previewBubble, bubbleTail==='right' ? $style.tail_right : $style.tail_left, draggingBubble && $style.previewBubbleDragging]"
+								:style="bubbleStyle"
+								@pointerdown="onBubblePointerDown"
+							>
+								<span v-if="previewPhraseText">{{ previewPhraseText }}</span>
+								<span v-else :class="$style.bubblePlaceholder">{{ copy.phrase }}</span>
+								<span :class="$style.bubbleGrip" :title="copy.dragPositionTitle"><i class="ti ti-arrows-move"></i></span>
+							</div>
+							<!-- ？小吹き出し(疑問トグルON時。ドラッグで位置調整) -->
+							<div
+								v-if="previewExpression.questionEnabled"
+								:class="[$style.qBubble, qTail==='right' ? $style.qtail_right : $style.qtail_left, draggingQBubble && $style.previewBubbleDragging]"
+								:style="qBubbleStyle"
+								@pointerdown="onQBubblePointerDown"
+							><span :class="$style.qMark">?</span><span :class="$style.bubbleGrip" :title="copy.dragPositionTitle"><i class="ti ti-arrows-move"></i></span></div>
+							<!-- ！小吹き出し(通知用プレビュー時、exclaimEnabled) -->
+							<div
+								v-if="(notifyPreviewMode || notify2PreviewMode) && previewExpression.exclaimEnabled"
+								:class="[$style.qBubble, eTail==='right' ? $style.qtail_right : $style.qtail_left, draggingEBubble && $style.previewBubbleDragging]"
+								:style="eBubbleStyle"
+								@pointerdown="onEBubblePointerDown"
+							><span :class="$style.qMark">!</span><span :class="$style.bubbleGrip" :title="copy.dragPositionTitle"><i class="ti ti-arrows-move"></i></span></div>
+						</template>
+						<div v-else :class="$style.previewEmpty">
+							<i class="ti ti-photo"></i>
+							<span>{{ copy.previewEmpty }}</span>
 						</div>
-						<!-- ？小吹き出し(疑問トグルON時。ドラッグで位置調整) -->
-						<div
-							v-if="previewExpression.questionEnabled"
-							:class="[$style.qBubble, qTail==='right' ? $style.qtail_right : $style.qtail_left, draggingQBubble && $style.previewBubbleDragging]"
-							:style="qBubbleStyle"
-							@pointerdown="onQBubblePointerDown"
-						><span :class="$style.qMark">?</span><span :class="$style.bubbleGrip" :title="copy.dragPositionTitle"><i class="ti ti-arrows-move"></i></span></div>
-						<!-- ！小吹き出し(通知用プレビュー時、exclaimEnabled) -->
-						<div
-							v-if="(notifyPreviewMode || notify2PreviewMode) && previewExpression.exclaimEnabled"
-							:class="[$style.qBubble, eTail==='right' ? $style.qtail_right : $style.qtail_left, draggingEBubble && $style.previewBubbleDragging]"
-							:style="eBubbleStyle"
-							@pointerdown="onEBubblePointerDown"
-						><span :class="$style.qMark">!</span><span :class="$style.bubbleGrip" :title="copy.dragPositionTitle"><i class="ti ti-arrows-move"></i></span></div>
-					</template>
-					<div v-else :class="$style.previewEmpty">
-						<i class="ti ti-photo"></i>
-						<span>{{ copy.previewEmpty }}</span>
 					</div>
 				</div>
 				<div :class="$style.previewMeta">
@@ -589,7 +591,7 @@ import { chooseDriveFile } from '@/utility/drive.js';
 import * as os from '@/os.js';
 import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
-import { displaySettings, loadDisplaySettings, saveDisplaySettings, type MascotDisplaySettings } from '@/utility/mascot-store.js';
+import { displaySettings, loadDisplaySettings, saveDisplaySettings, loadMascot, type MascotDisplaySettings } from '@/utility/mascot-store.js';
 
 const emit = defineEmits<{ (ev:'closed'):void }>();
 /**
@@ -681,6 +683,19 @@ const previewExpression = computed<Expression | null>(() => {
 });
 
 // ===== 吹き出し位置のドラッグ調整(表情ごとに保存) =====
+// TL と同じ 200 × 150 の配置を全体ごと拡大する。文字・画像・余白の比率も揃える。
+const previewViewportEl = ref<HTMLElement | null>(null);
+const previewScale = ref(1);
+const previewResizeObserver = new ResizeObserver(([entry]) => {
+	if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+		previewScale.value = Math.min(entry.contentRect.width / 200, entry.contentRect.height / 150);
+	}
+});
+watch(previewViewportEl, (element) => {
+	previewResizeObserver.disconnect();
+	if (element) previewResizeObserver.observe(element);
+}, { flush: 'post' });
+onUnmounted(() => { previewResizeObserver.disconnect(); });
 const stageWrapEl = ref<HTMLElement | null>(null);
 const draggingBubble = ref(false);
 
@@ -732,7 +747,7 @@ const qBubbleStyle = computed(() => {
 	const x = (e?.qBubbleX ?? 0.7);
 	const y = (e?.qBubbleY ?? 0.05);
 	const scale = (typeof e?.qBubbleScale === 'number' ? e.qBubbleScale : 1);
-	const s: Record<string, string> = { left: (x * 100) + '%', top: (y * 100) + '%', fontSize: (1.1 * scale) + 'rem' };
+	const s: Record<string, string> = { left: (x * 100) + '%', top: (y * 100) + '%', fontSize: (0.85 * scale) + 'rem' };
 	if (e?.qTextColor) s.color = e.qTextColor;
 	return s;
 });
@@ -782,7 +797,7 @@ const eBubbleStyle = computed(() => {
 	const x = (typeof e?.eBubbleX === 'number' ? e.eBubbleX : 0.7);
 	const y = (typeof e?.eBubbleY === 'number' ? e.eBubbleY : 0.05);
 	const scale = (typeof e?.eBubbleScale === 'number' ? e.eBubbleScale : 1);
-	const s: Record<string, string> = { left: (x * 100) + '%', top: (y * 100) + '%', fontSize: (1.1 * scale) + 'rem' };
+	const s: Record<string, string> = { left: (x * 100) + '%', top: (y * 100) + '%', fontSize: (0.85 * scale) + 'rem' };
 	if (e?.eTextColor) s.color = e.eTextColor;
 	return s;
 });
@@ -1271,6 +1286,7 @@ async function save() {
 			activeCharacterId: activeChar.value?.id ?? null,
 			showName: showName.value,
 		});
+		await loadMascot(true);
 		os.toast(copy.saved);
 	} catch (err:any) {
 		const code = err?.code ?? err?.id;
@@ -1586,17 +1602,18 @@ defineProps<{ embedded?: boolean }>();
 /* ===== プレビュー ===== */
 .preview { display:flex; flex-direction:column; gap:14px; background:linear-gradient(135deg, var(--MI_THEME-panel), var(--MI_THEME-bg)); border:1px solid var(--MI_THEME-divider); border-radius:16px; padding:16px; }
 .previewStageWrap { position:relative; width:100%; aspect-ratio:4/3; max-height:440px; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:12px; }
+.previewStage { position:relative; width:200px; height:150px; flex:none; display:flex; align-items:center; justify-content:center; }
 .previewImg { max-width:55%; max-height:80%; object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,.25)); user-select:none; -webkit-user-drag:none; }
 .previewEmpty { width:100%; height:100%; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; border:1px dashed var(--MI_THEME-divider); border-radius:12px; opacity:.5; font-size:.75rem; text-align:center; i{ font-size:1.8rem; } }
 .previewMeta { display:flex; flex-direction:column; gap:8px; }
 .previewName { font-weight:700; font-size:.9rem; }
 /* 吹き出し: 立ち絵の上に絶対配置。left/topはbubbleStyleで指定、transformで中心合わせ */
-.previewBubble { position:absolute; transform:translate(-50%,-50%); max-width:78%; background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:12px; padding:8px 12px; font-size:.85rem; line-height:1.5; word-break:break-word; cursor:grab; box-shadow:0 2px 10px rgba(0,0,0,.18); touch-action:none; }
+.previewBubble { position:absolute; transform:translate(-50%,-50%); width:max-content; max-width:200px; background: var(--MI_THEME-panel); color:var(--MI_THEME-fg); border:1px solid var(--MI_THEME-divider); border-radius:14px; padding:6px 10px; font-size:.85rem; line-height:1.4; text-align:center; white-space:pre-line; word-break:break-word; cursor:grab; box-shadow:0 2px 8px rgba(0,0,0,.25); touch-action:none; }
 .previewBubble:active { cursor:grabbing; }
 /* しっぽ(三角形)。左右で位置を切り替え。本体と同じ背景+枠線で繋げて見せる */
 .previewBubble::after { content:''; position:absolute; top:50%; width:0; height:0; border-style:solid; }
-.tail_left::after { right:100%; transform:translateY(-50%); border-width:7px 10px 7px 0; border-color:transparent var(--MI_THEME-bg) transparent transparent; margin-right:-2px; }
-.tail_right::after { left:100%; transform:translateY(-50%); border-width:7px 0 7px 10px; border-color:transparent transparent transparent var(--MI_THEME-bg); margin-left:-2px; }
+.tail_left::after { right:100%; transform:translateY(-50%); border-width:8px 12px 8px 0; border-color:transparent var(--MI_THEME-panel) transparent transparent; margin-right:-2px; }
+.tail_right::after { left:100%; transform:translateY(-50%); border-width:8px 0 8px 12px; border-color:transparent transparent transparent var(--MI_THEME-panel); margin-left:-2px; }
 .bubbleControls { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
 .bubbleCtrlRow { display:flex; align-items:center; gap:12px; }
 .colorRow { display:flex; align-items:center; gap:8px; margin-top:6px; }
@@ -1619,12 +1636,12 @@ defineProps<{ embedded?: boolean }>();
 .tailBtnOn { background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); border-color: var(--MI_THEME-accent); }
 .previewBubbleDragging { outline:2px solid var(--MI_THEME-accent); opacity:.9; }
 /* ？小吹き出し */
-.qBubble { position:absolute; transform:translate(-50%,-50%); min-width:1.6em; height:1.6em; display:flex; align-items:center; justify-content:center; background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:50%; font-weight:700; color: var(--MI_THEME-accent); cursor:grab; box-shadow:0 2px 8px rgba(0,0,0,.18); touch-action:none; }
+.qBubble { position:absolute; transform:translate(-50%,-50%); min-width:1.6em; height:1.6em; display:flex; align-items:center; justify-content:center; background: var(--MI_THEME-panel); border:1px solid var(--MI_THEME-divider); border-radius:50%; font-weight:700; color: var(--MI_THEME-accent); cursor:grab; box-shadow:0 2px 8px rgba(0,0,0,.2); touch-action:none; }
 .qMark { line-height:1; }
 .qBubble:active { cursor:grabbing; }
 .qBubble::after { content:''; position:absolute; top:60%; width:0; height:0; border-style:solid; }
-.qtail_left::after { right:100%; transform:translateY(-50%); border-width:5px 8px 5px 0; border-color:transparent var(--MI_THEME-bg) transparent transparent; margin-right:-2px; }
-.qtail_right::after { left:100%; transform:translateY(-50%); border-width:5px 0 5px 8px; border-color:transparent transparent transparent var(--MI_THEME-bg); margin-left:-2px; }
+.qtail_left::after { right:100%; transform:translateY(-50%); border-width:6px 9px 6px 0; border-color:transparent var(--MI_THEME-panel) transparent transparent; margin-right:-2px; }
+.qtail_right::after { left:100%; transform:translateY(-50%); border-width:6px 0 6px 9px; border-color:transparent transparent transparent var(--MI_THEME-panel); margin-left:-2px; }
 .qDivider { height:1px; background: var(--MI_THEME-divider); opacity:.5; margin:2px 0; }
 .qHint { font-size:.7rem; opacity:.5; }
 .bubblePlaceholder { opacity:.45; }
