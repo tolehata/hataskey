@@ -155,6 +155,8 @@ type NoteStreamEventTypes = {
 		userId: MiNote['userId'];
 		userHost: MiNote['userHost'];
 		channelId: MiNote['channelId'];
+		replyId: MiNote['replyId'];
+		renoteId: MiNote['renoteId'];
 		replyUserId: MiNote['replyUserId'];
 		mentions: MiNote['mentions'];
 		visibility: MiNote['visibility'];
@@ -434,6 +436,8 @@ export class GlobalEventService {
 			userId: note.userId,
 			userHost: note.userHost,
 			channelId: note.channelId,
+			replyId: note.replyId,
+			renoteId: note.renoteId,
 			replyUserId: note.replyUserId,
 			mentions: note.mentions,
 			visibility: note.visibility,

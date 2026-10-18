@@ -327,7 +327,7 @@ describe('favorites API compatibility and validation', () => {
 		const f = fixture(), root = await f.root();
 		const where = vi.fn(); const query = { andWhere: where, leftJoinAndSelect: vi.fn(), limit: vi.fn(), getMany: vi.fn(async () => []) };
 		where.mockReturnValue(query); query.leftJoinAndSelect.mockReturnValue(query); query.limit.mockReturnValue(query);
-		const endpoint = new Favorites({ createQueryBuilder: () => query } as never, { packMany: vi.fn(async rows => rows) } as never, { makePaginationQuery: () => query } as never, f.service);
+		const endpoint = new Favorites({ createQueryBuilder: () => query } as never, { packMany: vi.fn(async rows => rows) } as never, { makePaginationQuery: () => query, generateChannelVisibilityQuery: vi.fn(async () => {}) } as never, f.service);
 		await endpoint.exec({}, owner, null, null); expect(where).toHaveBeenCalledExactlyOnceWith('favorite.userId = :meId', { meId: 'owner' });
 		where.mockClear(); await endpoint.exec({ folderId: null }, owner, null, null); expect(where).toHaveBeenCalledWith('favorite.folderId IS NULL');
 		where.mockClear(); await endpoint.exec({ folderId: root.id }, owner, null, null); expect(where).toHaveBeenCalledWith('favorite.folderId = :folderId', { folderId: root.id });
@@ -347,14 +347,14 @@ describe('favorites API compatibility and validation', () => {
 	});
 	test('notes/state reads only the owner favorite and exposes optional nullable destination', async () => {
 		const findOne = vi.fn(async () => ({ folderId: 'folder' }));
-		const endpoint = new State({ findOneByOrFail: async () => ({ id: 'n1' }), count: async () => 0 } as never, { count: async () => 0 } as never, { findOne } as never);
+		const endpoint = new State({ findOneBy: async () => ({ id: 'n1' }), count: async () => 0 } as never, { count: async () => 0 } as never, { findOne } as never, { isChannelVisibleForMe: async () => true } as never);
 		expect(await endpoint.exec({ noteId: 'n1' }, owner, null, null)).toMatchObject({ isFavorited: true, favoriteFolderId: 'folder' });
 		expect(findOne).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'owner', noteId: 'n1' } }));
 		findOne.mockResolvedValueOnce(null as never);
 		expect(await endpoint.exec({ noteId: 'n1' }, owner, null, null)).toEqual({ isFavorited: false, isMutedThread: false, isRenoted: false });
 	});
 	test('notes/state restricts folder membership to first-party sessions or read:favorites tokens', async () => {
-		const endpoint = new State({ findOneByOrFail: async () => ({ id: 'n1' }), count: async () => 0 } as never, { count: async () => 0 } as never, { findOne: async () => ({ folderId: 'folder' }) } as never);
+		const endpoint = new State({ findOneBy: async () => ({ id: 'n1' }), count: async () => 0 } as never, { count: async () => 0 } as never, { findOne: async () => ({ folderId: 'folder' }) } as never, { isChannelVisibleForMe: async () => true } as never);
 		for (const token of [null, { permission: ['read:account', 'read:favorites'] }]) {
 			expect(await endpoint.exec({ noteId: 'n1' }, owner, token as never, null)).toMatchObject({ isFavorited: true, favoriteFolderId: 'folder' });
 		}

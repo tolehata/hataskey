@@ -7,8 +7,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { GetterService } from '@/server/api/GetterService.js';
-import { ChannelService } from '@/core/ChannelService.js';
-import type { ChannelsRepository } from '@/models/_.js';
+import { PrivateChannelNoteVisibilityError } from '@/misc/private-channel-note-visibility-error.js';
 import { DI } from '@/di-symbols.js';
 import { MiMeta } from '@/models/Meta.js';
 import { ApiError } from '../../error.js';
@@ -59,12 +58,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		@Inject(DI.meta)
 		private serverSettings: MiMeta,
 
-		@Inject(DI.channelsRepository)
-		private channelsRepository: ChannelsRepository,
-
 		private noteEntityService: NoteEntityService,
 		private getterService: GetterService,
-		private channelService: ChannelService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const note = await this.getterService.getNoteWithRelations(ps.noteId).catch(err => {
@@ -72,12 +67,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				throw err;
 			});
 
-			// 旗鯖fork: プライベートチャンネルのノートは、閲覧権限が無ければ存在ごと隠す(noSuchNote)。
-			if (note.channelId != null) {
-				const channel = note.channel ?? await this.channelsRepository.findOneBy({ id: note.channelId });
-				if (channel != null && channel.isPrivate && !await this.channelService.canView(channel, me?.id ?? null)) {
-					throw new ApiError(meta.errors.noSuchNote);
-				}
+			// 退会後の投稿者本人と、返信・引用先の閲覧権限も共通判定へ揃える。
+			if (!await this.noteEntityService.isChannelVisibleForMe(note, me?.id ?? null)) {
+				throw new ApiError(meta.errors.noSuchNote);
 			}
 
 			if (note.user!.requireSigninToViewContents && me == null) {
@@ -94,6 +86,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			return await this.noteEntityService.pack(note, me, {
 				detail: true,
+			}).catch(error => {
+				if (error instanceof PrivateChannelNoteVisibilityError) throw new ApiError(meta.errors.noSuchNote);
+				throw error;
 			});
 		});
 	}

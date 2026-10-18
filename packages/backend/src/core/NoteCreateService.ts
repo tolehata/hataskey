@@ -64,6 +64,8 @@ import { UserBlockingService } from '@/core/UserBlockingService.js';
 import { isReply } from '@/misc/is-reply.js';
 import { trackPromise } from '@/misc/promise-tracker.js';
 import { IdentifiableError } from '@/misc/identifiable-error.js';
+import { PrivateChannelNoteVisibilityError } from '@/misc/private-channel-note-visibility-error.js';
+import type { Packed } from '@/misc/json-schema.js';
 import { CollapsedQueue } from '@/misc/collapsed-queue.js';
 import { CacheService } from '@/core/CacheService.js';
 import { isQuote, isRenote } from '@/misc/is-renote.js';
@@ -347,6 +349,8 @@ export class NoteCreateService implements OnApplicationShutdown {
 			});
 
 			if (renote == null) {
+				throw new IdentifiableError('53983c56-e163-45a6-942f-4ddc485d4290', 'No such renote target');
+			} else if (!await this.noteEntityService.isChannelVisibleForMe(renote, user.id)) {
 				throw new IdentifiableError('53983c56-e163-45a6-942f-4ddc485d4290', 'No such renote target');
 			} else if (isRenote(renote) && !isQuote(renote)) {
 				throw new IdentifiableError('bde24c37-121f-4e7d-980d-cec52f599f02', 'Cannot renote pure renote');
@@ -1122,9 +1126,13 @@ export class NoteCreateService implements OnApplicationShutdown {
 				continue;
 			}
 
-			const detailPackedNote = await this.noteEntityService.pack(note, u, {
-				detail: true,
-			});
+			let detailPackedNote: Packed<'Note'>;
+			try {
+				detailPackedNote = await this.noteEntityService.pack(note, u, { detail: true });
+			} catch (error) {
+				if (error instanceof PrivateChannelNoteVisibilityError) continue;
+				throw error;
+			}
 
 			this.globalEventService.publishMainStream(u.id, 'mention', detailPackedNote);
 			this.webhookService.enqueueUserWebhook(u.id, 'mention', { note: detailPackedNote });

@@ -21,9 +21,11 @@ describe('followers 限定ノートの返信先', () => {
 		service.idService = { parse: () => ({ date: new Date() }) };
 		service.followingsRepository = followings;
 		service.usersRepository = users;
+		// The reply target is an ordinary note outside any channel.
+		service.notesRepository = { find: vi.fn(async () => [{ id: 'parent', userId: 'recipient', channelId: null, replyId: null, renoteId: null }]) };
 		const note = {
 			visibility: 'followers', userId: 'author', userHost: null,
-			channelId: null, replyId: 'parent', replyUserId: 'recipient',
+			id: 'reply', channelId: null, replyId: 'parent', renoteId: null, replyUserId: 'recipient',
 			reply: undefined, mentions: [],
 		};
 
@@ -39,9 +41,10 @@ describe('followers 限定ノートの返信先', () => {
 		service.idService = { parse: () => ({ date: new Date() }) };
 		service.followingsRepository = { count: vi.fn(async () => 0) };
 		service.usersRepository = { findOneBy: vi.fn(async () => ({})), findOneByOrFail: vi.fn(async () => ({ id: 'stranger', host: null })) };
+		service.notesRepository = { find: vi.fn(async () => [{ id: 'parent', userId: 'recipient', channelId: null, replyId: null, renoteId: null }]) };
 		const note = {
 			visibility: 'followers', userId: 'author', userHost: null,
-			channelId: null, replyId: 'parent', replyUserId: 'recipient',
+			id: 'reply', channelId: null, replyId: 'parent', renoteId: null, replyUserId: 'recipient',
 			reply: undefined, mentions: [],
 		};
 

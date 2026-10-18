@@ -4,11 +4,14 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import { EntityNotFoundError } from 'typeorm';
 import type { AntennasRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
 import { Inject } from '@nestjs/common';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { bindThis } from '@/decorators.js';
+import { PrivateChannelNoteVisibilityError } from '@/misc/private-channel-note-visibility-error.js';
+import type { Packed } from '@/misc/json-schema.js';
 import type { GlobalEvents } from '@/core/GlobalEventService.js';
 import type { JsonObject } from '@/misc/json-value.js';
 import Channel, { type MiChannelService } from '../channel.js';
@@ -56,7 +59,13 @@ class AntennaChannel extends Channel {
 	@bindThis
 	private async onEvent(data: GlobalEvents['antenna']['payload']) {
 		if (data.type === 'note') {
-			const note = await this.noteEntityService.pack(data.body.id, this.user, { detail: true });
+			let note: Packed<'Note'>;
+			try {
+				note = await this.noteEntityService.pack(data.body.id, this.user, { detail: true });
+			} catch (error) {
+				if (error instanceof PrivateChannelNoteVisibilityError || error instanceof EntityNotFoundError) return;
+				throw error;
+			}
 
 			if (this.isNoteMutedOrBlocked(note)) return;
 

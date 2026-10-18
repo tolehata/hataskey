@@ -12,6 +12,7 @@ import type { DriveFilesRepository, NotesRepository, UserProfilesRepository } fr
 import type { Config } from '@/config.js';
 import type { MiUser } from '@/models/User.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
+import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { DriveFileEntityService } from '@/core/entities/DriveFileEntityService.js';
 import { bindThis } from '@/decorators.js';
 import { IdService } from '@/core/IdService.js';
@@ -37,6 +38,7 @@ export class FeedService {
 		private driveFileEntityService: DriveFileEntityService,
 		private idService: IdService,
 		private mfmService: MfmService,
+		private noteEntityService: NoteEntityService,
 	) {
 	}
 
@@ -49,7 +51,7 @@ export class FeedService {
 
 		const profile = await this.userProfilesRepository.findOneByOrFail({ userId: user.id });
 
-		const notes = await this.notesRepository.find({
+		const candidates = await this.notesRepository.find({
 			where: {
 				userId: user.id,
 				renoteId: IsNull(),
@@ -64,6 +66,7 @@ export class FeedService {
 				&& !shouldHideNoteByTime(user.makeNotesHiddenBefore, createdAt)
 				&& !shouldHideNoteByTime(user.makeNotesFollowersOnlyBefore, createdAt);
 		}));
+		const notes = await this.noteEntityService.filterChannelVisibleNotes(candidates, null);
 
 		const feed = new Feed({
 			id: author.link,

@@ -27,6 +27,7 @@ import type { MiNote } from '@/models/Note.js';
 import { QueryService } from '@/core/QueryService.js';
 import { UtilityService } from '@/core/UtilityService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
+import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { bindThis } from '@/decorators.js';
 import { IActivity } from '@/core/activitypub/type.js';
 import { isQuote, isRenote } from '@/misc/is-renote.js';
@@ -84,6 +85,7 @@ export class ActivityPubServerService {
 		private fanoutTimelineEndpointService: FanoutTimelineEndpointService,
 		private activityPubAccessControlService: ActivityPubAccessControlService,
 		private apDbResolverService: ApDbResolverService,
+		private noteEntityService: NoteEntityService,
 	) {
 		//this.createServer = this.createServer.bind(this);
 	}
@@ -96,6 +98,14 @@ export class ActivityPubServerService {
 		} else {
 			reply.type(ACTIVITY_JSON);
 		}
+	}
+
+	@bindThis
+	private async canServeNote(note: MiNote, request: FastifyRequest): Promise<boolean> {
+		if (note.localOnly || !['public', 'home'].includes(note.visibility)) return false;
+		// AP の公開取得はローカルの参加者セッションを持たない。参照先も匿名として判定する。
+		return await this.noteEntityService.isChannelVisibleForMe(note, null)
+			&& await this.activityPubAccessControlService.checkNoteAccess(note, request);
 	}
 
 	/**
@@ -442,9 +452,10 @@ export class ActivityPubServerService {
 			order: { id: 'DESC' },
 		});
 
-		const pinnedNotes = (await Promise.all(pinings.map(pining =>
+		const pinnedCandidates = (await Promise.all(pinings.map(pining =>
 			this.notesRepository.findOneByOrFail({ id: pining.noteId }))))
 			.filter(note => !note.localOnly && ['public', 'home'].includes(note.visibility));
+		const pinnedNotes = await this.noteEntityService.filterChannelVisibleNotes(pinnedCandidates, null);
 
 		const renderedNotes = await Promise.all(pinnedNotes.map(note => this.apRendererService.renderNote(note)));
 
@@ -513,7 +524,7 @@ export class ActivityPubServerService {
 		const partOf = `${this.config.url}/users/${userId}/outbox`;
 
 		if (page) {
-			const notes = this.meta.enableFanoutTimeline ? await this.fanoutTimelineEndpointService.getMiNotes({
+			const candidates = this.meta.enableFanoutTimeline ? await this.fanoutTimelineEndpointService.getMiNotes({
 				sinceId: sinceId ?? null,
 				untilId: untilId ?? null,
 				limit: limit,
@@ -546,6 +557,7 @@ export class ActivityPubServerService {
 				limit,
 				userId: user.id,
 			});
+			const notes = await this.noteEntityService.filterChannelVisibleNotes(candidates, null);
 
 			if (sinceId) notes.reverse();
 
@@ -590,16 +602,16 @@ export class ActivityPubServerService {
 		limit: number,
 		userId: MiUser['id'],
 	}) {
-		return await this.queryService.makePaginationQuery(this.notesRepository.createQueryBuilder('note'), ps.sinceId, ps.untilId)
+		const query = this.queryService.makePaginationQuery(this.notesRepository.createQueryBuilder('note'), ps.sinceId, ps.untilId)
 			.andWhere('note.userId = :userId', { userId: ps.userId })
 			.andWhere(new Brackets(qb => {
 				qb
 					.where('note.visibility = \'public\'')
 					.orWhere('note.visibility = \'home\'');
 			}))
-			.andWhere('note.localOnly = FALSE')
-			.limit(ps.limit)
-			.getMany();
+			.andWhere('note.localOnly = FALSE');
+		await this.queryService.generateChannelVisibilityQuery(query, null);
+		return await query.limit(ps.limit).getMany();
 	}
 
 	@bindThis
@@ -718,7 +730,7 @@ export class ActivityPubServerService {
 				return;
 			}
 
-			if (!await this.activityPubAccessControlService.checkNoteAccess(note, request)) {
+			if (!await this.canServeNote(note, request)) {
 				reply.code(404);
 				return;
 			}
@@ -758,7 +770,7 @@ export class ActivityPubServerService {
 				localOnly: false,
 			});
 
-			if (note == null) {
+			if (note == null || !await this.canServeNote(note, request)) {
 				reply.code(404);
 				return;
 			}
@@ -976,7 +988,7 @@ export class ActivityPubServerService {
 
 			const note = await this.notesRepository.findOneBy({ id: reaction.noteId });
 
-			if (note == null) {
+			if (note == null || !await this.canServeNote(note, request)) {
 				reply.code(404);
 				return;
 			}

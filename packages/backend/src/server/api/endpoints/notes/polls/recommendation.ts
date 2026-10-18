@@ -8,6 +8,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { NotesRepository, MutingsRepository, PollsRepository, PollVotesRepository } from '@/models/_.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
+import { QueryService } from '@/core/QueryService.js';
 import { DI } from '@/di-symbols.js';
 
 export const meta = {
@@ -53,6 +54,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private mutingsRepository: MutingsRepository,
 
 		private noteEntityService: NoteEntityService,
+		private queryService: QueryService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const query = this.pollsRepository.createQueryBuilder('poll')
@@ -92,6 +94,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				query.andWhere('poll.channelId IS NULL');
 			}
 			//#endregion
+
+			query.innerJoin('note', 'note', 'note.id = poll.noteId');
+			await this.queryService.generateChannelVisibilityQuery(query, me);
 
 			const polls = await query
 				.orderBy('poll.noteId', 'DESC')

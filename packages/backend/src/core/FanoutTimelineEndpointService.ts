@@ -12,6 +12,7 @@ import type { MiMeta } from '@/models/Meta.js';
 import { Packed } from '@/misc/json-schema.js';
 import type { NotesRepository } from '@/models/_.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
+import { QueryService } from '@/core/QueryService.js';
 import { FanoutTimelineName, FanoutTimelineService } from '@/core/FanoutTimelineService.js';
 import { UtilityService } from '@/core/UtilityService.js';
 import { isUserRelated } from '@/misc/is-user-related.js';
@@ -56,6 +57,7 @@ export class FanoutTimelineEndpointService {
 		private cacheService: CacheService,
 		private fanoutTimelineService: FanoutTimelineService,
 		private utilityService: UtilityService,
+		private queryService: QueryService,
 	) {
 	}
 
@@ -186,7 +188,7 @@ export class FanoutTimelineEndpointService {
 
 				readFromRedis += noteIds.length;
 
-				const gotFromDb = await this.getAndFilterFromDb(noteIds, filter, idCompare);
+				const gotFromDb = await this.getAndFilterFromDb(noteIds, filter, idCompare, ps.me);
 				redisTimeline.push(...gotFromDb);
 				lastSuccessfulRate = gotFromDb.length / noteIds.length;
 
@@ -214,7 +216,7 @@ export class FanoutTimelineEndpointService {
 		return await ps.dbFallback(ps.untilId, ps.sinceId, ps.limit);
 	}
 
-	private async getAndFilterFromDb(noteIds: string[], noteFilter: NoteFilter, idCompare: (a: string, b: string) => number): Promise<MiNote[]> {
+	private async getAndFilterFromDb(noteIds: string[], noteFilter: NoteFilter, idCompare: (a: string, b: string) => number, me?: { id: MiUser['id'] } | null): Promise<MiNote[]> {
 		const query = this.notesRepository.createQueryBuilder('note')
 			.where('note.id IN (:...noteIds)', { noteIds: noteIds })
 			.innerJoinAndSelect('note.user', 'user')
@@ -224,6 +226,7 @@ export class FanoutTimelineEndpointService {
 			.leftJoinAndSelect('renote.user', 'renoteUser')
 			.leftJoinAndSelect('note.channel', 'channel');
 
+		await this.queryService.generateChannelVisibilityQuery(query, me);
 		const notes = (await query.getMany()).filter(noteFilter);
 
 		notes.sort((a, b) => idCompare(a.id, b.id));

@@ -96,9 +96,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			// 2. seed でシャッフル
 			const shuffledIds = shuffleWithSeed(topIds, seed);
 
-			// 3. offset/limit で切り出し
-			const sliceIds = shuffledIds.slice(ps.offset, ps.offset + ps.limit);
-			if (sliceIds.length === 0) {
+			if (ps.offset >= shuffledIds.length) {
 				return [];
 			}
 
@@ -114,7 +112,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			// 5. DB から実体ノートを取得 (公開ノート + 非凍結ユーザー + リプライ除外)
 			//    ActivityPub fetch は一切発生しない (createQueryBuilder のみ)
 			const query = this.notesRepository.createQueryBuilder('note')
-				.where('note.id IN (:...noteIds)', { noteIds: sliceIds })
+				.where('note.id IN (:...noteIds)', { noteIds: shuffledIds })
 				.andWhere('note.visibility = :visibility', { visibility: 'public' })
 				.andWhere('note.replyId IS NULL')
 				.innerJoinAndSelect('note.user', 'user')
@@ -126,6 +124,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			this.queryService.generateBlockedHostQueryForNote(query);
 			this.queryService.generateSuspendedUserQueryForNote(query);
+			await this.queryService.generateChannelVisibilityQuery(query, me);
 			if (me == null) this.queryService.generateUgcVisibilityQueryForVisitor(query);
 
 			const notes = (await query.getMany()).filter(note => {
@@ -134,9 +133,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				return true;
 			});
 
-			// 6. シャッフル順序を保持するため、sliceIds の順にソート
+			// 閲覧できるノートを確定してから offset/limit を適用し、非公開投稿でページを埋めない。
 			const noteMap = new Map(notes.map(n => [n.id, n]));
-			const ordered = sliceIds.map(id => noteMap.get(id)).filter((n): n is NonNullable<typeof n> => n != null);
+			const ordered = shuffledIds.map(id => noteMap.get(id)).filter((n): n is NonNullable<typeof n> => n != null).slice(ps.offset, ps.offset + ps.limit);
 
 			return await this.noteEntityService.packMany(ordered, me);
 		});

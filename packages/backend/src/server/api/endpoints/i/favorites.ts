@@ -58,6 +58,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const query = this.queryService.makePaginationQuery(this.noteFavoritesRepository.createQueryBuilder('favorite'), ps.sinceId, ps.untilId, ps.sinceDate, ps.untilDate)
 				.andWhere('favorite.userId = :meId', { meId: me.id })
 				.leftJoinAndSelect('favorite.note', 'note');
+			await this.queryService.generateChannelVisibilityQuery(query, me);
 
 			// Omitted is all (legacy clients); explicit null is only unfiled.
 			if (ps.folderId === null) {

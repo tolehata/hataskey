@@ -6,6 +6,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { NotesRepository, NoteThreadMutingsRepository, NoteFavoritesRepository } from '@/models/_.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
+import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
+import { ApiError } from '@/server/api/error.js';
 import { DI } from '@/di-symbols.js';
 
 export const meta = {
@@ -13,6 +15,13 @@ export const meta = {
 
 	requireCredential: true,
 	kind: 'read:account',
+	errors: {
+		noSuchNote: {
+			message: 'No such note.',
+			code: 'NO_SUCH_NOTE',
+			id: '41a7dd2f-9adc-4dc4-ae0c-52cf03a2978d',
+		},
+	},
 
 	res: {
 		type: 'object',
@@ -58,9 +67,13 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		@Inject(DI.noteFavoritesRepository)
 		private noteFavoritesRepository: NoteFavoritesRepository,
+		private noteEntityService: NoteEntityService,
 	) {
 		super(meta, paramDef, async (ps, me, token) => {
-			const note = await this.notesRepository.findOneByOrFail({ id: ps.noteId });
+			const note = await this.notesRepository.findOneBy({ id: ps.noteId });
+			if (note == null || !await this.noteEntityService.isChannelVisibleForMe(note, me.id)) {
+				throw new ApiError(meta.errors.noSuchNote);
+			}
 
 			const [favorite, threadMuting, renoted] = await Promise.all([
 				this.noteFavoritesRepository.findOne({

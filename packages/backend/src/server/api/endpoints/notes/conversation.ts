@@ -65,17 +65,22 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				if (err.id === '9725d0ce-ba28-4dde-95a7-2cbb2c15de24') throw new ApiError(meta.errors.noSuchNote);
 				throw err;
 			});
+			if (!await this.noteEntityService.isChannelVisibleForMe(note, me?.id ?? null)) return [];
 
 			const conversation: MiNote[] = [];
+			const visited = new Set<string>();
 			let i = 0;
 
 			const get = async (id: any) => {
-				i++;
+				if (visited.has(id)) return;
+				visited.add(id);
 				const p = await this.notesRepository.findOneBy({ id });
 				if (p == null) return;
 
-				if (i > ps.offset! && !(me == null && this.serverSettings.ugcVisibilityForVisitor === 'local' && p.userHost != null)) {
-					conversation.push(p);
+				if (!(me == null && this.serverSettings.ugcVisibilityForVisitor === 'local' && p.userHost != null)
+					&& await this.noteEntityService.isChannelVisibleForMe(p, me?.id ?? null)) {
+					i++;
+					if (i > ps.offset!) conversation.push(p);
 				}
 
 				if (conversation.length === ps.limit) {

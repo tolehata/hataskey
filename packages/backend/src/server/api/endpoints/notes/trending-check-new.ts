@@ -31,9 +31,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
 import type { MiMeta, NotesRepository } from '@/models/_.js';
-import { In, IsNull } from 'typeorm';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { TrendingService, TRENDING_TOP_LIMIT } from '@/core/TrendingService.js';
+import { QueryService } from '@/core/QueryService.js';
 
 export const meta = {
 	tags: ['notes'],
@@ -84,15 +84,20 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private trendingService: TrendingService,
 		@Inject(DI.meta) private serverSettings: MiMeta,
 		@Inject(DI.notesRepository) private notesRepository: NotesRepository,
+		private queryService: QueryService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			if (me == null && this.serverSettings.ugcVisibilityForVisitor === 'none') return { topNoteIds: [], newCount: 0 };
 			let topNoteIds = await this.trendingService.getTopNoteIds(TRENDING_TOP_LIMIT);
 
-			if (me == null && this.serverSettings.ugcVisibilityForVisitor === 'local' && topNoteIds.length > 0) {
-				const localNotes = await this.notesRepository.find({ where: { id: In(topNoteIds), userHost: IsNull() }, select: { id: true } });
-				const localIds = new Set(localNotes.map(note => note.id));
-				topNoteIds = topNoteIds.filter(id => localIds.has(id));
+			if (topNoteIds.length > 0) {
+				const query = this.notesRepository.createQueryBuilder('note')
+					.select('note.id')
+					.where('note.id IN (:...topNoteIds)', { topNoteIds });
+				if (me == null) this.queryService.generateUgcVisibilityQueryForVisitor(query);
+				await this.queryService.generateChannelVisibilityQuery(query, me);
+				const visibleIds = new Set((await query.getMany()).map(note => note.id));
+				topNoteIds = topNoteIds.filter(id => visibleIds.has(id));
 			}
 
 			let newCount = 0;

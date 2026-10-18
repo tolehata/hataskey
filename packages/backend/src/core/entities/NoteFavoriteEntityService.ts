@@ -11,6 +11,7 @@ import type { MiUser } from '@/models/User.js';
 import type { MiNoteFavorite } from '@/models/NoteFavorite.js';
 import { bindThis } from '@/decorators.js';
 import { IdService } from '@/core/IdService.js';
+import { PrivateChannelNoteVisibilityError } from '@/misc/private-channel-note-visibility-error.js';
 import { NoteEntityService } from './NoteEntityService.js';
 
 @Injectable()
@@ -41,10 +42,14 @@ export class NoteFavoriteEntityService {
 	}
 
 	@bindThis
-	public packMany(
+	public async packMany(
 		favorites: any[],
 		me: { id: MiUser['id'] },
 	) {
-		return Promise.all(favorites.map(x => this.pack(x, me)));
+		const packed = await Promise.all(favorites.map(x => this.pack(x, me).catch(error => {
+			if (error instanceof PrivateChannelNoteVisibilityError) return null;
+			throw error;
+		})));
+		return packed.filter(favorite => favorite != null);
 	}
 }

@@ -85,8 +85,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				return [];
 			}
 
-			let noteIds = await this.fanoutTimelineService.get(`roleTimeline:${role.id}`, untilId, sinceId);
-			noteIds = noteIds.slice(0, ps.limit);
+			const noteIds = await this.fanoutTimelineService.get(`roleTimeline:${role.id}`, untilId, sinceId);
 
 			if (noteIds.length === 0) {
 				return [];
@@ -102,9 +101,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				.leftJoinAndSelect('renote.user', 'renoteUser');
 
 			this.queryService.generateVisibilityQuery(query, me);
+			await this.queryService.generateChannelVisibilityQuery(query, me);
 			this.queryService.generateBaseNoteFilteringQuery(query, me);
 
-			const notes = await query.getMany();
+			const notes = await query.orderBy('note.id', 'DESC').limit(ps.limit).getMany();
 			notes.sort((a, b) => a.id > b.id ? -1 : 1);
 
 			return await this.noteEntityService.packMany(notes, me);

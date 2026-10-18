@@ -66,6 +66,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			}
 
 			if (me == null) this.queryService.generateUgcVisibilityQueryForVisitor(query);
+			await this.queryService.generateChannelVisibilityQuery(query, me);
 
 			if (ps.reply !== undefined) {
 				query.andWhere(ps.reply ? 'note.replyId IS NOT NULL' : 'note.replyId IS NULL');
@@ -94,7 +95,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			const notes = await query.limit(ps.limit).getMany();
 
-			return await this.noteEntityService.packMany(notes);
+			return await this.noteEntityService.packMany(notes, me);
 		});
 	}
 }

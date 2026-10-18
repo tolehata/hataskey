@@ -5,6 +5,7 @@
 
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { LtlEmojiVoteError, LtlEmojiVoteService } from '@/core/LtlEmojiVoteService.js';
+import { PrivateChannelNoteVisibilityError } from '@/misc/private-channel-note-visibility-error.js';
 import {
 	LTL_EMOJI_VOTE_DURATION_MS, LTL_EMOJI_VOTE_FRESH_MS,
 	LTL_EMOJI_VOTE_RESULT_MS, LTL_EMOJI_VOTE_TALLY_MS, rankLtlEmojiVotes,
@@ -66,7 +67,7 @@ function fixture() {
 	};
 	const policies = { ltlAvailable: true };
 	const roles = { getUserPolicies: vi.fn(async () => policies) };
-	const filters = { generateVisibilityQuery: vi.fn(), generateBaseNoteFilteringQuery: vi.fn() };
+	const filters = { generateVisibilityQuery: vi.fn(), generateChannelVisibilityQuery: vi.fn(async () => {}), generateBaseNoteFilteringQuery: vi.fn() };
 	const packer = { pack: vi.fn().mockResolvedValue({ ...trigger, user: { requireSigninToViewContents: false } }) };
 	const idService = { parse: vi.fn(() => ({ date: new Date(startedAt) })) };
 	const service = new LtlEmojiVoteService(notes as never, emojis as never, filters as never, roles as never, packer as never, idService as never);
@@ -217,6 +218,18 @@ describe('LTL emoji vote creation', () => {
 });
 
 describe('LTL emoji vote read/write authorization and phase handling', () => {
+	test('treats revoked private channel access during packing as an unavailable round', async () => {
+		const f = fixture();
+		f.packer.pack.mockRejectedValue(new PrivateChannelNoteVisibilityError());
+		await expect(f.service.show(me as never)).resolves.toMatchObject({ round: null });
+		await expect(f.service.vote(me as never, 'round1', 'e0')).rejects.toMatchObject({ code: 'NO_SUCH_ROUND' });
+		expect(f.store.vote).not.toHaveBeenCalled();
+	});
+	test('propagates unrelated packing failures', async () => {
+		const f = fixture();
+		f.packer.pack.mockRejectedValue(new Error('database unavailable'));
+		await expect(f.service.show(me as never)).rejects.toThrow('database unavailable');
+	});
 	test('applies the existing visibility, mute/block and packed-note hiding rules on reads and writes', async () => {
 		const f = fixture();
 		await f.service.show(me as never);

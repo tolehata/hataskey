@@ -251,6 +251,7 @@ export class SearchService {
 		}
 
 		this.queryService.generateVisibilityQuery(query, me);
+		await this.queryService.generateChannelVisibilityQuery(query, me);
 		if (me == null) this.queryService.generateUgcVisibilityQueryForVisitor(query);
 		this.queryService.generateBaseNoteFilteringQuery(query, me);
 
@@ -308,17 +309,6 @@ export class SearchService {
 			if (this.meta.ugcVisibilityForVisitor === 'local') filter.qs.push({ op: 'is null', k: 'userHost' });
 		}
 
-		const res = await this.meilisearchNoteIndex.search(q, {
-			sort: ['createdAt:desc'],
-			matchingStrategy: 'all',
-			attributesToRetrieve: ['id', 'createdAt'],
-			filter: compileQuery(filter),
-			limit: pagination.limit,
-		});
-		if (res.hits.length === 0) {
-			return [];
-		}
-
 		const [
 			userIdsWhoMeMuting,
 			userIdsWhoBlockingMe,
@@ -336,18 +326,41 @@ export class SearchService {
 			.leftJoinAndSelect('reply.user', 'replyUser')
 			.leftJoinAndSelect('renote.user', 'renoteUser');
 
-		query.where('note.id IN (:...noteIds)', { noteIds: res.hits.map(x => x.id) });
+		query.where('note.id IN (:...noteIds)');
 
 		this.queryService.generateBlockedHostQueryForNote(query);
 		this.queryService.generateSuspendedUserQueryForNote(query);
 		this.queryService.generateVisibilityQuery(query, me);
+		await this.queryService.generateChannelVisibilityQuery(query, me);
 
-		const notes = (await query.getMany()).filter(note => {
-			if (me && isUserRelated(note, userIdsWhoBlockingMe)) return false;
-			if (me && isUserRelated(note, userIdsWhoMeMuting)) return false;
-			return true;
-		});
+		// Search indexes retain private-channel and removed-member hits. Fill the
+		// requested page from current DB-visible notes before returning its cursor.
+		const notes: MiNote[] = [];
+		const seen = new Set<string>();
+		const batchSize = Math.max(pagination.limit, 100);
+		let offset = 0;
+		while (notes.length < pagination.limit) {
+			const res = await this.meilisearchNoteIndex.search(q, {
+				sort: ['createdAt:desc'],
+				matchingStrategy: 'all',
+				attributesToRetrieve: ['id', 'createdAt'],
+				filter: compileQuery(filter),
+				limit: batchSize,
+				offset,
+			});
+			if (res.hits.length === 0) break;
+			offset += res.hits.length;
+			query.setParameter('noteIds', res.hits.map(hit => hit.id));
+			for (const note of await query.getMany()) {
+				if (seen.has(note.id)) continue;
+				if (me && isUserRelated(note, userIdsWhoBlockingMe)) continue;
+				if (me && isUserRelated(note, userIdsWhoMeMuting)) continue;
+				seen.add(note.id);
+				notes.push(note);
+			}
+			if (res.hits.length < batchSize) break;
+		}
 
-		return notes.sort((a, b) => a.id > b.id ? -1 : 1);
+		return notes.sort((a, b) => a.id > b.id ? -1 : 1).slice(0, pagination.limit);
 	}
 }

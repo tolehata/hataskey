@@ -7,7 +7,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { ChannelsRepository, MiMeta, NotesRepository } from '@/models/_.js';
 import { QueryService } from '@/core/QueryService.js';
-import { ChannelService } from '@/core/ChannelService.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import ActiveUsersChart from '@/core/chart/charts/active-users.js';
 import { DI } from '@/di-symbols.js';
@@ -71,7 +70,6 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private queryService: QueryService,
 		private fanoutTimelineEndpointService: FanoutTimelineEndpointService,
 		private activeUsersChart: ActiveUsersChart,
-		private channelService: ChannelService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const untilId = ps.untilId ?? (ps.untilDate ? this.idService.gen(ps.untilDate!) : null);
@@ -83,11 +81,6 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			if (channel == null) {
 				throw new ApiError(meta.errors.noSuchChannel);
-			}
-
-			// 旗鯖fork: プライベートチャンネルは閲覧権限(メンバー/作成者/副管理者)が無ければ見せない。
-			if (channel.isPrivate && !await this.channelService.canView(channel, me?.id ?? null)) {
-				return [];
 			}
 
 			if (me) this.activeUsersChart.read(me);
@@ -130,6 +123,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			.leftJoinAndSelect('note.channel', 'channel');
 
 		this.queryService.generateBaseNoteFilteringQuery(query, me);
+		await this.queryService.generateChannelVisibilityQuery(query, me);
 		if (me == null) this.queryService.generateUgcVisibilityQueryForVisitor(query);
 		//#endregion
 

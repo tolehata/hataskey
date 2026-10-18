@@ -10,6 +10,8 @@ import type { MiUser } from '@/models/User.js';
 import type { UserProfilesRepository, FollowingsRepository, ChannelFollowingsRepository, BlockingsRepository, NoteThreadMutingsRepository, MutingsRepository, RenoteMutingsRepository, MiMeta } from '@/models/_.js';
 import { bindThis } from '@/decorators.js';
 import { IdService } from '@/core/IdService.js';
+import { RoleService } from '@/core/RoleService.js';
+import { applyPrivateChannelNoteVisibility } from '@/misc/private-channel-note-visibility.js';
 import type { SelectQueryBuilder } from 'typeorm';
 
 @Injectable()
@@ -40,6 +42,7 @@ export class QueryService {
 		private meta: MiMeta,
 
 		private idService: IdService,
+		private roleService: RoleService,
 	) {
 	}
 
@@ -264,6 +267,12 @@ export class QueryService {
 		q.andWhere(`user.id NOT IN (${ mutingQuery.getQuery() })`);
 
 		q.setParameters(mutingQuery.getParameters());
+	}
+
+	@bindThis
+	public async generateChannelVisibilityQuery<T extends ObjectLiteral>(q: SelectQueryBuilder<T>, me?: { id: MiUser['id'] } | null): Promise<void> {
+		if (me != null && await this.roleService.isModerator(me)) return;
+		applyPrivateChannelNoteVisibility(q, me?.id ?? null);
 	}
 
 	@bindThis

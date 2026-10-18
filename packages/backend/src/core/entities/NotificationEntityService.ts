@@ -5,7 +5,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { In } from 'typeorm';
+import { EntityNotFoundError, In } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { ChannelInvitationsRepository, FollowRequestsRepository, HatadyNotificationsRepository, NotesRepository, MiUser, UsersRepository, UserGroupInvitationsRepository } from '@/models/_.js';
 import { MiHatadyLog } from '@/models/HatadyLog.js';
@@ -22,6 +22,7 @@ import type { Packed } from '@/misc/json-schema.js';
 import { bindThis } from '@/decorators.js';
 import { FilterUnionByProperty, groupedNotificationTypes } from '@/types.js';
 import { CacheService } from '@/core/CacheService.js';
+import { PrivateChannelNoteVisibilityError } from '@/misc/private-channel-note-visibility-error.js';
 import { RoleEntityService } from './RoleEntityService.js';
 import { ChatEntityService } from './ChatEntityService.js';
 import type { OnModuleInit } from '@nestjs/common';
@@ -166,6 +167,15 @@ export class NotificationEntityService implements OnModuleInit {
 		} as unknown as Packed<'Notification'>;
 	}
 
+	private async packVisibleNote(noteId: MiNote['id'], meId: MiUser['id']): Promise<Packed<'Note'> | null> {
+		try {
+			return await this.noteEntityService.pack(noteId, { id: meId }, { detail: true });
+		} catch (error) {
+			if (error instanceof PrivateChannelNoteVisibilityError || error instanceof EntityNotFoundError) return null;
+			throw error;
+		}
+	}
+
 	/**
 	 * 通知をパックする共通処理
 	*/
@@ -200,9 +210,7 @@ export class NotificationEntityService implements OnModuleInit {
 		const noteIfNeed = needsNote ? (
 			hint?.packedNotes != null
 				? hint.packedNotes.get(notification.noteId)
-				: this.noteEntityService.pack(notification.noteId, { id: meId }, {
-					detail: true,
-				})
+				: await this.packVisibleNote(notification.noteId, meId)
 		) : undefined;
 		// if the note has been deleted, don't show this notification
 		if (needsNote && !noteIfNeed) return null;
@@ -252,7 +260,7 @@ export class NotificationEntityService implements OnModuleInit {
 			const reactions = (await Promise.all(notification.reactions.map(async reaction => {
 				const note = hint?.packedNotes != null
 					? hint.packedNotes.get(reaction.noteId)
-					: await this.noteEntityService.pack(reaction.noteId, { id: meId }, { detail: true }).catch(() => null);
+					: await this.packVisibleNote(reaction.noteId, meId);
 				if (!note) return null;
 				return {
 					note,
@@ -293,7 +301,12 @@ export class NotificationEntityService implements OnModuleInit {
 				users,
 			});
 		} else if (notification.type === 'note:grouped') {
-			const users = (await Promise.all(notification.notifierIds.map(notifier => {
+			const notes = (await Promise.all(notification.noteIds.map(noteId => hint?.packedNotes != null
+				? hint.packedNotes.get(noteId)
+				: this.packVisibleNote(noteId, meId)))).filter(note => note != null);
+			if (notes.length === 0) return null;
+			const visibleAuthors = new Set(notes.map(note => note.userId));
+			const users = (await Promise.all(notification.notifierIds.filter(id => visibleAuthors.has(id)).map(notifier => {
 				const packedUser = hint?.packedUsers != null ? hint.packedUsers.get(notifier) : null;
 				if (packedUser) {
 					return packedUser;
@@ -310,7 +323,7 @@ export class NotificationEntityService implements OnModuleInit {
 				id: notification.id,
 				createdAt: new Date(notification.createdAt).toISOString(),
 				type: notification.type,
-				noteIds: notification.noteIds,
+				noteIds: notes.map(note => note.id),
 				users,
 			});
 		}
@@ -362,7 +375,7 @@ export class NotificationEntityService implements OnModuleInit {
 			...(notification.type === 'login' ? {
 				ip: notification.userIp,
 			} : {}),
-			...(notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed' || notification.type === 'earthquake'
+			...(notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed' || notification.type === 'hataskDecorationUnlocked' || notification.type === 'earthquake'
 				|| notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel' ? {
 				body: notification.customBody,
 				header: notification.customHeader,
@@ -388,6 +401,7 @@ export class NotificationEntityService implements OnModuleInit {
 		const noteIds = validNotifications.map(x => 'noteId' in x ? x.noteId : null).filter(x => x != null);
 		// 旗鯖fork: reaction:groupedByUser は内部に複数の noteId を持つため、別途バルク取得対象に追加
 		for (const notification of validNotifications) {
+			if (notification.type === 'note:grouped') noteIds.push(...notification.noteIds);
 			if (notification.type === 'reaction:groupedByUser') {
 				for (const r of notification.reactions) {
 					noteIds.push(r.noteId);

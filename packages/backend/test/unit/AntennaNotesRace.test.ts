@@ -37,13 +37,16 @@ function fixture(initialActive: boolean) {
 	const publishInternalEvent = vi.fn();
 	const get = vi.fn().mockResolvedValue([]);
 	const query = {
-		where: vi.fn(), innerJoinAndSelect: vi.fn(), leftJoinAndSelect: vi.fn(), getMany: vi.fn().mockResolvedValue([]),
+		where: vi.fn(), innerJoinAndSelect: vi.fn(), leftJoinAndSelect: vi.fn(), orderBy: vi.fn(), limit: vi.fn(), getMany: vi.fn().mockResolvedValue([]),
 	};
 	query.where.mockReturnValue(query);
 	query.innerJoinAndSelect.mockReturnValue(query);
 	query.leftJoinAndSelect.mockReturnValue(query);
+	query.orderBy.mockReturnValue(query);
+	query.limit.mockReturnValue(query);
 	const createQueryBuilder = vi.fn().mockReturnValue(query);
 	const generateVisibilityQuery = vi.fn();
+	const generateChannelVisibilityQuery = vi.fn(async () => {});
 	const generateBaseNoteFilteringQuery = vi.fn();
 	const packMany = vi.fn(async (notes: { id: string }[]) => notes.map(note => note.id));
 	const endpoint = new AntennaNotesEndpoint(
@@ -51,13 +54,13 @@ function fixture(initialActive: boolean) {
 		{ findOneBy, update } as never,
 		{ gen: vi.fn() } as never,
 		{ packMany } as never,
-		{ generateVisibilityQuery, generateBaseNoteFilteringQuery } as never,
+		{ generateVisibilityQuery, generateChannelVisibilityQuery, generateBaseNoteFilteringQuery } as never,
 		{ get } as never,
 		{ publishInternalEvent } as never,
 	);
 	return {
 		endpoint, firstRead, findOneBy, update, publishInternalEvent, get, query,
-		generateVisibilityQuery, generateBaseNoteFilteringQuery, packMany,
+		generateVisibilityQuery, generateChannelVisibilityQuery, generateBaseNoteFilteringQuery, packMany,
 		get row() { return row; },
 		set row(value: AntennaRow | null) { row = value; },
 		exec: (actor = 'owner1', params: Record<string, unknown> = {}) => endpoint.exec({ antennaId: 'antenna1', ...params }, { id: actor } as never, null, null),
@@ -118,7 +121,11 @@ describe('antennas/notes activity update', () => {
 		const request = f.exec('owner1', { limit: 2 });
 		f.firstRead.resolve();
 		await expect(request).resolves.toEqual(['note2', 'note1']);
-		expect(f.query.where).toHaveBeenCalledWith('note.id IN (:...noteIds)', { noteIds: ['note1', 'note2'] });
+		// Every candidate is filtered before the limit, so hidden notes cannot shorten the page.
+		expect(f.query.where).toHaveBeenCalledWith('note.id IN (:...noteIds)', { noteIds: ['note1', 'note2', 'note3'] });
+		expect(f.query.orderBy).toHaveBeenCalledWith('note.id', 'DESC');
+		expect(f.query.limit).toHaveBeenCalledWith(2);
+		expect(f.generateChannelVisibilityQuery).toHaveBeenCalledWith(f.query, expect.objectContaining({ id: 'owner1' }));
 		expect(f.generateVisibilityQuery).toHaveBeenCalledOnce();
 		expect(f.generateBaseNoteFilteringQuery).toHaveBeenCalledOnce();
 		expect(f.packMany).toHaveBeenCalledWith([{ id: 'note2' }, { id: 'note1' }], expect.objectContaining({ id: 'owner1' }));

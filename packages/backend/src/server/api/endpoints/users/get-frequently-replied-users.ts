@@ -9,8 +9,6 @@ import type { NotesRepository } from '@/models/_.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { QueryService } from '@/core/QueryService.js';
-import { ChannelService } from '@/core/ChannelService.js';
-import type { MiNote } from '@/models/Note.js';
 import { DI } from '@/di-symbols.js';
 import { GetterService } from '@/server/api/GetterService.js';
 import { ApiError } from '../../error.js';
@@ -68,7 +66,6 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private userEntityService: UserEntityService,
 		private queryService: QueryService,
-		private channelService: ChannelService,
 		private getterService: GetterService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
@@ -80,16 +77,6 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			// Fetch recent notes
 			// 旗鯖のプライベートチャンネル認可も集計元・返信先の双方へ適用する。
-			const channelVisibility = new Map<string, Promise<boolean>>();
-			const canViewChannel = (note: MiNote): Promise<boolean> => {
-				if (note.channel == null) return Promise.resolve(true);
-				let visible = channelVisibility.get(note.channel.id);
-				if (visible == null) {
-					visible = this.channelService.canView(note.channel, me?.id ?? null);
-					channelVisibility.set(note.channel.id, visible);
-				}
-				return visible;
-			};
 			const recentNotesQuery = this.notesRepository.createQueryBuilder('note')
 				.select(['note.id', 'note.replyId', 'note.channelId'])
 				.leftJoinAndSelect('note.channel', 'channel')
@@ -104,11 +91,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			if (!isSelf) {
 				this.queryService.generateVisibilityQuery(recentNotesQuery, me);
 			}
+			await this.queryService.generateChannelVisibilityQuery(recentNotesQuery, me);
 
-			const recentNotes: MiNote[] = [];
-			for (const note of await recentNotesQuery.getMany()) {
-				if (await canViewChannel(note)) recentNotes.push(note);
-			}
+			const recentNotes = await recentNotesQuery.getMany();
 
 			// 投稿が少なかったら中断
 			if (recentNotes.length === 0) {
@@ -122,11 +107,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				.where('note.id IN (:...replyIds)', { replyIds: recentNotes.map(p => p.replyId) });
 
 			this.queryService.generateVisibilityQuery(replyTargetNotesQuery, me);
+			await this.queryService.generateChannelVisibilityQuery(replyTargetNotesQuery, me);
 
-			const replyTargetNotes: MiNote[] = [];
-			for (const note of await replyTargetNotesQuery.getMany()) {
-				if (await canViewChannel(note)) replyTargetNotes.push(note);
-			}
+			const replyTargetNotes = await replyTargetNotesQuery.getMany();
 
 			const repliedUsers: any = {};
 

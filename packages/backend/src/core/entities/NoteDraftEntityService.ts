@@ -14,6 +14,7 @@ import type { NoteDraftsRepository, ChannelsRepository } from '@/models/_.js';
 import { bindThis } from '@/decorators.js';
 import { DebounceLoader } from '@/misc/loader.js';
 import { IdService } from '@/core/IdService.js';
+import { PrivateChannelNoteVisibilityError } from '@/misc/private-channel-note-visibility-error.js';
 import type { OnModuleInit } from '@nestjs/common';
 import type { UserEntityService } from './UserEntityService.js';
 import type { DriveFileEntityService } from './DriveFileEntityService.js';
@@ -91,11 +92,11 @@ export class NoteDraftEntityService implements OnModuleInit {
 		const packedFiles = options?._hint_?.packedFiles;
 		const packedUsers = options?._hint_?.packedUsers;
 
-		async function nullIfEntityNotFound<T>(promise: Promise<T>): Promise<T | null> {
+		async function nullIfReferenceUnavailable<T>(promise: Promise<T>): Promise<T | null> {
 			try {
 				return await promise;
 			} catch (err) {
-				if (err instanceof EntityNotFoundError) {
+				if (err instanceof EntityNotFoundError || err instanceof PrivateChannelNoteVisibilityError) {
 					return null;
 				}
 				throw err;
@@ -146,12 +147,12 @@ export class NoteDraftEntityService implements OnModuleInit {
 			deliveryTargets: noteDraft.deliveryTargets ?? undefined,
 
 			...(opts.detail ? {
-				reply: noteDraft.replyId ? nullIfEntityNotFound(this.noteEntityService.pack(noteDraft.replyId, me, {
+				reply: noteDraft.replyId ? nullIfReferenceUnavailable(this.noteEntityService.pack(noteDraft.replyId, me, {
 					detail: false,
 					skipHide: opts.skipHide,
 				})) : undefined,
 
-				renote: noteDraft.renoteId ? nullIfEntityNotFound(this.noteEntityService.pack(noteDraft.renoteId, me, {
+				renote: noteDraft.renoteId ? nullIfReferenceUnavailable(this.noteEntityService.pack(noteDraft.renoteId, me, {
 					detail: true,
 					skipHide: opts.skipHide,
 				})) : undefined,

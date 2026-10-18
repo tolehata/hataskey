@@ -12,6 +12,7 @@ import { bindThis } from '@/decorators.js';
 import { GlobalEvents } from '@/core/GlobalEventService.js';
 import type { Packed } from '@/misc/json-schema.js';
 import { QueueService } from '@/core/QueueService.js';
+import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import type { OnApplicationShutdown } from '@nestjs/common';
 
 export type UserWebhookPayload<T extends WebhookEventTypes> =
@@ -36,6 +37,7 @@ export class UserWebhookService implements OnApplicationShutdown {
 		@Inject(DI.webhooksRepository)
 		private webhooksRepository: WebhooksRepository,
 		private queueService: QueueService,
+		private noteEntityService: NoteEntityService,
 	) {
 		this.redisForSub.on('message', this.onMessage);
 	}
@@ -89,6 +91,8 @@ export class UserWebhookService implements OnApplicationShutdown {
 	) {
 		const webhooks = await this.getActiveWebhooks()
 			.then(webhooks => webhooks.filter(webhook => webhook.userId === userId && webhook.on.includes(type)));
+		if (webhooks.length === 0) return [];
+		if ('note' in content && !await this.noteEntityService.isChannelVisibleForMe(content.note, userId)) return [];
 		return Promise.all(
 			webhooks.map(webhook => {
 				return this.queueService.userWebhookDeliver(webhook, type, content);

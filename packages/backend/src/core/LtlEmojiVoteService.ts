@@ -14,6 +14,7 @@ import { QueryService } from '@/core/QueryService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { IdService } from '@/core/IdService.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
+import { PrivateChannelNoteVisibilityError } from '@/misc/private-channel-note-visibility-error.js';
 import { ltlEmojiVoteStore } from '@/core/ltl-emoji-vote-ipc.js';
 import {
 	LTL_EMOJI_VOTE_FRESH_MS, LTL_EMOJI_VOTE_START_DELAY_MS, LTL_EMOJI_VOTE_TRIGGER, rankLtlEmojiVotes,
@@ -95,12 +96,16 @@ export class LtlEmojiVoteService {
 			.leftJoinAndSelect('reply.user', 'replyUser')
 			.leftJoinAndSelect('renote.user', 'renoteUser');
 		this.queryService.generateVisibilityQuery(query, me);
+		await this.queryService.generateChannelVisibilityQuery(query, me);
 		this.queryService.generateBaseNoteFilteringQuery(query, me);
 		const note = await query.getOne();
 		if (!note || note.text?.trim() !== LTL_EMOJI_VOTE_TRIGGER) return false;
 		// SQL の visibility 条件だけでは、サインイン必須・過去ノート非表示は判定されない。
-		const packed = await this.noteEntityService.pack(note, me, { detail: true, skipHide: false });
-		return packed.visibility === 'public' && !packed.isHidden && !packed.reply?.isHidden && !packed.renote?.isHidden;
+		const packed = await this.noteEntityService.pack(note, me, { detail: true, skipHide: false }).catch(err => {
+			if (err instanceof PrivateChannelNoteVisibilityError) return null;
+			throw err;
+		});
+		return packed != null && packed.visibility === 'public' && !packed.isHidden && !packed.reply?.isHidden && !packed.renote?.isHidden;
 	}
 
 	private async candidatesStillAvailable(metadata: LtlVoteMetadata): Promise<boolean> {

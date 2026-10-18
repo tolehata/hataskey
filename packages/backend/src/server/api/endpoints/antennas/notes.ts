@@ -101,8 +101,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				if (current?.isActive) this.globalEventService.publishInternalEvent('antennaUpdated', current);
 			}
 
-			let noteIds = await this.fanoutTimelineService.get(`antennaTimeline:${antenna.id}`, untilId, sinceId);
-			noteIds = noteIds.slice(0, ps.limit);
+			const noteIds = await this.fanoutTimelineService.get(`antennaTimeline:${antenna.id}`, untilId, sinceId);
 			if (noteIds.length === 0) {
 				return [];
 			}
@@ -119,9 +118,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			// https://github.com/misskey-dev/misskey/pull/15346#discussion_r1929950255
 
 			this.queryService.generateVisibilityQuery(query, me);
+			await this.queryService.generateChannelVisibilityQuery(query, me);
 			this.queryService.generateBaseNoteFilteringQuery(query, me);
 
-			const notes = await query.getMany();
+			const notes = await query.orderBy('note.id', sinceId != null && untilId == null ? 'ASC' : 'DESC').limit(ps.limit).getMany();
 			if (sinceId != null && untilId == null) {
 				notes.sort((a, b) => a.id < b.id ? -1 : 1);
 			} else {

@@ -30,7 +30,7 @@ describe('notes/update attachments', () => {
 		const endpoint = new NotesUpdateEndpoint(
 			{ createQueryBuilder } as never,
 			{ getNote: vi.fn().mockResolvedValue({ id: 'notea', userId: 'usera' }) } as never,
-			{ pack: vi.fn().mockImplementation(async note => note) } as never,
+			{ pack: vi.fn().mockImplementation(async note => note), isChannelVisibleForMe: vi.fn().mockResolvedValue(true) } as never,
 			{ update } as never,
 		);
 		const exec = (files: unknown, field: 'fileIds' | 'mediaIds' = 'fileIds') => endpoint.exec({

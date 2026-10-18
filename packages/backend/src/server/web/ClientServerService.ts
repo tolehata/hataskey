@@ -19,6 +19,7 @@ import vary from 'vary';
 import htmlSafeJsonStringify from 'htmlescape';
 import type { Config } from '@/config.js';
 import { getNoteSummary } from '@/misc/get-note-summary.js';
+import { PrivateChannelNoteVisibilityError } from '@/misc/private-channel-note-visibility-error.js';
 import { DI } from '@/di-symbols.js';
 import * as Acct from '@/misc/acct.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
@@ -656,7 +657,11 @@ export class ClientServerService {
 					(this.meta.ugcVisibilityForVisitor === 'local' && note.userHost == null)
 				)
 			) {
-				const _note = await this.noteEntityService.pack(note);
+				const _note = await this.noteEntityService.pack(note).catch(error => {
+					if (error instanceof PrivateChannelNoteVisibilityError) return null;
+					throw error;
+				});
+				if (_note == null) return await renderBase(reply);
 				const profile = await this.userProfilesRepository.findOneByOrFail({ userId: note.userId });
 				reply.header('Cache-Control', 'public, max-age=15');
 				if (profile.preventAiLearning) {
@@ -898,7 +903,11 @@ export class ClientServerService {
 			if (['specified', 'followers'].includes(note.visibility)) return;
 			if (note.userHost != null) return;
 
-			const _note = await this.noteEntityService.pack(note, null, { detail: true });
+			const _note = await this.noteEntityService.pack(note, null, { detail: true }).catch(error => {
+				if (error instanceof PrivateChannelNoteVisibilityError) return null;
+				throw error;
+			});
+			if (_note == null) return;
 
 			reply.header('Cache-Control', 'public, max-age=3600');
 			return await reply.view('base-embed', {

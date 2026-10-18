@@ -26,8 +26,8 @@ export class NoteStreamingHidingService {
 
 	@bindThis
 	public async canReceiveUpdates(note: GlobalEvents['note']['payload']['body'], meId: MiUser['id'] | null): Promise<boolean> {
-		// Reject older/incomplete events rather than guessing their host or channel visibility.
-		if (note.userHost === undefined || note.channelId === undefined) return false;
+		// Deleted roots cannot restore missing references from the DB. Reject incomplete snapshots.
+		if (note.userHost === undefined || note.channelId === undefined || note.replyId === undefined || note.renoteId === undefined) return false;
 		return await this.noteEntityService.isVisibleForMe(note, meId);
 	}
 
@@ -61,6 +61,7 @@ export class NoteStreamingHidingService {
 			if (this.meta.ugcVisibilityForVisitor === 'none') return null;
 			if (this.meta.ugcVisibilityForVisitor === 'local' && note.user.host != null) return null;
 		}
+		if (!await this.noteEntityService.isChannelVisibleForMe(note, meId)) return null;
 
 		// The fork packs detailed replies recursively as well as renotes. Inspect every
 		// attached note, not only the root renote chain and its immediate replies.
@@ -72,7 +73,7 @@ export class NoteStreamingHidingService {
 			if (current.reply) pending.push(current.reply);
 			if (current.renote) pending.push(current.renote);
 		}
-		const decisions = await Promise.all(notes.map(n => this.noteEntityService.shouldHideNote(n, meId)));
+		const decisions = await Promise.all(notes.map(n => this.noteEntityService.shouldHideNote(n, meId, { channelVisibilityChecked: true })));
 		if (!decisions.some(Boolean)) return note;
 		const shouldHide = new Map(notes.map((n, i) => [n, decisions[i]]));
 
