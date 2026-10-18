@@ -1582,11 +1582,14 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2', hataApp: 'hatady' }))
 .embeddedPeriodButton > i { flex: none; font-size: 18px; }
 .embeddedPeriodText { display: grid; flex: 1; min-width: 0; gap: 2px; font-size: 13px; line-height: 1.35; }
 .embeddedPeriodText > small { overflow: hidden; color: var(--hy-muted); text-overflow: ellipsis; white-space: nowrap; }
+.recordControls,
+.entries {
+	max-width: 800px;
+	margin-inline: auto;
+}
 .entries {
 	display: grid;
 	gap: 14px;
-	max-width: 800px;
-	margin-inline: auto;
 }
 .entries > :last-child:is(button) {
 	justify-self: center;

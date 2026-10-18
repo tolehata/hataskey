@@ -10,6 +10,7 @@ import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
 import type { Nirax } from '@/lib/nirax.js';
 import { hatagoesUrl } from '@/utility/hatagoes-navigation.js';
 import { definePage, provideMetadataReceiver } from '@/page.js';
+import { $i } from '@/i.js';
 
 const fixture = vi.hoisted(() => ({
 	initialPath: '/hatagoes',
@@ -175,6 +176,9 @@ async function showCreate(target: HTMLElement) {
 }
 
 beforeEach(() => {
+	if (!$i) throw new Error('Missing mock account');
+	$i.isAdmin = true;
+	$i.isModerator = false;
 	fixture.router = null;
 	fixture.delayedApps.clear();
 	fixture.registrations.clear();
@@ -783,7 +787,7 @@ describe('HataGoes common create', () => {
 			expect(overview.style.display).not.toBe('none');
 			expect(target.querySelector('[data-pane="hatady"]')?.getAttribute('data-header-ready')).toBe('false');
 			expect(target.querySelector('[data-pane="hatady"]')?.getAttribute('data-overview-before-bell')).toBe('true');
-			expect(nav.querySelector('[class*=screenCapsule]')?.querySelectorAll('button')).toHaveLength(4);
+			expect(nav.querySelector('[class*=screenCapsule]')?.querySelectorAll('button')).toHaveLength(5);
 		}
 		Object.defineProperty(shell, 'clientWidth', { configurable: true, value: 1000 });
 		window.dispatchEvent(new Event('resize'));
@@ -865,15 +869,33 @@ describe('HataGoes common create', () => {
 		expect(capsule.scrollTo).toHaveBeenCalledWith({ left: 84, behavior: 'smooth' });
 	});
 
-	test('places only the owning app staff actions beside its capsule', async () => {
+	test.each(['admin', 'moderator', 'user'])('keeps staff access and places Hatady moderation inside its capsule for %s', async role => {
+		if (!$i) throw new Error('Missing mock account');
+		$i.isAdmin = role === 'admin';
+		$i.isModerator = role === 'moderator';
 		const target = await mount(hatagoesUrl('/hatask?tab=todo'));
 		const nav = target.querySelector('nav[aria-label="画面一覧"]')!;
-		expect(nav.querySelector('button[aria-label="モデレーション"]')?.parentElement).toBe(nav);
+		const hataskModeration = nav.querySelector('button[aria-label="モデレーション"]');
+		if (role === 'user') expect(hataskModeration).toBeNull();
+		else expect(hataskModeration?.parentElement).toBe(nav);
 		expect(nav.querySelector('button[aria-label="支援管理"]')).toBeNull();
 		expect(target.querySelector('button[aria-label="スタッフ画面"]')).toBeNull();
 		(target.querySelector('button[aria-label="Hatady"]') as HTMLButtonElement).click();
 		await settle();
-		expect(nav.querySelector('button[aria-label="モデレーション"]')?.parentElement).toBe(nav);
+		const capsule = nav.querySelector('[class*=screenCapsuleSlot] [class*=screenCapsule]');
+		const moderation = nav.querySelector<HTMLButtonElement>('button[aria-label="モデレーション"]');
+		expect(capsule?.querySelectorAll('button')).toHaveLength(role === 'user' ? 4 : 5);
+		expect(nav.querySelector(':scope > button[aria-label="モデレーション"]')).toBeNull();
+		if (role === 'user') {
+			expect(moderation).toBeNull();
+		} else {
+			expect(moderation?.parentElement).toBe(capsule);
+			moderation?.click();
+			await settle();
+			expect(router().getCurrentFullPath()).toBe(hatagoesUrl('/hatady?tab=moderation'));
+			expect(moderation?.getAttribute('aria-current')).toBe('page');
+			expect(moderation?.textContent).toBe('モデレーション');
+		}
 		expect(nav.querySelector('button[aria-label="支援管理"]')).toBeNull();
 	});
 

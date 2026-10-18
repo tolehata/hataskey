@@ -335,9 +335,9 @@ const directoryApp = ref<HatagoesApp | null>(null);
 const staffScreens = computed(() => screens.value.filter(screen => screen.access === 'admin' || screen.access === 'moderator' || screen.access === 'hatafeedStaff'));
 const activeStaffScreens = computed(() => {
 	const currentLocation = location.value;
-	return currentLocation.view === 'app' ? staffScreens.value.filter(screen => screen.app === currentLocation.app && screen.id !== 'hatask.support-admin') : [];
+	return currentLocation.view === 'app' ? staffScreens.value.filter(screen => screen.app === currentLocation.app && screen.id !== 'hatask.support-admin' && screen.id !== 'hatady.moderation') : [];
 });
-const appScreens = computed(() => screens.value.filter(screen => location.value.view === 'app' && screen.app === location.value.app && !screen.action && !staffScreens.value.includes(screen) && (screen.path === `/${screen.app}` || screen.path.startsWith(`/${screen.app}?`) || screen.id === 'hatafeed.beta')));
+const appScreens = computed(() => screens.value.filter(screen => location.value.view === 'app' && screen.app === location.value.app && !screen.action && (!staffScreens.value.includes(screen) || screen.id === 'hatady.moderation') && (screen.path === `/${screen.app}` || screen.path.startsWith(`/${screen.app}?`) || screen.id === 'hatafeed.beta')));
 const activeHataskPins = computed(() => narrowShell.value ? prefs.hataskPins.value : prefs.hataskPinsDesktop.value);
 const hataskPinnedScreens = computed(() => activeHataskPins.value.map(getHatagoesScreen).filter((screen): screen is HatagoesCatalogEntry => !!screen && screens.value.some(item => item.id === screen.id)));
 const appCapsuleScreens = computed(() => {
@@ -1063,7 +1063,7 @@ provideMetadataReceiver(() => undefined);
 }
 .screenNav[data-hatady='true'] > :not(.fallbackNoticeSurface) { grid-row: 1; }
 .hatadyDate { flex: 0 1 auto; min-width: 0; }
-.hatadyActions { display: flex; flex: 0 0 auto; min-width: 0; align-items: center; justify-content: flex-end; gap: 8px; }
+.hatadyActions { display: flex; flex: 0 0 auto; min-width: 0; align-items: center; justify-content: flex-start; gap: 8px; }
 .hatadyActions > button { flex-shrink: 0; }
 .hatadyOverview { display: flex; align-items: center; }
 .hatadyOverview:empty { display: none; }
@@ -1166,12 +1166,11 @@ provideMetadataReceiver(() => undefined);
 	.brand { gap: 4px !important; font-size: 22px !important; }
 	.appsSlot { display: none; }
 	.screenNav { padding: 2px 12px 8px; }
-	/* Give all four Hatady tabs their own row; tools no longer squeeze the capsule. */
+	/* Give Hatady tabs their own row; tools no longer squeeze the capsule. */
 	.screenNav[data-hatady='true'] { display: flex; padding-inline: 6px; }
-	.screenNav[data-hatady='true'] > .hatadyActions { flex: 1; gap: 4px; }
+	.screenNav[data-hatady='true'] > .hatadyActions { flex: 1; justify-content: flex-end; gap: 4px; }
 	.screenNav[data-hatady='true'] > .screenCapsuleSlot { order: 1; flex: 0 0 100%; }
 	.screenNav[data-hatady='true'] .mobileNoticeSurface { max-width: 320px; margin-inline: auto; }
-	.screenNav[data-hatady='true'] .screenCapsule { overflow-x: visible; }
 	.screenCapsuleSlot { flex: 0 1 auto; }
 	.mobileNoticeSurface { width: 100%; }
 	.screenCapsule { width: 100%; }
