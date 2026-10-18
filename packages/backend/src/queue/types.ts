@@ -130,6 +130,8 @@ export type PostScheduledNoteJobData = {
 };
 
 export type SystemWebhookDeliverJobData<T extends SystemWebhookEventType = SystemWebhookEventType> = {
+	/** Only the server-generated dummy delivery may override an inactive hook. */
+	testConfiguration?: { url: string; secret: string };
 	type: T;
 	content: SystemWebhookPayload<T>;
 	webhookId: MiWebhook['id'];
@@ -140,6 +142,8 @@ export type SystemWebhookDeliverJobData<T extends SystemWebhookEventType = Syste
 };
 
 export type UserWebhookDeliverJobData<T extends WebhookEventTypes = WebhookEventTypes> = {
+	/** The saved configuration, before applying a test-only destination override. */
+	testConfiguration?: { url: string; secret: string };
 	type: T;
 	content: UserWebhookPayload<T>;
 	webhookId: MiWebhook['id'];

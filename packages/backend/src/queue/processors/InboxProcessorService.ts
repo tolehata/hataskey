@@ -162,6 +162,9 @@ export class InboxProcessorService implements OnApplicationShutdown {
 				}
 
 				const jsonLd = this.jsonLdService.use();
+				// The LD signer is not authenticated yet. Only bundled and inline contexts
+				// may be expanded; relayed activities can still use their LD signature.
+				jsonLd.freeze();
 
 				// アクティビティを正規化
 				delete activity.signature;
@@ -183,8 +186,6 @@ export class InboxProcessorService implements OnApplicationShutdown {
 				//#endregion
 
 				activity.signature = ldSignature;
-
-				jsonLd.freeze();
 
 				// LD-Signature検証
 				let verified;

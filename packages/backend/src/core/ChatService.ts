@@ -17,12 +17,14 @@ import { ChatEntityService } from '@/core/entities/ChatEntityService.js';
 import { ApRendererService } from '@/core/activitypub/ApRendererService.js';
 import { PushNotificationService } from '@/core/PushNotificationService.js';
 import { bindThis } from '@/decorators.js';
-import type { ChatApprovalsRepository, ChatMessagesRepository, ChatRoomInvitationsRepository, ChatRoomMembershipsRepository, ChatRoomsRepository, MiChatMessage, MiChatRoom, MiChatRoomMembership, MiDriveFile, MiUser, MutingsRepository, UsersRepository } from '@/models/_.js';
+import type { ChatApprovalsRepository, ChatMessagesRepository, ChatRoomInvitationsRepository, ChatRoomMembershipsRepository, ChatRoomsRepository, MiChatMessage, MiDriveFile, MiUser, MutingsRepository, UsersRepository } from '@/models/_.js';
 import { UserBlockingService } from '@/core/UserBlockingService.js';
 import { QueryService } from '@/core/QueryService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { UserFollowingService } from '@/core/UserFollowingService.js';
 import { MiChatRoomInvitation } from '@/models/ChatRoomInvitation.js';
+import { MiChatRoom } from '@/models/ChatRoom.js';
+import { MiChatRoomMembership } from '@/models/ChatRoomMembership.js';
 import { Packed } from '@/misc/json-schema.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import { CustomEmojiService } from '@/core/CustomEmojiService.js';
@@ -810,26 +812,34 @@ export class ChatService {
 	}
 
 	@bindThis
+	public async acceptRoomInvitation(userId: MiUser['id'], roomId: MiChatRoom['id'], expectedOwnerId?: MiUser['id']) {
+		return this.chatRoomsRepository.manager.transaction(async manager => {
+			// Local and federated joins share the room lock, including the capacity check.
+			const room = await manager.getRepository(MiChatRoom).findOneOrFail({
+				where: { id: roomId }, lock: { mode: 'pessimistic_write' },
+			});
+			if (expectedOwnerId != null && room.ownerId !== expectedOwnerId) throw new Error('not owner');
+			const memberships = manager.getRepository(MiChatRoomMembership);
+			if (room.ownerId === userId || await memberships.existsBy({ roomId, userId })) return null;
+			const invitations = manager.getRepository(MiChatRoomInvitation);
+			const invitation = await invitations.findOneOrFail({
+				where: { roomId, userId }, lock: { mode: 'pessimistic_write' },
+			});
+			if (await memberships.countBy({ roomId }) >= MAX_ROOM_MEMBERS) throw new Error('room is full');
+			const membership = { id: this.idService.gen(), roomId, userId };
+			await memberships.insert(membership);
+			await invitations.delete(invitation.id);
+			return { room, membership };
+		});
+	}
+
+	@bindThis
 	public async joinToRoom(userId: MiUser['id'], roomId: MiChatRoom['id']) {
-		const invitation = await this.chatRoomInvitationsRepository.findOneByOrFail({ roomId, userId });
-
-		const membershipsCount = await this.chatRoomMembershipsRepository.countBy({ roomId });
-		if (membershipsCount >= MAX_ROOM_MEMBERS) {
-			throw new Error('room is full');
-		}
-
-		const membership = {
-			id: this.idService.gen(),
-			roomId: roomId,
-			userId: userId,
-		} satisfies Partial<MiChatRoomMembership>;
-
-		// TODO: transaction
-		await this.chatRoomMembershipsRepository.insertOne(membership);
-		await this.chatRoomInvitationsRepository.delete(invitation.id);
+		const joined = await this.acceptRoomInvitation(userId, roomId);
+		if (joined == null) return;
+		const { room, membership } = joined;
 
 		// Federation: Notify about acceptance and new member
-		const room = await this.chatRoomsRepository.findOneByOrFail({ id: roomId });
 		const joiningUser = await this.usersRepository.findOneByOrFail({ id: userId });
 		const owner = await this.usersRepository.findOneByOrFail({ id: room.ownerId });
 

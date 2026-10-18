@@ -193,7 +193,10 @@ export class WebhookTestService {
 
 			// テスト目的なのでUserWebhookServiceの機能を経由せず直接キューに追加する（チェック処理などをスキップする意図）.
 			// また、Jobの試行回数も1回だけ.
-			this.queueService.userWebhookDeliver(merged, type, contents, { attempts: 1 });
+			this.queueService.userWebhookDeliver(merged, type, contents, {
+				attempts: 1,
+				testConfiguration: { url: webhook.url, secret: webhook.secret },
+			});
 		};
 
 		const dummyNote1 = generateDummyNote({
@@ -292,7 +295,10 @@ export class WebhookTestService {
 
 			// テスト目的なのでSystemWebhookServiceの機能を経由せず直接キューに追加する（チェック処理などをスキップする意図）.
 			// また、Jobの試行回数も1回だけ.
-			this.queueService.systemWebhookDeliver(merged, type, contents, { attempts: 1 });
+			this.queueService.systemWebhookDeliver(merged, type, contents, {
+				attempts: 1,
+				testConfiguration: { url: webhook.url, secret: webhook.secret },
+			});
 		};
 
 		switch (params.type) {

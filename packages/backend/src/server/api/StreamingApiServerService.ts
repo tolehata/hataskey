@@ -15,6 +15,7 @@ import { CacheService } from '@/core/CacheService.js';
 import { MiLocalUser } from '@/models/User.js';
 import { UserService } from '@/core/UserService.js';
 import { ChannelFollowingService } from '@/core/ChannelFollowingService.js';
+import type { GlobalEvents } from '@/core/GlobalEventService.js';
 import type { FlashToken } from '@/misc/flash-token.js';
 import { AuthenticateService, AuthenticationError } from './AuthenticateService.js';
 import MainStreamConnection from './stream/Connection.js';
@@ -22,11 +23,19 @@ import { NoteStreamingHidingService } from './stream/NoteStreamingHidingService.
 import { ChannelsService } from './stream/ChannelsService.js';
 import type * as http from 'node:http';
 
+type StreamingSession = {
+	stream: MainStreamConnection;
+	connection?: WebSocket.WebSocket;
+	revoked: boolean;
+};
+
 @Injectable()
 export class StreamingApiServerService {
 	#wss: WebSocket.WebSocketServer;
 	#connections = new Map<WebSocket.WebSocket, number>();
 	#cleanConnectionsIntervalId: NodeJS.Timeout | null = null;
+	#userSessions = new Map<string, Set<StreamingSession>>();
+	#globalEv = new EventEmitter();
 
 	constructor(
 		@Inject(DI.redisForSub)
@@ -43,6 +52,31 @@ export class StreamingApiServerService {
 		private usersService: UserService,
 		private channelFollowingService: ChannelFollowingService,
 	) {
+	}
+
+	@bindThis
+	private onRedisMessage(_: string, data: string): void {
+		const parsed = JSON.parse(data);
+		if (parsed.channel === 'internal') {
+			const { type, body } = parsed.message as GlobalEvents['internal']['payload'];
+			if ((type === 'userChangeSuspendedState' && body.isSuspended)
+				|| (type === 'userChangeDeletedState' && body.isDeleted)) {
+				for (const session of this.#userSessions.get(body.id) ?? []) {
+					session.revoked = true;
+					// Dispose first: queued inbound work and outbound sends must stop
+					// before the socket's asynchronous close callback runs.
+					session.stream.dispose();
+					session.connection?.terminate();
+				}
+			}
+		}
+		this.#globalEv.emit('message', parsed);
+	}
+
+	private removeSession(userId: string, session: StreamingSession): void {
+		const sessions = this.#userSessions.get(userId);
+		sessions?.delete(session);
+		if (sessions?.size === 0) this.#userSessions.delete(userId);
 	}
 
 	@bindThis
@@ -90,7 +124,7 @@ export class StreamingApiServerService {
 				return;
 			}
 
-			if (user?.isSuspended) {
+			if (user?.isSuspended || user?.isDeleted) {
 				socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
 				socket.destroy();
 				return;
@@ -106,21 +140,48 @@ export class StreamingApiServerService {
 				flashToken,
 			);
 
-			await stream.init();
-
-			this.#wss.handleUpgrade(request, socket, head, (ws) => {
-				this.#wss.emit('connection', ws, request, {
-					stream, user, app,
+			const session: StreamingSession = { stream, revoked: false };
+			if (user) {
+				const sessions = this.#userSessions.get(user.id) ?? new Set<StreamingSession>();
+				sessions.add(session);
+				this.#userSessions.set(user.id, sessions);
+			}
+			const cleanup = () => {
+				stream.dispose();
+				if (user) this.removeSession(user.id, session);
+			};
+			socket.once('close', cleanup);
+			try {
+				await stream.init();
+				// Register before this lookup so a revocation racing with initialization
+				// is remembered even if the lookup itself returns an earlier snapshot.
+				const currentUser = user ? await this.usersRepository.findOneBy({ id: user.id }) : null;
+				if (session.revoked || (user && (currentUser == null || currentUser.isSuspended || currentUser.isDeleted))) {
+					socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+					socket.destroy();
+					cleanup();
+					return;
+				}
+				if (currentUser) stream.user = currentUser;
+				if (socket.destroyed) {
+					cleanup();
+					return;
+				}
+				this.#wss.handleUpgrade(request, socket, head, (ws) => {
+					session.connection = ws;
+					this.#wss.emit('connection', ws, request, {
+						stream, user, app,
+					});
+					ws.once('close', cleanup);
 				});
-			});
+			} catch {
+				cleanup();
+				socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+				socket.destroy();
+			}
 		});
 
-		const globalEv = new EventEmitter();
-
-		this.redisForSub.on('message', (_: string, data: string) => {
-			const parsed = JSON.parse(data);
-			globalEv.emit('message', parsed);
-		});
+		this.redisForSub.on('message', this.onRedisMessage);
 
 		this.#wss.on('connection', async (connection: WebSocket.WebSocket, request: http.IncomingMessage, ctx: {
 			stream: MainStreamConnection,
@@ -135,9 +196,16 @@ export class StreamingApiServerService {
 				ev.emit(data.channel, data.message);
 			}
 
-			globalEv.on('message', onRedisMessage);
+			this.#globalEv.on('message', onRedisMessage);
+			connection.once('close', () => {
+				ev.removeAllListeners();
+				stream.dispose();
+				this.#globalEv.off('message', onRedisMessage);
+				this.#connections.delete(connection);
+			});
 
 			await stream.listen(ev, connection);
+			if (connection.readyState !== WebSocket.WebSocket.OPEN) return;
 
 			this.#connections.set(connection, Date.now());
 
@@ -149,10 +217,6 @@ export class StreamingApiServerService {
 			}
 
 			connection.once('close', () => {
-				ev.removeAllListeners();
-				stream.dispose();
-				globalEv.off('message', onRedisMessage);
-				this.#connections.delete(connection);
 				if (userUpdateIntervalId) clearInterval(userUpdateIntervalId);
 			});
 
@@ -178,6 +242,7 @@ export class StreamingApiServerService {
 	// 旗鯖fork: 本家 2026.6.0 から取り込み: detach() を Promise 化して wss.close() の完了を待ち、リークした WS 接続による shutdown 警告(UnhandledPromiseRejectionWarning 経路) を抑止
 	@bindThis
 	public detach(): Promise<void> {
+		this.redisForSub.off('message', this.onRedisMessage);
 		if (this.#cleanConnectionsIntervalId) {
 			clearInterval(this.#cleanConnectionsIntervalId);
 			this.#cleanConnectionsIntervalId = null;

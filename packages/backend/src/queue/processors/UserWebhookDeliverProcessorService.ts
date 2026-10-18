@@ -10,6 +10,7 @@ import type { WebhooksRepository } from '@/models/_.js';
 import type { Config } from '@/config.js';
 import type Logger from '@/logger.js';
 import { HttpRequestService } from '@/core/HttpRequestService.js';
+import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { StatusError } from '@/misc/status-error.js';
 import { bindThis } from '@/decorators.js';
 import { QueueLoggerService } from '../QueueLoggerService.js';
@@ -28,12 +29,23 @@ export class UserWebhookDeliverProcessorService {
 
 		private httpRequestService: HttpRequestService,
 		private queueLoggerService: QueueLoggerService,
+		private noteEntityService: NoteEntityService,
 	) {
 		this.logger = this.queueLoggerService.logger.createSubLogger('webhook');
 	}
 
 	@bindThis
 	public async process(job: Bull.Job<UserWebhookDeliverJobData>): Promise<string> {
+		// Recheck current channel membership/privacy after any queue delay or retry.
+		if ('note' in job.data.content && !await this.noteEntityService.isChannelVisibleForMe(job.data.content.note, job.data.userId)) {
+			return 'Skipped: note is no longer visible';
+		}
+		const webhook = await this.webhooksRepository.findOneBy({ id: job.data.webhookId, userId: job.data.userId });
+		const configuration = job.data.testConfiguration ?? { url: job.data.to, secret: job.data.secret };
+		if (webhook == null || webhook.url !== configuration.url || webhook.secret !== configuration.secret
+			|| (!job.data.testConfiguration && (!webhook.active || !webhook.on.includes(job.data.type)))) {
+			return 'Skipped: webhook is no longer authorized';
+		}
 		try {
 			this.logger.debug(`delivering ${job.data.webhookId}`);
 

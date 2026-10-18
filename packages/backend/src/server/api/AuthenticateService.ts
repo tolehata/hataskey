@@ -68,7 +68,13 @@ export class AuthenticateService implements OnApplicationShutdown {
 			if (accessToken == null) {
 				const flashToken = await this.cacheService.flashAccessTokensCache.get(token);
 				if (flashToken !== null && typeof flashToken !== 'undefined') {
-					return [flashToken.user, null, flashToken];
+					// The token's permissions expire independently, but its user snapshot
+					// must not outlive suspension or account deletion.
+					const user = await this.usersRepository.findOneBy({ id: flashToken.user.id });
+					if (user == null || user.host != null || user.isDeleted || user.isSuspended) {
+						throw new AuthenticationError('user not available');
+					}
+					return [user as MiLocalUser, null, { ...flashToken, user: user as MiLocalUser }];
 				} else {
 					throw new AuthenticationError('invalid signature');
 				}

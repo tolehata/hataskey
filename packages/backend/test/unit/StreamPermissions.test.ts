@@ -32,10 +32,12 @@ describe('stream credentials and event permissions', () => {
 		const init = vi.spyOn(Connection.prototype, 'init').mockResolvedValue(undefined);
 		const upgrade = vi.spyOn(WebSocketServer.prototype, 'handleUpgrade').mockImplementation(() => {});
 		const authenticate = vi.fn().mockResolvedValue([flash.user, null, flash]);
-		const service = new StreamingApiServerService(new EventEmitter() as never, {} as never, {} as never,
+		// The handshake rereads the account so a suspension racing the upgrade is honored.
+		const users = { findOneBy: vi.fn().mockResolvedValue({ ...flash.user, isSuspended: false, isDeleted: false }) };
+		const service = new StreamingApiServerService(new EventEmitter() as never, users as never, {} as never,
 			{ authenticate } as never, {} as never, {} as never, {} as never, {} as never, {} as never);
 		const server = new EventEmitter();
-		const socket = { write: vi.fn(), destroy: vi.fn() };
+		const socket = Object.assign(new EventEmitter(), { write: vi.fn(), destroy: vi.fn(), destroyed: false });
 		try {
 			service.attach(server as never);
 			server.emit('upgrade', { url: '/streaming?i=play-token', headers: { host: 'local.test' } }, socket, Buffer.alloc(0));

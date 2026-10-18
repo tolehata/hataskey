@@ -34,6 +34,12 @@ export class SystemWebhookDeliverProcessorService {
 
 	@bindThis
 	public async process(job: Bull.Job<SystemWebhookDeliverJobData>): Promise<string> {
+		const webhook = await this.systemWebhooksRepository.findOneBy({ id: job.data.webhookId });
+		const configuration = job.data.testConfiguration ?? { url: job.data.to, secret: job.data.secret };
+		if (webhook == null || webhook.url !== configuration.url || webhook.secret !== configuration.secret
+			|| (!job.data.testConfiguration && (!webhook.isActive || !webhook.on.includes(job.data.type)))) {
+			return 'Skipped: webhook is no longer authorized';
+		}
 		try {
 			this.logger.debug(`delivering ${job.data.webhookId}`);
 

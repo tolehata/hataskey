@@ -714,9 +714,10 @@ export class QueueService implements OnModuleInit {
 		webhook: MiWebhook,
 		type: T,
 		content: UserWebhookPayload<T>,
-		opts?: { attempts?: number },
+		opts?: { attempts?: number; testConfiguration?: { url: string; secret: string } },
 	) {
 		const data: UserWebhookDeliverJobData = {
+			...(opts?.testConfiguration ? { testConfiguration: opts.testConfiguration } : {}),
 			type,
 			content,
 			webhookId: webhook.id,
@@ -752,9 +753,10 @@ export class QueueService implements OnModuleInit {
 		webhook: MiSystemWebhook,
 		type: T,
 		content: SystemWebhookPayload<T>,
-		opts?: { attempts?: number },
+		opts?: { attempts?: number; testConfiguration?: { url: string; secret: string } },
 	) {
 		const data: SystemWebhookDeliverJobData = {
+			...(opts?.testConfiguration ? { testConfiguration: opts.testConfiguration } : {}),
 			type,
 			content,
 			webhookId: webhook.id,
@@ -863,7 +865,11 @@ export class QueueService implements OnModuleInit {
 		// Webhookのsecret
 		if (queueType === 'userWebhookDeliver' || queueType === 'systemWebhookDeliver') {
 			if (typeof data === 'object' && data != null && 'secret' in data) {
-				return { ...data, secret: '(redacted)' } as T;
+				return {
+					...data,
+					secret: '(redacted)',
+					...('testConfiguration' in data ? { testConfiguration: '(redacted)' } : {}),
+				} as T;
 			}
 		}
 		return data;

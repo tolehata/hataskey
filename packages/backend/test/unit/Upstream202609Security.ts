@@ -53,41 +53,56 @@ describe('返信相手の集計と旗鯖のプライベートチャンネル', (
 	const publicChannel = { ...channel, id: 'public', isPrivate: false };
 
 	async function aggregate(viewerId: string | null, sourcePrivate: boolean, targetPrivate: boolean) {
-		const source = query([{ id: 'source', replyId: 'target', channel: sourcePrivate ? channel : publicChannel }]);
-		const target = query([{ id: 'target', userId: 'replyuser', channel: targetPrivate ? channel : publicChannel }]);
+		const sourceRow = { id: 'source', userId: 'author', replyId: 'target', channel: sourcePrivate ? channel : publicChannel };
+		const targetRow = { id: 'target', userId: 'replyuser', channel: targetPrivate ? channel : publicChannel };
+		const source = query([sourceRow]);
+		const target = query([targetRow]);
 		const repository = { createQueryBuilder: vi.fn().mockReturnValueOnce(source).mockReturnValueOnce(target) };
-		const visibility = { generateVisibilityQuery: vi.fn() };
 		const channels = new ChannelService({} as any,
 			{ exists: async ({ where }: any) => where.userId === 'member' } as any,
 			{} as any, {} as any,
 			{ isModerator: async ({ id }: any) => id === 'moderator' } as any);
 		const canView = vi.spyOn(channels, 'canView');
+		const visibility = {
+			generateVisibilityQuery: vi.fn(),
+			generateChannelVisibilityQuery: vi.fn(async (builder: any) => {
+				const canRead = async (row: typeof targetRow) => row.userId === viewerId || await channels.canView(row.channel as any, viewerId);
+				const allowed = await canRead(targetRow) && (builder !== source || await canRead(sourceRow));
+				if (!allowed) builder.getMany.mockResolvedValue([]);
+			}),
+		};
 		const subject = new FrequentlyReplied(repository as any,
 			{ packMany: async (ids: string[]) => ids.map(id => ({ id })) } as any,
-			visibility as any, channels,
+			visibility as any,
 			{ getUser: async () => ({ id: 'author' }) } as any);
 		const viewer = viewerId ? { id: viewerId } : null;
 		const result = await subject.exec({ userId: 'author' }, viewer as any, null, null);
 		return { result, source, target, repository, visibility, canView, viewer };
 	}
 
-	test.each([null, 'stranger', 'author'])('集計元が非公開なら結果へ含めない: %s', async (viewer) => {
+	test.each([null, 'stranger'])('集計元が非公開なら結果へ含めない: %s', async (viewer) => {
 		const { result, repository } = await aggregate(viewer, true, false);
 		expect(result).toEqual([]);
 		expect(repository.createQueryBuilder).toHaveBeenCalledTimes(1);
 	});
 
 	test.each([null, 'stranger', 'author'])('公開の返信からも非公開の返信先を漏らさない: %s', async (viewer) => {
-		const { result, visibility, target } = await aggregate(viewer, false, true);
+		const { result, visibility, source } = await aggregate(viewer, false, true);
 		expect(result).toEqual([]);
-		expect(visibility.generateVisibilityQuery).toHaveBeenCalledWith(target, viewer ? { id: viewer } : null);
+		expect(visibility.generateChannelVisibilityQuery).toHaveBeenCalledWith(source, viewer ? { id: viewer } : null);
 	});
 
-	test.each(['owner', 'deputy', 'member', 'moderator'])('既存の閲覧許可を保ち、同じチャンネルの判定を共有する: %s', async (viewer) => {
-		const { result, canView, visibility } = await aggregate(viewer, true, true);
+	test.each(['owner', 'deputy', 'member', 'moderator'])('既存の閲覧許可を保ち、抽出前の判定を両クエリへ適用する: %s', async (viewer) => {
+		const { result, visibility } = await aggregate(viewer, true, true);
 		expect(result).toEqual([{ user: { id: 'replyuser' }, weight: 1 }]);
-		expect(canView).toHaveBeenCalledTimes(1);
+		expect(visibility.generateChannelVisibilityQuery).toHaveBeenCalledTimes(2);
 		expect(visibility.generateVisibilityQuery).toHaveBeenCalledTimes(2);
+	});
+
+	test('退会した投稿者も自分の投稿を元にした集計を読める', async () => {
+		const { result, visibility, source } = await aggregate('author', true, false);
+		expect(result).toEqual([{ user: { id: 'replyuser' }, weight: 1 }]);
+		expect(visibility.generateChannelVisibilityQuery).toHaveBeenCalledWith(source, { id: 'author' });
 	});
 
 	test('匿名でも公開チャンネルの集計は表示する', async () => {

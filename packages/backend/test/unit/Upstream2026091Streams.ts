@@ -24,6 +24,13 @@ async function destination() {
 }
 
 describe('multipart stream completion', () => {
+	test('does not persist a chunk that exceeds the admitted byte reservation', async () => {
+		const { path } = await destination();
+		const result = await writeMultipartFileToTemp(Readable.from([Buffer.from('ok'), Buffer.alloc(64)]), path, 8);
+		expect(result).toMatchObject({ statusCode: 413 });
+		expect((await readFile(path)).length).toBeLessThanOrEqual(8);
+	});
+
 	test('writes the complete file, including an empty part', async () => {
 		for (const value of ['', 'uploaded content']) {
 			const { path } = await destination();
