@@ -105,6 +105,7 @@ import type {
 	AdminHataskSupportUnregisterResponse,
 	AdminHataskSupportUpdateRequest,
 	AdminHataskSupportUpdateResponse,
+	AdminHataskUpdateDecorationRequest,
 	AdminInviteCreateRequest,
 	AdminInviteCreateResponse,
 	AdminInviteListRequest,
@@ -383,9 +384,6 @@ import type {
 	EmailAddressAvailableResponse,
 	EmojiRequest,
 	EmojiResponse,
-	EmojiShootMyScoresRequest,
-	EmojiShootRankingRequest,
-	EmojiShootRegisterRequest,
 	EmojisResponse,
 	EndpointRequest,
 	EndpointResponse,
@@ -960,12 +958,6 @@ import type {
 	RolesUsersRequest,
 	RolesUsersResponse,
 	ServerInfoResponse,
-	StackingGameJoinRoomRequest,
-	StackingGameMyScoresRequest,
-	StackingGameMyScoresResponse,
-	StackingGameRankingResponse,
-	StackingGameRegisterRequest,
-	StackingGameRoomsRequest,
 	StatsResponse,
 	SwRegisterRequest,
 	SwRegisterResponse,
@@ -1053,14 +1045,6 @@ import type {
 	V2AdminEmojiListRequest,
 	V2AdminEmojiListResponse,
 	VerifyEmailRequest,
-	WhackEmojiCreateRoomRequest,
-	WhackEmojiJoinRoomRequest,
-	WhackEmojiMyScoresRequest,
-	WhackEmojiMyScoresResponse,
-	WhackEmojiRankingRequest,
-	WhackEmojiRankingResponse,
-	WhackEmojiRegisterRequest,
-	WhackEmojiRoomsRequest,
 } from './entities.js';
 
 export type Endpoints = {
@@ -1133,6 +1117,7 @@ export type Endpoints = {
 	'admin/hatask/support/supporters': { req: AdminHataskSupportSupportersRequest; res: AdminHataskSupportSupportersResponse };
 	'admin/hatask/support/unregister': { req: AdminHataskSupportUnregisterRequest; res: AdminHataskSupportUnregisterResponse };
 	'admin/hatask/support/update': { req: AdminHataskSupportUpdateRequest; res: AdminHataskSupportUpdateResponse };
+	'admin/hatask/update-decoration': { req: AdminHataskUpdateDecorationRequest; res: EmptyResponse };
 	'admin/invite/create': { req: AdminInviteCreateRequest; res: AdminInviteCreateResponse };
 	'admin/invite/list': { req: AdminInviteListRequest; res: AdminInviteListResponse };
 	'admin/invite/revoke': { req: EmptyRequest; res: EmptyResponse };
@@ -1308,9 +1293,6 @@ export type Endpoints = {
 	'drive/stream': { req: DriveStreamRequest; res: DriveStreamResponse };
 	'email-address/available': { req: EmailAddressAvailableRequest; res: EmailAddressAvailableResponse };
 	'emoji': { req: EmojiRequest; res: EmojiResponse };
-	'emoji-shoot/my-scores': { req: EmojiShootMyScoresRequest; res: EmptyResponse };
-	'emoji-shoot/ranking': { req: EmojiShootRankingRequest; res: EmptyResponse };
-	'emoji-shoot/register': { req: EmojiShootRegisterRequest; res: EmptyResponse };
 	'emojis': { req: EmptyRequest; res: EmojisResponse };
 	'endpoint': { req: EndpointRequest; res: EndpointResponse };
 	'endpoints': { req: EmptyRequest; res: EndpointsResponse };
@@ -1682,12 +1664,6 @@ export type Endpoints = {
 	'roles/show': { req: RolesShowRequest; res: RolesShowResponse };
 	'roles/users': { req: RolesUsersRequest; res: RolesUsersResponse };
 	'server-info': { req: EmptyRequest; res: ServerInfoResponse };
-	'stacking-game/create-room': { req: EmptyRequest; res: EmptyResponse };
-	'stacking-game/join-room': { req: StackingGameJoinRoomRequest; res: EmptyResponse };
-	'stacking-game/my-scores': { req: StackingGameMyScoresRequest; res: StackingGameMyScoresResponse };
-	'stacking-game/ranking': { req: EmptyRequest; res: StackingGameRankingResponse };
-	'stacking-game/register': { req: StackingGameRegisterRequest; res: EmptyResponse };
-	'stacking-game/rooms': { req: StackingGameRoomsRequest; res: EmptyResponse };
 	'stats': { req: EmptyRequest; res: StatsResponse };
 	'sw/register': { req: SwRegisterRequest; res: SwRegisterResponse };
 	'sw/show-registration': { req: SwShowRegistrationRequest; res: SwShowRegistrationResponse };
@@ -1741,13 +1717,6 @@ export type Endpoints = {
 	'users/update-memo': { req: UsersUpdateMemoRequest; res: EmptyResponse };
 	'v2/admin/emoji/list': { req: V2AdminEmojiListRequest; res: V2AdminEmojiListResponse };
 	'verify-email': { req: VerifyEmailRequest; res: EmptyResponse };
-	'whack-emoji/create-room': { req: WhackEmojiCreateRoomRequest; res: EmptyResponse };
-	'whack-emoji/endless-ranking': { req: EmptyRequest; res: EmptyResponse };
-	'whack-emoji/join-room': { req: WhackEmojiJoinRoomRequest; res: EmptyResponse };
-	'whack-emoji/my-scores': { req: WhackEmojiMyScoresRequest; res: WhackEmojiMyScoresResponse };
-	'whack-emoji/ranking': { req: WhackEmojiRankingRequest; res: WhackEmojiRankingResponse };
-	'whack-emoji/register': { req: WhackEmojiRegisterRequest; res: EmptyResponse };
-	'whack-emoji/rooms': { req: WhackEmojiRoomsRequest; res: EmptyResponse };
 };
 
 /**

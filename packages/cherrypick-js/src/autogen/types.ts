@@ -644,6 +644,16 @@ export type paths = {
          */
         post: operations["admin___hatask___support___update"];
     };
+    "/admin/hatask/update-decoration": {
+        /**
+         * admin/hatask/update-decoration
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:avatar-decorations*
+         */
+        post: operations["admin___hatask___update-decoration"];
+    };
     "/admin/invite/create": {
         /**
          * admin/invite/create
@@ -2238,33 +2248,6 @@ export type paths = {
          *     **Credential required**: *No*
          */
         post: operations["emoji"];
-    };
-    "/emoji-shoot/my-scores": {
-        /**
-         * emoji-shoot/my-scores
-         * @description No description provided.
-         *
-         *     **Credential required**: *Yes* / **Permission**: *read:account*
-         */
-        post: operations["emoji-shoot___my-scores"];
-    };
-    "/emoji-shoot/ranking": {
-        /**
-         * emoji-shoot/ranking
-         * @description No description provided.
-         *
-         *     **Credential required**: *No*
-         */
-        post: operations["emoji-shoot___ranking"];
-    };
-    "/emoji-shoot/register": {
-        /**
-         * emoji-shoot/register
-         * @description No description provided.
-         *
-         *     **Credential required**: *Yes* / **Permission**: *write:account*
-         */
-        post: operations["emoji-shoot___register"];
     };
     "/emojis": {
         /**
@@ -5670,60 +5653,6 @@ export type paths = {
          */
         post: operations["server-info"];
     };
-    "/stacking-game/create-room": {
-        /**
-         * stacking-game/create-room
-         * @description No description provided.
-         *
-         *     **Credential required**: *Yes* / **Permission**: *write:account*
-         */
-        post: operations["stacking-game___create-room"];
-    };
-    "/stacking-game/join-room": {
-        /**
-         * stacking-game/join-room
-         * @description No description provided.
-         *
-         *     **Credential required**: *Yes* / **Permission**: *write:account*
-         */
-        post: operations["stacking-game___join-room"];
-    };
-    "/stacking-game/my-scores": {
-        /**
-         * stacking-game/my-scores
-         * @description No description provided.
-         *
-         *     **Credential required**: *Yes* / **Permission**: *read:account*
-         */
-        post: operations["stacking-game___my-scores"];
-    };
-    "/stacking-game/ranking": {
-        /**
-         * stacking-game/ranking
-         * @description No description provided.
-         *
-         *     **Credential required**: *No*
-         */
-        post: operations["stacking-game___ranking"];
-    };
-    "/stacking-game/register": {
-        /**
-         * stacking-game/register
-         * @description No description provided.
-         *
-         *     **Credential required**: *Yes* / **Permission**: *write:account*
-         */
-        post: operations["stacking-game___register"];
-    };
-    "/stacking-game/rooms": {
-        /**
-         * stacking-game/rooms
-         * @description No description provided.
-         *
-         *     **Credential required**: *No*
-         */
-        post: operations["stacking-game___rooms"];
-    };
     "/stats": {
         /**
          * stats
@@ -6204,69 +6133,6 @@ export type paths = {
          */
         post: operations["verify-email"];
     };
-    "/whack-emoji/create-room": {
-        /**
-         * whack-emoji/create-room
-         * @description No description provided.
-         *
-         *     **Credential required**: *Yes* / **Permission**: *write:account*
-         */
-        post: operations["whack-emoji___create-room"];
-    };
-    "/whack-emoji/endless-ranking": {
-        /**
-         * whack-emoji/endless-ranking
-         * @description No description provided.
-         *
-         *     **Credential required**: *No*
-         */
-        post: operations["whack-emoji___endless-ranking"];
-    };
-    "/whack-emoji/join-room": {
-        /**
-         * whack-emoji/join-room
-         * @description No description provided.
-         *
-         *     **Credential required**: *Yes* / **Permission**: *write:account*
-         */
-        post: operations["whack-emoji___join-room"];
-    };
-    "/whack-emoji/my-scores": {
-        /**
-         * whack-emoji/my-scores
-         * @description No description provided.
-         *
-         *     **Credential required**: *Yes* / **Permission**: *read:account*
-         */
-        post: operations["whack-emoji___my-scores"];
-    };
-    "/whack-emoji/ranking": {
-        /**
-         * whack-emoji/ranking
-         * @description No description provided.
-         *
-         *     **Credential required**: *No*
-         */
-        post: operations["whack-emoji___ranking"];
-    };
-    "/whack-emoji/register": {
-        /**
-         * whack-emoji/register
-         * @description No description provided.
-         *
-         *     **Credential required**: *Yes* / **Permission**: *write:account*
-         */
-        post: operations["whack-emoji___register"];
-    };
-    "/whack-emoji/rooms": {
-        /**
-         * whack-emoji/rooms
-         * @description No description provided.
-         *
-         *     **Credential required**: *No*
-         */
-        post: operations["whack-emoji___rooms"];
-    };
 };
 export type webhooks = Record<string, never>;
 export type components = {
@@ -6314,6 +6180,8 @@ export type components = {
                 opacity?: number;
                 /** Format: url */
                 url: string;
+                /** Format: date-time */
+                availableUntil?: string | null;
             }[];
             isLocked: boolean;
             isBot?: boolean;
@@ -7257,7 +7125,7 @@ export type components = {
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
-            type: "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed";
+            type: "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "hataskDecorationUnlocked";
             body: string;
             header: string | null;
             icon: string | null;
@@ -10232,6 +10100,11 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        requiresHataskFlowerCompletion: boolean;
+                        /** Format: date-time */
+                        availableFrom: string | null;
+                        /** Format: date-time */
+                        availableUntil: string | null;
                         /**
                          * Format: id
                          * @example xxxxxxxxxx
@@ -13374,6 +13247,8 @@ export interface operations {
                                 opacity?: number;
                                 /** Format: url */
                                 url: string;
+                                /** Format: date-time */
+                                availableUntil?: string | null;
                             }[];
                             isLocked: boolean;
                             isBot?: boolean;
@@ -13580,6 +13455,83 @@ export interface operations {
                     "application/json": {
                         saved: boolean;
                     };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "admin___hatask___update-decoration": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    id: string;
+                    /** Format: misskey:id */
+                    replaceFromId?: string;
+                    requiresHataskFlowerCompletion: boolean;
+                    availableFrom: string | null;
+                    availableUntil: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
                 };
             };
             /** @description Client error */
@@ -26638,204 +26590,6 @@ export interface operations {
             };
         };
     };
-    "emoji-shoot___my-scores": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @default 10 */
-                    limit?: number;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "emoji-shoot___ranking": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    /**
-                     * @default normal
-                     * @enum {string}
-                     */
-                    mode?: "normal" | "debuff";
-                };
-            };
-        };
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "emoji-shoot___register": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    score: number;
-                    wave?: number;
-                    kills?: number;
-                    /**
-                     * @default normal
-                     * @enum {string}
-                     */
-                    mode?: "normal" | "debuff";
-                };
-            };
-        };
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
     emojis: {
         responses: {
             /** @description OK (with results) */
@@ -30006,6 +29760,14 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        requiresHataskFlowerCompletion: boolean;
+                        /** Format: date-time */
+                        availableFrom: string | null;
+                        /** Format: date-time */
+                        availableUntil: string | null;
+                        canUse: boolean;
+                        /** @enum {string|null} */
+                        unavailableReason: "role" | "achievement" | "notStarted" | "expired" | null;
                         /**
                          * Format: id
                          * @example xxxxxxxxxx
@@ -32969,7 +32731,7 @@ export interface operations {
                      * @enum {string}
                      */
                     closedState?: "all" | "open" | "closed";
-                    statuses?: ("open" | "planned" | "inProgress" | "resolved" | "wontfix" | "unknown" | "closed")[];
+                    statuses?: ("open" | "planned" | "nextFixConfirmed" | "nextFixPlanned" | "inProgress" | "monitoring" | "resolved" | "wontfix" | "unknown" | "closed")[];
                     categories?: ("bug" | "improvement" | "unresolved" | "featureRequest" | "adoptionRequest" | "security" | "betaFeature" | "other")[];
                     /** @default true */
                     includeDescription?: boolean;
@@ -33161,7 +32923,10 @@ export interface operations {
                         total: number;
                         open: number;
                         planned: number;
+                        nextFixConfirmed: number;
+                        nextFixPlanned: number;
                         inProgress: number;
+                        monitoring: number;
                         resolved: number;
                         wontfix: number;
                         unknown: number;
@@ -33223,7 +32988,7 @@ export interface operations {
                     /** Format: misskey:id */
                     issueId: string;
                     /** @enum {string} */
-                    status?: "open" | "planned" | "inProgress" | "resolved" | "wontfix" | "unknown";
+                    status?: "open" | "planned" | "nextFixConfirmed" | "nextFixPlanned" | "inProgress" | "monitoring" | "resolved" | "wontfix" | "unknown";
                     /** @enum {string} */
                     category?: "bug" | "improvement" | "unresolved" | "featureRequest" | "adoptionRequest" | "security" | "other";
                     /** @enum {string} */
@@ -47147,8 +46912,8 @@ export interface operations {
                     includeHataskApp?: boolean;
                     includeHatadySubtypes?: ("follow" | "comment" | "reaction" | "milestone" | "goalDone" | "mediaComment" | "mediaReply" | "mediaReaction")[];
                     excludeHatadySubtypes?: ("follow" | "comment" | "reaction" | "milestone" | "goalDone" | "mediaComment" | "mediaReply" | "mediaReaction")[];
-                    includeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "pollVote")[];
-                    excludeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "pollVote")[];
+                    includeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
+                    excludeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
                 };
             };
         };
@@ -47243,8 +47008,8 @@ export interface operations {
                     includeHataskApp?: boolean;
                     includeHatadySubtypes?: ("follow" | "comment" | "reaction" | "milestone" | "goalDone" | "mediaComment" | "mediaReply" | "mediaReaction")[];
                     excludeHatadySubtypes?: ("follow" | "comment" | "reaction" | "milestone" | "goalDone" | "mediaComment" | "mediaReply" | "mediaReaction")[];
-                    includeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "pollVote")[];
-                    excludeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "pollVote")[];
+                    includeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
+                    excludeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
                 };
             };
         };
@@ -56246,433 +56011,6 @@ export interface operations {
             };
         };
     };
-    "stacking-game___create-room": {
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Too many requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "stacking-game___join-room": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** Format: misskey:id */
-                    roomId: string;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Too many requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "stacking-game___my-scores": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    limit?: number;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (with results) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: misskey:id */
-                        id: string;
-                        score: number;
-                        blockCount: number;
-                        /** Format: date-time */
-                        createdAt: string;
-                    }[];
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "stacking-game___ranking": {
-        responses: {
-            /** @description OK (with results) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: misskey:id */
-                        id: string;
-                        score: number;
-                        blockCount: number;
-                        /** Format: date-time */
-                        createdAt: string;
-                        user?: components["schemas"]["UserLite"];
-                    }[];
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Too many requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "stacking-game___register": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    score: number;
-                    blockCount?: number;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Too many requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "stacking-game___rooms": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** Format: misskey:id */
-                    roomId?: string;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Too many requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
     stats: {
         responses: {
             /** @description OK (with results) */
@@ -60417,519 +59755,6 @@ export interface operations {
             };
             /** @description I'm Ai */
             418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "whack-emoji___create-room": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @default 5 */
-                    difficulty?: number;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Too many requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "whack-emoji___endless-ranking": {
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Too many requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "whack-emoji___join-room": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** Format: misskey:id */
-                    roomId: string;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Too many requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "whack-emoji___my-scores": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    difficulty?: number;
-                    limit?: number;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (with results) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: misskey:id */
-                        id: string;
-                        score: number;
-                        difficulty: number;
-                        hits: number;
-                        misses: number;
-                        /** Format: date-time */
-                        createdAt: string;
-                    }[];
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "whack-emoji___ranking": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    difficulty: number;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (with results) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: misskey:id */
-                        id: string;
-                        score: number;
-                        difficulty: number;
-                        hits: number;
-                        misses: number;
-                        /** Format: date-time */
-                        createdAt: string;
-                        user?: components["schemas"]["UserLite"];
-                    }[];
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Too many requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "whack-emoji___register": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    score: number;
-                    difficulty: number;
-                    hits?: number;
-                    misses?: number;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Too many requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    "whack-emoji___rooms": {
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** Format: misskey:id */
-                    roomId?: string;
-                };
-            };
-        };
-        responses: {
-            /** @description OK (without any results) */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Too many requests */
-            429: {
                 headers: {
                     [name: string]: unknown;
                 };

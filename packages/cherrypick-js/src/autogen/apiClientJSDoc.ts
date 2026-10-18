@@ -855,6 +855,19 @@ declare module '../api.js' {
     /**
      * No description provided.
      *
+     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+     * **Credential required**: *Yes* / **Permission**: *write:admin:avatar-decorations*
+     */
+    request<E extends 'admin/hatask/update-decoration', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+
+    /**
+     * No description provided.
+     *
      * **Credential required**: *Yes* / **Permission**: *write:admin:invite-codes*
      */
     request<E extends 'admin/invite/create', P extends Endpoints[E]['req']>(
@@ -2966,42 +2979,6 @@ declare module '../api.js' {
      * **Credential required**: *No*
      */
     request<E extends 'emoji', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *Yes* / **Permission**: *read:account*
-     */
-    request<E extends 'emoji-shoot/my-scores', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *No*
-     */
-    request<E extends 'emoji-shoot/ranking', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *Yes* / **Permission**: *write:account*
-     */
-    request<E extends 'emoji-shoot/register', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
@@ -7528,78 +7505,6 @@ declare module '../api.js' {
     /**
      * No description provided.
      *
-     * **Credential required**: *Yes* / **Permission**: *write:account*
-     */
-    request<E extends 'stacking-game/create-room', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *Yes* / **Permission**: *write:account*
-     */
-    request<E extends 'stacking-game/join-room', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *Yes* / **Permission**: *read:account*
-     */
-    request<E extends 'stacking-game/my-scores', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *No*
-     */
-    request<E extends 'stacking-game/ranking', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *Yes* / **Permission**: *write:account*
-     */
-    request<E extends 'stacking-game/register', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *No*
-     */
-    request<E extends 'stacking-game/rooms', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
      * **Credential required**: *No*
      */
     request<E extends 'stats', P extends Endpoints[E]['req']>(
@@ -8230,90 +8135,6 @@ declare module '../api.js' {
      * **Credential required**: *No*
      */
     request<E extends 'verify-email', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *Yes* / **Permission**: *write:account*
-     */
-    request<E extends 'whack-emoji/create-room', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *No*
-     */
-    request<E extends 'whack-emoji/endless-ranking', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *Yes* / **Permission**: *write:account*
-     */
-    request<E extends 'whack-emoji/join-room', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *Yes* / **Permission**: *read:account*
-     */
-    request<E extends 'whack-emoji/my-scores', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *No*
-     */
-    request<E extends 'whack-emoji/ranking', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *Yes* / **Permission**: *write:account*
-     */
-    request<E extends 'whack-emoji/register', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *No*
-     */
-    request<E extends 'whack-emoji/rooms', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,

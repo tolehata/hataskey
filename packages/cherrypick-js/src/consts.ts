@@ -38,6 +38,7 @@ export const notificationTypes = [
 	'hataskFlowerBloomed',
 	'hataskZukanUpdated',
 	'hataskFestivalBloomed',
+	'hataskDecorationUnlocked',
 	'earthquake',
 	// 旗鯖fork: プライベートチャンネルのメンバー構成変更通知 (追加/削除)
 	'addedToPrivateChannel',

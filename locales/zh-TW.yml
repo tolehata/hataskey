@@ -7282,7 +7282,7 @@ _hata:
       appMascot: "吉祥物"
       appMascotDescription: "設定哈塔啾等吉祥物的顯示與台詞。符合條件的帳號同意後即可開啟設定。"
       appGames: "遊戲"
-      appGamesDescription: "Hataskey 小遊戲入口，包括堆疊、表情符號敲擊與射擊等。"
+      appGamesDescription: "Hataskey 遊戲入口，包括泡泡遊戲與黑白棋等。"
       appIntroDescription: "附有插圖的入門指南，逐步介紹畫面與操作。"
       appDrawingDescription: "選擇畫筆、顏色與圖層作畫，可儲存到雲端空間或附加到貼文。"
       appWhatsNew: "本次更新"

@@ -12680,6 +12680,10 @@ export interface Locale extends ILocale {
              */
             "hataskFestivalBloomed": string;
             /**
+             * Hataskのアイコンデコ獲得
+             */
+            "hataskDecorationUnlocked": string;
+            /**
              * 地震・津波情報
              */
             "earthquake": string;
@@ -15522,575 +15526,11 @@ export interface Locale extends ILocale {
             "newNotice": string;
         };
         "_games": {
-            "_common": {
-                /**
-                 * SCORE
-                 */
-                "scoreUpper": string;
-                /**
-                 * BEST
-                 */
-                "bestUpper": string;
-                /**
-                 * NEXT
-                 */
-                "nextUpper": string;
-                /**
-                 * LIFE
-                 */
-                "lifeUpper": string;
-                /**
-                 * TIME
-                 */
-                "timeUpper": string;
-                /**
-                 * Lv
-                 */
-                "levelShortLabel": string;
-                /**
-                 * VS
-                 */
-                "versusUpper": string;
-                /**
-                 * YOU
-                 */
-                "youUpper": string;
-                /**
-                 * AI
-                 */
-                "aiUpper": string;
-                /**
-                 * GAME OVER
-                 */
-                "gameOverUpper": string;
-                /**
-                 * TIME UP!
-                 */
-                "timeUpUpper": string;
-                /**
-                 * NEW RECORD!
-                 */
-                "newRecordUpper": string;
-                /**
-                 * あなた
-                 */
-                "you": string;
-                /**
-                 * もう一度
-                 */
-                "retry": string;
-                /**
-                 * 戻る
-                 */
-                "back": string;
-                /**
-                 * キャンセル
-                 */
-                "cancel": string;
-                /**
-                 * 観戦中
-                 */
-                "spectating": string;
-                /**
-                 * ロビーに戻る
-                 */
-                "backToLobby": string;
-                /**
-                 * 対戦相手を待っています...
-                 */
-                "waitingForOpponent": string;
-                /**
-                 * ルームがキャンセルされました
-                 */
-                "roomCanceled": string;
-                /**
-                 * ランキング
-                 */
-                "ranking": string;
-                /**
-                 * まだ記録がありません
-                 */
-                "noRecords": string;
-                /**
-                 * あなたの記録
-                 */
-                "yourRecords": string;
-                /**
-                 * まだプレイしていません
-                 */
-                "notPlayedYet": string;
-                /**
-                 * 遊び方
-                 */
-                "howToPlay": string;
-                /**
-                 * AI対戦
-                 */
-                "aiBattle": string;
-                /**
-                 * サーバー対戦
-                 */
-                "serverBattle": string;
-                /**
-                 * ロビーに入る
-                 */
-                "enterLobby": string;
-                /**
-                 * ゲームスタート
-                 */
-                "startGame": string;
-                /**
-                 * 🎉 あなたの勝ち！
-                 */
-                "playerWin": string;
-                /**
-                 * 😢 AIの勝ち...
-                 */
-                "aiWin": string;
-                /**
-                 * 🤝 引き分け！
-                 */
-                "draw": string;
-                /**
-                 * スコア: {score}
-                 */
-                "scoreWithValue": ParameterizedString<"score">;
-                /**
-                 * ルームID: {id}
-                 */
-                "roomId": ParameterizedString<"id">;
-                /**
-                 * 🎉 {name} の勝ち！
-                 */
-                "playerWon": ParameterizedString<"name">;
-                /**
-                 * Lv{level}
-                 */
-                "levelShort": ParameterizedString<"level">;
-                /**
-                 * あなた ({score})
-                 */
-                "playerWithScore": ParameterizedString<"score">;
-                "_difficulty": {
-                    /**
-                     * なし
-                     */
-                    "none": string;
-                    /**
-                     * よわい
-                     */
-                    "easy": string;
-                    /**
-                     * ふつう
-                     */
-                    "normal": string;
-                    /**
-                     * むずかしい
-                     */
-                    "hard": string;
-                    /**
-                     * つよすぎる
-                     */
-                    "extreme": string;
-                    /**
-                     * エグい
-                     */
-                    "insane": string;
-                };
-                "_rooms": {
-                    /**
-                     * ルームを作成
-                     */
-                    "createRoom": string;
-                    /**
-                     * 作成中...
-                     */
-                    "creating": string;
-                    /**
-                     * 新しいルームを作る
-                     */
-                    "createNewRoom": string;
-                    /**
-                     * 待機中のルーム
-                     */
-                    "waitingRooms": string;
-                    /**
-                     * 待機中のルームはありません
-                     */
-                    "noWaitingRooms": string;
-                    /**
-                     * 待機中
-                     */
-                    "waiting": string;
-                    /**
-                     * 参加
-                     */
-                    "join": string;
-                    /**
-                     * ルーム作成に失敗しました
-                     */
-                    "createFailed": string;
-                    /**
-                     * 自分が作成したルームには参加できません
-                     */
-                    "cannotJoinOwnRoom": string;
-                    /**
-                     * ルームが見つかりません
-                     */
-                    "roomNotFound": string;
-                    /**
-                     * ルームは既に満員か終了しています
-                     */
-                    "roomFullOrEnded": string;
-                };
-            };
             "_index": {
                 /**
                  * Hataskey Games
                  */
                 "pageTitle": string;
-                /**
-                 * つみつみタワー
-                 */
-                "stackingTitle": string;
-                /**
-                 * 絵文字を積み上げてハイスコアを目指そう！
-                 */
-                "stackingDescription": string;
-                /**
-                 * 絵文字叩きゲーム
-                 */
-                "whackTitle": string;
-                /**
-                 * 出てくる絵文字を素早くたたこう！
-                 */
-                "whackDescription": string;
-                /**
-                 * カスタムエモジシュート
-                 */
-                "shootTitle": string;
-                /**
-                 * 絵文字の弾幕を撃ちまくれ！
-                 */
-                "shootDescription": string;
-            };
-            "_stacking": {
-                "_home": {
-                    /**
-                     * つみつみタワー
-                     */
-                    "title": string;
-                    /**
-                     * 絵文字を積み上げてハイスコアを目指そう！
-                     */
-                    "description": string;
-                    /**
-                     * ソロプレイ
-                     */
-                    "soloPlay": string;
-                    /**
-                     * AIと横並びで対決！先に崩した方が負け
-                     */
-                    "aiDescription": string;
-                    /**
-                     * AI対戦スタート
-                     */
-                    "startAiBattle": string;
-                    /**
-                     * 他のユーザーとリアルタイムで対決！観戦もできます
-                     */
-                    "serverBattleDescription": string;
-                    /**
-                     * サーバーの絵文字が上から落ちてきます
-                     */
-                    "howTo1": string;
-                    /**
-                     * 左右に動かして落とす位置を決めましょう
-                     */
-                    "howTo2": string;
-                    /**
-                     * タップ/クリックで絵文字を落とします
-                     */
-                    "howTo3": string;
-                    /**
-                     * 絵文字が台から落ちるとゲームオーバー
-                     */
-                    "howTo4": string;
-                    /**
-                     * たくさん積み上げてハイスコアを目指そう！
-                     */
-                    "howTo5": string;
-                    /**
-                     * {count}個積み上げ
-                     */
-                    "blocksStacked": ParameterizedString<"count">;
-                    /**
-                     * {count}個
-                     */
-                    "blocks": ParameterizedString<"count">;
-                };
-                "_game": {
-                    /**
-                     * つみつみタワー
-                     */
-                    "pageTitle": string;
-                    /**
-                     * {count}個積み上げ
-                     */
-                    "blocksStacked": ParameterizedString<"count">;
-                };
-                "_ai": {
-                    /**
-                     * つみつみタワー vs AI
-                     */
-                    "pageTitle": string;
-                    /**
-                     * あなた: {player}個 / AI: {ai}個
-                     */
-                    "blocksComparison": ParameterizedString<"player" | "ai">;
-                };
-                "_lobby": {
-                    /**
-                     * サーバー対戦ロビー
-                     */
-                    "title": string;
-                    /**
-                     * 他のユーザーと積みゲームで対戦！
-                     */
-                    "description": string;
-                    /**
-                     * つみつみタワー - ロビー
-                     */
-                    "pageTitle": string;
-                };
-                "_battle": {
-                    /**
-                     * つみつみタワー - 対戦
-                     */
-                    "pageTitle": string;
-                };
-            };
-            "_whack": {
-                "_home": {
-                    /**
-                     * 絵文字叩きゲーム
-                     */
-                    "title": string;
-                    /**
-                     * 出てくる絵文字を素早くたたこう！
-                     */
-                    "description": string;
-                    /**
-                     * 難易度を選択
-                     */
-                    "selectDifficulty": string;
-                    /**
-                     * かんたん — ゆっくりペースで出現
-                     */
-                    "difficultyEasyDescription": string;
-                    /**
-                     * ふつう — そこそこの速さ
-                     */
-                    "difficultyNormalDescription": string;
-                    /**
-                     * むずかしい — 素早い反射神経が必要
-                     */
-                    "difficultyHardDescription": string;
-                    /**
-                     * 超上級 — 一瞬の判断力が試される！
-                     */
-                    "difficultyExpertDescription": string;
-                    /**
-                     * ゲームモード
-                     */
-                    "gameMode": string;
-                    /**
-                     * 通常
-                     */
-                    "normalMode": string;
-                    /**
-                     * エンドレス
-                     */
-                    "endlessMode": string;
-                    /**
-                     * 叩くたびに時間が回復！スコアを稼ぐほど長く遊べます
-                     */
-                    "endlessDescription": string;
-                    /**
-                     * 他のユーザーとリアルタイムでスコアを競おう！観戦もできます
-                     */
-                    "serverBattleDescription": string;
-                    /**
-                     * 制限時間30秒でスタート
-                     */
-                    "howTo1": string;
-                    /**
-                     * 穴から出てくる絵文字をクリック/タップで叩きます
-                     */
-                    "howTo2": string;
-                    /**
-                     * 叩くとスコアが加算！難易度が高いほどスコアも高い
-                     */
-                    "howTo3": string;
-                    /**
-                     * 出てこないマスを叩くとミス（減点）
-                     */
-                    "howTo4": string;
-                    /**
-                     * 時間切れでゲームオーバー、ハイスコアを目指そう！
-                     */
-                    "howTo5": string;
-                    /**
-                     * エンドレスランキング
-                     */
-                    "endlessRanking": string;
-                    /**
-                     * {hits}hit / {misses}miss
-                     */
-                    "hitMiss": ParameterizedString<"hits" | "misses">;
-                    /**
-                     * {count}hit
-                     */
-                    "hits": ParameterizedString<"count">;
-                };
-                "_game": {
-                    /**
-                     * 絵文字叩きゲーム
-                     */
-                    "pageTitle": string;
-                    /**
-                     * {hits} hit / {misses} miss
-                     */
-                    "hitMiss": ParameterizedString<"hits" | "misses">;
-                    /**
-                     * 到達レベル: {level}
-                     */
-                    "reachedLevel": ParameterizedString<"level">;
-                };
-                "_lobby": {
-                    /**
-                     * 絵文字叩き対戦ロビー
-                     */
-                    "title": string;
-                    /**
-                     * 他のユーザーとスコアを競おう！
-                     */
-                    "description": string;
-                    /**
-                     * 難易度
-                     */
-                    "difficulty": string;
-                    /**
-                     * 絵文字叩き - ロビー
-                     */
-                    "pageTitle": string;
-                };
-                "_battle": {
-                    /**
-                     * 絵文字叩き - 対戦
-                     */
-                    "pageTitle": string;
-                    /**
-                     * Lv{level} / ルームID: {id}
-                     */
-                    "levelRoomId": ParameterizedString<"level" | "id">;
-                };
-            };
-            "_shoot": {
-                "_home": {
-                    /**
-                     * カスタムエモジシュート
-                     */
-                    "title": string;
-                    /**
-                     * 絵文字の弾幕を撃ちまくれ！
-                     */
-                    "description": string;
-                    /**
-                     * ノーマルモード
-                     */
-                    "normalMode": string;
-                    /**
-                     * デバフモード
-                     */
-                    "debuffMode": string;
-                    /**
-                     * デバフモード: スペシャルがデバフに！移動鈍化・巨大化・左右反転が降り注ぐ
-                     */
-                    "debuffDescription": string;
-                    /**
-                     * ランキング（ノーマル）
-                     */
-                    "normalRanking": string;
-                    /**
-                     * ランキング（デバフ）
-                     */
-                    "debuffRanking": string;
-                    /**
-                     * Wave {wave} / {kills} kills
-                     */
-                    "waveKills": ParameterizedString<"wave" | "kills">;
-                };
-                "_game": {
-                    /**
-                     * カスタムエモジシュート
-                     */
-                    "pageTitle": string;
-                    /**
-                     * WAVE
-                     */
-                    "waveUpper": string;
-                    /**
-                     * MODE
-                     */
-                    "modeUpper": string;
-                    /**
-                     * DEBUFF
-                     */
-                    "debuffUpper": string;
-                    /**
-                     * Wave {wave} / {kills} kills
-                     */
-                    "waveKills": ParameterizedString<"wave" | "kills">;
-                    /**
-                     * {seconds}秒
-                     */
-                    "secondsRemaining": ParameterizedString<"seconds">;
-                    "_effects": {
-                        /**
-                         * 連射速度UP
-                         */
-                        "rapid": string;
-                        /**
-                         * 3方向発射
-                         */
-                        "spread": string;
-                        /**
-                         * ダメージ無効
-                         */
-                        "shield": string;
-                        /**
-                         * アイテム吸引
-                         */
-                        "magnet": string;
-                        /**
-                         * 弾が貫通
-                         */
-                        "piercing": string;
-                        /**
-                         * 移動速度低下
-                         */
-                        "slow": string;
-                        /**
-                         * 自機が巨大化
-                         */
-                        "giant": string;
-                        /**
-                         * 左右反転
-                         */
-                        "mirror": string;
-                    };
-                };
             };
         };
         "_favoriteFolders": {
@@ -17437,42 +16877,6 @@ export interface Locale extends ILocale {
                  * ゲーム一覧を開く
                  */
                 "gamesOverviewLink": string;
-                /**
-                 * つみつみタワー
-                 */
-                "stackingGameTitle": string;
-                /**
-                 * 絵文字を積み上げて高さを競うゲームです。一人で遊ぶほか、強さを選んでコンピューターとも対戦できます。
-                 */
-                "stackingGameBody": string;
-                /**
-                 * つみつみタワーで遊ぶ
-                 */
-                "stackingGameLink": string;
-                /**
-                 * 絵文字叩きゲーム
-                 */
-                "whackEmojiTitle": string;
-                /**
-                 * 次々に現れる絵文字を時間内に叩くゲームです。時間内の得点を競う遊び方、押しそびれるまで続く遊び方、コンピューターとの対戦があります。
-                 */
-                "whackEmojiBody": string;
-                /**
-                 * 絵文字叩きで遊ぶ
-                 */
-                "whackEmojiLink": string;
-                /**
-                 * カスタムエモジシュート
-                 */
-                "emojiShootTitle": string;
-                /**
-                 * 迫ってくる絵文字を撃ち落とすゲームです。進むほど相手が増え、通常とは違う不利な条件が付く遊び方も選べます。
-                 */
-                "emojiShootBody": string;
-                /**
-                 * エモジシュートで遊ぶ
-                 */
-                "emojiShootLink": string;
                 /**
                  * 更新内容の案内
                  */
@@ -30801,7 +30205,7 @@ export interface Locale extends ILocale {
                  */
                 "appGames": string;
                 /**
-                 * 積み上げゲーム・絵文字たたき・絵文字シュートなど、Hataskeyのミニゲームをまとめた入口
+                 * バブルゲームやリバーシなど、Hataskeyのゲームをまとめた入口
                  */
                 "appGamesDescription": string;
                 /**
@@ -32290,6 +31694,18 @@ export interface Locale extends ILocale {
                  * 対応中
                  */
                 "statusInProgress": string;
+                /**
+                 * 次回修正確定
+                 */
+                "statusNextFixConfirmed": string;
+                /**
+                 * 次回修正予定
+                 */
+                "statusNextFixPlanned": string;
+                /**
+                 * 修正監視中
+                 */
+                "statusMonitoring": string;
                 /**
                  * 解決済み
                  */
@@ -34007,6 +33423,18 @@ export interface Locale extends ILocale {
                  * 対応中
                  */
                 "statusInProgress": string;
+                /**
+                 * 次回修正確定
+                 */
+                "statusNextFixConfirmed": string;
+                /**
+                 * 次回修正予定
+                 */
+                "statusNextFixPlanned": string;
+                /**
+                 * 修正監視中
+                 */
+                "statusMonitoring": string;
                 /**
                  * 解決済み
                  */
@@ -42898,6 +42326,914 @@ export interface Locale extends ILocale {
                 "safetyNote": string;
             };
         };
+        "_settingsBento": {
+            "sectionExplainer": {
+                "profile": {
+                    /**
+                     * 名前・アイコン・自己紹介など、プロフィールの中身を編集
+                     */
+                    "section0": string;
+                    /**
+                     * プロフィールに並べる補足項目とフォロー時のあいさつ
+                     */
+                    "section1": string;
+                    /**
+                     * アイコンのまわりを飾りで彩る
+                     */
+                    "section2": string;
+                    /**
+                     * 宴やお花などの記録をプロフィールに出すかどうか
+                     */
+                    "section3": string;
+                };
+                "privacy": {
+                    /**
+                     * フォローの承認や、フォロー・フォロワー一覧を誰に見せるか
+                     */
+                    "section0": string;
+                    /**
+                     * 検索エンジンやAIから、あなたのノートがどう見えるか
+                     */
+                    "section1": string;
+                    /**
+                     * DMを送ってこられる相手を決める
+                     */
+                    "section2": string;
+                    /**
+                     * ログインしていない人や過去のノートを見る人から守る
+                     */
+                    "section3": string;
+                    /**
+                     * 一定期間が過ぎたノートを自動で消す
+                     */
+                    "section4": string;
+                };
+                "security": {
+                    /**
+                     * 登録しているメールアドレスとお知らせの受け取り
+                     */
+                    "section0": string;
+                    /**
+                     * パスワード・認証アプリ・パスキーでログインを守る
+                     */
+                    "section1": string;
+                    /**
+                     * いつ、どこからログインされたかを確認
+                     */
+                    "section2": string;
+                    /**
+                     * 別アカウントへの切り替え・引っ越し・閉鎖
+                     */
+                    "section3": string;
+                };
+                "appearance": {
+                    /**
+                     * ライト／ダークの切り替えと、それぞれで使うテーマ
+                     */
+                    "section0": string;
+                    /**
+                     * UI全体の書体と文字の大きさ
+                     */
+                    "section1": string;
+                    /**
+                     * UIの種類や、画面の組み立て方
+                     */
+                    "section2": string;
+                    /**
+                     * メニューやヘッダー・ステータスバーの並びと出し方
+                     */
+                    "section3": string;
+                    /**
+                     * メニューやウィジェットの後ろに透けるすりガラス
+                     */
+                    "section4": string;
+                    /**
+                     * アイコンの形や、季節・天気の演出
+                     */
+                    "section5": string;
+                };
+                "timeline": {
+                    /**
+                     * ノートの間隔や、新しいノートが流れてくる向き
+                     */
+                    "section0": string;
+                    /**
+                     * リノート・返信・長いノートを折りたたむ
+                     */
+                    "section1": string;
+                    /**
+                     * アイコン・時刻・返信先など、ノート1件の見え方
+                     */
+                    "section2": string;
+                    /**
+                     * 返信・リノートなどのボタンと、押したときの動き
+                     */
+                    "section3": string;
+                    /**
+                     * リアクションの大きさ・確認・隠し方
+                     */
+                    "section4": string;
+                    /**
+                     * 画像・動画の画質と、センシティブなメディアの扱い
+                     */
+                    "section5": string;
+                    /**
+                     * デッキUIのカラムの並びと動き
+                     */
+                    "section6": string;
+                };
+                "post": {
+                    /**
+                     * 投稿フォームを出す場所と、書くときの動き
+                     */
+                    "section0": string;
+                    /**
+                     * 新しいノートやリノートを、最初はどの範囲に出すか
+                     */
+                    "section1": string;
+                    /**
+                     * 投稿欄に並べるボタンとショートカット
+                     */
+                    "section2": string;
+                    /**
+                     * 公開・ホーム・フォロワー・ダイレクトで枠の色を変える
+                     */
+                    "section3": string;
+                    /**
+                     * よく使う絵文字をまとめたパレット
+                     */
+                    "section4": string;
+                    /**
+                     * 絵文字を選ぶ画面の大きさと出し方
+                     */
+                    "section5": string;
+                };
+                "notify": {
+                    /**
+                     * 種類ごとに、誰からの通知を受け取るか
+                     */
+                    "section0": string;
+                    /**
+                     * 通知のまとめ方と、ポップアップの出る場所
+                     */
+                    "section1": string;
+                    /**
+                     * アプリを閉じていても届く通知
+                     */
+                    "section2": string;
+                    /**
+                     * 効果音の音量と、場面ごとの音
+                     */
+                    "section3": string;
+                };
+                "access": {
+                    /**
+                     * アニメーションや動きのある表示を控えめにする
+                     */
+                    "section0": string;
+                    /**
+                     * スワイプやひっぱって更新など、指での操作
+                     */
+                    "section1": string;
+                    /**
+                     * ぼかしなど重い表示を減らして軽くする
+                     */
+                    "section2": string;
+                    /**
+                     * 通信量を抑えるために読み込みを減らす
+                     */
+                    "section3": string;
+                };
+                "mute": {
+                    /**
+                     * 言葉・絵文字・サーバー単位で見えなくする
+                     */
+                    "section0": string;
+                    /**
+                     * 特定のユーザーをミュート・ブロックする
+                     */
+                    "section1": string;
+                    /**
+                     * リンクを開く前に、行き先を確認する
+                     */
+                    "section2": string;
+                };
+                "drive": {
+                    /**
+                     * ドライブの使用量と整理
+                     */
+                    "section0": string;
+                    /**
+                     * ファイルを上げるときの保存先と扱い
+                     */
+                    "section1": string;
+                    /**
+                     * 画像の圧縮とウォーターマーク
+                     */
+                    "section2": string;
+                    /**
+                     * 動画の圧縮
+                     */
+                    "section3": string;
+                };
+                "apps": {
+                    /**
+                     * Hataskeyのオリジナルアプリごとの設定
+                     */
+                    "section0": string;
+                    /**
+                     * マスコットと地震ビューア
+                     */
+                    "section1": string;
+                };
+                "data": {
+                    /**
+                     * すべての設定をまとめて保存し、別の端末に引き継ぐ
+                     */
+                    "section0": string;
+                    /**
+                     * Hataskeyだけの設定を、ツールごとに選んで入出力
+                     */
+                    "section1": string;
+                    /**
+                     * ノートやフォローなどを書き出す・読み込む
+                     */
+                    "section2": string;
+                    /**
+                     * 外部アカウント・API・連携アプリ
+                     */
+                    "section3": string;
+                };
+                "advanced": {
+                    /**
+                     * 言語や地域、更新のしかたなど全体の動作
+                     */
+                    "section0": string;
+                    /**
+                     * 続きの読み込みや、接続が切れたときの動き
+                     */
+                    "section1": string;
+                    /**
+                     * プラグインやカスタムCSSで機能を足す
+                     */
+                    "section2": string;
+                    /**
+                     * キャッシュの削除とログアウト
+                     */
+                    "section3": string;
+                };
+            };
+            /**
+             * このカテゴリでできること
+             */
+            "categoryExplainerHeading": string;
+            /**
+             * すべてのカテゴリ
+             */
+            "allCategories": string;
+            /**
+             * ほか {count} 項目
+             */
+            "moreItems": ParameterizedString<"count">;
+            /**
+             * {count} 項目
+             */
+            "itemCount": ParameterizedString<"count">;
+            "explainer": {
+                /**
+                 * 名前・アイコン・追加情報など、ほかの人に見えるあなた
+                 */
+                "profile": string;
+                /**
+                 * 誰に何を見せるか、DMや検索からの見え方
+                 */
+                "privacy": string;
+                /**
+                 * ログインの守り方と、アカウントの切り替え・移行
+                 */
+                "security": string;
+                /**
+                 * テーマ・フォント・UIの見た目を切り替え
+                 */
+                "appearance": string;
+                /**
+                 * タイムラインに流れるノートの見え方と操作
+                 */
+                "timeline": string;
+                /**
+                 * ノートを書くときのフォーム・公開範囲・絵文字
+                 */
+                "post": string;
+                /**
+                 * 何を、どの方法で、どの音で知らせるか
+                 */
+                "notify": string;
+                /**
+                 * 動きを控えめにしたり、操作しやすく・軽くしたり
+                 */
+                "access": string;
+                /**
+                 * 見たくない言葉・人・絵文字を隠す
+                 */
+                "mute": string;
+                /**
+                 * アップロードするファイルの扱い
+                 */
+                "drive": string;
+                /**
+                 * Hatagoes・Hatask・Hatady・HataFeed など、Hataskeyだけのアプリ
+                 */
+                "apps": string;
+                /**
+                 * 設定やデータの書き出し・読み込み・連携
+                 */
+                "data": string;
+                /**
+                 * 言語や動作の細かい調整、拡張とキャッシュ
+                 */
+                "advanced": string;
+            };
+            /**
+             * 設定のプロファイル
+             */
+            "profileMenu": string;
+            /**
+             * 自分に合う使い心地に
+             */
+            "overviewDescription": string;
+            /**
+             * カテゴリに戻る
+             */
+            "categoryBack": string;
+            /**
+             * 設定を閉じる
+             */
+            "settingsExit": string;
+            /**
+             * 詳細設定
+             */
+            "details": string;
+            /**
+             * ログインとキャッシュ
+             */
+            "sessionActions": string;
+            "groups": {
+                /**
+                 * あなた
+                 */
+                "you": string;
+                /**
+                 * 使い方
+                 */
+                "usage": string;
+                /**
+                 * 管理
+                 */
+                "management": string;
+            };
+            "categories": {
+                "profile": {
+                    /**
+                     * プロフィール
+                     */
+                    "label": string;
+                    /**
+                     * 名前・アイコン・追加情報
+                     */
+                    "description": string;
+                    /**
+                     * バナー画像を変更
+                     */
+                    "preview1": string;
+                    /**
+                     * アイコン画像を変更
+                     */
+                    "preview2": string;
+                    /**
+                     * 名前
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * 基本情報
+                         */
+                        "section0": string;
+                        /**
+                         * 追加情報
+                         */
+                        "section1": string;
+                        /**
+                         * アイコンデコレーション
+                         */
+                        "section2": string;
+                        /**
+                         * プロフィールに表示する記録
+                         */
+                        "section3": string;
+                    };
+                };
+                "privacy": {
+                    /**
+                     * プライバシー
+                     */
+                    "label": string;
+                    /**
+                     * 公開範囲・DM・ロックダウン
+                     */
+                    "description": string;
+                    /**
+                     * フォローを承認制にする
+                     */
+                    "preview1": string;
+                    /**
+                     * フォロー中ユーザーからのフォロー申請を自動承認
+                     */
+                    "preview2": string;
+                    /**
+                     * リアクション一覧を公開する
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * 公開範囲
+                         */
+                        "section0": string;
+                        /**
+                         * 検索とクローラー
+                         */
+                        "section1": string;
+                        /**
+                         * ダイレクトメッセージ
+                         */
+                        "section2": string;
+                        /**
+                         * ロックダウン
+                         */
+                        "section3": string;
+                        /**
+                         * ノート自動削除
+                         */
+                        "section4": string;
+                    };
+                };
+                "security": {
+                    /**
+                     * アカウントとセキュリティ
+                     */
+                    "label": string;
+                    /**
+                     * ログイン・二段階認証・移行
+                     */
+                    "description": string;
+                    /**
+                     * メールアドレス
+                     */
+                    "preview1": string;
+                    /**
+                     * サーバーからのお知らせを受け取る
+                     */
+                    "preview2": string;
+                    /**
+                     * パスワードを変更
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * メールアドレス
+                         */
+                        "section0": string;
+                        /**
+                         * パスワードと二段階認証
+                         */
+                        "section1": string;
+                        /**
+                         * ログイン履歴
+                         */
+                        "section2": string;
+                        /**
+                         * アカウント
+                         */
+                        "section3": string;
+                    };
+                };
+                "appearance": {
+                    /**
+                     * 見た目
+                     */
+                    "label": string;
+                    /**
+                     * テーマ・フォント・UI・ナビ
+                     */
+                    "description": string;
+                    /**
+                     * デバイスのダークモードと同期する
+                     */
+                    "preview1": string;
+                    /**
+                     * ライトモードで使うテーマ
+                     */
+                    "preview2": string;
+                    /**
+                     * ダークモードで使うテーマ
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * テーマ
+                         */
+                        "section0": string;
+                        /**
+                         * フォント
+                         */
+                        "section1": string;
+                        /**
+                         * UIとレイアウト
+                         */
+                        "section2": string;
+                        /**
+                         * ナビゲーション
+                         */
+                        "section3": string;
+                        /**
+                         * すりガラスと背景
+                         */
+                        "section4": string;
+                        /**
+                         * アイコンと演出
+                         */
+                        "section5": string;
+                    };
+                };
+                "timeline": {
+                    /**
+                     * タイムラインとノート
+                     */
+                    "label": string;
+                    /**
+                     * TLの流れ・ノート・リアクション
+                     */
+                    "description": string;
+                    /**
+                     * ノートの間隔
+                     */
+                    "preview1": string;
+                    /**
+                     * 新規ノートのアニメーション方向
+                     */
+                    "preview2": string;
+                    /**
+                     * LTLの絵文字投票を表示
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * タイムライン
+                         */
+                        "section0": string;
+                        /**
+                         * 省略表示
+                         */
+                        "section1": string;
+                        /**
+                         * ノートの表示
+                         */
+                        "section2": string;
+                        /**
+                         * ノートのボタンと操作
+                         */
+                        "section3": string;
+                        /**
+                         * リアクション
+                         */
+                        "section4": string;
+                        /**
+                         * メディア
+                         */
+                        "section5": string;
+                        /**
+                         * デッキ
+                         */
+                        "section6": string;
+                    };
+                };
+                "post": {
+                    /**
+                     * 投稿と絵文字
+                     */
+                    "label": string;
+                    /**
+                     * 投稿フォーム・公開範囲・絵文字
+                     */
+                    "description": string;
+                    /**
+                     * タイムライン上部に投稿フォームを表示する(チャンネル)
+                     */
+                    "preview1": string;
+                    /**
+                     * 返信に投稿フォームを表示する
+                     */
+                    "preview2": string;
+                    /**
+                     * 投稿フォームの位置
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * 投稿フォーム
+                         */
+                        "section0": string;
+                        /**
+                         * 公開範囲
+                         */
+                        "section1": string;
+                        /**
+                         * 投稿欄のボタン
+                         */
+                        "section2": string;
+                        /**
+                         * 公開範囲ごとの枠の色
+                         */
+                        "section3": string;
+                        /**
+                         * 絵文字パレット
+                         */
+                        "section4": string;
+                        /**
+                         * 絵文字ピッカー
+                         */
+                        "section5": string;
+                    };
+                };
+                "notify": {
+                    /**
+                     * 通知とサウンド
+                     */
+                    "label": string;
+                    /**
+                     * 受け取る通知・ポップアップ・音
+                     */
+                    "description": string;
+                    /**
+                     * フォロー
+                     */
+                    "preview1": string;
+                    /**
+                     * メンション
+                     */
+                    "preview2": string;
+                    /**
+                     * リプライ
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * 受け取る通知
+                         */
+                        "section0": string;
+                        /**
+                         * 通知の表示
+                         */
+                        "section1": string;
+                        /**
+                         * プッシュとメール
+                         */
+                        "section2": string;
+                        /**
+                         * サウンド
+                         */
+                        "section3": string;
+                    };
+                };
+                "access": {
+                    /**
+                     * アクセシビリティ
+                     */
+                    "label": string;
+                    /**
+                     * 動き・操作・パフォーマンス
+                     */
+                    "description": string;
+                    /**
+                     * UIのアニメーションを減らす
+                     */
+                    "preview1": string;
+                    /**
+                     * アニメーション画像を再生しない
+                     */
+                    "preview2": string;
+                    /**
+                     * 動きのあるMFCを有効にする
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * 動き
+                         */
+                        "section0": string;
+                        /**
+                         * 操作
+                         */
+                        "section1": string;
+                        /**
+                         * パフォーマンス
+                         */
+                        "section2": string;
+                        /**
+                         * データセーバー
+                         */
+                        "section3": string;
+                    };
+                };
+                "mute": {
+                    /**
+                     * ミュートとブロック
+                     */
+                    "label": string;
+                    /**
+                     * ワード・ユーザー・絵文字・外部リンク
+                     */
+                    "description": string;
+                    /**
+                     * ワードミュート
+                     */
+                    "preview1": string;
+                    /**
+                     * ハードワードミュート
+                     */
+                    "preview2": string;
+                    /**
+                     * 絵文字ミュート
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * ワードとサーバー
+                         */
+                        "section0": string;
+                        /**
+                         * ユーザー
+                         */
+                        "section1": string;
+                        /**
+                         * 外部サイトへの移動
+                         */
+                        "section2": string;
+                    };
+                };
+                "drive": {
+                    /**
+                     * ドライブ
+                     */
+                    "label": string;
+                    /**
+                     * 容量・アップロード・画像・動画
+                     */
+                    "description": string;
+                    /**
+                     * 使用量
+                     */
+                    "preview1": string;
+                    /**
+                     * 統計
+                     */
+                    "preview2": string;
+                    /**
+                     * ドライブを整理
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * 容量
+                         */
+                        "section0": string;
+                        /**
+                         * アップロード
+                         */
+                        "section1": string;
+                        /**
+                         * 画像
+                         */
+                        "section2": string;
+                        /**
+                         * 動画
+                         */
+                        "section3": string;
+                    };
+                };
+                "apps": {
+                    /**
+                     * Hataskeyアプリ
+                     */
+                    "label": string;
+                    /**
+                     * Hatagoes・Hatask・Hatady・HataFeed
+                     */
+                    "description": string;
+                    /**
+                     * Hatagoes
+                     */
+                    "preview1": string;
+                    /**
+                     * Hatask
+                     */
+                    "preview2": string;
+                    /**
+                     * Hatady
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * アプリ
+                         */
+                        "section0": string;
+                        /**
+                         * 機能
+                         */
+                        "section1": string;
+                    };
+                };
+                "data": {
+                    /**
+                     * データとバックアップ
+                     */
+                    "label": string;
+                    /**
+                     * 書き出し・移行・連携
+                     */
+                    "description": string;
+                    /**
+                     * 自動バックアップ
+                     */
+                    "preview1": string;
+                    /**
+                     * 設定のプロファイル
+                     */
+                    "preview2": string;
+                    /**
+                     * 設定を書き出す
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * 設定のバックアップ
+                         */
+                        "section0": string;
+                        /**
+                         * Hataskey独自設定
+                         */
+                        "section1": string;
+                        /**
+                         * アカウントのデータ
+                         */
+                        "section2": string;
+                        /**
+                         * 連携
+                         */
+                        "section3": string;
+                    };
+                };
+                "advanced": {
+                    /**
+                     * 詳細
+                     */
+                    "label": string;
+                    /**
+                     * 言語・動作・拡張・キャッシュ
+                     */
+                    "description": string;
+                    /**
+                     * UIの表示言語
+                     */
+                    "preview1": string;
+                    /**
+                     * リアルタイムモード
+                     */
+                    "preview2": string;
+                    /**
+                     * コンテンツの取得頻度
+                     */
+                    "preview3": string;
+                    "sections": {
+                        /**
+                         * 全般
+                         */
+                        "section0": string;
+                        /**
+                         * 読み込みと接続
+                         */
+                        "section1": string;
+                        /**
+                         * 拡張
+                         */
+                        "section2": string;
+                        /**
+                         * キャッシュとログアウト
+                         */
+                        "section3": string;
+                    };
+                };
+            };
+        };
         "_settingsRedesign": {
             /**
              * 設定の内容へ移動
@@ -44972,6 +45308,40 @@ export interface Locale extends ILocale {
              */
             "verifyingVote": string;
         };
+    };
+    "_hataskDecoration": {
+        /**
+         * 今の季節のお花を全種類そろえると解禁
+         */
+        "achievement": string;
+        /**
+         * お花の図鑑の達成特典
+         */
+        "unlocked": string;
+        /**
+         * 利用できるロールが必要です
+         */
+        "role": string;
+        /**
+         * 利用期間前です
+         */
+        "notStarted": string;
+        /**
+         * 利用期間が終了しました
+         */
+        "expired": string;
+        /**
+         * 期間限定
+         */
+        "limited": string;
+        /**
+         * 着用できる期限
+         */
+        "wearUntil": string;
+        /**
+         * アイコンデコを読み込めませんでした
+         */
+        "loadFailed": string;
     };
 }
 declare const locales: {
