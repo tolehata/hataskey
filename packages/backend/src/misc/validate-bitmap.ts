@@ -17,7 +17,18 @@ export function validateBitmap(source: Buffer, icon: boolean, maxPixels: number)
 		const height = icon ? encodedHeight / 2 : encodedHeight;
 		const depth = data.readUInt16LE(14);
 		const colorCount = data.readUInt32LE(32);
-		if (!dibHeaderSizes.has(headerSize) || headerSize > data.length || data.readUInt16LE(12) !== 1 || data.readUInt32LE(16) !== 0 || !colorDepths.has(depth)) return reject();
+		if (!dibHeaderSizes.has(headerSize) || headerSize > data.length || data.readUInt16LE(12) !== 1 || !colorDepths.has(depth)) return reject();
+		// decode-bmp ignores the compression field and reads 32bpp pixels as B,G,R,A right
+		// after the header. That matches BI_BITFIELDS only when the masks live inside a V4/V5
+		// header (as Windows writes them) and use the standard layout. Masks appended after a
+		// 40-byte header would be read as pixels, and every other compression is unsupported.
+		const compression = data.readUInt32LE(16);
+		const standardBitfields = compression === 3 && depth === 32 && headerSize >= 108
+			&& data.readUInt32LE(40) === 0x00FF0000 && data.readUInt32LE(44) === 0x0000FF00 && data.readUInt32LE(48) === 0x000000FF
+			&& [0xFF000000, 0].includes(data.readUInt32LE(52));
+		if (compression !== 0 && !standardBitfields) return reject();
+		// decode-bmp reads the height as unsigned, so a top-down (negative) height would
+		// allocate billions of rows. Keep rejecting it here.
 		if (width <= 0 || height <= 0 || !Number.isInteger(height) || width * height > maxPixels) return reject();
 		if (icon && (width !== expectedWidth || height !== expectedHeight)) return reject();
 		if (colorCount > (depth <= 8 ? 2 ** depth : 0)) return reject();

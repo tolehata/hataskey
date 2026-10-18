@@ -101,6 +101,50 @@ describe('media parser and response admission', () => {
 		expect((await image.webp().toBuffer()).length).toBeGreaterThan(0);
 	});
 
+	// A 32bpp BI_BITFIELDS bitmap with its masks inside a V5 header, as Windows writes it.
+	function bitfieldsBmp(options: { headerSize?: number; redMask?: number; height?: number } = {}): Buffer {
+		const headerSize = options.headerSize ?? 124;
+		const width = 4, height = options.height ?? 4;
+		const pixels = Buffer.alloc(width * Math.abs(height) * 4);
+		for (let i = 0; i < pixels.length; i += 4) pixels.set([0x00, 0x00, 0xFF, 0xFF], i); // B,G,R,A = opaque red
+		const dib = Buffer.alloc(headerSize);
+		dib.writeUInt32LE(headerSize, 0);
+		dib.writeInt32LE(width, 4);
+		dib.writeInt32LE(height, 8);
+		dib.writeUInt16LE(1, 12);
+		dib.writeUInt16LE(32, 14);
+		dib.writeUInt32LE(3, 16);
+		dib.writeUInt32LE(pixels.length, 20);
+		if (headerSize >= 56) {
+			dib.writeUInt32LE(options.redMask ?? 0x00FF0000, 40);
+			dib.writeUInt32LE(0x0000FF00, 44);
+			dib.writeUInt32LE(0x000000FF, 48);
+			dib.writeUInt32LE(0xFF000000, 52);
+		}
+		const file = Buffer.alloc(14);
+		file.write('BM');
+		file.writeUInt32LE(14 + headerSize + pixels.length, 2);
+		file.writeUInt32LE(14 + headerSize, 10);
+		return Buffer.concat([file, dib, pixels]);
+	}
+
+	test('a Windows-style 32bpp BI_BITFIELDS bitmap decodes with its real colors', async () => {
+		const { service } = setup();
+		const image = await service.openProxyImage(await temporaryImage(bitfieldsBmp()), 'image/bmp');
+		const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
+		expect([info.width, info.height, info.channels]).toEqual([4, 4, 4]);
+		expect([...data.subarray(0, 4)]).toEqual([255, 0, 0, 255]);
+	});
+
+	test.each([
+		['non-standard masks', { redMask: 0x0000FF00 }],
+		['masks appended after a 40-byte header', { headerSize: 40 }],
+		['a top-down (negative) height the decoder reads as billions of rows', { height: -4 }],
+	] as const)('still rejects %s', async (_label, options) => {
+		const { service } = setup();
+		await expect(service.openProxyImage(await temporaryImage(bitfieldsBmp(options)), 'image/bmp')).rejects.toMatchObject({ statusCode: 413 });
+	});
+
 	test('rejects an ICO PNG whose dimensions disagree with its directory', async () => {
 		const { service } = setup();
 		const png = await sharp({ create: { width: 16, height: 16, channels: 4, background: '#ff0000' } }).png().toBuffer();
