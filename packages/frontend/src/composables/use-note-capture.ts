@@ -314,8 +314,10 @@ export function useNoteCapture(props: {
 		let normalizedName = ctx.reaction.replace(/^:(\w+):$/, ':$1@.:');
 		normalizedName = normalizedName.match('\u200d') ? normalizedName : normalizedName.replace(/\ufe0f/g, '');
 
-		// 確実に一度リアクションされて取り消されている場合のみ処理をとめる（APIで初回読み込み→Streamでアップデート等の場合、reactionUserMapに情報がないため）
-		if (reactionUserMap.has(ctx.userId) && reactionUserMap.get(ctx.userId) === noReaction) return;
+		// 取消済み、または別のリアクションへ変更済みなら、遅れて届いた古い取消を反映しない。
+		// 初回読み込み直後はMapに記録がないため、最初の取消は通常どおり処理する。
+		const latestReaction = reactionUserMap.get(ctx.userId);
+		if (latestReaction != null && latestReaction !== normalizedName) return;
 		reactionUserMap.set(ctx.userId, noReaction);
 
 		const currentCount = $note.reactions[normalizedName] || 0;

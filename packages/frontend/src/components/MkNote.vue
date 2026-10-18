@@ -954,7 +954,7 @@ function react(): void {
 		}
 	} else {
 		blur();
-		reactionPicker.show(reactButton.value ?? null, note, async (reaction) => {
+		reactionPicker.show(reactButton.value ?? null, appearNote, async (reaction) => {
 			if (prefer.s.confirmOnReact) {
 				const confirm = await os.confirm({
 					type: 'question',
@@ -979,39 +979,30 @@ function react(): void {
 	}
 }
 
-async function toggleReaction(reaction) {
-	const oldReaction = note.myReaction;
+async function toggleReaction(reaction: string) {
+	const me = $i;
+	if (me == null) return;
+	const oldReaction = $appearNote.myReaction;
 	if (oldReaction) {
 		const confirm = await os.confirm({
 			type: 'warning',
 			text: oldReaction !== reaction ? i18n.ts.changeReactionConfirm : i18n.ts.cancelReactionConfirm,
 		});
 		if (confirm.canceled) return;
+	}
 
-		sound.playMisskeySfx('reaction');
+	sound.playMisskeySfx('reaction');
 
-		misskeyApi('notes/reactions/delete', {
-			noteId: note.id,
-		}).then(() => {
-			if (oldReaction !== reaction) {
-				misskeyApi('notes/reactions/create', {
-					noteId: note.id,
-					reaction: reaction,
-				});
-			}
-		});
-	} else {
-		sound.playMisskeySfx('reaction');
-
-		misskeyApi('notes/reactions/create', {
-			noteId: appearNote.id,
-			reaction: reaction,
-		}).then(() => {
-			noteEvents.emit(`reacted:${appearNote.id}`, {
-				userId: $i!.id,
-				reaction: reaction,
-			});
-		});
+	if (oldReaction) {
+		await misskeyApi('notes/reactions/delete', { noteId: appearNote.id });
+		noteEvents.emit(`unreacted:${appearNote.id}`, { userId: me.id, reaction: oldReaction });
+	}
+	if (oldReaction !== reaction) {
+		await misskeyApi('notes/reactions/create', { noteId: appearNote.id, reaction });
+		const updated = await misskeyApi('notes/show', { noteId: appearNote.id });
+		if (updated.myReaction != null) {
+			noteEvents.emit(`reacted:${appearNote.id}`, { userId: me.id, reaction: updated.myReaction });
+		}
 	}
 
 	if (appearNote.text && appearNote.text.length > 100 && (Date.now() - new Date(appearNote.createdAt).getTime() < 1000 * 3)) {
@@ -1031,9 +1022,17 @@ function heartReact(): void {
 		return;
 	}
 
+	const me = $i;
+	if (me == null) return;
+	const reaction = prefer.s.selectReaction;
 	misskeyApi('notes/reactions/create', {
 		noteId: appearNote.id,
-		reaction: prefer.s.selectReaction,
+		reaction,
+	}).then(async () => {
+		const updated = await misskeyApi('notes/show', { noteId: appearNote.id });
+		if (updated.myReaction != null) {
+			noteEvents.emit(`reacted:${appearNote.id}`, { userId: me.id, reaction: updated.myReaction });
+		}
 	});
 
 	if (appearNote.text && appearNote.text.length > 100 && (Date.now() - new Date(appearNote.createdAt).getTime() < 1000 * 3)) {

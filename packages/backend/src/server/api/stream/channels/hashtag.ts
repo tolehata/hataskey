@@ -46,14 +46,16 @@ class HashtagChannel extends Channel {
 
 		if (this.isNoteMutedOrBlocked(note)) return;
 
+		let noteToSend = note;
 		if (this.user && isRenotePacked(note) && !isQuotePacked(note)) {
-			if (note.renote && Object.keys(note.renote.reactions).length > 0) {
+			if (note.renote) {
 				const myRenoteReaction = await this.noteEntityService.populateMyReaction(note.renote, this.user.id);
-				note.renote.myReaction = myRenoteReaction;
+				// The stream event is shared by other viewers until asynchronous delivery.
+				noteToSend = { ...note, renote: { ...note.renote, myReaction: myRenoteReaction } };
 			}
 		}
 
-		await this.sendNote(note);
+		await this.sendNote(noteToSend);
 	}
 
 	@bindThis

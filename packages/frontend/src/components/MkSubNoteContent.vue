@@ -409,40 +409,32 @@ function react(): void {
 	}
 }
 
-async function toggleReaction(reaction) {
-	const oldReaction = note.myReaction;
+async function toggleReaction(reaction: string) {
+	const me = $i;
+	if (me == null) return;
+	const oldReaction = $note.myReaction;
 	if (oldReaction) {
 		const confirm = await os.confirm({
 			type: 'warning',
 			text: oldReaction !== reaction ? i18n.ts.changeReactionConfirm : i18n.ts.cancelReactionConfirm,
 		});
 		if (confirm.canceled) return;
-
-		sound.playMisskeySfx('reaction');
-
-		misskeyApi('notes/reactions/delete', {
-			noteId: note.id,
-		}).then(() => {
-			if (oldReaction !== reaction) {
-				misskeyApi('notes/reactions/create', {
-					noteId: note.id,
-					reaction: reaction,
-				});
-			}
-		});
-	} else {
-		sound.playMisskeySfx('reaction');
-
-		misskeyApi('notes/reactions/create', {
-			noteId: note.id,
-			reaction: reaction,
-		}).then(() => {
-			noteEvents.emit(`reacted:${note.id}`, {
-				userId: $i!.id,
-				reaction: reaction,
-			});
-		});
 	}
+
+	sound.playMisskeySfx('reaction');
+
+	if (oldReaction) {
+		await misskeyApi('notes/reactions/delete', { noteId: note.id });
+		noteEvents.emit(`unreacted:${note.id}`, { userId: me.id, reaction: oldReaction });
+	}
+	if (oldReaction !== reaction) {
+		await misskeyApi('notes/reactions/create', { noteId: note.id, reaction });
+		const updated = await misskeyApi('notes/show', { noteId: note.id });
+		if (updated.myReaction != null) {
+			noteEvents.emit(`reacted:${note.id}`, { userId: me.id, reaction: updated.myReaction });
+		}
+	}
+
 	if (note.text && note.text.length > 100 && (Date.now() - new Date(note.createdAt).getTime() < 1000 * 3)) {
 		claimAchievement('reactWithoutRead');
 	}
@@ -460,9 +452,17 @@ function heartReact(): void {
 		return;
 	}
 
+	const me = $i;
+	if (me == null) return;
+	const reaction = prefer.s.selectReaction;
 	misskeyApi('notes/reactions/create', {
 		noteId: props.note.id,
-		reaction: prefer.s.selectReaction,
+		reaction,
+	}).then(async () => {
+		const updated = await misskeyApi('notes/show', { noteId: props.note.id });
+		if (updated.myReaction != null) {
+			noteEvents.emit(`reacted:${props.note.id}`, { userId: me.id, reaction: updated.myReaction });
+		}
 	});
 	if (props.note.text && props.note.text.length > 100 && (Date.now() - new Date(props.note.createdAt).getTime() < 1000 * 3)) {
 		claimAchievement('reactWithoutRead');

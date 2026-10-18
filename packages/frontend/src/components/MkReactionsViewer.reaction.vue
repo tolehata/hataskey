@@ -211,12 +211,13 @@ async function toggleReaction(ev: MouseEvent) {
 				misskeyApi('notes/reactions/create', {
 					noteId: props.noteId,
 					reaction: props.reaction,
-				}).then(() => {
-					const emoji = customEmojisMap.get(emojiName.value);
-					if (emoji == null) return;
+				}).then(async () => {
+					const updated = await misskeyApi('notes/show', { noteId: props.noteId });
+					if (updated.myReaction == null) return;
+					const emoji = customEmojisMap.get(getEmojiNameFromReaction(updated.myReaction));
 					noteEvents.emit(`reacted:${props.noteId}`, {
 						userId: me.id,
-						reaction: props.reaction,
+						reaction: updated.myReaction,
 						emoji: emoji,
 					});
 				});
@@ -243,13 +244,14 @@ async function toggleReaction(ev: MouseEvent) {
 		misskeyApi('notes/reactions/create', {
 			noteId: props.noteId,
 			reaction: props.reaction,
-		}).then(() => {
-			const emoji = customEmojisMap.get(emojiName.value);
-			if (emoji == null) return;
+		}).then(async () => {
+			const updated = await misskeyApi('notes/show', { noteId: props.noteId });
+			if (updated.myReaction == null) return;
+			const emoji = customEmojisMap.get(getEmojiNameFromReaction(updated.myReaction));
 
 			noteEvents.emit(`reacted:${props.noteId}`, {
 				userId: me.id,
-				reaction: props.reaction,
+				reaction: updated.myReaction,
 				emoji: emoji,
 			});
 		});

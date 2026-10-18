@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 const fixture = vi.hoisted(() => ({
 	api: vi.fn(),
+	noteEvent: vi.fn(),
 	popup: vi.fn(),
 	popupMenu: vi.fn(),
 	fetchMutedUsers: vi.fn(),
@@ -34,7 +35,7 @@ vi.mock('@/custom-emojis.js', async () => {
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _reactionVisibility: { hideReaction: 'hide' } }, emojiMute: 'mute' } } }));
 vi.mock('@/utility/haptic.js', () => ({ haptic: vi.fn() }));
 vi.mock('@/utility/sound.js', () => ({ playMisskeySfx: vi.fn() }));
-vi.mock('@/composables/use-note-capture.js', () => ({ noteEvents: { emit: vi.fn() } }));
+vi.mock('@/composables/use-note-capture.js', () => ({ noteEvents: { emit: fixture.noteEvent } }));
 vi.mock('@/utility/emoji-mute.js', async () => {
 	const { ref } = await import('vue');
 	return { mute: vi.fn(), unmute: vi.fn(), checkMuted: () => ref(false) };
@@ -355,6 +356,7 @@ describe('shared reaction custom rendering', () => {
 	});
 
 	test('omitting custom retains built-in rendering, ripple and normal reaction creation', async () => {
+		fixture.api.mockResolvedValueOnce(undefined).mockResolvedValueOnce({ myReaction: ':test@.:' });
 		const { button, activate } = await mountReaction({ custom: undefined, isInitial: true });
 		expect(button.classList.contains('_button')).toBe(true);
 		expect(button.querySelector('[data-builtin-emoji]')).not.toBeNull();
@@ -363,7 +365,11 @@ describe('shared reaction custom rendering', () => {
 		expect(fixture.ripple).toHaveBeenCalledWith(true);
 		button.click();
 		await settle();
-		expect(fixture.api).toHaveBeenCalledExactlyOnceWith('notes/reactions/create', { noteId: 'details-note', reaction: ':test:' });
+		expect(fixture.api.mock.calls).toEqual([
+			['notes/reactions/create', { noteId: 'details-note', reaction: ':test:' }],
+			['notes/show', { noteId: 'details-note' }],
+		]);
+		expect(fixture.noteEvent).toHaveBeenCalledExactlyOnceWith('reacted:details-note', expect.objectContaining({ userId: 'me', reaction: ':test@.:' }));
 		expect(activate).not.toHaveBeenCalled();
 	});
 });
