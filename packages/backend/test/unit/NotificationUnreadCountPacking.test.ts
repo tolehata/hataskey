@@ -76,12 +76,13 @@ function compareStreamIds(a: string, b: string): number {
 function expectedCounts(s: Scenario): Record<Brand, number> {
 	const counts: Record<Brand, number> = { standard: 0, hatask: 0, hatady: 0, hataFeed: 0 };
 	for (const [entryId, fields] of s.entries) {
-		const notification = JSON.parse(fields[1]) as MiNotification & { sourceNotificationId?: string };
+		// ストリームの生データ。古い記録は sourceNotificationId を持たないことがある。
+		const notification = JSON.parse(fields[1]) as { id: string; type: string; sourceNotificationId?: string | null; header?: string | null; link?: string | null };
 		if (s.hidden.has(notification.id)) continue;
 		let read: boolean | undefined;
 		if (notification.type === 'hatady' && notification.sourceNotificationId != null) read = s.hatadyRows.find(row => row.id === notification.sourceNotificationId)?.isRead;
 		if (notification.type === 'hataFeed' && notification.sourceNotificationId != null) read = s.hataFeedRows.find(row => row.id === notification.sourceNotificationId)?.isRead;
-		read ??= (s.cursor != null && compareStreamIds(entryId, s.cursor) <= 0) || s.individualReads[notification.id] != null;
+		read ??= (s.cursor != null && compareStreamIds(entryId, s.cursor) <= 0) || Object.hasOwn(s.individualReads, notification.id);
 		if (!read) counts[notificationBrand(notification)]++;
 	}
 	return counts;

@@ -75,7 +75,8 @@ describe('reward decoration completion is resolved once per page', () => {
 
 	function db(completedWallets: string[], harvested: Record<string, string[]>) {
 		return {
-			query: vi.fn(async (sql: string, params: unknown[]) => {
+			// EntityManager.query is generic (Promise<T>); the fake returns rows of several shapes.
+			query: vi.fn(async (sql: string, params: unknown[] = []): Promise<any> => {
 				if (sql.includes('hatask_drop_wallet') && sql.includes('ANY')) return (params[0] as string[]).filter(id => completedWallets.includes(id)).map(userId => ({ userId }));
 				if (sql.includes('hatask_drop_wallet')) return [{ flowerCollectionCompletedAt: completedWallets.includes(params[0] as string) ? new Date() : null }];
 				if (sql.includes('COUNT(DISTINCT')) return (params[0] as string[]).filter(id => id in harvested).map(userId => ({ userId, species: String(new Set(harvested[userId].filter(s => speciesIds.includes(s))).size) }));
