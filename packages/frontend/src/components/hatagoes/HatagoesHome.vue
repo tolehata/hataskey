@@ -8,7 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<section class="hgh-launcher hgh-launcher-desktop" aria-label="よく使う App">
 			<h2><i class="ti ti-apps" aria-hidden="true"></i>よく使う App</h2>
 			<div class="hgh-launcher-grid">
-				<button v-for="app in launcherApps.slice(0, 12)" :key="app.id" type="button" class="hgh-launcher-app" :title="app.label" @click="emit('openApp', app.id)"><span class="hgh-launcher-icon"><i :class="app.icon" aria-hidden="true"></i></span><small>{{ app.label }}</small></button>
+				<button v-for="app in launcherApps.slice(0, 12)" :key="app.id" type="button" class="hgh-launcher-app" :title="app.label" @click="emit('openApp', app.id)"><span class="hgh-launcher-icon"><HataFeatureIcon v-if="hataFeatureForScreen(app.id)" :feature="hataFeatureForScreen(app.id)!" :size="40" :mode="monochrome ? 'mono-dark' : 'color'"/><i v-else :class="app.icon" aria-hidden="true"></i></span><small>{{ app.label }}</small></button>
 			</div>
 			<button type="button" class="hgh-launcher-all" @click="emit('allApps')"><i class="ti ti-layout-grid" aria-hidden="true"></i>すべての App</button>
 		</section>
@@ -24,7 +24,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<section class="hgh-launcher hgh-launcher-mobile" :style="{ order: mobileLauncherOrder }" aria-label="よく使う App">
 			<h2><i class="ti ti-apps" aria-hidden="true"></i>よく使う App</h2>
 			<div class="hgh-launcher-grid">
-				<button v-for="app in launcherApps.slice(0, 7)" :key="app.id" type="button" class="hgh-launcher-app" :title="app.label" @click="emit('openApp', app.id)"><span class="hgh-launcher-icon"><i :class="app.icon" aria-hidden="true"></i></span><small>{{ app.label }}</small></button>
+				<button v-for="app in launcherApps.slice(0, 7)" :key="app.id" type="button" class="hgh-launcher-app" :title="app.label" @click="emit('openApp', app.id)"><span class="hgh-launcher-icon"><HataFeatureIcon v-if="hataFeatureForScreen(app.id)" :feature="hataFeatureForScreen(app.id)!" :size="40" :mode="monochrome ? 'mono-dark' : 'color'"/><i v-else :class="app.icon" aria-hidden="true"></i></span><small>{{ app.label }}</small></button>
 				<button type="button" class="hgh-launcher-app hgh-launcher-app-all" @click="emit('allApps')"><span class="hgh-launcher-icon"><i class="ti ti-layout-grid" aria-hidden="true"></i></span><small>すべて</small></button>
 			</div>
 		</section>
@@ -49,7 +49,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</template>
 				<template v-else-if="card.id === 'flower'">
 					<button type="button" class="hgh-tile-body" @click="emit('navigate', paths.flower)"><span class="hgh-tile-icon" :style="{ '--flower-progress': `${state.flower.data.flower?.progress ?? 0}%` }" aria-hidden="true"><span class="hgh-tile-icon-inner"><HataskEmoji :emoji="state.flower.data.flower?.emoji ?? '✿'"/></span></span><strong>{{ state.flower.data.flower?.name ?? 'おはな' }}</strong><small v-if="state.flower.data.flower">成長 {{ state.flower.data.flower.progress }}% · 花しずく {{ state.flower.data.flower.drops }}個</small><small v-else>花の情報はありません。</small><span class="hgh-sr-only">を開く</span></button>
-					<button v-if="state.flower.data.flower?.canWater || waterDone" type="button" class="hgh-water-action" :disabled="!canHomeWater" @click="requestWater"><i class="ti ti-droplet" aria-hidden="true"></i> {{ waterDone ? 'きょうは水やり済み' : '水をあげる' }} <i v-if="!waterDone" class="ti ti-arrow-right" aria-hidden="true"></i></button>
+					<button v-if="state.flower.data.flower?.canWater || waterDone" type="button" class="hgh-water-action" :disabled="!canHomeWater" @click="requestWater"><i class="ti ti-droplet" aria-hidden="true"></i><span>{{ waterDone ? 'きょうは水やり済み' : '水をあげる' }}</span><i v-if="!waterDone" class="ti ti-arrow-right" aria-hidden="true"></i></button>
 					<small v-if="state.flower.data.flower?.canWater && state.flower.data.flower.pourMinutes != null" class="hgh-water-explain">1回で花しずく1個を使い、{{ formatPourHours(state.flower.data.flower.pourMinutes) }}時間育ちます</small>
 					<small v-if="state.flower.data.flower" class="hgh-harvested">咲いたおはな <b>{{ state.flower.data.flower.harvestedCount }}</b> 本</small>
 				</template>
@@ -81,6 +81,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { $i } from '@/i.js';
 import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataFeatureIcon from '@/components/HataFeatureIcon.vue';
+import { hataFeatureForScreen } from '@/utility/hata-feature-icon.js';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import HataAppLoading from '@/components/HataAppLoading.vue';
 import type { HataApp } from '@/utility/hata-app-brand.js';
@@ -427,7 +429,7 @@ watch(() => showV3('history'), (visible, wasVisible) => { if (props.active && vi
 .hgh-meal-choices button strong { font-size: 12px; }
 .hgh-meal-choices button small { color: var(--hgh-muted); font-size: 11px; }
 .hgh-card-meal .hgh-card-status { margin-top: 8px; }
-.hgh-water-action { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 48px; margin-top: 12px; padding: 0 18px; border-radius: var(--control-radius, 999px); background: var(--hgh-accent) !important; color: var(--on-accent, var(--MI_THEME-fgOnAccent)) !important; font-size: 14px; font-weight: 800; }
+.hgh-water-action { display: grid; grid-template-columns: 1em minmax(0, 1fr) 1em; align-items: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 12px; padding: 0 18px; border-radius: var(--control-radius, 999px); background: var(--hgh-accent) !important; color: var(--on-accent, var(--MI_THEME-fgOnAccent)) !important; font-size: 14px; font-weight: 800; text-align: center; }
 .hgh-water-action:disabled { opacity: .6; cursor: default; }
 .hgh-water-explain { display: block; margin-top: 5px; color: var(--hgh-muted); font-size: 11px; }
 .hgh-harvested { display: block; margin-top: 10px; color: var(--hgh-muted); font-size: 11px; }

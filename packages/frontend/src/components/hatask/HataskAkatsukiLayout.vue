@@ -28,7 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div class="hak-rail-brand hak-brand"><HataAppLogo app="hatask" :size="24" motion="startup" :monochrome="mode === 'dark'" :active="!bootVisible"/><HataAppWordmark app="hatask" :onDark="mode === 'dark'"/></div>
 		</div>
 		<button v-for="tab in desktopTabs" :key="tab.id" class="hak-rail-tab" type="button" :aria-label="tab.label" :title="railCollapsed ? tab.label : undefined" :aria-current="activeTab === tab.id ? 'page' : undefined" @click="navigate(tab.id)">
-			<HataAppLogo v-if="tab.id === 'home'" app="hatask" :size="20" :monochrome="mode === 'dark'" :tapSequence="brandTapSequence"/><i v-else :class="tab.icon" aria-hidden="true"></i><span :class="['hak-rail-label', (tab.id === 'apps' || tab.id === 'hataskapps') && 'hak-brand']">{{ tab.label }}</span>
+			<HataFeatureIcon v-if="hataFeatureForHataskApp(tab.id)" :feature="hataFeatureForHataskApp(tab.id)!" :size="20" :mode="mode === 'dark' ? 'mono-dark' : 'color'"/><i v-else :class="tab.icon" aria-hidden="true"></i><span :class="['hak-rail-label', (tab.id === 'apps' || tab.id === 'hataskapps') && 'hak-brand']">{{ tab.label }}</span>
 		</button>
 		<div class="hak-rail-space"></div>
 		<button class="hak-rail-tab" type="button" :aria-label="copy.exit" :title="railCollapsed ? copy.exit : undefined" @click="dispatch({ type: 'exit' })">
@@ -151,7 +151,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 										</section>
 									</div>
 									<div v-else-if="pane.id === 'tools'" class="hak-tools">
-										<button v-for="app in model.apps ?? []" :key="app.id" class="hak-tool" type="button" :data-home-tool="app.id" @click="dispatch({ type: 'open-app', id: app.id })"><i :class="app.icon" aria-hidden="true"></i><span>{{ app.label }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+										<button v-for="app in model.apps ?? []" :key="app.id" class="hak-tool" type="button" :data-home-tool="app.id" @click="dispatch({ type: 'open-app', id: app.id })"><HataFeatureIcon v-if="hataFeatureForHataskApp(app.id)" :feature="hataFeatureForHataskApp(app.id)!" :size="24" :mode="mode === 'dark' ? 'mono-dark' : 'color'"/><i v-else :class="app.icon" aria-hidden="true"></i><span>{{ app.label }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
 										<p v-if="!model.apps?.length" class="hak-empty">{{ copy.appEmpty }}</p>
 									</div>
 									<div v-else-if="pane.id === 'todo'">
@@ -215,7 +215,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<nav v-if="enabled" ref="bottomEl" class="hak-bottom" :aria-label="copy.bottomNav" @focusin="restoreNav">
 		<button class="hak-exit" type="button" :aria-label="copy.exit" @click="dispatch({ type: 'exit' })"><i class="ti ti-logout-2" aria-hidden="true"></i></button>
 		<div class="hak-bottom-case">
-			<button v-for="tab in mobileTabs" :key="tab.id" class="hak-mobile-tab" type="button" :aria-label="tab.label" :aria-current="isMobileTabActive(tab.id) ? 'page' : undefined" :tabindex="navHidden ? -1 : undefined" :aria-hidden="navHidden" @click="navigate(tab.id)"><HataAppLogo v-if="tab.id === 'home'" app="hatask" :size="20" :monochrome="mode === 'dark'" :tapSequence="brandTapSequence"/><i v-else :class="tab.icon" aria-hidden="true"></i></button>
+			<button v-for="tab in mobileTabs" :key="tab.id" class="hak-mobile-tab" type="button" :aria-label="tab.label" :aria-current="isMobileTabActive(tab.id) ? 'page' : undefined" :tabindex="navHidden ? -1 : undefined" :aria-hidden="navHidden" @click="navigate(tab.id)"><HataFeatureIcon v-if="hataFeatureForHataskApp(tab.id)" :feature="hataFeatureForHataskApp(tab.id)!" :size="20" :mode="mode === 'dark' ? 'mono-dark' : 'color'"/><i v-else :class="tab.icon" aria-hidden="true"></i></button>
 			<button ref="fabEl" class="hak-fab" type="button" :aria-label="fabOpen ? copy.closeRecordMenu : copy.recordMeal" :aria-expanded="fabOpen" @click="toggleFab"><i class="ti ti-plus" aria-hidden="true"></i></button>
 		</div>
 	</nav>
@@ -225,6 +225,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script setup lang="ts">
 import { computed, inject, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, onUpdated, ref, shallowRef, useId, watch } from 'vue';
 import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataFeatureIcon from '@/components/HataFeatureIcon.vue';
+import { hataFeatureForHataskApp } from '@/utility/hata-feature-icon.js';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import HataAppLoading from '@/components/HataAppLoading.vue';
 import type { HataskAkatsukiAction, HataskAkatsukiEvent, HataskAkatsukiFavoriteId, HataskAkatsukiHomeSection, HataskAkatsukiHomeSectionId, HataskAkatsukiLayoutProps, HataskAkatsukiTab } from './hatask-akatsuki-types.js';
@@ -239,7 +241,6 @@ import { hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-t
 const copy = i18n.ts._hata._hatask._akatsuki;
 
 const props = withDefaults(defineProps<HataskAkatsukiLayoutProps & { embedded?: boolean; bootVisible?: boolean }>(), { embedded: false, bootVisible: false, mode: 'light', animations: true, favoritesReady: true, favoritesSaving: false, favoritesError: '' });
-const brandTapSequence = ref(0);
 const emit = defineEmits<{
 	navigate: [tab: HataskAkatsukiTab];
 	settings: [];
@@ -494,7 +495,6 @@ function isMobileTabActive(tab: HataskAkatsukiTab) {
 
 function navigate(tab: HataskAkatsukiTab) {
 	if (tab === 'review' && !props.model.canModerate) return;
-	if (tab === 'home') brandTapSequence.value++;
 	closeFab(false);
 	restoreNav();
 	emit('navigate', tab);
@@ -842,7 +842,7 @@ onBeforeUnmount(() => releaseNotificationSurface?.());
 .hak-schedule-details .hak-timeline { margin-block: 6px 12px; border-top: 0; }
 .hak-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .htk-akatsuki-layout .hak-tool { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 52px; padding: 10px 12px; border: var(--button-border); border-radius: 16px; font-size: 13px; text-align: start; }
-.hak-tool > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.hak-tool > span:not([data-hata-feature]) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .hak-tool > .ti:first-child { color: var(--accent-ink); font-size: 19px; }
 .hak-tools > .hak-empty { grid-column: 1 / -1; }
 .hak-focus-panel .hak-rich-main { flex: 1; min-width: 0; }

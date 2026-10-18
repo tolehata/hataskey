@@ -9,6 +9,10 @@ Hataskey UI 3: 左メニュー。HataSideStudio の有効プロファイル(拡�
 		<img :src="instance.iconUrl || '/favicon.ico'" alt="" :class="$style.brandIcon"/>
 	</button>
 
+	<button v-if="collapsible" type="button" :class="$style.collapseButton" :title="collapseLabel" :aria-label="collapseLabel" :aria-expanded="!collapsed" @click="emit('toggleCollapse')">
+		<ChevronRight v-if="collapsed" :size="20" aria-hidden="true"/><ChevronLeft v-else :size="20" aria-hidden="true"/>
+	</button>
+
 	<div :class="$style.scroll">
 		<template v-if="!collapsed">
 			<div v-for="block in blocks" :key="block.id" :class="$style.block" :data-group="block.group ? 'true' : undefined">
@@ -85,7 +89,7 @@ Hataskey UI 3: 左メニュー。HataSideStudio の有効プロファイル(拡�
 
 <script lang="ts" setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, ref } from 'vue';
-import { Columns3, Gauge, Moon, PanelsTopLeft, PawPrint, Pencil, RectangleVertical, Settings, Sun, X } from '@lucide/vue';
+import { ChevronLeft, ChevronRight, Columns3, Gauge, Moon, PanelsTopLeft, PawPrint, Pencil, RectangleVertical, Settings, Sun, X } from '@lucide/vue';
 import { instanceName as fallbackInstanceName } from '@@/js/config.js';
 import type { HataSideButton, HataSideWidget } from '@/utility/hata-side-studio.js';
 import HataSideStudioEarthquake from '@/components/HataSideStudioEarthquake.vue';
@@ -110,8 +114,9 @@ import HataAppNavIcon from '@/components/HataAppNavIcon.vue';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import { hataAppForMenuIcon, hataAppForMenuLabel } from '@/utility/hata-app-brand.js';
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
 	collapsed?: boolean;
+	collapsible?: boolean;
 	seamless?: boolean;
 	isDeck?: boolean;
 	deckAvailable?: boolean;
@@ -119,6 +124,7 @@ withDefaults(defineProps<{
 	dark?: boolean;
 }>(), {
 	collapsed: false,
+	collapsible: false,
 	seamless: false,
 	isDeck: false,
 	deckAvailable: true,
@@ -127,6 +133,7 @@ withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
+	(ev: 'toggleCollapse'): void;
 	(ev: 'post'): void;
 	(ev: 'toggleTheme'): void;
 	(ev: 'mode', deck: boolean): void;
@@ -134,6 +141,8 @@ const emit = defineEmits<{
 	(ev: 'launchPadOpen', open: boolean): void;
 	(ev: 'instanceMenuOpen', open: boolean): void;
 }>();
+
+const collapseLabel = computed(() => props.collapsed ? i18n.ts._hata._hatasabaUi._simple.expandMenu : i18n.ts._hata._hatasabaUi._simple.collapseMenu);
 
 const copy = i18n.ts._hata._hataskeyUi3;
 const instanceName = computed(() => instance.name || fallbackInstanceName);
@@ -400,6 +409,22 @@ function openAccountMenu(ev: MouseEvent) {
 	flex: none;
 	object-fit: cover;
 	background: var(--hk3-accent);
+}
+
+.collapseButton {
+	display: grid;
+	place-items: center;
+	align-self: center;
+	flex: none;
+	width: 44px;
+	height: 44px;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	&:hover { background: var(--hk3-accent-100); }
+	&:focus-visible { outline: 2px solid var(--hk3-accent); outline-offset: -2px; }
 }
 
 .scroll {

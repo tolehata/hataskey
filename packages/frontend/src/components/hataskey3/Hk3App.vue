@@ -11,8 +11,8 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 	<div :class="$style.busy" :data-on="busyShown ? 'true' : undefined" aria-hidden="true"><span></span></div>
 	<!-- ===== デスクトップ ===== -->
 	<div v-if="!isMobile" :class="$style.desktop" :style="{ gridTemplateColumns: desktopColumns }">
-		<div v-if="!isHataGoesPage" data-hata-collapse-part :inert="confirmationActive" :class="$style.navCell" :style="{ width: `${sideNavExpanded ? navWidth : 64}px` }" :data-glass-seam="sideNavSeamless ? 'true' : undefined" :data-deck-seam="sideNavSeamless && deckActive ? 'true' : undefined" @pointerenter="onSideNavEnter" @pointerleave="sideNavHovered = false" @focusin="onSideNavFocus" @focusout="onSideNavBlur" @keydown.esc="closeSideNav" @keyup="onSideNavKeyUp">
-			<Hk3SideNav :collapsed="!sideNavExpanded" :seamless="sideNavSeamless" :isDeck="deckActive" :deckAvailable="isHome" :postOpen="composeWindowOpen" :dark="themeMode === 'dark'" @post="isHatadyTimeline ? launchHatadyRecord() : toggleComposeWindow()" @toggleTheme="toggleTheme" @mode="switchMode" @navigate="onSideNavigate" @launchPadOpen="sideNavLaunchPadOpen = $event" @instanceMenuOpen="sideNavInstanceMenuOpen = $event"/>
+		<div data-hata-collapse-part :inert="confirmationActive" :class="$style.navCell" :style="{ width: `${sideNavExpanded ? navWidth : 64}px` }" :data-glass-seam="sideNavSeamless ? 'true' : undefined" :data-deck-seam="sideNavSeamless && deckActive ? 'true' : undefined" @pointerenter="onSideNavEnter" @pointerleave="sideNavHovered = false" @focusin="onSideNavFocus" @focusout="onSideNavBlur" @keydown.esc="closeSideNav" @keyup="onSideNavKeyUp">
+			<Hk3SideNav :collapsed="!sideNavExpanded" :collapsible="isHataGoesPage" :seamless="sideNavSeamless" :isDeck="deckActive" :deckAvailable="isHome" :postOpen="composeWindowOpen" :dark="themeMode === 'dark'" @post="isHatadyTimeline ? launchHatadyRecord() : toggleComposeWindow()" @toggleTheme="toggleTheme" @mode="switchMode" @navigate="onSideNavigate" @launchPadOpen="sideNavLaunchPadOpen = $event" @instanceMenuOpen="sideNavInstanceMenuOpen = $event" @toggleCollapse="sideNavCollapsed = !sideNavCollapsed"/>
 		</div>
 
 		<template v-if="deckActive">
@@ -42,7 +42,7 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 					</template>
 				</Hk3SideWorkspace>
 			</main>
-			<Hk3RightPane v-if="showRightPane" :inert="confirmationActive" data-hk3-stage data-hata-collapse-part :class="$style.right"/>
+			<Hk3RightPane v-if="showRightPane" :collapsible="isHataGoesPage" :collapsed="rightPaneCollapsed" :inert="confirmationActive" data-hk3-stage data-hata-collapse-part :class="$style.right" @toggleCollapse="rightPaneCollapsed = !rightPaneCollapsed"/>
 		</template>
 	</div>
 
@@ -115,6 +115,7 @@ import { createHataTimelineCollapseEffect } from '@/utility/hata-timeline-collap
 import { useStream } from '@/stream.js';
 import { openHatadyRecord } from '@/utility/hatady-record-launcher.js';
 import { acceptNotificationUnreadState } from '@/utility/notification-unread-state.js';
+import { useHatagoesBarCollapse } from '@/utility/hatagoes-bar-collapse.js';
 
 const HatasabaDeck = defineAsyncComponent(() => import('@/ui/_common_/hatasaba-deck.vue'));
 
@@ -158,7 +159,7 @@ const mobileDockSuspended = computed(() => ['/hatask', '/hata-docs', '/hatagoes'
 	.some(root => path.value === root || path.value.startsWith(`${root}/`)));
 const preservePageNavigation = computed(() => ['/hatask', '/hatady', '/hatafeed', '/hata-side-studio', '/hata-docs', '/hatagoes']
 	.some(root => path.value === root || path.value.startsWith(`${root}/`)));
-const showRightPane = computed(() => width.value >= RIGHT_PANE_MIN && path.value !== '/hata-side-studio' && !isHataGoesPage.value);
+const showRightPane = computed(() => width.value >= RIGHT_PANE_MIN && path.value !== '/hata-side-studio');
 const isHome = computed(() => path.value === '/');
 const deckMode = ref(miLocalStorage.getItem('hataskeyUi3DeckMode') === 'true');
 const deckActive = computed(() => deckMode.value && isHome.value && width.value >= DECK_MIN);
@@ -221,7 +222,9 @@ let sideNavFocusTransfer: symbol | null = null;
 let sideNavPointerInput = false;
 const sideNavLaunchPadOpen = ref(false);
 const sideNavInstanceMenuOpen = ref(false);
-const sideNavExpanded = computed(() => sideNavHovered.value || sideNavFocused.value || sideNavLaunchPadOpen.value || sideNavInstanceMenuOpen.value);
+const sideNavCollapsed = useHatagoesBarCollapse(isHataGoesPage, () => !(sideNavHovered.value || sideNavFocused.value || sideNavLaunchPadOpen.value || sideNavInstanceMenuOpen.value));
+const sideNavExpanded = computed(() => !sideNavCollapsed.value);
+const rightPaneCollapsed = useHatagoesBarCollapse(isHataGoesPage, () => false);
 
 function onDocumentPointerDown() {
 	if (isMobile.value) return;
@@ -246,12 +249,12 @@ function onSideNavEnter(event: PointerEvent) {
 
 async function onSideNavFocus(event: FocusEvent) {
 	const target = event.target;
-	if (sideNavPointerInput || !(target instanceof HTMLElement) || sideNavFocused.value || !target.matches(':focus-visible')) return;
+	if (isHataGoesPage.value || sideNavPointerInput || !(target instanceof HTMLElement) || sideNavFocused.value || !target.matches(':focus-visible')) return;
 	await holdSideNavKeyboardFocus(target, event.currentTarget as HTMLElement);
 }
 
 function onSideNavKeyUp(event: KeyboardEvent) {
-	if (sideNavPointerInput || sideNavFocused.value || !['Tab', 'Enter', ' '].includes(event.key)) return;
+	if (isHataGoesPage.value || sideNavPointerInput || sideNavFocused.value || !['Tab', 'Enter', ' '].includes(event.key)) return;
 	const target = event.target;
 	const container = event.currentTarget as HTMLElement;
 	if (target instanceof HTMLElement && container.contains(target) && container.ownerDocument.activeElement === target) {
@@ -298,6 +301,7 @@ function onSideNavBlur(event: FocusEvent) {
 }
 
 function closeSideNav(event: KeyboardEvent) {
+	if (isHataGoesPage.value) sideNavCollapsed.value = true;
 	sideNavHovered.value = false;
 	sideNavFocusTransfer = null;
 	sideNavFocused.value = false;
@@ -313,9 +317,8 @@ watch(isMobile, mobile => {
 });
 
 const desktopColumns = computed(() => {
-	if (isHataGoesPage.value) return 'minmax(0, 1fr)';
 	if (deckActive.value) return '64px minmax(0, 1fr)';
-	return `64px minmax(0, 1fr)${showRightPane.value ? ' 320px' : ''}`;
+	return `64px minmax(0, 1fr)${showRightPane.value ? rightPaneCollapsed.value ? ' 64px' : ' 320px' : ''}`;
 });
 
 // ===== テーマ =====

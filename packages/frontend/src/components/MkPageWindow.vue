@@ -47,6 +47,7 @@ import { provideMetadataReceiver, provideReactiveMetadata } from '@/page.js';
 import { openingWindowsCount } from '@/os.js';
 import { claimAchievement } from '@/utility/achievements.js';
 import { createRouter, mainRouter } from '@/router.js';
+import { isHatagoesIntroPath } from '@/utility/hatagoes-navigation.js';
 import { analytics } from '@/analytics.js';
 import { DI } from '@/di.js';
 import { prefer } from '@/preferences.js';
@@ -71,6 +72,7 @@ const _history_ = ref<{ path: string; }[]>([{
 	path: windowRouter.getCurrentFullPath(),
 }]);
 const buttonsLeft = computed(() => {
+	if (isHatagoesIntroPath(windowRouter.currentRef.value._parsedRoute.fullPath)) return [];
 	return _history_.value.length > 1 ? [{
 		icon: 'ti ti-chevron-left',
 		title: i18n.ts.goBack,

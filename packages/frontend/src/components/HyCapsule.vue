@@ -20,7 +20,7 @@
 		:disabled="option.disabled"
 		@click="emit('update:modelValue', option.value)"
 	>
-		<i :class="option.icon" aria-hidden="true"></i>
+		<slot name="icon" :option="option"><i :class="option.icon" aria-hidden="true"></i></slot>
 		<span v-if="modelValue === option.value" :class="$style.label">{{ option.label }}</span>
 	</button>
 	<div :class="$style.measure" aria-hidden="true">

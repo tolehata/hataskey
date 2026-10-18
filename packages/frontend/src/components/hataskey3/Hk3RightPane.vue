@@ -5,6 +5,9 @@ Hataskey UI 3: 右ペイン。「ウィジェット」(Hataskey UI と共通)と
 -->
 <template>
 <aside :class="$style.root" :data-glass="prefer.r.hataskeyUi3RightPaneBackground.value ? 'true' : undefined" :data-mobile="mobile ? 'true' : undefined">
+	<button v-if="collapsible && !mobile" type="button" :class="[$style.editButton, $style.collapseButton]" :title="collapseLabel" :aria-label="collapseLabel" :aria-expanded="!isCollapsed" :aria-controls="bodyId" @click="emit('toggleCollapse')">
+		<ChevronLeft v-if="isCollapsed" :size="20" aria-hidden="true"/><ChevronRight v-else :size="20" aria-hidden="true"/>
+	</button>
 	<header v-if="mobile" :class="$style.mobileHead">
 		<div :class="$style.mobileTitle">
 			<strong v-if="tab === 'widgets'">{{ copy.paneWidgets }}</strong><strong v-else :class="$style.mobileBrand"><HataAppLogo app="hatask" :size="23" :monochrome="store.r.darkMode.value"/><HataAppWordmark app="hatask" inheritColor/></strong>
@@ -20,7 +23,7 @@ Hataskey UI 3: 右ペイン。「ウィジェット」(Hataskey UI と共通)と
 		</div>
 		<slot name="close"/>
 	</header>
-	<div v-else :class="$style.head" :data-active="tab">
+	<div v-else v-show="!isCollapsed" :class="$style.head" :data-active="tab">
 		<span :class="$style.indicator" aria-hidden="true"></span>
 		<div :class="$style.tabs" role="tablist">
 			<button type="button" role="tab" :class="$style.tab" :aria-selected="tab === 'widgets'" @click="setTab('widgets')"><LayoutGrid :size="18"/>{{ copy.paneWidgets }}</button>
@@ -42,7 +45,7 @@ Hataskey UI 3: 右ペイン。「ウィジェット」(Hataskey UI と共通)と
 		</div>
 	</div>
 
-	<div :class="$style.body" :data-active="tab">
+	<div v-show="!isCollapsed" :id="bodyId" :class="$style.body" :data-active="tab" :inert="isCollapsed" :aria-hidden="isCollapsed">
 		<div :class="$style.track">
 			<!-- ===== ウィジェット ===== -->
 			<section :class="$style.view" :data-on="tab === 'widgets' ? 'true' : undefined" :inert="tab !== 'widgets'">
@@ -127,8 +130,8 @@ Hataskey UI 3: 右ペイン。「ウィジェット」(Hataskey UI と共通)と
 </template>
 
 <script lang="ts" setup>
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Calendar, Check, ChevronRight, Flower2, LayoutGrid, ListChecks, Pencil, Smile, Soup } from '@lucide/vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
+import { Calendar, Check, ChevronLeft, ChevronRight, Flower2, LayoutGrid, ListChecks, Pencil, Smile, Soup } from '@lucide/vue';
 import HataskEmoji from '@/components/HataskEmoji.vue';
 import HataAppLogo from '@/components/HataAppLogo.vue';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
@@ -156,8 +159,11 @@ const widgetControls = ref<InstanceType<typeof XWidgets> | null>(null);
 const widgetEditing = computed(() => widgetControls.value?.getWidgetEditMode() ?? false);
 
 type PaneTab = 'widgets' | 'hatask';
-const props = defineProps<{ initialTab?: PaneTab; mobile?: boolean }>();
-const emit = defineEmits<{ tabChange: [tab: PaneTab] }>();
+const props = defineProps<{ initialTab?: PaneTab; mobile?: boolean; collapsible?: boolean; collapsed?: boolean }>();
+const emit = defineEmits<{ tabChange: [tab: PaneTab]; toggleCollapse: [] }>();
+const bodyId = useId();
+const isCollapsed = computed(() => !!props.collapsible && !props.mobile && !!props.collapsed);
+const collapseLabel = computed(() => `${i18n.ts.widgets}: ${isCollapsed.value ? i18n.ts.show : i18n.ts.hide}`);
 
 const copy = i18n.ts._hata._hataskeyUi3;
 const MOOD_EMOJIS = ['😢', '🙁', '😐', '🙂', '🥰'] as const;
@@ -496,6 +502,14 @@ onBeforeUnmount(() => {
 	}
 	&:focus-visible { outline: 2px solid var(--hk3-accent); outline-offset: 2px; }
 	&:disabled { opacity: 0.5; cursor: default; }
+}
+
+.collapseButton {
+	align-self: flex-end;
+	flex: none;
+	width: 44px;
+	height: 44px;
+	margin: 8px 10px 6px;
 }
 
 .tab {

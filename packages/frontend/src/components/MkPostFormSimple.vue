@@ -124,7 +124,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button v-tooltip="i18n.ts.hashtags" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: withHashtags }]" @click="playHataIconMotion($event, 'hash-tilt'); withHashtags = !withHashtags"><i class="ti ti-hash"></i></button>
 				<button v-tooltip="i18n.ts.mention" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'mention-orbit'); insertMention()"><i class="ti ti-at"></i></button>
 				<button v-tooltip="i18n.ts.event" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'calendar-page'); toggleEvent()"><i class="ti ti-calendar"></i></button>
-				<button v-if="showAddMfmFunction" v-tooltip="i18n.ts.addMfmFunction" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'palette-tilt'); insertMfmFunction($event)"><i class="ti ti-palette"></i></button>
+				<button v-if="showAddMfmFunction" v-tooltip="i18n.ts.addMfmFunction" class="_button" :class="$style.footerButton" :aria-label="i18n.ts.addMfmFunction" @click="playHataIconMotion($event, 'simple-lift'); insertMfmFunction($event)"><i class="ti ti-typography" aria-hidden="true"></i></button>
 				<button v-if="postFormActions.length > 0" v-tooltip="i18n.ts.plugins" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'plug-connect'); showActions($event)"><i class="ti ti-plug"></i></button>
 			</div>
 			<div :class="$style.footerRight">

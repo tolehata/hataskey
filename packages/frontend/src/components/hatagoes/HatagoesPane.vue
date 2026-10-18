@@ -29,7 +29,7 @@ import { $i } from '@/i.js';
 import { readHatagoesDeviceCache, writeHatagoesDeviceCache } from '@/utility/hatasaba-device-prefs.js';
 import { captureHatagoesPageTurn } from '@/utility/hatagoes-page-motion.js';
 
-const props = defineProps<{ app: HatagoesApp; path: string; active: boolean; monochrome?: boolean; appearance?: HataGoesAppearance; launcherApps?: readonly HatagoesCatalogEntry[]; wide?: boolean }>();
+const props = defineProps<{ app: HatagoesApp; path: string; active: boolean; monochrome?: boolean; appearance?: HataGoesAppearance; launcherApps?: readonly HatagoesCatalogEntry[]; wide?: boolean; hatadyHeaderDate?: HTMLElement | null; hatadyHeaderActions?: HTMLElement | null; hatadyHeaderOverview?: HTMLElement | null }>();
 const emit = defineEmits<{
 	navigate: [path: string, replace?: boolean];
 	register: [app: HatagoesApp, bridge: HataGoesBridge];
@@ -64,6 +64,11 @@ provide(DI.currentStickyBottom, ref(0));
 provide(DI.pageWindowClose, () => emit('exit'));
 provide(HATA_GOES_HOST, {
 	active: computed(() => props.active),
+	hatadyHeader: {
+		date: computed(() => props.app === 'hatady' ? props.hatadyHeaderDate ?? null : null),
+		actions: computed(() => props.app === 'hatady' ? props.hatadyHeaderActions ?? null : null),
+		overview: computed(() => props.app === 'hatady' ? props.hatadyHeaderOverview ?? props.hatadyHeaderActions ?? null : null),
+	},
 	register(app, bridge) {
 		emit('register', app, bridge);
 		return () => emit('unregister', app, bridge);

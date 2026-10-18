@@ -9,7 +9,7 @@
   <nav aria-label="Appの分類" :class="$style.filters"><button v-for="option in filters" :key="option.id" type="button" :class="option.id !== 'all' ? $style.brand : undefined" :aria-pressed="filter === option.id" @click="filter = option.id">{{ option.label }}</button></nav>
   <section v-if="draft.length" aria-label="＋メニューに表示する項目" :class="$style.group"><h3>＋メニューに表示中 <small>並べ替え</small></h3>
     <TransitionGroup name="hg-app-pin" tag="ol" :class="$style.rows"><li v-for="(id, index) in draft" :key="id">
-      <i :class="candidates.find(item => item.id === id)?.icon ?? 'ti ti-apps'" aria-hidden="true"></i><span>{{ candidates.find(item => item.id === id)?.label ?? '利用できないApp' }}</span>
+      <HataFeatureIcon v-if="hataFeatureForScreen(id)" :feature="hataFeatureForScreen(id)!" :size="24" :mode="monochrome ? 'mono-dark' : 'color'"/><i v-else :class="candidates.find(item => item.id === id)?.icon ?? 'ti ti-apps'" aria-hidden="true"></i><span>{{ candidates.find(item => item.id === id)?.label ?? '利用できないApp' }}</span>
       <button type="button" :disabled="!ready || saving || index === 0" :aria-label="`${pinName(id)}を上へ`" @click="move(index, -1)">↑</button>
       <button type="button" :disabled="!ready || saving || index === draft.length - 1" :aria-label="`${pinName(id)}を下へ`" @click="move(index, 1)">↓</button>
       <button type="button" :disabled="!ready || saving" :aria-label="`${pinName(id)}を＋メニューから外す`" @click="remove(id)">×</button>
@@ -18,7 +18,7 @@
   <p v-else :class="$style.note">＋メニューに表示する項目を選んでください。</p>
   <section v-for="group in visibleGroups" :key="group.id" :aria-label="group.label" :class="$style.group"><h3 :class="$style.brand">{{ group.label }}</h3>
     <ul :class="$style.rows"><li v-for="item in group.items" :key="item.id">
-      <i :class="item.icon" aria-hidden="true"></i><span :class="group.id === 'hataskey' ? $style.brand : undefined">{{ item.label }}</span>
+      <HataFeatureIcon v-if="hataFeatureForScreen(item.id)" :feature="hataFeatureForScreen(item.id)!" :size="24" :mode="monochrome ? 'mono-dark' : 'color'"/><i v-else :class="item.icon" aria-hidden="true"></i><span :class="group.id === 'hataskey' ? $style.brand : undefined">{{ item.label }}</span>
       <button type="button" :class="draft.includes(item.id) ? $style.active : undefined" :disabled="!ready || saving || (!draft.includes(item.id) && draft.length >= HATAGOES_APP_PIN_LIMIT)" :aria-pressed="draft.includes(item.id)" :aria-label="`${item.label}を＋メニュー${draft.includes(item.id) ? 'から外す' : 'に追加'}`" @click="toggle(item.id)">{{ draft.includes(item.id) ? '表示中' : '追加' }}</button>
     </li></ul>
   </section>
@@ -31,10 +31,12 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import type { HatagoesCatalogEntry } from '@/utility/hatagoes-catalog.js';
+import HataFeatureIcon from '@/components/HataFeatureIcon.vue';
+import { hataFeatureForScreen } from '@/utility/hata-feature-icon.js';
 import { getHatagoesScreen, isHatagoesVisibleScreen } from '@/utility/hatagoes-catalog.js';
 import { getHatagoesAppPinCandidates, HATAGOES_APP_PIN_LIMIT, normalizeHatagoesAppPins } from '@/utility/hatagoes-app-pins.js';
 
-const props = defineProps<{ pins: readonly string[]; screens: readonly HatagoesCatalogEntry[]; ready: boolean; saving: boolean; error: boolean }>();
+const props = defineProps<{ monochrome?: boolean; pins: readonly string[]; screens: readonly HatagoesCatalogEntry[]; ready: boolean; saving: boolean; error: boolean }>();
 const emit = defineEmits<{ save: [pins: string[]]; close: [] }>();
 const visiblePins = (pins: readonly string[]) => normalizeHatagoesAppPins(pins).filter(id => {
 	const screen = getHatagoesScreen(id);
@@ -124,7 +126,7 @@ function move(index: number, delta: number) {
 .rows li { min-height: 54px; padding: 6px 12px; box-sizing: border-box; }
 .rows li + li { border-top: 1px solid var(--MI_THEME-divider); }
 .rows li > i { width: 24px; color: var(--MI_THEME-accent); font-size: 21px; text-align: center; }
-.rows li span { flex: 1; min-width: 0; }
+.rows li > span:not([data-hata-feature]) { flex: 1; min-width: 0; }
 .brand { font-family: Righteous, var(--htk-font-head, sans-serif); font-weight: 400; font-synthesis: none; }
 .note { margin-top: 20px; color: var(--MI_THEME-fgTransparent); font-size: 12px; line-height: 1.7; }
 .confirmBackdrop { position: fixed; inset: 0; z-index: 2; display: grid; place-items: center; padding: 20px; background: #0008; }

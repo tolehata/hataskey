@@ -25,7 +25,9 @@
 		label="Hatady"
 		:class="$style.tabs"
 		@update:modelValue="emit('update:modelValue', $event)"
-	/>
+	>
+		<template v-if="$slots.icon" #icon="{ option }"><slot name="icon" :option="option"/></template>
+	</HyCapsule>
 	<div ref="host" :class="$style.host" :style="{ height: integrated && showing ? `${noticeHeight}px` : '0px' }"></div>
 	<MkHataskeyNotificationToasts v-if="!preview && !inherited && active" :context="context" :receiveExternal="ownsSurface"/>
 </nav>
@@ -247,6 +249,10 @@ onUnmounted(() => {
 	box-shadow: none;
 	background: transparent;
 }
+/* Keep the capsule geometry fixed while giving transparent marks more room. */
+.tabs > button > [data-hata-feature] { transform: scale(1.2); }
+.tabs > button[data-active='false'] > [data-hata-feature] { transform: scale(1.4); }
+.tabs > button[data-active='false'] > i { transform: scale(1.2); }
 @container hatady (max-width: 600px) {
 	.surface {
 		width: 100%;
@@ -269,7 +275,7 @@ onUnmounted(() => {
 		flex: 1 1 0;
 		min-width: 0;
 	}
-	.tabs > button > span {
+	.tabs > button > span:not([data-hata-feature]) {
 		min-width: 0;
 		max-width: calc(100% - 24px);
 	}

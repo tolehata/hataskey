@@ -55,7 +55,7 @@
 	<section class="htk-goes-launcher" aria-label="よく使う App">
 		<div class="htk-goes-launcher-row">
 			<h2><i class="ti ti-apps" aria-hidden="true"></i>よく使う App</h2>
-			<div class="htk-goes-launcher-grid"><button v-for="app in goesHataskLauncherApps" :key="app.id" type="button" :title="app.label" @click="hataGoesHost?.openLauncherScreen?.(app.id)"><span><i :class="app.icon" aria-hidden="true"></i></span><small>{{ app.label }}</small></button></div>
+			<div class="htk-goes-launcher-grid"><button v-for="app in goesHataskLauncherApps" :key="app.id" type="button" :title="app.label" @click="hataGoesHost?.openLauncherScreen?.(app.id)"><span><HataFeatureIcon v-if="hataFeatureForScreen(app.id)" :feature="hataFeatureForScreen(app.id)!" :size="40" :mode="themeMode === 'dark' ? 'mono-dark' : 'color'"/><i v-else :class="app.icon" aria-hidden="true"></i></span><small>{{ app.label }}</small></button></div>
 			<button type="button" class="htk-goes-launcher-all" @click="hataGoesHost?.openAllApps?.()"><i class="ti ti-layout-grid" aria-hidden="true"></i>すべての App</button>
 		</div>
 	</section>
@@ -758,6 +758,8 @@ import HataskTodoPlanner from '@/components/hatask/HataskTodoPlanner.vue';
 import HataskThemePreview from '@/components/hatask/HataskThemePreview.vue';
 import HataskAkatsukiLayout from '@/components/hatask/HataskAkatsukiLayout.vue';
 import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataFeatureIcon from '@/components/HataFeatureIcon.vue';
+import { hataFeatureForScreen } from '@/utility/hata-feature-icon.js';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import HataskAkatsukiApps from '@/components/hatask/HataskAkatsukiApps.vue';
 import type { HataskAkatsukiAction, HataskAkatsukiFavoriteId, HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';

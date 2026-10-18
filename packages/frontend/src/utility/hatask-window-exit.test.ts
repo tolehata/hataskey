@@ -10,6 +10,7 @@ import { parse } from '@vue/compiler-sfc';
 import * as ts from 'typescript';
 import { computed, effectScope, nextTick, ref, watch } from 'vue';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { hatagoesUrl, isHatagoesIntroPath } from './hatagoes-navigation.js';
 
 function source(path: string): string { return readFileSync(resolve(process.cwd(), path), 'utf8'); }
 
@@ -354,6 +355,29 @@ describe('HataIntroからHatask Appへ戻るquery', () => {
 });
 
 describe('MkPageWindowからの終了ハンドラー注入と閉鎖ライフサイクル', () => {
+	test('HataGoes内のIntroだけ外枠の戻るを隠し、同じwindowの画面切替で復帰する', () => {
+		const currentRef = ref({ _parsedRoute: { fullPath: hatagoesUrl('/hatask?tab=todo') } });
+		const windowHistory = ref([{ path: '/hatagoes' }, { path: currentRef.value._parsedRoute.fullPath }]);
+		const back = vi.fn();
+		const buttons = evaluate<{ value: Array<{ onClick: () => void }> }>(`const ${declaration(frame, 'buttonsLeft').getText(frame)}; buttonsLeft;`, {
+			computed, windowRouter: { currentRef }, _history_: windowHistory, isHatagoesIntroPath, i18n: { ts: { goBack: '戻る' } }, back,
+		});
+		expect(buttons.value).toHaveLength(1);
+		for (const path of ['/hatask/intro?from=hataskapps#guide', '/hata-docs']) {
+			currentRef.value = { _parsedRoute: { fullPath: hatagoesUrl(path) } };
+			expect(buttons.value).toHaveLength(0);
+			currentRef.value = { _parsedRoute: { fullPath: hatagoesUrl('notifications') } };
+			expect(buttons.value).toHaveLength(1);
+		}
+		currentRef.value = { _parsedRoute: { fullPath: '/hatask/intro' } };
+		expect(buttons.value).toHaveLength(1);
+		buttons.value[0].onClick();
+		expect(back).toHaveBeenCalledOnce();
+		expect(windowHistory.value).toHaveLength(2);
+		windowHistory.value = [{ path: '/hatask/intro' }];
+		expect(buttons.value).toHaveLength(0);
+	});
+
 	test('実DI宣言・provide・injectから既存windowEl.closeまで同じコールバックを結線する', () => {
 		const initializer = declaration(di, 'DI').initializer;
 		if (!initializer || !ts.isObjectLiteralExpression(initializer)) throw new Error('Missing DI object');

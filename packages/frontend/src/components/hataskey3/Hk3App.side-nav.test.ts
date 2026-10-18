@@ -5,6 +5,7 @@ import { parse } from '@vue/compiler-sfc';
 import * as ts from 'typescript';
 import { computed, effectScope, nextTick, ref, watch } from 'vue';
 import { afterEach, describe, expect, it } from 'vitest';
+import { useHatagoesBarCollapse } from '@/utility/hatagoes-bar-collapse.js';
 
 const filename = 'src/components/hataskey3/Hk3App.vue';
 const descriptor = parse(readFileSync(resolve(process.cwd(), filename), 'utf8'), { filename }).descriptor;
@@ -12,7 +13,7 @@ const script = descriptor.scriptSetup!.content;
 const setup = ts.createSourceFile(`${filename}.ts`, script, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 const names = [
 	'sideNavHovered', 'sideNavFocused', 'sideNavFocusTransfer', 'sideNavPointerInput',
-	'sideNavLaunchPadOpen', 'sideNavInstanceMenuOpen', 'sideNavExpanded',
+	'sideNavLaunchPadOpen', 'sideNavInstanceMenuOpen', 'sideNavCollapsed', 'sideNavExpanded',
 	'onDocumentPointerDown', 'onDocumentKeyDown', 'onSideNavEnter', 'onSideNavFocus',
 	'onSideNavKeyUp', 'holdSideNavKeyboardFocus', 'onSideNavBlur', 'closeSideNav',
 ];
@@ -32,6 +33,7 @@ type State = {
 	sideNavLaunchPadOpen: ReturnType<typeof ref<boolean>>;
 	sideNavInstanceMenuOpen: ReturnType<typeof ref<boolean>>;
 	sideNavExpanded: ReturnType<typeof computed<boolean>>;
+	sideNavCollapsed: ReturnType<typeof ref<boolean>>;
 	onDocumentPointerDown: () => void;
 	onDocumentKeyDown: () => void;
 	onSideNavEnter: (event: PointerEvent) => void;
@@ -46,8 +48,9 @@ afterEach(() => cleanups.splice(0).forEach(cleanup => cleanup()));
 
 function mount() {
 	const isMobile = ref(false);
+	const isHataGoesPage = ref(false);
 	const scope = effectScope();
-	const state = scope.run(() => new Function('ref', 'computed', 'nextTick', 'watch', 'isMobile', 'isHatadyTimeline', code)(ref, computed, nextTick, watch, isMobile, ref(false))) as State;
+	const state = scope.run(() => new Function('ref', 'computed', 'nextTick', 'watch', 'isMobile', 'isHatadyTimeline', 'isHataGoesPage', 'useHatagoesBarCollapse', code)(ref, computed, nextTick, watch, isMobile, ref(false), isHataGoesPage, useHatagoesBarCollapse)) as State;
 	const container = window.document.createElement('div');
 	const rail = window.document.createElement('div');
 	const theme = window.document.createElement('button'); theme.title = 'Theme';
@@ -93,7 +96,7 @@ function mount() {
 	};
 	cleanups.push(cleanup);
 	return {
-		state, isMobile, container, theme, settings,
+		state, isMobile, isHataGoesPage, container, theme, settings,
 		setFocusVisible: (value: boolean) => { focusVisible = value; },
 		railButton: (title: string) => Array.from(rail.querySelectorAll('button')).find(item => item.title === title)!,
 		pointerDown: (target: HTMLElement) => target.dispatchEvent(new Event('pointerdown', { bubbles: true })),
@@ -103,6 +106,31 @@ function mount() {
 }
 
 describe('UI S side nav input modality', () => {
+	it('uses manual expansion only in HataGoes and resumes hover expansion on exit', async () => {
+		const view = mount();
+		view.state.onSideNavEnter({ pointerType: 'mouse' } as PointerEvent);
+		expect(view.state.sideNavExpanded.value).toBe(true);
+		view.isHataGoesPage.value = true;
+		expect(view.state.sideNavExpanded.value).toBe(false);
+		view.setFocusVisible(true);
+		view.theme.focus();
+		view.key(view.theme, 'keyup', 'Tab');
+		await nextTick();
+		expect(view.state.sideNavExpanded.value).toBe(false);
+		view.state.sideNavCollapsed.value = false;
+		expect(view.state.sideNavExpanded.value).toBe(true);
+		view.state.sideNavHovered.value = false;
+		expect(view.state.sideNavExpanded.value).toBe(true);
+		view.key(view.theme, 'keydown', 'Escape');
+		expect(view.state.sideNavExpanded.value).toBe(false);
+		view.state.onSideNavEnter({ pointerType: 'mouse' } as PointerEvent);
+		expect(view.state.sideNavExpanded.value).toBe(false);
+		view.isHataGoesPage.value = false;
+		expect(view.state.sideNavExpanded.value).toBe(true);
+		view.state.sideNavHovered.value = false;
+		expect(view.state.sideNavExpanded.value).toBe(false);
+	});
+
 	it('clears keyboard hold on a pointer click inside the nav and stays collapsed after pointer leave', async () => {
 		const view = mount();
 		view.setFocusVisible(true);

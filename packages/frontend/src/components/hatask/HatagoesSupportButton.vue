@@ -4,13 +4,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <button v-if="visible" type="button" :class="$style.button" aria-label="支援情報" title="支援情報" @click="emit('open')">
-	<i class="ti ti-heart-handshake" aria-hidden="true"></i>
+	<HataFeatureIcon feature="support" :size="24" :mode="monochrome ? 'mono-dark' : 'color'"/>
 </button>
 </template>
 
 <script lang="ts" setup>
 import { onActivated, onMounted, onUnmounted, ref } from 'vue';
+import HataFeatureIcon from '@/components/HataFeatureIcon.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
+
+defineProps<{ monochrome?: boolean }>();
 
 const emit = defineEmits<{ open: [] }>();
 const visible = ref(false);

@@ -1097,7 +1097,7 @@ describe('HataskAkatsukiLayout', () => {
 		for (const button of buttons) {
 			expect(button.getAttribute('aria-label')?.length).toBeGreaterThan(0);
 			const icons = [...button.querySelectorAll('.ti')];
-			if (button.getAttribute('aria-label') === 'ホーム') {
+			if (button.getAttribute('aria-label') === 'ホーム' || button.querySelector('[data-hata-feature]')) {
 				expect(icons).toHaveLength(0);
 				expect(button.querySelector('svg')?.closest('[aria-hidden="true"]')).not.toBeNull();
 			} else {

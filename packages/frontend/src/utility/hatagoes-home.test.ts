@@ -106,4 +106,15 @@ describe('HataGoes home reads', () => {
 		await expect(loadHatagoesRoadmap()).rejects.toThrow('イシュー');
 		expect(await loadHatagoesRoadmap()).toMatchObject({ rows: [], unavailable: true });
 	});
+
+	test.each([
+		['nextFixConfirmed', '次回修正確定'],
+		['nextFixPlanned', '次回修正予定'],
+		['monitoring', '修正監視中'],
+	])('labels the repair status on issue and roadmap rows: %s', async (status, label) => {
+		const issue = { id: 'issue', title: '修正', number: 43, status };
+		api.mockResolvedValueOnce({ source: 'mine', issues: [issue] }).mockResolvedValueOnce([issue]);
+		expect((await loadHatagoesIssues()).rows[0]).toMatchObject({ status, detail: `#43 · ${label}` });
+		expect((await loadHatagoesRoadmap()).rows[0]).toMatchObject({ status, detail: `#43 · ${label}` });
+	});
 });

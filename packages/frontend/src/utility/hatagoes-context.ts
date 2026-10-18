@@ -29,6 +29,11 @@ export type HataGoesTheme = {
 export const HATA_GOES_THEME: InjectionKey<Readonly<Ref<HataGoesTheme>>> = Symbol('HataGoesTheme');
 export type HataGoesHost = {
 	active: Readonly<Ref<boolean>>;
+	hatadyHeader?: {
+		date?: Readonly<Ref<HTMLElement | null>>;
+		actions: Readonly<Ref<HTMLElement | null>>;
+		overview?: Readonly<Ref<HTMLElement | null>>;
+	};
 	register: (app: HatagoesApp, bridge: HataGoesBridge) => () => void;
 	changed: () => void;
 	openStandalone?: (path: string) => void;

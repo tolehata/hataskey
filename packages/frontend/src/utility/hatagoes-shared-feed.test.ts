@@ -62,4 +62,15 @@ describe('shared feed pagination', () => {
 		expect(projectHatagoesFeed('activity', { id: 'a', study: { id: 'l', body: 'ネタバレ', details: { spoiler: true } } })).toMatchObject({ spoiler: true, path: '/hatady?tab=records&hgKind=log&hgId=l' });
 		expect(projectHatagoesFeed('issue', { id: 'issue', status: 'resolved', title: '修正' })).toMatchObject({ label: 'イシュー', chips: ['解決済み'] });
 	});
+
+	test.each([
+		['nextFixConfirmed', '次回修正確定'],
+		['nextFixPlanned', '次回修正予定'],
+		['monitoring', '修正監視中'],
+	])('keeps the repair status visible on shared issue cards: %s', (status, label) => {
+		expect(projectHatagoesFeed('issue', { id: 'issue', status, title: '修正', agreementsCount: 2 })).toMatchObject({
+			label: 'イシュー',
+			chips: [label, '2 件の賛同'],
+		});
+	});
 });

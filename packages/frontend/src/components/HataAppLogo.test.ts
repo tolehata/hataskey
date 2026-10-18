@@ -17,11 +17,11 @@ function mount(render: () => ReturnType<typeof h>): HTMLElement {
 
 afterEach(() => { app?.unmount(); host?.remove(); app = null; host = null; });
 
-test('loading follows its prop, pauses offscreen, and a tap sequence replays without changing tile size', async () => {
+test.each([false, true])('loading and tap replay preserve size in bare=%s mode', async (bare) => {
 	const loading = ref(false);
 	const active = ref(true);
 	const tapSequence = ref(0);
-	const root = mount(() => h(HataAppLogo, { app: 'hatagoes', size: 16, motion: 'startup', loading: loading.value, active: active.value, tapSequence: tapSequence.value }));
+	const root = mount(() => h(HataAppLogo, { app: 'hatagoes', bare, size: 16, motion: 'startup', loading: loading.value, active: active.value, tapSequence: tapSequence.value }));
 	const tile = root.querySelector<HTMLElement>('[data-app=hatagoes]');
 	expect(tile?.style.width).toBe('16px');
 	expect(tile?.querySelectorAll('polygon')).toHaveLength(2);
@@ -56,9 +56,9 @@ test('loading follows its prop, pauses offscreen, and a tap sequence replays wit
 	expect(tile?.style.width).toBe('16px');
 });
 
-test('startup ends on its wave animation and stays complete across motion prop changes', async () => {
+test.each([false, true])('startup stays complete across motion changes in bare=%s mode', async (bare) => {
 	const motion = ref<'startup' | 'idle' | 'loading'>('startup');
-	const root = mount(() => h(HataAppLogo, { app: 'hatask', motion: motion.value }));
+	const root = mount(() => h(HataAppLogo, { app: 'hatask', bare, motion: motion.value }));
 	const tile = root.querySelector<HTMLElement>('[data-app=hatask]');
 	expect(tile?.querySelector('[class*=startWave]')).not.toBeNull();
 	const bandEnd = new Event('animationend', { bubbles: true });
@@ -79,9 +79,9 @@ test('startup ends on its wave animation and stays complete across motion prop c
 	expect(tile?.querySelector('[class*=startWave]')).toBeNull();
 });
 
-test('initial loading takes priority over startup and never starts it after completion', async () => {
+test.each([false, true])('initial loading takes priority over startup in bare=%s mode', async (bare) => {
 	const loading = ref(true);
-	const root = mount(() => h(HataAppLogo, { app: 'hatafeed', motion: 'startup', loading: loading.value }));
+	const root = mount(() => h(HataAppLogo, { app: 'hatafeed', bare, motion: 'startup', loading: loading.value }));
 	const tile = root.querySelector<HTMLElement>('[data-app=hatafeed]');
 	expect(tile?.querySelector('[class*=loadShape]')).not.toBeNull();
 	expect(tile?.querySelector('[class*=startWave]')).toBeNull();

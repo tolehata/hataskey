@@ -45,6 +45,15 @@ export function readHatagoesLocation(fullPath: string): HatagoesLocation {
 	return app ? { view: 'app', path: view, app } : { view: 'home' };
 }
 
+/** HataIntro owns back navigation while it is the active embedded page. */
+export function isHatagoesIntroPath(fullPath: string): boolean {
+	if (!isHatagoesPath(fullPath)) return false;
+	const paneLocation = readHatagoesLocation(fullPath);
+	if (paneLocation.view !== 'app') return false;
+	const pathname = new URL(paneLocation.path, 'https://hatagoes.invalid').pathname;
+	return pathname === '/hatask/intro' || pathname === '/hata-docs';
+}
+
 export function hatagoesUrl(view: string): string {
 	return view === 'home' ? '/hatagoes' : `/hatagoes?${new URLSearchParams({ view })}`;
 }

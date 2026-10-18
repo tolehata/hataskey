@@ -1,9 +1,23 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { describe, expect, test } from 'vitest';
-import { getHatagoesOrigin, hatagoesAppForPath, hatagoesPageKey, hatagoesPaneKey, hatagoesTab, hatagoesUrl, isHatagoesCurrentScreen, readHatagoesLocation, rememberHatagoesOrigin, withHatagoesTab } from './hatagoes-navigation.js';
+import { getHatagoesOrigin, hatagoesAppForPath, hatagoesPageKey, hatagoesPaneKey, hatagoesTab, hatagoesUrl, isHatagoesCurrentScreen, isHatagoesIntroPath, readHatagoesLocation, rememberHatagoesOrigin, withHatagoesTab } from './hatagoes-navigation.js';
 import { getHatagoesScreen } from './hatagoes-catalog.js';
 
 describe('HataGoes navigation', () => {
+	test.each(['/hatask/intro', '/hata-docs'])('recognizes embedded guide %s with inner and outer query/hash values', path => {
+		expect(isHatagoesIntroPath(hatagoesUrl(path))).toBe(true);
+		expect(isHatagoesIntroPath(`${hatagoesUrl(`${path}?from=hataskapps#guide`)}&source=launcher#window`)).toBe(true);
+	});
+
+	test('keeps back navigation for standalone guides, other screens, and lookalike or invalid destinations', () => {
+		for (const path of ['/hatask/intro', '/hata-docs', '/hatagoes', '/other?view=%2Fhatask%2Fintro', 'https://example.com/hatagoes?view=%2Fhatask%2Fintro']) {
+			expect(isHatagoesIntroPath(path)).toBe(false);
+		}
+		for (const view of ['home', 'settings', 'notifications', '/hatask', '/hatask?tab=todo', '/hatask/intro-extra', '/hatask/intro/child', '/hata-docs-extra', '/hatady', '/hatafeed', 'https://example.com/hatask/intro', '//example.com/hatask/intro', '/hatask/../hatask/intro']) {
+			expect(isHatagoesIntroPath(hatagoesUrl(view))).toBe(false);
+		}
+	});
+
 	test('selects the same screen through its filters, default tab and beta alias', () => {
 		expect(isHatagoesCurrentScreen(getHatagoesScreen('hatady.records')!, '/hatady?hgScope=recent&tab=records&hgId=one')).toBe(true);
 		expect(isHatagoesCurrentScreen(getHatagoesScreen('hatady.home')!, '/hatady')).toBe(true);

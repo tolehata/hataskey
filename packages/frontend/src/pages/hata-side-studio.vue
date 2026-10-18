@@ -297,7 +297,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, defineAsyncComponent, defineComponent, h, inject, nextTick, onBeforeUnmount, onMounted, ref, resolveDynamicComponent, useCssModule, watch } from 'vue';
+import { computed, defineAsyncComponent, defineComponent, h, inject, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, resolveDynamicComponent, useCssModule, watch } from 'vue';
 import draggable from 'vuedraggable';
 import { Columns3, Gauge, Moon, PanelsTopLeft, PawPrint, Pencil, RectangleVertical, Settings, Sun } from '@lucide/vue';
 import type { HataSideButton, HataSideButtonShape, HataSideButtonSize, HataSideGroup, HataSideNode, HataSidePostButtonAppearance, HataSidePostButtonIcon, HataSideStudioStore, HataSideWidget, HataSideWidgetKind } from '@/utility/hata-side-studio.js';
@@ -1234,8 +1234,9 @@ const pendingPath = ref<string | null>(null);
 const pendingNavigationMode = ref<'push' | 'replace'>('push');
 const previousNavHook = studioRouter.navHook;
 let bypassNavigation = false;
+let studioPageActive = true;
 const studioNavHook: NonNullable<typeof studioRouter.navHook> = (fullPath, flag) => {
-	if (!bypassNavigation && hasChanges.value && (!inHataGoes || hataGoesHost?.active.value)) {
+	if (studioPageActive && !bypassNavigation && hasChanges.value && (!inHataGoes || hataGoesHost?.active.value)) {
 		pendingPath.value = fullPath;
 		pendingNavigationMode.value = 'push';
 		leaveConfirmOpen.value = true;
@@ -1245,13 +1246,17 @@ const studioNavHook: NonNullable<typeof studioRouter.navHook> = (fullPath, flag)
 };
 studioRouter.navHook = studioNavHook;
 
-function onBeforeUnload(event: BeforeUnloadEvent) { if (!hasChanges.value) return; event.preventDefault(); event.returnValue = ''; }
+function onBeforeUnload(event: BeforeUnloadEvent) { if (!studioPageActive || !hasChanges.value) return; event.preventDefault(); event.returnValue = ''; }
 
 window.addEventListener('beforeunload', onBeforeUnload);
 onMounted(() => {
 	if (miLocalStorage.getItem('hataSideStudioTutorialDone') !== '1') startTutorial();
 });
-onBeforeUnmount(() => { if (historyTimer) window.clearTimeout(historyTimer); if (studioRouter.navHook === studioNavHook) studioRouter.navHook = previousNavHook; window.removeEventListener('beforeunload', onBeforeUnload); window.removeEventListener('pointermove', updateDragPointer); window.document.removeEventListener('dragover', updateDragPointer); window.removeEventListener('touchmove', updateDragPointer); window.removeEventListener('resize', updateDragTimelinePosition); });
+// RouterView keeps editors alive after navigation. Their retained hook must
+// pass through while another page is visible, then protect edits on re-entry.
+onActivated(() => { studioPageActive = true; });
+onDeactivated(() => { studioPageActive = false; cancelLeave(); });
+onBeforeUnmount(() => { studioPageActive = false; if (historyTimer) window.clearTimeout(historyTimer); if (studioRouter.navHook === studioNavHook) studioRouter.navHook = previousNavHook; window.removeEventListener('beforeunload', onBeforeUnload); window.removeEventListener('pointermove', updateDragPointer); window.document.removeEventListener('dragover', updateDragPointer); window.removeEventListener('touchmove', updateDragPointer); window.removeEventListener('resize', updateDragTimelinePosition); });
 
 function navigatePending() { const path = pendingPath.value ?? '/settings/hata-custom'; const mode = pendingNavigationMode.value; pendingPath.value = null; pendingNavigationMode.value = 'push'; leaveConfirmOpen.value = false; bypassNavigation = true; try { if (mode === 'replace' && path === '/settings/hata-custom') studioRouter.replace('/settings/hata-custom'); else studioRouter.pushByPath(path); } finally { bypassNavigation = false; } }
 

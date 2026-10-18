@@ -323,7 +323,7 @@ describe('HataskAkatsukiApps', () => {
 			expect(appIds(container, layout)).not.toContain('guide');
 			expect(container.querySelector(`[data-app-layout="${layout}"]`)?.textContent).not.toContain('Hataskey 機能解説');
 			const row = container.querySelector(`[data-app-layout="${layout}"] [data-app-id="intro"]`);
-			const nameSelector = layout === 'mobile' ? 'div > span:first-of-type' : 'strong';
+			const nameSelector = layout === 'mobile' ? '[class*=appName]' : 'strong';
 			const name = row?.querySelector(nameSelector);
 			const cardName = container.querySelector(`[data-app-layout="${layout}"] [data-app-id="card"] ${nameSelector}`);
 			expect(name?.textContent).toBe('HataIntro');
@@ -357,7 +357,7 @@ describe('HataskAkatsukiApps', () => {
 		expect(container.textContent).toContain('映画・ゲーム・学びの記録');
 		expect(container.textContent).toContain('ドライブへの保存や投稿への添付');
 		for (const layout of ['mobile', 'desktop'] as const) {
-			const nameSelector = layout === 'mobile' ? 'div > span:first-of-type' : 'strong';
+			const nameSelector = layout === 'mobile' ? '[class*=appName]' : 'strong';
 			const drawingName = container.querySelector(`[data-app-layout="${layout}"] [data-app-id="drawing"] ${nameSelector}`);
 			const cardName = container.querySelector(`[data-app-layout="${layout}"] [data-app-id="card"] ${nameSelector}`);
 			expect(drawingName?.textContent).toBe('Hatadint');

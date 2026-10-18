@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div ref="timelineCollapseRoot" :class="[$style.root, { [$style.desktopLayout]: isDesktop }]" :style="{ '--simple-announcements-height': `${announcementsHeight}px` }" :data-hata-foldable="isFoldableWide ? 'true' : undefined">
 	<!-- PC/タブレット: オリジナル左サイドバー (上部メニューモード時は隠す) -->
-	<nav v-if="isDesktop && !topNavActive && !isHataGoesPage" ref="desktopNavEl" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarWide]: !sidebarFolded && studioProfile.expanded.width === 'wide', [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed }]">
+	<nav v-if="isDesktop && !topNavActive" ref="desktopNavEl" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarWide]: !sidebarFolded && studioProfile.expanded.width === 'wide', [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed }]">
 		<!-- バナーすりガラス背景 -->
 		<div v-if="glassEffect" :class="$style.sidebarBanner">
 			<img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.sidebarBannerImg"/>
@@ -287,7 +287,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<!-- Page view header -->
 			<header v-show="isPageView && showPageHeader && !isCollectionTimelinePage && !isSettingsPage" :inert="navbarSearchOpen" data-hata-collapse-group :class="$style.pageHeader">
-				<button :class="$style.pageBackBtn" @click="goBack"><i class="ti ti-chevron-left"></i></button>
+				<button :class="$style.pageBackBtn" :style="{ visibility: isHataGoesIntroPage ? 'hidden' : undefined }" @click="goBack"><i class="ti ti-chevron-left"></i></button>
 				<div :class="$style.pageTitle">{{ pageMetadata?.title ?? '' }}</div>
 				<div style="width: 38px;"></div>
 			</header>
@@ -474,12 +474,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<!-- PC/タブレット: 右ウィジェットバー -->
 	<!-- 旗鯖fork: 折りたたみ端末の広い面でも、このバーだけPCと同じ構成・同じ表示で常時出す。
 	     ⚠️isDesktop は広げない(下部ナビ等までPC化して「モバイル表示のまま」が崩れるため)。 -->
-	<div v-if="(isDesktop || isFoldableWide) && !deckActive && !isHataGoesPage" :inert="navbarSearchOpen" data-hata-collapse-part :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
+	<div v-if="(isDesktop || isFoldableWide) && !deckActive" :inert="navbarSearchOpen" data-hata-collapse-part :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
 		<div v-if="glassEffect" :class="$style.desktopWidgetsBanner">
 			<img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.desktopWidgetsBannerImg"/>
 		</div>
 		<div :class="$style.desktopWidgetsInner">
-			<XWidgets collapsible :collapsed="rightWidgetsCollapsed" @toggleCollapse="setRightWidgetsCollapsed(!rightWidgetsCollapsed)"/>
+			<XWidgets collapsible :collapsed="rightWidgetsCollapsed" @toggleCollapse="rightWidgetsCollapsed = !rightWidgetsCollapsed"/>
 		</div>
 	</div>
 
@@ -512,6 +512,8 @@ import MkHataskeyUiSAnnouncement from '@/components/MkHataskeyUiSAnnouncement.vu
 import MkLtlEmojiVoteOutline from '@/components/MkLtlEmojiVoteOutline.vue';
 import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
 import { normalizeHatagoesSidebar } from '@/utility/hatagoes-sidebar.js';
+import { useHatagoesBarCollapse } from '@/utility/hatagoes-bar-collapse.js';
+import { isHatagoesIntroPath } from '@/utility/hatagoes-navigation.js';
 import HataAppNavIcon from '@/components/HataAppNavIcon.vue';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import { hataAppForMenuIcon, hataAppForMenuLabel } from '@/utility/hata-app-brand.js';
@@ -535,7 +537,7 @@ import { $i } from '@/i.js';
 import { isHataskeyTimelineAllowed } from '@/utility/hataskey-timeline-availability.js';
 import { antennasCache, userListsCache } from '@/cache.js';
 import { createTimelineTabGestures } from '@/utility/timeline-tab-gestures.js';
-import { deckIgnoreWidth, glassUiLocal, tabSwipeEnabled, rightWidgetsCollapsed, setRightWidgetsCollapsed } from '@/utility/hatasaba-device-prefs.js';
+import { deckIgnoreWidth, glassUiLocal, tabSwipeEnabled, rightWidgetsCollapsed as savedRightWidgetsCollapsed, setRightWidgetsCollapsed } from '@/utility/hatasaba-device-prefs.js';
 import { hatadyTzOffset } from '@/utility/hatady-prefs.js';
 import { prefer } from '@/preferences.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
@@ -686,12 +688,15 @@ function setTopNavMode(v: boolean) {
 
 // 旗鯖fork: 左サイドメニューの手動縮小(折りたたみ)。
 // deckActive(デッキ時の自動折りたたみ)とは独立。どちらかが真なら畳む。
-const sidebarCollapsed = prefer.r['simpleUi.sidebarCollapsed'];
+const isHataGoesPage = computed(() => mainRouter.currentRoute.value.path === '/hatagoes');
+const isHataGoesIntroPage = computed(() => isHatagoesIntroPath(mainRouter.currentRef.value._parsedRoute.fullPath));
+const sidebarCollapsed = useHatagoesBarCollapse(isHataGoesPage, () => prefer.r['simpleUi.sidebarCollapsed'].value, value => prefer.commit('simpleUi.sidebarCollapsed', value));
+const rightWidgetsCollapsed = useHatagoesBarCollapse(isHataGoesPage, () => savedRightWidgetsCollapsed.value, setRightWidgetsCollapsed);
 // 旗鯖fork(#12): サイドメニューがアイコンのみ(折りたたみ/デッキ)のとき、ホバーでラベルチップを出すための判定。
 const sidebarFolded = computed(() => deckActive.value || sidebarCollapsed.value);
 
 function toggleSidebarCollapse() {
-	prefer.commit('simpleUi.sidebarCollapsed', !sidebarCollapsed.value);
+	sidebarCollapsed.value = !sidebarCollapsed.value;
 }
 
 // 横ホイールも幅にかかわらず、表示中のタイムラインへ渡す。
@@ -893,7 +898,6 @@ const isPageView = ref(false);
 const isSearchPage = computed(() => { const r = mainRouter.currentRoute.value; return r.name === 'search' || r.path === '/search'; });
 const isNotifPage = computed(() => mainRouter.currentRoute.value.path === '/my/notifications');
 const isHataskPage = computed(() => { const p = mainRouter.currentRoute.value.path; return p === '/hatask' || p === '/hata-docs'; });
-const isHataGoesPage = computed(() => mainRouter.currentRoute.value.path === '/hatagoes');
 const isHatadyPage = computed(() => mainRouter.currentRoute.value.path.startsWith('/hatady'));
 const isHataFeedPage = computed(() => mainRouter.currentRoute.value.path.startsWith('/hatafeed'));
 const isListTimelinePage = computed(() => isListTimelinePath(mainRouter.currentRoute.value.path));
@@ -2809,6 +2813,7 @@ onUnmounted(() => {
 .hssGroupGrid[data-hss-columns="2"] .sbLabel,
 .hssGroupGrid[data-hss-columns="3"] .sbLabel {
     width:100%;
+	justify-content:center;
 	font-size:12px;
 	line-height:1.25;
 }

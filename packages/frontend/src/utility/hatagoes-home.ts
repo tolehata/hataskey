@@ -27,7 +27,7 @@ export const HATAGOES_HOME_PATHS: Record<HatagoesHomeCardId, string> = {
 };
 
 const scope = ['client', 'hatask'];
-const issueStatusLabel: Record<string, string> = { open: '受付中', planned: '対応予定', inProgress: '対応中', resolved: '解決済み', wontfix: '対応見送り', unknown: '確認中', closed: '終了' };
+const issueStatusLabel: Record<string, string> = { open: '受付中', planned: '対応予定', inProgress: '対応中', nextFixConfirmed: '次回修正確定', nextFixPlanned: '次回修正予定', monitoring: '修正監視中', resolved: '解決済み', wontfix: '対応見送り', unknown: '確認中', closed: '終了' };
 const issueCategoryLabel: Record<string, string> = { bug: '不具合', improvement: '改善', unresolved: '質問', featureRequest: '要望', adoptionRequest: '採用依頼', security: 'セキュリティ', betaFeature: 'ベータ機能', other: 'その他' };
 type PlannerCollection = { exists: boolean; value?: unknown };
 type PlannerSnapshot = { collections: { events: PlannerCollection; todos: PlannerCollection } };

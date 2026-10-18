@@ -79,8 +79,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</svg>
 	-->
 
-	<div v-if="!forceIconOnly && prefer.r.showNavbarSubButtons.value" :class="$style.subButtons">
-		<div :class="[$style.subButton, $style.menuEditButton]">
+	<div v-if="props.collapsed != null || (!forceIconOnly && prefer.r.showNavbarSubButtons.value)" :class="$style.subButtons">
+		<div v-if="prefer.r.showNavbarSubButtons.value" :class="[$style.subButton, $style.menuEditButton]">
 			<svg viewBox="0 0 16 64" :class="$style.subButtonShape">
 				<g transform="matrix(0.333333,0,0,0.222222,0.000895785,21.3333)">
 					<path d="M47.488,7.995C47.79,10.11 47.943,12.266 47.943,14.429C47.997,26.989 47.997,84 47.997,84C47.997,84 44.018,118.246 23.997,133.5C-0.374,152.07 -0.003,192 -0.003,192L-0.003,-96C-0.003,-96 0.151,-56.216 23.997,-37.5C40.861,-24.265 46.043,-1.243 47.488,7.995Z" style="fill:var(--MI_THEME-navBg);"/>
@@ -126,18 +126,20 @@ import { hataAppForMenuIcon, hataAppForMenuLabel } from '@/utility/hata-app-bran
 
 const router = useRouter();
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
 	showWidgetButton?: boolean;
 	asDrawer?: boolean;
-}>();
+	collapsed?: boolean;
+}>(), { collapsed: undefined });
 
 const emit = defineEmits<{
 	(ev: 'widgetButtonClick'): void;
+	(ev: 'toggleCollapse'): void;
 }>();
 
 const forceIconOnly = ref(!props.asDrawer && window.innerWidth <= 1279);
 const iconOnly = computed(() => {
-	return !props.asDrawer && (forceIconOnly.value || (store.r.menuDisplay.value === 'sideIcon'));
+	return !props.asDrawer && (props.collapsed ?? (forceIconOnly.value || (store.r.menuDisplay.value === 'sideIcon')));
 });
 
 const otherMenuItemIndicated = computed(() => {
@@ -197,6 +199,10 @@ onUnmounted(() => {
 });
 
 function toggleIconOnly() {
+	if (props.collapsed != null) {
+		emit('toggleCollapse');
+		return;
+	}
 	if (window.document.startViewTransition && prefer.s.animation) {
 		const transition = window.document.startViewTransition(() => {
 			store.set('menuDisplay', iconOnly.value ? 'sideFull' : 'sideIcon');

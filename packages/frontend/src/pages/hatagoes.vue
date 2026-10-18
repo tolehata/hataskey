@@ -5,8 +5,8 @@
 		<div :class="$style.brandGroup"><button ref="exitButton" type="button" :class="$style.iconButton" aria-label="終了" title="終了" @click="requestExit"><i class="ti ti-x" aria-hidden="true"></i></button><button type="button" :class="$style.brand" :aria-label="brandLabel" @click="openBrandHome"><HataAppLogo :key="brandApp" :monochrome="brandOnDark" :app="brandApp" :size="narrowShell ? 28 : 24" motion="startup" :active="shellActive" :tapSequence="logoTapSequence[brandApp]"/><Transition mode="out-in" :enterActiveClass="$style.brandEnter" :leaveActiveClass="$style.brandLeave" :enterFromClass="$style.brandHidden" :leaveToClass="$style.brandHidden"><HataAppWordmark :key="brandApp" :class="$style.brandText" :app="brandApp" :onDark="brandOnDark"/></Transition></button><small v-if="location.view === 'home' && homeInFeed" :class="$style.homeSubtitle">みんなのきょう</small></div>
 		<div :class="$style.appsSlot"><nav ref="appsCapsule" :class="$style.apps" :style="{ '--hg-app-count': apps.length + 1 }" aria-label="アプリ" @pointerenter="onNoticePointerEnter" @pointerleave="noticeHovered = false" @pointercancel="noticeHovered = false" @focusin="onNoticeFocusIn" @focusout="onNoticeFocusOut">
 			<div v-if="shellActive && !dialogNoticeTarget && noticeGlowVisible && !narrowShell && noticeGeometryReady" :class="$style.noticeBloom" :data-leaving="noticeGlowLeaving" aria-hidden="true"><svg :viewBox="noticeViewBox" :style="noticeSvgStyle"><path v-for="path in noticePaths" :key="path" :d="path" pathLength="100" :style="{ strokeDashoffset: noticeProgress }"/></svg></div>
-			<button type="button" aria-label="HataGoesホーム" title="HataGoesホーム" :aria-current="location.view === 'home' ? 'page' : undefined" @click="tapLogo('hatagoes'); common('home')"><HataAppLogo :monochrome="brandOnDark" app="hatagoes" :size="20" :active="shellActive" :tapSequence="logoTapSequence.hatagoes"/><span>ホーム</span></button>
-			<button v-for="app in apps" :key="app.id" type="button" :aria-label="app.label" :title="app.label" :aria-pressed="location.view === 'app' && location.app === app.id" @click="tapLogo(app.id); openApp(app.id)"><HataAppLogo :monochrome="brandOnDark" :app="app.id" :size="20" :active="shellActive" :tapSequence="logoTapSequence[app.id]"/><HataAppWordmark :app="app.id" :onDark="brandOnDark" :inheritColor="location.view === 'app' && location.app === app.id"/></button>
+			<button type="button" aria-label="HataGoesホーム" title="HataGoesホーム" :aria-current="location.view === 'home' ? 'page' : undefined" @click="tapLogo('hatagoes'); common('home')"><HataAppLogo bare app="hatagoes" :size="20" :active="shellActive" :tapSequence="logoTapSequence.hatagoes"/><span>ホーム</span></button>
+			<button v-for="app in apps" :key="app.id" type="button" :aria-label="app.label" :title="app.label" :aria-pressed="location.view === 'app' && location.app === app.id" @click="tapLogo(app.id); openApp(app.id)"><HataAppLogo bare :app="app.id" :size="20" :active="shellActive" :tapSequence="logoTapSequence[app.id]"/><HataAppWordmark :app="app.id" :onDark="brandOnDark" :inheritColor="location.view === 'app' && location.app === app.id"/></button>
 			<span :class="$style.activePill" :style="appsPillStyle" aria-hidden="true"></span>
 			<div ref="desktopNoticeHost" :class="$style.noticeHost" :style="noticeHostStyle"></div>
 		</nav></div>
@@ -14,26 +14,29 @@
 			<button v-if="location.view === 'home' && homeInFeed" type="button" :class="$style.homeTop" aria-label="先頭へ戻る" title="先頭へ戻る" @click="scrollHomeTop"><i class="ti ti-arrow-bar-to-up"></i></button>
 			<button type="button" :class="$style.createButton" aria-label="作成" title="作成" @pointerdown="startLongPress" @pointerup="endLongPress" @pointerleave="cancelLongPress" @pointercancel="cancelLongPress" @click="showCreate"><i class="ti ti-plus"></i></button>
 			<button ref="searchButton" type="button" aria-label="横断検索" title="横断検索" @click="openSearch"><i class="ti ti-search"></i></button>
+			<div v-show="hatadyHeaderVisible && narrowShell" ref="hatadyMobileOverview" :class="$style.hatadyOverview"></div>
 			<button type="button" aria-label="3アプリの通知" title="3アプリの通知" @click="common('notifications')"><i class="ti ti-bell"></i><span v-if="unread" :class="$style.badge">{{ unread > 99 ? '99+' : unread }}</span></button>
 			<button v-if="currentScreen?.id !== 'hatask.support-admin'" type="button" aria-label="設定" title="設定" @click="openShellSettings"><i class="ti ti-settings"></i></button>
 			<button type="button" aria-label="再読み込み" title="再読み込み" :disabled="refreshing" @click="refresh"><i class="ti ti-refresh" aria-hidden="true"></i></button>
 		</div>
 	</header>
-	<nav ref="screenNav" :class="$style.screenNav" :data-home="location.view === 'home'" :data-mobile-hatask="narrowShell && location.view === 'app' && location.app === 'hatask' && hasScreenCapsule" :data-notification="noticeGlowVisible" aria-label="画面一覧">
-		<button v-if="location.view !== 'home'" type="button" :class="$style.navBack" aria-label="戻る" title="戻る" @click="back"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+	<nav ref="screenNav" :class="$style.screenNav" :data-home="location.view === 'home'" :data-hatady="hatadyHeaderVisible" :data-mobile-hatask="narrowShell && location.view === 'app' && location.app === 'hatask' && hasScreenCapsule" :data-notification="noticeGlowVisible" aria-label="画面一覧">
+		<div v-show="hatadyHeaderVisible && !narrowShell" ref="hatadyHeaderDate" :class="$style.hatadyDate"></div>
+		<button v-if="location.view !== 'home' && !isHataIntro" type="button" :class="$style.navBack" aria-label="戻る" title="戻る" @click="back"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
 		<div v-show="hasScreenCapsule" :class="$style.screenCapsuleSlot"><div ref="mobileNoticeSurface" :class="$style.mobileNoticeSurface" @pointerenter="onNoticePointerEnter" @pointerleave="noticeHovered = false" @pointercancel="noticeHovered = false" @focusin="onNoticeFocusIn" @focusout="onNoticeFocusOut">
 			<div v-if="shellActive && !dialogNoticeTarget && noticeGlowVisible && narrowShell && hasScreenCapsule && noticeGeometryReady" :class="$style.noticeBloom" :data-leaving="noticeGlowLeaving" aria-hidden="true"><svg :viewBox="noticeViewBox" :style="noticeSvgStyle"><path v-for="path in noticePaths" :key="path" :d="path" pathLength="100" :style="{ strokeDashoffset: noticeProgress }"/></svg></div>
 			<div ref="screenCapsule" :class="$style.screenCapsule">
 			<template v-if="location.view === 'app'">
-				<button v-for="screen in appCapsuleScreens" :key="screen.id" type="button" :class="{ [$style.temporaryScreen]: isTemporaryScreen(screen) }" :aria-label="screenLabel(screen)" :title="screenLabel(screen)" :aria-current="isCurrent(screen) ? 'page' : undefined" @click="openScreen(screen)"><i :class="screen.icon" aria-hidden="true"></i><Transition :enterActiveClass="$style.navEnter" :leaveActiveClass="$style.navLeave" :enterFromClass="$style.navHidden" :leaveToClass="$style.navHidden"><span v-if="isCurrent(screen)" :class="screen.id === 'hatask.apps' || screen.id === 'hatask.tools' ? $style.wordmark : undefined">{{ screenLabel(screen) }}</span></Transition></button>
+				<button v-for="screen in appCapsuleScreens" :key="screen.id" type="button" :class="{ [$style.temporaryScreen]: isTemporaryScreen(screen) }" :aria-label="screenLabel(screen)" :title="screenLabel(screen)" :aria-current="isCurrent(screen) ? 'page' : undefined" @click="openScreen(screen)"><HataFeatureIcon v-if="hataFeatureForScreen(screen.id)" bare :feature="hataFeatureForScreen(screen.id)!" :size="20"/><i v-else :class="screen.icon" aria-hidden="true"></i><Transition :enterActiveClass="$style.navEnter" :leaveActiveClass="$style.navLeave" :enterFromClass="$style.navHidden" :leaveToClass="$style.navHidden"><span v-if="isCurrent(screen)" :class="screen.id === 'hatask.apps' || screen.id === 'hatask.tools' ? $style.wordmark : undefined">{{ screenLabel(screen) }}</span></Transition></button>
 			</template>
 				<span :class="$style.activePill" :style="screensPillStyle" aria-hidden="true"></span>
 			</div>
 			<div ref="mobileNoticeHost" :class="$style.mobileNoticeHost" :style="noticeHostStyle"></div>
 		</div></div>
+		<div v-show="hatadyHeaderVisible" ref="hatadyHeaderActions" :class="$style.hatadyActions"></div>
 		<button v-if="!isDetail && (narrowShell || location.view === 'home' || location.view === 'app' && location.app === 'hatask')" type="button" :class="$style.directoryButton" aria-label="全てのアプリ" title="全てのアプリ" :aria-current="location.view === 'screens' ? 'page' : undefined" @click="openDirectory"><i class="ti ti-layout-grid" aria-hidden="true"></i></button>
-		<HatagoesSupportButton v-if="location.view === 'app' && location.app === 'hatask'" :class="$style.staffButton" @open="navigate('/hatask?tab=support')"/>
-		<button v-for="screen in activeStaffScreens" :key="screen.id" type="button" :class="$style.staffButton" :aria-label="screenLabel(screen)" :title="screenLabel(screen)" :aria-current="isCurrent(screen) ? 'page' : undefined" @click="openScreen(screen)"><i :class="screen.icon" aria-hidden="true"></i></button>
+		<HatagoesSupportButton v-if="location.view === 'app' && location.app === 'hatask'" :monochrome="brandOnDark" :class="$style.staffButton" @open="navigate('/hatask?tab=support')"/>
+		<button v-for="screen in activeStaffScreens" :key="screen.id" type="button" :class="$style.staffButton" :aria-label="screenLabel(screen)" :title="screenLabel(screen)" :aria-current="isCurrent(screen) ? 'page' : undefined" @click="openScreen(screen)"><HataFeatureIcon v-if="hataFeatureForScreen(screen.id)" :feature="hataFeatureForScreen(screen.id)!" :size="24" :mode="brandOnDark ? 'mono-dark' : 'color'"/><i v-else :class="screen.icon" aria-hidden="true"></i></button>
 		<button v-if="location.view === 'app' && location.app === 'hatafeed'" type="button" :class="$style.projectButton" :aria-label="`プロジェクト切替: ${appearances.hatafeed?.projectName || '現在のプロジェクト'}`" :title="appearances.hatafeed?.projectName || 'プロジェクト切替'" @click="openProjectSwitch"><i class="ti ti-folders" aria-hidden="true"></i><span>{{ appearances.hatafeed?.projectName || 'プロジェクト切替' }}</span><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
 		<div ref="fallbackNoticeSurface" :class="$style.fallbackNoticeSurface" :data-notification="shellActive && narrowShell && !hasScreenCapsule && !dialogNoticeTarget && ownsNoticeSurface && noticeGlowVisible" @pointerenter="onNoticePointerEnter" @pointerleave="noticeHovered = false" @pointercancel="noticeHovered = false" @focusin="onNoticeFocusIn" @focusout="onNoticeFocusOut"><div v-if="shellActive && !dialogNoticeTarget && noticeGlowVisible && narrowShell && !hasScreenCapsule && noticeGeometryReady" :class="$style.noticeBloom" :data-leaving="noticeGlowLeaving" aria-hidden="true"><svg :viewBox="noticeViewBox" :style="noticeSvgStyle"><path v-for="path in noticePaths" :key="path" :d="path" pathLength="100" :style="{ strokeDashoffset: noticeProgress }"/></svg></div><div ref="fallbackNoticeHost" :class="$style.mobileNoticeHost" :style="noticeHostStyle"></div></div>
 	</nav>
@@ -45,7 +48,7 @@
 			<div v-if="visited.settings" v-show="location.view === 'settings'" :class="$style.common">
 				<HatagoesSettings :monochrome="brandOnDark" :pins="visiblePins" :appPins="visibleAppPins" :availableApps="apps.map(app => app.id)" :cards="prefs.cards.value" :cardsV3="prefs.cardsV3?.value" :theme="prefs.theme.value" :ready="prefs.ready.value" :saving="prefs.saving.value" :error="prefs.error.value" :screens="screens" @save="saveSetting" @retry="prefs.load" @appSettings="openAppSettings" @editAppPins="editAppPins" @navigate="navigate" @replayIntroduction="replayIntroduction"/>
 			</div>
-			<HatagoesPane v-for="slot in slots" v-show="location.view === 'app' && hatagoesPaneKey(location.path) === slot.key" :key="slot.key" :class="$style.appPane" :monochrome="brandOnDark" :app="slot.app" :path="slot.path" :appearance="appearances[slot.app]" :launcherApps="launcherApps" :wide="!narrowShell" :active="shellActive && location.view === 'app' && hatagoesPaneKey(location.path) === slot.key" @navigate="(path, replace) => navigateFromPane(slot, path, replace)" @register="registerBridge" @unregister="unregisterBridge" @appearance="appearances[slot.app] = $event" @mode="appModes[slot.app] = $event" @changed="changed" @exit="exit" @leave="router.pushByPath($event)" @openLauncherScreen="openHomeLauncherScreen" @openAllApps="openDirectory"/>
+			<HatagoesPane v-for="slot in slots" v-show="location.view === 'app' && hatagoesPaneKey(location.path) === slot.key" :key="slot.key" :class="$style.appPane" :monochrome="brandOnDark" :app="slot.app" :path="slot.path" :appearance="appearances[slot.app]" :launcherApps="launcherApps" :wide="!narrowShell" :hatadyHeaderDate="narrowShell ? null : hatadyHeaderDate" :hatadyHeaderActions="hatadyHeaderActions" :hatadyHeaderOverview="narrowShell ? hatadyMobileOverview : hatadyHeaderActions" :active="shellActive && location.view === 'app' && hatagoesPaneKey(location.path) === slot.key" @navigate="(path, replace) => navigateFromPane(slot, path, replace)" @register="registerBridge" @unregister="unregisterBridge" @appearance="appearances[slot.app] = $event" @mode="appModes[slot.app] = $event" @changed="changed" @exit="exit" @leave="router.pushByPath($event)" @openLauncherScreen="openHomeLauncherScreen" @openAllApps="openDirectory"/>
 		</div>
 	</div>
 	<HatagoesCreateHost :open="createOpen" :mobile="narrowShell" :maxHeight="mobileCreateMaxHeight" :returnFocus="mobileCreateButton" @close="closeCreate" @closed="clearCreate">
@@ -59,7 +62,7 @@
 			</template>
 			<section :class="$style.appPins">
 				<header><h3>＋メニューに表示する項目</h3><button type="button" aria-label="＋メニューに表示する項目を編集" title="＋メニューに表示する項目を編集" @click="editAppPins"><i class="ti ti-pin" aria-hidden="true"></i>編集</button></header>
-				<div :class="$style.appPinGrid"><button v-for="screen in appPinned" :key="screen.id" type="button" :aria-label="screen.label" @pointerdown="startAppPinPress" @pointerup="cancelLongPress" @pointerleave="cancelLongPress" @pointercancel="cancelLongPress" @contextmenu.prevent="editAppPins" @click="openAppPin(screen)"><i :class="screen.icon" aria-hidden="true"></i>{{ screen.label }}</button><button type="button" @click="editAppPins"><i class="ti ti-plus" aria-hidden="true"></i>追加</button></div>
+				<div :class="$style.appPinGrid"><button v-for="screen in appPinned" :key="screen.id" type="button" :aria-label="screen.label" @pointerdown="startAppPinPress" @pointerup="cancelLongPress" @pointerleave="cancelLongPress" @pointercancel="cancelLongPress" @contextmenu.prevent="editAppPins" @click="openAppPin(screen)"><HataFeatureIcon v-if="hataFeatureForScreen(screen.id)" :feature="hataFeatureForScreen(screen.id)!" :size="28" :mode="brandOnDark ? 'mono-dark' : 'color'"/><i v-else :class="screen.icon" aria-hidden="true"></i>{{ screen.label }}</button><button type="button" @click="editAppPins"><i class="ti ti-plus" aria-hidden="true"></i>追加</button></div>
 			</section>
 			<section><h3>{{ appNames[createApp] }} · 作成と移動</h3><div :class="$style.quickGrid"><button v-for="item in contextualCreates(createApp)" :key="item.kind" type="button" @click="create(createApp, item.kind)"><i :class="item.icon" aria-hidden="true"></i>{{ item.label }}</button></div></section>
 			<section :class="$style.otherApps">
@@ -72,11 +75,11 @@
 	</HatagoesCreateHost>
 	<div ref="mobileDock" :class="$style.mobileDock" :data-create-expanded="createOpen && narrowShell" :data-create-layer="mobileCreateExpanded">
 	<nav ref="mobileCapsule" :class="$style.mobileNav" aria-label="モバイルアプリ">
-		<button type="button" aria-label="HataGoesホーム" :aria-current="location.view === 'home' ? 'page' : undefined" @click="tapLogo('hatagoes'); common('home')"><HataAppLogo :monochrome="brandOnDark" app="hatagoes" :size="location.view === 'home' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatagoes"/><span v-if="location.view === 'home'">ホーム</span></button>
-		<button type="button" aria-label="Hatask" :aria-current="location.view === 'app' && location.app === 'hatask' ? 'page' : undefined" @click="tapLogo('hatask'); openApp('hatask')"><HataAppLogo :monochrome="brandOnDark" app="hatask" :size="location.view === 'app' && location.app === 'hatask' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatask"/><HataAppWordmark v-if="location.view === 'home' || location.view === 'app' && location.app === 'hatask'" app="hatask" :inheritColor="true"/></button>
+		<button type="button" aria-label="HataGoesホーム" :aria-current="location.view === 'home' ? 'page' : undefined" @click="tapLogo('hatagoes'); common('home')"><HataAppLogo bare app="hatagoes" :size="location.view === 'home' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatagoes"/><span v-if="location.view === 'home'">ホーム</span></button>
+		<button type="button" aria-label="Hatask" :aria-current="location.view === 'app' && location.app === 'hatask' ? 'page' : undefined" @click="tapLogo('hatask'); openApp('hatask')"><HataAppLogo bare app="hatask" :size="location.view === 'app' && location.app === 'hatask' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatask"/><HataAppWordmark v-if="location.view === 'home' || location.view === 'app' && location.app === 'hatask'" app="hatask" :inheritColor="true"/></button>
 		<button ref="mobileCreateButton" type="button" :class="$style.mobileCreate" :data-open="createOpen" :aria-label="createOpen ? '作成を閉じる' : '作成'" :aria-expanded="createOpen" title="作成" @pointerdown="startLongPress" @pointerup="endLongPress" @pointerleave="cancelLongPress" @pointercancel="cancelLongPress" @click="showCreate"><i class="ti ti-plus" aria-hidden="true"></i></button>
-		<button type="button" aria-label="Hatady" :aria-current="location.view === 'app' && location.app === 'hatady' ? 'page' : undefined" @click="tapLogo('hatady'); openApp('hatady')"><HataAppLogo :monochrome="brandOnDark" app="hatady" :size="location.view === 'app' && location.app === 'hatady' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatady"/><HataAppWordmark v-if="location.view === 'home' || location.view === 'app' && location.app === 'hatady'" app="hatady" :inheritColor="true"/></button>
-		<button v-if="canFeed" type="button" aria-label="HataFeed" :aria-current="location.view === 'app' && location.app === 'hatafeed' ? 'page' : undefined" @click="tapLogo('hatafeed'); openApp('hatafeed')"><HataAppLogo :monochrome="brandOnDark" app="hatafeed" :size="location.view === 'app' && location.app === 'hatafeed' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatafeed"/><HataAppWordmark v-if="location.view === 'home' || location.view === 'app' && location.app === 'hatafeed'" app="hatafeed" :inheritColor="true"/></button>
+		<button type="button" aria-label="Hatady" :aria-current="location.view === 'app' && location.app === 'hatady' ? 'page' : undefined" @click="tapLogo('hatady'); openApp('hatady')"><HataAppLogo bare app="hatady" :size="location.view === 'app' && location.app === 'hatady' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatady"/><HataAppWordmark v-if="location.view === 'home' || location.view === 'app' && location.app === 'hatady'" app="hatady" :inheritColor="true"/></button>
+		<button v-if="canFeed" type="button" aria-label="HataFeed" :aria-current="location.view === 'app' && location.app === 'hatafeed' ? 'page' : undefined" @click="tapLogo('hatafeed'); openApp('hatafeed')"><HataAppLogo bare app="hatafeed" :size="location.view === 'app' && location.app === 'hatafeed' ? 28 : 32" :active="shellActive" :tapSequence="logoTapSequence.hatafeed"/><HataAppWordmark v-if="location.view === 'home' || location.view === 'app' && location.app === 'hatafeed'" app="hatafeed" :inheritColor="true"/></button>
 		<span :class="$style.activePill" :style="mobilePillStyle" aria-hidden="true"></span>
 	</nav>
 	</div>
@@ -114,7 +117,7 @@
 		</HatagoesDialog>
 		<HatagoesDialog :open="appPinsOpen" responsiveSheet @close="appPinsEditor?.requestClose()">
 			<div :class="[$style.overlayTheme, themeClasses]" :data-hatask-theme="hataskPaletteTheme" :data-hatask-mode="hataskPaletteMode" :data-hatady-theme="activeTheme" :style="shellStyle">
-				<HatagoesAppPins ref="appPinsEditor" :pins="visibleAppPins" :screens="screens" :ready="prefs.ready.value" :saving="prefs.saving.value" :error="prefs.error.value" @save="saveSetting('appPins', $event)" @close="appPinsOpen = false"/>
+				<HatagoesAppPins ref="appPinsEditor" :monochrome="brandOnDark" :pins="visibleAppPins" :screens="screens" :ready="prefs.ready.value" :saving="prefs.saving.value" :error="prefs.error.value" @save="saveSetting('appPins', $event)" @close="appPinsOpen = false"/>
 			</div>
 		</HatagoesDialog>
 	</Teleport>
@@ -141,7 +144,7 @@ import { hataFeedDraftPromptOpen, registerHataFeedNoticeHost } from '@/utility/h
 import MkHataskeyNotificationToasts from '@/components/MkHataskeyNotificationToasts.vue';
 import { createHataskeyNotificationToasts, getToastDuration, hataskeyNotificationToastsKey, notificationOutlinePaths, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { HATAGOES_CATALOG, getHatagoesScreen, isHatagoesVisibleScreen } from '@/utility/hatagoes-catalog.js';
-import { getHatagoesOrigin, hatagoesAppForPath, hatagoesPaneKey, hatagoesScreenPath, hatagoesUrl, isHatagoesCurrentScreen, isHatagoesPath, readHatagoesLocation } from '@/utility/hatagoes-navigation.js';
+import { getHatagoesOrigin, hatagoesAppForPath, hatagoesPaneKey, hatagoesScreenPath, hatagoesUrl, isHatagoesCurrentScreen, isHatagoesIntroPath, isHatagoesPath, readHatagoesLocation } from '@/utility/hatagoes-navigation.js';
 import { hatagoesSearchResultUrl } from '@/utility/hatagoes-search.js';
 import { claimHatagoesIntroduction, markHatagoesIntroductionSeen, readHatagoesDeviceCache, releaseHatagoesIntroduction, writeHatagoesDeviceCache } from '@/utility/hatasaba-device-prefs.js';
 import { useHatagoesPreferences } from '@/utility/hatagoes-preferences.js';
@@ -150,6 +153,8 @@ import { HATA_GOES_SESSION } from '@/utility/hatagoes-context.js';
 import { createHataGoesPopupSession } from '@/utility/hatagoes-popup.js';
 import HatagoesPane from '@/components/hatagoes/HatagoesPane.vue';
 import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataFeatureIcon from '@/components/HataFeatureIcon.vue';
+import { hataFeatureForScreen } from '@/utility/hata-feature-icon.js';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import type { HataApp } from '@/utility/hata-app-brand.js';
 import HatagoesHome from '@/components/hatagoes/HatagoesHome.vue';
@@ -212,6 +217,9 @@ const shellHeader = ref<HTMLElement>();
 const searchButton = ref<HTMLButtonElement>();
 const appsCapsule = ref<HTMLElement>();
 const screenNav = shallowRef<HTMLElement | null>(null);
+const hatadyHeaderDate = shallowRef<HTMLElement | null>(null);
+const hatadyHeaderActions = shallowRef<HTMLElement | null>(null);
+const hatadyMobileOverview = shallowRef<HTMLElement | null>(null);
 const mobileNoticeSurface = shallowRef<HTMLElement | null>(null);
 const fallbackNoticeSurface = shallowRef<HTMLElement | null>(null);
 const desktopNoticeHost = shallowRef<HTMLElement | null>(null);
@@ -338,12 +346,14 @@ const appCapsuleScreens = computed(() => {
 	return current && !hataskPinnedScreens.value.some(screen => screen.id === current.id) ? [...hataskPinnedScreens.value, current] : hataskPinnedScreens.value;
 });
 const directoryScreens = computed(() => directoryApp.value ? screens.value.filter(screen => screen.app === directoryApp.value && (!staffScreens.value.includes(screen) || screen.id === 'hatask.review')) : screens.value);
+const isHataIntro = computed(() => isHatagoesIntroPath(router.currentRef.value._parsedRoute.fullPath));
 const isDetail = computed(() => {
 	if (location.value.view !== 'app') return false;
 	const url = new URL(location.value.path, 'https://hatagoes.invalid');
 	return url.searchParams.has('hgId') || /^\/hatafeed\/(?!beta(?:\/|$))[^/]/u.test(url.pathname);
 });
 const hasScreenCapsule = computed(() => !isDetail.value && location.value.view === 'app' && appCapsuleScreens.value.length > 0);
+const hatadyHeaderVisible = computed(() => location.value.view === 'app' && location.value.app === 'hatady' && hasScreenCapsule.value);
 watch([() => shellActive.value && ownsNoticeSurface.value && !dialogNoticeTarget.value, () => noticeContext.items.value[0]?.id], ([integrated, id]) => {
 	window.clearTimeout(noticeGlowTimer);
 	if (!integrated) { noticeGlowVisible.value = false; noticeGlowLeaving.value = false; return; }
@@ -935,7 +945,7 @@ onActivated(() => { shellActive.value = true; registerNoticeSurface(); applyLoca
 onDeactivated(deactivateShell);
 onBeforeUnmount(() => { window.removeEventListener('focus', onFocus); window.removeEventListener('resize', syncShellSize); shellSizeObserver?.disconnect(); window.clearTimeout(noticeGlowTimer); releaseFeedNotice(); releaseNoticeReceiver(); deactivateShell(); });
 applyLocation(router.getCurrentFullPath());
-definePage(() => ({ title: brandLabel.value, icon: 'ti ti-sparkles', hataApp: brandApp.value, hideHeader: true, needWideArea: true }));
+definePage(() => ({ title: brandLabel.value, icon: 'ti ti-sparkles', hataApp: brandApp.value, hideHeader: true }));
 // Embedded pages keep their own metadata, but only this shell owns the outer title.
 provideMetadataReceiver(() => undefined);
 </script>
@@ -1045,6 +1055,25 @@ provideMetadataReceiver(() => undefined);
 .actions .createButton { background: var(--accent); color: var(--on-accent, var(--MI_THEME-fgOnAccent)); }
 .shell[data-hatask-theme='kashin'] :is(.createButton, .mobileCreate) { color: #fff; }
 .screenNav { position: relative; z-index: 5; isolation: isolate; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 2px 24px 14px; border-radius: min(var(--hg-case), 26px); }
+.screenNav[data-hatady='true'] {
+	display: grid;
+	grid-auto-flow: column;
+	grid-template-columns: minmax(0, 224px) 54px minmax(44px, 320px) minmax(96px, 232px);
+	grid-auto-columns: 54px;
+}
+.screenNav[data-hatady='true'] > :not(.fallbackNoticeSurface) { grid-row: 1; }
+.hatadyDate { flex: 0 1 auto; min-width: 0; }
+.hatadyActions { display: flex; flex: 0 0 auto; min-width: 0; align-items: center; justify-content: flex-end; gap: 8px; }
+.hatadyActions > button { flex-shrink: 0; }
+.hatadyOverview { display: flex; align-items: center; }
+.hatadyOverview:empty { display: none; }
+.header .actions > .hatadyOverview > button { box-sizing: border-box; flex: none; width: 44px; min-width: 44px; height: 44px; padding: 0; }
+.hatadyDate:empty, .hatadyActions:empty { display: none; }
+.screenNav[data-hatady='true'] > .hatadyDate:empty { display: block; }
+.screenNav[data-hatady='true'] > .hatadyActions:empty { display: flex; }
+.screenNav[data-hatady='true'] .screenCapsuleSlot { width: 100%; min-width: 44px; }
+.screenNav[data-hatady='true'] .screenCapsule { justify-content: safe center; }
+.screenNav[data-hatady='true'] .screenCapsule > button { min-width: 44px; }
 .screenNav[data-home='true'] { padding: 0; min-height: 0; }
 .screenNav[data-home='true'] > :not(.fallbackNoticeSurface) { display: none; }
 .screenCapsuleSlot { position: relative; height: 54px; min-width: 0; width: max-content; max-width: 100%; }
@@ -1052,6 +1081,10 @@ provideMetadataReceiver(() => undefined);
 .fallbackNoticeSurface { display: none; }
 .screenCapsule { position: relative; min-width: 0; max-width: 100%; box-sizing: border-box; overflow-x: auto; display: flex; gap: 3px; padding: 4px; border: 0; border-radius: min(var(--hg-case), 26px); background: transparent; box-shadow: none; }
 .screenCapsule > button { flex-shrink: 0; white-space: nowrap; min-width: 40px; font-weight: 700; font-size: 13px; }
+/* Keep the capsule geometry fixed while giving transparent marks more room. */
+.screenCapsule > button > [data-hata-feature], .apps > button > [data-hata-app-logo] { transform: scale(1.2); }
+.screenCapsule > button:not([aria-current=page]) > [data-hata-feature], .apps > button:not([aria-current=page]):not([aria-pressed='true']) > [data-hata-app-logo] { transform: scale(1.4); }
+.screenCapsule > button:not([aria-current=page]) > i { transform: scale(1.2); }
 .screenCapsule .navLeave { left: 100%; top: 50%; white-space: nowrap; transform: translateY(-50%); }
 .screenCapsule .navLeave.navHidden { transform: translate(8px, -50%); }
 .screenCapsule .temporaryScreen { border: 1px dashed var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
@@ -1133,6 +1166,12 @@ provideMetadataReceiver(() => undefined);
 	.brand { gap: 4px !important; font-size: 22px !important; }
 	.appsSlot { display: none; }
 	.screenNav { padding: 2px 12px 8px; }
+	/* Give all four Hatady tabs their own row; tools no longer squeeze the capsule. */
+	.screenNav[data-hatady='true'] { display: flex; padding-inline: 6px; }
+	.screenNav[data-hatady='true'] > .hatadyActions { flex: 1; gap: 4px; }
+	.screenNav[data-hatady='true'] > .screenCapsuleSlot { order: 1; flex: 0 0 100%; }
+	.screenNav[data-hatady='true'] .mobileNoticeSurface { max-width: 320px; margin-inline: auto; }
+	.screenNav[data-hatady='true'] .screenCapsule { overflow-x: visible; }
 	.screenCapsuleSlot { flex: 0 1 auto; }
 	.mobileNoticeSurface { width: 100%; }
 	.screenCapsule { width: 100%; }

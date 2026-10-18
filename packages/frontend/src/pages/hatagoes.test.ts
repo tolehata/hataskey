@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createApp, h, inject, KeepAlive, nextTick, ref } from 'vue';
 import Hatagoes from './hatagoes.vue';
+import type { PropType } from 'vue';
 import { HATA_GOES_SESSION } from '@/utility/hatagoes-context.js';
 import { getNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { hatadyDialogSurfaces, hatadyNotice } from '@/utility/hatady-ui.js';
@@ -60,7 +61,7 @@ vi.mock('@/utility/hatagoes-preferences.js', async () => {
 vi.mock('@/components/hatagoes/HatagoesPane.vue', async () => {
 	const { defineComponent, h, onMounted, onUnmounted } = await import('vue');
 	return { default: defineComponent({
-		props: { app: { type: String, required: true }, path: { type: String, required: true }, active: Boolean },
+		props: { app: { type: String, required: true }, path: { type: String, required: true }, active: Boolean, hatadyHeaderDate: Object, hatadyHeaderActions: Object, hatadyHeaderOverview: { type: Object as PropType<HTMLElement | null>, default: null } },
 		emits: ['register', 'unregister', 'appearance'],
 		setup(props, { emit }) {
 			const session = inject(HATA_GOES_SESSION, null);
@@ -98,7 +99,7 @@ vi.mock('@/components/hatagoes/HatagoesPane.vue', async () => {
 				if (props.app === 'hatask') fixture.closePopup = session?.track(() => fixture.popupClosed()) ?? null;
 			});
 			onUnmounted(() => { fixture.closePopup?.(); fixture.closePopup = null; emit('unregister', props.app, bridge); });
-			return () => h('div', { 'data-pane': props.app, 'data-path': props.path, 'data-active': props.active });
+			return () => h('div', { 'data-pane': props.app, 'data-path': props.path, 'data-active': props.active, 'data-header-ready': !!props.hatadyHeaderDate?.isConnected && !!props.hatadyHeaderActions?.isConnected, 'data-overview-before-bell': props.hatadyHeaderOverview?.nextElementSibling?.getAttribute('aria-label') === '3アプリの通知' });
 		},
 	}) };
 });
@@ -202,7 +203,7 @@ describe('HataGoes search popup', () => {
 		const path = `/hatady?tab=records&hgKind=${kind}&hgId=record`;
 		const target = await mount(hatagoesUrl(path));
 		expect(fixture.results).toHaveLength(1);
-		const capsule = () => target.querySelector<HTMLElement>('[aria-label="画面一覧"] > div')!;
+		const capsule = () => target.querySelector<HTMLElement>('[aria-label="画面一覧"] > [class*=screenCapsuleSlot]')!;
 		expect(capsule().style.display).toBe('none');
 		fixture.results[0].closed(); await settle();
 		expect(router().getCurrentFullPath()).toBe(hatagoesUrl('/hatady?tab=records'));
@@ -291,6 +292,23 @@ test.each(['/hatagoes?view=settings', '/hatagoes?view=notifications'])('keeps ba
 	expect((nav.querySelector('div') as HTMLElement).style.display).toBe('none');
 	expect(nav.querySelector('button[aria-label="戻る"]')).not.toBeNull();
 	expect(nav.querySelector('button[aria-label="全てのアプリ"]')).not.toBeNull();
+});
+
+test.each(['/hatask/intro', '/hata-docs', '/hatask/intro?from=guide#home', '/hata-docs?from=guide#home'])('hides the outer back button only while HataIntro is active at %s', async path => {
+	const target = await mount(hatagoesUrl('/hatask'));
+	const backButton = () => target.querySelector<HTMLButtonElement>('nav[aria-label="画面一覧"] button[aria-label="戻る"]');
+	expect(backButton()).not.toBeNull();
+	router().pushByPath(hatagoesUrl(path));
+	await settle();
+	expect(backButton()).toBeNull();
+	expect(target.querySelector('[data-active="true"][data-path]')?.getAttribute('data-path')).toBe(path);
+	router().pushByPath('/hatagoes?view=settings');
+	await settle();
+	expect(backButton()).not.toBeNull();
+	backButton()?.click();
+	await settle();
+	expect(router().getCurrentFullPath()).toBe(hatagoesUrl(path));
+	expect(backButton()).toBeNull();
 });
 
 describe('HataGoes common create', () => {
@@ -712,7 +730,8 @@ describe('HataGoes common create', () => {
 		expect(screens.querySelector('button[aria-label="コレクション"]')?.getAttribute('aria-current')).toBe('page');
 		expect(screens.querySelector('button[aria-label="記録"]')).not.toBeNull();
 		expect(screens.querySelector('button[aria-label="ToDo"]')).toBeNull();
-		expect(screens.firstElementChild?.getAttribute('aria-label')).toBe('戻る');
+		expect(screens.firstElementChild).toBe(screens.querySelector('[class*=hatadyDate]'));
+		expect(screens.firstElementChild?.nextElementSibling?.getAttribute('aria-label')).toBe('戻る');
 		expect(screens.querySelector('button[aria-label="全てのアプリ"]')?.parentElement).toBe(screens);
 		expect(target.querySelector('[class*="breadcrumb"]')).toBeNull();
 		expect(target.querySelector('nav[aria-label="共通ピン"]')).toBeNull();
@@ -723,6 +742,59 @@ describe('HataGoes common create', () => {
 		await settle();
 		expect(router().getCurrentFullPath()).toBe(hatagoesUrl('/hatady'));
 		expect(target.querySelector('header button[class*=brand]')?.textContent).toBe('Hatady');
+	});
+
+	test('places the Hatady action target beside its capsule and hides it for other apps', async () => {
+		const target = await mount(hatagoesUrl('/hatady?tab=records'));
+		Object.defineProperty(target.querySelector('[data-hatagoes-root]'), 'clientWidth', { configurable: true, value: 1000 });
+		window.dispatchEvent(new Event('resize'));
+		await settle();
+		const nav = target.querySelector<HTMLElement>('nav[aria-label="画面一覧"]');
+		expect(nav?.dataset.hatady).toBe('true');
+		const actions = nav?.querySelector<HTMLElement>('[class*=hatadyActions]');
+		const date = nav?.querySelector<HTMLElement>('[class*=hatadyDate]');
+		expect(nav?.querySelector('[class*=hatadyHeading]')).toBeNull();
+		expect(nav?.querySelector('button[aria-label="記録"]')).not.toBeNull();
+		expect(nav?.querySelector('button[aria-label="コレクション"]')).not.toBeNull();
+		expect(actions?.parentElement).toBe(nav);
+		expect(date?.parentElement).toBe(nav);
+		expect(target.querySelector('[data-pane="hatady"]')?.getAttribute('data-header-ready')).toBe('true');
+		target.querySelector<HTMLButtonElement>('button[aria-label="Hatask"]')?.click();
+		await settle();
+		expect(nav?.dataset.hatady).toBe('false');
+		expect(actions?.style.display).toBe('none');
+		expect(date?.style.display).toBe('none');
+	});
+
+	test('mobile Hatady releases the date column and hosts overview immediately before notifications', async () => {
+		const target = await mount(hatagoesUrl('/hatady?tab=home'));
+		const shell = target.querySelector<HTMLElement>('[data-hatagoes-root]');
+		if (!shell) throw new Error('Missing HataGoes shell');
+		const nav = shell.querySelector<HTMLElement>('nav[aria-label="画面一覧"]');
+		if (!nav) throw new Error('Missing screen navigation');
+		const date = nav.querySelector<HTMLElement>('[class*=hatadyDate]');
+		const overview = shell.querySelector<HTMLElement>('[class*=hatadyOverview]');
+		if (!date || !overview) throw new Error('Missing Hatady header targets');
+		for (const width of [320, 360, 390, 600, 850]) {
+			Object.defineProperty(shell, 'clientWidth', { configurable: true, value: width });
+			window.dispatchEvent(new Event('resize'));
+			await settle();
+			expect(date.style.display).toBe('none');
+			expect(overview.style.display).not.toBe('none');
+			expect(target.querySelector('[data-pane="hatady"]')?.getAttribute('data-header-ready')).toBe('false');
+			expect(target.querySelector('[data-pane="hatady"]')?.getAttribute('data-overview-before-bell')).toBe('true');
+			expect(nav.querySelector('[class*=screenCapsule]')?.querySelectorAll('button')).toHaveLength(4);
+		}
+		Object.defineProperty(shell, 'clientWidth', { configurable: true, value: 1000 });
+		window.dispatchEvent(new Event('resize'));
+		await settle();
+		expect(date.style.display).not.toBe('none');
+		expect(overview.style.display).toBe('none');
+		expect(target.querySelector('[data-pane="hatady"]')?.getAttribute('data-header-ready')).toBe('true');
+		expect(target.querySelector('[data-pane="hatady"]')?.getAttribute('data-overview-before-bell')).toBe('false');
+		target.querySelector<HTMLButtonElement>('button[aria-label="Hatask"]')?.click();
+		await settle();
+		expect(overview.style.display).toBe('none');
 	});
 
 	test('uses the two-row mobile Hatask navigation only for its capsule view', async () => {

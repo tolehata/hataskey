@@ -8,9 +8,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<XTitlebar v-if="prefer.r.showTitlebar.value" style="flex-shrink: 0;"/>
 
 	<div :class="$style.nonTitlebarArea">
-		<XSidebar v-if="!isMobile && !isHataGoesPage" :class="$style.sidebar" :showWidgetButton="!isDesktop" @widgetButtonClick="widgetsShowing = true"/>
+		<XSidebar v-if="!isMobile" :collapsed="isHataGoesPage ? sidebarCollapsed : undefined" :class="$style.sidebar" :showWidgetButton="!isDesktop" @widgetButtonClick="widgetsShowing = true" @toggleCollapse="sidebarCollapsed = !sidebarCollapsed"/>
 
-		<div :class="[$style.contents, !isMobile && !isHataGoesPage && prefer.r.showTitlebar.value ? $style.withSidebarAndTitlebar : null]" @contextmenu.stop="onContextmenu">
+		<div :class="[$style.contents, !isMobile && prefer.r.showTitlebar.value ? $style.withSidebarAndTitlebar : null]" @contextmenu.stop="onContextmenu">
 			<div>
 				<XReloadSuggestion v-if="shouldSuggestReload"/>
 				<XPreferenceRestore v-if="shouldSuggestRestoreBackup"/>
@@ -22,9 +22,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<XMobileFooterMenu v-if="isMobile && mainRouter.currentRoute.value.path !== '/hatagoes'" ref="navFooter" v-model:drawerMenuShowing="drawerMenuShowing" v-model:widgetsShowing="widgetsShowing"/>
 		</div>
 
-		<div v-if="isDesktop && !isHataGoesPage && !pageMetadata?.needWideArea && prefer.s.enableWidgetsArea" :class="$style.widgets" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'">
+		<div v-if="isDesktop && !pageMetadata?.needWideArea && prefer.s.enableWidgetsArea" :class="$style.widgets" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'">
 			<div :class="$style.widgetsInner">
-				<XWidgets collapsible :collapsed="rightWidgetsCollapsed" @toggleCollapse="setRightWidgetsCollapsed(!rightWidgetsCollapsed)"/>
+				<XWidgets collapsible :collapsed="rightWidgetsCollapsed" @toggleCollapse="rightWidgetsCollapsed = !rightWidgetsCollapsed"/>
 			</div>
 		</div>
 
@@ -56,7 +56,8 @@ import { prefer } from '@/preferences.js';
 import { shouldSuggestRestoreBackup } from '@/preferences/utility.js';
 import { DI } from '@/di.js';
 import { shouldSuggestReload } from '@/utility/reload-suggest.js';
-import { rightWidgetsCollapsed, setRightWidgetsCollapsed } from '@/utility/hatasaba-device-prefs.js';
+import { rightWidgetsCollapsed as savedRightWidgetsCollapsed, setRightWidgetsCollapsed } from '@/utility/hatasaba-device-prefs.js';
+import { useHatagoesBarCollapse } from '@/utility/hatagoes-bar-collapse.js';
 
 const XWidgets = defineAsyncComponent(() => import('./_common_/widgets.vue'));
 const XStatusBars = defineAsyncComponent(() => import('@/ui/_common_/statusbars.vue'));
@@ -64,6 +65,8 @@ const XAnnouncements = defineAsyncComponent(() => import('@/ui/_common_/announce
 
 const isRoot = computed(() => mainRouter.currentRoute.value.name === 'index');
 const isHataGoesPage = computed(() => mainRouter.currentRoute.value.path === '/hatagoes');
+const sidebarCollapsed = useHatagoesBarCollapse(isHataGoesPage, () => false);
+const rightWidgetsCollapsed = useHatagoesBarCollapse(isHataGoesPage, () => savedRightWidgetsCollapsed.value, setRightWidgetsCollapsed);
 
 const DESKTOP_THRESHOLD = 1100;
 const MOBILE_THRESHOLD = 500;
