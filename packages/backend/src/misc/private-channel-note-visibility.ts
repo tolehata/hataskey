@@ -1,19 +1,24 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import type { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 
-/** Exclude the whole note when any attached reply/renote belongs to an inaccessible channel. */
-export function applyPrivateChannelNoteVisibility<T extends ObjectLiteral>(query: SelectQueryBuilder<T>, meId: string | null, noteAlias = 'note'): void {
+/**
+ * Exclude the whole note when any attached reply/renote belongs to a channel in `deniedChannelIds`.
+ * The caller resolves which private channels the viewer cannot read (one query per request), so
+ * each candidate row only walks its own reply/renote graph and compares channel IDs.
+ * An author always keeps their own notes, including after leaving the channel.
+ */
+export function applyPrivateChannelNoteVisibility<T extends ObjectLiteral>(
+	query: SelectQueryBuilder<T>,
+	meId: string | null,
+	deniedChannelIds: readonly string[],
+	noteAlias = 'note',
+): void {
 	if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(noteAlias)) throw new Error('Invalid note query alias');
+	// Nothing the viewer could see is hidden: skip the graph walk entirely.
+	if (deniedChannelIds.length === 0) return;
 	const root = `"${noteAlias}"`;
-	const denied = meId == null ? '' : `
-		AND channel_note."userId" IS DISTINCT FROM :privateChannelViewerId
-		AND private_channel."userId" IS DISTINCT FROM :privateChannelViewerId
-		AND NOT (:privateChannelViewerId = ANY(private_channel."moderatorUserIds"))
-		AND NOT EXISTS (
-			SELECT 1 FROM "channel_member" channel_membership
-			WHERE channel_membership."channelId" = private_channel."id"
-			AND channel_membership."userId" = :privateChannelViewerId
-		)`;
+	const ownNote = meId == null ? '' : `
+				AND channel_note."userId" IS DISTINCT FROM :privateChannelViewerId`;
 	query.andWhere(`(
 		(${root}."channelId" IS NULL AND ${root}."replyId" IS NULL AND ${root}."renoteId" IS NULL)
 		OR NOT EXISTS (
@@ -25,8 +30,7 @@ export function applyPrivateChannelNoteVisibility<T extends ObjectLiteral>(query
 				INNER JOIN channel_note_tree ancestor ON child."id" IN (ancestor."replyId", ancestor."renoteId")
 			)
 			SELECT 1 FROM channel_note_tree channel_note
-			INNER JOIN "channel" private_channel ON private_channel."id" = channel_note."channelId"
-			WHERE private_channel."isPrivate" = TRUE${denied}
+			WHERE channel_note."channelId" = ANY(CAST(:privateChannelDeniedIds AS varchar[]))${ownNote}
 		)
-	)`, meId == null ? {} : { privateChannelViewerId: meId });
+	)`, { privateChannelDeniedIds: [...deniedChannelIds], ...(meId == null ? {} : { privateChannelViewerId: meId }) });
 }

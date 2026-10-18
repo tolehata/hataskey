@@ -77,8 +77,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				const p = await this.notesRepository.findOneBy({ id });
 				if (p == null) return;
 
-				if (!(me == null && this.serverSettings.ugcVisibilityForVisitor === 'local' && p.userHost != null)
-					&& await this.noteEntityService.isChannelVisibleForMe(p, me?.id ?? null)) {
+				// Every ancestor lies inside the starting note's reply graph, which was found
+				// visible above; a private ancestor would have hidden the starting note too.
+				if (!(me == null && this.serverSettings.ugcVisibilityForVisitor === 'local' && p.userHost != null)) {
 					i++;
 					if (i > ps.offset!) conversation.push(p);
 				}

@@ -6,7 +6,7 @@ vi.mock('@/core/entities/DriveFileEntityService.js', () => ({ DriveFileEntitySer
 vi.mock('@/core/MfmService.js', () => ({ MfmService: class {} }));
 vi.mock('@/core/RoleService.js', () => ({ RoleService: class {} }));
 vi.mock('@/core/ReactionsBufferingService.js', () => ({ ReactionsBufferingService: class {} }));
-import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
+import { CHANNEL_VISIBILITY_NODE_TTL_MS, NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
 import { NoteStreamingHidingService } from '@/server/api/stream/NoteStreamingHidingService.js';
 import { ChannelChannelService } from '@/server/api/stream/channels/channel.js';
@@ -190,7 +190,14 @@ describe('visitor content visibility', () => {
 		for (const viewer of [null, 'outsider', 'author']) expect(await streaming.canReceiveUpdates(snapshot, viewer)).toBe(false);
 		for (const viewer of ['member', 'admin']) expect(await streaming.canReceiveUpdates(snapshot, viewer)).toBe(true);
 		service.notesRepository.find.mockResolvedValue([]);
-		expect(await streaming.canReceiveUpdates(snapshot, 'outsider')).toBe(true);
+		// Ancestors are cached because they never change; a deleted one is remembered for at most the
+		// cache lifetime, which can only hide the parent longer, never reveal the private child.
+		expect(await streaming.canReceiveUpdates(snapshot, 'outsider')).toBe(false);
+		const now = Date.now();
+		const clock = vi.spyOn(Date, 'now').mockReturnValue(now + CHANNEL_VISIBILITY_NODE_TTL_MS + 1);
+		try {
+			expect(await streaming.canReceiveUpdates(snapshot, 'outsider')).toBe(true);
+		} finally { clock.mockRestore(); }
 	});
 	test.each(['userHost', 'channelId', 'replyId', 'renoteId'] as const)('rejects an older update snapshot missing %s', async (key) => {
 		const { streaming } = fixture();

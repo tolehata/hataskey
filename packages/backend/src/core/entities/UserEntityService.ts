@@ -425,6 +425,7 @@ export class UserEntityService implements OnModuleInit {
 			userRelations?: Map<MiUser['id'], UserRelation>,
 			userMemos?: Map<MiUser['id'], string | null>,
 			pinNotes?: Map<MiUser['id'], MiUserNotePining[]>,
+			hataskFlowerCompletions?: ReadonlyMap<MiUser['id'], boolean>,
 		},
 	): Promise<Packed<S>> {
 		const opts = Object.assign({
@@ -506,7 +507,7 @@ export class UserEntityService implements OnModuleInit {
 			host: user.host,
 			avatarUrl: (user.avatarId == null ? null : user.avatarUrl) ?? this.getIdenticonUrl(user),
 			avatarBlurhash: (user.avatarId == null ? null : user.avatarBlurhash),
-			avatarDecorations: this.avatarDecorationService.packUserDecorations(user),
+			avatarDecorations: this.avatarDecorationService.packUserDecorations(user, opts.hataskFlowerCompletions),
 			isLocked: user.isLocked,
 			isBot: user.isBot,
 			isCat: user.isCat,
@@ -741,6 +742,9 @@ export class UserEntityService implements OnModuleInit {
 			}
 		}
 
+		// 旗鯖fork: 報酬デコの着用者の図鑑達成を、ページ単位でまとめて判定する。
+		const hataskFlowerCompletions = await this.avatarDecorationService.getHataskFlowerCompletions(_users);
+
 		return Promise.all(
 			_users.map(u => this.pack(
 				u,
@@ -751,6 +755,7 @@ export class UserEntityService implements OnModuleInit {
 					userRelations: userRelations,
 					userMemos: userMemos,
 					pinNotes: pinNotes,
+					hataskFlowerCompletions,
 				},
 			)),
 		);

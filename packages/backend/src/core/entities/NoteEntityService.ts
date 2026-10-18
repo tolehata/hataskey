@@ -22,7 +22,8 @@ import { DebounceLoader } from '@/misc/loader.js';
 import { IdService } from '@/core/IdService.js';
 import { ReactionsBufferingService } from '@/core/ReactionsBufferingService.js';
 import { RoleService } from '@/core/RoleService.js';
-import type { OnModuleInit } from '@nestjs/common';
+import { MemoryKVCache } from '@/misc/cache.js';
+import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import type { CustomEmojiService } from '../CustomEmojiService.js';
 import type { ReactionService } from '../ReactionService.js';
 import type { UserEntityService } from './UserEntityService.js';
@@ -40,6 +41,22 @@ export type ChannelVisibilityNote = {
 	renoteId?: MiNote['id'] | null;
 	reply?: ChannelVisibilityNote | null;
 	renote?: ChannelVisibilityNote | null;
+};
+
+/**
+ * How long a fetched ancestor is reused. The data never changes, so the cache can only err by
+ * remembering a deleted ancestor: that hides its parent a little longer, never reveals anything.
+ * Long enough to absorb a burst of reaction events, short enough for a deletion to take effect.
+ */
+export const CHANNEL_VISIBILITY_NODE_TTL_MS = 1000 * 60 * 5;
+
+/** The immutable part of a note that channel visibility depends on. */
+type ChannelVisibilityNode = {
+	id: MiNote['id'];
+	userId: MiUser['id'];
+	channelId: MiChannel['id'] | null;
+	replyId: MiNote['id'] | null;
+	renoteId: MiNote['id'] | null;
 };
 
 type ChannelVisibilityContext = {
@@ -84,7 +101,7 @@ async function nullIfEntityNotFound<T>(promise: Promise<T>): Promise<T | null> {
 }
 
 @Injectable()
-export class NoteEntityService implements OnModuleInit {
+export class NoteEntityService implements OnModuleInit, OnApplicationShutdown {
 	private userEntityService: UserEntityService;
 	private driveFileEntityService: DriveFileEntityService;
 	private customEmojiService: CustomEmojiService;
@@ -93,6 +110,17 @@ export class NoteEntityService implements OnModuleInit {
 	private idService: IdService;
 	private noteLoader = new DebounceLoader(this.findNoteOrFail);
 	private roleService: RoleService;
+	private channelVisibilityNodes?: MemoryKVCache<ChannelVisibilityNode>;
+
+	// Created on first use so partially constructed instances (and each test) get their own cache.
+	private get channelVisibilityNodeCache(): MemoryKVCache<ChannelVisibilityNode> {
+		return this.channelVisibilityNodes ??= new MemoryKVCache<ChannelVisibilityNode>(CHANNEL_VISIBILITY_NODE_TTL_MS, 20_000);
+	}
+
+	@bindThis
+	public onApplicationShutdown(): void {
+		this.channelVisibilityNodes?.dispose();
+	}
 
 	constructor(
 		private moduleRef: ModuleRef,
@@ -198,10 +226,23 @@ export class NoteEntityService implements OnModuleInit {
 			}
 			if (missingIds.size === 0) break;
 			for (const id of missingIds) fetchedIds.add(id);
-			pending.push(...await this.notesRepository.find({
-				where: { id: In([...missingIds]) },
-				select: { id: true, userId: true, channelId: true, replyId: true, renoteId: true },
-			}));
+			// 投稿者・チャンネル・返信/引用先は作成後に変わらない。DB で得た節は共有して再利用する。
+			const uncachedIds: string[] = [];
+			for (const id of missingIds) {
+				const cached = this.channelVisibilityNodeCache.get(id);
+				if (cached) pending.push({ ...cached });
+				else uncachedIds.push(id);
+			}
+			if (uncachedIds.length > 0) {
+				const fetched = await this.notesRepository.find({
+					where: { id: In(uncachedIds) },
+					select: { id: true, userId: true, channelId: true, replyId: true, renoteId: true },
+				});
+				for (const node of fetched) {
+					this.channelVisibilityNodeCache.set(node.id, { id: node.id, userId: node.userId, channelId: node.channelId, replyId: node.replyId, renoteId: node.renoteId });
+				}
+				pending.push(...fetched);
+			}
 			// DB に無い子は削除済み。削除イベントの root は受信 snapshot を残す。
 		}
 

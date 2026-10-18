@@ -33,6 +33,24 @@ export function hasCompletedHataskFlowerCollection(db: Pick<EntityManager, 'quer
 	return completion(db, userId, now, false);
 }
 
+/** Batched read-only form of hasCompletedHataskFlowerCollection: two queries for any number of users. */
+export async function hasCompletedHataskFlowerCollectionMany(db: Pick<EntityManager, 'query'>, userIds: readonly string[], now = new Date()): Promise<Map<string, boolean>> {
+	const result = new Map<string, boolean>(userIds.map(id => [id, false]));
+	if (userIds.length === 0) return result;
+	const completedWallets: { userId: string }[] = await db.query('SELECT "userId" FROM hatask_drop_wallet WHERE "userId" = ANY($1::varchar[]) AND "flowerCollectionCompletedAt" IS NOT NULL', [[...userIds]]);
+	for (const { userId } of completedWallets) result.set(userId, true);
+	const pendingIds = userIds.filter(id => result.get(id) !== true);
+	const season = flowerSeason(now);
+	const speciesIds = HATASK_FLOWER_CATALOG.filter(flower => flower.season === season).map(flower => flower.id);
+	if (pendingIds.length === 0 || speciesIds.length === 0) return result;
+	const counts: { userId: string; species: string | number }[] = await db.query(
+		'SELECT "userId", COUNT(DISTINCT "speciesId") AS species FROM hatask_flower_harvest WHERE "userId" = ANY($1::varchar[]) AND season = $2 AND "speciesId" = ANY($3::varchar[]) GROUP BY "userId"',
+		[pendingIds, season, speciesIds],
+	);
+	for (const { userId, species } of counts) result.set(userId, Number(species) === speciesIds.length);
+	return result;
+}
+
 /** Called by server-confirmed harvesting and authenticated decoration selection only. */
 export function recordHataskFlowerCollectionCompletion(db: Pick<EntityManager, 'query'>, userId: string, now = new Date()): Promise<boolean> {
 	return completion(db, userId, now, true);

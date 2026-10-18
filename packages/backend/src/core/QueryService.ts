@@ -7,7 +7,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Brackets, ObjectLiteral } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { MiUser } from '@/models/User.js';
-import type { UserProfilesRepository, FollowingsRepository, ChannelFollowingsRepository, BlockingsRepository, NoteThreadMutingsRepository, MutingsRepository, RenoteMutingsRepository, MiMeta } from '@/models/_.js';
+import type { UserProfilesRepository, FollowingsRepository, ChannelFollowingsRepository, BlockingsRepository, NoteThreadMutingsRepository, MutingsRepository, RenoteMutingsRepository, ChannelsRepository, MiChannel, MiMeta } from '@/models/_.js';
 import { bindThis } from '@/decorators.js';
 import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
@@ -40,6 +40,9 @@ export class QueryService {
 
 		@Inject(DI.meta)
 		private meta: MiMeta,
+
+		@Inject(DI.channelsRepository)
+		private channelsRepository: ChannelsRepository,
 
 		private idService: IdService,
 		private roleService: RoleService,
@@ -272,7 +275,20 @@ export class QueryService {
 	@bindThis
 	public async generateChannelVisibilityQuery<T extends ObjectLiteral>(q: SelectQueryBuilder<T>, me?: { id: MiUser['id'] } | null): Promise<void> {
 		if (me != null && await this.roleService.isModerator(me)) return;
-		applyPrivateChannelNoteVisibility(q, me?.id ?? null);
+		applyPrivateChannelNoteVisibility(q, me?.id ?? null, await this.getDeniedPrivateChannelIds(me?.id ?? null));
+	}
+
+	/** Private channels the viewer can neither own, moderate nor read as a member. Always read from the DB. */
+	@bindThis
+	public async getDeniedPrivateChannelIds(meId: MiUser['id'] | null): Promise<MiChannel['id'][]> {
+		const rows: { id: MiChannel['id'] }[] = meId == null
+			? await this.channelsRepository.query('SELECT "id" FROM "channel" WHERE "isPrivate" = TRUE')
+			: await this.channelsRepository.query(`SELECT c."id" FROM "channel" c
+				WHERE c."isPrivate" = TRUE
+				AND c."userId" IS DISTINCT FROM $1
+				AND NOT ($1 = ANY(c."moderatorUserIds"))
+				AND NOT EXISTS (SELECT 1 FROM "channel_member" m WHERE m."channelId" = c."id" AND m."userId" = $1)`, [meId]);
+		return rows.map(row => row.id);
 	}
 
 	@bindThis

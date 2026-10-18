@@ -15,37 +15,47 @@ function queryBuilder() {
 }
 
 describe('private channel visibility SQL', () => {
-	test('binds the viewer and checks the full reply/renote graph before pagination', () => {
+	test('binds the viewer and the denied channels, and checks the full reply/renote graph before pagination', () => {
 		const query = queryBuilder().orderBy('note.id', 'DESC').limit(2);
 		const viewer = 'viewer\' OR TRUE --';
-		applyPrivateChannelNoteVisibility(query, viewer);
+		applyPrivateChannelNoteVisibility(query, viewer, ['secret-channel']);
 		const [sql, parameters] = query.getQueryAndParameters();
-		expect(parameters).toEqual([viewer]);
+		expect(parameters).toEqual([['secret-channel'], viewer]);
 		expect(sql).not.toContain(viewer);
 		expect(sql).toContain('WITH RECURSIVE channel_note_tree');
 		expect(sql).toContain('UNION\n');
 		expect(sql).not.toContain('UNION ALL');
 		expect(sql).toContain('child."id" IN (ancestor."replyId", ancestor."renoteId")');
-		expect(sql).toContain('channel_note."userId" IS DISTINCT FROM $1');
-		expect(sql).toContain('private_channel."userId" IS DISTINCT FROM $1');
-		expect(sql).toContain('$1 = ANY(private_channel."moderatorUserIds")');
-		expect(sql).toContain('FROM "channel_member" channel_membership');
+		expect(sql).toContain('channel_note."channelId" = ANY(CAST($1 AS varchar[]))');
+		// The author keeps their own notes, even after leaving the channel.
+		expect(sql).toContain('channel_note."userId" IS DISTINCT FROM $2');
+		// Membership was resolved once per request, never per graph node.
+		expect(sql).not.toContain('channel_member');
+		expect(sql).not.toContain('private_channel');
 		expect(sql.indexOf('WITH RECURSIVE')).toBeLessThan(sql.indexOf('LIMIT 2'));
 	});
 
-	test('anonymous viewers get no ownership or membership exception', () => {
+	test('anonymous viewers get no ownership exception', () => {
 		const query = queryBuilder();
-		applyPrivateChannelNoteVisibility(query, null);
+		applyPrivateChannelNoteVisibility(query, null, ['a', 'b']);
 		const [sql, parameters] = query.getQueryAndParameters();
+		expect(parameters).toEqual([['a', 'b']]);
+		expect(sql).toContain('channel_note."channelId" = ANY(CAST($1 AS varchar[]))');
+		expect(sql).not.toContain('IS DISTINCT FROM');
+	});
+
+	test('a viewer who can read every private channel pays for no graph walk', () => {
+		const query = queryBuilder();
+		applyPrivateChannelNoteVisibility(query, 'member', []);
+		const [sql, parameters] = query.getQueryAndParameters();
+		expect(sql).not.toContain('WITH RECURSIVE');
 		expect(parameters).toEqual([]);
-		expect(sql).toContain('WHERE private_channel."isPrivate" = TRUE');
-		expect(sql).not.toContain('channel_membership');
 	});
 
 	test('uses the joined note alias even when the outer entity is a reaction', () => {
 		const query = new DataSource({ type: 'postgres' }).createQueryBuilder()
 			.select('reaction.id').from('note_reaction', 'reaction').innerJoin('note', 'note', 'note.id = reaction.noteId');
-		applyPrivateChannelNoteVisibility(query, 'member');
+		applyPrivateChannelNoteVisibility(query, 'member', ['secret-channel']);
 		expect(query.getQuery()).toContain('SELECT "note"."id", "note"."userId"');
 		expect(query.getQuery()).not.toContain('"reaction"."channelId"');
 	});
@@ -54,13 +64,35 @@ describe('private channel visibility SQL', () => {
 		const query = queryBuilder();
 		let resolveRole!: (value: boolean) => void;
 		const roleService = { isModerator: vi.fn(() => new Promise<boolean>(resolve => { resolveRole = resolve; })) };
-		const service = Object.assign(Object.create(QueryService.prototype), { roleService }) as QueryService;
+		const channelsRepository = { query: vi.fn(async () => [{ id: 'secret-channel' }]) };
+		const service = Object.assign(Object.create(QueryService.prototype), { roleService, channelsRepository }) as QueryService;
 		const pending = service.generateChannelVisibilityQuery(query, { id: 'viewer' });
 		expect(query.getQuery()).not.toContain('WITH RECURSIVE');
 		resolveRole(moderator);
 		await pending;
 		expect(query.getQuery().includes('WITH RECURSIVE')).toBe(!moderator);
 		expect(roleService.isModerator).toHaveBeenCalledWith({ id: 'viewer' });
+		expect(channelsRepository.query).toHaveBeenCalledTimes(moderator ? 0 : 1);
+	});
+
+	test.each([
+		['a signed-in viewer excludes owned, moderated and joined channels', 'viewer'],
+		['an anonymous viewer is denied every private channel', null],
+	] as const)('%s when resolving denied channels', async (_label, viewer) => {
+		const channelsRepository = { query: vi.fn(async () => [{ id: 'denied' }]) };
+		const service = Object.assign(Object.create(QueryService.prototype), { channelsRepository }) as QueryService;
+		expect(await service.getDeniedPrivateChannelIds(viewer)).toEqual(['denied']);
+		const [sql, params] = channelsRepository.query.mock.calls[0] as unknown as [string, string[] | undefined];
+		expect(sql).toContain('"isPrivate" = TRUE');
+		if (viewer == null) {
+			expect(sql).not.toContain('channel_member');
+			expect(params).toBeUndefined();
+		} else {
+			expect(sql).toContain('c."userId" IS DISTINCT FROM $1');
+			expect(sql).toContain('$1 = ANY(c."moderatorUserIds")');
+			expect(sql).toContain('FROM "channel_member" m');
+			expect(params).toEqual([viewer]);
+		}
 	});
 });
 

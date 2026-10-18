@@ -25,7 +25,7 @@ import type { UserEntityService } from '@/core/entities/UserEntityService.js';
 import type { NotificationService } from '@/core/NotificationService.js';
 import type { Packed } from '@/misc/json-schema.js';
 import { avatarDecorationUnavailableReason, type AvatarDecorationUnavailableReason } from '@/core/avatar-decoration-availability.js';
-import { hasCompletedHataskFlowerCollection, recordHataskFlowerCollectionCompletion, recordCurrentSeasonHataskFlowerCompletions } from '@/core/hatask-flower-completion.js';
+import { hasCompletedHataskFlowerCollection, hasCompletedHataskFlowerCollectionMany, recordHataskFlowerCollectionCompletion, recordCurrentSeasonHataskFlowerCompletions } from '@/core/hatask-flower-completion.js';
 
 export class HataskAvatarDecorationUpdateError extends Error {
 	constructor(public readonly reason: 'notFound' | 'invalidReplacement' | 'replacementConflict') {
@@ -269,9 +269,24 @@ export class AvatarDecorationService implements OnApplicationShutdown {
 		if (failures.length > 0) throw new AggregateError(failures, 'Hatask decoration notifications failed');
 	}
 
+	/** One lookup for every local user in a page who wears a reward decoration, instead of one per user. */
+	@bindThis
+	public async getHataskFlowerCompletions(users: readonly Pick<MiUser, 'id' | 'host' | 'avatarDecorations'>[]): Promise<Map<MiUser['id'], boolean>> {
+		const candidates = users.filter(user => user.host == null && user.avatarDecorations.length > 0);
+		if (candidates.length === 0) return new Map();
+		const rewardIds = new Set((await this.getAll(false, true)).filter(d => d.requiresHataskFlowerCompletion).map(d => d.id));
+		if (rewardIds.size === 0) return new Map();
+		const wearers = [...new Set(candidates.filter(user => user.avatarDecorations.some(setting => rewardIds.has(setting.id))).map(user => user.id))];
+		return hasCompletedHataskFlowerCollectionMany(this.usersRepository.manager, wearers);
+	}
+
 	/** Filter at the final API boundary as well as on write: an offline wearer must also expire. */
 	@bindThis
-	public async packUserDecorations(user: Pick<MiUser, 'id' | 'host' | 'avatarDecorations'>): Promise<Packed<'UserLite'>['avatarDecorations']> {
+	public async packUserDecorations(
+		user: Pick<MiUser, 'id' | 'host' | 'avatarDecorations'>,
+		// From getHataskFlowerCompletions; a missing entry falls back to a per-user lookup.
+		flowerCompletions?: ReadonlyMap<MiUser['id'], boolean>,
+	): Promise<Packed<'UserLite'>['avatarDecorations']> {
 		if (user.avatarDecorations.length === 0) return [];
 		const decorations = await this.getAll(false, true);
 		const equipped = user.avatarDecorations.flatMap(setting => {
@@ -279,7 +294,7 @@ export class AvatarDecorationService implements OnApplicationShutdown {
 			return decoration == null ? [] : [{ setting, decoration }];
 		});
 		const completed = user.host == null && equipped.some(({ decoration }) => decoration.requiresHataskFlowerCompletion)
-			? await hasCompletedHataskFlowerCollection(this.usersRepository.manager, user.id) : false;
+			? flowerCompletions?.get(user.id) ?? await hasCompletedHataskFlowerCollection(this.usersRepository.manager, user.id) : false;
 		const now = Date.now();
 		return equipped.filter(({ decoration }) => user.host != null
 			|| avatarDecorationUnavailableReason(decoration, { now, hasCompletedHataskFlower: completed }) == null)
