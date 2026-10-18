@@ -83,6 +83,7 @@ export class NoteDraftService {
 		//#endregion
 
 		await this.validate(me, data);
+		await this.assertChannelVisibility(data);
 
 		const draft = await this.noteDraftsRepository.insertOne({
 			...data,
@@ -123,6 +124,15 @@ export class NoteDraftService {
 		//#endregion
 
 		await this.validate(me, data);
+		// A partial update is checked against the draft it will produce. `??` would be wrong here:
+		// an explicit null clears the field, and only undefined keeps the saved value.
+		/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+		await this.assertChannelVisibility({
+			channelId: data.channelId !== undefined ? data.channelId : draft.channelId,
+			replyId: data.replyId !== undefined ? data.replyId : draft.replyId,
+			visibility: data.visibility !== undefined ? data.visibility : draft.visibility,
+		});
+		/* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
 
 		const updatedDraft = await this.noteDraftsRepository.createQueryBuilder().update()
 			.set(data)
@@ -305,6 +315,19 @@ export class NoteDraftService {
 			}
 		}
 		//#endregion
+	}
+
+	/**
+	 * 旗鯖fork: チャンネル投稿は公開のみ。投稿時に初めて失敗する(予約投稿なら予約時刻に失敗する)下書きを、保存の時点で拒否する。
+	 * 投稿処理(NoteCreateService)と同じく、返信は返信先のチャンネルに合わせる。
+	 */
+	private async assertChannelVisibility(data: { channelId?: MiChannel['id'] | null; replyId?: MiNote['id'] | null; visibility?: MiNoteDraft['visibility'] | null }): Promise<void> {
+		const channelId = data.replyId != null
+			? (await this.notesRepository.findOne({ where: { id: data.replyId }, select: { id: true, channelId: true } }))?.channelId ?? null
+			: data.channelId ?? null;
+		if (channelId != null && (data.visibility ?? 'public') !== 'public') {
+			throw new IdentifiableError('b7fc0efe-8a94-4cbb-bf2e-9b34fdfc4e30', 'Channel notes must have public visibility');
+		}
 	}
 
 	@bindThis

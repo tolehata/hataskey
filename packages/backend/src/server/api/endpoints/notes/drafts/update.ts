@@ -88,6 +88,12 @@ export const meta = {
 			id: 'b1653923-5453-4edc-b786-7c4f39bb0bbb',
 		},
 
+		invalidChannelVisibility: {
+			message: 'Channel notes must have public visibility.',
+			code: 'INVALID_CHANNEL_VISIBILITY',
+			id: 'b7fc0efe-8a94-4cbb-bf2e-9b34fdfc4e30',
+		},
+
 		youHaveBeenBlocked: {
 			message: 'You have been blocked by this user.',
 			code: 'YOU_HAVE_BEEN_BLOCKED',
@@ -322,6 +328,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 							throw new ApiError(meta.errors.cannotRenoteDueToVisibility);
 						case '6815399a-6f13-4069-b60d-ed5156249d12':
 							throw new ApiError(meta.errors.noSuchChannel);
+						case 'b7fc0efe-8a94-4cbb-bf2e-9b34fdfc4e30':
+							throw new ApiError(meta.errors.invalidChannelVisibility);
 						case 'ed1952ac-2d26-4957-8b30-2deda76bedf7':
 							throw new ApiError(meta.errors.cannotRenoteToExternal);
 						case 'c4721841-22fc-4bb7-ad3d-897ef1d375b5':
