@@ -13,7 +13,7 @@ const HATASK_APP_IDS = [
 const HATASKEY_APP_IDS = [
 	'hatask.card-maker', 'hatask.emotion-analysis', 'hatask.drawing-tool',
 	'hatask.side-studio', 'hatask.earthquake', 'hatask.mascot', 'hatask.games',
-	'hatask.bubble-game', 'hatask.stacking-game', 'hatask.whack-emoji', 'hatask.emoji-shoot', 'hatask.reversi',
+	'hatask.bubble-game', 'hatask.reversi',
 	'hatask.clicker', 'hatask.qr', 'hatask.cpp-playground', 'hatask.scratchpad', 'hatask.api-console',
 	'hatask.intro', 'hatask.hata-docs', 'hatask.pages', 'hatask.play', 'hatask.gallery', 'hatask.whats-new',
 ] as const satisfies readonly HatagoesScreenId[];

@@ -67,9 +67,6 @@ export const HATAGOES_CATALOG = [
 	{ id: 'hatask.mascot', app: 'hatask', label: 'マスコット', icon: 'ti ti-mood-smile', path: '/mascot', access: 'canUseMascot' },
 	{ id: 'hatask.games', app: 'hatask', label: 'ゲーム', icon: 'ti ti-device-gamepad', path: '/games' },
 	{ id: 'hatask.bubble-game', app: 'hatask', label: 'バブルゲーム', icon: 'ti ti-bubble', path: '/bubble-game' },
-	{ id: 'hatask.stacking-game', app: 'hatask', label: 'つみあげ', icon: 'ti ti-stack-2', path: '/stacking-game' },
-	{ id: 'hatask.whack-emoji', app: 'hatask', label: 'もぐらたたき', icon: 'ti ti-hammer', path: '/whack-emoji' },
-	{ id: 'hatask.emoji-shoot', app: 'hatask', label: 'えもじシュート', icon: 'ti ti-target', path: '/emoji-shoot' },
 	{ id: 'hatask.reversi', app: 'hatask', label: 'リバーシ', icon: 'ti ti-grid-dots', path: '/reversi' },
 	{ id: 'hatask.clicker', app: 'hatask', label: 'クリッカー', icon: 'ti ti-pointer', path: '/clicker' },
 	{ id: 'hatask.qr', app: 'hatask', label: 'QRコード', icon: 'ti ti-qrcode', path: '/qr' },
@@ -92,14 +89,13 @@ export type HatagoesCatalogGroup = 'hatask' | 'hataskey' | 'developer' | 'games'
 const hiddenHataGoesIds = new Set<string>([
 	'hatask.scratchpad', 'hatask.api-console', 'hatask.reversi',
 	'hatask.clicker', 'hatask.bubble-game', 'hatask.play', 'hatask.gallery',
-	'hatask.games', 'hatask.stacking-game', 'hatask.whack-emoji', 'hatask.emoji-shoot',
-	'hatask.qr', 'hatask.pages', 'hatask.hata-docs', 'hatask.settings', 'hatask.support-admin', 'hatafeed.settings',
+	'hatask.games', 'hatask.qr', 'hatask.pages', 'hatask.hata-docs', 'hatask.settings', 'hatask.support-admin', 'hatafeed.settings',
 ]);
 export function isHatagoesVisibleScreen(screen: HatagoesCatalogEntry): boolean {
 	return !hiddenHataGoesIds.has(screen.id);
 }
 const developerIds = new Set<string>(['hatask.cpp-playground', 'hatask.scratchpad', 'hatask.api-console']);
-const gameIds = new Set<string>(['hatask.games', 'hatask.bubble-game', 'hatask.stacking-game', 'hatask.whack-emoji', 'hatask.emoji-shoot', 'hatask.reversi', 'hatask.clicker']);
+const gameIds = new Set<string>(['hatask.games', 'hatask.bubble-game', 'hatask.reversi', 'hatask.clicker']);
 const contentIds = new Set<string>(['hatask.intro', 'hatask.hata-docs', 'hatask.pages', 'hatask.play', 'hatask.gallery', 'hatask.whats-new']);
 const hataskeyIds = new Set<string>(['hatask.tools', 'hatask.card-maker', 'hatask.emotion-analysis', 'hatask.drawing-tool', 'hatask.side-studio', 'hatask.earthquake', 'hatask.mascot', 'hatask.qr', 'hatask.settings', 'hatask.support-admin']);
 

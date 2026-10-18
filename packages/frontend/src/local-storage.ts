@@ -53,10 +53,6 @@ export type Keys = (
 	`hata_sound_default_migrated:${string}` | // プロファイル・設定キー・適用scopeごと
 	`hata_portal_cleanup_migrated:${string}` | // アカウント・プロファイルごと。旧端末共通の完了印は引き継がない
 	'loginBonusLastShown' |
-	'emojiShootHighScore' |
-	'emojiShootHighScore_debuff' |
-	'stackingGameHighScore' |
-	`whackEmojiHighScore_${string}` |
 	'hatasabaUiLastTab' | // 旗鯖fork: Hataskey UI で最後に開いていたタブ (再読み込み時の復元用)
 	'hatasabaLastListId' | // 旗鯖fork: Hataskey UIで最後に開いたリスト(端末ごと)
 	'hatasabaLastAntennaId' | // 旗鯖fork: Hataskey UIで最後に開いたアンテナ(端末ごと)

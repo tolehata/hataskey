@@ -654,54 +654,6 @@ export const ROUTE_DEF = [{
 	component: page(() => import('@/pages/drop-and-fusion.vue')),
 	loginRequired: true,
 }, {
-	path: '/stacking-game',
-	component: page(() => import('@/pages/stacking-game.vue')),
-	loginRequired: true,
-}, {
-	path: '/stacking-game/play',
-	component: page(() => import('@/pages/stacking-game.game.vue')),
-	loginRequired: true,
-}, {
-	path: '/stacking-game/ai',
-	component: page(() => import('@/pages/stacking-game.ai.vue')),
-	query: { ai: 'ai' },
-	loginRequired: true,
-}, {
-	path: '/stacking-game/lobby',
-	component: page(() => import('@/pages/stacking-game.lobby.vue')),
-	loginRequired: true,
-}, {
-	path: '/stacking-game/battle',
-	component: page(() => import('@/pages/stacking-game.battle.vue')),
-	query: { roomId: 'roomId' },
-	loginRequired: true,
-}, {
-	path: '/whack-emoji',
-	component: page(() => import('@/pages/whack-emoji.vue')),
-	loginRequired: true,
-}, {
-	path: '/whack-emoji/play',
-	component: page(() => import('@/pages/whack-emoji.game.vue')),
-	query: { difficulty: 'difficulty', ai: 'ai', endless: 'endless' },
-	loginRequired: true,
-}, {
-	path: '/whack-emoji/lobby',
-	component: page(() => import('@/pages/whack-emoji.lobby.vue')),
-	loginRequired: true,
-}, {
-	path: '/whack-emoji/battle',
-	component: page(() => import('@/pages/whack-emoji.battle.vue')),
-	query: { roomId: 'roomId' },
-	loginRequired: true,
-}, {
-	path: '/emoji-shoot',
-	component: page(() => import('@/pages/emoji-shoot.vue')),
-	loginRequired: true,
-}, {
-	path: '/emoji-shoot/play',
-	component: page(() => import('@/pages/emoji-shoot.game.vue')),
-	loginRequired: true,
-}, {
 	path: '/reversi',
 	component: page(() => import('@/pages/reversi/index.vue')),
 	loginRequired: false,

@@ -60,6 +60,11 @@ describe('HataGoes screen catalog', () => {
 			['hatask.gallery', '/gallery'],
 		]) expect(getHatagoesScreen(id)?.path).toBe(path);
 		expect(HATAGOES_CATALOG.map(screen => screen.path)).not.toContain('/hanaawase');
+		for (const id of ['hatask.stacking-game', 'hatask.whack-emoji', 'hatask.emoji-shoot']) {
+			expect(getHatagoesScreen(id)).toBeUndefined();
+			// 廃止前に保存したピンは枠を消費せずに読み飛ばす
+			expect(normalizeHatagoesPins([id, 'hatask.todo'])).toEqual(['hatask.todo']);
+		}
 		expect(getHatagoesScreen('hatask.settings')?.label).toBe('Hataskey 全体の設定');
 		expect(getHatagoesScreen('hatask.support')?.label).toBe('支援情報');
 		expect(getHatagoesScreen('hatask.emotion-analysis')?.icon).toBe('ti ti-scan');
@@ -77,7 +82,7 @@ describe('HataGoes screen catalog', () => {
 	test('hides omitted and duplicate routes from HataGoes selectors without changing saved IDs', () => {
 		const hidden = HATAGOES_CATALOG.filter(screen => !isHatagoesVisibleScreen(screen)).map(screen => screen.id);
 		expect(hidden).toEqual([
-			'hatafeed.settings', 'hatask.games', 'hatask.bubble-game', 'hatask.stacking-game', 'hatask.whack-emoji', 'hatask.emoji-shoot',
+			'hatafeed.settings', 'hatask.games', 'hatask.bubble-game',
 			'hatask.reversi', 'hatask.clicker', 'hatask.qr', 'hatask.scratchpad', 'hatask.api-console', 'hatask.hata-docs',
 			'hatask.pages', 'hatask.play', 'hatask.gallery', 'hatask.settings', 'hatask.support-admin',
 		]);

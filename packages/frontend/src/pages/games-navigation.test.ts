@@ -24,9 +24,16 @@ describe('Hataskey Games の戻る導線', () => {
 	test('保管した花常への入口を外し、ほかのゲームへの導線は維持する', () => {
 		expect(gamesSource).not.toContain('/hanaawase');
 		expect(routerSource).not.toContain('/hanaawase');
-		for (const route of ['/games', '/bubble-game', '/stacking-game', '/whack-emoji', '/emoji-shoot', '/reversi']) {
+		for (const route of ['/games', '/bubble-game', '/reversi']) {
 			expect(routerSource).toContain(`path: '${route}'`);
 			if (route !== '/games') expect(gamesSource).toContain(`to="${route}"`);
+		}
+	});
+
+	test('廃止したつみつみタワー・絵文字叩き・エモジシュートへの導線を残さない', () => {
+		for (const route of ['/stacking-game', '/whack-emoji', '/emoji-shoot']) {
+			expect(routerSource).not.toContain(`path: '${route}`);
+			expect(gamesSource).not.toContain(`to="${route}`);
 		}
 	});
 
@@ -34,9 +41,6 @@ describe('Hataskey Games の戻る導線', () => {
 		expect(gamesSource).toContain("inject(HATA_GOES_HOST, null) != null");
 		for (const route of ['/bubble-game', '/reversi']) {
 			expect(gamesSource).toMatch(new RegExp(`<div v-if="!inHataGoes" class="_panel" :class="\\$style.link">\\s*<MkA to="${route}"`));
-		}
-		for (const route of ['/stacking-game', '/whack-emoji', '/emoji-shoot']) {
-			expect(gamesSource).toMatch(new RegExp(`<div class="_panel" :class="\\$style.link">\\s*<MkA to="${route}"`));
 		}
 	});
 });

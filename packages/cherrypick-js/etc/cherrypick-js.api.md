@@ -961,88 +961,6 @@ export type Channels = {
             reaction: string;
         };
     };
-    stackingGameRoom: {
-        params: {
-            roomId: string;
-        };
-        events: {
-            started: (payload: {
-                roomId: string;
-                host2Id: User['id'];
-            }) => void;
-            drop: (payload: {
-                userId: User['id'];
-                dropX: number;
-                emojiName: string;
-                emojiUrl?: string;
-                emojiChar?: string;
-            }) => void;
-            scoreUpdate: (payload: {
-                userId: User['id'];
-                score: number;
-                blocks: number;
-            }) => void;
-            ended: (payload: {
-                winner: number;
-                loserId: User['id'];
-                reason?: 'disconnect';
-            }) => void;
-            canceled: (payload: {
-                userId: User['id'];
-            }) => void;
-        };
-        receives: {
-            drop: {
-                dropX: number;
-                emojiName: string;
-                emojiUrl?: string;
-                emojiChar?: string;
-            };
-            scoreUpdate: {
-                score: number;
-                blocks: number;
-            };
-            dead: Record<string, never>;
-        };
-    };
-    whackEmojiRoom: {
-        params: {
-            roomId: string;
-        };
-        events: {
-            started: (payload: {
-                roomId: string;
-                host2Id: User['id'];
-            }) => void;
-            whack: (payload: {
-                userId: User['id'];
-                cellIndex: number;
-                isHit: boolean;
-            }) => void;
-            scoreUpdate: (payload: {
-                userId: User['id'];
-                score: number;
-                hits: number;
-            }) => void;
-            ended: (payload: {
-                winner: number;
-                score1: number;
-                score2: number;
-                reason?: 'disconnect';
-            }) => void;
-        };
-        receives: {
-            scoreUpdate: {
-                score: number;
-                hits: number;
-            };
-            whack: {
-                cellIndex: number;
-                isHit: boolean;
-            };
-            timeUp: Record<string, never>;
-        };
-    };
     chatUser: {
         params: {
             otherId: string;
@@ -1605,15 +1523,6 @@ type EmojiRequest = operations['emoji']['requestBody']['content']['application/j
 type EmojiResponse = operations['emoji']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
-type EmojiShootMyScoresRequest = operations['emoji-shoot___my-scores']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type EmojiShootRankingRequest = operations['emoji-shoot___ranking']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type EmojiShootRegisterRequest = operations['emoji-shoot___register']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
 type EmojiSimple = components['schemas']['EmojiSimple'];
 
 // @public (undocumented)
@@ -2086,9 +1995,6 @@ declare namespace entities {
         EmailAddressAvailableResponse,
         EmojiRequest,
         EmojiResponse,
-        EmojiShootMyScoresRequest,
-        EmojiShootRankingRequest,
-        EmojiShootRegisterRequest,
         EmojisResponse,
         EndpointRequest,
         EndpointResponse,
@@ -2570,12 +2476,6 @@ declare namespace entities {
         RolesUsersRequest,
         RolesUsersResponse,
         ServerInfoResponse,
-        StackingGameJoinRoomRequest,
-        StackingGameMyScoresRequest,
-        StackingGameMyScoresResponse,
-        StackingGameRankingResponse,
-        StackingGameRegisterRequest,
-        StackingGameRoomsRequest,
         StatsResponse,
         SwRegisterRequest,
         SwRegisterResponse,
@@ -2663,14 +2563,6 @@ declare namespace entities {
         V2AdminEmojiListRequest,
         V2AdminEmojiListResponse,
         VerifyEmailRequest,
-        WhackEmojiCreateRoomRequest,
-        WhackEmojiJoinRoomRequest,
-        WhackEmojiMyScoresRequest,
-        WhackEmojiMyScoresResponse,
-        WhackEmojiRankingRequest,
-        WhackEmojiRankingResponse,
-        WhackEmojiRegisterRequest,
-        WhackEmojiRoomsRequest,
         Error_2 as Error,
         UserLite,
         UserDetailedNotMeOnly,
@@ -4900,24 +4792,6 @@ type SignupResponse = MeDetailed & {
 };
 
 // @public (undocumented)
-type StackingGameJoinRoomRequest = operations['stacking-game___join-room']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type StackingGameMyScoresRequest = operations['stacking-game___my-scores']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type StackingGameMyScoresResponse = operations['stacking-game___my-scores']['responses']['200']['content']['application/json'];
-
-// @public (undocumented)
-type StackingGameRankingResponse = operations['stacking-game___ranking']['responses']['200']['content']['application/json'];
-
-// @public (undocumented)
-type StackingGameRegisterRequest = operations['stacking-game___register']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type StackingGameRoomsRequest = operations['stacking-game___rooms']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
 type StatsResponse = operations['stats']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
@@ -5254,30 +5128,6 @@ type V2AdminEmojiListResponse = operations['v2___admin___emoji___list']['respons
 
 // @public (undocumented)
 type VerifyEmailRequest = operations['verify-email']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type WhackEmojiCreateRoomRequest = operations['whack-emoji___create-room']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type WhackEmojiJoinRoomRequest = operations['whack-emoji___join-room']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type WhackEmojiMyScoresRequest = operations['whack-emoji___my-scores']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type WhackEmojiMyScoresResponse = operations['whack-emoji___my-scores']['responses']['200']['content']['application/json'];
-
-// @public (undocumented)
-type WhackEmojiRankingRequest = operations['whack-emoji___ranking']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type WhackEmojiRankingResponse = operations['whack-emoji___ranking']['responses']['200']['content']['application/json'];
-
-// @public (undocumented)
-type WhackEmojiRegisterRequest = operations['whack-emoji___register']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type WhackEmojiRoomsRequest = operations['whack-emoji___rooms']['requestBody']['content']['application/json'];
 
 // Warnings were encountered during analysis:
 //
