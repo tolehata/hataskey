@@ -49,9 +49,6 @@ const expectedReferences = [
 	['ref-privateChannel', 'プライベートチャンネル', 'timeline'],
 	['ref-feastChallenge', '宴（うたげ）チャレンジ', 'post'],
 	['ref-gamesOverview', 'Hataskey Gamesとは', 'games'],
-	['ref-stackingGame', 'つみつみタワー', 'games'],
-	['ref-whackEmoji', '絵文字叩きゲーム', 'games'],
-	['ref-emojiShoot', 'カスタムエモジシュート', 'games'],
 	['ref-whatsNewGuide', '更新内容の案内', 'help'],
 	['ref-loginDaysAchievements', 'ログイン日数・実績', 'hatask'],
 	['ref-hataskSearch', 'Hatask内検索', 'hatask'],
@@ -62,7 +59,7 @@ const expectedReferences = [
 	['ref-expressionsLines', '表情とセリフ', 'mascot'],
 	['ref-autoSwitch', '表情とセリフの自動切り替え', 'mascot'],
 	['ref-notificationBirthday', '通知・誕生日の演出', 'mascot'],
-	['ref-hataskMascot', 'Hataskホームのマスコット', 'mascot'],
+	['ref-hataskMascot', 'Hataskとマスコット', 'mascot'],
 	['ref-mascotTransfer', '設定の保存と読み込み', 'mascot'],
 	['ref-hatafeedOverview', 'HataFeedとは', 'apps'],
 	['ref-bousai-0', '地震・津波情報を見る', 'apps'],
@@ -71,6 +68,8 @@ const expectedReferences = [
 ] as const;
 
 const expectedFeatureIds: Record<string, string[]> = {
+	uis: ['uiSOverview', 'uiSPost', 'uiSWorkspace', 'uiSSettings'],
+	hatagoes: ['goesHome', 'goesApps', 'goesSearch', 'goesSettings'],
 	timeline: ['timeline', 'lists', 'channels', 'antenna', 'quiet', 'deck'],
 	notes: ['noteActions', 'reaction', 'favorite'],
 	post: ['composer', 'visibility', 'attach', 'airreply'],
@@ -252,18 +251,18 @@ function duplicateIds(root: ParentNode): string[] {
 }
 
 describe('統合機能解説の固定母集団と検索', () => {
-	test('53件・追加4カテゴリ・図6件・手順6件・FAQ5件を欠落させず、元の6カテゴリを変更しない', () => {
+	test('53件の参考記事と図・手順・FAQを維持し、UI SとHataGoesを含む8つの操作カテゴリへ結び付ける', () => {
 		function assertInventory(items: readonly IntroReference[]) {
 			expect(items.map(item => [item.id, item.title, item.course])).toEqual(expectedReferences);
 		}
 
-		expect(expectedReferences).toHaveLength(53);
+		expect(expectedReferences).toHaveLength(50);
 		expect(() => assertInventory(references.slice(1))).toThrow();
 		expect(() => assertInventory([references[0], ...references.slice(0, -1)])).toThrow();
 		assertInventory(references);
 		expect(Object.keys(referenceById).sort()).toEqual([...referenceIds].sort());
 		for (const item of references) expect(referenceById[item.id]).toBe(item);
-		expect(courses.map(course => course.id)).toEqual(['timeline', 'notes', 'post', 'apps', 'hatask', 'settings']);
+		expect(courses.map(course => course.id)).toEqual(['uis', 'hatagoes', 'timeline', 'notes', 'post', 'apps', 'hatask', 'settings']);
 		expect(referenceCourses.map(course => course.id)).toEqual(['external', 'mascot', 'games', 'help']);
 		expect(allCourses).toEqual([...courses, ...referenceCourses]);
 		expect(allCourses).not.toBe(courses);
@@ -279,13 +278,13 @@ describe('統合機能解説の固定母集団と検索', () => {
 		]);
 	});
 
-	test('旧機能解説用のindex入口は77件を示し、10カテゴリで操作ガイドと機能解説を一緒に絞る', async () => {
+	test('旧機能解説用のindex入口は82件を示し、12カテゴリで操作ガイドと機能解説を一緒に絞る', async () => {
 		const { root } = mountGuides(1, 'index');
 		expect(element(root, '[data-guide-search-panel]').hidden).toBe(false);
-		expect(results(root)).toHaveLength(77);
-		expect(new Set(results(root)).size).toBe(77);
+		expect(results(root)).toHaveLength(82);
+		expect(new Set(results(root)).size).toBe(82);
 		expect(results(root).sort()).toEqual([...Object.values(expectedFeatureIds).flat(), ...referenceIds].sort());
-		expect(element(root, '[data-guide-search-panel] [role="status"]').textContent).toContain('77件 · 操作ガイド 24 / 機能解説 53');
+		expect(element(root, '[data-guide-search-panel] [role="status"]').textContent).toContain('82件 · 操作ガイド 32 / 機能解説 50');
 		expect(findReferences('').map(item => item.id)).toEqual(referenceIds);
 		for (const [course, featureIds] of Object.entries(expectedFeatureIds)) {
 			await click(root, `[data-action="filter"][data-id="${course}"]`);
@@ -429,6 +428,25 @@ describe('操作ガイドと機能解説の往復・フォーカス', () => {
 		expect(window.document.activeElement).toBe(element(root, '.hg-reference-bridge [data-id="ref-deck"]'));
 	});
 
+	test.each([
+		['ref-chooseUi', 'uiSOverview'],
+		['ref-hataskSearch', 'goesSearch'],
+		['ref-garden', 'goesHome'],
+	])('%sから新しい操作ガイド%sを開き、元の解説と検索へ戻れる', async (referenceId, featureId) => {
+		const { root } = mountGuides(1, 'index');
+		await search(root, referenceById[referenceId].title);
+		const before = results(root);
+		await click(root, `[data-search-result="${referenceId}"]`);
+		await click(root, `.hg-reference-practice [data-id="${featureId}"]`, true);
+		expect(element(root, '[data-guide-article]').dataset.guideArticle).toBe(featureId);
+		await click(root, '[data-action="back"]');
+		expect(element(root, '[data-reference-article]').dataset.referenceArticle).toBe(referenceId);
+		expect(window.document.activeElement).toBe(element(root, `.hg-reference-practice [data-id="${featureId}"]`));
+		await click(root, '[data-action="back"]');
+		expect(results(root)).toEqual(before);
+		expect(window.document.activeElement).toBe(element(root, `[data-search-result="${referenceId}"]`));
+	});
+
 	test('同カテゴリの別解説から戻ると記事の折りたたみリンクを、さらに戻ると目次のリンクを復元する', async () => {
 		const { root } = mountGuides();
 		await openReferenceFromContents(root, 'ref-garden');
@@ -445,9 +463,9 @@ describe('操作ガイドと機能解説の往復・フォーカス', () => {
 		expect(window.document.activeElement).toBe(element(root, '.hg-reference-links [data-id="ref-garden"]'));
 	});
 
-	test('index入口の全項目から解説を往復すると77件と用語集へ戻り、履歴が空なら目次へ戻れる', async () => {
+	test('index入口の全項目から解説を往復すると82件と用語集へ戻り、履歴が空なら目次へ戻れる', async () => {
 		const { root } = mountGuides(1, 'index');
-		expect(results(root)).toHaveLength(77);
+		expect(results(root)).toHaveLength(82);
 		expect(element(root, '[data-glossary-title]').textContent).toBe('よく出てくる言葉');
 		await click(root, '[data-search-result="ref-garden"]', true);
 		const adjacent = element<HTMLDetailsElement>(root, 'article .hg-reference-fold');
@@ -457,7 +475,7 @@ describe('操作ガイドと機能解説の往復・フォーカス', () => {
 		expect(element(root, '[data-reference-article]').dataset.referenceArticle).toBe('ref-garden');
 		expect(window.document.activeElement).toBe(element(root, 'article .hg-reference-fold [data-id="ref-mealLog"]'));
 		await click(root, '[data-action="back"]');
-		expect(results(root)).toHaveLength(77);
+		expect(results(root)).toHaveLength(82);
 		expect(element(root, '[data-glossary-title]').textContent).toBe('よく出てくる言葉');
 		expect(window.document.activeElement).toBe(element(root, '[data-search-result="ref-garden"]'));
 		await click(root, '[data-action="back"]');

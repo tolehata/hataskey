@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import postcss from 'postcss';
 import { describe, expect, test } from 'vitest';
@@ -14,15 +14,15 @@ import { findFeatures } from './search.js';
 import { composerTools } from './static-scenes.js';
 
 const directory = resolve(process.cwd(), 'src/components/hata-intro');
-const css = readFileSync(resolve(directory, 'hata-intro.css'), 'utf8') + '\n' + readFileSync(resolve(directory, 'reference.css'), 'utf8');
+const css = readFileSync(resolve(directory, 'hata-intro.css'), 'utf8') + '\n' + readFileSync(resolve(directory, 'reference.css'), 'utf8') + '\n' + readFileSync(resolve(directory, 'ui-s-scenes.css'), 'utf8') + '\n' + readFileSync(resolve(directory, 'hatagoes-scenes.css'), 'utf8');
 const sources = readdirSync(directory).filter(file => /\.(?:js|ts|vue)$/.test(file) && !file.endsWith('.test.ts')).map(file => readFileSync(resolve(directory, file), 'utf8')).join('\n');
 
 describe('承認ガイドの内容と安全な本体接続', () => {
-	test('6カテゴリ・24章とFAQ・手順・関連項目を欠落なく保つ', () => {
-		expect(courses.map(c => c.id)).toEqual(['timeline', 'notes', 'post', 'apps', 'hatask', 'settings']);
+	test('8カテゴリ・32章とFAQ・手順・関連項目を欠落なく保つ', () => {
+		expect(courses.map(c => c.id)).toEqual(['uis', 'hatagoes', 'timeline', 'notes', 'post', 'apps', 'hatask', 'settings']);
 		const ids = courses.flatMap(c => c.features);
-		expect(ids).toHaveLength(24);
-		expect(new Set(ids).size).toBe(24);
+		expect(ids).toHaveLength(32);
+		expect(new Set(ids).size).toBe(32);
 		expect(Object.keys(features).sort()).toEqual([...ids].sort());
 		expect(Object.keys(guideDetails).sort()).toEqual([...ids].sort());
 
@@ -49,6 +49,17 @@ describe('承認ガイドの内容と安全な本体接続', () => {
 		expect(findFeatures('映画 記録').map(item => item.id)).toContain('hatady');
 		expect(findFeatures('てーま').map(item => item.id)).toContain('theme');
 		expect(findFeatures('Hatadint', 'settings')).toEqual([]);
+	});
+	test('新しい使い方を検索でき、操作説明の参照元が実在する', () => {
+		expect(findFeatures('UI S', 'uis').map(item => item.id).sort()).toEqual(['uiSOverview', 'uiSPost', 'uiSSettings', 'uiSWorkspace']);
+		expect(findFeatures('UI S お絵描き', 'uis').map(item => item.id)).toContain('uiSPost');
+		expect(findFeatures('横断検索').map(item => item.id)).toContain('goesSearch');
+		expect(findFeatures('フォルダ').map(item => item.id)).toContain('favorite');
+		const sourceExists = (path: string) => existsSync(resolve(process.cwd(), path.startsWith('locales/') ? '../..' : 'src', path));
+		expect(sourceExists('missing-guide-source.vue')).toBe(false);
+		for (const feature of Object.values(features)) {
+			for (const source of feature.source.split(';')) expect(sourceExists(source.trim().split(':')[0]), source).toBe(true);
+		}
 	});
 	test('名前と文はHTMLをエスケープし、句点で改行する', () => {
 		expect(hataskGuideProse('「一文。」次の文')).toBe('「一文。」<br>次の文');

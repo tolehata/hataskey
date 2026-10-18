@@ -6,12 +6,15 @@
 import { createApp, defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import HataIntro from './HataIntro.vue';
-import { features, guideDetails } from './content.js';
+import { features, guideDetails, glossary } from './content.js';
+import { references } from './reference-content.js';
 import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 import type { App } from 'vue';
 
 // Deliberately independent of the content registry: removing a chapter must fail.
 const featureIds = [
+	'uiSOverview', 'uiSPost', 'uiSWorkspace', 'uiSSettings',
+	'goesHome', 'goesApps', 'goesSearch', 'goesSettings',
 	'timeline', 'lists', 'channels', 'antenna', 'quiet', 'deck',
 	'noteActions', 'reaction', 'favorite',
 	'composer', 'visibility', 'attach', 'airreply',
@@ -131,11 +134,12 @@ describe('HataIntroの目次と承認済みガイドの章', () => {
 	test('HataGoesホームは最初の3導線とカテゴリを表示し、選択時も導線を残す', async () => {
 		const { root } = mountGuides(1, false, 'home', true);
 		expect(root.classList.contains('hg-host')).toBe(true);
+		expect(root.querySelector('[data-action="back"]')).toBeNull();
 		expect(root.querySelectorAll('.hg-host-shortcut-grid > *')).toHaveLength(3);
 		expect(element(root, '.hg-host-shortcut-grid [data-id="timeline"]')).toBeTruthy();
 		expect(element(root, '.hg-host-shortcut-grid [data-id="reaction"]')).toBeTruthy();
 		expect(element(root, '.hg-host-shortcut-grid a').getAttribute('href')).toBe('/settings/profile');
-		expect(root.querySelectorAll('.hg-topic-card')).toHaveLength(10);
+		expect(root.querySelectorAll('.hg-topic-card')).toHaveLength(12);
 		await click(root, '.hg-filter [data-id="timeline"]');
 		expect(element(root, '.hg-filter [data-id="timeline"]').getAttribute('aria-pressed')).toBe('true');
 		expect(root.querySelectorAll('.hg-topic-card')).toHaveLength(1);
@@ -143,7 +147,7 @@ describe('HataIntroの目次と承認済みガイドの章', () => {
 		expect(element(root, '[data-guide-home-content]').hidden).toBe(false);
 		expect(root.querySelectorAll('.hg-host-shortcut-grid > *')).toHaveLength(3);
 		await click(root, '.hg-filter [data-id="all"]');
-		expect(root.querySelectorAll('.hg-topic-card')).toHaveLength(10);
+		expect(root.querySelectorAll('.hg-topic-card')).toHaveLength(12);
 	});
 
 	test.each(['home', 'index'] as const)('%s: 上部の重複案内と下部ボタンを除き、目次のHataIntroだけブランド書体で表示する', async initialPage => {
@@ -180,16 +184,16 @@ describe('HataIntroの目次と承認済みガイドの章', () => {
 		expect(root.querySelectorAll(removed)).toHaveLength(0);
 		const footer = element(root, '.hg-footer');
 		expect(footer.children).toHaveLength(1);
-		expect(footer.textContent.trim()).toBe('図・説明の改訂：2026年9月10日 · HataIntro');
+		expect(footer.textContent.trim()).toBe('図・説明の改訂：2026年10月18日 · HataIntro');
 		await click(root, '[data-action="back"]');
 		expect(root.querySelectorAll(removed)).toHaveLength(0);
 		expect(element(root, '.hg-hero .hg-eyebrow').textContent.trim()).toBe(initialPage === 'home' ? 'HataIntro' : '必要なときに引けるガイド');
 	});
 
-	test('既存6カテゴリ・24章を保ち、機能解説の4カテゴリと最初の一歩を表示する', async () => {
+	test('UI S・HataGoesを含む8カテゴリ・32章と機能解説を表示する', async () => {
 		const { root } = mountGuides();
 		expect([...root.querySelectorAll('.hg-topic-card h3')].map(item => item.textContent)).toEqual([
-			'タイムライン', 'ノートの操作', '投稿フォーム', 'Hataskey App', 'Hatask App', '画面の設定',
+			'Hataskey UI S', 'HataGoes', 'タイムライン', 'ノートの操作', '投稿フォーム', 'Hataskey App', 'Hatask App', '画面の設定',
 			'外部アカウント', 'マスコット', 'ゲーム', 'お知らせ・お試し',
 		]);
 		expect([...root.querySelectorAll<HTMLElement>('.hg-topic-links [data-action="feature"]')].map(item => item.dataset.id)).toEqual(featureIds);
@@ -211,7 +215,7 @@ describe('HataIntroの目次と承認済みガイドの章', () => {
 		expect(element(article, '.hg-result p').textContent).toBe(guideDetails[id].result);
 		expect(article.querySelectorAll('.hg-faq')).toHaveLength(guideDetails[id].help.length);
 		expect(element(root, '[aria-current="page"]').textContent).toBe(features[id].name);
-		expect(element(root, '[data-read-count]').textContent).toContain('0 / 24 項目');
+		expect(element(root, '[data-read-count]').textContent).toContain('0 / 32 項目');
 		for (const anchor of article.querySelectorAll<HTMLAnchorElement>('a[data-native-route]')) {
 			expect(anchor.getAttribute('href')).toMatch(/^\/(?!\/)/);
 			expect(anchor.getAttribute('href')).not.toContain('localhost');
@@ -230,17 +234,55 @@ describe('HataIntroの目次と承認済みガイドの章', () => {
 	test('公開index入口の用語集から本文へ進み、戻ると用語集を再表示する', async () => {
 		const { root } = mountGuides(1, false, 'index');
 		expect(element(root, '[data-glossary-title]').textContent).toBe('よく出てくる言葉');
-		expect(root.querySelectorAll('.hg-glossary dt')).toHaveLength(12);
+		expect(root.querySelectorAll('.hg-glossary dt')).toHaveLength(glossary.length);
 		await click(root, '.hg-glossary dd button', true);
 		expect(element(root, '[data-guide-article]').dataset.guideArticle).toBe('composer');
 		expect(window.document.activeElement).toBe(element(root, '[data-guide-title]'));
 		await click(root, '[data-action="back"]');
 		expect(element(root, '[data-glossary-title]').textContent).toBe('よく出てくる言葉');
-		expect(root.querySelectorAll('.hg-glossary dt')).toHaveLength(12);
+		expect(root.querySelectorAll('.hg-glossary dt')).toHaveLength(glossary.length);
 	});
 });
 
 describe('HataIntroの検索・IME・戻る', () => {
+	test.each([false, true])('HataGoes内=%s: 戻るの隣のホームボタンは検索と履歴をリセットしてHataIntroのホームへ戻る', async inHataGoes => {
+		const { root, exit } = mountGuides(1, false, 'index', inHataGoes);
+		const homeButton = element<HTMLButtonElement>(root, '[data-action="home"]');
+		const backButton = element<HTMLButtonElement>(root, '[data-action="back"]');
+		expect(homeButton.previousElementSibling).toBe(backButton);
+		expect(homeButton.getAttribute('aria-label')).toBe('HataIntroのホームへ戻る');
+		expect(homeButton.title).toBe('HataIntroのホームへ戻る');
+		expect(homeButton.textContent.trim()).toBe('');
+		expect(element(homeButton, '.ti-home').getAttribute('aria-hidden')).toBe('true');
+		await click(root, '[data-action="filter"][data-id="notes"]');
+		await search(root, 'リアクション');
+		await click(root, '[data-search-result="reaction"]');
+		await click(root, '.hg-related [data-id="noteActions"]');
+		await click(root, '[data-action="home"]', true);
+		expect(element(root, '[data-guide-home-content]').hidden).toBe(false);
+		expect(element(root, '[data-guide-search-panel]').hidden).toBe(true);
+		expect(searchBox(root).value).toBe('');
+		expect(element(root, '.hg-hero .hg-brand').textContent).toBe('HataIntro');
+		if (inHataGoes) expect(element(root, '[data-action="filter"][data-id="all"]').getAttribute('aria-pressed')).toBe('true');
+		expect(window.document.activeElement).toBe(element(root, '[data-guide-title]'));
+		expect(exit).not.toHaveBeenCalled();
+		await click(root, '[data-action="home"]', true);
+		expect(exit).not.toHaveBeenCalled();
+		if (inHataGoes) {
+			expect(root.querySelector('[data-action="back"]')).toBeNull();
+			await openFeature(root, 'timeline');
+			expect(element(root, '[data-action="back"]').getAttribute('aria-label')).toBe('前のページへ');
+			await click(root, '[data-action="back"]', true);
+			expect(element(root, '[data-guide-home-content]').hidden).toBe(false);
+			expect(root.querySelector('[data-action="back"]')).toBeNull();
+			expect(exit).not.toHaveBeenCalled();
+		} else {
+			expect(backButton.getAttribute('aria-label')).toBe('HataIntroを終了');
+			await click(root, '[data-action="back"]', true);
+			expect(exit).toHaveBeenCalledTimes(1);
+		}
+	});
+
 	test.each(['home', 'index'] as const)('%s: 左上の矢印でガイド内を戻り、入口では終了する', async initialPage => {
 		const { root, exit } = mountGuides(1, false, initialPage);
 		const button = element<HTMLButtonElement>(root, '[data-action="back"]');
@@ -297,7 +339,7 @@ describe('HataIntroの検索・IME・戻る', () => {
 		await search(root, '映画 記録');
 		expect(results(root)).toContain('hatady');
 		await click(root, '[data-action="clear-query"]');
-		expect(results(root)).toHaveLength(77);
+		expect(results(root)).toHaveLength(featureIds.length + references.length);
 		await click(root, '[data-action="filter"][data-id="apps"]');
 		expect(results(root).filter(id => !id.startsWith('ref-'))).toEqual(['hatady', 'draw', 'card', 'analyze', 'studio', 'feed']);
 		expect(results(root)).toHaveLength(18);
@@ -311,7 +353,7 @@ describe('HataIntroの検索・IME・戻る', () => {
 		await search(root, '存在しない検索語xyz');
 		await click(root, '[data-action="clear-search"]');
 		expect(element(root, '[data-action="filter"][data-id="all"]').getAttribute('aria-pressed')).toBe('true');
-		expect(results(root)).toHaveLength(77);
+		expect(results(root)).toHaveLength(featureIds.length + references.length);
 	});
 
 	test('検索語は文字列として表示し、タグをDOMへ挿入しない', async () => {
@@ -354,7 +396,7 @@ describe('HataIntroの検索・IME・戻る', () => {
 		await openFeature(root, 'timeline');
 		await click(root, '[data-action="mark-read"]');
 		expect(element(root, '[data-action="mark-read"]').getAttribute('aria-pressed')).toBe('true');
-		expect(element(root, '[data-read-count]').textContent).toContain('1 / 24 項目');
+		expect(element(root, '[data-read-count]').textContent).toContain('1 / 32 項目');
 		expect(element(root, '[data-status]').textContent).toContain('を読んだ項目にしたよ');
 		await click(root, '[data-action="back"]');
 		const topic = element(root, '.hg-topic-links [data-id="timeline"]');
@@ -363,7 +405,7 @@ describe('HataIntroの検索・IME・戻る', () => {
 		await click(root, '.hg-topic-links [data-id="timeline"]');
 		await click(root, '[data-action="mark-read"]');
 		expect(element(root, '[data-action="mark-read"]').getAttribute('aria-pressed')).toBe('false');
-		expect(element(root, '[data-read-count]').textContent).toContain('0 / 24 項目');
+		expect(element(root, '[data-read-count]').textContent).toContain('0 / 32 項目');
 	});
 });
 
@@ -391,12 +433,12 @@ describe('説明図のリンク・フォーカス・本体の入口', () => {
 		await click(root, '[data-action="back"]');
 		await openFeature(root, 'hatady');
 		await click(root, '[data-action="demo-log-kind"][data-kind="movie"]', true);
-		expect(element(root, '[data-action="demo-log-kind"][data-kind="movie"]').getAttribute('aria-pressed')).toBe('false');
-		expect(root.querySelector('.hg-log-entry[data-kind="movie"]')).toBeNull();
+		expect(element(root, '[data-action="demo-log-kind"][data-kind="movie"]').getAttribute('aria-pressed')).toBe('true');
+		expect(root.querySelector('.hg-log-entry[data-kind="study"]')).toBeNull();
 		expect(window.document.activeElement).toBe(element(root, '[data-action="demo-log-kind"][data-kind="movie"]'));
-		await click(root, '[data-action="demo-log-kind"][data-kind="movie"]', true);
-		expect(element(root, '.hg-log-entry[data-kind="movie"]').textContent).toContain('映画');
-		expect(window.document.activeElement).toBe(element(root, '[data-action="demo-log-kind"][data-kind="movie"]'));
+		await click(root, '[data-action="demo-log-kind"][data-kind="all"]', true);
+		expect(root.querySelectorAll('.hg-log-entry')).toHaveLength(3);
+		expect(window.document.activeElement).toBe(element(root, '[data-action="demo-log-kind"][data-kind="all"]'));
 	});
 
 	test('テーマ図のラジオ変更は選択とフォーカスを保持し、本体テーマを変更しない', async () => {
@@ -451,9 +493,9 @@ describe('複数のHataIntroを同じアプリで開く場合', () => {
 		expect(second.dataset.theme).toBe('system');
 		await openFeature(second, 'deck');
 		expect(element(second, '[data-deck]').dataset.deck).toBe('false');
-		expect(element(second, '[data-read-count]').textContent).toContain('0 / 24 項目');
+		expect(element(second, '[data-read-count]').textContent).toContain('0 / 32 項目');
 		expect(element(first, '[data-deck]').dataset.deck).toBe('true');
-		expect(element(first, '[data-read-count]').textContent).toContain('1 / 24 項目');
+		expect(element(first, '[data-read-count]').textContent).toContain('1 / 32 項目');
 		await click(first, '[data-action="back"]');
 		await search(first, '映画');
 		expect(element(second, '[data-guide-article]').dataset.guideArticle).toBe('deck');

@@ -8,12 +8,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<a class="hg-skip" :href="`#${instance}-main`" @click.prevent="main?.focus()">ガイド本文へ</a>
 	<main :id="`${instance}-main`" ref="main" class="hg-main" tabindex="-1">
 		<div class="hg-browse-head">
-			<button type="button" class="hg-back-button" data-action="back" :aria-label="backLabel" :title="backLabel" @click="back"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+			<div class="hg-browse-controls">
+				<button v-if="!inHataGoes || page !== 'home'" type="button" class="hg-back-button" data-action="back" :aria-label="backLabel" :title="backLabel" @click="back"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+				<button type="button" class="hg-back-button" data-action="home" aria-label="HataIntroのホームへ戻る" title="HataIntroのホームへ戻る" @click="home"><i class="ti ti-home" aria-hidden="true"></i></button>
+			</div>
 			<span v-if="page === 'walk'"><span v-html="brandName(course.label)"></span> · {{ step + 1 }} / {{ course.features.length }}</span>
 			<span v-else-if="page === 'reference' && reference"><span v-html="brandName(categoryLabels[reference.course])"></span> · 機能解説</span>
 		</div>
 		<template v-if="page === 'home' || page === 'index'">
-			<section class="hg-hero"><div><div class="hg-eyebrow"><i class="ti ti-book" aria-hidden="true"></i><span v-if="page === 'home'" class="hg-brand">HataIntro</span><span v-else>必要なときに引けるガイド</span></div><h1 data-guide-title tabindex="-1">{{ page === 'home' ? (inHataGoes ? '必要なときに引けるガイド' : '気になる画面から、ひとつずつ') : '検索・用語から探す' }}</h1><p class="hg-intro" v-html="prose(page === 'home' ? 'ログインしたばかりの人も、操作に迷った人も。開く場所・手順・画面の見方を、必要なところだけ読めるよ' : '操作の言葉でも、アプリの名前でも検索できるよ。知らない用語はこのページの下でも調べられる')"></p></div></section>
+			<section class="hg-hero"><div><div class="hg-eyebrow"><i class="ti ti-book" aria-hidden="true"></i><span v-if="page === 'home'" class="hg-brand">HataIntro</span><span v-else>必要なときに引けるガイド</span></div><h1 data-guide-title tabindex="-1">{{ page === 'home' ? (inHataGoes ? '必要なときに引けるガイド' : '画面と操作から使い方を探す') : '検索・用語から探す' }}</h1><p class="hg-intro" v-html="prose(page === 'home' ? 'ログインしたばかりの人も、操作に迷った人も。開く場所・手順・画面の見方を、必要なところだけ読めるよ' : '操作の言葉でも、アプリの名前でも検索できるよ。知らない用語はこのページの下でも調べられる')"></p></div></section>
 			<aside v-if="page === 'home' && !inHataGoes" class="hg-integration-note"><strong>はじめの操作も、使い慣れてからの疑問も</strong><p>最初は下の3つから。<br>機能の仕組みや注意点を知りたくなったら、同じページの詳しい解説へ進めるよ</p></aside>
 			<section v-if="page === 'home' && inHataGoes" class="hg-host-shortcuts" aria-label="最初はここから">
 				<h2>最初はここから</h2>
@@ -94,7 +97,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<template v-else-if="reference">
 			<HataIntroReference :key="reference.id" :reference="reference" @feature="openFeature($event, true)" @reference="openReference"/>
 		</template>
-		<footer class="hg-footer"><span>図・説明の改訂：2026年9月10日 · HataIntro</span></footer>
+		<footer class="hg-footer"><span>図・説明の改訂：{{ guideRevision }} · HataIntro</span></footer>
 	</main>
 	<p class="hg-sr" aria-live="polite" data-status>{{ status }}</p>
 </div>
@@ -104,7 +107,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed, inject, nextTick, onActivated, onBeforeUnmount, onDeactivated, ref, useId, useTemplateRef } from 'vue';
 import HataIntroScene from './HataIntroScene.vue';
 import HataIntroReference from './HataIntroReference.vue';
-import { features, guideDetails, courses, glossary, destinations } from './content.js';
+import { features, guideDetails, courses, glossary, destinations, guideRevision } from './content.js';
 import { references, referenceById, allCourses } from './reference-content.js';
 import { brandName, hataskGuideProse as prose, iconClass } from './prose.js';
 import { findFeatures, findReferences } from './search.js';
@@ -275,8 +278,11 @@ onBeforeUnmount(suspend);
 </script>
 
 <style src="./hata-intro.css"></style>
+<style src="./ui-s-scenes.css"></style>
+<style src="./hatagoes-scenes.css"></style>
 <style src="./reference.css"></style>
 <style scoped>
+.hg-browse-controls { display: flex; align-items: center; gap: 8px; }
 .hg-host .hg-host-shortcuts { margin: 0 0 22px; }
 .hg-host .hg-host-shortcuts h2 { margin-bottom: 12px; }
 .hg-host .hg-host-shortcut-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }

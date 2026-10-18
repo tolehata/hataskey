@@ -22,14 +22,16 @@ import * as feed from './feed-scenes.js';
 import * as studio from './studio-scenes.js';
 import * as channels from './channel-scenes.js';
 import * as collections from './collection-scenes.js';
+import * as uiS from './ui-s-scenes.js';
+import * as hatagoes from './hatagoes-scenes.js';
 
 const props = defineProps<{ featureId: string }>();
 const emit = defineEmits<{ navigate: [id: string]; status: [text: string] }>();
 const figure = useTemplateRef<HTMLElement>('figure');
 const instance = useId();
-const modules = [notes, tools, settings, planner, feed, studio, channels, collections];
+const modules = [notes, tools, settings, planner, feed, studio, channels, collections, uiS, hatagoes];
 const templates = Object.assign({}, ...modules.map(module => module.templates));
-const state = reactive({ previewTheme: 'cherry', deckView: false, logKinds: new Set(['study', 'movie', 'game']) });
+const state = reactive({ previewTheme: 'cherry', deckView: false, logKind: 'all' });
 const markup = computed(() => sceneMarkup(props.featureId, state, instance, templates));
 let cleanup: (() => void)[] = [];
 let focusRevision = 0;
@@ -66,8 +68,8 @@ function explain(event: MouseEvent) {
 		emit('status', state.deckView ? '例をデッキ表示に切り替えたよ' : '例を通常表示に戻したよ');
 	} else if (button.dataset.action === 'demo-log-kind') {
 		const kind = button.dataset.kind;
-		if (!kind || !['study', 'movie', 'game'].includes(kind)) return;
-		if (state.logKinds.has(kind)) state.logKinds.delete(kind); else state.logKinds.add(kind);
+		if (!kind || !['all', 'study', 'movie', 'game'].includes(kind)) return;
+		state.logKind = kind;
 		if (event.detail === 0) void restoreFocus(`[data-kind="${kind}"]`);
 		emit('status', '例の活動タイムラインを更新したよ');
 	} else if (button.dataset.action === 'feature' && button.dataset.id && Object.hasOwn(features, button.dataset.id)) {

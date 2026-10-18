@@ -405,6 +405,10 @@
       --hg-on-accent: var(--MI_THEME-fgOnAccent);
       --hg-soft: var(--MI_THEME-accentedBg);
       --hg-line: var(--MI_THEME-divider);
+      --hg-green: color-mix(in srgb, var(--MI_THEME-success) 20%, var(--MI_THEME-fg));
+      --hg-green-bg: color-mix(in srgb, var(--MI_THEME-success) 8%, var(--MI_THEME-panel));
+      --hg-blue: color-mix(in srgb, var(--MI_THEME-link) 20%, var(--MI_THEME-fg));
+      --hg-blue-bg: color-mix(in srgb, var(--MI_THEME-link) 8%, var(--MI_THEME-panel));
     }
     .hata-intro .hg-main { padding:clamp(18px,4cqi,48px); }
     .hata-intro .hg-skip { position:absolute; top:8px; left:12px; z-index:20; padding:12px 18px; border-radius:12px; background:var(--hg-panel); color:var(--hg-accent); transform:translateY(-160%); }

@@ -27,7 +27,7 @@ const icons: Record<string, string> = {
 	'message-square-text': 'message', 'pencil-line': 'pencil', 'contact-round': 'id',
 	'square-check-big': 'checkbox', 'calendar-days': 'calendar', 'chart-no-axes-combined': 'chart-bar',
 	'columns-3': 'layout-columns', 'panel-left': 'layout-sidebar',
-	image: 'photo',
+	image: 'photo', 'panels-top-left': 'layout-dashboard',
 };
 
 export function iconClass(name: string): string {
