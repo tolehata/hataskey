@@ -2,16 +2,17 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, reactive, ref } from 'vue';
 
-const fixture = vi.hoisted(() => ({ api: vi.fn(), changed: vi.fn(), capturePageTurn: vi.fn(() => ({ play: vi.fn(), cancel: vi.fn() })) }));
+const fixture = vi.hoisted(() => ({ api: vi.fn(), changed: vi.fn(), openRecord: vi.fn(), capturePageTurn: vi.fn(() => ({ play: vi.fn(), cancel: vi.fn() })) }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
 vi.mock('@/router.js', async () => {
 	const { ref } = await import('vue');
 	return { useRouter: () => ({ push: vi.fn(), currentRef: ref({ _parsedRoute: { queryString: '' } }) }) };
 });
 vi.mock('@/page.js', () => ({ definePage: vi.fn() }));
-vi.mock('@/i.js', () => ({ $i: { id: 'viewer' } }));
+vi.mock('@/i.js', () => ({ $i: { id: 'viewer', username: 'viewer', name: '本人 :self_badge:', host: null, emojis: {} } }));
 vi.mock('@/os.js', () => ({ popup: vi.fn(), popupMenu: vi.fn() }));
-vi.mock('@/preferences.js', async () => ({ prefer: { r: { enablePullToRefresh: (await import('vue')).ref(true) } } }));
+vi.mock('@/preferences.js', async () => ({ prefer: { s: { nicknameEnabled: false, advancedMfm: false }, r: { enablePullToRefresh: (await import('vue')).ref(true) } } }));
+vi.mock('@/store.js', async () => ({ store: { r: { darkMode: (await import('vue')).ref(false) } } }));
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 vi.mock('@/i18n.js', async () => {
 	const { createTestHataskI18n } = await import('@/utility/hatask-test-i18n.js');
@@ -21,6 +22,7 @@ vi.mock('@/utility/hatady.js', () => ({ hyBookmarkColor: () => '' }));
 vi.mock('@/utility/hatady-subjects.js', () => ({ loadHySubjects: vi.fn().mockResolvedValue([]) }));
 vi.mock('@/utility/hatady-prefs.js', async () => ({ hatadyTheme: (await import('vue')).ref('light'), hatadyTzOffset: () => 0, loadHatadyDisplay: vi.fn() }));
 vi.mock('@/utility/hatady-tutorial-launcher.js', () => ({ showHatadyTutorial: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('@/utility/hatady-record-launcher.js', () => ({ openHatadyRecord: fixture.openRecord }));
 vi.mock('@/utility/hatady-motion.js', () => ({ captureHatadyPageTurn: fixture.capturePageTurn }));
 vi.mock('@/utility/hatady-list-motion.js', () => ({ createHatadyListEntrance: () => ({ play: vi.fn(), finish: vi.fn(), cancel: vi.fn() }) }));
 vi.mock('@/utility/haptic.js', () => ({ haptic: vi.fn() }));
@@ -43,11 +45,33 @@ vi.mock('@/components/hatady/HyCategorySelect.vue', () => ({ default: {
 } }));
 vi.mock('@/components/HyBookCover.vue', () => ({ default: { template: '<span/>' } }));
 vi.mock('@/components/HyMediaCover.vue', () => ({ default: { template: '<span/>' } }));
-vi.mock('@/components/HatadyHome.vue', () => ({ default: { template: '<section>ホーム</section>' } }));
-vi.mock('@/components/HatadyProfile.vue', () => ({ default: { template: '<section/>' } }));
+vi.mock('@/components/HatadyHome.vue', () => ({ default: {
+	props: ['headerDateTarget', 'headerActionsTarget', 'active'],
+	template: '<section data-home :data-date-ready="!!headerDateTarget?.isConnected" :data-actions-ready="!!headerActionsTarget?.isConnected" :data-actions-location="headerActionsTarget?.dataset.anchor" :data-active="active">ホーム</section>',
+} }));
+vi.mock('@/components/HatadyProfile.vue', () => ({ default: {
+	props: ['headerActionsTarget', 'active'],
+	template: '<section data-profile :data-actions-ready="!!headerActionsTarget?.isConnected" :data-active="active"/>',
+} }));
 vi.mock('@/components/HatadyModeration.vue', () => ({ default: { template: '<section/>' } }));
 vi.mock('@/components/HatadyActivityCard.vue', () => ({ default: { props: ['activity'], emits: ['deleted'], template: '<article>{{ activity.id }}<button data-delete-record @click="$emit(\'deleted\')">削除</button></article>' } }));
+// Exercise the real username and MFM parser without fetching emoji images.
+vi.mock('@/components/global/MkCustomEmoji.vue', () => ({ default: {
+	props: ['name', 'url', 'host', 'normal'], template: '<img data-custom-emoji :alt="name" :src="url" :data-host="host" :data-normal="normal"/>',
+} }));
+vi.mock('@/components/global/MkA.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/global/MkUrl.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/global/MkTime.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/global/MkEmoji.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/MkLink.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/MkMention.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/MkCode.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/MkCodeInline.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/MkGoogle.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/MkSparkle.vue', () => ({ default: { render: () => null } }));
 import Hatady from './hatady.vue';
+import MkUserName from '@/components/global/MkUserName.vue';
+import Mfm from '@/components/global/MkMfm.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 import { hatadyMediaCopy } from '@/utility/hatady-media.js';
@@ -88,14 +112,24 @@ async function chooseRecordKind(target: HTMLElement, value: string) {
 	choice!.click();
 }
 
-async function mount(embedded = false) {
+async function mount(embedded = false, withHeader = false) {
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
+	const header = window.document.createElement('nav');
+	const headerDate = window.document.createElement('div');
+	const headerActions = window.document.createElement('div');
+	header.append(headerDate, headerActions);
+	if (withHeader) window.document.body.append(header);
+	const headerTargets = { date: ref<HTMLElement | null>(headerDate), actions: ref<HTMLElement | null>(headerActions), overview: ref<HTMLElement | null>(null) };
+	const hostActive = ref(true);
 	const pageProps = reactive({ embedded, paneActive: true, requestedTab: 'records' });
 	const app = createApp(defineComponent({ setup: () => () => h(Hatady, pageProps) }));
-	if (embedded) app.provide(HATA_GOES_HOST, { active: ref(true), register: () => () => {}, changed: fixture.changed });
+	if (embedded) app.provide(HATA_GOES_HOST, { active: hostActive, hatadyHeader: withHeader ? headerTargets : undefined, register: () => () => {}, changed: fixture.changed });
 	app.component('MkStickyContainer', { setup: (_, { slots }) => () => h('div', slots.default?.()) });
 	app.component('MkLoading', { template: '<span role="status">更新中</span>' });
+	app.component('MkUserName', MkUserName);
+	// eslint-disable-next-line vue/multi-word-component-names -- Register the existing production global name.
+	app.component('Mfm', Mfm);
 	// Happy DOM does not lay out imported CSS. Supply only the existing .main overflow rule;
 	// the production getScrollContainer still walks the real mounted ancestor chain.
 	const originalStyle = window.getComputedStyle.bind(window);
@@ -104,10 +138,15 @@ async function mount(embedded = false) {
 		return originalStyle(element);
 	});
 	app.mount(target);
-	const unmount = () => { app.unmount(); target.remove(); };
+	let mounted = true;
+	const unmount = () => {
+		if (!mounted) return;
+		mounted = false;
+		app.unmount(); target.remove(); header.remove();
+	};
 	cleanups.push(unmount);
 	await settle();
-	return { target, main: target.querySelector('main')!, list: target.querySelector<HTMLElement>('main > div')!, pageProps, unmount };
+	return { target, main: target.querySelector('main')!, list: target.querySelector<HTMLElement>('main > div')!, pageProps, header, headerTargets, hostActive, unmount };
 }
 
 beforeEach(() => {
@@ -119,6 +158,7 @@ beforeEach(() => {
 	prefer.r.enablePullToRefresh.value = true;
 	fixture.api.mockReset().mockImplementation(async endpoint => endpoint === 'hata/hatady/activities' ? page('kept', 'old-cursor') : { count: 0 });
 	fixture.changed.mockReset();
+	fixture.openRecord.mockReset();
 	fixture.capturePageTurn.mockClear();
 });
 afterEach(() => {
@@ -130,6 +170,101 @@ afterEach(() => {
 	window.localStorage.removeItem('hatadyActiveTab');
 	window.localStorage.removeItem('hatadyLogKinds');
 	window.localStorage.removeItem('hatadyCollectionKind');
+});
+
+test('Hatagoes omits duplicate Hatady headings while keeping the record action available', async () => {
+	const { main, header, pageProps } = await mount(true, true);
+	expect(header.querySelector('h1')).toBeNull();
+	expect(main.querySelector('h1')).toBeNull();
+	const recordButton = header.querySelector<HTMLButtonElement>(`button[aria-label="${i18n.ts._hata._hatady._home.recordActivity}"]`);
+	expect(recordButton).not.toBeNull();
+	recordButton?.click();
+	await settle();
+	expect(fixture.openRecord).toHaveBeenCalledOnce();
+	expect(fixture.openRecord).toHaveBeenCalledWith({ onDone: expect.any(Function), popup: expect.any(Function) });
+	pageProps.requestedTab = 'collection';
+	await settle();
+	expect(header.querySelector('h1')).toBeNull();
+	expect(main.querySelector('h1')).toBeNull();
+});
+
+test('Hatady record action follows pane and shell lifetime and restores the inline fallback', async () => {
+	const { main, header, headerTargets, hostActive, pageProps, unmount } = await mount(true, true);
+	const actionsTarget = headerTargets.actions.value;
+	pageProps.paneActive = false;
+	await settle();
+	expect(header.querySelector('h1, button')).toBeNull();
+	pageProps.paneActive = true;
+	await settle();
+	expect(header.querySelector('h1')).toBeNull();
+	expect(header.querySelectorAll('button')).toHaveLength(1);
+	hostActive.value = false;
+	await settle();
+	expect(header.querySelector('h1, button')).toBeNull();
+	hostActive.value = true;
+	headerTargets.actions.value = null;
+	await settle();
+	expect(main.querySelector('h1')?.textContent).toBe('日々の記録');
+	expect(header.querySelector('h1, button')).toBeNull();
+	headerTargets.actions.value = actionsTarget;
+	await settle();
+	expect(main.querySelector('h1')).toBeNull();
+	expect(header.querySelectorAll('button')).toHaveLength(1);
+	unmount();
+	expect(header.querySelector('h1, button')).toBeNull();
+});
+
+test('standalone Hatady keeps its heading inside the page', async () => {
+	const { main, header } = await mount(false, true);
+	expect(main.querySelector('h1')?.textContent).toBe('日々の記録');
+	expect(header.querySelector('h1, button')).toBeNull();
+});
+
+test('only embedded home and profile receive navigation targets and follow pane activity', async () => {
+	const { target, main, pageProps, hostActive } = await mount(true, true);
+	pageProps.requestedTab = 'home';
+	await settle();
+	expect(main.querySelector('[data-home]')?.getAttribute('data-date-ready')).toBe('true');
+	expect(main.querySelector('[data-home]')?.getAttribute('data-actions-ready')).toBe('true');
+	pageProps.paneActive = false;
+	await settle();
+	expect(main.querySelector('[data-home]')?.getAttribute('data-active')).toBe('false');
+	pageProps.requestedTab = 'profile';
+	await settle();
+	expect(main.querySelector('[data-profile]')?.getAttribute('data-actions-ready')).toBe('true');
+	expect(main.querySelector('[data-profile]')?.getAttribute('data-active')).toBe('false');
+	pageProps.paneActive = true;
+	await settle();
+	expect(main.querySelector('[data-profile]')?.getAttribute('data-active')).toBe('true');
+	hostActive.value = false;
+	await settle();
+	expect(main.querySelector('[data-profile]')?.getAttribute('data-active')).toBe('false');
+	pageProps.embedded = false;
+	await settle();
+	expect(main.querySelector('[data-profile]')?.getAttribute('data-actions-ready')).toBe('false');
+	target.querySelector<HTMLButtonElement>('button[data-tab="home"]')!.click();
+	await settle();
+	expect(main.querySelector('[data-home]')?.getAttribute('data-date-ready')).toBe('false');
+	expect(main.querySelector('[data-home]')?.getAttribute('data-actions-ready')).toBe('false');
+});
+
+test('mobile home uses its overview target while the record and profile controls keep their own target', async () => {
+	const { main, header, headerTargets, pageProps } = await mount(true, true);
+	const overviewTarget = window.document.createElement('div');
+	overviewTarget.dataset.anchor = 'before-notifications';
+	header.append(overviewTarget);
+	headerTargets.date.value = null;
+	headerTargets.overview.value = overviewTarget;
+	pageProps.requestedTab = 'home';
+	await settle();
+	expect(main.querySelector('[data-home]')?.getAttribute('data-date-ready')).toBe('false');
+	expect(main.querySelector('[data-home]')?.getAttribute('data-actions-location')).toBe('before-notifications');
+	expect(headerTargets.actions.value?.querySelector('button')).not.toBeNull();
+	expect(overviewTarget.querySelector('button')).toBeNull();
+	pageProps.requestedTab = 'profile';
+	await settle();
+	expect(main.querySelector('[data-profile]')?.getAttribute('data-actions-ready')).toBe('true');
+	expect(headerTargets.actions.value?.querySelector('button')).not.toBeNull();
 });
 
 test('embedded record controls keep readable period and kind labels', async () => {
@@ -286,4 +421,46 @@ test('all collections combine kinds and qualify ambiguous statuses without chang
 	query.dispatchEvent(new Event('input', { bubbles: true }));
 	await settle();
 	expect(target.querySelector('h2')).toBeNull();
+});
+
+test.each([false, true])('collection owner names render custom emoji and preserve fallbacks (embedded=%s)', async embedded => {
+	window.localStorage.setItem('hatadyActiveTab', 'collection');
+	const kinds = ['book', 'movie', 'game', 'work'];
+	const rows = kinds.map(kind => ({
+		id: kind, kind, title: `${kind} title`, status: kind === 'book' ? 'reading' : 'planned', userId: `owner-${kind}`,
+		user: { id: `owner-${kind}`, username: `owner_${kind}`, name: '名前 :flower:', host: `${kind}.test`, emojis: { flower: `https://${kind}.test/flower.webp` } },
+	}));
+	const ownWork = { id: 'own', kind: 'work', title: '本人の作業', status: 'in_progress', userId: 'viewer' };
+	const unnamedWork = { id: 'unnamed', kind: 'game', title: '表示名なし', status: 'planned', userId: 'unnamed', user: { id: 'unnamed', username: 'plain_owner', name: null, host: null, emojis: {} } };
+	fixture.api.mockImplementation(async (endpoint, params) => {
+		if (endpoint === 'hata/hatady/activities') return page('kept');
+		if (endpoint === 'hata/hatady/books') return params.scope === 'mine' ? [] : rows.filter(collectionItem => collectionItem.kind === 'book');
+		if (endpoint === 'hata/hatady/media/works/list') return params.scope === 'mine' ? [ownWork] : [...rows.filter(collectionItem => collectionItem.kind !== 'book'), ownWork, unnamedWork];
+		return { count: 0 };
+	});
+	const { target, pageProps } = await mount(embedded);
+	if (embedded) {
+		pageProps.requestedTab = 'collection';
+		await settle();
+	}
+	const recent = target.querySelector<HTMLButtonElement>('[data-value="recent"]');
+	expect(recent).not.toBeNull();
+	recent?.click();
+	await settle();
+	const cardFor = (title: string) => [...target.querySelectorAll<HTMLButtonElement>('main button[data-kind]')].find(card => card.querySelector('h2')?.textContent.trim() === title);
+	for (const kind of kinds) {
+		const card = cardFor(`${kind} title`);
+		expect(card).toBeDefined();
+		const image = card?.querySelector<HTMLImageElement>('[data-custom-emoji]');
+		expect(image?.getAttribute('src')).toBe(`https://${kind}.test/flower.webp`);
+		expect(image?.getAttribute('data-host')).toBe(`${kind}.test`);
+		expect(image?.getAttribute('data-normal')).toBe('true');
+		expect(card?.textContent).toContain('名前');
+		expect(card?.textContent).not.toContain(':flower:');
+	}
+	const ownCard = cardFor('本人の作業');
+	expect(ownCard?.textContent).toContain('本人');
+	expect(ownCard?.querySelector('[data-custom-emoji]')?.getAttribute('alt')).toBe('self_badge');
+	expect(cardFor('表示名なし')?.textContent).toContain('plain_owner');
+	expect(target.querySelectorAll('[data-custom-emoji]')).toHaveLength(5);
 });

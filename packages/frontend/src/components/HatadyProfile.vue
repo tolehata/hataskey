@@ -16,12 +16,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@closed="onClosed"
 >
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.surface" :style="designStyle">
-		<div v-if="!previewData" :class="$style.toolbar">
-			<h1>{{ copy.title }}</h1>
-			<button v-if="profile?.isMe" class="hy-secondary" @click="designOpen = true">
-				<i class="ti ti-palette"></i>
-				{{ profileCopy.editDesign }}
-			</button>
+		<div v-if="!previewData" :class="$style.toolbar" :data-hosted="hostedHeader">
+			<h1 v-if="!hostedHeader">{{ copy.title }}</h1>
+			<Teleport :to="headerActionsTarget ?? 'body'" :disabled="!hostedHeader">
+				<button v-if="profile?.isMe && (!hostedHeader || active)" type="button" class="hy-secondary" :class="$style.designButton" :data-hosted="hostedHeader" :aria-label="profileCopy.editDesign" :title="profileCopy.editDesign" @click="designOpen = true">
+					<i class="ti ti-palette" aria-hidden="true"></i>
+				</button>
+			</Teleport>
 		</div>
 		<div v-if="loading" class="hy-empty">{{ copy.loading }}</div>
 		<template v-else-if="profile">
@@ -229,13 +230,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else class="hy-empty">{{ copy.notFound }}</div>
 	</div>
 </HyDialog>
-<HatadyProfileDesign
-	v-if="designOpen"
-	:profile="{ ...profile, mediaWorks }"
-	:design="design"
-	@saved="saveDesign"
-	@closed="designOpen = false"
-/>
+<Teleport to="body">
+	<HatadyProfileDesign
+		v-if="designOpen"
+		:profile="{ ...profile, mediaWorks }"
+		:design="design"
+		@saved="saveDesign"
+		@closed="designOpen = false"
+	/>
+</Teleport>
 <HyDialog v-if="selectedDay" :variant="variant" :title="i18n.tsx._hata._hatady._statsView.dayRecords({ date: selectedDay.date })" @close="selectedDay = null">
 	<HatadyActivityCard
 		v-for="activity in selectedDay.logs"
@@ -281,13 +284,16 @@ import { isOwnHatadyProfile, openOwnHatadyProfileIfNeeded, useHatadyActivityActi
 const popup = useHataGoesPopup();
 const popupMenu = useHataGoesPopupMenu();
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
 	userId?: string | null;
 	variant?: 'hatady' | 'ui' | 'uis';
 	inline?: boolean;
+	active?: boolean;
+	headerActionsTarget?: HTMLElement | null;
 	previewData?: any;
 	previewDesign?: Record<string, any>;
-}>();
+}>(), { active: true });
+const hostedHeader = computed(() => props.inline && !props.previewData && !!props.headerActionsTarget);
 const timelineActions = useHatadyActivityActions({
 	variant: props.variant,
 	onChanged: () => { void reload(); emit('changed'); },
@@ -853,6 +859,24 @@ onUnmounted(() => {
 .toolbar h1 {
 	font-size: 24px;
 	margin: 0;
+}
+.toolbar[data-hosted='true'] {
+	display: contents;
+}
+.designButton[data-hosted] {
+	display: inline-flex;
+	flex: 0 0 44px;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	width: 44px;
+	height: 44px;
+	min-width: 44px;
+	min-height: 44px;
+	padding: 0;
+}
+.designButton[data-hosted='true'] {
+	order: -1;
 }
 .identityCard {
 	order: -1;

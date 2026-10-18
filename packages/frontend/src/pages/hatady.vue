@@ -3,12 +3,19 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <MkStickyContainer>
 	<div :class="[$style.root, 'hatady-scope']" :data-hatady-theme="hatadyTheme" :data-hatady-lang="versatileLang">
+		<Teleport v-if="hostedHeader && paneActive && hataGoesHost?.active.value && headerActionsTarget" :to="headerActionsTarget">
+			<button type="button" :class="[$style.hostedRecord, 'hy-primary']" :aria-label="copy.recordActivity" :title="copy.recordActivity" @click="openActivityComposer">
+				<i class="ti ti-plus" aria-hidden="true"></i>
+			</button>
+		</Teleport>
 		<header v-if="!embedded" :class="$style.header" :data-staff-nav="canModerate">
 			<button :class="$style.brand" aria-label="Hatady ホーム" @click="brandTapSequence++; setTab('home')"><HataAppLogo app="hatady" :size="26" :motion="activeTab === 'records' && recordsLoading || activeTab === 'collection' && collectionLoading ? 'loading' : 'startup'" :monochrome="hatadyTheme === 'dark' || hatadyTheme === 'espresso' || hatadyTheme === 'hataskey' && store.r.darkMode.value" :active="!embedded || paneActive" :tapSequence="brandTapSequence"/><HataAppWordmark app="hatady" :onDark="hatadyTheme === 'dark' || hatadyTheme === 'espresso' || hatadyTheme === 'hataskey' && store.r.darkMode.value"/></button>
 			<button :class="[$style.mobileExit, 'hy-icon-button']" type="button" :aria-label="pageCopy.exit" :title="pageCopy.exit" @click="exitHatady">
 				<i class="ti ti-logout-2" aria-hidden="true"></i>
 			</button>
-			<HyNav :class="$style.nav" :modelValue="activeTab" :options="tabs" @update:modelValue="setTab($event, true)"/>
+			<HyNav :class="$style.nav" :modelValue="activeTab" :options="tabs" @update:modelValue="setTab($event, true)">
+				<template #icon="{ option }"><HataFeatureIcon v-if="hataFeatureForScreen(`hatady.${option.value}`)" bare :feature="hataFeatureForScreen(`hatady.${option.value}`)!" :size="20"/><i v-else :class="option.icon" aria-hidden="true"></i></template>
+			</HyNav>
 			<div :class="$style.headerActions">
 				<button class="hy-primary" :aria-label="copy.recordActivity" @click="openActivityComposer">
 					<i class="ti ti-plus" aria-hidden="true"></i>
@@ -21,7 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					<span v-if="unread" :class="$style.badge">{{ unread > 99 ? '99+' : unread }}</span>
 				</button>
 				<button class="hy-icon-button" :aria-label="copy.settings" @click="openSettings()">
-					<i class="ti ti-settings" aria-hidden="true"></i>
+					<HataFeatureIcon feature="hatady-settings" :size="20" :mode="hatadyTheme === 'dark' || hatadyTheme === 'espresso' || hatadyTheme === 'hataskey' && store.r.darkMode.value ? 'mono-dark' : 'color'"/>
 				</button>
 			</div>
 			<button ref="menu" :class="[$style.mobileMenu, 'hy-secondary']" :aria-label="copy.settings" @click="openMenu">
@@ -32,6 +39,8 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 			<HatadyHome
 				v-if="activeTab === 'home'"
 				:active="!embedded || paneActive"
+				:headerDateTarget="headerDateTarget"
+				:headerActionsTarget="headerOverviewTarget"
 				:monochrome="hatadyTheme === 'dark' || hatadyTheme === 'espresso' || hatadyTheme === 'hataskey' && store.r.darkMode.value"
 				:revision="revision"
 				:stats="stats"
@@ -53,7 +62,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 							<i class="ti ti-bell" aria-hidden="true"></i>
 							<span v-if="unread" :class="$style.badge">{{ unread > 99 ? '99+' : unread }}</span>
 						</button>
-						<button class="hy-primary" :aria-label="copy.recordActivity" @click="openActivityComposer">
+						<button v-if="!hostedHeader" class="hy-primary" :aria-label="copy.recordActivity" @click="openActivityComposer">
 							<i class="ti ti-plus" aria-hidden="true"></i>
 						</button>
 					</div>
@@ -65,7 +74,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				:class="$style.page"
 				:refresher="refreshRecords"
 			>
-				<div :class="$style.pageTitle">
+				<div v-if="!hostedHeader" :class="$style.pageTitle">
 					<h1>{{ pageCopy.recordsTitle }}</h1>
 					<button
 						:class="[$style.compactRecord, 'hy-primary']"
@@ -173,7 +182,7 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				</div>
 			</component>
 			<section v-else-if="activeTab === 'collection'" :class="$style.page">
-				<div :class="$style.pageTitle"><h1>{{ pageCopy.collection }}</h1></div>
+				<div v-if="!hostedHeader" :class="$style.pageTitle"><h1>{{ pageCopy.collection }}</h1></div>
 				<div :class="$style.collectionTabs" data-hy-page-controls>
 					<HyCapsule
 						:modelValue="collectionScope"
@@ -366,7 +375,8 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 					>
 						<template v-if="work.kind === 'work'">
 							<small>
-								{{ ownerName(work.raw) }} ·
+								<MkUserName v-if="work.raw.user" :user="work.raw.user"/>
+								<MkUserName v-else-if="work.mine && $i" :user="$i"/> ·
 								<i :class="visibilityIcon(work.raw.visibility)" aria-hidden="true"></i>
 								<span class="_srOnly">{{ visibilityLabel(work.raw.visibility) }}</span>
 							</small>
@@ -421,7 +431,10 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 							<div :class="$style.workMeta">
 								<small>
 									{{ work.genre }}
-									<template v-if="collectionScope !== 'mine'">· {{ ownerName(work.raw) }}</template>
+									<template v-if="collectionScope !== 'mine'">
+										· <MkUserName v-if="work.raw.user" :user="work.raw.user"/>
+										<MkUserName v-else-if="work.mine && $i" :user="$i"/>
+									</template>
 								</small>
 								<h2>{{ work.title }}</h2>
 								<p>{{ work.creator }}</p>
@@ -466,6 +479,8 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 				v-else-if="activeTab === 'profile'"
 				:key="revision"
 				inline
+				:active="!embedded || paneActive && hataGoesHost?.active.value !== false"
+				:headerActionsTarget="headerActionsTarget"
 				@changed="refresh"
 				@openLog="openConversation"
 				@openBook="openBookDetail"
@@ -485,6 +500,8 @@ SPDX-License-Identifier: AGPL-3.0-only -->
 import { computed, inject, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { store } from '@/store.js';
 import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataFeatureIcon from '@/components/HataFeatureIcon.vue';
+import { hataFeatureForScreen } from '@/utility/hata-feature-icon.js';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import HataAppLoading from '@/components/HataAppLoading.vue';
 import type { HatadyActivity, HatadyMediaAdvancedFilters, HatadyMediaKind } from '@/utility/hatady-media.js';
@@ -550,6 +567,10 @@ const props = withDefaults(defineProps<{ embedded?: boolean; requestedTab?: stri
 useHataMascotSuppression(computed(() => !props.embedded || props.paneActive));
 const emit = defineEmits<{ exit: []; tabChange: [tab: string]; scopeChange: [scope: string]; appearanceChange: [appearance: { theme: string; cssVars?: Record<string, string> }] }>();
 const hataGoesHost = inject(HATA_GOES_HOST, null);
+const headerDateTarget = computed(() => props.embedded ? hataGoesHost?.hatadyHeader?.date?.value ?? null : null);
+const headerActionsTarget = computed(() => props.embedded ? hataGoesHost?.hatadyHeader?.actions.value ?? null : null);
+const headerOverviewTarget = computed(() => props.embedded ? hataGoesHost?.hatadyHeader?.overview?.value ?? headerActionsTarget.value : null);
+const hostedHeader = computed(() => !!headerActionsTarget.value);
 const dialogs = useHataGoesDialogs();
 const router = useRouter(),
 	mainEl = useTemplateRef('mainEl'),
@@ -950,10 +971,6 @@ function statusLabel(status: string, kind = collectionKind.value): string {
 	return String(
 		mediaCopy.status?.[mediaStatusCopyKey(kind as HatadyMediaKind, status as any)] ?? status,
 	);
-}
-
-function ownerName(raw: Record<string, any>): string {
-	return raw.user?.name || raw.user?.username || (raw.userId === $i?.id ? $i?.name || $i?.username : '') || '';
 }
 
 function visibilityIcon(value: string): string {
@@ -1505,6 +1522,14 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2', hataApp: 'hatady' }))
 	font-size: 25px;
 	letter-spacing: 0.1em;
 }
+.hostedRecord {
+	display: inline-grid;
+	place-items: center;
+	width: 44px;
+	min-height: 44px;
+	padding: 0;
+	font-size: 23px;
+}
 .recordControls {
 	display: flex;
 	flex-wrap: wrap;
@@ -1560,6 +1585,8 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2', hataApp: 'hatady' }))
 .entries {
 	display: grid;
 	gap: 14px;
+	max-width: 800px;
+	margin-inline: auto;
 }
 .entries > :last-child:is(button) {
 	justify-self: center;
@@ -2010,7 +2037,7 @@ definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2', hataApp: 'hatady' }))
 		flex: 0 0 auto;
 		min-width: 44px;
 	}
-	.header[data-staff-nav='true'] .nav :deep(button > span) {
+	.header[data-staff-nav='true'] .nav :deep(button > span:not([data-hata-feature])) {
 		inline-size: auto;
 		max-width: none;
 	}

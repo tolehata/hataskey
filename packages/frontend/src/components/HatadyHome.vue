@@ -1,23 +1,34 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <section :class="$style.home" :data-mode="summary.mode" :data-primary="summary.primary || 'mixed'" :data-preview="!!preview" :inert="preview ? true : undefined">
-	<header :class="$style.greeting">
+	<header :class="$style.greeting" :data-hosted="hostedHeader">
 		<div>
-			<small>{{ dateLabel }}</small>
-			<h1>
-				{{ summary.mode === 'new' ? dashboardCopy.newGreetingFirst : dashboardCopy.returnGreetingFirst }}
+			<Teleport :to="headerDateTarget ?? 'body'" :disabled="!hostedDate">
+				<time v-if="!hostedDate || headerActive" :class="$style.date" :data-hosted="hostedDate" :datetime="localDateKey(now)" :aria-label="dateLabel" :title="dateLabel">
+					<span :class="$style.fullDate">{{ dateLabel }}</span>
+					<span v-if="hostedDate" :class="$style.shortDate" aria-hidden="true">{{ shortDateLabel }}</span>
+				</time>
+			</Teleport>
+			<h1 v-if="summary.mode === 'new'">
+				{{ dashboardCopy.newGreetingFirst }}
 				<br/>
-				{{ summary.mode === 'new' ? dashboardCopy.newGreetingSecond : dashboardCopy.returnGreetingSecond }}
+				{{ dashboardCopy.newGreetingSecond }}
 			</h1>
 		</div>
 		<div :class="$style.greetingActions">
-			<button
-				class="hy-secondary"
-				:aria-label="i18n.tsx._hata._hatady._homeDashboard.viewFocusRecords({ focus: focusLabel || dashboardCopy.mixedDays })"
-				@click="openOverview"
-			>
-				<i :class="focusIcon" aria-hidden="true"></i>
-			</button>
+			<Teleport :to="headerActionsTarget ?? 'body'" :disabled="!hostedOverview">
+				<button
+					v-if="!hostedOverview || headerActive"
+					type="button"
+					class="hy-secondary"
+					:class="$style.overviewButton"
+					:data-hosted="hostedOverview"
+					:aria-label="i18n.tsx._hata._hatady._homeDashboard.viewFocusRecords({ focus: focusLabel || dashboardCopy.mixedDays })"
+					@click="openOverview"
+				>
+					<i :class="focusIcon" aria-hidden="true"></i>
+				</button>
+			</Teleport>
 			<slot name="greetingActions"></slot>
 		</div>
 	</header>
@@ -130,15 +141,13 @@
 					<small>{{ bar.label }}</small>
 				</div>
 			</div>
-			<small :class="$style.metricFoot">
+			<small v-if="summary.primary === 'work' || metricSeconds !== null || metricRows.length" :class="$style.metricFoot">
 				<i class="ti ti-clock" aria-hidden="true"></i>
 				{{
 					summary.primary === 'work'
 						? i18n.tsx._hata._hatady._homeDashboard.inProgressCount({ count: String(workItems.filter((item) => !item.done).length) })
 						: metricSeconds === null
-							? metricRows.length
-								? dashboardCopy.noTime
-								: dashboardCopy.startWithOne
+							? dashboardCopy.noTime
 							: hatadyDuration(metricSeconds)
 				}}
 			</small>
@@ -165,11 +174,6 @@
 					<MkAvatar v-else :user="user" :class="$style.avatar"/>
 				</button>
 			</div>
-			<p>
-				{{ dashboardCopy.communityFirst }}
-				<br/>
-				{{ dashboardCopy.communitySecond }}
-			</p>
 			<button :class="$style.link" @click="emit('community')">
 				{{ dashboardCopy.browseCommunity }}
 				<i class="ti ti-arrow-right" aria-hidden="true"></i>
@@ -312,8 +316,8 @@
 					{{ focusLabel ? i18n.tsx._hata._hatady._homeDashboard.focusProgress({ focus: focusLabel }) : dashboardCopy.ownPace }}
 				</h2>
 				<strong>{{ dashboardCopy.reviewChanges }}</strong>
-				<small>
-					{{ stats?.streakDays ? i18n.tsx._hata._hatady._homeDashboard.streakDays({ count: String(stats.streakDays) }) : dashboardCopy.shortRecord }}
+				<small v-if="stats?.streakDays">
+					{{ i18n.tsx._hata._hatady._homeDashboard.streakDays({ count: String(stats.streakDays) }) }}
 				</small>
 			</div>
 			<div :class="$style.tools">
@@ -399,7 +403,7 @@ import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { $i } from '@/i.js';
 
-const props = withDefaults(defineProps<{ revision: number; stats?: Record<string, any> | null; preview?: HatadyHomePreview; active?: boolean; monochrome?: boolean }>(), { active: true, monochrome: false });
+const props = withDefaults(defineProps<{ revision: number; stats?: Record<string, any> | null; preview?: HatadyHomePreview; active?: boolean; monochrome?: boolean; headerDateTarget?: HTMLElement | null; headerActionsTarget?: HTMLElement | null }>(), { active: true, monochrome: false });
 const emit = defineEmits<{
 	(event: 'records' | 'record', kind: string): void;
 	(event: 'work', work: HatadyHomeWork): void;
@@ -422,6 +426,10 @@ const overviewOpen = ref(false);
 const overviewDialog = ref<InstanceType<typeof HyDialog> | null>(null);
 const hataGoesHost = inject(HATA_GOES_HOST, null);
 const hataGoesSession = inject(HATA_GOES_SESSION, null);
+const hostedDate = computed(() => !props.preview && !!props.headerDateTarget);
+const hostedOverview = computed(() => !props.preview && !!props.headerActionsTarget);
+const hostedHeader = computed(() => hostedDate.value && hostedOverview.value);
+const headerActive = computed(() => props.active && hataGoesHost?.active.value !== false && hataGoesSession?.active.value !== false);
 let overviewClosing = false;
 let overviewRecordsKind: string | null = null;
 
@@ -502,6 +510,9 @@ const heroHeading = computed(
 );
 const dateLabel = computed(() =>
 	new Intl.DateTimeFormat(versatileLang, { month: 'long', day: 'numeric', weekday: 'long' }).format(now.value),
+);
+const shortDateLabel = computed(() =>
+	new Intl.DateTimeFormat(versatileLang, { month: 'numeric', day: 'numeric' }).format(now.value),
 );
 const metricCount = computed(() =>
 	summary.value.primary === 'movie' || summary.value.primary === 'game'
@@ -827,6 +838,12 @@ onUnmounted(() => {
 .greeting > div:first-child {
 	min-width: 0;
 }
+.greeting[data-hosted='true'] {
+	margin-bottom: 0;
+}
+.home[data-mode='new'] .greeting {
+	margin-bottom: 14px;
+}
 .greetingActions {
 	display: flex;
 	flex-shrink: 0;
@@ -838,15 +855,50 @@ onUnmounted(() => {
 	font-size: 24px;
 	line-height: 1.35;
 }
-.greeting small {
+.date {
 	color: var(--hy-muted);
 	font-size: 12px;
 }
-.greetingActions > button {
+.date[data-hosted='true'] {
+	display: block;
+	color: var(--hy-ink);
+	font-size: 24px;
+	font-weight: 700;
+	line-height: 1.25;
+	white-space: nowrap;
+}
+.fullDate {
+	display: block;
+}
+.fullDate, .shortDate {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.shortDate {
+	display: none;
+}
+.overviewButton {
+	display: inline-grid;
+	place-items: center;
 	padding: 0;
 	width: 44px;
+	min-height: 44px;
 	background: var(--hy-surface);
 	border: 1px solid var(--hy-border);
+}
+.overviewButton[data-hosted='true'] {
+	order: -1;
+}
+@container (max-width: 600px) {
+	.date[data-hosted='true'] {
+		font-size: 18px;
+	}
+	.date[data-hosted='true'] .fullDate {
+		display: none;
+	}
+	.shortDate {
+		display: block;
+	}
 }
 .bento {
 	display: grid;
@@ -1057,10 +1109,6 @@ onUnmounted(() => {
 	grid-column: span 4;
 	background: var(--hy-warm);
 	border-color: transparent;
-}
-.community p {
-	font-size: 13px;
-	color: var(--hy-muted);
 }
 .avatars {
 	display: flex;

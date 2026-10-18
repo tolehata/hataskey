@@ -35,7 +35,10 @@ vi.mock('@/components/HatadyActivityCard.vue', async () => {
 		},
 	}) };
 });
-vi.mock('@/components/HatadyProfileDesign.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/HatadyProfileDesign.vue', () => ({ default: {
+	props: ['design'], emits: ['saved', 'closed'],
+	template: '<div data-profile-design-editor :data-palette="design.palette"><button data-design-save @click="$emit(\'saved\', { palette: \'violet\' })">保存</button><button data-design-close @click="$emit(\'closed\')">閉じる</button></div>',
+} }));
 vi.mock('@/components/HyBookCover.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/HyMediaCover.vue', () => ({ default: { render: () => null } }));
 import HatadyProfile from './HatadyProfile.vue';
@@ -46,6 +49,90 @@ afterEach(() => { cleanups.splice(0).forEach(cleanup => cleanup()); });
 async function settle() {
 	for (let i = 0; i < 6; i++) { await nextTick(); await Promise.resolve(); }
 }
+
+async function mountHeaderProfile(inline = true, isMe = true, preview = false) {
+	const profile = {
+		user: { id: 'viewer', username: 'viewer' }, isMe, activities: [], books: [],
+		followingCount: 0, followersCount: 0, totalSeconds: 0,
+		design: { hidden: ['traits', 'shelf', 'work'] },
+	};
+	fixture.api.mockReset().mockImplementation(async (endpoint: string) => endpoint === 'hata/hatady/users/show' ? profile : []);
+	const host = window.document.createElement('div');
+	const header = window.document.createElement('nav');
+	window.document.body.append(host, header);
+	const target = ref<HTMLElement | null>(header);
+	const active = ref(true);
+	const app = createApp({ render: () => h(HatadyProfile, { inline, active: active.value, headerActionsTarget: target.value, previewData: preview ? profile : undefined }) });
+	app.component('MkAvatar', { render: () => null });
+	app.component('MkUserName', { render: () => null });
+	app.mount(host);
+	let mounted = true;
+	const unmount = () => {
+		if (mounted) app.unmount();
+		mounted = false;
+		host.remove();
+		header.remove();
+	};
+	cleanups.push(unmount);
+	await settle();
+	return { host, header, target, active, unmount };
+}
+
+test('hosted profile removes its heading and opens design editing from the navigation row', async () => {
+	const { host, header, target, active, unmount } = await mountHeaderProfile();
+	expect(host.querySelector('h1')).toBeNull();
+	expect(host.querySelector('button[aria-label="デザインを編集"]')).toBeNull();
+	const edit = header.querySelector<HTMLButtonElement>('button[aria-label="デザインを編集"]');
+	expect(edit).not.toBeNull();
+	expect(edit?.textContent.trim()).toBe('');
+	expect(edit?.title).toBe('デザインを編集');
+	expect(edit?.querySelector('i[aria-hidden=true]')).not.toBeNull();
+	edit!.click();
+	await settle();
+	const editor = window.document.querySelector('[data-profile-design-editor]');
+	expect(editor?.parentElement).toBe(window.document.body);
+	expect(host.contains(editor)).toBe(false);
+	editor?.querySelector<HTMLButtonElement>('[data-design-save]')?.click();
+	await settle();
+	expect(editor?.getAttribute('data-palette')).toBe('violet');
+	editor?.querySelector<HTMLButtonElement>('[data-design-close]')?.click();
+	await settle();
+	expect(window.document.querySelector('[data-profile-design-editor]')).toBeNull();
+	edit!.click();
+	await settle();
+	expect(window.document.querySelector('[data-profile-design-editor]')?.parentElement).toBe(window.document.body);
+	active.value = false;
+	await settle();
+	expect(header.querySelector('button')).toBeNull();
+	active.value = true;
+	await settle();
+	expect(header.querySelectorAll('button')).toHaveLength(1);
+	target.value = null;
+	await settle();
+	expect(header.querySelector('button')).toBeNull();
+	expect(host.querySelector('h1')?.textContent).toBe('プロフィール');
+	expect(host.querySelector('button[aria-label="デザインを編集"]')).not.toBeNull();
+	target.value = header;
+	await settle();
+	expect(host.querySelector('h1')).toBeNull();
+	unmount();
+	expect(header.querySelector('button')).toBeNull();
+	expect(window.document.querySelector('[data-profile-design-editor]')).toBeNull();
+});
+
+test('other users, popup profiles and previews do not expose a hosted edit control', async () => {
+	const other = await mountHeaderProfile(true, false);
+	expect(other.header.querySelector('button')).toBeNull();
+	other.unmount();
+	const popup = await mountHeaderProfile(false);
+	expect(popup.header.querySelector('button')).toBeNull();
+	expect(popup.host.querySelector('h1')?.textContent).toBe('プロフィール');
+	expect(popup.host.querySelector('button[aria-label="デザインを編集"]')).not.toBeNull();
+	popup.unmount();
+	const preview = await mountHeaderProfile(true, true, true);
+	expect(preview.header.querySelector('button')).toBeNull();
+	expect(preview.host.querySelector('button[aria-label="デザインを編集"]')).toBeNull();
+});
 
 test('a profile response started before deletion cannot restore the record after the newer reload fails', async () => {
 	const activity = {
