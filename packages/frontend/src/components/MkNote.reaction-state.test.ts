@@ -57,7 +57,11 @@ function setup(caller: Caller, myReaction: string | null = null) {
 	const server = { myReaction, canonicalReaction: undefined as string | undefined };
 	const request = vi.fn(async (endpoint: string, params: { noteId: string; reaction?: string }) => {
 		if (endpoint === 'notes/reactions/delete') server.myReaction = null;
-		if (endpoint === 'notes/reactions/create') server.myReaction = server.canonicalReaction ?? params.reaction ?? null;
+		if (endpoint === 'notes/reactions/create') {
+			server.myReaction = server.canonicalReaction ?? params.reaction ?? null;
+			// The server returns what it saved (after fallback/normalization).
+			return { reaction: server.myReaction };
+		}
 		return endpoint === 'notes/show' ? { myReaction: server.myReaction } : undefined;
 	});
 	const confirm = vi.fn().mockResolvedValue({ canceled: false });
@@ -87,7 +91,7 @@ describe.each(callers)('%s: reaction state with streaming disabled', caller => {
 	test('updates both note instances only after creating a reaction succeeds', async () => {
 		const view = setup(caller);
 		let complete!: () => void;
-		view.request.mockImplementationOnce(() => new Promise<undefined>(resolve => { complete = () => resolve(undefined); })).mockResolvedValueOnce({ myReaction: '👍' });
+		view.request.mockImplementationOnce(() => new Promise<{ reaction: string }>(resolve => { complete = () => resolve({ reaction: '👍' }); }));
 		const pending = view.toggleReaction('👍');
 		expect(view.request).toHaveBeenCalledExactlyOnceWith('notes/reactions/create', { noteId: 'original', reaction: '👍' });
 		expect([view.first.myReaction, view.second.myReaction]).toEqual([null, null]);
@@ -112,7 +116,6 @@ describe.each(callers)('%s: reaction state with streaming disabled', caller => {
 		expect(view.request.mock.calls).toEqual([
 			['notes/reactions/delete', { noteId: 'original' }],
 			['notes/reactions/create', { noteId: 'original', reaction: '🎉' }],
-			['notes/show', { noteId: 'original' }],
 		]);
 		expect([view.first.myReaction, view.second.myReaction]).toEqual(['🎉', '🎉']);
 		expect([view.first.reactions, view.second.reactions]).toEqual([{ '🎉': 1 }, { '🎉': 1 }]);
@@ -145,7 +148,7 @@ describe.each(callers)('%s: reaction state with streaming disabled', caller => {
 	test('quick reaction synchronizes the submitted selection after success', async () => {
 		const view = setup(caller);
 		let complete!: () => void;
-		view.request.mockImplementationOnce(() => new Promise<undefined>(resolve => { complete = () => resolve(undefined); })).mockResolvedValueOnce({ myReaction: '👍' });
+		view.request.mockImplementationOnce(() => new Promise<{ reaction: string }>(resolve => { complete = () => resolve({ reaction: '👍' }); }));
 		view.heartReact();
 		expect(view.request).toHaveBeenCalledExactlyOnceWith('notes/reactions/create', { noteId: 'original', reaction: '👍' });
 		expect([view.first.myReaction, view.second.myReaction]).toEqual([null, null]);
@@ -160,9 +163,9 @@ describe.each(callers)('%s: reaction state with streaming disabled', caller => {
 			view.server.canonicalReaction = '❤';
 			if (operation === 'picker') await view.toggleReaction(requested);
 			else { view.prefer.s.selectReaction = requested; view.heartReact(); await settle(); }
+			// One request: the create response already carries the saved fallback.
 			expect(view.request.mock.calls).toEqual([
 				['notes/reactions/create', { noteId: 'original', reaction: requested }],
-				['notes/show', { noteId: 'original' }],
 			]);
 			expect([view.first.myReaction, view.second.myReaction]).toEqual(['❤', '❤']);
 			expect([view.first.reactions, view.second.reactions]).toEqual([{ '❤': 1 }, { '❤': 1 }]);
@@ -170,23 +173,23 @@ describe.each(callers)('%s: reaction state with streaming disabled', caller => {
 		}
 	});
 
-	test('waits for the saved reaction and does not emit the requested value when it is absent', async () => {
+	test('waits for the saved reaction and never shows the requested value instead', async () => {
 		const view = setup(caller);
-		let complete!: (value: { myReaction: string | null }) => void;
-		view.request.mockResolvedValueOnce(undefined).mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+		let complete!: (value: { reaction: string }) => void;
+		view.request.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
 		const pending = view.toggleReaction(':removed_emoji:');
 		await settle();
-		expect(view.request).toHaveBeenLastCalledWith('notes/show', { noteId: 'original' });
 		expect([view.first.myReaction, view.second.myReaction]).toEqual([null, null]);
-		complete({ myReaction: null }); await pending;
-		expect([view.first.myReaction, view.second.myReaction]).toEqual([null, null]);
-		expect([view.first.reactionCount, view.second.reactionCount]).toEqual([0, 0]);
+		complete({ reaction: '❤' }); await pending;
+		expect([view.first.myReaction, view.second.myReaction]).toEqual(['❤', '❤']);
+		expect([view.first.reactions, view.second.reactions]).toEqual([{ '❤': 1 }, { '❤': 1 }]);
+		expect(view.request.mock.calls.map(call => call[0])).toEqual(['notes/reactions/create']);
 	});
 
 	test('server echo before the API completion cannot be undone by the local replacement echo', async () => {
 		const view = setup(caller, '👍');
 		let complete!: () => void;
-		view.request.mockImplementationOnce(() => new Promise<undefined>(resolve => { complete = () => resolve(undefined); }));
+		view.request.mockImplementationOnce(() => new Promise<{ reaction: string }>(resolve => { complete = () => resolve({ reaction: '🎉' }); }));
 		const pending = view.toggleReaction('🎉');
 		await settle();
 		noteEvents.emit('unreacted:original', { userId: 'viewer', reaction: '👍' });
@@ -233,7 +236,7 @@ test('detailed-note undo uses the live reaction after a like was added', async (
 describe('Unicode reaction chips with streaming disabled', () => {
 	test.each([null, '👍'])('updates both instances from %s without custom emoji metadata', async previous => {
 		const first = capture(previous), second = capture(previous);
-		const request = vi.fn(async (endpoint: string) => endpoint === 'notes/show' ? { myReaction: '🎉' } : undefined);
+		const request = vi.fn(async (endpoint: string) => endpoint === 'notes/reactions/create' ? { reaction: '🎉' } : undefined);
 		const action = handlers('MkReactionsViewer.reaction.vue', {
 			props: { noteId: 'original', myReaction: previous, reaction: '🎉', count: 1 },
 			$i: { id: 'viewer' }, mock: false, canToggle: { value: true },
@@ -244,14 +247,14 @@ describe('Unicode reaction chips with streaming disabled', () => {
 		});
 		await action.toggleReaction('unused'); await settle();
 		expect(request).toHaveBeenCalledWith('notes/reactions/create', { noteId: 'original', reaction: '🎉' });
-		expect(request).toHaveBeenLastCalledWith('notes/show', { noteId: 'original' });
+		expect(request.mock.calls.map(call => call[0])).not.toContain('notes/show');
 		expect([first.myReaction, second.myReaction]).toEqual(['🎉', '🎉']);
 		expect([first.reactions, second.reactions]).toEqual([{ '🎉': 1 }, { '🎉': 1 }]);
 	});
 
 	test('a removed custom emoji chip reflects the saved fallback', async () => {
 		const first = capture(null), second = capture(null);
-		const request = vi.fn(async (endpoint: string) => endpoint === 'notes/show' ? { myReaction: '❤' } : undefined);
+		const request = vi.fn(async (endpoint: string) => endpoint === 'notes/reactions/create' ? { reaction: '❤' } : undefined);
 		const action = handlers('MkReactionsViewer.reaction.vue', {
 			props: { noteId: 'original', myReaction: null, reaction: ':removed_emoji@.:', count: 1 },
 			$i: { id: 'viewer' }, mock: false, canToggle: { value: true },
@@ -261,7 +264,7 @@ describe('Unicode reaction chips with streaming disabled', () => {
 			haptic: vi.fn(), sound: { playMisskeySfx: vi.fn() },
 		});
 		await action.toggleReaction('unused'); await settle();
-		expect(request).toHaveBeenLastCalledWith('notes/show', { noteId: 'original' });
+		expect(request).toHaveBeenCalledExactlyOnceWith('notes/reactions/create', { noteId: 'original', reaction: ':removed_emoji@.:' });
 		expect([first.myReaction, second.myReaction]).toEqual(['❤', '❤']);
 		expect([first.reactions, second.reactions]).toEqual([{ '❤': 1 }, { '❤': 1 }]);
 	});

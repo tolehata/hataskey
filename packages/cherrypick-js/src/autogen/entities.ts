@@ -888,6 +888,7 @@ export type NotesPollsVoteRequest = operations['notes___polls___vote']['requestB
 export type NotesReactionsRequest = operations['notes___reactions']['requestBody']['content']['application/json'];
 export type NotesReactionsResponse = operations['notes___reactions']['responses']['200']['content']['application/json'];
 export type NotesReactionsCreateRequest = operations['notes___reactions___create']['requestBody']['content']['application/json'];
+export type NotesReactionsCreateResponse = operations['notes___reactions___create']['responses']['200']['content']['application/json'];
 export type NotesReactionsDeleteRequest = operations['notes___reactions___delete']['requestBody']['content']['application/json'];
 export type NotesRenotesRequest = operations['notes___renotes']['requestBody']['content']['application/json'];
 export type NotesRenotesResponse = operations['notes___renotes']['responses']['200']['content']['application/json'];

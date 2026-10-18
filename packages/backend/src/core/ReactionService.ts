@@ -298,6 +298,9 @@ export class ReactionService {
 		if (this.trendingService.isEligibleForTrending(note)) {
 			trackPromise(this.trendingService.addToRanking(note.id, SCORE_REACTION));
 		}
+
+		// 旗鯖fork: 保存した値(フォールバック・正規化後)を、packed myReaction と同じ形で返す。
+		return this.convertLegacyReaction(reaction);
 	}
 
 	@bindThis

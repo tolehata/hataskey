@@ -356,7 +356,8 @@ describe('shared reaction custom rendering', () => {
 	});
 
 	test('omitting custom retains built-in rendering, ripple and normal reaction creation', async () => {
-		fixture.api.mockResolvedValueOnce(undefined).mockResolvedValueOnce({ myReaction: ':test@.:' });
+		// The create response carries the saved (normalized) reaction; no follow-up notes/show.
+		fixture.api.mockResolvedValueOnce({ reaction: ':test@.:' });
 		const { button, activate } = await mountReaction({ custom: undefined, isInitial: true });
 		expect(button.classList.contains('_button')).toBe(true);
 		expect(button.querySelector('[data-builtin-emoji]')).not.toBeNull();
@@ -367,7 +368,6 @@ describe('shared reaction custom rendering', () => {
 		await settle();
 		expect(fixture.api.mock.calls).toEqual([
 			['notes/reactions/create', { noteId: 'details-note', reaction: ':test:' }],
-			['notes/show', { noteId: 'details-note' }],
 		]);
 		expect(fixture.noteEvent).toHaveBeenCalledExactlyOnceWith('reacted:details-note', expect.objectContaining({ userId: 'me', reaction: ':test@.:' }));
 		expect(activate).not.toHaveBeenCalled();

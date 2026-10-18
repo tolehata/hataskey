@@ -52161,10 +52161,15 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK (without any results) */
-            204: {
+            /** @description OK (with results) */
+            200: {
                 headers: {
                     [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        reaction: string;
+                    };
                 };
             };
             /** @description Client error */

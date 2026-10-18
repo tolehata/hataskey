@@ -428,11 +428,8 @@ async function toggleReaction(reaction: string) {
 		noteEvents.emit(`unreacted:${note.id}`, { userId: me.id, reaction: oldReaction });
 	}
 	if (oldReaction !== reaction) {
-		await misskeyApi('notes/reactions/create', { noteId: note.id, reaction });
-		const updated = await misskeyApi('notes/show', { noteId: note.id });
-		if (updated.myReaction != null) {
-			noteEvents.emit(`reacted:${note.id}`, { userId: me.id, reaction: updated.myReaction });
-		}
+		const created = await misskeyApi('notes/reactions/create', { noteId: note.id, reaction });
+		noteEvents.emit(`reacted:${note.id}`, { userId: me.id, reaction: created.reaction });
 	}
 
 	if (note.text && note.text.length > 100 && (Date.now() - new Date(note.createdAt).getTime() < 1000 * 3)) {
@@ -458,11 +455,8 @@ function heartReact(): void {
 	misskeyApi('notes/reactions/create', {
 		noteId: props.note.id,
 		reaction,
-	}).then(async () => {
-		const updated = await misskeyApi('notes/show', { noteId: props.note.id });
-		if (updated.myReaction != null) {
-			noteEvents.emit(`reacted:${props.note.id}`, { userId: me.id, reaction: updated.myReaction });
-		}
+	}).then(created => {
+		noteEvents.emit(`reacted:${props.note.id}`, { userId: me.id, reaction: created.reaction });
 	});
 	if (props.note.text && props.note.text.length > 100 && (Date.now() - new Date(props.note.createdAt).getTime() < 1000 * 3)) {
 		claimAchievement('reactWithoutRead');

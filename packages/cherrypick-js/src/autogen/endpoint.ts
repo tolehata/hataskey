@@ -885,6 +885,7 @@ import type {
 	NotesReactionsRequest,
 	NotesReactionsResponse,
 	NotesReactionsCreateRequest,
+	NotesReactionsCreateResponse,
 	NotesReactionsDeleteRequest,
 	NotesRenotesRequest,
 	NotesRenotesResponse,
@@ -1609,7 +1610,7 @@ export type Endpoints = {
 	'notes/polls/recommendation': { req: NotesPollsRecommendationRequest; res: NotesPollsRecommendationResponse };
 	'notes/polls/vote': { req: NotesPollsVoteRequest; res: EmptyResponse };
 	'notes/reactions': { req: NotesReactionsRequest; res: NotesReactionsResponse };
-	'notes/reactions/create': { req: NotesReactionsCreateRequest; res: EmptyResponse };
+	'notes/reactions/create': { req: NotesReactionsCreateRequest; res: NotesReactionsCreateResponse };
 	'notes/reactions/delete': { req: NotesReactionsDeleteRequest; res: EmptyResponse };
 	'notes/renotes': { req: NotesRenotesRequest; res: NotesRenotesResponse };
 	'notes/replies': { req: NotesRepliesRequest; res: NotesRepliesResponse };

@@ -998,11 +998,8 @@ async function toggleReaction(reaction: string) {
 		noteEvents.emit(`unreacted:${appearNote.id}`, { userId: me.id, reaction: oldReaction });
 	}
 	if (oldReaction !== reaction) {
-		await misskeyApi('notes/reactions/create', { noteId: appearNote.id, reaction });
-		const updated = await misskeyApi('notes/show', { noteId: appearNote.id });
-		if (updated.myReaction != null) {
-			noteEvents.emit(`reacted:${appearNote.id}`, { userId: me.id, reaction: updated.myReaction });
-		}
+		const created = await misskeyApi('notes/reactions/create', { noteId: appearNote.id, reaction });
+		noteEvents.emit(`reacted:${appearNote.id}`, { userId: me.id, reaction: created.reaction });
 	}
 
 	if (appearNote.text && appearNote.text.length > 100 && (Date.now() - new Date(appearNote.createdAt).getTime() < 1000 * 3)) {
@@ -1028,11 +1025,8 @@ function heartReact(): void {
 	misskeyApi('notes/reactions/create', {
 		noteId: appearNote.id,
 		reaction,
-	}).then(async () => {
-		const updated = await misskeyApi('notes/show', { noteId: appearNote.id });
-		if (updated.myReaction != null) {
-			noteEvents.emit(`reacted:${appearNote.id}`, { userId: me.id, reaction: updated.myReaction });
-		}
+	}).then(created => {
+		noteEvents.emit(`reacted:${appearNote.id}`, { userId: me.id, reaction: created.reaction });
 	});
 
 	if (appearNote.text && appearNote.text.length > 100 && (Date.now() - new Date(appearNote.createdAt).getTime() < 1000 * 3)) {
