@@ -17,6 +17,8 @@ export class MiHataskDropWallet {
 	public seeds: unknown;
 	@Column('jsonb', { default: '[]' })
 	public rareSeeds: unknown;
+	@Column('timestamptz', { nullable: true })
+	public flowerCollectionCompletedAt: Date | null;
 	@ManyToOne(() => MiUser, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'userId' })
 	public user: MiUser | null;
@@ -56,6 +58,7 @@ export class MiHataskFlowerTodo {
 }
 
 @Entity('hatask_flower_harvest')
+@Index('IDX_hatask_flower_harvest_user_season_species', ['userId', 'season', 'speciesId'])
 export class MiHataskFlowerHarvest {
 	@PrimaryColumn('varchar', { length: 64 })
 	public id: string;

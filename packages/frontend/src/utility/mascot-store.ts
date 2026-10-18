@@ -493,6 +493,7 @@ function notificationContentText(n: NotificationLike): string {
 		case 'achievementEarned': return mascotSettingsCopy.notificationAchievementEarned;
 		case 'roleAssigned': return mascotSettingsCopy.notificationRoleAssigned;
 		case 'login': return mascotSettingsCopy.notificationLogin;
+		case 'hataskDecorationUnlocked':
 		case 'app': {
 			// Hatask等のアプリ通知。header(件名)/body(本文)があればそれを使う。
 			const head = (n?.header ?? '').trim();

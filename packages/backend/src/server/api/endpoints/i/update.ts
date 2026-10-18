@@ -414,15 +414,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			if (ps.avatarDecorations) {
 				policies ??= await this.roleService.getUserPolicies(user.id);
 				const decorations = await this.avatarDecorationService.getAll(true);
-				const myRoles = await this.roleService.getUserRoles(user.id);
-				const allRoles = await this.roleService.getRoles();
-				const decorationIds = decorations
-					.filter(d => d.roleIdsThatCanBeUsedThisDecoration.filter(roleId => allRoles.some(r => r.id === roleId)).length === 0 || myRoles.some(r => d.roleIdsThatCanBeUsedThisDecoration.includes(r.id)))
-					.map(d => d.id);
+				const availability = await this.avatarDecorationService.getAvailability(user.id, decorations);
 
 				if (ps.avatarDecorations.length > policies.avatarDecorationLimit) throw new ApiError(meta.errors.restrictedByRole);
 
-				updates.avatarDecorations = ps.avatarDecorations.filter(d => decorationIds.includes(d.id)).map(d => ({
+				updates.avatarDecorations = ps.avatarDecorations.filter(d => availability.get(d.id) === null).map(d => ({
 					id: d.id,
 					angle: d.angle ?? 0,
 					flipH: d.flipH ?? false,

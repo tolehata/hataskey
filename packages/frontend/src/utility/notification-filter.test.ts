@@ -5,13 +5,25 @@
 
 import { describe, expect, test, vi } from 'vitest';
 import { notificationTypes, hatadyNotificationSubtypes } from 'cherrypick-js';
-import { hasConfiguredNotificationFilter, isNotificationFromBot, migrateNotificationFilterSnapshot, resolveNotificationFilter, resolveNotificationFilterDetails, serializeNotificationFilter, serializeNotificationFilterDetails } from './notification-filter.js';
+import { HATASK_NOTIFICATION_TYPES, STANDARD_NOTIFICATION_TYPES, hasConfiguredNotificationFilter, isNotificationFromBot, migrateNotificationFilterSnapshot, resolveNotificationFilter, resolveNotificationFilterDetails, serializeNotificationFilter, serializeNotificationFilterDetails } from './notification-filter.js';
 import { effectiveNotificationType, matchesNotificationView, notificationBrand } from './notification-brand.js';
 import type * as Misskey from 'cherrypick-js';
 
 vi.mock('@/i18n.js', () => ({ i18n: {} }));
 
 describe('notification brands and live filters', () => {
+	test('アイコンデコ獲得だけはブランド・全解除・種類除外にかかわらず届く', () => {
+		const reward = { id: 'reward', type: 'hataskDecorationUnlocked', header: 'Hatask', body: '獲得しました', link: '/settings/avatar-decoration' } as Misskey.entities.Notification;
+		const allHidden = { brand: 'hatady' as const, includeBrands: [], excludeTypes: [...notificationTypes], includeHataskApp: false, includeHatadySubtypes: [], excludeBots: true };
+		expect(notificationBrand(reward)).toBe('hatask');
+		expect(matchesNotificationView(reward, allHidden)).toBe(true);
+		for (const type of ['app', 'hataskFlowerReady', 'achievementEarned'] as const) {
+			expect(matchesNotificationView({ ...reward, type } as Misskey.entities.Notification, allHidden)).toBe(false);
+		}
+		expect(HATASK_NOTIFICATION_TYPES).not.toContain(reward.type);
+		expect(STANDARD_NOTIFICATION_TYPES).not.toContain(reward.type);
+	});
+
 	test('app classifications match backend path boundary and known HataFeed header', () => {
 		expect(notificationBrand({ type: 'app', link: '/hatask/tasks' })).toBe('hatask');
 		expect(notificationBrand({ type: 'app', link: '/hatasker' })).toBe('standard');
@@ -60,6 +72,18 @@ describe('notification brands and live filters', () => {
 });
 
 describe('notification filter persistence', () => {
+	test('獲得通知は旧スナップショットや保存済み除外から外し、通常通知の設定を維持する', () => {
+		const oldTypes = notificationTypes.filter(type => type !== 'hataskDecorationUnlocked' && type !== 'hataskFlowerReady');
+		const result = resolveNotificationFilter(['hataskDecorationUnlocked', 'reaction'], oldTypes);
+		expect(result.excludeTypes).toEqual(['reaction', 'hataskFlowerReady']);
+		const saved = serializeNotificationFilter([...notificationTypes], ['futureNotification', 'hataskDecorationUnlocked'], oldTypes);
+		expect(saved.excludeTypes).toContain('futureNotification');
+		expect(saved.excludeTypes).toContain('reaction');
+		expect(saved.excludeTypes).not.toContain('hataskDecorationUnlocked');
+		expect(resolveNotificationFilter(saved.excludeTypes, saved.knownTypes).excludeTypes).not.toContain('hataskDecorationUnlocked');
+		expect(migrateNotificationFilterSnapshot(['hataskDecorationUnlocked', 'reaction'], [])?.excludeTypes).toEqual(['reaction']);
+	});
+
 	test('旧appとHatady親の除外をカテゴリで勝手に有効化せず、新しいHatady細分類はOFFにする', () => {
 		const excluded = resolveNotificationFilter(['app', 'hatady'], []);
 		const details = resolveNotificationFilterDetails(undefined, excluded.excludeTypes);
@@ -92,7 +116,8 @@ describe('notification filter persistence', () => {
 			includeHataskApp: false,
 			excludeHatadySubtypes: [hatadyNotificationSubtypes[0]],
 		});
-		expect(serializeNotificationFilterDetails({ ...selected, includeBrands: null }).includeBrands).toEqual(['standard', 'hatady', 'hatask', 'hataFeed', 'futureBrand']);
+		expect(serializeNotificationFilterDetails({ ...selected, includeBrands: null }, previous).includeBrands).toEqual(['standard', 'hatady', 'hatask', 'hataFeed', 'futureBrand']);
+		expect(serializeNotificationFilterDetails({ ...selected, includeBrands: null }).includeBrands).toBeNull();
 	});
 	test('Hataskのお花を個別に選択でき、保存済みフィルタには勝手に追加しない', () => {
 		const oldTypes = notificationTypes.filter(type => type !== 'hataskFlowerReady');

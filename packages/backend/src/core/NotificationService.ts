@@ -92,7 +92,7 @@ export function notificationBrand(notification: MiNotification | { type: string;
 	const link = fields.customLink ?? fields.link;
 	if (notification.type === 'hatady') return 'hatady';
 	if (notification.type === 'hataFeed' || (notification.type === 'app' && header === 'HataFeed')) return 'hataFeed';
-	if (notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed') return 'hatask';
+	if (notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed' || notification.type === 'hataskDecorationUnlocked') return 'hatask';
 	if (notification.type === 'app' && ((link != null && /^\/hatask(?:\/|[?#]|$)/.test(link))
 		|| (link == null && ['Hatask', 'Hataskのお花'].includes(header ?? '')))) return 'hatask';
 	return 'standard';
@@ -105,6 +105,7 @@ export function matchesNotificationListFilter(notification: MiNotification, opti
 	includeBrands?: readonly Exclude<NotificationBrand, 'all'>[];
 	includeHataskApp?: boolean;
 }): boolean {
+	if (notification.type === 'hataskDecorationUnlocked') return true;
 	const selectedBrand = notificationBrand(notification);
 	if (options.brand != null && options.brand !== 'all' && selectedBrand !== options.brand) return false;
 	if (options.includeBrands != null && !options.includeBrands.includes(selectedBrand)) return false;
@@ -490,18 +491,18 @@ export class NotificationService implements OnApplicationShutdown {
 
 		// 古いMisskeyバージョンのキャッシュが残っている可能性がある
 		// 旗鯖fork: notificationRecieveConfig のキー集合(types.ts の notificationTypes)は
-		// addedToPrivateChannel/removedFromPrivateChannel を含まない(受信設定の対象外のため)。
+		// addedToPrivateChannel/removedFromPrivateChannel/hataskDecorationUnlocked を含まない(受信設定の対象外のため)。
 		// MiNotification['type'] 全体を汎用 T として受け取るここでは静的にキーの網羅性を
 		// 保証できない(が値側の discriminated union はそのまま維持する)ので、
 		// キーだけ string に広げて読む(挙動は変えない)。
 		type RecieveConfigValue = NonNullable<(typeof profile.notificationRecieveConfig)[keyof typeof profile.notificationRecieveConfig]>;
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 		const recieveConfig = (profile.notificationRecieveConfig as Partial<Record<string, RecieveConfigValue>> ?? {})[type];
-		if (recieveConfig?.type === 'never') {
+		if (type !== 'hataskDecorationUnlocked' && recieveConfig?.type === 'never') {
 			return null;
 		}
 
-		if (notifierId) {
+		if (notifierId && type !== 'hataskDecorationUnlocked') {
 			if (notifieeId === notifierId) {
 				return null;
 			}
@@ -753,7 +754,7 @@ export class NotificationService implements OnApplicationShutdown {
 			excludeBots?: boolean,
 		},
 	): Promise<MiNotification[]> {
-		if (includeBrands?.length === 0) return [];
+		// 空のフィルタでも、必須のアイコンデコ獲得通知を探す。
 		let sinceTime = sinceId ? this.toXListId(sinceId) : null;
 		let untilTime = untilId ? this.toXListId(untilId) : null;
 

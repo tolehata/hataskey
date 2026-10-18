@@ -155,7 +155,12 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		text: i18n.ts.avatarDecorations,
 		to: '/admin/avatar-decorations',
 		active: currentPage.value?.route.name === 'avatarDecorations',
-	}, {
+	}, ...(iAmAdmin ? [{
+		icon: 'ti ti-flower',
+		text: 'Hatask管理',
+		to: '/admin/hatask',
+		active: currentPage.value?.route.name === 'hatask',
+	}] : []), {
 		icon: 'ti ti-world',
 		text: i18n.ts.federation,
 		to: '/admin/federation',

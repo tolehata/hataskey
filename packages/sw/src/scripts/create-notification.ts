@@ -313,6 +313,7 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 				case 'hataskFlowerBloomed':
 				case 'hataskZukanUpdated':
 				case 'hataskFestivalBloomed':
+				case 'hataskDecorationUnlocked':
 				case 'earthquake':
 				case 'addedToPrivateChannel':
 				case 'removedFromPrivateChannel': {

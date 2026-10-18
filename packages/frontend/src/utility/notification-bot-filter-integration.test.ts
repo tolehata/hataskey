@@ -22,7 +22,8 @@ describe('notification bot filter integration', () => {
 
 	test('通常デッキとHataskey UIデッキがBot除外を保存する', () => {
 		expect(notificationsColumnSource).toContain(':excludeBots="props.column.excludeBots"');
-		expect(notificationsColumnSource).toContain('excludeBots: excludeBots');
+		expect(notificationsColumnSource).toContain('changes.excludeBots = excludeBots');
+		expect(notificationsColumnSource).toContain('updateColumn(props.column.id, changes)');
 		expect(hatasabaDeckSource).toContain('excludeBots: tab.excludeBots === true');
 		expect(hatasabaDeckSource).toContain('excludeBots: res.excludeBots');
 	});

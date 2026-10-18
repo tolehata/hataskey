@@ -210,6 +210,15 @@ export type MiNotification = {
 	customIcon: string | null;
 	customLink: string | null;
 } | {
+	// Hataskのアイコンデコ獲得通知。送信者を持たず、受信・表示フィルタの対象外。
+	type: 'hataskDecorationUnlocked';
+	id: string;
+	createdAt: string;
+	customBody: string;
+	customHeader: string | null;
+	customIcon: string | null;
+	customLink: string | null;
+} | {
 	// 旗鯖fork: 地震・津波情報の通知。app通知と同形だが、通知フィルタで個別ON/OFFできるよう専用タイプ。
 	type: 'earthquake';
 	id: string;

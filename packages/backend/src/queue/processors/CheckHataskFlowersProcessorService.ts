@@ -4,6 +4,7 @@
  */
 
 import { HataskFlowerV2Service } from '@/core/HataskFlowerV2Service.js';
+import { AvatarDecorationService } from '@/core/AvatarDecorationService.js';
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
 import type { RegistryItemsRepository } from '@/models/_.js';
@@ -29,10 +30,19 @@ export class CheckHataskFlowersProcessorService {
 		private idService: IdService,
 		private notificationService: NotificationService,
 		private queueLoggerService: QueueLoggerService,
+		private avatarDecorationService: AvatarDecorationService,
 	) { }
 
 	@bindThis
 	public async process(): Promise<void> {
+		await this.avatarDecorationService.removeUnavailableDecorations();
+		const decorationFailures: unknown[] = [];
+		try {
+			await this.avatarDecorationService.notifyUnlockedDecorations();
+		} catch (error) {
+			decorationFailures.push(error);
+			this.queueLoggerService.logger.error('Hatask decoration notification failed', { error });
+		}
 		await this.flowerV2Service.checkNotifications();
 		let cursor = '';
 		let failures = 0;
@@ -70,6 +80,7 @@ export class CheckHataskFlowersProcessorService {
 			if (owners.length < PAGE_SIZE) break;
 		}
 		if (failures > 0) throw new Error(`Hatask flower notifications failed for ${failures} users`);
+		if (decorationFailures.length > 0) throw new AggregateError(decorationFailures, 'Hatask decoration notifications failed');
 	}
 
 	private async checkOwner(userId: string): Promise<void> {

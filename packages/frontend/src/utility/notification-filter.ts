@@ -10,9 +10,14 @@ import { i18n } from '@/i18n.js';
 
 export type NotificationType = typeof notificationTypes[number];
 
+/** Hatask rewards remain visible even when every optional notification is hidden. */
+export function isMandatoryNotificationType(type: string): boolean {
+	return type === 'hataskDecorationUnlocked';
+}
+
 export const NOTIFICATION_FILTER_CATEGORIES = ['standard', 'hatady', 'hatask', 'hataFeed'] as const satisfies readonly HataNotificationCategory[];
 export const HATASK_NOTIFICATION_TYPES = ['hataskFlowerReady', 'hataskFlowerBloomed', 'hataskZukanUpdated', 'hataskFestivalBloomed'] as const satisfies readonly NotificationType[];
-export const STANDARD_NOTIFICATION_TYPES = notificationTypes.filter(type => type !== 'hatady' && type !== 'hataFeed' && !(HATASK_NOTIFICATION_TYPES as readonly string[]).includes(type));
+export const STANDARD_NOTIFICATION_TYPES = notificationTypes.filter(type => !isMandatoryNotificationType(type) && type !== 'hatady' && type !== 'hataFeed' && !(HATASK_NOTIFICATION_TYPES as readonly string[]).includes(type));
 
 export type NotificationFilterDetails = {
 	includeBrands?: string[] | null;
@@ -126,7 +131,7 @@ export function migrateNotificationFilterSnapshot(
 ): StoredNotificationFilterState | null {
 	if ((excludeTypes?.length ?? 0) === 0 || (knownTypes?.length ?? 0) > 0) return null;
 	return {
-		excludeTypes: [...(excludeTypes ?? [])],
+		excludeTypes: (excludeTypes ?? []).filter(type => !isMandatoryNotificationType(type)),
 		knownTypes: [...notificationTypes],
 	};
 }
@@ -134,6 +139,7 @@ export function migrateNotificationFilterSnapshot(
 /**
  * 保存時点では存在しなかった通知種別を、利用者の確認なしに自動でONにしないための初期状態を作る。
  * knownTypes が無い旧設定は従来どおり現在の全種別を既知として扱い、既存表示を勝手に変えない。
+ * アイコンデコの獲得通知だけは、スナップショットや過去の除外指定にかかわらず表示する。
  */
 export function resolveNotificationFilter(
 	excludeTypes: readonly string[] | null | undefined,
@@ -146,12 +152,12 @@ export function resolveNotificationFilter(
 
 	if (hasSnapshot) {
 		for (const type of notificationTypes) {
-			if (!known.has(type)) excluded.add(type);
+			if (!known.has(type) && !isMandatoryNotificationType(type)) excluded.add(type);
 		}
 	}
 
 	return {
-		excludeTypes: unique([...excluded].filter(type => currentTypes.has(type))).filter(isNotificationType),
+		excludeTypes: unique([...excluded].filter(type => currentTypes.has(type) && !isMandatoryNotificationType(type))).filter(isNotificationType),
 		knownTypes: unique(hasSnapshot ? (knownTypes ?? []) : notificationTypes),
 	};
 }
@@ -172,7 +178,7 @@ export function serializeNotificationFilter(
 	return {
 		excludeTypes: unique([
 			...unknownExcluded,
-			...disabledCurrentTypes.filter(type => currentTypes.has(type)),
+			...disabledCurrentTypes.filter(type => currentTypes.has(type) && !isMandatoryNotificationType(type)),
 		]),
 		knownTypes: unique([...unknownKnown, ...notificationTypes]),
 	};

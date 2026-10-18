@@ -37,6 +37,15 @@ export class MiAvatarDecoration {
 	})
 	public roleIdsThatCanBeUsedThisDecoration: string[];
 
+	@Column('boolean', { default: false })
+	public requiresHataskFlowerCompletion: boolean;
+
+	@Column('timestamp with time zone', { nullable: true })
+	public availableFrom: Date | null;
+
+	@Column('timestamp with time zone', { nullable: true })
+	public availableUntil: Date | null;
+
 	@Column('varchar', {
 		length: 32, nullable: true,
 	})

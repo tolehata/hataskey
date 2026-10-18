@@ -2,12 +2,13 @@
 import { randomInt } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
-import { NotificationService } from './NotificationService.js';
 import { IdService } from '@/core/IdService.js';
 import { HATASK_FLOWER_CATALOG, HATASK_FLOWER_SEASONS, type HataskFlowerSeason } from '@/misc/hatask-flower-catalog.js';
-import { DEFAULT_FLOWER_RULES, flowerDay, flowerResetAt, lockHataskFlowerWallet, normalizeFlowerTodoTitle } from './hatask-flower-v2.js';
-import { validTodayJournalRow } from './hatagoes-daily.js';
 import { FLOWER_ARCHIVE_KEY, RECORD_SCOPE } from '@/server/api/endpoints/hatask/records/_shared.js';
+import { recordHataskFlowerCollectionCompletion } from '@/core/hatask-flower-completion.js';
+import { NotificationService } from './NotificationService.js';
+import { DEFAULT_FLOWER_RULES, flowerDay, flowerResetAt, flowerSeason, lockHataskFlowerWallet, normalizeFlowerTodoTitle } from './hatask-flower-v2.js';
+import { validTodayJournalRow } from './hatagoes-daily.js';
 import type { DataSource, EntityManager } from 'typeorm';
 
 type Flower = { seedKey?: string; id: string; speciesId: string; season: HataskFlowerSeason; emoji: string; name: string; hanakotoba: string; rare: boolean; startedAt: number; lastGrowthAt: number; totalMinutes: number; targetMinutes: number; progress: number; memory: string[] };
@@ -34,7 +35,7 @@ export class HataskFlowerV2Service {
 	public async checkNotifications(): Promise<void> {
 		const ready = await this.db.query(`SELECT "userId" FROM hatask_drop_wallet WHERE flower IS NOT NULL AND (flower->>'totalMinutes')::numeric + GREATEST(0,(extract(epoch FROM now())*1000-(flower->>'lastGrowthAt')::numeric)/60000) >= (flower->>'targetMinutes')::numeric AND NOT EXISTS (SELECT 1 FROM hatask_flower_notice n WHERE n."userId"=hatask_drop_wallet."userId" AND n.type='hataskFlowerBloomed' AND n."sourceId"=flower->>'id') LIMIT 1000`);
 		for (const { userId } of ready) await this.db.transaction(async m => { const w = await this.wallet(m, userId); await this.grow(m, w, new Date()); await this.save(m, w); });
-		const pending = await this.db.query('SELECT * FROM hatask_flower_notice WHERE "sentAt" IS NULL LIMIT 1000');
+		const pending = await this.db.query('SELECT * FROM hatask_flower_notice WHERE "sentAt" IS NULL AND type = ANY($1::varchar[]) LIMIT 1000', [['hataskFlowerBloomed', 'hataskZukanUpdated', 'hataskFestivalBloomed']]);
 		for (const notice of pending) await this.db.transaction(async m => {
 			const [n] = await m.query('SELECT * FROM hatask_flower_notice WHERE "userId"=$1 AND type=$2 AND "sourceId"=$3 AND "sentAt" IS NULL FOR UPDATE SKIP LOCKED', [notice.userId, notice.type, notice.sourceId]);
 			if (!n) return;
@@ -68,29 +69,35 @@ export class HataskFlowerV2Service {
 		await m.query('UPDATE hatask_drop_wallet SET drops=$2, timezone=$3, flower=$4, seeds=$5, "rareSeeds"=$6 WHERE "userId"=$1', [w.userId, w.drops, w.timezone, w.flower == null ? null : JSON.stringify(w.flower), JSON.stringify(w.seeds), JSON.stringify(w.rareSeeds)]);
 	}
 	private season(now: Date): HataskFlowerSeason {
-		const month = new Date(now.getTime() + 9 * 3600000).getUTCMonth();
-		return month >= 2 && month <= 4 ? 'spring' : month >= 5 && month <= 7 ? 'summer' : month >= 8 && month <= 10 ? 'autumn' : 'winter';
+		return flowerSeason(now);
 	}
-	private async newFlower(m: EntityManager, w: Wallet, now: Date): Promise<Flower> {
+	private async festivalSeeds(m: EntityManager, userId: string): Promise<{ id: string; season: HataskFlowerSeason }[]> {
+		return m.query('SELECT f.id,f.season FROM hatask_flower_participant p JOIN hatask_flower_festival f ON f.id=p."festivalId" WHERE p."userId"=$1 AND f."bloomedAt" IS NOT NULL ORDER BY f."startsAt"', [userId]);
+	}
+	private catalogSpecies(w: Wallet, discovered: { speciesId: string }[], now: Date) {
 		let season = this.season(now);
 		if (season === 'winter' && !w.seeds.includes('winter')) season = 'autumn';
+		const all = HATASK_FLOWER_CATALOG.filter(f => f.season === season);
+		const missing = all.filter(f => !discovered.some(e => e.speciesId === f.id));
+		const choices = missing.length ? missing : all;
+		return choices[randomInt(choices.length)];
+	}
+	private async newFlower(m: EntityManager, w: Wallet, now: Date): Promise<Flower> {
 		const discovered: { speciesId: string; season: HataskFlowerSeason; entry: { seedKey?: string } }[] = await m.query('SELECT "speciesId",season,entry FROM hatask_flower_harvest WHERE "userId"=$1', [w.userId]);
 		for (const s of HATASK_FLOWER_SEASONS) {
 			const count = new Set(discovered.filter(e => e.season === s && HATASK_FLOWER_CATALOG.some(f => f.id === e.speciesId)).map(e => e.speciesId)).size;
 			if (count >= 12 && !w.rareSeeds.includes(s)) w.rareSeeds.push(s);
 		}
-		const festivals: { id: string; season: HataskFlowerSeason }[] = await m.query('SELECT f.id,f.season FROM hatask_flower_participant p JOIN hatask_flower_festival f ON f.id=p."festivalId" WHERE p."userId"=$1 AND f."bloomedAt" IS NOT NULL ORDER BY f."startsAt"', [w.userId]);
-		const seeds = [...w.rareSeeds.map(s => ({ key: `zukan:${s}`, season: s })), ...festivals.map(f => ({ key: `festival:${f.id}`, season: f.season }))];
-		const seed = seeds.find(s => !discovered.some(e => e.entry.seedKey === s.key));
+		const festivals = await this.festivalSeeds(m, w.userId);
+		// 月見草 is a festival reward: collection completion alone does not grant its seed.
+		const seeds = festivals.map(f => ({ key: `festival:${f.id}`, season: f.season }));
+		const seed = seeds.find(s => !discovered.some(e => e.speciesId === 'limited-evening-primrose' && e.entry.seedKey === s.key));
 		if (seed) {
 			// The supplied design names only 月見草 as a limited seed. Keep that
 			// cultivar for all seasons instead of inventing additional artwork/species.
 			return { id: this.idService.gen(), speciesId: 'limited-evening-primrose', seedKey: seed.key, season: seed.season, emoji: '🌼', name: '月見草', hanakotoba: '', rare: true, startedAt: now.getTime(), lastGrowthAt: now.getTime(), totalMinutes: 0, targetMinutes: randomInt(2880, 5761), progress: 0, memory: [] };
 		}
-		const all = HATASK_FLOWER_CATALOG.filter(f => f.season === season);
-		const missing = all.filter(f => !discovered.some((e: { speciesId: string }) => e.speciesId === f.id));
-		const choices = missing.length ? missing : all;
-		const species = choices[randomInt(choices.length)];
+		const species = this.catalogSpecies(w, discovered, now);
 		return { ...species, id: this.idService.gen(), speciesId: species.id, startedAt: now.getTime(), lastGrowthAt: now.getTime(), totalMinutes: 0, targetMinutes: species.rare ? randomInt(2880, 5761) : randomInt(480, 1921), progress: 0, memory: [] };
 	}
 	private async grow(m: EntityManager, w: Wallet, now: Date): Promise<Flower> {
@@ -100,6 +107,8 @@ export class HataskFlowerV2Service {
 			w.flower = await this.newFlower(m, w, now);
 			if (old && typeof old === 'object') {
 				const f = w.flower;
+				// Importing a legacy flower must not consume the newly selected festival seed.
+				delete f.seedKey;
 				const species = HATASK_FLOWER_CATALOG.find(s => s.id === old.speciesId || (typeof old.name === 'string' && old.name.endsWith(s.name) && old.emoji === s.emoji));
 				if (species) { Object.assign(f, species); f.speciesId = species.id; f.id = this.idService.gen(); if (typeof old.name === 'string' && old.name.trim()) f.name = old.name.slice(0, 80); }
 				// Preserve legacy flowers even when they are outside the new seasonal catalog.
@@ -112,6 +121,16 @@ export class HataskFlowerV2Service {
 			}
 		}
 		const f = w.flower;
+		if (f.speciesId === 'limited-evening-primrose') {
+			const seeds = f.seedKey?.startsWith('festival:') ? await this.festivalSeeds(m, w.userId) : [];
+			if (!seeds.some(seed => f.seedKey === `festival:${seed.id}` && f.season === seed.season)) {
+				const discovered: { speciesId: string }[] = await m.query('SELECT "speciesId",season,entry FROM hatask_flower_harvest WHERE "userId"=$1', [w.userId]);
+				const species = this.catalogSpecies(w, discovered, now);
+				// Repair unearned limited flowers without resetting growth, identity or memories.
+				Object.assign(f, species, { id: f.id, speciesId: species.id });
+				delete f.seedKey;
+			}
+		}
 		const elapsed = Math.max(0, Math.floor((now.getTime() - f.lastGrowthAt) / 60000));
 		f.totalMinutes = Math.min(f.targetMinutes, f.totalMinutes + elapsed);
 		f.lastGrowthAt += elapsed * 60000;
@@ -253,7 +272,7 @@ export class HataskFlowerV2Service {
 			if (count >= 12 && !w.rareSeeds.includes(season)) w.rareSeeds.push(season);
 		}
 		const festival = await this.festival(m, w, now, rules);
-		const festivalSeeds = await m.query('SELECT f.id,f.season FROM hatask_flower_participant p JOIN hatask_flower_festival f ON f.id=p."festivalId" WHERE p."userId"=$1 AND f."bloomedAt" IS NOT NULL', [w.userId]);
+		const festivalSeeds = await this.festivalSeeds(m, w.userId);
 		const ledger = await m.query('SELECT "sourceId",day,title FROM hatask_drop_ledger WHERE "userId"=$1 AND source=$2', [w.userId, 'todo']);
 		const tracked = await m.query('SELECT id,"createdAt" FROM hatask_flower_todo WHERE "userId"=$1', [w.userId]);
 		const registry = await m.query('SELECT value FROM registry_item WHERE "userId"=$1 AND domain IS NULL AND scope=$2 AND key=$3 ORDER BY "updatedAt" DESC LIMIT 1', [w.userId, ['client','hatask'], 'todos']);
@@ -312,6 +331,7 @@ export class HataskFlowerV2Service {
 			}
 			const entry = { ...f, nickname: [...nickname.trim()].slice(0, 80).join(''), harvestedAt: now.toISOString(), rank, first: rank === 1, firstUser };
 			await m.query('INSERT INTO hatask_flower_harvest(id,"userId","speciesId",season,entry) VALUES($1,$2,$3,$4,$5)', [f.id, userId, f.speciesId, f.season, JSON.stringify(entry)]);
+			await recordHataskFlowerCollectionCompletion(m, userId, now);
 			await m.query('INSERT INTO hatask_flower(id,"userId","clientFlowerId",emoji,name,hanakotoba,"harvestedAt") VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT("userId","clientFlowerId") DO UPDATE SET emoji=EXCLUDED.emoji,name=EXCLUDED.name,hanakotoba=EXCLUDED.hanakotoba,"harvestedAt"=EXCLUDED."harvestedAt"', [this.idService.gen(), userId, f.id, f.emoji, entry.nickname || f.name, f.hanakotoba, now]);
 			await this.notice(m, userId, 'hataskZukanUpdated', f.speciesId);
 			w.flower = await this.newFlower(m, w, now);

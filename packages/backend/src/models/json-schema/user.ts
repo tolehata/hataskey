@@ -112,6 +112,11 @@ export const packedUserLiteSchema = {
 						format: 'url',
 						nullable: false, optional: false,
 					},
+					availableUntil: {
+						type: 'string',
+						format: 'date-time',
+						nullable: true, optional: true,
+					},
 				},
 			},
 		},

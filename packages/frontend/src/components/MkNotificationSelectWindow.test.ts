@@ -74,6 +74,19 @@ afterEach(() => {
 });
 
 describe('notification filter modal', () => {
+	test('reward notifications have no OFF switch and survive Disable all when saved', async () => {
+		const { host, done } = mount({ excludeTypes: ['hataskDecorationUnlocked'], knownTypes: notificationTypes.filter(type => type !== 'hataskDecorationUnlocked') });
+		expect(() => switchFor(host, 'hataskFlowerReady')).not.toThrow();
+		expect([...host.querySelectorAll('label')].some(row => row.textContent.includes('hataskDecorationUnlocked'))).toBe(false);
+		await press(host, 'Disable all');
+		await press(host, 'OK');
+		expect(done).toHaveBeenCalledOnce();
+		const saved = done.mock.calls[0][0];
+		expect(saved.excludeTypes).toContain('hataskFlowerReady');
+		expect(saved.excludeTypes).not.toContain('hataskDecorationUnlocked');
+		expect(saved.filterDetails.includeBrands).toEqual([]);
+	});
+
 	test('old Hatady exclusion stays off until its category is enabled, while child choices survive', async () => {
 		const { host, done } = mount({ excludeTypes: ['app', 'hatady'] });
 		expect(switchFor(host, 'Hatady').checked).toBe(false);

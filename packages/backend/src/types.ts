@@ -58,12 +58,14 @@ export const notificationTypes = [
 ] as const;
 
 // 通知の受信設定(notificationRecieveConfig)には含めないが、通知一覧の
-// includeTypes / excludeTypes では選択できる旗鯖独自通知を含めた集合。
+// includeTypes / excludeTypes が受け付ける旗鯖独自通知を含めた集合。
 // フロント側の cherrypick-js notificationTypes と同期すること。
 export const notificationFilterTypes = [
 	...notificationTypes,
 	'addedToPrivateChannel',
 	'removedFromPrivateChannel',
+	// 獲得通知は受信設定・表示フィルタにかかわらず届ける。
+	'hataskDecorationUnlocked',
 ] as const;
 
 export const hatadyNotificationSubtypes = ['follow', 'comment', 'reaction', 'milestone', 'goalDone', 'mediaComment', 'mediaReply', 'mediaReaction'] as const;

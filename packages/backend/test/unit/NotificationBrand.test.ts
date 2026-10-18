@@ -78,6 +78,6 @@ describe('notification list brand and type filters', () => {
 		expect(getNotifications).toHaveBeenCalledWith('owner', expect.objectContaining({ includeTypes: [], includeBrands: ['hatask', 'standard'], includeHataskApp: true }));
 		getNotifications.mockClear();
 		await endpoint.exec({ limit: 10, markAsRead: false, includeBrands: [] }, me, null, null);
-		expect(getNotifications).not.toHaveBeenCalled();
+		expect(getNotifications).toHaveBeenCalledWith('owner', expect.objectContaining({ includeBrands: [] }));
 	});
 });

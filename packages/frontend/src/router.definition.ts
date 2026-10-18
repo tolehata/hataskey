@@ -445,6 +445,10 @@ export const ROUTE_DEF = [{
 		name: 'avatarDecorations',
 		component: page(() => import('@/pages/avatar-decorations.vue')),
 	}, {
+		path: '/hatask',
+		name: 'hatask',
+		component: iAmAdmin ? page(() => import('@/pages/admin/hatask.vue')) : page(() => import('@/pages/not-found.vue')),
+	}, {
 		path: '/federation-job-queue',
 		name: 'federationJobQueue',
 		component: page(() => import('@/pages/admin/federation-job-queue.vue')),

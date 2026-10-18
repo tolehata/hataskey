@@ -469,14 +469,14 @@ export const packedNotificationSchema = {
 			isRead: { type: 'boolean', optional: false, nullable: false },
 		},
 	}, {
-		// 旗鯖fork: Hataskのお花の収穫通知(app通知と同形。通知フィルタで個別にON/OFFできるよう専用タイプ)
+		// 旗鯖fork: Hataskのお花・アイコンデコ獲得通知(app通知と同形)。
 		type: 'object',
 		properties: {
 			...baseSchema.properties,
 			type: {
 				type: 'string',
 				optional: false, nullable: false,
-				enum: ['hataskFlowerReady', 'hataskFlowerBloomed', 'hataskZukanUpdated', 'hataskFestivalBloomed'],
+				enum: ['hataskFlowerReady', 'hataskFlowerBloomed', 'hataskZukanUpdated', 'hataskFestivalBloomed', 'hataskDecorationUnlocked'],
 			},
 			body: {
 				type: 'string',

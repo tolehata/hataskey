@@ -17,6 +17,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div class="_spacer" style="--MI_SPACER-min: 20px; --MI_SPACER-max: 28px;">
 			<div style="text-align: center;">
 				<div :class="$style.name">{{ decoration.name }}</div>
+				<p v-if="reason" role="status">{{ i18n.ts._hataskDecoration[reason] }}</p>
+				<p v-if="decoration.availableUntil">{{ i18n.ts._hataskDecoration.wearUntil }}: {{ new Date(decoration.availableUntil).toLocaleString() }}</p>
 				<MkAvatar style="width: 64px; height: 64px; margin-bottom: 20px;" :user="$i" :decorations="decorationsForPreview" forceShowDecoration/>
 			</div>
 			<div class="_gaps_s">
@@ -42,7 +44,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<div :class="$style.footer" class="_buttonsCenter">
-			<MkButton v-if="usingIndex != null" primary rounded @click="update"><i class="ti ti-check"></i> {{ i18n.ts.update }}</MkButton>
+			<MkButton v-if="usingIndex != null" :disabled="locked" primary rounded @click="update"><i class="ti ti-check"></i> {{ i18n.ts.update }}</MkButton>
 			<MkButton v-if="usingIndex != null" rounded @click="detach"><i class="ti ti-x"></i> {{ i18n.ts.detach }}</MkButton>
 			<MkButton v-else :disabled="exceeded || locked" primary rounded @click="attach"><i class="ti ti-check"></i> {{ i18n.ts.attach }}</MkButton>
 		</div>
@@ -52,18 +54,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { useTemplateRef, ref, computed } from 'vue';
+import type { DecorationAvailability } from '@/utility/avatar-decoration-availability.js';
 import MkButton from '@/components/MkButton.vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import { i18n } from '@/i18n.js';
 import MkRange from '@/components/MkRange.vue';
 import { ensureSignin } from '@/i.js';
+import { decorationUnavailableReason, isDecorationWithinPeriod } from '@/utility/avatar-decoration-availability.js';
+import { useAvatarDecorationClock } from '@/composables/use-avatar-decoration-clock.js';
 
 const $i = ensureSignin();
 
 const props = defineProps<{
 	usingIndex: number | null;
-	decoration: {
+	decoration: DecorationAvailability & {
 		id: string;
 		url: string;
 		name: string;
@@ -93,8 +98,10 @@ const emit = defineEmits<{
 }>();
 
 const dialog = useTemplateRef('dialog');
-const exceeded = computed(() => ($i.policies.avatarDecorationLimit - $i.avatarDecorations.length) <= 0);
-const locked = computed(() => props.decoration.roleIdsThatCanBeUsedThisDecoration.length > 0 && !$i.roles.some(r => props.decoration.roleIdsThatCanBeUsedThisDecoration.includes(r.id)));
+const now = useAvatarDecorationClock(() => [props.decoration, ...$i.avatarDecorations]);
+const exceeded = computed(() => $i.avatarDecorations.filter(decoration => isDecorationWithinPeriod(decoration, now.value)).length >= $i.policies.avatarDecorationLimit);
+const reason = computed(() => decorationUnavailableReason(props.decoration, $i.roles.map(role => role.id), now.value));
+const locked = computed(() => reason.value != null);
 const angle = ref((props.usingIndex != null ? $i.avatarDecorations[props.usingIndex].angle : null) ?? 0);
 const flipH = ref((props.usingIndex != null ? $i.avatarDecorations[props.usingIndex].flipH : null) ?? false);
 const offsetX = ref((props.usingIndex != null ? $i.avatarDecorations[props.usingIndex].offsetX : null) ?? 0);
@@ -128,6 +135,7 @@ function cancel() {
 }
 
 async function update() {
+	if (locked.value) return;
 	emit('update', {
 		angle: angle.value,
 		flipH: flipH.value,
@@ -140,6 +148,7 @@ async function update() {
 }
 
 async function attach() {
+	if (exceeded.value || locked.value) return;
 	emit('attach', {
 		angle: angle.value,
 		flipH: flipH.value,

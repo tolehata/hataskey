@@ -475,6 +475,9 @@ export class UserEntityService implements OnModuleInit {
 			}
 		}
 
+		// Derive both fields from the visible notes so hidden pin IDs cannot escape.
+		const packedPins = isDetailed ? await this.noteEntityService.packMany(pins.map(pin => pin.note!), me, { detail: true }) : [];
+
 		const followingCount = profile == null ? null :
 			(profile.followingVisibility === 'public') || isMe || iAmModerator ? user.followingCount :
 			(profile.followingVisibility === 'followers') && (relation && relation.isFollowing) ? user.followingCount :
@@ -503,16 +506,7 @@ export class UserEntityService implements OnModuleInit {
 			host: user.host,
 			avatarUrl: (user.avatarId == null ? null : user.avatarUrl) ?? this.getIdenticonUrl(user),
 			avatarBlurhash: (user.avatarId == null ? null : user.avatarBlurhash),
-			avatarDecorations: user.avatarDecorations.length > 0 ? this.avatarDecorationService.getAll(false, true).then(decorations => user.avatarDecorations.filter(ud => decorations.some(d => d.id === ud.id)).map(ud => ({
-				id: ud.id,
-				angle: ud.angle || undefined,
-				flipH: ud.flipH || undefined,
-				offsetX: ud.offsetX || undefined,
-				offsetY: ud.offsetY || undefined,
-				scale: ud.scale || undefined,
-				opacity: ud.opacity || undefined,
-				url: decorations.find(d => d.id === ud.id)!.url,
-			}))) : [],
+			avatarDecorations: this.avatarDecorationService.packUserDecorations(user),
 			isLocked: user.isLocked,
 			isBot: user.isBot,
 			isCat: user.isCat,
@@ -580,10 +574,8 @@ export class UserEntityService implements OnModuleInit {
 				...(canExposeLocalProfileBadge(user.host, isMe, profile!.showHataskFlowerCount) ? {
 					hataskFlowerCount: profile!.hataskFlowerCount,
 				} : {}),
-				pinnedNoteIds: pins.map(pin => pin.noteId),
-				pinnedNotes: this.noteEntityService.packMany(pins.map(pin => pin.note!), me, {
-					detail: true,
-				}),
+				pinnedNoteIds: packedPins.map(note => note.id),
+				pinnedNotes: packedPins,
 				pinnedPageId: profile!.pinnedPageId,
 				pinnedPage: profile!.pinnedPageId ? this.pageEntityService.pack(profile!.pinnedPageId, me) : null,
 				publicReactions: this.isLocalUser(user) ? profile!.publicReactions : false, // https://github.com/misskey-dev/misskey/issues/12964

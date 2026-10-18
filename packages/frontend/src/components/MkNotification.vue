@@ -31,6 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else-if="notification.type === 'hataskFlowerBloomed'" :class="[$style.icon, $style.icon_hataskFlower]"><i class="ti ti-flower"></i></div>
 		<div v-else-if="notification.type === 'hataskZukanUpdated'" :class="[$style.icon, $style.icon_hataskFlower]"><i class="ti ti-book"></i></div>
 		<div v-else-if="notification.type === 'hataskFestivalBloomed'" :class="[$style.icon, $style.icon_hataskFlower]"><i class="ti ti-confetti"></i></div>
+		<div v-else-if="notification.type === 'hataskDecorationUnlocked' && !notification.icon" :class="[$style.icon, $style.icon_hataskFlower]"><i class="ti ti-sparkles" aria-hidden="true"></i></div>
 		<!-- 旗鯖fork: プライベートチャンネル メンバー追加/除外の通知アイコン -->
 		<div v-else-if="notification.type === 'addedToPrivateChannel'" :class="[$style.icon, $style.icon_channelJoin]"><i class="ti ti-lock-square"></i></div>
 		<div v-else-if="notification.type === 'removedFromPrivateChannel'" :class="[$style.icon, $style.icon_channelLeave]"><i class="ti ti-door-exit"></i></div>
@@ -113,7 +114,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-if="notification.type === 'reaction:groupedByUser'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.reactedToMultipleNotes({ n: notification.reactions.length })" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'renote:grouped'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.renotedBySomeUsers({ n: notification.users.length })" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'note:grouped'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.notedBySomeUsers({ n: notification.noteIds.length })" :wrap="toast"/></span>
-			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.headerText"><HataAppWordmark v-if="customNotificationHeader(notification) === 'HataFeed'" app="hatafeed" inheritColor/><HataAppWordmark v-else-if="customNotificationHeader(notification) === 'Hatask'" app="hatask" inheritColor/><MkNotificationText v-else :text="customNotificationHeader(notification)" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed' || notification.type === 'hataskDecorationUnlocked' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.headerText"><HataAppWordmark v-if="customNotificationHeader(notification) === 'HataFeed'" app="hatafeed" inheritColor/><HataAppWordmark v-else-if="customNotificationHeader(notification) === 'Hatask'" app="hatask" inheritColor/><MkNotificationText v-else :text="customNotificationHeader(notification)" :wrap="toast"/></span>
 			<MkTime v-if="withTime" :time="notification.createdAt" :class="$style.headerTime" :mode="prefer.s.enableAbsoluteTime ? 'absolute' : 'relative'"/>
 		</header>
 		<div :data-reaction-content="toast && notification.type === 'reaction'">
@@ -223,7 +224,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div v-else-if="privateChannelInviteResult === 'rejected'" :class="$style.invitationResult"><i class="ti ti-circle-x"></i> <MkNotificationText :text="i18n.ts._hata._privateChannels.declinedResult" :wrap="toast"/></div>
 			</template>
 			<span v-else-if="notification.type === 'test'" :class="$style.text"><MkNotificationText :text="i18n.ts._notification.notificationWillBeDisplayedLikeThis" :wrap="toast"/></span>
-			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.text" data-notification-body>
+			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'hataskFlowerBloomed' || notification.type === 'hataskZukanUpdated' || notification.type === 'hataskFestivalBloomed' || notification.type === 'hataskDecorationUnlocked' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.text" data-notification-body>
 				<!-- 旗鯖fork: notification.link があればクリックで該当画面に遷移 (hatask/HataFeed 等の旗鯖独自機能向け) -->
 				<MkA v-if="notification.link" :to="notification.link" :class="$style.appLink" data-notification-body-link>
 					<HataFeedNotificationBody v-if="isHataFeedNotification(notification)" :punctuationWrap="toast" :text="customNotificationBody(notification)"/>
@@ -419,7 +420,7 @@ const privateChannelInviteResult = ref<'accepted' | 'rejected' | null>(null);
 const acceptedPrivateChannelId = ref<string | null>(null);
 const japaneseCustomNotification = versatileLang.toLowerCase().startsWith('ja');
 
-type CustomBodyNotification = Extract<Misskey.entities.Notification, { type: 'app' | 'hataFeed' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'earthquake' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' }>;
+type CustomBodyNotification = Extract<Misskey.entities.Notification, { type: 'app' | 'hataFeed' | 'hataskFlowerReady' | 'hataskFlowerBloomed' | 'hataskZukanUpdated' | 'hataskFestivalBloomed' | 'hataskDecorationUnlocked' | 'earthquake' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' }>;
 
 function isCustomBodyNotification(notification: Misskey.entities.Notification): notification is CustomBodyNotification {
 	return notification.type === 'app'
@@ -428,6 +429,7 @@ function isCustomBodyNotification(notification: Misskey.entities.Notification): 
 		|| notification.type === 'hataskFlowerBloomed'
 		|| notification.type === 'hataskZukanUpdated'
 		|| notification.type === 'hataskFestivalBloomed'
+		|| notification.type === 'hataskDecorationUnlocked'
 		|| notification.type === 'earthquake'
 		|| notification.type === 'addedToPrivateChannel'
 		|| notification.type === 'removedFromPrivateChannel';
@@ -443,7 +445,7 @@ function customNotificationHeader(notification: Misskey.entities.Notification): 
 	if (notification.type === 'hataskZukanUpdated') return i18n.ts._notification._types.hataskZukanUpdated;
 	if (notification.type === 'hataskFestivalBloomed') return i18n.ts._notification._types.hataskFestivalBloomed;
 	if (!isCustomBodyNotification(notification)) return '';
-	if (japaneseCustomNotification || notification.type === 'app' || notification.type === 'earthquake') return notification.header ?? '';
+	if (japaneseCustomNotification || notification.type === 'app' || notification.type === 'hataskDecorationUnlocked' || notification.type === 'earthquake') return notification.header ?? '';
 	if (notification.type === 'hataFeed') return 'HataFeed';
 	if (notification.type === 'addedToPrivateChannel') {
 		return notification.invitationId
@@ -462,7 +464,7 @@ function customNotificationBody(notification: Misskey.entities.Notification): st
 	if (notification.type === 'hataFeed' || (notification.type === 'app' && notification.header === 'HataFeed')) {
 		return hataFeedNotificationDisplayBody(notification.body);
 	}
-	if (japaneseCustomNotification || notification.type === 'app' || notification.type === 'earthquake') return notification.body;
+	if (japaneseCustomNotification || notification.type === 'app' || notification.type === 'hataskDecorationUnlocked' || notification.type === 'earthquake') return notification.body;
 	return privateChannelNotificationDisplayBody(notification.body);
 }
 

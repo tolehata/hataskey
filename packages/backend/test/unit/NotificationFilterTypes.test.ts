@@ -25,6 +25,12 @@ describe('notification filter types', () => {
 		expect(new Set(notificationFilterTypes)).toEqual(new Set(clientNotificationTypes));
 	});
 
+	test('アイコンデコ獲得通知は受信拒否の設定項目を公開しない', () => {
+		expect(notificationFilterTypes).toContain('hataskDecorationUnlocked');
+		expect(updateParamDef.properties.notificationRecieveConfig.properties).not.toHaveProperty('hataskDecorationUnlocked');
+		expect(packedMeDetailedOnlySchema.properties.notificationRecieveConfig.properties).not.toHaveProperty('hataskDecorationUnlocked');
+	});
+
 	test.each([
 		['i/notifications', notificationsParamDef],
 		['i/notifications-grouped', groupedNotificationsParamDef],
@@ -32,7 +38,7 @@ describe('notification filter types', () => {
 		const includeEnum = paramDef.properties.includeTypes.items.enum;
 		const excludeEnum = paramDef.properties.excludeTypes.items.enum;
 
-		for (const type of ['addedToPrivateChannel', 'removedFromPrivateChannel', 'hataskFlowerReady']) {
+		for (const type of ['addedToPrivateChannel', 'removedFromPrivateChannel', 'hataskFlowerReady', 'hataskDecorationUnlocked']) {
 			expect(includeEnum).toContain(type);
 			expect(excludeEnum).toContain(type);
 		}

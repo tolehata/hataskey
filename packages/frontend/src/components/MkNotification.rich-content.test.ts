@@ -90,6 +90,28 @@ async function mount(component: Component, notification: unknown, popup = true) 
 }
 
 describe('notification custom emoji and avatar decorations', () => {
+	it.each([false, true])('shows the earned decoration, message and settings link (popup: %s)', async (popup) => {
+		const root = await mount(MkNotification, {
+			id: 'reward-notice', type: 'hataskDecorationUnlocked', createdAt: '2026-10-12T00:00:00Z',
+			header: 'アイコンデコを獲得しました', body: 'お花の冠を使えるようになりました。',
+			icon: 'https://example.test/flower-crown.webp', link: '/settings/avatar-decoration',
+		}, popup);
+		expect(root.querySelector('[data-notification-brand]')?.getAttribute('data-notification-brand')).toBe('hatask');
+		expect(root.textContent).toContain('アイコンデコを獲得しました');
+		expect(root.querySelector('[data-notification-body]')?.textContent).toContain('お花の冠を使えるようになりました。');
+		expect(root.querySelector('[data-notification-body] a')?.getAttribute('href')).toBe('/settings/avatar-decoration');
+		expect(root.querySelector('img[src="https://example.test/flower-crown.webp"]')).not.toBeNull();
+	});
+
+	it('uses the reward icon when a decoration image is unavailable', async () => {
+		const root = await mount(MkNotification, {
+			id: 'reward-notice', type: 'hataskDecorationUnlocked', createdAt: '2026-10-12T00:00:00Z',
+			header: 'アイコンデコを獲得しました', body: '設定から選べます。', icon: null, link: '/settings/avatar-decoration',
+		});
+		expect(root.querySelector('.ti-sparkles[aria-hidden="true"]')).not.toBeNull();
+		expect(root.querySelector('[data-notification-body] a')?.getAttribute('href')).toBe('/settings/avatar-decoration');
+	});
+
 	it.each(['MkNotification.vue', 'MkExternalNotificationToast.vue'])('%s: compiles the reaction image size rule to a browser selector', async (name) => {
 		const filename = `src/components/${name}`;
 		const source = name === 'MkNotification.vue' ? notificationSource : externalToastSource;

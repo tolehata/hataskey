@@ -1,3 +1,4 @@
+import type { HataskFlowerSeason } from '@/misc/hatask-flower-catalog.js';
 import type { EntityManager } from 'typeorm';
 
 /** Acquire before planner/flower row locks or writes that run the moderation trigger. */
@@ -7,6 +8,10 @@ export async function lockHataskFlowerWallet(manager: Pick<EntityManager, 'query
 
 export const DEFAULT_FLOWER_RULES = { todoMinAgeMinutes: 30, todoMinLength: 3, hatadyGapSeconds: 60, pourMinutes: 120, todoCap: 5, hatadyCap: 10, loginCap: 1, festivalGoal: 1000 };
 export function normalizeFlowerTodoTitle(title: string): string { return title.normalize('NFKC').replace(/\s/gu, '').toLowerCase(); }
+export function flowerSeason(now: Date): HataskFlowerSeason {
+	const month = new Date(now.getTime() + 9 * 3600000).getUTCMonth();
+	return month >= 2 && month <= 4 ? 'spring' : month >= 5 && month <= 7 ? 'summer' : month >= 8 && month <= 10 ? 'autumn' : 'winter';
+}
 export function flowerDay(now: Date, timezone?: string | null): string {
 	const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone || undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
 	return ['year', 'month', 'day'].map(t => parts.find(p => p.type === t)!.value).join('-');

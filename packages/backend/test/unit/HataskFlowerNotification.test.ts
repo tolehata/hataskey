@@ -84,15 +84,39 @@ function fixture() {
 	});
 	const notification = { createNotificationAsync: vi.fn().mockResolvedValue(null) };
 	const logger = { error: vi.fn() };
+	const flowerV2 = { checkNotifications: vi.fn().mockResolvedValue(undefined) };
+	const decorations = { removeUnavailableDecorations: vi.fn().mockResolvedValue(undefined), notifyUnlockedDecorations: vi.fn().mockResolvedValue(undefined) };
 	const createService = () => new CheckHataskFlowersProcessorService(
-		{ checkNotifications: vi.fn().mockResolvedValue(undefined) } as never,
+		flowerV2 as never,
 		{ ...repository, manager: { transaction } } as never,
 		{ gen: () => `marker-${++nextId}` } as never, notification as never, { logger } as never,
+		decorations as never,
 	);
-	return { flowers, markers, queries, repository, manager, notification, createService, service: createService() };
+	return { flowers, markers, queries, repository, manager, notification, flowerV2, decorations, createService, service: createService() };
 }
 
 describe('Hatask flower notification worker', () => {
+	test('期限切れ装飾の解除、獲得通知、通常の花通知を順番に処理する', async () => {
+		const f = fixture();
+		await f.service.process();
+		expect(f.decorations.removeUnavailableDecorations).toHaveBeenCalledOnce();
+		expect(f.decorations.notifyUnlockedDecorations).toHaveBeenCalledOnce();
+		expect(f.flowerV2.checkNotifications).toHaveBeenCalledOnce();
+		expect(f.decorations.removeUnavailableDecorations.mock.invocationCallOrder[0]).toBeLessThan(f.decorations.notifyUnlockedDecorations.mock.invocationCallOrder[0]);
+		expect(f.decorations.notifyUnlockedDecorations.mock.invocationCallOrder[0]).toBeLessThan(f.flowerV2.checkNotifications.mock.invocationCallOrder[0]);
+		expect(f.flowerV2.checkNotifications.mock.invocationCallOrder[0]).toBeLessThan(f.notification.createNotificationAsync.mock.invocationCallOrder[0]);
+	});
+
+	test.each([false, true])('獲得通知が失敗しても通常の花通知を処理し、既存の失敗を優先する: flowerFailure=%s', async flowerFailure => {
+		const f = fixture();
+		f.decorations.notifyUnlockedDecorations.mockRejectedValueOnce(new Error('decoration delivery failed'));
+		if (flowerFailure) f.notification.createNotificationAsync.mockRejectedValueOnce(new Error('flower delivery failed'));
+		await expect(f.service.process()).rejects.toThrow(flowerFailure ? 'Hatask flower notifications failed for 1 users' : 'Hatask decoration notifications failed');
+		expect(f.flowerV2.checkNotifications).toHaveBeenCalledOnce();
+		expect(f.notification.createNotificationAsync).toHaveBeenCalledWith('alice', 'hataskFlowerReady', expect.objectContaining({ customLink: '/hatask?tab=garden' }));
+		expect(f.markers.has('alice')).toBe(!flowerFailure);
+	});
+
 	test('保存値を書き換えずに所有者へ通知し、再実行・ワーカー再作成後も同じ花を再通知しない', async () => {
 		const f = fixture();
 		const saved = structuredClone(flower);

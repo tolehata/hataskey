@@ -72,3 +72,51 @@ describe('Hatask flower push notification', () => {
 		expect(close).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe('Hatask decoration unlock push notification', () => {
+	const rewardData = {
+		type: 'notification', userId: 'alice',
+		body: {
+			id: 'decoration-notice', type: 'hataskDecorationUnlocked',
+			header: 'アイコンデコを獲得しました', body: '「お花の冠」を使えるようになりました。',
+			icon: '/files/flower-crown.webp', link: '/settings/avatar-decoration',
+		},
+	};
+
+	test('獲得通知の見出し・本文・画像をサーバーの内容で表示する', async () => {
+		const showNotification = vi.fn().mockResolvedValue(undefined);
+		const module = loadSwModule('scripts/create-notification.ts', {
+			'@/scripts/twemoji-base.js': {}, '@/scripts/operations.js': {}, '@/scripts/get-account-from-id.js': {},
+			'@/scripts/hata-custom-notification-copy.js': {}, '@/scripts/get-user-name.js': {},
+			'@/scripts/lang.js': { swLang: { i18n: { ts: locales['ja-JP'] } } },
+		}, { registration: { showNotification } });
+		await module.createNotification(rewardData);
+		expect(showNotification).toHaveBeenCalledExactlyOnceWith(rewardData.body.header, expect.objectContaining({
+			body: rewardData.body.body, icon: rewardData.body.icon, data: rewardData,
+		}));
+	});
+
+	test('獲得通知のクリックで対象アカウントのアイコンデコ設定を開き、その通知だけ既読にする', async () => {
+		const listeners = new Map<string, (event: unknown) => void>();
+		const client = { focus: vi.fn() };
+		const operations = { openClient: vi.fn().mockResolvedValue(client), sendMarkAllAsRead: vi.fn(), api: vi.fn().mockResolvedValue(undefined) };
+		loadSwModule('sw.ts', {
+			'idb-keyval': {}, 'cherrypick-js': {}, '@/scripts/create-notification.js': {},
+			'@/scripts/lang.js': {}, '@/scripts/operations.js': operations,
+		}, { addEventListener: (name: string, handler: (event: unknown) => void) => listeners.set(name, handler) });
+		let completion: Promise<void> | undefined;
+		const closeNotification = vi.fn();
+		const onClick = listeners.get('notificationclick');
+		if (!onClick) throw new Error('Missing notificationclick listener');
+		onClick({
+			action: '', notification: { data: rewardData, 'close': closeNotification },
+			waitUntil: (promise: Promise<void>) => { completion = promise; },
+		});
+		await completion;
+		expect(operations.openClient).toHaveBeenCalledExactlyOnceWith('push', rewardData.body.link, 'alice');
+		expect(operations.api).toHaveBeenCalledExactlyOnceWith('notifications/mark-as-read', 'alice', { notificationIds: ['decoration-notice'] });
+		expect(operations.sendMarkAllAsRead).not.toHaveBeenCalled();
+		expect(client.focus).toHaveBeenCalledTimes(1);
+		expect(closeNotification).toHaveBeenCalledTimes(1);
+	});
+});
