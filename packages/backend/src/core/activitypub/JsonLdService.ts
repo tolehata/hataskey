@@ -41,6 +41,9 @@ export class JsonLdForbiddenDirectiveError extends JsonLdError {
 	}
 }
 
+const MAX_FROZEN_CONTEXT_FETCHES = 4;
+const MAX_CONTEXT_DOCUMENT_BYTES = 256 * 1024;
+
 export class JsonLd {
 	private static forbiddenDirectives = new Set([
 		'@included',
@@ -49,6 +52,10 @@ export class JsonLd {
 	]);
 
 	private frozen = false;
+	// 旗鯖fork: 凍結中でも、LD 署名者自身の origin にある context だけは取得を許す。
+	//   アクター解決で既に通信する相手なので、新たな通信先を作らない。
+	private frozenAllowedOrigin: string | null = null;
+	private frozenFetches = 0;
 	private cache: Map<string, RemoteDocument> = new Map();
 
 	public debug = false;
@@ -145,7 +152,10 @@ export class JsonLd {
 	 * validating JSON-LD signatures.
 	 */
 	@bindThis
-	public freeze(): void { this.frozen = true; }
+	public freeze(allowedOrigin?: string | null): void {
+		this.frozen = true;
+		this.frozenAllowedOrigin = allowedOrigin ?? null;
+	}
 
 	@bindThis
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -192,7 +202,14 @@ export class JsonLd {
 
 			if (this.debug) console.debug(`MISS: ${url}`);
 
-			if (this.frozen) throw new JsonLdCacheFrozenError();
+			if (this.frozen) {
+				// A signer may host its own vocabulary (e.g. LitePub). Allow a few such
+				// documents from that origin only; anything else stays unreachable.
+				if (this.frozenAllowedOrigin == null || new URL(url).origin !== this.frozenAllowedOrigin || this.frozenFetches >= MAX_FROZEN_CONTEXT_FETCHES) {
+					throw new JsonLdCacheFrozenError();
+				}
+				this.frozenFetches++;
+			}
 
 			const document = await this.fetchDocument(url);
 			this.checkForForbiddenDirectives(document);
@@ -217,6 +234,7 @@ export class JsonLd {
 					Accept: 'application/ld+json, application/json',
 				},
 				timeout: this.loderTimeout,
+				size: MAX_CONTEXT_DOCUMENT_BYTES,
 			},
 			{
 				throwErrorWhenResponseNotOk: false,

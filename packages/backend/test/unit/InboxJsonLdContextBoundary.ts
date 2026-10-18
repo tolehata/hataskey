@@ -93,6 +93,45 @@ describe('inbox LD signature context boundary', () => {
 		expect(f.send).not.toHaveBeenCalled();
 	});
 
+	test('a context hosted by the LD signer itself is fetched once and the relayed activity verifies', async () => {
+		const f = fixture();
+		const signerContext = 'https://author.example/schemas/litepub-0.1.jsonld';
+		const value: any = f.activity();
+		value['@context'] = [...value['@context'], signerContext];
+		value.object.injected = 'from signer vocabulary';
+		const options = { type: 'RsaSignature2017', creator: authorKeyId, created: new Date().toISOString(), nonce: 'test-nonce' };
+		const signer = new JsonLd({ send: f.send } as any);
+		signer.freeze('https://author.example');
+		const data = await signer.createVerifyData(value, options);
+		value.signature = { ...options, signatureValue: crypto.sign('sha256', Buffer.from(data), keys.privateKey).toString('base64') };
+		f.send.mockClear();
+		expect(await f.process(value, relayKeyId)).toBe('ok');
+		expect(f.send).toHaveBeenCalledTimes(1);
+		expect((f.send.mock.calls[0] as unknown as [string])[0]).toBe(signerContext);
+		expect(f.performActivity).toHaveBeenCalledWith(author, expect.objectContaining({
+			object: expect.objectContaining({ 'https://context.example/injected': 'from signer vocabulary' }),
+		}));
+	});
+
+	test('a context on the relay origin is not fetched for an LD signature by someone else', async () => {
+		const f = fixture(true);
+		const value: any = f.activity();
+		value['@context'] = [...CONTEXT, 'https://relay.example/schemas/litepub-0.1.jsonld'];
+		value.signature = { type: 'RsaSignature2017', creator: authorKeyId, signatureValue: 'invalid' };
+		await expect(f.process(value, relayKeyId)).rejects.toThrow('failed to compact activity');
+		expect(f.send).not.toHaveBeenCalled();
+	});
+
+	test('the signer origin cannot be used to fan out more than four context fetches', async () => {
+		const f = fixture();
+		const value: any = f.activity();
+		value['@context'] = [...CONTEXT, ...Array.from({ length: 5 }, (_, index) => `https://author.example/ctx/${index}`)];
+		value.signature = { type: 'RsaSignature2017', creator: authorKeyId, signatureValue: 'invalid' };
+		await expect(f.process(value)).rejects.toThrow('failed to compact activity');
+		expect(f.send).toHaveBeenCalledTimes(4);
+		expect(f.performActivity).not.toHaveBeenCalled();
+	});
+
 	test('matching valid HTTP signer keeps the existing direct delivery path', async () => {
 		const f = fixture(true);
 		const value = f.activity();
