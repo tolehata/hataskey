@@ -409,14 +409,14 @@ export class NotificationService implements OnApplicationShutdown {
 		const staleIndividualIds = latestSnapshotId == null ? [] : Object.entries(individualReads).filter(([, entryId]) =>
 			compareStreamIds(entryId, latestSnapshotId) <= 0 && !retainedIds.has(entryId));
 		await this.removeMatchingHashFields(this.individualReadKey(userId), staleIndividualIds);
-		const visible = await this.notificationEntityService.packMany(candidates.map(x => x.notification), userId);
-		const visibleIds = new Set(visible.map(x => x.id));
-		const visibleCandidates = candidates.filter(({ notification }) => visibleIds.has(notification.id));
-		const hatadyIds = [...new Set(visibleCandidates.flatMap(({ notification }) => {
+		// 旗鯖fork: 既読判定を先に済ませ、可視判定(packMany)は未読分だけに行う。
+		// packMany の可視判定は1件ごとに独立しているため、数える集合(未読∩可視)は変わらない。
+		// 全件を渡すと通知が来るたび最大 perUserNotificationsMaxCount 件のノートを詰め直すことになる。
+		const hatadyIds = [...new Set(candidates.flatMap(({ notification }) => {
 			const source = sourceOf(notification);
 			return source?.type === 'hatady' ? [source.id] : [];
 		}))];
-		const hataFeedIds = [...new Set(visibleCandidates.flatMap(({ notification }) => {
+		const hataFeedIds = [...new Set(candidates.flatMap(({ notification }) => {
 			const source = sourceOf(notification);
 			return source?.type === 'hataFeed' ? [source.id] : [];
 		}))];
@@ -428,9 +428,15 @@ export class NotificationService implements OnApplicationShutdown {
 			hatady: new Map(hatadyRows.map(row => [row.id, row.isRead])),
 			hataFeed: new Map(hataFeedRows.map(row => [row.id, row.isRead])),
 		};
+		const unread: MiNotification[] = [];
+		for (const { entryId, notification } of candidates) {
+			if (!(await this.isRead(userId, notification, entryId, cursor, individualReads, sourceReads))) unread.push(notification);
+		}
 		const counts = { standard: 0, hatask: 0, hatady: 0, hataFeed: 0 };
-		for (const { entryId, notification } of visibleCandidates) {
-			if (!(await this.isRead(userId, notification, entryId, cursor, individualReads, sourceReads))) counts[notificationBrand(notification)]++;
+		if (unread.length === 0) return counts;
+		const visibleIds = new Set((await this.notificationEntityService.packMany(unread, userId)).map(x => x.id));
+		for (const notification of unread) {
+			if (visibleIds.has(notification.id)) counts[notificationBrand(notification)]++;
 		}
 		return counts;
 	}
