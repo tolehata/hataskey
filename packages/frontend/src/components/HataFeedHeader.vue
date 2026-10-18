@@ -6,7 +6,9 @@
 		<button type="button" :class="$style.exit" :aria-label="headerCopy.exit" :title="headerCopy.exit" @click="closeCreate(); emit('exit')"><i class="ti ti-logout-2" aria-hidden="true"></i></button>
 		<div ref="outline" :class="$style.capsule" :data-notification="ownsSurface && context.items.value.length > 0">
 			<div :class="$style.surface">
-				<HyCapsule :class="$style.tabs" :modelValue="tab" :options="tabs" :label="headerCopy.pages" @update:modelValue="emit('navigate', $event as HataFeedTab)"/>
+				<HyCapsule :class="$style.tabs" :modelValue="tab" :options="tabs" :label="headerCopy.pages" @update:modelValue="emit('navigate', $event as HataFeedTab)">
+					<template #icon="{ option }"><HataFeatureIcon v-if="hataFeatureForScreen(`hatafeed.${option.value}`)" bare :feature="hataFeatureForScreen(`hatafeed.${option.value}`)!" :size="20"/><i v-else :class="option.icon" aria-hidden="true"></i></template>
+				</HyCapsule>
 				<div ref="target" :class="$style.notice" :style="{ height: `${ownsSurface && context.items.value.length ? context.height.value : 0}px` }"></div>
 			</div>
 		</div>
@@ -24,7 +26,7 @@
 		</div>
 		<button type="button" class="hf-icon" :class="$style.bell" :aria-label="copy.notifications" :title="copy.notifications" @click="emit('notifications', $event)"><i class="ti ti-bell" aria-hidden="true"></i><span v-if="unread" :class="$style.badge">{{ unread > 99 ? '99+' : unread }}</span></button>
 		<button type="button" class="hf-icon" :class="$style.refresh" :data-refreshing="refreshing" :disabled="refreshing" :aria-busy="refreshing" :aria-label="copy.refresh" :title="copy.refresh" @click="emit('refresh')"><i class="ti ti-refresh" aria-hidden="true"></i></button>
-		<button type="button" class="hf-icon" :aria-label="headerCopy.settings" :title="headerCopy.settings" @click="emit('settings', $event)"><i class="ti ti-settings" aria-hidden="true"></i></button>
+		<button type="button" class="hf-icon" :aria-label="headerCopy.settings" :title="headerCopy.settings" @click="emit('settings', $event)"><HataFeatureIcon feature="hatafeed-settings" :size="20" :mode="onDark ? 'mono-dark' : 'color'"/></button>
 	</div>
 </header>
 <MkHataskeyNotificationToasts v-if="!preview && !inherited" :context="context"/>
@@ -35,6 +37,8 @@ import { computed, inject, nextTick, onActivated, onDeactivated, onMounted, onUn
 import type { HataFeedTab } from '@/utility/hatafeed-ui.js';
 import HyCapsule from '@/components/HyCapsule.vue';
 import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataFeatureIcon from '@/components/HataFeatureIcon.vue';
+import { hataFeatureForScreen } from '@/utility/hata-feature-icon.js';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import MkHataskeyNotificationToasts from '@/components/MkHataskeyNotificationToasts.vue';
 import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
@@ -140,6 +144,10 @@ onUnmounted(() => { observer?.disconnect(); projectObserver?.disconnect(); unreg
 .capsule > svg[data-integrated='true'] { overflow: visible; z-index: -1; stroke-width: 40; stroke-linecap: round; filter: blur(14px); opacity: .55; }
 .surface { position: relative; display: flex; flex-direction: column; align-items: center; max-width: 100%; box-sizing: border-box; border: 1px solid var(--hy-border); border-radius: inherit; background: var(--hy-surface); box-shadow: var(--hy-shadow); overflow: hidden; }
 .surface > .tabs { width: auto; border: 0; box-shadow: none; background: transparent; }
+/* Keep the capsule geometry fixed while giving transparent marks more room. */
+.tabs > button > [data-hata-feature] { transform: scale(1.2); }
+.tabs > button[data-active='false'] > [data-hata-feature] { transform: scale(1.4); }
+.tabs > button[data-active='false'] > i { transform: scale(1.2); }
 /* Notice text must not change the intrinsic width of the tabs. */
 .notice { position: relative; width: 0; min-width: 100%; flex: none; overflow: hidden; transition: height .35s cubic-bezier(.22,1,.36,1); }
 .tools { display: flex; align-items: center; gap: 4px; justify-self: end; width: 100%; min-width: 236px; max-width: 316px; }
@@ -171,7 +179,7 @@ onUnmounted(() => { observer?.disconnect(); projectObserver?.disconnect(); unreg
 	.tabs > button > i { flex-shrink: 0; width: 1em; font-size: 20px; line-height: 1; }
 	.tabs > button > i::before { font-size: 100%; }
 }
-@container hatafeed (max-width: 440px) { .header > .brand { font-size: 23px; } .header { gap: 6px; padding-top: 10px; } .tools { gap: 0; min-width: 220px; } .create { gap: 0; min-width: 88px; } .tabs > button > span { display: none; } }
+@container hatafeed (max-width: 440px) { .header > .brand { font-size: 23px; } .header { gap: 6px; padding-top: 10px; } .tools { gap: 0; min-width: 220px; } .create { gap: 0; min-width: 88px; } .tabs > button > span:not([data-hata-feature]) { display: none; } }
 @media (prefers-reduced-motion: reduce) { .notice, .add > i { transition: none; } .refresh > i { animation: none !important; } }
 </style>
 <style scoped>

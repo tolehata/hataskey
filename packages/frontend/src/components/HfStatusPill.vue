@@ -2,7 +2,7 @@
 SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 旗鯖fork(HataFeed デザイン改修 §3): イシューのステータス表示。
-  status(open/planned/inProgress/resolved/wontfix/unknown/closed)でアイコン+色を切替える。
+  statusで共通ラベル・アイコンと色を切替える。
   3 variant:
     - 'pill'  : 淡色背景の丸ピル(一覧行のバッジ・ロードマップ)。既定。
     - 'text'  : アイコン+色付き文字のみ(背景なし。2a メタ行の先頭アイコン用)。
@@ -86,4 +86,16 @@ const icon = computed(() => statusIcon[props.status] ?? 'ti-circle-dot');
 .root[data-variant="filled"][data-status="wontfix"] { background: #888; }
 .root[data-variant="filled"][data-status="unknown"] { background: #aaa; }
 .root[data-variant="filled"][data-status="closed"] { background: #8a7aa6; }
+
+/* 追加ステータスはテーマの文字色と背景色を使い、アイコンでも区別する。 */
+.root[data-status="nextFixConfirmed"] { --hf-status-color: var(--MI_THEME-accent); }
+.root[data-status="nextFixPlanned"] { --hf-status-color: var(--MI_THEME-fgMuted); }
+.root[data-status="monitoring"] { --hf-status-color: var(--MI_THEME-link); }
+
+.root:is([data-status="nextFixConfirmed"], [data-status="nextFixPlanned"], [data-status="monitoring"]) {
+	color: var(--MI_THEME-fg);
+
+	&[data-variant="pill"] { background: color-mix(in srgb, var(--hf-status-color) 12%, var(--MI_THEME-panel)); }
+	&[data-variant="filled"] { background: color-mix(in srgb, var(--hf-status-color) 24%, var(--MI_THEME-panel)); }
+}
 </style>

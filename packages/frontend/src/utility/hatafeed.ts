@@ -173,17 +173,20 @@ export const categoryIcon: Record<string, string> = {
 	other: 'ti ti-dots',
 };
 
-// ステータス(6種)。
+// ステータス。
 export const statusLabel: Record<string, string> = {
 	open: copy.statusOpen,
 	planned: copy.statusPlanned,
 	inProgress: copy.statusInProgress,
+	nextFixConfirmed: copy.statusNextFixConfirmed,
+	nextFixPlanned: copy.statusNextFixPlanned,
+	monitoring: copy.statusMonitoring,
 	resolved: copy.statusResolved,
 	wontfix: copy.statusWontfix,
 	unknown: copy.statusUnknown,
 	closed: copy.statusClosed,
 };
-export const editableStatusKeys = ['open', 'planned', 'inProgress', 'resolved', 'wontfix', 'unknown'] as const;
+export const editableStatusKeys = ['open', 'planned', 'inProgress', 'nextFixConfirmed', 'nextFixPlanned', 'monitoring', 'resolved', 'wontfix', 'unknown'] as const;
 export type HataFeedEditableStatus = typeof editableStatusKeys[number];
 export const statusKeys = [...editableStatusKeys, 'closed'] as const;
 export type HataFeedStatus = typeof statusKeys[number];
@@ -195,6 +198,9 @@ export const statusIcon: Record<string, string> = {
 	open: 'ti-circle-dot',
 	planned: 'ti-calendar-time',
 	inProgress: 'ti-progress',
+	nextFixConfirmed: 'ti-calendar-check',
+	nextFixPlanned: 'ti-calendar-event',
+	monitoring: 'ti-activity-heartbeat',
 	resolved: 'ti-circle-check',
 	wontfix: 'ti-circle-minus',
 	unknown: 'ti-help-circle',

@@ -55,12 +55,13 @@ export class MiFeedbackIssue {
 	})
 	public category: string;
 
-	// open=未対応 / planned=対応予定 / inProgress=対応中 / resolved=解決済み / wontfix=対応しない / unknown=用途不明
+	// open=未対応 / planned=対応予定 / nextFixConfirmed=次回修正確定 / nextFixPlanned=次回修正予定 /
+	// inProgress=対応中 / monitoring=修正監視中 / resolved=解決済み / wontfix=対応しない / unknown=用途不明
 	@Index()
 	@Column('varchar', {
 		length: 32,
 		default: 'open',
-		comment: 'open / planned / inProgress / resolved / wontfix / unknown',
+		comment: 'open / planned / nextFixConfirmed / nextFixPlanned / inProgress / monitoring / resolved / wontfix / unknown',
 	})
 	public status: string;
 

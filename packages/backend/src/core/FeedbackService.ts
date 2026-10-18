@@ -64,7 +64,10 @@ type NotifyType = keyof typeof NOTIFY_MESSAGE;
 const STATUS_LABEL_JP: Record<string, string> = {
 	open: '受付中',
 	planned: '対応予定',
+	nextFixConfirmed: '次回修正確定',
+	nextFixPlanned: '次回修正予定',
 	inProgress: '対応中',
+	monitoring: '修正監視中',
 	resolved: '解決済み',
 	wontfix: '見送り',
 	unknown: '用途不明',

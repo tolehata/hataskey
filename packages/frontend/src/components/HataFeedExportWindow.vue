@@ -113,6 +113,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef } from 'vue';
+import type { HataFeedStatus } from '@/utility/hatafeed.js';
 import MkWindow from '@/components/MkWindow.vue';
 import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
 import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
@@ -132,9 +133,8 @@ const props = defineProps<{ projectId: string | null; projectName: string }>();
 const emit = defineEmits<{ (ev: 'closed'): void }>();
 const copy = i18n.ts._hata._hatafeed._exportWindow;
 
-type ExportStatus = 'open' | 'planned' | 'inProgress' | 'resolved' | 'wontfix' | 'unknown' | 'closed';
 type ExportCategory = 'bug' | 'improvement' | 'unresolved' | 'featureRequest' | 'adoptionRequest' | 'security' | 'betaFeature' | 'other';
-const exportStatusKeys: readonly ExportStatus[] = statusKeys;
+const exportStatusKeys: readonly HataFeedStatus[] = statusKeys;
 const exportCategoryKeys: readonly ExportCategory[] = categoryKeys;
 
 const dialog = useTemplateRef('dialog');
@@ -149,7 +149,7 @@ const closedStateItems = [
 	{ value: 'open', label: copy.acceptanceOpen },
 	{ value: 'closed', label: copy.acceptanceClosed },
 ];
-const selectedStatuses = ref<ExportStatus[]>([...exportStatusKeys]);
+const selectedStatuses = ref<HataFeedStatus[]>([...exportStatusKeys]);
 const selectedCategories = ref<ExportCategory[]>([...exportCategoryKeys]);
 const includeDescription = ref(true);
 const includeComments = ref(true);

@@ -37,9 +37,9 @@ export const paramDef = {
 		closedState: { type: 'string', enum: ['all', 'open', 'closed'], default: 'all' },
 		statuses: {
 			type: 'array',
-			items: { type: 'string', enum: ['open', 'planned', 'inProgress', 'resolved', 'wontfix', 'unknown', 'closed'] },
+			items: { type: 'string', enum: ['open', 'planned', 'nextFixConfirmed', 'nextFixPlanned', 'inProgress', 'monitoring', 'resolved', 'wontfix', 'unknown', 'closed'] },
 			minItems: 1,
-			maxItems: 7,
+			maxItems: 10,
 			uniqueItems: true,
 		},
 		categories: {

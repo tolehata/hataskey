@@ -27,7 +27,7 @@ export const paramDef = {
 	type: 'object',
 	properties: {
 		issueId: { type: 'string', format: 'misskey:id' },
-		status: { type: 'string', enum: ['open', 'planned', 'inProgress', 'resolved', 'wontfix', 'unknown'] },
+		status: { type: 'string', enum: ['open', 'planned', 'nextFixConfirmed', 'nextFixPlanned', 'inProgress', 'monitoring', 'resolved', 'wontfix', 'unknown'] },
 		category: { type: 'string', enum: ['bug', 'improvement', 'unresolved', 'featureRequest', 'adoptionRequest', 'security', 'other'] },
 		priority: { type: 'string', enum: ['low', 'normal', 'high'] },
 		pinned: { type: 'boolean' },

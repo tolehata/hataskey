@@ -10,7 +10,7 @@ import { DI } from '@/di-symbols.js';
 import { ApiError } from '@/server/api/error.js';
 import { applyFeedbackIssueListFilter } from '@/misc/feedback-issue-list-filter.js';
 
-const STATUSES = ['open', 'planned', 'inProgress', 'resolved', 'wontfix', 'unknown', 'closed'] as const;
+const STATUSES = ['open', 'planned', 'nextFixConfirmed', 'nextFixPlanned', 'inProgress', 'monitoring', 'resolved', 'wontfix', 'unknown', 'closed'] as const;
 const countSchema = { type: 'integer', optional: false, nullable: false } as const;
 
 export const meta = {
@@ -24,7 +24,10 @@ export const meta = {
 			total: countSchema,
 			open: countSchema,
 			planned: countSchema,
+			nextFixConfirmed: countSchema,
+			nextFixPlanned: countSchema,
 			inProgress: countSchema,
+			monitoring: countSchema,
 			resolved: countSchema,
 			wontfix: countSchema,
 			unknown: countSchema,
