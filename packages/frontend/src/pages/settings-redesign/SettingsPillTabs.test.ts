@@ -2,7 +2,7 @@
  * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  *
- * 旗鯖fork: 設定画面の選択表現を「錠剤型ケース」に揃えたことを見張る。
+ * 旗鯖fork: Hataskey UI 2 編集面の選択表現を「錠剤型ケース」に保つ。
  *
  * ⚠️手本は Hataskey UI の上部タブ（ui/simple.vue の .topPill / .topTabActive）。
  *   ・タブ全体を1つの角丸ケースで包む
@@ -14,7 +14,6 @@
 
 import { describe, expect, test } from 'vitest';
 import settingsBody from '@/components/HatasabaUi2SettingsBody.vue?raw';
-import shell from './index.vue?raw';
 import referenceUi from '@/ui/simple.vue?raw';
 
 /** そのクラス単独の宣言ブロックを、括弧を数えて取り出す。 */
@@ -38,9 +37,8 @@ describe('settings pill tabs', () => {
 	test('検出器が生きている', () => {
 		// ⚠️陽性対照。宣言を実際に読めていること。
 		expect(declarationFor(settingsBody, '.chips').length).toBeGreaterThan(60);
-		expect(declarationFor(shell, '.navLink').length).toBeGreaterThan(80);
 		// ⚠️存在しないクラスなら空になること。
-		expect(declarationFor(shell, '.zzNoSuchClass')).toBe('');
+		expect(declarationFor(settingsBody, '.zzNoSuchClass')).toBe('');
 		// ⚠️手本がまだ在ること。無くなったらこの検査の拠り所が消える。
 		expect(referenceUi).toContain('.topTabActive');
 	});
@@ -56,10 +54,5 @@ describe('settings pill tabs', () => {
 		const activeChip = settingsBody.slice(settingsBody.indexOf(".chips > button[data-active='true']"));
 		expect(activeChip).toContain('color: var(--MI_THEME-accent);');
 		expect(activeChip.slice(0, 400)).not.toContain('color: var(--MI_THEME-fgOnAccent)');
-
-		// 左ペインの項目
-		const activeNav = shell.slice(shell.indexOf('.navLinkActive, .navLinkActive:hover'));
-		expect(activeNav.slice(0, 400)).toContain('color: var(--MI_THEME-accent);');
-		expect(activeNav.slice(0, 400)).not.toContain('color: var(--MI_THEME-fgOnAccent)');
 	});
 });

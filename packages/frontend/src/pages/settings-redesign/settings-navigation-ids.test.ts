@@ -10,7 +10,7 @@ import destinationsSource from './settings-destinations.ts?raw';
 
 describe('settings navigation IDs', () => {
 	test('current shell IA is unique while an injected duplicate is fail-fast', () => {
-		const navStart = shellSource.indexOf('const navSections: NavSection[] = settingsDestinationSections.map(');
+		const navStart = shellSource.search(/const navSections(?:\s*:[^=]+)?\s*=\s*settingsDestinationSections\.map\(/u);
 		const guardStart = shellSource.indexOf('assertUniqueNavigationIds(navSections);', navStart);
 		const navigationIds = [...destinationsSource.matchAll(/destination\('([^']+)'/gu)].map(match => match[1]);
 		expect(navStart).toBeGreaterThan(-1);

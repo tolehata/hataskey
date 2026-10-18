@@ -72,11 +72,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<XInstanceMute/>
 				</MkFolder>
 			</SearchMarker>
-
+			<SettingsSectionExplainer v-if="presentationCategory === 'mute'" sectionId="mute.section1" :motionEnabled="motionEnabled"/>
 			<SearchMarker
 				:keywords="['renote', 'mute', 'hide', 'user']"
 			>
-				<MkFolder>
+				<MkFolder data-settings-section-anchor="owner:mute-block:renote-users" :data-settings-section-label="i18n.ts.mutedUsers + ' (' + i18n.ts.renote + ')'" data-settings-section-icon="ti ti-repeat-off" tabindex="-1">
 					<template #icon><i class="ti ti-repeat-off"></i></template>
 					<template #label><SearchLabel>{{ i18n.ts.mutedUsers }} ({{ i18n.ts.renote }})</SearchLabel></template>
 
@@ -107,7 +107,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:label="i18n.ts.mutedUsers"
 				:keywords="['note', 'mute', 'hide', 'user']"
 			>
-				<MkFolder>
+				<MkFolder data-settings-section-anchor="owner:mute-block:muted-users" :data-settings-section-label="i18n.ts.mutedUsers" data-settings-section-icon="ti ti-eye-off" tabindex="-1">
 					<template #icon><i class="ti ti-eye-off"></i></template>
 					<template #label>{{ i18n.ts.mutedUsers }}</template>
 
@@ -140,7 +140,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:label="i18n.ts.blockedUsers"
 				:keywords="['block', 'user']"
 			>
-				<MkFolder>
+				<MkFolder data-settings-section-anchor="owner:mute-block:blocked-users" :data-settings-section-label="i18n.ts.blockedUsers" data-settings-section-icon="ti ti-ban" tabindex="-1">
 					<template #icon><i class="ti ti-ban"></i></template>
 					<template #label>{{ i18n.ts.blockedUsers }}</template>
 
@@ -176,6 +176,7 @@ import { ref, computed, watch, markRaw } from 'vue';
 import XEmojiMute from './mute-block.emoji-mute.vue';
 import XInstanceMute from './mute-block.instance-mute.vue';
 import XWordMute from './mute-block.word-mute.vue';
+import type { SettingsBentoCategoryId } from '@/pages/settings-redesign/settings-bento-catalog.js';
 import MkPagination from '@/components/MkPagination.vue';
 import { userPage } from '@/filters/user.js';
 import { i18n } from '@/i18n.js';
@@ -194,6 +195,9 @@ import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
 import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import { Paginator } from '@/utility/paginator.js';
 import { suggestReload } from '@/utility/reload-suggest.js';
+import SettingsSectionExplainer from '@/pages/settings-redesign/SettingsSectionExplainer.vue';
+
+withDefaults(defineProps<{ presentationCategory?: SettingsBentoCategoryId; motionEnabled?: boolean }>(), { motionEnabled: true });
 
 const $i = ensureSignin();
 

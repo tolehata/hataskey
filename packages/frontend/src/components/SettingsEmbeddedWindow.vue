@@ -9,15 +9,16 @@ SPDX-License-Identifier: AGPL-3.0-only
   受け口（#header / 本体 / #footer / close()）を既存の窓と同じ形に揃えてあるので、
   各画面は `<component :is="...">` の付け替えだけで埋め込みへ回せる。
 
-⚠️窓側の props（initialWidth・canResize・withOkButton など）は、埋め込みでは
-  意味を持たないが**受け取れないと Vue が属性としてDOMへ落とす**ので、
-  ここで明示的に受け取って捨てる。
+⚠️窓の寸法・リサイズ用 props は、DOMへ落とさないように受け取る。
+  保存・閉じる操作は元の窓と同じイベント契約を維持する。
 -->
 
 <template>
 <section :class="[$style.root, panelClass]" :data-hatask-theme="panelTheme" :data-hatask-mode="panelMode">
-	<header v-if="$slots.header" :class="$style.head">
-		<h2 :class="$style.title"><slot name="header"></slot></h2>
+	<header v-if="$slots.header || withOkButton" :class="$style.head">
+		<h2 v-if="$slots.header" :class="$style.title"><slot name="header"></slot></h2>
+		<MkButton v-if="withOkButton" type="button" primary gradate rounded :class="$style.action" data-testid="settings-embedded-ok" :disabled="okButtonDisabled" @click="emit('ok')">{{ i18n.ts.done }} <i class="ti ti-check" aria-hidden="true"></i></MkButton>
+		<button v-if="closeButton ?? withCloseButton" type="button" class="_button" :class="$style.action" data-testid="settings-embedded-close" :aria-label="i18n.ts.close" @click="requestClose"><i class="ti ti-x" aria-hidden="true"></i></button>
 	</header>
 	<div :class="$style.body">
 		<slot></slot>
@@ -29,7 +30,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import MkButton from '@/components/MkButton.vue';
+import { i18n } from '@/i18n.js';
+
+const props = withDefaults(defineProps<{
 	// MkWindow 由来
 	initialWidth?: number;
 	initialHeight?: number;
@@ -53,7 +57,12 @@ defineProps<{
 	// MkModal 由来
 	preferType?: string;
 	disableBgBlur?: boolean;
-}>();
+}>(), {
+	closeButton: undefined,
+	withOkButton: false,
+	withCloseButton: true,
+	okButtonDisabled: false,
+});
 
 const emit = defineEmits<{
 	closed: [];
@@ -64,11 +73,20 @@ const emit = defineEmits<{
 /**
  * ⚠️各画面は `dialog.value?.close()` で自分を閉じる。埋め込みでも同じ呼び方が
  *   通るようにしておかないと、画面内の「閉じる」「保存して閉じる」が黙って効かなくなる。
- *   埋め込みでは窓を消す代わりに、閉じたい意思を親へ伝える。
+ *   close はユーザーの閉じる要求、closed は閉じた通知。公開 close() から
+ *   close を再発火させると、親の @close="dialog?.close()" に再入する。
  */
+let closed = false;
+
 function close(): void {
-	emit('close');
+	if (closed) return;
+	closed = true;
 	emit('closed');
+}
+
+function requestClose(): void {
+	if (props.closeButton !== undefined) close();
+	else emit('close');
 }
 
 defineExpose({ close });
@@ -82,8 +100,7 @@ defineExpose({ close });
 	min-block-size: 0;
 }
 
-/* ⚠️見出しは右ペインの中で「窓の題名」ではなく節の見出しとして振る舞う。
-   窓のときのような枠線や閉じるボタンは持たせない。 */
+/* 見出しは右ペイン内の節として配置し、保存・閉じる操作を併置する。 */
 .head {
 	display: flex;
 	align-items: center;
@@ -94,6 +111,7 @@ defineExpose({ close });
 }
 
 .title {
+	flex: 1;
 	margin: 0;
 	min-width: 0;
 	overflow: hidden;
@@ -103,6 +121,12 @@ defineExpose({ close });
 	line-height: 1.3;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.action {
+	flex-shrink: 0;
+	min-inline-size: 44px;
+	min-block-size: 44px;
 }
 
 .body {

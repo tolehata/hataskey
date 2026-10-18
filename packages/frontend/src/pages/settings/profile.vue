@@ -24,7 +24,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 		</div>
-
+		<SettingsSectionExplainer v-if="presentationCategory === 'profile'" sectionId="profile.section2" :motionEnabled="motionEnabled"/>
 		<SearchMarker :keywords="['name']">
 			<MkInput v-model="profile.name" :max="30" manualSave :mfmAutocomplete="['emoji']">
 				<template #label><SearchLabel>{{ i18n.ts._profile.name }}</SearchLabel></template>
@@ -57,10 +57,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template #label><SearchLabel>{{ i18n.ts.language }}</SearchLabel></template>
 			</MkSelect>
 		</SearchMarker>
-
+		<SettingsSectionExplainer v-if="presentationCategory === 'profile'" sectionId="profile.section1" :motionEnabled="motionEnabled"/>
 		<SearchMarker :keywords="['metadata']">
 			<FormSlot>
-				<MkFolder>
+				<MkFolder data-settings-section-anchor="owner:profile:fields" :data-settings-section-label="i18n.ts._profile.metadataEdit" :data-settings-section-icon="bentoSectionIcon('profile.section1')" tabindex="-1">
 					<template #icon><i class="ti ti-list"></i></template>
 					<template #label><SearchLabel>{{ i18n.ts._profile.metadataEdit }}</SearchLabel></template>
 					<template #footer>
@@ -131,9 +131,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</SearchMarker>
 
 		<SearchMarker>
-			<MkFolder>
+			<MkFolder data-settings-section-anchor="owner:profile:records" :data-settings-section-label="i18n.ts.advancedSettings" :data-settings-section-icon="bentoSectionIcon('profile.section3')" tabindex="-1">
 				<template #label><SearchLabel>{{ i18n.ts.advancedSettings }}</SearchLabel></template>
-
+				<SettingsSectionExplainer v-if="presentationCategory === 'profile'" sectionId="profile.section3" :motionEnabled="motionEnabled"/>
 				<div class="_gaps_m">
 					<MkInfo>{{ i18n.ts.profileBadgeVisibilityDescription }}</MkInfo>
 
@@ -201,6 +201,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed, reactive, ref, watch, defineAsyncComponent } from 'vue';
+import type { SettingsBentoCategoryId } from '@/pages/settings-redesign/settings-bento-catalog.js';
 import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
@@ -222,6 +223,10 @@ import MkTextarea from '@/components/MkTextarea.vue';
 import { genId } from '@/utility/id.js';
 import { suggestReload } from '@/utility/reload-suggest.js';
 import { prefer } from '@/preferences.js';
+import SettingsSectionExplainer from '@/pages/settings-redesign/SettingsSectionExplainer.vue';
+import { bentoSectionIcon } from '@/pages/settings-redesign/settings-bento-catalog.js';
+
+withDefaults(defineProps<{ presentationCategory?: SettingsBentoCategoryId; motionEnabled?: boolean }>(), { motionEnabled: true });
 
 const $i = ensureSignin();
 

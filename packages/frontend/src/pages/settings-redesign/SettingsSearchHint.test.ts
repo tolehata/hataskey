@@ -252,7 +252,7 @@ describe('画面への繋ぎ込み', () => {
 	// ⚠️時計が正しくても、画面から呼ばなければ何も起きない。
 	//   実際に一度、起動時に数え始めておらず「いつまでも変わらない」状態になった。
 	test('狭さと現在の画面を見て数え直す（起動直後も含む）', () => {
-		expect(shellSource).toContain('watch([compact, currentPage], () => searchHintController.restart(), { immediate: true });');
+		expect(shellSource).toContain('watch([compact, currentFullPath], () => searchHintController.restart(), { immediate: true });');
 	});
 
 	test('設定の値そのものを見張る（refのまま JSON にしても依存は登録されない）', () => {
@@ -272,34 +272,20 @@ describe('画面への繋ぎ込み', () => {
 		expect(shellSource).toContain('searchHintController.stop();');
 	});
 
-	// ⚠️小さすぎると読まれない。逆に大きくしすぎると、左右44pxのボタンに
-	//   挟まれた中央の枠（幅375pxの端末でおよそ235px）に収まらず末尾が切れる。
-	test('案内の字は1remで、字間を詰めて中央の枠に収める', () => {
-		const rule = shellSource.split('\n').find(line => line.startsWith('.compactHint {'));
-		expect(rule).toBeDefined();
-		expect(rule).toContain('font-size: 1rem;');
-		// ⚠️色は見出しと同じ。差し色だと題の場所に別物が割り込んだように見える。
-		expect(rule).toContain('color: var(--MI_THEME-fg);');
-		expect(rule).toContain('letter-spacing: -.02em;');
-		expect(rule).toContain('text-overflow: ellipsis;');
-		// ⚠️同じ宣言を2つ書くと後ろが黙って勝つ。1つだけであることを見る。
-		expect(rule!.match(/font-size:/gu)).toHaveLength(1);
-	});
-
-	// ⚠️矢印は文言から外して別要素にしてある。文言側へ戻すと動かせなくなる。
-	test('矢印は別要素として持ち、控えめに動く', () => {
-		expect(shellSource).toContain('<span :class="$style.compactHintArrow" aria-hidden="true">＞</span>');
-		const rule = shellSource.split('\n').find(line => line.startsWith('.compactHintArrow {'));
-		expect(rule).toBeDefined();
-		expect(rule).toContain('animation: settingsHintArrow');
-		expect(rule).toContain('infinite');
-		expect(shellSource).toContain('@keyframes settingsHintArrow {');
+	test('案内は常設の検索ボタン内に表示し、カテゴリ画面でも同じ時計を使う', () => {
+		expect(shellSource).toContain('eligible: () => compact.value && !showOverview.value');
+		expect(shellSource).toContain('showSearchHint ? copy.searchHint : copy.searchTrigger');
+		const searchButton = shellSource.match(/<button ref="searchButtonEl"[^>]*>[\s\S]*?<\/button>/u)?.[0];
+		expect(searchButton).toBeDefined();
+		expect(searchButton).toContain('@click="openSearch"');
+		expect(searchButton).toContain('showSearchHint');
+		expect(searchButton).not.toContain('v-if=');
 	});
 
 	test('動きを減らす設定では止まる', () => {
 		// ⚠️個別に書かず、この囲みが子孫の animation ごと止めている。
-		//   ここを消すと矢印だけが動き続ける。
-		const scoped = shellSource.slice(shellSource.indexOf(".scope[data-motion-enabled='false'] {"));
+		//   ここを消すと設定カードなどの子孫の動きが残る。
+		const scoped = shellSource.slice(shellSource.indexOf(".scope[data-motion-enabled='false'] :deep(*) {"));
 		expect(scoped.slice(0, 260)).toContain('animation: none !important;');
 	});
 });

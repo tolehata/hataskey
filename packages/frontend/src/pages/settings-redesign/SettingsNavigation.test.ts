@@ -16,9 +16,8 @@ describe('settings redesign navigation contract', () => {
 		expect(sectionLandingItem(section, 'simple')?.id).toBe('hataskey-ui');
 		expect(sectionLandingItem(section, 'deck')?.id).toBe('hataskey-ui');
 		expect(sectionLandingItem({ id: 'other', items: [{ id: 'first' }, { id: 'second' }] }, 'hataskey3')?.id).toBe('first');
-		expect(shellSource).toContain('const item = sectionLandingItem(section, ui);');
-		expect(shellSource).toContain('v-for="item in activeNavSection.items"');
-		expect(shellSource).toContain('@click.prevent="goToSetting(item)"');
+		expect(shellSource).toContain('function openBentoDestination(id: string, event?: MouseEvent)');
+		expect(shellSource).toContain('const accepted = await goToSetting(destination);');
 		expect(shellSource).toContain('if (await goToSetting(target)) closeSearch({ reason: \'select\' });');
 	});
 	test('an unset UI preserves the first-item landing fallback', () => {
@@ -155,7 +154,7 @@ describe('settings redesign navigation contract', () => {
 		expect(shellSource).toContain('isCurrent: () => revision === controlFocusRevision && targetNavigationRevision === navigationRevision');
 		expect(shellSource).toContain('getControlFallbackFocusTarget(target)');
 		expect(shellSource).toContain('!element.closest(\'[data-settings-related]\')');
-		expect(shellSource).toContain('scroll-margin-block: 96px');
+		expect(shellSource).toMatch(/scroll-margin-block:\s*\d+px/u);
 		expect(shellSource).toContain('cancelPendingNavigation();');
 		expect(shellSource).toContain('focusTarget.kind === \'group\' ? \'data-settings-search-group-id\' : \'data-settings-search-id\'');
 		expect(shellSource).toContain('function exactNavigationElement(elements: HTMLElement[])');
@@ -210,84 +209,55 @@ describe('settings redesign navigation contract', () => {
 		expect(assign).toBeGreaterThan(assertion);
 	});
 
-	test('3つの表示範囲pillと破壊的実操作は検索実行から分離する', () => {
-		for (const key of ['all', 'frequent', 'deviceOnly']) expect(shellSource).toContain(`label: copy.filters.${key}`);
-		expect(shellSource).toContain('activeSettingsFilter = filter.id');
-		expect(shellSource).toContain('const visibleNavSections = computed<NavSection[]>');
-		expect(shellSource).toContain('searchId: \'settings.shell.clear-cache\'');
-		expect(shellSource).toContain('searchId: \'settings.shell.logout\'');
-		expect(shellSource).toContain('searchId: \'settings.shell.logout-all\'');
+	test('破壊的操作は一覧末尾に置き、検索では実行せず一覧へ到達する', () => {
+		for (const id of ['clear-cache', 'logout', 'logout-all']) expect(shellSource).toContain(`searchId: 'settings.shell.${id}'`);
+		expect(shellSource).toContain('<footer v-if="showOverview"');
 		expect(shellSource).toContain('data-settings-search-destructive="true"');
 		expect(shellSource).toContain('@click="runShellAction(item.id)"');
 		expect(shellSource).toContain('function navigationPathForTarget(target: SettingsSearchNavigationTargetV2, focusTarget: NavigationFocusTarget | null)');
-		expect(shellSource).toContain('focusTarget.id === \'settings.shell.logout\'');
-		expect(shellSource).toContain('!compact.value && currentPath.value.startsWith(\'/settings/\')');
+		expect(shellSource).toContain("focusTarget.id === 'settings.shell.logout'");
+		expect(shellSource).toContain("if (isShellAction) return '/settings';");
 	});
-
-	test('よく使う設定はprimary判定と分離し、6つのquick導線と現行IAの明示4件だけを残す', () => {
-		const promotedBlock = shellSource.match(/const frequentNavigationItemIds = new Set\(\[([\s\S]*?)\]\);/u)?.[1] ?? '';
-		const promotedIds = [...promotedBlock.matchAll(/'([^']+)'/gu)].map(match => match[1]);
-		const navItemIds = [...destinationsSource.matchAll(/destination\('([^']+)'/gu)].map(match => match[1]);
-		expect(promotedIds).toEqual([
-			'hataskey-ui',
-			'display-theme',
-			'timeline-display',
-			'account-profile',
-		]);
-		expect(navItemIds.length).toBeGreaterThan(promotedIds.length);
-		for (const id of promotedIds) expect(destinationsSource).toContain('destination(\'' + id + '\'');
-		expect(shellSource).toContain('isQuickItem || frequentNavigationItemIds.has(item.id)');
-		expect(shellSource).not.toContain('isQuickItem || item.primary === true');
-		const quickBlock = shellSource.match(/const quickItems: NavItem\[\] = \[([\s\S]*?)\];/u)?.[1] ?? '';
-		const quickIds = [...quickBlock.matchAll(/destinationForId\('([^']+)'\)!/gu)].map(match => match[1]);
-		expect(quickIds).toEqual(['notifications-page', 'notifications-sounds', 'display-theme', 'account-mute', 'account-drive', 'account-security']);
+	test('すべての画面で既存プロファイル管理メニューと検索入口を使える', () => {
+		const header = shellSource.slice(shellSource.indexOf('<header'), shellSource.indexOf('</header>'));
+		expect(header).toContain('@click="openPreferencesProfileMenu"');
+		expect(header).toContain('data-settings-search-group-id="settings.group.preferences-backup-suggestion"');
+		expect(header).toContain('@click="openSearch"');
+		const menuStart = shellSource.indexOf('async function openPreferencesProfileMenu(event: MouseEvent)');
+		const anchor = shellSource.indexOf('const anchor = event.currentTarget ?? event.target;', menuStart);
+		const discard = shellSource.indexOf('if (!await requestSurfaceDiscard()) return;', anchor);
+		const routeCheck = shellSource.indexOf('if (!isSettingsFullPath(router.getCurrentFullPath())) return;', discard);
+		const open = shellSource.indexOf('os.popupMenu(getPreferencesProfileMenu(), anchor);', routeCheck);
+		expect(menuStart).toBeGreaterThan(-1);
+		expect(anchor).toBeGreaterThan(menuStart);
+		expect(discard).toBeGreaterThan(anchor);
+		expect(routeCheck).toBeGreaterThan(discard);
+		expect(open).toBeGreaterThan(routeCheck);
+		expect(shellSource).toContain(':aria-label="bentoCopy.profileMenu"');
 	});
-
-	test('幅で作りを変えず、左ペインは大分類・詳細・帯の3つの姿を持つ', () => {
-		// 旗鯖fork: ⚠️タブレット専用の下位一覧は廃止した。PC と同じ姿に揃える。
-		//   ⚠️戻すと「左に項目一覧・右上に同じ項目のタブ」の二重表示に逆戻りする。
-		expect(shellSource).not.toContain('tabletNavSections');
-		expect(shellSource).not.toContain('openTabletNavigationSection');
-		expect(shellSource).not.toContain('tabletActiveNavigationSection');
-		expect(shellSource).not.toContain('data-settings-tablet-category-id');
-
-		expect(shellSource).toContain("type SettingsNavPaneMode = 'categories' | 'detail' | 'rail';");
-		expect(shellSource).toContain("const navPaneMode = ref<SettingsNavPaneMode>('categories');");
-		expect(shellSource).toContain("<div v-if=\"navPaneMode === 'rail'\" :class=\"$style.rail\" data-settings-nav-rail>");
-		expect(shellSource).toContain("<nav v-if=\"navPaneMode === 'categories'\" key=\"categories\"");
-		expect(shellSource).toContain('key="detail"');
+	test('スマホ2bとPCタブレット3aは端末の指定で選び、小窓の幅とは分ける', () => {
+		expect(shellSource).toContain("(prefer.r.overridedDeviceKind.value ?? DEFAULT_DEVICE_KIND) === 'smartphone'");
+		expect(shellSource).toContain(':smartphone="smartphone"');
+		expect(shellSource).toContain('<SettingsBentoNavigation');
+		expect(shellSource).toContain('@container settings-shell');
+		expect(shellSource).not.toContain('data-settings-nav-rail');
+		expect(shellSource).not.toContain('data-settings-filter-case');
 	});
-
-	test('分類を選んだら帯へ畳み、帯から2つの入口で取り戻せる', () => {
-		// 旗鯖fork: ⚠️分類を選んでも自動では畳まないこと。隣の分類へ移りたいだけなのに
-		//   毎回開き直すことになり、かえって手数が増える。畳むのは利用者の操作で。
-		const open = shellSource.indexOf('async function openNavigationSection(section: NavSection): Promise<void> {');
-		expect(open).toBeGreaterThan(-1);
-		expect(shellSource.slice(open, open + 600)).not.toContain("navPaneMode.value = 'rail';");
-		expect(shellSource).toContain('data-settings-nav-collapse');
-		// ⚠️開いた直後に左ペインを動かさないこと。プロフィール行が画面外へ隠れる。
-		expect(shellSource).toContain('let sectionRevealArmed = false;');
-
-		// ⚠️帯には「大分類へ戻る」と「この分類の項目を開く」の2つ。
-		expect(shellSource).toContain('data-settings-nav-rail-action="categories"');
-		expect(shellSource).toContain('data-settings-nav-rail-action="detail"');
-		// ⚠️項目が1つだけの分類では詳細の入口を出さない。同じ画面しか並ばない。
-		expect(shellSource).toContain('data-settings-nav-rail-action="detail"');
-		// ⚠️押せない飾りを帯に置かないこと。光っているのに反応せず戸惑わせる。
-		expect(shellSource).not.toContain('$style.railMark');
-		// ⚠️畳んだときは器ごと細くすること。
-		expect(shellSource).toContain(".layout[data-nav-mode='rail'] { grid-template-columns: 64px minmax(0, 1fr); }");
-		// ⚠️grid-template-columns に transition を掛けないこと。トラックの形が違って
-		//   補間できず、値が古いまま張り付いて畳めなくなる（実測で確認）。
-		expect(shellSource).not.toContain('transition: grid-template-columns');
-		// ⚠️詳細を開いたら見出しへ焦点を移す。
-		expect(shellSource).toContain('void navMotion.transition(() => { navPaneMode.value = mode; });');
-		expect(shellSource).toContain('void nextTick(() => {');
-		expect(shellSource).toContain("navPaneMode.value !== mode || (!restoreFocus && mode !== 'detail')");
-		expect(shellSource).toContain("mode === 'detail' ? navDetailBackEl.value");
-		expect(shellSource).toContain('focusElement(target ?? null);');
+	test('分類選択はdiscard承認後にURLへ保存し、一覧へ戻ると元カードへ焦点を戻す', () => {
+		const start = shellSource.indexOf('async function selectBentoCategory(id: string)');
+		const end = shellSource.indexOf('function openBentoDestination', start);
+		const select = shellSource.slice(start, end);
+		expect(start).toBeGreaterThan(-1);
+		expect(select).toContain('if (category == null || !await requestSurfaceDiscard()) return;');
+		expect(select).toContain('if (!isSettingsFullPath(router.getCurrentFullPath())) return;');
+		expect(select).toContain('`/settings?category=${category.id}`');
+		expect(select).toContain('mainEl.value?.focus({ preventScroll: true });');
+		const top = shellSource.slice(shellSource.indexOf('async function goSettingsTop()'), shellSource.indexOf('function isSettingsFullPath'));
+		expect(top).toContain('if (!await requestSurfaceDiscard()) return;');
+		expect(top).toContain("pushShellRoute('/settings')");
+		expect(top).toContain('[data-settings-category-id="${categoryId}"]');
+		expect(top).toContain('focusElement(');
 	});
-
 	test('破壊的shell actionはUI2ドラフトのdiscard承認後だけ既存confirmationへ渡す', () => {
 		const actionStart = shellSource.indexOf('async function runShellAction(id: string)');
 		const discard = shellSource.indexOf('if (!await requestSurfaceDiscard()) return;', actionStart);
@@ -297,85 +267,25 @@ describe('settings redesign navigation contract', () => {
 		expect(action).toBeGreaterThan(discard);
 	});
 
-	test('compact and tablet surface hierarchy follows the mock instead of retaining desktop cards', () => {
-		// 旗鯖fork: ⚠️狭い幅の詳細ページでは検索窓を虫眼鏡へ畳む。
-		// 旗鯖fork: ⚠️狭い幅の詳細ページでは検索窓を虫眼鏡へ畳む。
-		expect(shellSource).toContain('const compactSearchCollapsed = computed(() => compact.value && currentPage.value?.route.name != null);');
-		// ⚠️v-if で出し入れしないこと。Transition の leave が終わらず、窓が
-		//   `leave-from` のまま画面に残り続けた（実測: 3秒待っても消えない）。
-		//   ⚠️常に置いて、CSSだけで畳む。
-		expect(shellSource).toContain(':data-collapsed="compactSearchCollapsed ? \'true\' : \'false\'"');
-		expect(shellSource).toContain(".compactHeader .searchTrigger[data-collapsed='true'] { min-height: 0; height: 0;");
-		expect(shellSource).toContain(".compactSearchIcon[data-collapsed='false'] { width: 0;");
-		expect(shellSource).not.toContain('settings-search-expand');
-		expect(shellSource).not.toContain('settings-search-shrink');
-		expect(shellSource).toContain('[$style.contentCard, { [$style.contentCardSurfaceActive]: isHatasabaUi2SurfaceActive }]');
-		expect(shellSource).toContain('.contentCard.contentCardSurfaceActive { min-height: 0; border: 0; border-radius: 0; padding: 0; background: transparent; box-shadow: none; }');
-		expect(shellSource).toContain('.nav { border: 0; border-radius: 0; padding: 0; background: transparent; box-shadow: none; }');
-		expect(shellSource).toContain('.compactHeader { display: block; border-bottom: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); background: var(--settings-surface, var(--MI_THEME-panel)); }');
-		expect(shellSource).toContain('.compactHeader .searchTrigger { width: 100%; margin-top: 10px; background: var(--settings-bg, var(--MI_THEME-bg)); box-shadow: none; }');
-		// 旗鯖fork: ⚠️選択中は塗りつぶさない。Hataskey UI の上部タブと同じく
-		//   アクセント色の文字＋淡い下地で示す。
-		expect(shellSource).toContain('.detailBack, .navLink { background: var(--settings-surface, var(--MI_THEME-panel)); }');
+	test('ルートは全端末でカテゴリ一覧になり、選択URLだけ実設定面を開く', () => {
+		expect(shellSource).toContain("new URLSearchParams(currentFullPath.value.split('?')[1]?.split('#')[0]).get('category')");
+		expect(shellSource).toContain('settingsBentoCategories.find(category => category.id === id)?.id ?? null');
+		expect(shellSource).toContain("currentPath.value === '/settings' && requestedBentoCategoryId.value == null && embeddedPopup.value == null");
+		expect(shellSource).toContain('<SettingsCategorySurface');
+		expect(shellSource).not.toContain('SETTINGS_DEFAULT_ROUTE');
 	});
-
-	test('desktop二ペインは独立scrollで、左は大分類の錠剤リスト・右は兄弟タブを持つ', () => {
+	test('PCのカテゴリと本文は独立スクロールし、スマホは一続きの本文になる', () => {
 		expect(shellSource).toContain('ref="navEl"');
+		expect(shellSource).toContain('ref="mainEl"');
 		expect(shellSource).toContain('grid-template-rows: auto minmax(0, 1fr)');
-		expect(shellSource).toContain('box-sizing: border-box');
 		expect(shellSource).toContain('block-size: calc(100cqh - (var(--MI-stickyTop, 0px) + var(--MI-stickyBottom, 0px)))');
-		expect(shellSource).toContain('.layout { min-block-size: 0; display: grid; grid-template-columns: minmax(226px, 272px) minmax(0, 1fr); align-items: stretch; gap: 22px; overflow: clip; padding: 0 22px 24px; }');
-		// 旗鯖fork: ⚠️左右の余白は同じ幅にすること。非対称だと中身の中央が
-		//   器の中央から3pxずれ、見出しが左寄せに見える（実測: ずれ -3px）。
-		expect(shellSource).toContain('.nav { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 20px; }');
-		expect(shellSource).toContain('.main { min-width: 0; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding-inline-end: 8px; outline: 0; }');
-		// 旗鯖fork: ⚠️スクロールバーは出さない（手本は Hataskey UI のサイドメニュー）。
-		//   ⚠️2つの仕組みを両方書くこと。片方だけだと片方のブラウザで出たままになる。
-		expect(shellSource).toContain('.nav, .main {\n\tscrollbar-width: none;\n}');
-		expect(shellSource).toContain('.nav::-webkit-scrollbar, .main::-webkit-scrollbar {');
-		// 旗鯖fork: ⚠️左ペインは大分類だけを持つ。折りたたみ(details)は廃止した。
-		//   ⚠️分類の中の項目を左にも出すと、同じ項目が2階層へ重複する。
-		expect(shellSource).not.toContain('<details');
-		expect(shellSource).not.toContain('expandedDesktopNavigationSectionIds');
-		expect(shellSource).not.toContain('onDesktopNavigationSectionToggle');
-		expect(shellSource).toContain(':class="$style.sectionPills"');
-		expect(shellSource).toContain('@click="openNavigationSection(section)"');
-		expect(shellSource).toContain('async function openNavigationSection(section: NavSection): Promise<void> {');
-		expect(shellSource).toContain('requestedSectionId.value = section.id;');
-		expect(shellSource).toContain('if (item != null) await goToSetting(item);');
-
-		// ⚠️選んでいる分類は、経路と選択要求の両方から決める。
-		//   経路だけだとポップアップ項目で分類が動かず、選択要求だけだと
-		//   検索から直接飛んだときに左が追従しない。
-		expect(shellSource).toContain('const activeSectionId = computed<string | null>(() => {');
-		expect(shellSource).toContain('const [activeId] = activeNavigationSectionIds.value;');
-		expect(shellSource).toContain('if (activeId != null) return activeId;');
-		expect(shellSource).toContain('if (requestedSectionId.value != null) return requestedSectionId.value;');
-
-		// ⚠️右ペインの兄弟タブは、選んでいる分類の項目そのもの。
-		expect(shellSource).toContain('const siblingTabs = computed<NavItem[]>(() => activeNavSection.value?.items ?? []);');
-		expect(shellSource).toContain('v-if="siblingTabs.length > 1"');
-		expect(shellSource).toContain(':data-stuck="siblingTabsStuck ? \'true\' : \'false\'"');
-
-		// ⚠️目印は .main の直下。カードの中だと sticky が抜けた時点で消える。
-		expect(shellSource).toContain('ref="siblingTabsSentinel"');
-		expect(shellSource).toContain('}, { root: mainEl.value ?? null, threshold: 0 });');
-
-		// ⚠️選択中は塗りつぶさない。アクセント色の文字＋淡い下地で示す。
-		expect(shellSource).toContain('.sectionPill[data-active=\'true\'], .sectionPill[data-active=\'true\']:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent); color: var(--MI_THEME-accent); font-weight: 800; box-shadow: inset 3px 0 0 var(--MI_THEME-accent); }');
-		// 旗鯖fork: ⚠️兄弟タブはアクセントの補色。本文の操作と同じ色にしないこと。
-		//   ⚠️相対色構文が効かない環境ではアクセント色へ落ちる（落ちても壊れない）。
-		expect(shellSource).toContain('.siblingTabs { --hata-tab-accent: var(--MI_THEME-accent); }');
-		expect(shellSource).toContain('@supports (color: hsl(from red h s l))');
-		expect(shellSource).toContain('--hata-tab-accent: hsl(from var(--MI_THEME-accent) calc(h + 180) s l);');
-		expect(shellSource).toContain('color: var(--hata-tab-accent); font-weight: 750;');
-
-		// ⚠️選んだ分類が左ペインの外に居るときだけ寄せる。毎回動かさない。
-		expect(shellSource).toContain('function revealActiveSectionPill(id: string) {');
-		expect(shellSource).toContain('} else {');
-		expect(shellSource).toContain('nav.scrollTo({ top: Math.max(0, top), behavior: motionEnabled.value ? \'smooth\' : \'auto\' });');
+		expect(shellSource).toMatch(/\.nav, \.main \{[^}]*overflow-y: auto;[^}]*overscroll-behavior: contain;[^}]*scrollbar-width: none;/u);
+		expect(shellSource).toContain('.nav::-webkit-scrollbar, .main::-webkit-scrollbar');
+		const smartphone = shellSource.slice(shellSource.indexOf(".scope[data-smartphone='true'] {"));
+		expect(smartphone).toMatch(/\.nav,\s*\.main\s*\{[^}]*overflow:\s*visible;/u);
+		expect(shellSource).toContain(':activeCategoryId="activeBentoCategoryId"');
+		expect(shellSource).toContain('bentoCategoryForDestination');
 	});
-
 	test('右ペインの中身は差し替えず、常に置いたままにする', () => {
 		// 旗鯖fork: ⚠️Transition で右ペインごと差し替えないこと。
 		//   ⚠️ウィンドウの最大化を切り替えると幅の判定(compact)が反転し、鍵が変わって
@@ -386,20 +296,18 @@ describe('settings redesign navigation contract', () => {
 		// ⚠️動きは使い捨てのアニメーションで出す。途中で止まっても中身は残る。
 		expect(shellSource).toContain(':data-page-enter="pageEnterDirection ?? undefined"');
 		expect(shellSource).toContain("@keyframes settingsPageForward");
-		expect(shellSource).toContain(".contentCard[data-page-enter='forward'] { animation: settingsPageForward 240ms");
+		expect(shellSource).toContain(".contentCard[data-page-enter='forward'] { animation: settingsPageForward 220ms");
 	});
 
-	test('絞り込みは1つの錠剤ケースで、畳むボタンは独立した丸にする', () => {
-		// 旗鯖fork: ⚠️並のボタンを横に並べただけだと、幅が足りない環境で2段に折り返す。
-		expect(shellSource).toContain('data-settings-filter-case');
-		expect(shellSource).toContain('.filterPills { display: flex; min-width: 0; max-width: 100%; align-items: center; gap: 2px; flex-wrap: nowrap;');
-		// ⚠️選択中は塗りつぶさない。
-		expect(shellSource).toContain(".filter[data-active='true'], .filter[data-active='true']:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent); color: var(--MI_THEME-accent); font-weight: 800; }");
-		// ⚠️畳むボタンはケースの外。
-		expect(shellSource).toContain('<div :class="$style.filterRow">');
-		expect(shellSource).toContain('data-settings-nav-collapse');
+	test('幅変更では本文を再生成せず、見えるカテゴリ面と詳細面を区別する', () => {
+		expect(shellSource).toContain('<main v-show="!showOverview"');
+		expect(shellSource).toContain(`:data-overview="showOverview ? 'true' : 'false'"`);
+		expect(shellSource).not.toContain('compact ? currentPath');
+		expect(shellSource).not.toContain(':key="smartphone"');
+		const categorySurface = shellSource.match(/<SettingsCategorySurface\b[^>]*>/u)?.[0];
+		expect(categorySurface).toBeDefined();
+		expect(categorySurface).not.toContain(':key=');
 	});
-
 	test('1つの宣言の中で同じ指定を二度書かない', () => {
 		// 旗鯖fork: ⚠️1行に詰めた宣言へ後から足すと、同じ指定が二重に入りやすい。
 		//   ⚠️CSSは後勝ちなので、前に書いた指定が黙って打ち消される。
@@ -448,6 +356,8 @@ describe('settings redesign navigation contract', () => {
 		expect(handler).toContain("if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight + 1) return;");
 		// ⚠️端まで来ているときは外側へ渡す。
 		expect(handler).toContain('if (next === pane.scrollTop) return;');
+		// カプセルの選択保持は、ヘッダーから転送された手動スクロールでも解除する。
+		expect(handler).toContain('notifyManualSectionScroll(pane);\n\tpane.scrollTop = next;');
 		// ⚠️横ホイールには手を出さない。
 		expect(handler).toContain('if (ev.deltaY === 0 || Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) return;');
 		// ⚠️横位置だけで選ばないこと。狭い幅では左右ペインが縦に積まれる。
@@ -471,28 +381,22 @@ describe('settings redesign navigation contract', () => {
 		expect(anchorFocus).toBeGreaterThan(ordinaryFocus);
 	});
 
-	test('desktop profile横のHataskey導線は廃止し、tablet導線と操作buttonの高さは保つ', () => {
-		expect(shellSource).not.toContain('$style.hataEntry');
-		// ⚠️タブレット専用の Hataskey UI 行は廃止。大分類の錠剤へ一本化した。
-		expect(shellSource).not.toContain('tabletPrimaryLink');
-		expect(shellSource).toContain('.uiPill { min-height: 36px; padding: 6px 10px;');
-		expect(shellSource).toContain('.legacyTop { min-height: 44px; padding: 8px 14px; }');
+	test('プロフィールはguard付きカテゴリへ、UI2プレビューは編集面から一つだけ開く', () => {
+		expect(shellSource).toContain(`@click="selectBentoCategory('profile')"`);
+		expect(shellSource).toMatch(/<button v-if="isHatasabaUi2SurfaceActive"[^>]*@click="openHatasabaUi2Preview"/u);
+		expect(shellSource.match(/@click="openHatasabaUi2Preview"/gu)).toHaveLength(1);
+		expect(shellSource).toContain('min-height: 44px;');
 	});
-
-	test('tabletの戻るbuttonはdiscard後に設定外へ出し、mobile rootも同じguardを使う', () => {
-		expect(shellSource).toMatch(/<button v-if="tablet"[^>]*:class="\$style\.compactBack"[^>]*:aria-label="i18n\.ts\.goBack"[^>]*@click="goSettingsBack">/);
-		expect(shellSource).toContain('<i class="ti ti-chevron-left" aria-hidden="true"></i>');
+	test('全端末の戻る操作は一覧と設定外を分け、discardと現在routeを確認する', () => {
+		expect(shellSource).toContain('@click="showOverview ? goSettingsBack() : goSettingsTop()"');
 		const backStart = shellSource.indexOf('async function goSettingsBack() {');
-		const compactStart = shellSource.indexOf('async function goCompactBack() {');
-		const exitRoute = shellSource.indexOf('pushShellRoute(settingsExitRoute());', backStart);
+		const exitStart = shellSource.indexOf('function settingsExitRoute()', backStart);
+		const back = shellSource.slice(backStart, exitStart);
 		expect(backStart).toBeGreaterThan(-1);
-		expect(compactStart).toBeGreaterThan(backStart);
-		expect(shellSource.slice(backStart, compactStart)).toContain('if (!await requestSurfaceDiscard()) return;');
-		expect(shellSource.slice(backStart, compactStart)).toContain('if (!isSettingsFullPath(router.getCurrentFullPath())) return;');
-		expect(exitRoute).toBeGreaterThan(backStart);
-		expect(shellSource.slice(compactStart)).toContain('await goSettingsBack();');
+		expect(back).toContain('if (!await requestSurfaceDiscard()) return;');
+		expect(back).toContain('if (!isSettingsFullPath(router.getCurrentFullPath())) return;');
+		expect(back).toContain("pushShellRoute(settingsExitRoute(), router === mainRouter ? 'forcePage' : undefined);");
 	});
-
 	test('サービス連携は専用surfaceを開き、関連導線はページ末尾だけに集約する', () => {
 		expect(shellSource).toContain('import SettingsServiceConnectionSurface from \'./SettingsServiceConnectionSurface.vue\';');
 		expect(shellSource).toContain('const isServiceConnectionSurfaceActive = computed(() => currentPath.value === \'/settings/connect\');');
@@ -521,8 +425,7 @@ describe('settings redesign navigation contract', () => {
 	test('navigation item IDs are fail-fast unique and the shared profile target is not duplicated in account navigation', () => {
 		expect(shellSource).toContain('import { assertUniqueNavigationIds } from \'./settings-navigation-ids.js\';');
 		expect(shellSource).toContain('assertUniqueNavigationIds(navSections);');
-		expect(shellSource).toContain('const profileNavigationItem = destinationForId(\'account-profile\')!');
-		expect(shellSource).toContain('@click.prevent="goToSetting(profileNavigationItem)"');
+		expect(shellSource).toContain(`@click="selectBentoCategory('profile')"`);
 		expect(destinationsSource.match(/destination\('account-profile'/gu)).toHaveLength(1);
 		expect(destinationsSource.match(/destination\('account-plugins'/gu)).toHaveLength(1);
 	});

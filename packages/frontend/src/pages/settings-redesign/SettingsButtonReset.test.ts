@@ -2,23 +2,13 @@
  * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  *
- * 旗鯖fork: リンクとボタンを同じクラスで描く箇所で、ボタン既定の装飾が
- * 残っていないことを見張る。
- *
- * ⚠️<button> は指定しないと枠・背景・独自の字面が付く。テーマによっては
- *   濃い枠として出て「ボタンや表示枠に黒枠が出る」ように見える。
- *   ⚠️左ペインはポップアップを開く項目だけ <button>、それ以外は MkA(<a>) で
- *   描くため、同じクラスがどちらにも当たる。クラス側で必ず打ち消しておく。
- *
- * ⚠️対象はこの「リンクとボタンを兼ねるクラス」に絞る。
- *   画面全体を機械的に走査する検査も書いてみたが、親側の子孫指定
- *   (`.categoryLinks button { ... }`) を見落として偽陽性を出し、
- *   それを見るようにすると今度は何でも通ってしまい陽性対照が発火しなかった。
- *   ⚠️当てにならない検査を残すより、守れる範囲を確実に見張る。
+ * 旗鯖fork: ホームとカテゴリナビ、共通ヘッダーでネイティブボタンの枠・背景・字面を明示する。
+ * 共通宣言と各カードの宣言を合わせて検査し、陽性対照で欠落検出を確認する。
  */
 
 import { describe, expect, test } from 'vitest';
 import shellSource from './index.vue?raw';
+import bentoSource from './SettingsBentoNavigation.vue?raw';
 
 /**
  * そのクラス**単独**の宣言ブロックを、括弧を数えて取り出す。
@@ -47,45 +37,42 @@ const hasBackground = (declaration: string) => /(?:^|[;{\s])background\s*:/u.tes
 const hasFontInherit = (declaration: string) => /(?:^|[;{\s])font\s*:\s*inherit/u.test(declaration);
 const hasAppearanceNone = (declaration: string) => /appearance\s*:\s*none/u.test(declaration);
 
-/** リンクとボタンの両方で描かれるクラス。 */
-const DUAL_ROLE_CLASSES = ['navLink', 'quickItem'] as const;
+const SHELL_BUTTON_CLASSES = ['iconButton', 'profileButton', 'categoryBack', 'legacyMenu'] as const;
+const CARD_BUTTON_CLASSES = ['categoryRow', 'categoryTile'] as const;
 
 describe('settings redesign button reset', () => {
-	test('検出器が生きている', () => {
-		// ⚠️陽性対照その1: 対象クラスの宣言を実際に読めていること。
-		for (const name of DUAL_ROLE_CLASSES) {
-			expect(declarationFor(shellSource, name).length).toBeGreaterThan(80);
-		}
-		// ⚠️陽性対照その2: 欠けた宣言を渡せば、ちゃんと違反と判定すること。
+	test('検出器は宣言欠落を識別し、共通宣言と個別宣言を実際に読む', () => {
+		expect(declarationFor(shellSource, 'iconButton').length).toBeGreaterThan(80);
+		expect(declarationFor(bentoSource, 'root button').length).toBeGreaterThan(80);
+		expect(declarationFor(bentoSource, 'categoryTile').length).toBeGreaterThan(80);
+		expect(declarationFor(shellSource, 'zzThisClassDoesNotExist')).toBe('');
 		expect(hasBorder('color: red;')).toBe(false);
 		expect(hasBackground('color: red;')).toBe(false);
 		expect(hasFontInherit('font-size: 1rem;')).toBe(false);
 		expect(hasAppearanceNone('color: red;')).toBe(false);
-		// ⚠️存在しないクラスなら空になること（読めていないのを見逃さない）。
-		expect(declarationFor(shellSource, 'zzThisClassDoesNotExist')).toBe('');
-		// ⚠️text-align が無い宣言は違反と判定すること。
-		expect(/text-align\s*:\s*(start|center)/u.test('color: red;')).toBe(false);
-		expect(/text-align\s*:\s*(start|center)/u.test('text-align: center;')).toBe(true);
 	});
 
-	test('リンクとボタンを兼ねるクラスは、既定の枠・背景・字面を打ち消している', () => {
-		for (const name of DUAL_ROLE_CLASSES) {
+	test('共通ヘッダーの操作は既定の枠・背景・字面を打ち消す', () => {
+		for (const name of SHELL_BUTTON_CLASSES) {
 			const declaration = declarationFor(shellSource, name);
-			expect(hasAppearanceNone(declaration), `${name}: appearance`).toBe(true);
-			expect(hasBorder(declaration), `${name}: border`).toBe(true);
-			expect(hasBackground(declaration), `${name}: background`).toBe(true);
-			expect(hasFontInherit(declaration), `${name}: font`).toBe(true);
-			expect(/cursor\s*:\s*pointer/u.test(declaration), `${name}: cursor`).toBe(true);
-			// ⚠️狙いは「揃える側」ではなく**明示すること**。
-			//   <button> の既定は center、<a> は start。同じクラスを両方で使うので、
-			//   どちらかに決めて書いていないと、要素によって字面がずれる。
-			//   ⚠️中央寄せの札(.quickItem)では center が正しい明示値。
-			expect(/text-align\s*:\s*(start|center)/u.test(declaration), `${name}: text-align`).toBe(true);
+			expect(hasAppearanceNone(declaration), name).toBe(true);
+			expect(hasBorder(declaration), name).toBe(true);
+			expect(hasBackground(declaration), name).toBe(true);
+			expect(hasFontInherit(declaration), name).toBe(true);
+			expect(/cursor\s*:\s*pointer/u.test(declaration), name).toBe(true);
 		}
 	});
 
-	test('丸ボタンも字面を引き継がない', () => {
-		// ⚠️border: 0 で枠は消えていたが font の指定が無く、既定のフォントのままだった。
-		expect(hasFontInherit(declarationFor(shellSource, 'compactBack'))).toBe(true);
+	test('ホームの行とカテゴリカードは同じ基本ボタン宣言を継承する', () => {
+		const shared = declarationFor(bentoSource, 'root button');
+		expect(hasAppearanceNone(shared)).toBe(true);
+		expect(hasFontInherit(shared)).toBe(true);
+		expect(shared).toContain('text-align: left;');
+		expect(shared).toContain('min-height: 44px;');
+		for (const name of CARD_BUTTON_CLASSES) {
+			const declaration = declarationFor(bentoSource, name);
+			expect(hasBorder(declaration), name).toBe(true);
+			expect(hasBackground(declaration), name).toBe(true);
+		}
 	});
 });

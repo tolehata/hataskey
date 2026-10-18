@@ -40,9 +40,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</SearchMarker>
 
 		<SearchMarker :keywords="['general']">
-			<FormSection>
+			<FormSection data-settings-section-anchor="owner:drive:upload" :data-settings-section-label="i18n.ts.general" :data-settings-section-icon="bentoSectionIcon('drive.section1')" tabindex="-1">
 				<template #label><SearchLabel>{{ i18n.ts.general }}</SearchLabel></template>
-
+				<SettingsSectionExplainer v-if="presentationCategory === 'drive'" sectionId="drive.section1" :motionEnabled="motionEnabled"/>
 				<div class="_gaps_m">
 					<SearchMarker :keywords="['default', 'upload', 'folder']">
 						<FormLink @click="chooseUploadFolder()">
@@ -82,9 +82,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</SearchMarker>
 
 		<SearchMarker :keywords="['image']">
-			<FormSection>
+			<FormSection data-settings-section-anchor="owner:drive:image" :data-settings-section-label="i18n.ts.image" :data-settings-section-icon="bentoSectionIcon('drive.section2')" tabindex="-1">
 				<template #label><SearchLabel>{{ i18n.ts.image }}</SearchLabel></template>
-
+				<SettingsSectionExplainer v-if="presentationCategory === 'drive'" sectionId="drive.section2" :motionEnabled="motionEnabled"/>
 				<div class="_gaps_m">
 					<SearchMarker :keywords="['watermark', 'credit']">
 						<MkFolder v-if="$i.policies.watermarkAvailable">
@@ -144,9 +144,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</SearchMarker>
 
 		<SearchMarker :keywords="['video']">
-			<FormSection>
+			<FormSection data-settings-section-anchor="owner:drive:video" :data-settings-section-label="i18n.ts.video" :data-settings-section-icon="bentoSectionIcon('drive.section3')" tabindex="-1">
 				<template #label><SearchLabel>{{ i18n.ts.video }}</SearchLabel></template>
-
+				<SettingsSectionExplainer v-if="presentationCategory === 'drive'" sectionId="drive.section3" :motionEnabled="motionEnabled"/>
 				<div class="_gaps_m">
 					<SearchMarker :keywords="['default', 'video', 'compression']">
 						<MkPreferenceContainer k="defaultVideoCompressionLevel">
@@ -175,6 +175,7 @@ import { computed, defineAsyncComponent, ref } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import tinycolor from 'tinycolor2';
 import XWatermarkItem from './drive.WatermarkItem.vue';
+import type { SettingsBentoCategoryId } from '@/pages/settings-redesign/settings-bento-catalog.js';
 import type { WatermarkPreset } from '@/utility/watermark.js';
 import type { MkSelectItem } from '@/components/MkSelect.vue';
 import FormLink from '@/components/form/link.vue';
@@ -197,6 +198,10 @@ import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import { selectDriveFolder } from '@/utility/drive.js';
 import MkFolder from '@/components/MkFolder.vue';
 import MkButton from '@/components/MkButton.vue';
+import SettingsSectionExplainer from '@/pages/settings-redesign/SettingsSectionExplainer.vue';
+import { bentoSectionIcon } from '@/pages/settings-redesign/settings-bento-catalog.js';
+
+withDefaults(defineProps<{ presentationCategory?: SettingsBentoCategoryId; motionEnabled?: boolean }>(), { motionEnabled: true });
 
 const $i = ensureSignin();
 

@@ -50,8 +50,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template #caption><SearchText>{{ i18n.ts.hideOnlineStatusDescription }}</SearchText></template>
 			</MkSwitch>
 		</SearchMarker>
-
-		<SearchMarker :keywords="['crawle', 'index', 'search']">
+		<SettingsSectionExplainer v-if="presentationCategory === 'privacy'" sectionId="privacy.section1" :motionEnabled="motionEnabled"/>
+		<SearchMarker :keywords="['crawle', 'index', 'search']" data-settings-section-anchor="owner:privacy:search" :data-settings-section-label="bentoSectionLabel('privacy.section1')" :data-settings-section-icon="bentoSectionIcon('privacy.section1')" tabindex="-1">
 			<MkSwitch v-model="noCrawle" @update:modelValue="save()">
 				<template #label><SearchLabel>{{ i18n.ts.noCrawle }}</SearchLabel></template>
 				<template #caption><SearchText>{{ i18n.ts.noCrawleDescription }}</SearchText></template>
@@ -73,7 +73,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</SearchMarker>
 
 		<SearchMarker :keywords="['chat']">
-			<FormSection>
+			<FormSection data-settings-section-anchor="owner:privacy:chat" :data-settings-section-label="i18n.ts.directMessage" data-settings-section-icon="ti ti-message-circle-user" tabindex="-1">
 				<template #label><SearchLabel>{{ i18n.ts.directMessage }}</SearchLabel></template>
 
 				<div class="_gaps_m">
@@ -89,9 +89,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</SearchMarker>
 
 		<SearchMarker :keywords="['lockdown']">
-			<FormSection>
+			<FormSection data-settings-section-anchor="owner:privacy:lockdown" :data-settings-section-label="i18n.ts.lockdown" :data-settings-section-icon="bentoSectionIcon('privacy.section3')" tabindex="-1">
 				<template #label><SearchLabel>{{ i18n.ts.lockdown }}</SearchLabel><span class="_beta" style="vertical-align: middle;">{{ i18n.ts.beta }}</span></template>
-
+				<SettingsSectionExplainer v-if="presentationCategory === 'privacy'" sectionId="privacy.section3" :motionEnabled="motionEnabled"/>
 				<div class="_gaps_m">
 					<SearchMarker :keywords="['login', 'signin']">
 						<MkSwitch :modelValue="requireSigninToViewContents" @update:modelValue="update_requireSigninToViewContents">
@@ -209,9 +209,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</SearchMarker>
 
 		<SearchMarker :keywords="['auto', 'delete', 'notes']">
-			<FormSection>
+			<FormSection data-settings-section-anchor="owner:privacy:auto-delete" :data-settings-section-label="i18n.ts.autoDeleteNotes" :data-settings-section-icon="bentoSectionIcon('privacy.section4')" tabindex="-1">
 				<template #label><SearchLabel>{{ i18n.ts.autoDeleteNotes }}</SearchLabel></template>
-
+				<SettingsSectionExplainer v-if="presentationCategory === 'privacy'" sectionId="privacy.section4" :motionEnabled="motionEnabled"/>
 				<div class="_gaps_m">
 					<MkInfo>{{ i18n.ts.autoDeleteNotesDescription }}</MkInfo>
 
@@ -246,6 +246,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed, watch, onMounted } from 'vue';
+import type { SettingsBentoCategoryId } from '@/pages/settings-redesign/settings-bento-catalog.js';
 import type { MkSelectItem } from '@/components/MkSelect.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import MkSelect from '@/components/MkSelect.vue';
@@ -264,6 +265,10 @@ import MkDisableSection from '@/components/MkDisableSection.vue';
 import MkInfo from '@/components/MkInfo.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
 import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
+import SettingsSectionExplainer from '@/pages/settings-redesign/SettingsSectionExplainer.vue';
+import { bentoSectionIcon, bentoSectionLabel } from '@/pages/settings-redesign/settings-bento-catalog.js';
+
+withDefaults(defineProps<{ presentationCategory?: SettingsBentoCategoryId; motionEnabled?: boolean }>(), { motionEnabled: true });
 
 const $i = ensureSignin();
 

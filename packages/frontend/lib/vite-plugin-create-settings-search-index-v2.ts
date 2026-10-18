@@ -938,14 +938,13 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'アカウント・consent・prompt・safe-mode・強制product policyの内部状態で、設定値そのものではない', ['src/local-storage.ts', 'src/utility/hatasaba-device-prefs.ts']);
 	add('local', [
 		'aiscript:' + dynamicKey, 'bootloaderLocales', 'channelLastReadedAt:' + dynamicKey, 'chatMessageDrafts',
-		'colorScheme', 'drafts', 'emojiShootHighScore', 'emojiShootHighScore_debuff', 'hashtags',
+		'colorScheme', 'drafts', 'hashtags',
 		'hataFormDrafts:' + dynamicKey, 'hatalyzeCooldownV1:' + dynamicKey,
 		'hatasabaLastAntennaId', 'hatasabaLastListId', 'hatasabaUiLastTab', 'idbfallback::' + dynamicKey,
 		'instance', 'instanceCachedAt', 'lastUsed', 'latestPreferencesUpdate', 'loginBonusLastShown', 'preferences',
-		'scratchpad', 'stackingGameHighScore', 'theme', 'themeCachedVersion', 'themeId', 'ui:folder:' + dynamicKey,
-		'whackEmojiHighScore_' + dynamicKey,
+		'scratchpad', 'theme', 'themeCachedVersion', 'themeId', 'ui:folder:' + dynamicKey,
 	], 'cache',
-		'editor/history/cache/game scoreなどの実行時データ', ['src/local-storage.ts', 'src/utility/hata-form-draft.ts']);
+		'editor/history/cacheなどの実行時データ', ['src/local-storage.ts', 'src/utility/hata-form-draft.ts']);
 	return dispositions;
 }
 
@@ -1020,7 +1019,10 @@ function redesignedPreferenceAuditDescriptorsV2(
 		return [{ stableId: 'settings.control.device.hataskey-ui-s-display-size', searchable: true, preferenceKeys: [], storageRefs: [{ kind: 'local' as const, key: 'hataskeyUiSDisplaySize' }] }];
 	})();
 	const inventory = /export\s+const\s+preferenceContainerKeys\s*=\s*\[([\s\S]*?)\]\s*as\s+const/u.exec(catalog)?.[1] ?? '';
-	const mountedControl = /v-for="control in visibleMountedControls"/u.test(surface)
+	const mountedControl = (/v-for="control in visibleMountedControls"/u.test(surface)
+		|| /v-for="control in controlGroup\.controls"/u.test(surface)
+			&& /v-for="controlGroup in visibleControlGroups"/u.test(surface)
+			&& /controls:\s*visibleMountedControls\.value\.filter/u.test(surface))
 		&& /:data-settings-search-id="searchIdFor\(control\.key\)"/u.test(surface)
 		&& /@update:modelValue="write\(control\.key, \$event\)"/u.test(surface)
 		&& /return\s+models\.controls\[key\]\.value/u.test(surface)
@@ -1032,7 +1034,7 @@ function redesignedPreferenceAuditDescriptorsV2(
 		&& /preferenceKeys:\s*\[entry\.key\]/u.test(search);
 	return [...uiSDisplaySizeDescriptor, ...keys.map(key => {
 		if (key === 'hataskeyUi3BottomNav') {
-			const mounted = /<HataskeyUiSBottomNavSettings\s+v-if="destination\.id === 'hataskey-ui-s'"/u.test(surface);
+			const mounted = /<HataskeyUiSBottomNavSettings\s+v-if="destination\.id === 'hataskey-ui-s'(?: \|\| categoryId === 'appearance')?"/u.test(surface);
 			const connected = /<MkPreferenceContainer\s+k="hataskeyUi3BottomNav"/u.test(bottomNavSurface)
 				&& /prefer\.commit\('hataskeyUi3BottomNav',/u.test(bottomNavSurface)
 				&& /resolveUiSBottomNav\(prefer\.r\.hataskeyUi3BottomNav\.value,/u.test(bottomNavSurface)
@@ -1050,7 +1052,7 @@ function redesignedPreferenceAuditDescriptorsV2(
 		const hasLabel = new RegExp(`\\b${keyPattern}\\s*:\\s*i18n\\.ts\\.`, 'u').test(catalog);
 		const hasModel = new RegExp(`\\b${keyPattern}\\s*:\\s*unknownRef\\(prefer\\.model\\(${quotedKey}\\)\\)`, 'u').test(models);
 		const specializedRssRender = key.startsWith('hataskeyUi3Rss')
-			&& /<HataskeyUiSRssSettings\s+v-if="destination\.id === 'hataskey-ui-s'"/u.test(surface)
+			&& /<HataskeyUiSRssSettings\s+v-if="destination\.id === 'hataskey-ui-s'(?: \|\| categoryId === 'appearance')?"/u.test(surface)
 			&& new RegExp(`searchId\\(${quotedKey}\\)`, 'u').test(rssSurface)
 			&& new RegExp(`(?:prefer\\.commit\\(${quotedKey}|prefer\\.r\\.${keyPattern}\\.value)`, 'u').test(rssSurface);
 		if (!hasInventory || !hasDestination || !hasLabel || !hasModel || !(specializedRssRender || mountedControl && !key.startsWith('hataskeyUi3Rss')) || !runtimeCatalog) {

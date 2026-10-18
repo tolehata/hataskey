@@ -22,6 +22,8 @@ vi.mock('@/i18n.js', async () => {
 	return { i18n: new I18n(locale as any) };
 });
 import shellSource from './index.vue?raw';
+import categorySource from './SettingsCategorySurface.vue?raw';
+import bentoSource from './SettingsBentoNavigation.vue?raw';
 import { settingsDestinations } from './settings-destinations.js';
 import mkaSource from '@/components/global/MkA.vue?raw';
 
@@ -32,37 +34,30 @@ describe('settings redesign popup navigation', () => {
 		expect(mkaSource).toContain('@click.prevent="nav"');
 	});
 
-	test('ポップアップを開く項目は左ペインでbutton、それ以外はMkAで描く', () => {
-		// 描画箇所は2つ（常時表示のクイック項目 / タブレット幅）。
-		// ⚠️通常幅の左ペインは大分類だけを持つようになり、項目を描かない。
-		const rendered = shellSource.match(/:is="opensSettingsPopup\(item\) \? 'button' : 'MkA'"/gu) ?? [];
-		expect(rendered).toHaveLength(2);
-
-		// ⚠️ボタンには to を渡さない。属性として出てしまうため。
-		expect(shellSource).toContain('return opensSettingsPopup(item) ? { type: \'button\' as const } : { to: item.route };');
-		expect(shellSource).toContain('return item.activation?.kind === \'popup\';');
+	test('詳細の設定入口はbuttonからshellへ渡し、MkAの自動遷移を起こさない', () => {
+		const launcher = categorySource.match(/<button v-for="destination in section.destinations"[^>]*>/u)?.[0];
+		expect(launcher).toBeDefined();
+		expect(launcher).toContain('type="button"');
+		expect(launcher).toContain("emit('openDestination', destination.id, $event)");
+		expect(launcher).toContain(':data-settings-destination-id="destination.id"');
+		expect(launcher).not.toContain(':to=');
+		expect(shellSource).toContain('@openDestination="openBentoDestination"');
+		expect(shellSource).toContain('const accepted = await goToSetting(destination);');
 	});
 
-	test('右ペインの兄弟タブは常にbuttonで、MkAを混ぜない', () => {
-		// ⚠️兄弟タブにはポップアップを開くだけの項目も並ぶ。MkA で描くと
-		//   同じ不具合（ポップアップが開くのに右ペインも遷移する）が戻る。
-		const start = shellSource.indexOf('<nav');
-		const tabsStart = shellSource.indexOf(':class="$style.siblingTabs"');
-		const tabsEnd = shellSource.indexOf('</nav>', tabsStart);
-		expect(start).toBeGreaterThan(-1);
-		expect(tabsStart).toBeGreaterThan(-1);
-		const tabs = shellSource.slice(tabsStart, tabsEnd);
-		expect(tabs).toContain('v-for="item in siblingTabs"');
-		expect(tabs).toContain('type="button"');
-		expect(tabs).not.toContain('MkA');
-		expect(tabs).not.toContain(':to=');
-		expect(tabs).toContain('@click="goToSetting(item)"');
+	test('カテゴリカードはrouteを直接開かず、guardを持つshellへ選択を伝える', () => {
+		expect(bentoSource).toContain('@click="select(category.id)"');
+		expect(bentoSource).toContain("if (id !== props.activeCategoryId) emit('select', id);");
+		expect(shellSource).toContain('@select="selectBentoCategory"');
+		expect(shellSource).toContain('if (category == null || !await requestSurfaceDiscard()) return;');
+		expect(bentoSource).not.toContain('<MkA');
 	});
 
-	test('左ペインの項目描画に、to付きの素のMkAが残っていない', () => {
-		// ⚠️`:to="item.route"` を持つ v-for の MkA が復活したら、この不具合が戻る。
-		const offenders = shellSource.match(/<MkA v-for="item in [^"]+"[^>]*:to="item\.route"/gu) ?? [];
-		expect(offenders).toHaveLength(0);
+	test('MkA誤用の検出器はpopup行を識別する', () => {
+		const offenders = (source: string) => source.match(/<MkA\b[^>]*:to="(?:item|destination)\.route"/gu) ?? [];
+		expect(offenders('<MkA v-for="destination in destinations" :to="destination.route"/>')).toHaveLength(1);
+		expect(offenders(categorySource)).toEqual([]);
+		expect(offenders(bentoSource)).toEqual([]);
 	});
 
 	test('ポップアップで開く行き先が実際に存在する', () => {

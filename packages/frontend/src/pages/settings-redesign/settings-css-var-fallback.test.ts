@@ -38,21 +38,26 @@ function bareRefs(source: string): string[] {
 	return source.match(/var\(--settings-[a-z-]+\)/gu) ?? [];
 }
 
+function offendersIn(sources: Array<[string, string]>): string[] {
+	return sources.flatMap(([file, source]) => bareRefs(source).map(ref => `${file}: ${ref}`));
+}
+
 describe('settings css variable fallback', () => {
 	test('検出器が生きている', () => {
 		// ⚠️陽性対照。既定値なしの形を渡せば拾い、既定値ありは拾わないこと。
 		expect(bareRefs('border: 1px solid var(--settings-border);')).toHaveLength(1);
 		expect(bareRefs('border: 1px solid var(--settings-border, red);')).toHaveLength(0);
-		// ⚠️実際のソースを読めていること（変数を使っている画面が在る）。
-		const used = SOURCES.filter(([, source]) => source.includes('var(--settings-')).length;
-		expect(used).toBeGreaterThan(1);
+		// Raw imports must contain real component bodies even when a component
+		// stops using the shell's optional custom properties.
+		for (const [file, source] of SOURCES) {
+			expect(source, file).toContain('<template>');
+			expect(source, file).toContain('<style');
+		}
+		const fixture: Array<[string, string]> = SOURCES.map(([file, source]) => [file, file === 'SettingsMobileOverview.vue' ? `${source}\n.positiveControl { border-color: var(--settings-border); }` : source]);
+		expect(offendersIn(fixture)).toContain('SettingsMobileOverview.vue: var(--settings-border)');
 	});
 
 	test('--settings-* は必ず既定値つきで参照する', () => {
-		const offenders: string[] = [];
-		for (const [file, source] of SOURCES) {
-			for (const ref of bareRefs(source)) offenders.push(`${file}: ${ref}`);
-		}
-		expect(offenders).toEqual([]);
+		expect(offendersIn(SOURCES)).toEqual([]);
 	});
 });

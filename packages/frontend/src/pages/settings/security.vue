@@ -25,8 +25,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<X2fa/>
 
 		<SearchMarker :keywords="['signin', 'login', 'history', 'log']">
-			<FormSection>
-				<template #label><SearchLabel>{{ i18n.ts.signinHistory }}</SearchLabel></template>
+			<FormSection data-settings-section-anchor="owner:security:signin-history" :data-settings-section-label="i18n.ts.signinHistory" :data-settings-section-icon="bentoSectionIcon('security.section2')" tabindex="-1">
+				<template #label><SearchLabel>{{ i18n.ts.signinHistory }}</SearchLabel></template><SettingsSectionExplainer v-if="presentationCategory === 'security'" sectionId="security.section2" :motionEnabled="motionEnabled"/>
 				<MkPagination :paginator="paginator" withControl>
 					<template #default="{items}">
 						<div>
@@ -59,6 +59,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { computed, markRaw } from 'vue';
 import X2fa from './2fa.vue';
+import type { SettingsBentoCategoryId } from '@/pages/settings-redesign/settings-bento-catalog.js';
 import FormSection from '@/components/form/section.vue';
 import FormSlot from '@/components/form/slot.vue';
 import MkButton from '@/components/MkButton.vue';
@@ -70,6 +71,10 @@ import { definePage } from '@/page.js';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
 import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import { Paginator } from '@/utility/paginator.js';
+import SettingsSectionExplainer from '@/pages/settings-redesign/SettingsSectionExplainer.vue';
+import { bentoSectionIcon } from '@/pages/settings-redesign/settings-bento-catalog.js';
+
+withDefaults(defineProps<{ presentationCategory?: SettingsBentoCategoryId; motionEnabled?: boolean }>(), { motionEnabled: true });
 
 const paginator = markRaw(new Paginator('i/signin-history', {
 	limit: 5,

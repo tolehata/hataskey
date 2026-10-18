@@ -48,9 +48,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<MkButton @click="flushNotification">{{ i18n.ts._notification.flushNotification }}</MkButton>
 			</div>
 		</FormSection>
-		<FormSection>
+		<FormSection data-settings-section-anchor="owner:notifications:push" :data-settings-section-label="i18n.ts.pushNotification" :data-settings-section-icon="bentoSectionIcon('notify.section2')" tabindex="-1">
 			<template #label>{{ i18n.ts.pushNotification }}</template>
-
+			<SettingsSectionExplainer v-if="presentationCategory === 'notify'" sectionId="notify.section2" :motionEnabled="motionEnabled"/>
 			<div class="_gaps_m">
 				<MkPushNotificationAllowButton ref="allowButton"/>
 				<MkSwitch :disabled="!pushRegistrationInServer" :modelValue="sendReadMessage" @update:modelValue="onChangeSendReadMessage">
@@ -68,6 +68,7 @@ import { useTemplateRef, computed } from 'vue';
 import { notificationTypes } from 'cherrypick-js';
 import XNotificationConfig from './notifications.notification-config.vue';
 import type { NotificationConfig } from './notifications.notification-config.vue';
+import type { SettingsBentoCategoryId } from '@/pages/settings-redesign/settings-bento-catalog.js';
 import FormLink from '@/components/form/link.vue';
 import FormSection from '@/components/form/section.vue';
 import MkFolder from '@/components/MkFolder.vue';
@@ -81,10 +82,14 @@ import { definePage } from '@/page.js';
 import MkPushNotificationAllowButton from '@/components/MkPushNotificationAllowButton.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
 import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
+import SettingsSectionExplainer from '@/pages/settings-redesign/SettingsSectionExplainer.vue';
+import { bentoSectionIcon } from '@/pages/settings-redesign/settings-bento-catalog.js';
+
+withDefaults(defineProps<{ presentationCategory?: SettingsBentoCategoryId; motionEnabled?: boolean }>(), { motionEnabled: true });
 
 const $i = ensureSignin();
 
-const nonConfigurableNotificationTypes = ['note', 'roleAssigned', 'followRequestAccepted', 'test', 'exportCompleted'] satisfies (typeof notificationTypes[number])[] as string[];
+const nonConfigurableNotificationTypes = ['note', 'roleAssigned', 'followRequestAccepted', 'test', 'exportCompleted', 'hataskDecorationUnlocked'] satisfies (typeof notificationTypes[number])[] as string[];
 
 const onlyOnOrOffNotificationTypes = ['app', 'hataskFlowerReady', 'hataskFlowerBloomed', 'hataskZukanUpdated', 'hataskFestivalBloomed', 'achievementEarned', 'login', 'createToken', 'scheduledNotePosted', 'scheduledNotePostFailed'] satisfies (typeof notificationTypes[number])[] as string[];
 

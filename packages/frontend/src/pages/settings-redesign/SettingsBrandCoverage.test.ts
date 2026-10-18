@@ -24,7 +24,7 @@ describe('settings brand coverage', () => {
 		// ⚠️実装は CSS Modules と併用するため :class 配列で付けている。素のclass属性ではない。
 		// 旗鯖fork: 右上の「Hataskey UI／デッキ」表示は削除した。
 		//   ⚠️ブランド表記の検査は、残っている箇所で担保する。
-		expect(indexSource).toContain('settingsBrand');
+		expect(indexSource).toContain("@use './settings-redesign-brand.scss'");
 		expect(mobileSource).toContain('settingsBrandText: hasSettingsBrand(section.description)');
 		expect(mobileSource).toContain('settingsBrandText: hasSettingsBrand(activeCategory.description)');
 		expect(hataFeedSource).toContain('<HataFeedDisplaySettings embedded/>');

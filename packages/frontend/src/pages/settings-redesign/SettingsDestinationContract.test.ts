@@ -13,11 +13,13 @@ vi.mock('@/i18n.js', async () => {
 	return { i18n: new I18n(locale as any) };
 });
 import shellSource from './index.vue?raw';
+import bentoSource from './SettingsBentoNavigation.vue?raw';
 import mobileSource from './SettingsMobileOverview.vue?raw';
 import searchSource from './SettingsSearchPanel.vue?raw';
 import { settingsDestinationSections, settingsDestinations } from './settings-destinations.js';
 import { preferenceGroups } from './settings-preferences-catalog.js';
 import routerSource from '@/router.definition.ts?raw';
+import { i18n } from '@/i18n.js';
 
 function navigationPathKey(item: (typeof settingsDestinations)[number]): string {
 	const activation = item.activation;
@@ -49,16 +51,16 @@ describe('settings redesign destination contract', () => {
 		expect(section?.label).toBe('hataskeyUI / S');
 		expect(section?.items.map(item => item.id)).toEqual(['hataskey-ui', 'hataskey-ui-s']);
 		expect(section?.items[1]).toMatchObject({ label: 'Hataskey UI S', route: '/settings/preferences', categoryId: 'hataskey-ui' });
-		expect(preferenceGroups['hataskey-ui-s']).toEqual({ title: 'Hataskey UI S', description: 'HatsakeyUIの良さはそのまま、シンプルで遊び心のあるUIです。' });
+		expect(preferenceGroups['hataskey-ui-s']).toEqual({ title: 'Hataskey UI S', description: i18n.ts._hata._uiSetup.ui3SettingsDescription });
 	});
 	test('active, brand, search, and route contracts are wired', () => {
-		for (const source of [shellSource, mobileSource]) expect(source).toContain('aria-current');
+		for (const source of [bentoSource, mobileSource]) expect(source).toContain('aria-current');
 		expect(searchSource).toContain('aria-selected');
-		for (const source of [shellSource, mobileSource, searchSource]) expect(source).toContain('settingsBrand');
+		for (const source of [mobileSource, searchSource]) expect(source).toContain('settingsBrand');
 		for (const id of ['hataskey-ui', 'hataskey-tools']) {
 			expect(settingsDestinationSections.find(section => section.id === id)?.brand).toBeTruthy();
 		}
-		expect(shellSource).toContain('sectionHasActiveItem');
+		expect(shellSource).toContain(':activeCategoryId="activeBentoCategoryId"');
 		expect(searchSource).toContain('[aria-selected=\'true\']:hover');
 		expect(searchSource).toContain('hasSettingsBrand(item.label)');
 		expect(routerSource).toContain('name: \'hatafeed-settings\'');

@@ -16,6 +16,8 @@ import controlRelatedSource from '@/components/settings-redesign/SettingsControl
 import ui2BodySource from '@/components/HatasabaUi2SettingsBody.vue?raw';
 import immediateSource from '@/components/HatasabaUi2ImmediateSettings.vue?raw';
 import previewSource from '@/components/MkHatasabaUi2PreviewWindow.vue?raw';
+import bentoSource from './SettingsBentoNavigation.vue?raw';
+import bentoCatalogSource from './settings-bento-catalog.ts?raw';
 
 interface TranslationTree {
 	[key: string]: string | TranslationTree;
@@ -130,6 +132,7 @@ describe('settings redesign translations', () => {
 		for (const source of [shellSource, gatewaySource, mobileSource, panelSource, relatedSource, ui2BodySource, immediateSource, previewSource]) {
 			expect(source).toContain('i18n.ts._hata._settingsRedesign');
 		}
+		for (const source of [shellSource, bentoSource, bentoCatalogSource]) expect(source).toContain('i18n.ts._hata._settingsBento');
 		expect(controlRelatedSource).not.toContain('もしかして、以下をお探しですか？');
 		expect(relatedSource).toContain('copy.search.relatedHeading');
 		expect(gatewaySource).toContain('copy.gateway.legacyRegion');

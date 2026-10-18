@@ -8,7 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div class="_gaps_m">
 		<!-- 旗鯖fork: 再設計の設定画面に埋め込まれているときは出さない。
              ⚠️左ペインが同じ案内を持つため、二重の見出しになってしまう。 -->
-		<MkFeatureBanner v-if="!embeddedInSettingsShell" :icon="brandedIconUrl('treasureFound', '/client-assets/package_3d.png')" color="#e74040">
+		<MkFeatureBanner v-if="!embeddedInSettingsShell" v-show="presentationCategory == null" :icon="brandedIconUrl('treasureFound', '/client-assets/package_3d.png')" color="#e74040">
 			{{ copy.banner }}
 		</MkFeatureBanner>
 
@@ -17,7 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		     ⚠️ただしDOMからは消さないこと。再設計シェルはこのボタンを探して .click() する
 		     ことでカテゴリを切り替えている（index.vue の activateHataCustomCategory）。
 		     消すと「フォント」を押しても既定の「Hataskey全体」から動かなくなる。 -->
-		<div :class="[$style.catTabs, embeddedInSettingsShell && $style.catTabsOffscreen]">
+		<div v-show="presentationCategory == null" :class="[$style.catTabs, embeddedInSettingsShell && $style.catTabsOffscreen]">
 			<button v-for="cat in categories" :key="cat.id" :class="[$style.catTab, activeCat === cat.id && $style.catTabOn]" :tabindex="embeddedInSettingsShell ? -1 : undefined" @click="activeCat = cat.id">
 				<!-- Hataskey fork: 地震ビューアだけは既存の Tabler アイコンを維持する(ゲーム/地震機能へハタキュを持ち込まない方針のため明示除外)。
                      それ以外は hatakyuAsset があればハタキュイラストを優先して出す。 -->
@@ -29,14 +29,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- ===== Hataskey全体 ===== -->
 		<template v-if="activeCat === 'general'">
-			<FormSection first>
+			<FormSection v-show="showsCategory('data')" first data-settings-section-anchor="owner:hata-custom:transfer" :data-settings-section-label="generalCopy.transferTitle" data-settings-section-icon="ti ti-arrows-exchange" tabindex="-1">
 				<template #label>{{ generalCopy.transferTitle }}</template>
 				<div style="font-size:.85em;opacity:.72;margin-bottom:10px;line-height:1.6;">{{ generalCopy.transferDescription }}</div>
 				<button class="_buttonPrimary" style="width:100%;padding:12px;font-weight:bold;" @click="openSettingsTransfer">
 					<i class="ti ti-arrows-exchange"></i> {{ generalCopy.openTransfer }}
 				</button>
 			</FormSection>
-			<FormSection>
+			<FormSection v-show="showsCategory('data')" data-settings-section-anchor="owner:hata-custom:external-account" :data-settings-section-label="generalCopy.externalAccount" data-settings-section-icon="ti ti-link" tabindex="-1">
 				<template #label>{{ generalCopy.externalAccount }}</template>
 				<FormLink to="/settings/external-account">
 					<template #icon><i class="ti ti-link"></i></template>
@@ -44,13 +44,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<template #suffix><span v-if="isExternalLinked" :class="$style.linkedBadge"><i class="ti ti-check"></i> {{ generalCopy.linked }}</span></template>
 				</FormLink>
 			</FormSection>
-			<FormSection>
+			<FormSection v-show="showsCategory('appearance')" data-settings-section-anchor="owner:hata-custom:ui-change" :data-settings-section-label="generalCopy.uiChange" data-settings-section-icon="ti ti-wand" tabindex="-1">
 				<template #label>{{ generalCopy.uiChange }}</template>
 				<button class="_buttonPrimary" style="width:100%;padding:12px;font-weight:bold;" @click="openUiSetup">
 					<i class="ti ti-wand"></i> {{ generalCopy.openUiSetup }}
 				</button>
 			</FormSection>
-			<FormSection>
+			<FormSection v-show="showsCategory('timeline')" data-settings-section-anchor="owner:hata-custom:reactions" :data-settings-section-label="generalCopy.reactions" data-settings-section-icon="ti ti-heart-off" tabindex="-1">
 				<template #label>{{ generalCopy.reactions }}</template>
 				<FormLink to="/settings/hidden-reactions">
 					<template #icon><i class="ti ti-eye-off"></i></template>
@@ -63,7 +63,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<template #caption>{{ generalCopy.hideMutedReactionsCaptionBeforeIcon }} <i class="ti ti-info-circle"></i> {{ generalCopy.hideMutedReactionsCaptionAfterIcon }}<b>{{ generalCopy.adminReactionsVisible }}</b>{{ generalCopy.deviceOnlyPrefix }}<b>{{ generalCopy.thisDeviceOnly }}</b>{{ generalCopy.deviceOnlySuffix }}</template>
 				</MkSwitch>
 			</FormSection>
-			<FormSection>
+			<FormSection v-show="showsCategory('timeline')" data-settings-section-anchor="owner:hata-custom:timeline" :data-settings-section-label="generalCopy.timeline" data-settings-section-icon="ti ti-arrows-move" tabindex="-1">
 				<template #label>{{ generalCopy.timeline }}</template>
 				<div style="font-weight:bold;margin-bottom:8px;">{{ generalCopy.animationDirection }}</div>
 				<MkRadios v-model="timelineAnimationDirection">
@@ -73,17 +73,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<option value="random">{{ generalCopy.random }}</option>
 				</MkRadios>
 			</FormSection>
-			<FormSection>
+			<FormSection v-show="showsCategory('post')" data-settings-section-anchor="owner:hata-custom:post-form" :data-settings-section-label="generalCopy.postForm" data-settings-section-icon="ti ti-forms" tabindex="-1">
 				<template #label>{{ generalCopy.postForm }}</template>
 				<MkSwitch v-model="showHashtagButtonInPostForm"><template #label>{{ generalCopy.showHashtagButton }}</template></MkSwitch>
 				<MkSwitch v-model="showDrawingButtonInPostForm"><template #label>{{ generalCopy.showDrawingButton }}</template></MkSwitch>
 			</FormSection>
-			<FormSection>
+			<FormSection v-show="showsCategory('notify')" data-settings-section-anchor="owner:hata-custom:login-days" :data-settings-section-label="generalCopy.loginDays" data-settings-section-icon="ti ti-calendar" tabindex="-1">
 				<template #label>{{ generalCopy.loginDays }}</template>
 				<MkSwitch v-model="showLoginBonusPopup"><template #label>{{ generalCopy.showLoginDaysPopup }}</template></MkSwitch>
 			</FormSection>
 			<!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
-			<FormSection>
+			<FormSection v-show="showsCategory('timeline')" data-settings-section-anchor="owner:hata-custom:timeline-actions" :data-settings-section-label="generalCopy.timelineActions" data-settings-section-icon="ti ti-user-search" tabindex="-1">
 				<template #label>{{ generalCopy.timelineActions }}</template>
 				<MkSwitch v-model="directProfile">
 					<template #label>{{ generalCopy.directProfile }}</template>
@@ -91,7 +91,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</MkSwitch>
 			</FormSection>
 			<!-- 旗鯖fork: bot ユーザーの投稿をタイムラインから非表示にする + 許可アカウント指定 -->
-			<FormSection>
+			<FormSection v-show="showsCategory('timeline')" data-settings-section-anchor="owner:hata-custom:bot-filter" :data-settings-section-label="generalCopy.hideBotPosts" data-settings-section-icon="ti ti-robot-off" tabindex="-1">
 				<template #label>{{ generalCopy.hideBotPosts }}</template>
 				<MkSwitch v-model="hideBotsInTimeline">
 					<template #label>{{ generalCopy.hideBotPostsLabel }}</template>
@@ -124,7 +124,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</template>
 			</FormSection>
 			<!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
-			<FormSection>
+			<FormSection v-show="presentationCategory == null">
 				<template #label>{{ generalCopy.postFormBorder }}</template>
 				<MkSwitch v-model="pfvbEnabled">
 					<template #label>{{ generalCopy.colorByVisibility }}</template>
@@ -406,6 +406,7 @@ import { computed, inject, ref, watch } from 'vue';
 import type { HatakyuAssetKey } from '@/utility/hatakyu-assets.js';
 import type { HataFoldableMode } from '@/utility/hatasaba-device-prefs.js';
 import type { HataFontId } from '@/scripts/hata-font-manager.js';
+import type { SettingsBentoCategoryId } from '@/pages/settings-redesign/settings-bento-catalog.js';
 import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
 import MkSwitch from '@/components/MkSwitch.vue';
 import MkRadios from '@/components/MkRadios.vue';
@@ -445,7 +446,13 @@ ensureSignin();
  * ⚠️再設計シェルだけが settingsSearchV2ContextKey を provide する。
  *   単独ページとして開かれたときは null になるので、従来どおり全部出す。
  */
-const embeddedInSettingsShell = inject(settingsSearchV2ContextKey, null) != null;
+const settingsSearchContext = inject(settingsSearchV2ContextKey, null);
+const embeddedInSettingsShell = settingsSearchContext != null;
+const props = defineProps<{ presentationCategory?: SettingsBentoCategoryId }>();
+
+function showsCategory(...categories: SettingsBentoCategoryId[]): boolean {
+	return props.presentationCategory == null || categories.includes(props.presentationCategory);
+}
 
 const copy = i18n.ts._hata._customSettings;
 const copyx = i18n.tsx._hata._customSettings;
@@ -480,6 +487,12 @@ const categories: { id: string; icon: string; label: string; hatakyuAsset?: Hata
 	{ id: 'accessibility', icon: 'ti ti-dots', label: copy.categoryOther, hatakyuAsset: 'umbrellaRain' },
 ];
 const activeCat = ref('general');
+
+// The category surface keeps one owner mounted; presentation changes must not
+// re-run this page's legacy settings migrations or mount several model owners.
+watch(() => props.presentationCategory, category => {
+	if (category != null) activeCat.value = 'general';
+}, { immediate: true });
 
 // フォントタブに切り替えたらプリロード開始
 watch(activeCat, (v) => {
@@ -659,10 +672,18 @@ const timelineAnimationOptions = [
 	{ value: 'right', label: generalCopy.slideFromRight }, { value: 'random', label: generalCopy.random },
 ];
 const openUiSetup = async () => {
+	if (props.presentationCategory != null && settingsSearchContext != null) {
+		settingsSearchContext.navigateToSetting({ route: '/settings/hata-custom', activation: { kind: 'popup', category: 'general', popup: 'ui-setup' } });
+		return;
+	}
 	const { defineAsyncComponent: dac } = await import('vue');
 	const { dispose } = os.popup(dac(() => import('@/components/MkUISetup.vue')), {}, { closed: () => dispose() });
 };
 const openSettingsTransfer = async () => {
+	if (props.presentationCategory != null && settingsSearchContext != null) {
+		settingsSearchContext.navigateToSetting({ route: '/settings/hata-custom', activation: { kind: 'popup', category: 'general', popup: 'settings-transfer' } });
+		return;
+	}
 	const { defineAsyncComponent: dac } = await import('vue');
 	const { dispose } = os.popup(dac(() => import('@/components/MkHataSettingsTransfer.vue')), {}, { closed: () => dispose() });
 };
@@ -737,7 +758,18 @@ async function refreshBotAllowlistUsers() {
 	}
 }
 
-watch(botAllowlist, refreshBotAllowlistUsers, { immediate: true });
+if (props.presentationCategory == null) {
+	watch(botAllowlist, refreshBotAllowlistUsers, { immediate: true });
+} else {
+	// The shared owner is also mounted for unrelated categories. Resolve and
+	// normalize the allowlist only when its timeline controls are shown.
+	let lastRequestedIds: typeof botAllowlist.value | undefined;
+	watch([botAllowlist, () => props.presentationCategory], ([ids, category]) => {
+		if (category !== 'timeline' || ids === lastRequestedIds) return;
+		lastRequestedIds = ids;
+		void refreshBotAllowlistUsers();
+	}, { immediate: true });
+}
 
 async function addBotAllowlistUser() {
 	// 選択画面と保存直前の両方で、BOTアカウントだけに限定する。
@@ -868,12 +900,16 @@ function enforceDeckSpacing() {
 	}
 }
 
-// 起動時と deckMode の切替時に適用
-enforceDeckSpacing();
-watch(isDeckLike, () => { enforceDeckSpacing(); });
+// The visual editor owns the legacy spacing migration. Reading a category's
+// unrelated controls must not change the user's hidden visual preferences.
+if (props.presentationCategory == null) {
+	// 起動時と deckMode の切替時に適用
+	enforceDeckSpacing();
+	watch(isDeckLike, () => { enforceDeckSpacing(); });
 
-// 旗鯖fork(#15): ノート間隔「詰める(compact)」は廃止。通常表示(非デッキ)で compact のユーザーは moderate へ移行する。
-if (!isDeckLike.value && noteSpacing.value === 'compact') noteSpacing.value = 'moderate';
+	// 旗鯖fork(#15): ノート間隔「詰める(compact)」は廃止。通常表示(非デッキ)で compact のユーザーは moderate へ移行する。
+	if (!isDeckLike.value && noteSpacing.value === 'compact') noteSpacing.value = 'moderate';
+}
 
 // 旗鯖fork(#15): 「詰める」は選択肢から除外(ほどよく / 広め の2択)。
 const spacingOptions = [

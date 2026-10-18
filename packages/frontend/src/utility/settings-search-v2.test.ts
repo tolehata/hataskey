@@ -324,7 +324,6 @@ describe('settings-search-v2', () => {
 		expect(getRelatedSettingsV2(catalog, 'settings.control.two')).toHaveLength(0);
 	});
 
-
 	test('明示destinationは既存の強い関連がない時だけfallbackになり、無効化後も関連取得の表示上限を消費しない', () => {
 		const destinations: SettingsDestinationCatalogItemV2[] = [{
 			destinationId: 'account-privacy', stableId: 'settings.destination.account-privacy', route: '/settings/privacy', label: 'プライバシー', aliases: [],
@@ -510,7 +509,7 @@ describe('settings-search-v2', () => {
 		expect(settingsSearchPanelSource).not.toContain('<SettingsRelatedLinks');
 	});
 
-	test('設定ナビはmanifestを正本にquickと意味別導線を維持し、同一routeを重ねて件数表示しない', () => {
+	test('設定ナビはBentoカテゴリを表示し、旧manifestの検索・遷移先を維持する', () => {
 		for (const path of [
 			'/settings/notifications', '/settings/sounds', '/settings/theme', '/settings/mute-block', '/settings/drive', '/settings/security',
 			'/settings/other', '/settings/external-account', '/settings/account-data', '/settings/cherrypick', '/settings/deck', '/settings/navbar', '/settings/statusbar',
@@ -519,9 +518,10 @@ describe('settings-search-v2', () => {
 		expect(settingsDestinationsSource).toContain('label: copy.nav.cherrypick');
 		expect(settingsDestinationsSource).toContain('label: copy.nav.data');
 		expect(settingsDestinationsSource).toContain('label: copy.nav.misskey');
-		expect(settingsShellSource).toContain(':key="item.id"');
+		expect(settingsShellSource).toContain('<SettingsBentoNavigation :categories="settingsBentoCategories"');
+		expect(settingsShellSource).toContain('@select="selectBentoCategory"');
 		expect(settingsShellSource).toContain('settingsDestinationSections.map(section => ({');
-		expect(settingsShellSource).toContain('isQuickItem || frequentNavigationItemIds.has(item.id)');
+		expect(settingsShellSource).toContain('settingsDestinationCatalogItemsV2()');
 		expect(settingsDestinationsSource).toContain("destination('hata-settings-transfer'");
 		expect(settingsDestinationsSource).toContain("destination('account-export'");
 		expect(settingsDestinationsSource).toContain("'ti ti-truck'");

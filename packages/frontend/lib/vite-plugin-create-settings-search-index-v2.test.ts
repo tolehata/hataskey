@@ -584,13 +584,13 @@ describe('settings control search index V2', () => {
 		// Keep the raw population separate from the smaller catalog-descriptor
 		// count so new visible buttons cannot disappear behind an old total.
 		expect(inventory.files).toHaveLength(59);
-		expect(inventory.items).toHaveLength(684);
+		expect(inventory.items).toHaveLength(685);
 		expect(Object.fromEntries(classifications.map(classification => [classification, inventory.items.filter(item => item.classification === classification).length]))).toEqual({
 			'user-facing-setting': 447,
-			'navigation-action': 148,
+			'navigation-action': 151,
 			'save-cancel': 26,
-			'disabled-display-only': 17,
-			'runtime-collection': 45,
+			'disabled-display-only': 16,
+			'runtime-collection': 44,
 			destructive: 1,
 		});
 		expect(bySource).toEqual({
@@ -599,7 +599,7 @@ describe('settings control search index V2', () => {
 			'src/components/HataFeedDisplaySettings.vue': { 'user-facing-setting': 3, 'navigation-action': 4, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/HatadyDisplaySettings.vue': { 'user-facing-setting': 1, 'navigation-action': 7, 'save-cancel': 2, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/MkUISetup.vue': { 'user-facing-setting': 4, 'navigation-action': 1, 'save-cancel': 2, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
-			'src/pages/HataskSettings.vue': { 'user-facing-setting': 11, 'navigation-action': 7, 'save-cancel': 2, 'disabled-display-only': 1, 'runtime-collection': 1, destructive: 0 },
+			'src/pages/HataskSettings.vue': { 'user-facing-setting': 11, 'navigation-action': 8, 'save-cancel': 2, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/pages/MkMascotSettings.vue': { 'user-facing-setting': 77, 'navigation-action': 16, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 12, destructive: 0 },
 			'src/pages/settings/hata-custom.vue': { 'user-facing-setting': 29, 'navigation-action': 13, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 1, destructive: 0 },
 		});
@@ -609,7 +609,7 @@ describe('settings control search index V2', () => {
 		expect(inventory.items.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		// Carousel arrows and dots remain in the raw inventory even when a
 		// static theme group owns their search destination.
-		expect(resolved).toHaveLength(684);
+		expect(resolved).toHaveLength(685);
 		expect(resolved.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		const descriptorIds = new Set(controls.descriptors.filter(descriptor => descriptor.searchable).map(descriptor => descriptor.stableId));
 		expect(resolved.filter(item => item.descriptorStableId != null).every(item => descriptorIds.has(item.descriptorStableId!))).toBe(true);
@@ -729,7 +729,7 @@ describe('settings control search index V2', () => {
 		expect(storageTargets('reactionAcceptance').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		expect(storageTargets('realtimeMode').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		const audit = collectSettingsStorageKeyAuditV2(input);
-		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 105 });
+		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 101 });
 		expect(audit.items.find(item => item.kind === 'local' && item.key === 'hataskeyUiSDisplaySize')).toMatchObject({
 			disposition: 'catalog-control', descriptorStableIds: ['settings.control.device.hataskey-ui-s-display-size'],
 		});
@@ -778,7 +778,7 @@ describe('settings control search index V2', () => {
 			expect(old[0]?.storageRefs, key).toContainEqual({ kind: 'pref', key });
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key), key).toMatchObject({ disposition: 'catalog-control', descriptorStableIds: old.map(item => item.stableId) });
 		}
-		expect(audit.items).toHaveLength(501);
+		expect(audit.items).toHaveLength(497);
 		expect(audit.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(audit.items.every(item => item.descriptorStableIds.length > 0
 			? item.disposition === 'catalog-control' || item.disposition === 'catalog-group'
@@ -791,7 +791,7 @@ describe('settings control search index V2', () => {
 			'pizzax:catalog-control': 8, 'pizzax:catalog-group': 1, 'pizzax:runtime': 9,
 			'pizzax:migration': 3, 'pizzax:cache': 2, 'pizzax:deprecated': 78, 'pizzax:internal': 4,
 			'local:catalog-control': 14, 'local:catalog-group': 1, 'local:runtime': 12, 'local:migration': 22,
-			'local:cache': 30, 'local:deprecated': 6, 'local:internal': 20,
+			'local:cache': 26, 'local:deprecated': 6, 'local:internal': 20,
 		});
 		expect(audit.items.filter(item => item.kind === 'pizzax' && item.disposition === 'catalog-control')
 			.map(item => item.key).sort()).toEqual([
@@ -846,7 +846,7 @@ describe('settings control search index V2', () => {
 	test('実Vite入力でもstorage key XOR監査を実行し、runtime evidence変更を再生成対象にする', async () => {
 		const inventory = await collectRealSettingsInventory();
 		const audit = await collectSettingsStorageKeyAuditFromRepositoryV2(process.cwd(), inventory.files, inventory.descriptors);
-		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 105 });
+		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 101 });
 		for (const key of ['emojiAdditionNotice', 'hourlyTimeNotice']) {
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key)).toMatchObject({
 				disposition: 'catalog-control',
@@ -1184,7 +1184,7 @@ describe('settings control search index V2', () => {
 		expect(earthquake.filter(entry => entry.intentionallyExcluded && entry.exclusionReason === 'ポップアップ内で条件により常時 DOM に存在しない')).toHaveLength(0);
 	});
 
-	test('Hatask暁の動的なテーマドットとタブ枠は検索項目へ昇格させない', async () => {
+	test('Hatask暁の動的なテーマカードとドットは個別の検索項目へ昇格させない', async () => {
 		const sourceFile = 'src/pages/HataskSettings.vue';
 		const source = await fs.readFile(sourceFile, 'utf8');
 		const currentRoutes = readSettingsRoutesV2(await fs.readFile('src/router.definition.ts', 'utf8'));
@@ -1206,18 +1206,19 @@ describe('settings control search index V2', () => {
 				activation: { kind: 'popup', category: 'hatask', popup: 'hatask' },
 			});
 		}
-		// The replaced slot buttons no longer own descriptors. The drag handle
-		// has no direct click action, and each dropdown belongs to a runtime row.
-		// Neither may manufacture a searchable ID for its repeated DOM node.
+		// Both repeated theme controls persist a setting, but their runtime
+		// labels cannot manufacture individual searchable IDs or static hosts.
 		const raw = collectSettingsInteractiveInventoryV2(sourceFile, source);
-		const resolved = resolveSettingsInteractiveInventoryDispositionsV2(raw, descriptors, []);
-		expect(resolved.find(entry => entry.actionExpression === 'openAkatsukiTabMenu(tab,$event)')).toMatchObject({
-			classification: 'runtime-collection',
-			searchableControl: false,
-			descriptorStableId: undefined,
-			exclusionReason: 'v-for または draggable の実行時コレクションに属し、個別対象はビルド時に固定できない（安全な静的設定グループを確定できないため検索対象外）',
-		});
-		expect(resolved.filter(entry => entry.classification === 'disabled-display-only')).toHaveLength(1);
+		const searchDescriptors = collectSettingsSearchDescriptorsV2(sourceFile, source, currentRoutes, targetMetadata(sourceFile));
+		const groups = searchDescriptors.filter(entry => entry.isGroup && entry.staticGroupKey != null).map(entry => ({ key: entry.staticGroupKey!, stableId: entry.stableId }));
+		const resolved = resolveSettingsInteractiveInventoryDispositionsV2(raw, searchDescriptors, groups);
+		const themeControls = resolved.filter(entry => entry.actionExpression === 'setV2Theme(t.id)');
+		expect(themeControls).toHaveLength(2);
+		for (const entry of themeControls) {
+			expect(entry).toMatchObject({ classification: 'user-facing-setting', searchableControl: true, descriptorStableId: undefined });
+			expect(entry.exclusionReason).toContain('安全な静的設定グループを確定できないため検索対象外');
+			expect(descriptors.find(descriptor => descriptor.sourceLine === entry.sourceLine)).toMatchObject({ searchable: false, intentionallyExcluded: true });
+		}
 	});
 
 	test('Hataskの条件付きダークモード検索は常設の設定グループへ到達する', async () => {
@@ -1466,20 +1467,20 @@ describe('settings control search index V2', () => {
 			{ sourceFile: 'src/pages/settings/hata-custom.vue', sourceLine: 241, labelI18nKey: 'i18n.ts._hata._customSettings._ui.foldableSection' },
 			{ sourceFile: 'src/pages/settings/emoji-palette.vue', sourceLine: 25, labelI18nKey: 'i18n.ts._emojiPalette.palettes' },
 			{ sourceFile: 'src/pages/settings/drive.vue', sourceLine: 105, labelI18nKey: 'i18n.ts.watermark' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 239, labelI18nKey: 'i18n.ts._hata._mascotSettings.minimum' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 240, labelI18nKey: 'i18n.ts._hata._mascotSettings.maximum' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 380, labelI18nKey: 'i18n.ts._hata._mascotSettings.notificationExpression' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 382, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 439, labelI18nKey: 'i18n.ts._hata._mascotSettings.notificationExpressionSecond' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 441, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 498, labelI18nKey: 'i18n.ts._hata._mascotSettings.birthdayExpression' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 500, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 501, labelI18nKey: 'i18n.ts._hata._mascotSettings.birthdayPhrasePlaceholder' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 537, labelI18nKey: 'i18n.ts._hata._mascotSettings.month' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 538, labelI18nKey: 'i18n.ts._hata._mascotSettings.day' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 545, labelI18nKey: 'i18n.ts._hata._mascotSettings.characterBirthday' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 547, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 548, labelI18nKey: 'i18n.ts._hata._mascotSettings.characterBirthdayPhraseExample' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 241, labelI18nKey: 'i18n.ts._hata._mascotSettings.minimum' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 242, labelI18nKey: 'i18n.ts._hata._mascotSettings.maximum' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 382, labelI18nKey: 'i18n.ts._hata._mascotSettings.notificationExpression' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 384, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 441, labelI18nKey: 'i18n.ts._hata._mascotSettings.notificationExpressionSecond' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 443, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 500, labelI18nKey: 'i18n.ts._hata._mascotSettings.birthdayExpression' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 502, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 503, labelI18nKey: 'i18n.ts._hata._mascotSettings.birthdayPhrasePlaceholder' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 539, labelI18nKey: 'i18n.ts._hata._mascotSettings.month' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 540, labelI18nKey: 'i18n.ts._hata._mascotSettings.day' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 547, labelI18nKey: 'i18n.ts._hata._mascotSettings.characterBirthday' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 549, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 550, labelI18nKey: 'i18n.ts._hata._mascotSettings.characterBirthdayPhraseExample' },
 		] as const;
 		const controlByStableId = new Map(controls.map(control => [control.stableId, control]));
 		const labelAuditIssues = [
@@ -1506,9 +1507,8 @@ describe('settings control search index V2', () => {
 		expect(compressionControls.some(source => source.related.some(relation => compressionControls.some(target => target.stableId === relation.stableId)))).toBe(true);
 		const orphanFixture = { ...catalog.descriptors.find(descriptor => descriptor.source === 'control')!, stableId: 'settings.fixture.orphan-control', related: [], relatedIds: [], noRelatedReason: undefined };
 		expect([orphanFixture].filter(descriptor => descriptor.source === 'control' && !descriptor.isGroup && descriptor.searchable && !descriptor.destructive && descriptor.related.length === 0)).toHaveLength(1);
-		// ⚠️行番号で釘付けにしている。埋め込み対応で窓を差し替えた際に3行ずれた。
-		//   ずれたら実測して直すこと（当て推量で書き換えない）。
-		for (const line of [71, 345]) {
+		// Measured against both responsive editors in the current source.
+		for (const line of [71, 347]) {
 			const mascotName = catalog.descriptors.find(descriptor => descriptor.sourceFile === 'src/pages/MkMascotSettings.vue' && descriptor.sourceLine === line);
 			expect(mascotName?.label, `Mascot:${line}`).toBe('名前');
 		}

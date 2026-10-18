@@ -24,6 +24,7 @@ import { suggestReload } from '@/utility/reload-suggest.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { claimAchievement } from '@/utility/achievements.js';
 import { instance } from '@/instance.js';
+import { useHorizontalSwipeModel } from '@/utility/horizontal-swipe-preference.js';
 
 export type DataSaverKey = 'media' | 'avatar' | 'disableUrlPreview' | 'urlPreviewThumbnail' | 'code';
 export type DataSaverState = Record<DataSaverKey, boolean>;
@@ -101,7 +102,7 @@ export function createSettingsPreferenceModels(): SettingsPreferenceModels {
 		emojiStyle: unknownRef(prefer.model('emojiStyle')),
 		enableAbsoluteTime: unknownRef(prefer.model('enableAbsoluteTime')),
 		enableHighQualityImagePlaceholders: unknownRef(prefer.model('enableHighQualityImagePlaceholders')),
-		enableHorizontalSwipe: unknownRef(prefer.model('enableHorizontalSwipe')),
+		enableHorizontalSwipe: unknownRef(useHorizontalSwipeModel()),
 		enableInfiniteScroll: unknownRef(prefer.model('enableInfiniteScroll')),
 		enableMarkByDate: unknownRef(prefer.model('enableMarkByDate')),
 		enablePullToRefresh: unknownRef(prefer.model('enablePullToRefresh')),

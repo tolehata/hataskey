@@ -44,6 +44,7 @@ export function createSettingsSurfaceLeaveGuard({
 	requestDiscard: () => Promise<boolean>;
 }): SettingsSurfaceLeaveGuard {
 	let previousNavHook: NavigationHook | null = null;
+	let activeNavHook: NavigationHook | null = null;
 	let installed = false;
 	let confirmationRevision = 0;
 	let confirmationInFlight = false;
@@ -64,27 +65,17 @@ export function createSettingsSurfaceLeaveGuard({
 			allowedNavigation = next;
 			router.pushByPath(next.fullPath, next.flag);
 		}).catch(() => {
+			if (!installed || revision !== confirmationRevision) return;
 			// ⚠️確認に失敗したときに遷移を捨てると、画面が空のまま動かせなくなる。
 			//   ここは通す。止めて詰むより害が小さい。
 			const next = pendingNavigation;
 			pendingNavigation = null;
 			confirmationInFlight = false;
-			if (!installed || revision !== confirmationRevision || next == null) return;
+			if (next == null) return;
 			allowedNavigation = next;
 			router.pushByPath(next.fullPath, next.flag);
 		});
 	}
-
-	const navHook: NavigationHook = (fullPath, flag) => {
-		const isAllowed = allowedNavigation?.fullPath === fullPath;
-		// Clear before delegating. If an upstream hook rejects the retried path,
-		// it must not accidentally authorize a later unrelated navigation.
-		if (isAllowed) allowedNavigation = null;
-		if (previousNavHook?.(fullPath, flag) === true) return true;
-		if (isAllowed || !shouldBlockNavigation(fullPath)) return false;
-		queueNavigation(fullPath, flag);
-		return true;
-	};
 
 	function currentBrowserFullPath(): string {
 		return `${window.location.pathname}${window.location.search}${window.location.hash}`;
@@ -115,8 +106,23 @@ export function createSettingsSurfaceLeaveGuard({
 
 	function install(): void {
 		if (installed) return;
+		// A cached page can keep this hook in its own chain after disposal.
+		// Give each installation an immutable predecessor; reusing the old
+		// closure would turn settings -> studio -> settings into A -> B -> A.
+		const predecessor = router.navHook;
+		const navHook: NavigationHook = (fullPath, flag) => {
+			if (!installed || activeNavHook !== navHook) return predecessor?.(fullPath, flag) ?? false;
+			const isAllowed = allowedNavigation?.fullPath === fullPath;
+			// An upstream rejection must not leave a stale one-time allowance.
+			if (isAllowed) allowedNavigation = null;
+			if (predecessor?.(fullPath, flag) === true) return true;
+			if (isAllowed || !shouldBlockNavigation(fullPath)) return false;
+			queueNavigation(fullPath, flag);
+			return true;
+		};
 		installed = true;
-		previousNavHook = router.navHook;
+		previousNavHook = predecessor;
+		activeNavHook = navHook;
 		router.navHook = navHook;
 		window.addEventListener('popstate', onPopstate, true);
 		window.addEventListener('beforeunload', onBeforeUnload);
@@ -129,7 +135,8 @@ export function createSettingsSurfaceLeaveGuard({
 		confirmationInFlight = false;
 		pendingNavigation = null;
 		allowedNavigation = null;
-		if (router.navHook === navHook) router.navHook = previousNavHook;
+		if (router.navHook === activeNavHook) router.navHook = previousNavHook;
+		activeNavHook = null;
 		previousNavHook = null;
 		window.removeEventListener('popstate', onPopstate, true);
 		window.removeEventListener('beforeunload', onBeforeUnload);

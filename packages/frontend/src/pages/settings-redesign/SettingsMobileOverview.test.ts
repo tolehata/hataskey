@@ -36,18 +36,9 @@ afterEach(() => {
 
 describe('settings mobile overview', () => {
 	test('compact rootは専用overviewにし、主要導線だけを表示する', () => {
-		expect(shellSource).toContain('<SettingsMobileOverview');
-		expect(shellSource).toContain(':sections="mobileOverviewSections"');
-		expect(shellSource).toContain(':deprecatedSections="mobileDeprecatedSections"');
-		expect(shellSource).toContain(':activeCategoryId="compactNavigationSection"');
-		expect(shellSource).toContain('@openCategory="openCompactNavigationSection"');
-		expect(shellSource).toContain(':legacyLabel="copy.legacySettings"');
-		expect(shellSource).toContain('v-show="!compact || currentPage?.route.name == null"');
-		expect(shellSource).toContain('v-show="!compact || currentPage?.route.name != null"');
-		expect(shellSource).toContain('border-radius: 26px;');
-		expect(shellSource).toContain('border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent));');
-		expect(shellSource).not.toContain('.scope { border-radius: 0; border-inline: 0; }');
-		expect(shellSource).not.toContain('showPageTabBarBottom?.value');
+		// Legacy overview behavior remains covered independently; the shell now uses 2b/3a.
+		expect(shellSource).toContain('<SettingsBentoNavigation');
+		expect(shellSource).not.toContain('<SettingsMobileOverview');
 		expect(overviewSource).toContain('i18n.ts._hata._settingsRedesign');
 		expect(overviewSource).toContain('copy.frequentlyUsedSettings');
 		expect(overviewSource).toContain('copy.mobile.recommendedInUse');
@@ -67,52 +58,25 @@ describe('settings mobile overview', () => {
 		expect(overviewSource).toMatch(/\.quickItem\s*\{[^}]*background:\s*var\(--settings-surface,/);
 	});
 
-	test('mobileカテゴリ選択は先頭項目をactivateせず詳細一覧へdrill-inする', () => {
-		const handlerStart = shellSource.indexOf('function openCompactNavigationSection(id: string | null) {');
-		const handlerEnd = shellSource.indexOf('\n}', handlerStart);
-		const handler = shellSource.slice(handlerStart, handlerEnd);
-		expect(handlerStart).toBeGreaterThan(-1);
-		expect(handler).toContain('compactNavigationSection.value = id;');
-		expect(handler).not.toContain('openNavigationSection(');
+	test('新カテゴリ選択は先頭設定のpopupを自動起動せずカテゴリURLへ移動する', () => {
+		const start = shellSource.indexOf('async function selectBentoCategory(id: string)');
+		const end = shellSource.indexOf('function openBentoDestination', start);
+		expect(start).toBeGreaterThan(-1);
+		const handler = shellSource.slice(start, end);
+		expect(handler).toContain('`/settings?category=${category.id}`');
 		expect(handler).not.toContain('goToSetting(');
-		expect(shellSource).toContain('@select="goToSetting"');
-		expect(shellSource).toContain('async function openNavigationSection(section: NavSection): Promise<void> {');
-		expect(shellSource).toContain('if (item != null) await goToSetting(item);');
+		expect(handler).not.toContain('openSettingsPopup(');
 	});
-
-	test('desktop rootはプロフィールを既定表示にし、tabletは常時行から下位一覧へdrill-inする', () => {
-		// 旗鯖fork: ⚠️設定を開いた既定はプロフィール。Hataskey UI は
-		//   /settings/hata-custom を直接開いたときの画面として残る。
-		expect(shellSource).toContain("const SETTINGS_DEFAULT_ROUTE = '/settings/profile';");
-		expect(shellSource).toContain('router.replace(SETTINGS_DEFAULT_ROUTE);');
-		// ⚠️左ペインは大分類だけを持つ縦の錠剤リスト。折りたたみへ戻さない。
-		expect(shellSource).toContain(':class="$style.sectionPills"');
-		expect(shellSource).toContain('v-for="section in visibleNavSections"');
-		expect(shellSource).not.toContain('<details v-for="section in visibleNavSections"');
-		// 旗鯖fork: ⚠️タブレット専用の作りは廃止した。PC と同じ姿に揃える。
-		expect(shellSource).not.toContain('tabletNavSections');
-		expect(shellSource).not.toContain('openTabletNavigationSection');
-		expect(shellSource).toContain('@container (max-width: 900px)');
-		expect(shellSource).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
-		// 旗鯖fork: ⚠️既定の行き先を変えても、/settings/hata-custom を直接開いたときは
-		//   これまで通り Hataskey UI が出ること。判定は経路の同期側が持つ。
+	test('全端末のrootは一覧にし、旧glassUiの直URLも維持する', () => {
+		expect(shellSource).not.toContain('SETTINGS_DEFAULT_ROUTE');
+		expect(shellSource).toContain("currentPath.value === '/settings' && requestedBentoCategoryId.value == null && embeddedPopup.value == null");
 		expect(shellSource).toContain("if (activeNavigationTarget.value?.route !== currentPath.value) activeHataCustomCategory.value = 'glassUi';");
-		// 旗鯖fork: ⚠️幅で作りを分けないこと。タブレット専用の枝は廃止した。
-		expect(shellSource).not.toContain('<template v-if="tablet">');
-		expect(shellSource).not.toContain('<details');
 	});
-
-	test('mobileカテゴリはmanifestのHataskey UIを重複させず、Misskey UIを互換行へ分ける', () => {
-		expect(shellSource).toContain('const mobileOverviewSections = computed<SettingsOverviewSection[]>(() => navSections.filter(section => section.id !== \'hataskey-ui\' && section.id !== \'misskey-ui\'));');
-		expect(shellSource).toContain('const mobileDeprecatedSections = computed<SettingsOverviewSection[]>(() => navSections.filter(section => section.id === \'misskey-ui\'));');
+	test('旧overview部品のfeatureと互換行を残し、新shellへ二重mountしない', () => {
 		expect(overviewSource).toContain('id="settings-mobile-feature"');
-		expect(shellSource).toContain("const hataCustomGlassUiItem = destinationForId('hataskey-ui')!;");
-		expect(shellSource).toContain("const mobileFeatureItem = ui === 'hataskey3' ? destinationForId('hataskey-ui-s')! : hataCustomGlassUiItem;");
-		expect(shellSource).toContain(':featureItem="mobileFeatureItem"');
-		expect(overviewSource).toContain('settingsBrand');
 		expect(overviewSource).toContain('.deprecated .categories');
+		expect(shellSource).not.toContain('<SettingsMobileOverview');
 	});
-
 	test.each([
 		{ ui: 'simple', title: 'Hataskey UI', badge: '使用中・推奨', description: 'ナビ・透過率・吹き出し・デッキの表示をまとめて調整します', destinationId: 'hataskey-ui', preview: true },
 		{ ui: 'hataskey3', title: 'Hataskey UI S', badge: '使用中', description: 'Hataskey UIの良さはそのまま、シンプルで遊び心のあるUIです。', destinationId: 'hataskey-ui-s', preview: false },
@@ -149,24 +113,17 @@ describe('settings mobile overview', () => {
 		expect(overviewSource).toContain('.featureLink { display: flex; min-width: 0; flex: 1; min-height: 48px;');
 	});
 
-	test('navigation counts and active route checks use precomputed indexes', () => {
-		expect(shellSource).toContain('const navigationCatalogIndex = computed<NavigationCatalogIndex>');
-		expect(shellSource).toContain('const navigationScopeCounts = computed(() =>');
+	test('現在のカテゴリはmanifestの明示された遷移先を優先し、一意なrouteだけをfallbackにする', () => {
+		expect(shellSource).toMatch(/const navSections(?:\s*:[^=]+)?\s*=\s*settingsDestinationSections\.map\(/u);
 		expect(shellSource).toContain('const primaryDestinationCountByRoute = computed(() =>');
 		expect(shellSource).toContain('const currentFullPath = computed(() =>');
 		expect(shellSource).toContain('const currentDestinationId = computed(() =>');
 		expect(shellSource).toContain('const activeNavigationItemIds = computed(() =>');
-		expect(shellSource).toContain('const activeNavigationSectionIds = computed(() =>');
-		expect(shellSource).toContain('return activeNavigationItemIds.value.has(item.id);');
-		expect(shellSource).not.toContain('function destinationIdFromCurrentUrl()');
-		expect(shellSource).not.toContain('section.items.some(item => isActive(item))');
-		const isActiveStart = shellSource.indexOf('function isActive(item: NavItem)');
-		const isActiveEnd = shellSource.indexOf('\n}', isActiveStart);
-		expect(isActiveStart).toBeGreaterThan(-1);
-		expect(isActiveEnd).toBeGreaterThan(isActiveStart);
-		expect(shellSource.slice(isActiveStart, isActiveEnd)).not.toContain('settingsDestinations.filter');
+		expect(shellSource).toContain('primaryDestinationCountByRoute.value.get(item.route) === 1');
+		expect(shellSource).toContain('return explicitIds.size > 0 ? explicitIds : routeOnlyIds;');
+		expect(shellSource).toContain('for (const id of activeNavigationItemIds.value)');
+		expect(shellSource).toContain('bentoCategoryForDestination(id)');
 	});
-
 	test('通常routeも根拠のある別route関連を末尾へ出し、旧設定導線を残す', () => {
 		expect(shellSource).toContain('relatedSourcesForSettingsNavigationV2');
 		expect(shellSource).toContain('related.route === currentPath.value');
@@ -175,15 +132,11 @@ describe('settings mobile overview', () => {
 		expect(shellSource).toContain('emit(\'openLegacy\')');
 	});
 
-	test('desktop/tabletのCherryPickとMisskey UI関連はモックどおりaccent/deprecatedで区別する', () => {
-		expect(shellSource).toContain(':data-settings-nav-section="section.id"');
-		// ⚠️CherryPick と Misskey UI の区別は錠剤リストでも保つ。
-		expect(shellSource).toContain('[$style.sectionPillCherrypick]: section.id === \'cherrypick\'');
-		expect(shellSource).toContain('[$style.sectionPillDeprecated]: section.id === \'misskey-ui\'');
-		expect(shellSource).toContain('.sectionPillCherrypick { color: var(--MI_THEME-accent); }');
-		expect(shellSource).toContain('.sectionPillDeprecated { opacity: .68; }');
+	test('旧実装由来の項目も新カテゴリから既存destinationへ接続する', () => {
+		expect(shellSource).toContain('function openBentoDestination(id: string, event?: MouseEvent)');
+		expect(shellSource).toContain('const destination = destinationForId(id);');
+		expect(shellSource).toContain('const accepted = await goToSetting(destination);');
 	});
-
 	test('mobile category rows use right chevrons, preserve sub-items, and repair keyboard focus across the drill-in swap', async () => {
 		const select = vi.fn();
 		const openCategory = vi.fn();

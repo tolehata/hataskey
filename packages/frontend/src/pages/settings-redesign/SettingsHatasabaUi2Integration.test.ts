@@ -15,18 +15,13 @@ const gatewaySource = source('src/pages/settings-redesign/gateway.vue');
 const viteConfigSource = source('vite.config.ts');
 
 describe('Hataskey UI permanent surface shell integration', () => {
-	test('desktop default replaces the legacy glassUi wrapper with the exact permanent editor body', () => {
+	test('直接開いたglassUiは既存の常設editorを使い、root一覧を上書きしない', () => {
 		expect(shellSource).toContain('<HatasabaUi2SettingsSurface');
-		expect(shellSource).toContain('v-if="isHatasabaUi2SurfaceActive"');
-		expect(shellSource).toContain('<div v-else :class="$style.legacyContent" @click.capture="onLegacyContentClickCapture"><NestedRouterView/></div>');
+		expect(shellSource).toContain('v-else-if="isHatasabaUi2SurfaceActive"');
+		expect(shellSource).toContain('<div v-else-if="!showOverview" :class="$style.legacyContent" @click.capture="onLegacyContentClickCapture"><NestedRouterView/></div>');
 		expect(shellSource).toContain('currentPath.value === \'/settings/hata-custom\' && activeHataCustomCategory.value === \'glassUi\'');
-		// 旗鯖fork: ⚠️設定を開いた既定はプロフィールへ変わった。
-		//   Hataskey UI は経路 /settings/hata-custom を直接開いたときの画面として残る。
-		expect(shellSource).toContain("const SETTINGS_DEFAULT_ROUTE = '/settings/profile';");
-		expect(shellSource).toContain('router.replace(SETTINGS_DEFAULT_ROUTE);');
-		expect(shellSource).not.toContain("router.replace('/settings/hata-custom')");
-		// ⚠️既定の行き先はポップアップを開くものにしないこと。経路が変わらず、
-		//   この処理は「子ルートが無いとき」に走るので開いた直後に呼び続ける。
+		expect(shellSource).not.toContain('SETTINGS_DEFAULT_ROUTE');
+		expect(shellSource).toContain('<SettingsBentoNavigation');
 		expect(shellSource).toContain("const initiallyOpenHatasabaUi2Surface = isHataCustomPath(router.getCurrentFullPath())");
 		expect(surfaceSource).toContain('mode="permanent"');
 		expect(bodySource).toContain('<h2 id="hatasaba-ui2-title"><span class="settingsBrand">Hataskey UI</span></h2>');
@@ -35,14 +30,12 @@ describe('Hataskey UI permanent surface shell integration', () => {
 		expect(viteConfigSource).toContain('popup: \'hatasaba-ui2\'');
 	});
 
-	test('mobile root stays an overview and its Hataskey UI selection enters the shared draft surface', () => {
-		expect(shellSource).toContain('v-if="compact && currentPage?.route.name == null"');
-		expect(shellSource).toContain(':featureItem="mobileFeatureItem"');
-		expect(shellSource).toContain("const mobileFeatureItem = ui === 'hataskey3' ? destinationForId('hataskey-ui-s')! : hataCustomGlassUiItem;");
-		expect(shellSource).toContain('@select="goToSetting"');
-		expect(shellSource).toContain('const hataCustomGlassUiItem = destinationForId(\'hataskey-ui\')!');
+	test('カテゴリ一覧とUI2プレビューで保存ownerを共有する', () => {
+		expect(shellSource).toContain('<SettingsBentoNavigation');
+		expect(shellSource).toContain('@select="selectBentoCategory"');
+		expect(shellSource).toContain("const hataCustomGlassUiItem = destinationForId('hataskey-ui')!");
 		expect(surfaceSource).toContain('const editor = useHatasabaUi2Draft();');
-		expect(bodySource).toContain('if (props.editor.save()) emit(\'saved\');');
+		expect(bodySource).toContain("if (props.editor.save()) emit('saved');");
 	});
 
 	test('an unsaved draft cancels every owned route, category, top, and legacy escape until discard succeeds', () => {
@@ -50,14 +43,22 @@ describe('Hataskey UI permanent surface shell integration', () => {
 		const routePush = shellSource.indexOf('pushShellRoute(path);', requestGuard);
 		expect(requestGuard).toBeGreaterThan(-1);
 		expect(routePush).toBeGreaterThan(requestGuard);
-		expect(shellSource).toContain('if (isHatasabaUi2SurfaceActive.value && category !== \'glassUi\' && !await requestSurfaceDiscard()) return;');
-		expect(shellSource).toContain('async function requestOpenLegacy() {\n\tif (!await requestSurfaceDiscard()) return;\n\temit(\'openLegacy\');');
+		expect(shellSource).toContain('if (category == null || !await requestSurfaceDiscard()) return;');
+		const legacyStart = shellSource.indexOf('async function requestOpenLegacy()');
+		const legacyGuard = shellSource.indexOf('if (!await requestSurfaceDiscard()) return;', legacyStart);
+		const legacyOpen = shellSource.indexOf("emit('openLegacy');", legacyGuard);
+		expect(legacyStart).toBeGreaterThan(-1);
+		expect(legacyGuard).toBeGreaterThan(legacyStart);
+		expect(legacyOpen).toBeGreaterThan(legacyGuard);
 		// ⚠️確認を待つ間に別の画面へ移っていることがあるため、設定にいるときだけ押す。
 		//   無条件に押すと、行こうとした先から設定へ引き戻してしまう。
-		expect(shellSource).toContain('async function goSettingsTop() {\n\tif (!await requestSurfaceDiscard()) return;');
-		expect(shellSource).toContain('if (!isSettingsFullPath(router.getCurrentFullPath())) return;\n\tpushShellRoute(\'/settings\');');
+		const topStart = shellSource.indexOf('async function goSettingsTop()');
+		const topGuard = shellSource.indexOf('if (!await requestSurfaceDiscard()) return;', topStart);
+		expect(topGuard).toBeGreaterThan(topStart);
+		expect(shellSource).toContain('if (!isSettingsFullPath(router.getCurrentFullPath())) return;');
+		expect(shellSource).toContain("pushShellRoute('/settings')");
 		expect(shellSource).toContain('router.getCurrentFullPath() !== fullPath');
-		expect(shellSource).toContain('@click.prevent="goToSetting(profileNavigationItem)"');
+		expect(shellSource).toContain(`@click="selectBentoCategory('profile')"`);
 		expect(shellSource).toContain('async function runShellAction(id: string)');
 		expect(shellSource).toContain('if (!await requestSurfaceDiscard()) return;');
 		expect(shellSource).toContain('await settingsShellActions[id as SettingsShellActionId]();');
@@ -72,9 +73,16 @@ describe('Hataskey UI permanent surface shell integration', () => {
 		expect(shellSource).toContain('async function onSurfaceClose() {');
 		expect(shellSource).toContain('await goSettingsTop();');
 		expect(shellSource).toContain('function onSurfaceSaved() {\n\tactiveNavigationTarget.value = null;');
-		expect(shellSource).toContain('async function onSurfaceSideStudio() {\n\tif (!await requestSurfaceDiscard()) return;');
-		expect(shellSource).toContain('settingsSurfaceLeaveGuard.allowNextNavigation(\'/hata-side-studio\');');
-		expect(shellSource).toContain('mainRouter.push(\'/hata-side-studio\');');
+		const studioStart = shellSource.indexOf('async function onSurfaceSideStudio()');
+		const cancel = shellSource.indexOf('cancelBentoNavigation();', studioStart);
+		const discard = shellSource.indexOf('if (!await requestSurfaceDiscard()) return;', cancel);
+		const allow = shellSource.indexOf("settingsSurfaceLeaveGuard.allowNextNavigation('/hata-side-studio');", discard);
+		const navigate = shellSource.indexOf("mainRouter.push('/hata-side-studio');", allow);
+		expect(studioStart).toBeGreaterThan(-1);
+		expect(cancel).toBeGreaterThan(studioStart);
+		expect(discard).toBeGreaterThan(cancel);
+		expect(allow).toBeGreaterThan(discard);
+		expect(navigate).toBeGreaterThan(allow);
 		expect(surfaceSource).toContain('@sideStudio="emit(\'sideStudio\')"');
 		expect(surfaceSource).not.toContain('prefer.commit(');
 	});

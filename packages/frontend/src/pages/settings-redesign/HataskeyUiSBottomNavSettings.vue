@@ -118,8 +118,8 @@ const shownInUiS = computed(() => normalizeUiSBottomNav(currentItems()));
 </script>
 
 <style scoped>
-.bottomNavSettings { margin: 16px 0; padding: 20px; border: 1px solid var(--MI_THEME-divider); border-radius: 18px; background: var(--MI_THEME-panel); }
-.heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.bottomNavSettings { margin: 16px 0; padding: clamp(14px, 4%, 20px); border: 1px solid var(--MI_THEME-divider); border-radius: 18px; background: var(--MI_THEME-panel); }
+.heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 16px; }
 .heading h3 { margin: 4px 0 0; font-size: 1.1rem; }
 .heading p, .help, .saveHint { margin: 6px 0; color: var(--MI_THEME-fgTransparentWeak); font-size: .85rem; }
 .eyebrow { font-size: .72rem; font-weight: 700; opacity: .7; }
@@ -130,7 +130,7 @@ const shownInUiS = computed(() => normalizeUiSBottomNav(currentItems()));
 .item.hidden { opacity: .65; }
 .bottomNavHandle { padding: 8px; touch-action: none; }
 .bottomNavHandle:focus-visible, .heading button:focus-visible, .visibility input:focus-visible { outline: 2px solid var(--MI_THEME-accent); outline-offset: 2px; }
-.label { flex: 1; }
+.label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .visibility { display: flex; align-items: center; }
 .visibility input { appearance: none; position: relative; width: 38px; height: 22px; border: 1px solid var(--MI_THEME-divider); border-radius: 99px; background: var(--MI_THEME-fgTransparentWeak); cursor: pointer; transition: background .15s ease; }
 .visibility input::before { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--MI_THEME-panel); transition: transform .15s ease; }
@@ -139,6 +139,5 @@ const shownInUiS = computed(() => normalizeUiSBottomNav(currentItems()));
 .visibility input:disabled { cursor: default; }
 .warning { color: var(--MI_THEME-warn); font-size: .85rem; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-@media (max-width: 600px) { .bottomNavSettings { padding: 14px; } .heading { flex-wrap: wrap; } }
 @media (prefers-reduced-motion: reduce) { .visibility input, .visibility input::before { transition: none; } }
 </style>

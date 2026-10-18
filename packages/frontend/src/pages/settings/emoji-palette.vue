@@ -57,9 +57,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</FormSection>
 
 		<SearchMarker :keywords="['emoji', 'picker', 'display']">
-			<FormSection>
+			<FormSection data-settings-section-anchor="owner:emoji-palette:picker" :data-settings-section-label="i18n.ts.emojiPickerDisplay" :data-settings-section-icon="bentoSectionIcon('post.section5')" tabindex="-1">
 				<template #label><SearchLabel>{{ i18n.ts.emojiPickerDisplay }}</SearchLabel></template>
-
+				<SettingsSectionExplainer v-if="presentationCategory === 'post'" sectionId="post.section5" :motionEnabled="motionEnabled"/>
 				<div class="_gaps_m">
 					<SearchMarker :keywords="['emoji', 'picker', 'scale', 'size']">
 						<MkPreferenceContainer k="emojiPickerScale">
@@ -125,6 +125,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 import XPalette from './emoji-palette.palette.vue';
+import type { SettingsBentoCategoryId } from '@/pages/settings-redesign/settings-bento-catalog.js';
 import type { MkSelectItem } from '@/components/MkSelect.vue';
 import { genId } from '@/utility/id.js';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
@@ -141,6 +142,10 @@ import { prefer } from '@/preferences.js';
 import MkPreferenceContainer from '@/components/MkPreferenceContainer.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import { emojiPicker } from '@/utility/emoji-picker.js';
+import SettingsSectionExplainer from '@/pages/settings-redesign/SettingsSectionExplainer.vue';
+import { bentoSectionIcon } from '@/pages/settings-redesign/settings-bento-catalog.js';
+
+withDefaults(defineProps<{ presentationCategory?: SettingsBentoCategoryId; motionEnabled?: boolean }>(), { motionEnabled: true });
 
 const emojiPaletteForReaction = prefer.model('emojiPaletteForReaction');
 const emojiPaletteForReactionDef = computed<MkSelectItem[]>(() => [
