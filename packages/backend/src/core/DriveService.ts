@@ -12,6 +12,7 @@ import { sharpBmp } from '@misskey-dev/sharp-read-bmp';
 import { In, IsNull } from 'typeorm';
 import { DeleteObjectCommandInput, PutObjectCommandInput, NoSuchKey } from '@aws-sdk/client-s3';
 import { DI } from '@/di-symbols.js';
+import { acquireResourceLease, LOCAL_DRIVE_UPLOAD_BUDGET, REMOTE_DRIVE_INGEST_BUDGET } from '@/misc/resource-budget.js';
 import type { DriveFilesRepository, UsersRepository, DriveFoldersRepository, UserProfilesRepository, MiMeta } from '@/models/_.js';
 import type { Config } from '@/config.js';
 import Logger from '@/logger.js';
@@ -44,6 +45,7 @@ import { correctFilename } from '@/misc/correct-filename.js';
 import { isMimeImage } from '@/misc/is-mime-image.js';
 import { ModerationLogService } from '@/core/ModerationLogService.js';
 import { UtilityService } from '@/core/UtilityService.js';
+import type * as Redis from 'ioredis';
 
 type AddFileArgs = {
 	/** User who wish to add file */
@@ -131,6 +133,7 @@ export class DriveService {
 		private perUserDriveChart: PerUserDriveChart,
 		private instanceChart: InstanceChart,
 		private utilityService: UtilityService,
+		@Inject(DI.redis) private redisClient?: Redis.Redis,
 	) {
 		const logger = new Logger('drive', 'blue');
 		this.registerLogger = logger.createSubLogger('register', 'yellow');
@@ -495,6 +498,13 @@ export class DriveService {
 		requestHeaders = null,
 		ext = null,
 	}: AddFileArgs): Promise<MiDriveFile> {
+		// Reject an oversized local upload before hashing, decoding or sensitivity checks.
+		if (user && user.host === null && !isLink && !(await this.roleService.isModerator(user))) {
+			const policies = await this.roleService.getUserPolicies(user.id);
+			if ((await this.fileInfoService.getFileSize(path)) > policies.maxFileSizeMb * 1024 * 1024) {
+				throw new IdentifiableError('f9e4e5f3-4df4-40b5-b400-f236945f7073', 'Max file size exceeded.');
+			}
+		}
 		let skipNsfwCheck = false;
 		const userRoleNSFW = user && (await this.roleService.getUserPolicies(user.id)).alwaysMarkNsfw;
 		if (user == null) {
@@ -918,8 +928,36 @@ export class DriveService {
 		}
 	}
 
+	/** Admission finishes before an asynchronous API job is acknowledged. */
+	public async startUploadFromUrl(args: UploadFromUrlArgs): Promise<{ completion: Promise<MiDriveFile> }> {
+		const local = args.user != null && args.user.host === null;
+		const budget = local ? LOCAL_DRIVE_UPLOAD_BUDGET : REMOTE_DRIVE_INGEST_BUDGET;
+		const lease = await acquireResourceLease(this.redisClient, {
+			...budget, actor: local ? args.user!.id : args.user?.host ?? 'instance',
+			bytes: this.config.maxFileSize, maxBytes: budget.concurrency * this.config.maxFileSize,
+		});
+		try {
+			let maxBytes = this.config.maxFileSize;
+			if (args.user && args.user.host === null && !args.isLink && !(await this.roleService.isModerator(args.user))) {
+				const policies = await this.roleService.getUserPolicies(args.user.id);
+				const usage = await this.driveFileEntityService.calcDriveUsageOf(args.user);
+				const remaining = policies.driveCapacityMb * 1024 * 1024 - usage;
+				if (remaining <= 0) throw new IdentifiableError('c6244ed2-a39a-4e1c-bf93-f0fbd7764fa6', 'No free space.');
+				maxBytes = Math.min(maxBytes, policies.maxFileSizeMb * 1024 * 1024, remaining);
+			}
+			return { completion: this.performUploadFromUrl(args, maxBytes, lease.signal).finally(() => lease.release()) };
+		} catch (error) {
+			await lease.release();
+			throw error;
+		}
+	}
+
 	@bindThis
-	public async uploadFromUrl({
+	public async uploadFromUrl(args: UploadFromUrlArgs): Promise<MiDriveFile> {
+		return (await this.startUploadFromUrl(args)).completion;
+	}
+
+	private async performUploadFromUrl({
 		url,
 		user,
 		folderId = null,
@@ -930,13 +968,13 @@ export class DriveService {
 		comment = null,
 		requestIp = null,
 		requestHeaders = null,
-	}: UploadFromUrlArgs): Promise<MiDriveFile> {
+	}: UploadFromUrlArgs, maxBytes: number, signal: AbortSignal): Promise<MiDriveFile> {
 		// Create temp file
 		const [path, cleanup] = await createTemp();
 
 		try {
 			// write content at URL to temp file
-			const { filename: name } = await this.downloadService.downloadUrl(url, path);
+			const { filename: name } = await this.downloadService.downloadUrl(url, path, { maxBytes, signal });
 
 			// If the comment is same as the name, skip comment
 			// (image.name is passed in when receiving attachment)

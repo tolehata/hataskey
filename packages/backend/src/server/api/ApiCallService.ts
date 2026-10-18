@@ -13,6 +13,8 @@ import type { MiAccessToken } from '@/models/AccessToken.js';
 import type Logger from '@/logger.js';
 import type { MiMeta, UserIpsRepository } from '@/models/_.js';
 import { createTemp } from '@/misc/create-temp.js';
+import { acquireResourceLease, LOCAL_DRIVE_UPLOAD_BUDGET, type ResourceLease } from '@/misc/resource-budget.js';
+import { StatusError } from '@/misc/status-error.js';
 import { writeMultipartFileToTemp } from '@/misc/write-multipart-file-to-temp.js';
 import { bindThis } from '@/decorators.js';
 import { RoleService } from '@/core/RoleService.js';
@@ -27,6 +29,7 @@ import { AuthenticateService, AuthenticationError } from './AuthenticateService.
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { OnApplicationShutdown } from '@nestjs/common';
 import type { IEndpointMeta, IEndpoint } from './endpoints.js';
+import type * as Redis from 'ioredis';
 
 const accessDenied = {
 	message: 'Access denied.',
@@ -64,6 +67,7 @@ export class ApiCallService implements OnApplicationShutdown {
 		private roleService: RoleService,
 		private apiLoggerService: ApiLoggerService,
 		private telemetryService: TelemetryService,
+		@Inject(DI.redis) private redisClient?: Redis.Redis,
 	) {
 		this.logger = this.apiLoggerService.logger;
 		this.userIpHistories = new Map<MiUser['id'], Set<string>>();
@@ -227,72 +231,84 @@ export class ApiCallService implements OnApplicationShutdown {
 		request: FastifyRequest<{ Body: Record<string, unknown>, Querystring: Record<string, unknown> }>,
 		reply: FastifyReply,
 	): Promise<void> {
-		const multipartData = await request.file().catch(() => {
-			/* Fastify throws if the remote didn't send multipart data. Return 400 below. */
-		});
-		if (multipartData == null) {
-			reply.code(400);
-			reply.send();
-			return;
-		}
-		const [path, cleanup] = await createTemp();
-
+		let ingress: ResourceLease | undefined;
+		let upload: ResourceLease | undefined;
+		let cleanup: (() => void) | undefined;
+		let part: Awaited<ReturnType<typeof request.file>> | undefined;
+		let timer: NodeJS.Timeout | undefined;
+		let abort: (() => void) | undefined;
 		try {
-			const multipartError = await writeMultipartFileToTemp(multipartData.file, path);
-			if (multipartError != null) {
-				this.logger.debug(`Failed to read the multipart request body: ${multipartError.message}`);
-				reply.code(400);
-				reply.send();
-				return;
+			ingress = await acquireResourceLease(this.redisClient, {
+				name: 'multipart-ingress', actor: request.ip, concurrency: 16, actorConcurrency: 4,
+				bytes: 0, maxBytes: 0, requestsPerMinute: 60,
+			});
+			// A bearer credential can be rejected before the multipart parser consumes anything.
+			const bearer = request.headers.authorization?.startsWith('Bearer ') ? request.headers.authorization.slice(7) : undefined;
+			let authentication = bearer !== undefined ? await this.authenticateService.authenticate(bearer) : undefined;
+			if (authentication) await this.checkAccess(endpoint, ...authentication, request);
+			timer = setTimeout(() => request.raw?.destroy(new Error('Upload deadline exceeded')), 120_000);
+			timer.unref();
+			part = await request.file({ limits: { files: 1, fields: 32, parts: 33, fieldSize: 16 * 1024, fileSize: this.config.maxFileSize } }).catch(() => undefined);
+			if (part == null) { reply.code(400).send(); return; }
+			part.file.on('error', () => {});
+			if (!authentication) {
+				// Legacy body authentication is supported when i precedes the file. Never spool
+				// an anonymous file just to discover a credential appearing after its bytes.
+				const field = part.fields['i'];
+				const token = field != null && !Array.isArray(field) && 'value' in field ? field.value : undefined;
+				if (token != null && typeof token !== 'string') { reply.code(400).send(); return; }
+				authentication = await this.authenticateService.authenticate(token);
+				await this.checkAccess(endpoint, ...authentication, request);
 			}
-
-			// ファイルサイズが制限を超えていた場合
-			// truncated はストリームを読み切ってからでないと機能しないため、書き出しより後に確認する。
-			if (multipartData.file.truncated) {
-				reply.code(413);
-				reply.send();
-				return;
+			const [user, app, flashToken] = authentication;
+			let maxBytes = this.config.maxFileSize;
+			if (user && !(await this.roleService.isModerator(user))) {
+				maxBytes = Math.min(maxBytes, (await this.roleService.getUserPolicies(user.id)).maxFileSizeMb * 1024 * 1024);
 			}
-
-			const fields = {} as Record<string, unknown>;
-			for (const [k, v] of Object.entries(multipartData.fields)) {
-				fields[k] = typeof v === 'object' && 'value' in v ? v.value : undefined;
+			if (!(maxBytes > 0)) throw new StatusError('File size limit exceeded', 413);
+			upload = await acquireResourceLease(this.redisClient, {
+				...LOCAL_DRIVE_UPLOAD_BUDGET, actor: user?.id ?? request.ip,
+				bytes: maxBytes, maxBytes: LOCAL_DRIVE_UPLOAD_BUDGET.concurrency * this.config.maxFileSize,
+			});
+			const file = part.file;
+			abort = () => file.destroy(new Error('Upload admission lost'));
+			ingress.signal.addEventListener('abort', abort, { once: true });
+			upload.signal.addEventListener('abort', abort, { once: true });
+			if (ingress.signal.aborted || upload.signal.aborted) throw new StatusError('Upload admission lost', 503);
+			const temporary = await createTemp();
+			const path = temporary[0];
+			cleanup = temporary[1];
+			const multipartError = await writeMultipartFileToTemp(file, path, maxBytes);
+			if ((multipartError instanceof StatusError && multipartError.statusCode === 413) || file.truncated) { reply.code(413).send(); return; }
+			if (multipartError != null) { reply.code(400).send(); return; }
+			const fields: Record<string, unknown> = {};
+			for (const [key, value] of Object.entries(part.fields)) {
+				if (key !== 'i') fields[key] = value != null && !Array.isArray(value) && 'value' in value ? value.value : undefined;
 			}
-
-			// https://datatracker.ietf.org/doc/html/rfc6750.html#section-2.1 (case sensitive)
-			const token = request.headers.authorization?.startsWith('Bearer ')
-				? request.headers.authorization.slice(7)
-				: fields['i'];
-			if (token != null && typeof token !== 'string') {
-				reply.code(400);
-				return;
-			}
-			delete fields['i'];
-
-			// handleRequestと同じ理由で、spanをここで開始しつつ内側のPromiseチェーンを`return call;`で
-			// 外側へつなぐ。特にこのメソッドはfinallyでcleanup()し一時ファイルを削除するため、
-			// call()の完了を待たずにawaitが解決してしまうと、ep.exec()がまだファイルを読んでいる最中に
-			// 削除してしまう事故につながる(修正前の潜在バグ)。
-			await this.telemetryService.startSpan('API: ' + endpoint.name, () => this.authenticateService.authenticate(token).then(([user, app, flashToken]) => {
-				const call = this.call(endpoint, user, app, flashToken, fields, {
-					name: multipartData.filename,
-					path: path,
-				}, request, reply).then((res) => {
-					this.send(reply, res);
-				}).catch((err: ApiError) => {
-					this.#sendApiError(reply, err);
-				});
-
-				if (user) {
-					this.logIp(request, user);
-				}
-
-				return call;
-			}).catch(err => {
-				this.#sendAuthenticationError(reply, err);
-			}));
+			await this.telemetryService.startSpan('API: ' + endpoint.name, async () => {
+				const result = await this.call(endpoint, user, app, flashToken, fields, { name: part!.filename, path }, request, reply, true);
+				this.send(reply, result);
+			});
+			if (user) void this.logIp(request, user);
+		} catch (err) {
+			if (err instanceof ApiError) this.#sendApiError(reply, err);
+			else if (err instanceof AuthenticationError) this.#sendAuthenticationError(reply, err);
+			else if (err instanceof StatusError) {
+				reply.header('Retry-After', '5');
+				reply.code(err.statusCode).send();
+			} else throw err;
 		} finally {
-			cleanup();
+			if (timer) clearTimeout(timer);
+			if (abort) {
+				ingress?.signal.removeEventListener('abort', abort);
+				upload?.signal.removeEventListener('abort', abort);
+			}
+			// Do not drain an unauthenticated file after rejecting it.
+			part?.file.destroy();
+			try { cleanup?.(); } finally {
+				await upload?.release();
+				await ingress?.release();
+			}
 		}
 	}
 
@@ -352,19 +368,12 @@ export class ApiCallService implements OnApplicationShutdown {
 		}
 	}
 
-	@bindThis
-	private async call(
-		ep: IEndpoint & { exec: any },
+	private async checkAccess(
+		ep: IEndpoint,
 		user: MiLocalUser | null | undefined,
 		token: MiAccessToken | null | undefined,
 		flashToken: FlashToken | null | undefined,
-		data: any,
-		file: {
-			name: string;
-			path: string;
-		} | null,
-		request: FastifyRequest<{ Body: Record<string, unknown> | undefined, Querystring: Record<string, unknown> }>,
-		reply: FastifyReply,
+		request: FastifyRequest,
 	) {
 		const isSecure = user != null && token == null && flashToken == null;
 
@@ -483,6 +492,24 @@ export class ApiCallService implements OnApplicationShutdown {
 				id: '11924d17-113a-4ab0-954a-c567ee8a6ce5',
 			});
 		}
+	}
+
+	@bindThis
+	private async call(
+		ep: IEndpoint & { exec: any },
+		user: MiLocalUser | null | undefined,
+		token: MiAccessToken | null | undefined,
+		flashToken: FlashToken | null | undefined,
+		data: any,
+		file: {
+			name: string;
+			path: string;
+		} | null,
+		request: FastifyRequest<{ Body: Record<string, unknown> | undefined, Querystring: Record<string, unknown> }>,
+		reply: FastifyReply,
+		preauthorized = false,
+	) {
+		if (!preauthorized) await this.checkAccess(ep, user, token, flashToken, request);
 
 		// Cast non JSON input
 		if ((ep.meta.requireFile || request.method === 'GET') && ep.params.properties) {

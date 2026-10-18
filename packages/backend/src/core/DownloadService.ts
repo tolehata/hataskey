@@ -5,6 +5,7 @@
 
 import * as fs from 'node:fs';
 import * as stream from 'node:stream/promises';
+import { Transform } from 'node:stream';
 import { Inject, Injectable } from '@nestjs/common';
 import chalk from 'chalk';
 import got, * as Got from 'got';
@@ -34,19 +35,21 @@ export class DownloadService {
 	}
 
 	@bindThis
-	public async downloadUrl(url: string, path: string): Promise<{
+	public async downloadUrl(url: string, path: string, options: { maxBytes?: number; signal?: AbortSignal } = {}): Promise<{
 		filename: string;
 	}> {
 		this.logger.info(`Downloading ${chalk.cyan(url)} to ${chalk.cyanBright(path)} ...`);
 
 		const timeout = 30 * 1000;
 		const operationTimeout = 60 * 1000;
-		const maxSize = this.config.maxFileSize;
+		const maxSize = Math.min(this.config.maxFileSize, options.maxBytes ?? this.config.maxFileSize);
+		if (!Number.isFinite(maxSize) || maxSize <= 0) throw new StatusError('File size limit exceeded', 413);
 
 		const urlObj = new URL(url);
 		let filename = urlObj.pathname.split('/').pop() ?? 'untitled';
 
 		const req = got.stream(url, {
+			signal: options.signal,
 			headers: {
 				'User-Agent': this.config.userAgent,
 			},
@@ -88,7 +91,7 @@ export class DownloadService {
 				const size = Number(contentLength);
 				if (size > maxSize) {
 					this.logger.warn(`maxSize exceeded (${size} > ${maxSize}) on response`);
-					req.destroy();
+					req.destroy(new StatusError('File size limit exceeded', 413));
 				}
 			}
 
@@ -106,12 +109,19 @@ export class DownloadService {
 		}).on('downloadProgress', (progress: Got.Progress) => {
 			if (progress.transferred > maxSize) {
 				this.logger.warn(`maxSize exceeded (${progress.transferred} > ${maxSize}) on downloadProgress`);
-				req.destroy();
+				req.destroy(new StatusError('File size limit exceeded', 413));
 			}
 		});
 
 		try {
-			await stream.pipeline(req, fs.createWriteStream(path));
+			let received = 0;
+			const limit = new Transform({
+				transform(chunk: Buffer, _encoding, callback) {
+					received += chunk.length;
+					callback(received > maxSize ? new StatusError('File size limit exceeded', 413) : null, received > maxSize ? undefined : chunk);
+				},
+			});
+			await stream.pipeline(req, limit, fs.createWriteStream(path), { signal: options.signal });
 		} catch (e) {
 			if (e instanceof Got.HTTPError) {
 				throw new StatusError(`${e.response.statusCode} ${e.response.statusMessage}`, e.response.statusCode, e.response.statusMessage);

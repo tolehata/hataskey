@@ -7,9 +7,22 @@ import { describe, expect, test, vi } from 'vitest';
 import { DownloadService } from '@/core/DownloadService.js';
 
 const download = vi.hoisted(() => ({ stream: vi.fn() }));
-vi.mock('got', () => ({ default: download }));
+vi.mock('got', () => ({ default: download, HTTPError: class HTTPError extends Error {} }));
 
 describe('download redirects select the destination security policy', () => {
+	test('the caller byte budget stops a response without a Content-Length header', async () => {
+		download.stream.mockImplementation(() => Readable.from([Buffer.from('small'), Buffer.alloc(64)]));
+		const service = new DownloadService({ maxFileSize: 10000, userAgent: 'test' } as never,
+			{ getAgentForHttp: () => ({}), getAgentForHttps: () => ({}) } as never,
+			{ getLogger: () => ({ info: vi.fn(), warn: vi.fn(), succ: vi.fn() }) } as never);
+		const directory = await mkdtemp(join(tmpdir(), 'hataskey-download-limit-'));
+		try {
+			const path = join(directory, 'file');
+			await expect(service.downloadUrl('https://example.test/file', path, { maxBytes: 8 })).rejects.toMatchObject({ statusCode: 413 });
+			expect((await readFile(path)).length).toBeLessThanOrEqual(8);
+		} finally { await rm(directory, { recursive: true }); }
+	});
+
 	test('a proxy bypass origin does not lend its local-address agent to a redirected destination', async () => {
 		const bypass = new URL('https://trusted.example/file');
 		const ordinary = new URL('https://untrusted.example/file');

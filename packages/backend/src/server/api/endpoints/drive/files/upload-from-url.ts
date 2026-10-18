@@ -9,6 +9,10 @@ import { Endpoint } from '@/server/api/endpoint-base.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
 import { DriveFileEntityService } from '@/core/entities/DriveFileEntityService.js';
 import { DriveService } from '@/core/DriveService.js';
+import { LoggerService } from '@/core/LoggerService.js';
+import { StatusError } from '@/misc/status-error.js';
+import { IdentifiableError } from '@/misc/identifiable-error.js';
+import { ApiError } from '@/server/api/error.js';
 
 export const meta = {
 	tags: ['drive'],
@@ -46,16 +50,24 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private driveFileEntityService: DriveFileEntityService,
 		private driveService: DriveService,
 		private globalEventService: GlobalEventService,
+		private loggerService: LoggerService,
 	) {
 		super(meta, paramDef, async (ps, user, _1, _2, _3, _4, ip, headers) => {
-			this.driveService.uploadFromUrl({ url: ps.url, user, folderId: ps.folderId, sensitive: ps.isSensitive, force: ps.force, comment: ps.comment, requestIp: ip, requestHeaders: headers }).then(file => {
-				this.driveFileEntityService.pack(file, { self: true }).then(packedFile => {
-					this.globalEventService.publishMainStream(user.id, 'urlUploadFinished', {
-						marker: ps.marker,
-						file: packedFile,
-					});
+			try {
+				const { completion } = await this.driveService.startUploadFromUrl({ url: ps.url, user, folderId: ps.folderId, sensitive: ps.isSensitive, force: ps.force, comment: ps.comment, requestIp: ip, requestHeaders: headers });
+				void completion.then(async file => {
+					const packedFile = await this.driveFileEntityService.pack(file, { self: true });
+					this.globalEventService.publishMainStream(user.id, 'urlUploadFinished', { marker: ps.marker, file: packedFile });
+				}).catch(() => {
+					// Include neither the supplied URL nor request headers in background errors.
+					this.loggerService.getLogger('drive').warn('An accepted URL upload failed');
 				});
-			});
+			} catch (error) {
+				if (error instanceof StatusError || error instanceof IdentifiableError) {
+					throw new ApiError({ message: 'URL upload could not be accepted. Check available drive space or retry later.', code: 'URL_UPLOAD_REJECTED', id: '54921fea-875f-4ae4-b2bc-a50ea7540858', httpStatusCode: error instanceof StatusError ? error.statusCode : 400 });
+				}
+				throw error;
+			}
 		});
 	}
 }

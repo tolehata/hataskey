@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { createHash } from 'node:crypto';
 import { existsSync, rmSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -10,6 +11,8 @@ import { join } from 'node:path';
 import { PassThrough, Readable } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { ApiCallService } from '@/server/api/ApiCallService.js';
+import { AuthenticationError } from '@/server/api/AuthenticateService.js';
+import { LOCAL_DRIVE_UPLOAD_BUDGET } from '@/misc/resource-budget.js';
 
 const createTemp = vi.hoisted(() => vi.fn());
 vi.mock('@/misc/create-temp.js', () => ({ createTemp }));
@@ -19,7 +22,7 @@ let service: ApiCallService;
 let authenticate: ReturnType<typeof vi.fn>;
 
 function reply() {
-	return { code: vi.fn(), header: vi.fn(), send: vi.fn() };
+	return { code: vi.fn().mockReturnThis(), header: vi.fn().mockReturnThis(), send: vi.fn().mockReturnThis() };
 }
 
 function request(file: Readable & { truncated?: boolean }, fields: Record<string, unknown> = {}) {
@@ -53,13 +56,14 @@ beforeEach(() => {
 	authenticate = vi.fn().mockResolvedValue([null, null, null]);
 	service = new ApiCallService(
 		{ rootUserId: 'root', enableIpLogging: false } as never,
-		{} as never,
+		{ maxFileSize: 1024 } as never,
 		{} as never,
 		{ authenticate } as never,
 		{ limit: vi.fn() } as never,
-		{ getUserRoles: vi.fn(), getUserPolicies: vi.fn() } as never,
+		{ getUserRoles: vi.fn(), getUserPolicies: vi.fn().mockResolvedValue({ maxFileSizeMb: 1, rateLimitFactor: 1 }), isModerator: vi.fn().mockResolvedValue(false) } as never,
 		{ logger: { debug: vi.fn(), warn: vi.fn(), write: vi.fn() } } as never,
 		{ startSpan: (_name: string, callback: () => unknown) => callback(), captureMessage: vi.fn() } as never,
+		{ eval: vi.fn().mockResolvedValue(1) } as never,
 	);
 });
 
@@ -72,6 +76,7 @@ describe('multipart API request lifecycle', () => {
 	test('maps a client read failure to 400 and never calls the endpoint', async () => {
 		const { path, cleanup } = await tempPath();
 		const file = new PassThrough();
+		file.on('error', () => {});
 		file.destroy(new Error('client disconnected'));
 		const ep = endpoint();
 		const response = reply();
@@ -146,5 +151,52 @@ describe('multipart API request lifecycle', () => {
 		expect(response.send).not.toHaveBeenCalled();
 		expect(cleanup).toHaveBeenCalledOnce();
 		expect(existsSync(path)).toBe(false);
+	});
+});
+
+describe('multipart admission precedes persistence', () => {
+	test('rejects an invalid bearer before parsing or creating a temporary file', async () => {
+		authenticate.mockRejectedValueOnce(new AuthenticationError('Invalid token'));
+		const input = { ...request(Readable.from(['attacker bytes'])), headers: { authorization: 'Bearer invalid' } };
+		const response = reply();
+		await service.handleMultipartRequest(endpoint() as never, input as never, response as never);
+		expect(response.code).toHaveBeenCalledWith(401);
+		expect(input.file).not.toHaveBeenCalled();
+		expect(createTemp).not.toHaveBeenCalled();
+	});
+
+	test('rejects a missing pre-file body credential without persisting its file', async () => {
+		const ep = { ...endpoint(), meta: { requireFile: true, requireCredential: true } };
+		const response = reply();
+		await service.handleMultipartRequest(ep as never, request(Readable.from(['large anonymous body'])) as never, response as never);
+		expect(response.code).toHaveBeenCalledWith(401);
+		expect(createTemp).not.toHaveBeenCalled();
+	});
+
+	test('rejects an authenticated token missing the upload scope before persistence', async () => {
+		authenticate.mockResolvedValueOnce([{ id: 'user', isSuspended: false }, { permission: [] }, null]);
+		const ep = { ...endpoint(), meta: { requireFile: true, requireCredential: true, kind: 'write:drive' } };
+		const input = { ...request(Readable.from(['bytes'])), headers: { authorization: 'Bearer valid-but-read-only' } };
+		const response = reply();
+		await service.handleMultipartRequest(ep as never, input as never, response as never);
+		expect(response.code).toHaveBeenCalledWith(403);
+		expect(input.file).not.toHaveBeenCalled();
+		expect(createTemp).not.toHaveBeenCalled();
+	});
+
+	test('an admitted pre-file body token still uploads and releases both reservations', async () => {
+		await tempPath();
+		authenticate.mockResolvedValueOnce([{ id: 'user', isSuspended: false }, null, null]);
+		const ep = { ...endpoint(), meta: { requireFile: true, requireCredential: true, kind: 'write:drive' } };
+		const response = reply();
+		await service.handleMultipartRequest(ep as never, request(Readable.from(['file']), { i: { value: 'valid' } }) as never, response as never);
+		expect(authenticate).toHaveBeenCalledWith('valid');
+		expect(ep.exec).toHaveBeenCalledOnce();
+		expect(response.send).toHaveBeenCalledWith({ ok: true });
+		// The file itself is reserved from the local-user pool, never the federation ingest pool.
+		const admissions = (service as unknown as { redisClient: { eval: ReturnType<typeof vi.fn> } }).redisClient.eval.mock.calls.filter(call => call[1] === 4);
+		expect(admissions.map(call => call[2])).toEqual(['resource-budget:{multipart-ingress}:active', `resource-budget:{${LOCAL_DRIVE_UPLOAD_BUDGET.name}}:active`]);
+		expect(admissions[1][4]).toBe(`resource-budget:{${LOCAL_DRIVE_UPLOAD_BUDGET.name}}:actor:${createHash('sha256').update('user').digest('hex')}`);
+		expect(admissions[1].slice(8, 13)).toEqual([LOCAL_DRIVE_UPLOAD_BUDGET.concurrency, LOCAL_DRIVE_UPLOAD_BUDGET.actorConcurrency, 1024, LOCAL_DRIVE_UPLOAD_BUDGET.concurrency * 1024, LOCAL_DRIVE_UPLOAD_BUDGET.requestsPerMinute]);
 	});
 });

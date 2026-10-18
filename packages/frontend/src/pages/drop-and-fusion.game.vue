@@ -904,10 +904,10 @@ function getGameImageDriveFile() {
 				if (!blob) return res(null);
 				if ($i == null) return res(null);
 				const formData = new FormData();
+				formData.append('i', $i.token);
 				formData.append('file', blob);
 				formData.append('name', `bubble-game-${Date.now()}.png`);
 				formData.append('isSensitive', 'false');
-				formData.append('i', $i.token);
 				if (prefer.s.uploadFolder) {
 					formData.append('folderId', prefer.s.uploadFolder);
 				}

@@ -167,6 +167,7 @@ describe('FileServerService', () => {
 			videoProcessingService,
 			internalStorageService,
 			loggerService,
+			{ eval: async () => 1 } as never,
 		);
 
 		fastify = Fastify();
@@ -191,6 +192,7 @@ describe('FileServerService', () => {
 			videoProcessingService,
 			internalStorageService,
 			loggerService,
+			{ eval: async () => 1 } as never,
 		);
 		externalFastify = Fastify();
 		await externalFastify.register(fastifyStatic, {

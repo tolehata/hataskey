@@ -53,6 +53,7 @@ beforeEach(async () => {
 		} as never,
 		{} as never,
 		{ getLogger: () => ({ error: vi.fn() }) } as never,
+		{ eval: vi.fn().mockResolvedValue(1) } as never,
 	);
 	vi.spyOn(service as unknown as { getFileFromKey(key: string): Promise<unknown> }, 'getFileFromKey').mockImplementation(async () => ({
 		state: 'remote', fileRole, file: { size: videoBytes.length },

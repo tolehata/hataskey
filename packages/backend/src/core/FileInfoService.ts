@@ -4,6 +4,7 @@
  */
 
 import * as fs from 'node:fs';
+import { execFile } from 'node:child_process';
 import * as crypto from 'node:crypto';
 import { join } from 'node:path';
 import * as stream from 'node:stream/promises';
@@ -365,22 +366,18 @@ export class FileInfoService {
 	 */
 	@bindThis
 	private hasVideoTrackOnVideoFile(path: string): Promise<boolean> {
-		const sublogger = this.logger.createSubLogger('ffprobe');
-		sublogger.info(`Checking the video file. File path: ${path}`);
 		return new Promise((resolve) => {
-			try {
-				FFmpeg.ffprobe(path, (err, metadata) => {
-					if (err) {
-						sublogger.warn(`Could not check the video file. Returns true. File path: ${path}`, err);
-						resolve(true);
-						return;
-					}
-					resolve(metadata.streams.some((stream) => stream.codec_type === 'video'));
-				});
-			} catch (err) {
-				sublogger.warn(`Could not check the video file. Returns true. File path: ${path}`, err as Error);
-				resolve(true);
-			}
+			// execFile waits for the child to exit after timeout/kill; do not race a
+			// timer against ffprobe and leave the native parser running in the background.
+			execFile(process.env.FFPROBE_PATH ?? 'ffprobe', [
+				'-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'json', path,
+			], { timeout: 10_000, killSignal: 'SIGKILL', maxBuffer: 1024 * 1024 }, (error, stdout) => {
+				if (error) { resolve(true); return; }
+				try {
+					const metadata = JSON.parse(stdout) as { streams?: { codec_type?: string }[] };
+					resolve(metadata.streams?.some(stream => stream.codec_type === 'video') ?? true);
+				} catch { resolve(true); }
+			});
 		});
 	}
 

@@ -4,16 +4,20 @@
  */
 
 import * as fs from 'node:fs';
+import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { Inject, Injectable } from '@nestjs/common';
 import rename from 'rename';
 import sharp from 'sharp';
 import { sharpBmp } from '@misskey-dev/sharp-read-bmp';
+import probeImageSize from 'probe-image-size';
 import type { Config } from '@/config.js';
 import type { MiDriveFile, DriveFilesRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
 import { createTemp } from '@/misc/create-temp.js';
+import { acquireResourceLease, MEDIA_DOWNLOAD_BUDGET, MEDIA_MAX_BYTES, MEDIA_MAX_PIXELS, MEDIA_PROCESSING_BUDGET, MEDIA_TIMEOUT_SECONDS } from '@/misc/resource-budget.js';
+import { validateBitmap } from '@/misc/validate-bitmap.js';
 import { FILE_TYPE_BROWSERSAFE } from '@/const.js';
 import { StatusError } from '@/misc/status-error.js';
 import type Logger from '@/logger.js';
@@ -30,6 +34,8 @@ import { correctFilename } from '@/misc/correct-filename.js';
 import { handleRequestRedirectToOmitSearch } from '@/misc/fastify-hook-handlers.js';
 import { handleRangeRequest } from './file/FileServerUtils.js';
 import type { FastifyInstance, FastifyRequest, FastifyReply, FastifyPluginOptions } from 'fastify';
+import type * as Redis from 'ioredis';
+import type { Sharp } from 'sharp';
 
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = dirname(_filename);
@@ -53,6 +59,7 @@ export class FileServerService {
 		private videoProcessingService: VideoProcessingService,
 		private internalStorageService: InternalStorageService,
 		private loggerService: LoggerService,
+		@Inject(DI.redis) private redisClient?: Redis.Redis,
 	) {
 		this.logger = this.loggerService.getLogger('server', 'gray');
 
@@ -79,7 +86,7 @@ export class FileServerService {
 			});
 
 			fastify.get<{ Params: { key: string; } }>('/files/:key', async (request, reply) => {
-				return await this.sendDriveFile(request, reply)
+				return await this.withMediaBudget(request, reply, signal => this.sendDriveFile(request, reply, signal), false)
 					.catch(err => this.errorHandler(request, reply, err));
 			});
 			fastify.get<{ Params: { key: string; } }>('/files/:key/*', async (request, reply) => {
@@ -92,15 +99,86 @@ export class FileServerService {
 			Params: { url: string; };
 			Querystring: { url?: string; };
 		}>('/proxy/:url*', async (request, reply) => {
-			return await this.proxyHandler(request, reply)
+			return await this.withMediaBudget(request, reply, signal => this.proxyHandler(request, reply, signal))
 				.catch(err => this.errorHandler(request, reply, err));
 		});
 
 		done();
 	}
 
+	private async withMediaBudget<T>(request: FastifyRequest, reply: FastifyReply, work: (signal: AbortSignal) => Promise<T>, admission = true): Promise<T> {
+		const lease = admission ? await acquireResourceLease(this.redisClient, {
+			...MEDIA_PROCESSING_BUDGET, actor: request.ip, bytes: 0, maxBytes: 0,
+		}) : undefined;
+		const controller = new AbortController();
+		const signal = lease ? AbortSignal.any([controller.signal, lease.signal]) : controller.signal;
+		let output: Readable | undefined;
+		let released = false;
+		const disconnect = () => {
+			controller.abort();
+			output?.destroy();
+		};
+		const timer = setTimeout(disconnect, 120_000);
+		timer.unref();
+		request.raw?.once('aborted', disconnect);
+		reply.raw?.once('close', disconnect);
+		const release = () => {
+			if (released) return;
+			released = true;
+			clearTimeout(timer);
+			request.raw?.removeListener('aborted', disconnect);
+			reply.raw?.removeListener('close', disconnect);
+			signal.removeEventListener('abort', disconnect);
+			void lease?.release();
+		};
+		try {
+			const result = await work(signal);
+			if (result instanceof Readable) {
+				output = result;
+				output.once('end', release).once('close', release).once('error', release);
+				signal.addEventListener('abort', disconnect, { once: true });
+				if (signal.aborted || output.destroyed) { output.destroy(); release(); }
+			} else release();
+			return result;
+		} catch (error) {
+			release();
+			throw error;
+		}
+	}
+
+	private async openProxyImage(path: string, mime: string, animated = false): Promise<Sharp> {
+		// BMP/ICO are decoded in JavaScript before sharpBmp constructs Sharp.
+		// Inspect each embedded bitmap before decode-ico eagerly decodes every entry.
+		let source: string | Buffer = path;
+		if (['image/x-icon', 'image/vnd.microsoft.icon', 'image/x-bmp', 'image/bmp', 'image/x-ms-bmp'].includes(mime)) {
+			if ((await fs.promises.stat(path)).size > MEDIA_MAX_BYTES) throw new StatusError('Bitmap exceeds the proxy limit', 413);
+			source = await fs.promises.readFile(path);
+			validateBitmap(source, mime === 'image/x-icon' || mime === 'image/vnd.microsoft.icon', MEDIA_MAX_PIXELS);
+		}
+		const input = fs.createReadStream(path);
+		try {
+			const dimensions = await probeImageSize(input);
+			if (!(dimensions.width > 0 && dimensions.height > 0) || dimensions.width * dimensions.height > MEDIA_MAX_PIXELS) {
+				throw new StatusError('Image dimensions exceed the proxy limit', 413);
+			}
+		} finally { input.destroy(); }
+		const image = (await sharpBmp(source, mime, { animated, limitInputPixels: MEDIA_MAX_PIXELS }))
+			.timeout({ seconds: MEDIA_TIMEOUT_SECONDS });
+		const metadata = await image.metadata();
+		if (animated && ((metadata.pages ?? 1) > 200 || (metadata.width ?? 0) * (metadata.pageHeight ?? metadata.height ?? 0) * (metadata.pages ?? 1) > MEDIA_MAX_PIXELS)) {
+			image.destroy();
+			throw new StatusError('Animated image exceeds the proxy limit', 413);
+		}
+		return image;
+	}
+
 	@bindThis
 	private async errorHandler(request: FastifyRequest<{ Params?: { [x: string]: any }; Querystring?: { [x: string]: any }; }>, reply: FastifyReply, err?: any) {
+		if (err instanceof StatusError && (err.statusCode === 429 || err.statusCode === 503)) {
+			reply.header('Cache-Control', 'no-store');
+			reply.header('Retry-After', '5');
+			return reply.code(err.statusCode).send();
+		}
 		this.logger.error(`${err}`);
 
 		reply.header('Cache-Control', 'max-age=300');
@@ -119,9 +197,9 @@ export class FileServerService {
 	}
 
 	@bindThis
-	private async sendDriveFile(request: FastifyRequest<{ Params: { key: string; } }>, reply: FastifyReply) {
+	private async sendDriveFile(request: FastifyRequest<{ Params: { key: string; } }>, reply: FastifyReply, signal: AbortSignal) {
 		const key = request.params.key;
-		const file = await this.getFileFromKey(key).then();
+		const file = await this.getFileFromKey(key, request.ip, signal);
 
 		if (file === '404') {
 			reply.code(404);
@@ -136,6 +214,7 @@ export class FileServerService {
 		}
 
 		try {
+			signal.throwIfAborted();
 			if (file.state === 'remote') {
 				let image: IImageStreamable | null = null;
 
@@ -226,7 +305,7 @@ export class FileServerService {
 	}
 
 	@bindThis
-	private async proxyHandler(request: FastifyRequest<{ Params: { url: string; }; Querystring: { url?: string; }; }>, reply: FastifyReply) {
+	private async proxyHandler(request: FastifyRequest<{ Params: { url: string; }; Querystring: { url?: string; }; }>, reply: FastifyReply, signal: AbortSignal) {
 		const url = 'url' in request.query ? request.query.url : 'https://' + request.params.url;
 
 		if (typeof url !== 'string') {
@@ -261,7 +340,7 @@ export class FileServerService {
 		}
 
 		// Create temp file
-		const file = await this.getStreamAndTypeFromUrl(url);
+		const file = await this.getStreamAndTypeFromUrl(url, request.ip, signal);
 		if (file === '404') {
 			reply.code(404);
 			reply.header('Cache-Control', 'max-age=86400');
@@ -275,6 +354,7 @@ export class FileServerService {
 		}
 
 		try {
+			signal.throwIfAborted();
 			const isConvertibleImage = isMimeImage(file.mime, 'sharp-convertible-image-with-bmp');
 			const isAnimationConvertibleImage = isMimeImage(file.mime, 'sharp-animation-convertible-image-with-bmp');
 
@@ -300,7 +380,7 @@ export class FileServerService {
 						type: file.mime,
 					};
 				} else {
-					const data = (await sharpBmp(file.path, file.mime, { animated: !('static' in request.query) }))
+					const data = (await this.openProxyImage(file.path, file.mime, !('static' in request.query)))
 						.resize({
 							height: 'emoji' in request.query ? 128 : 320,
 							withoutEnlargement: true,
@@ -314,11 +394,11 @@ export class FileServerService {
 					};
 				}
 			} else if ('static' in request.query) {
-				image = this.imageProcessingService.convertSharpToWebpStream(await sharpBmp(file.path, file.mime), 498, 422);
+				image = this.imageProcessingService.convertSharpToWebpStream(await this.openProxyImage(file.path, file.mime), 498, 422);
 			} else if ('preview' in request.query) {
-				image = this.imageProcessingService.convertSharpToWebpStream(await sharpBmp(file.path, file.mime), 200, 200);
+				image = this.imageProcessingService.convertSharpToWebpStream(await this.openProxyImage(file.path, file.mime), 200, 200);
 			} else if ('badge' in request.query) {
-				const mask = (await sharpBmp(file.path, file.mime))
+				const mask = (await this.openProxyImage(file.path, file.mime))
 					.resize(96, 96, {
 						fit: 'contain',
 						position: 'centre',
@@ -340,6 +420,7 @@ export class FileServerService {
 				const data = sharp({
 					create: { width: 96, height: 96, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
 				})
+					.timeout({ seconds: MEDIA_TIMEOUT_SECONDS })
 					.pipelineColorspace('b-w')
 					.boolean(await mask.png().toBuffer(), 'eor');
 
@@ -349,7 +430,7 @@ export class FileServerService {
 					type: 'image/png',
 				};
 			} else if (file.mime === 'image/svg+xml') {
-				image = this.imageProcessingService.convertToWebpStream(file.path, 2048, 2048);
+				image = this.imageProcessingService.convertSharpToWebpStream(await this.openProxyImage(file.path, file.mime), 2048, 2048);
 			} else if (!file.mime.startsWith('image/') || !FILE_TYPE_BROWSERSAFE.includes(file.mime)) {
 				throw new StatusError('Rejected type', 403, 'Rejected type');
 			}
@@ -414,7 +495,7 @@ export class FileServerService {
 	}
 
 	@bindThis
-	private async getStreamAndTypeFromUrl(url: string): Promise<
+	private async getStreamAndTypeFromUrl(url: string, actor: string, signal: AbortSignal): Promise<
 		{ state: 'remote'; fileRole?: 'thumbnail' | 'webpublic' | 'original'; file?: MiDriveFile; mime: string; ext: string | null; path: string; cleanup: () => void; filename: string; }
 		| { state: 'stored_internal'; fileRole: 'thumbnail' | 'webpublic' | 'original'; file: MiDriveFile; filename: string; mime: string; ext: string | null; path: string; }
 		| '404'
@@ -424,19 +505,32 @@ export class FileServerService {
 			const key = url.replace(`${this.config.url}/files/`, '').split('/').shift();
 			if (!key) throw new StatusError('Invalid File Key', 400, 'Invalid File Key');
 
-			return await this.getFileFromKey(key);
+			return await this.getFileFromKey(key, actor, signal, Math.min(MEDIA_MAX_BYTES, this.config.maxFileSize));
 		}
 
-		return await this.downloadAndDetectTypeFromUrl(url);
+		return await this.downloadAndDetectTypeFromUrl(url, actor, signal);
 	}
 
 	@bindThis
-	private async downloadAndDetectTypeFromUrl(url: string): Promise<
+	private async downloadAndDetectTypeFromUrl(url: string, actor: string, signal: AbortSignal, byteLimit = MEDIA_MAX_BYTES): Promise<
 		{ state: 'remote'; mime: string; ext: string | null; path: string; cleanup: () => void; filename: string; }
 	> {
-		const [path, cleanup] = await createTemp();
+		const maxBytes = Math.min(byteLimit, this.config.maxFileSize);
+		const lease = await acquireResourceLease(this.redisClient, {
+			...MEDIA_DOWNLOAD_BUDGET, actor, bytes: maxBytes, maxBytes: MEDIA_DOWNLOAD_BUDGET.concurrency * this.config.maxFileSize,
+		});
+		let remove: (() => void) | undefined;
+		let removed = false;
+		const cleanup = () => {
+			if (removed) return;
+			removed = true;
+			try { remove?.(); } finally { void lease.release(); }
+		};
 		try {
-			const { filename } = await this.downloadService.downloadUrl(url, path);
+			const temporary = await createTemp();
+			const path = temporary[0];
+			remove = temporary[1];
+			const { filename } = await this.downloadService.downloadUrl(url, path, { maxBytes, signal: AbortSignal.any([signal, lease.signal]) });
 
 			const { mime, ext } = await this.fileInfoService.detectType(path);
 
@@ -453,7 +547,7 @@ export class FileServerService {
 	}
 
 	@bindThis
-	private async getFileFromKey(key: string): Promise<
+	private async getFileFromKey(key: string, actor: string, signal: AbortSignal, maxBytes?: number): Promise<
 		{ state: 'remote'; fileRole: 'thumbnail' | 'webpublic' | 'original'; file: MiDriveFile; filename: string; url: string; mime: string; ext: string | null; path: string; cleanup: () => void; }
 		| { state: 'stored_internal'; fileRole: 'thumbnail' | 'webpublic' | 'original'; file: MiDriveFile; filename: string; mime: string; ext: string | null; path: string; }
 		| '404'
@@ -473,7 +567,7 @@ export class FileServerService {
 
 		if (!file.storedInternal) {
 			if (!(file.isLink && file.uri)) return '204';
-			const result = await this.downloadAndDetectTypeFromUrl(file.uri);
+			const result = await this.downloadAndDetectTypeFromUrl(file.uri, actor, signal, maxBytes ?? this.config.maxFileSize);
 			file.size = (await fs.promises.stat(result.path)).size;	// DB file.sizeは正確とは限らないので
 			return {
 				...result,
@@ -487,6 +581,7 @@ export class FileServerService {
 		if (!/^[a-zA-Z0-9._-]+$/.test(key) || key === '.' || key === '..') return '404';
 
 		const path = this.internalStorageService.resolvePath(key);
+		if (maxBytes != null && (await fs.promises.stat(path)).size > maxBytes) throw new StatusError('File exceeds the proxy limit', 413);
 
 		if (isThumbnail || isWebpublic) {
 			const { mime, ext } = await this.fileInfoService.detectType(path);
