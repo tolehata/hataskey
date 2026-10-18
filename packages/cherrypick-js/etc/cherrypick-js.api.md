@@ -147,6 +147,9 @@ type AdminAnnouncementsUpdateRequest = operations['admin___announcements___updat
 type AdminApproveRegistrationRequest = operations['admin___approve-registration']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
+type AdminApproveRegistrationResponse = operations['admin___approve-registration']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type AdminAvatarDecorationsCopyRequest = operations['admin___avatar-decorations___copy']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -187,6 +190,12 @@ type AdminChannelsListRequest = operations['admin___channels___list']['requestBo
 
 // @public (undocumented)
 type AdminChannelsListResponse = operations['admin___channels___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminCleanupLegacyRejectedRegistrationsRequest = operations['admin___cleanup-legacy-rejected-registrations']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminCleanupLegacyRejectedRegistrationsResponse = operations['admin___cleanup-legacy-rejected-registrations']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type AdminDeleteAccountRequest = operations['admin___delete-account']['requestBody']['content']['application/json'];
@@ -297,6 +306,57 @@ type AdminHataConsentListRequest = operations['admin___hata___consent-list']['re
 type AdminHataConsentListResponse = operations['admin___hata___consent-list']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type AdminHataskRecordsListRequest = operations['admin___hatask___records___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskRecordsListResponse = operations['admin___hatask___records___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskRecordsReviewRequest = operations['admin___hatask___records___review']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskRecordsReviewResponse = operations['admin___hatask___records___review']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskRecordsShowRequest = operations['admin___hatask___records___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskRecordsShowResponse = operations['admin___hatask___records___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskSupportRegisterRequest = operations['admin___hatask___support___register']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskSupportRegisterResponse = operations['admin___hatask___support___register']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskSupportShowRequest = operations['admin___hatask___support___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskSupportShowResponse = operations['admin___hatask___support___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskSupportSupportersRequest = operations['admin___hatask___support___supporters']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskSupportSupportersResponse = operations['admin___hatask___support___supporters']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskSupportUnregisterRequest = operations['admin___hatask___support___unregister']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskSupportUnregisterResponse = operations['admin___hatask___support___unregister']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskSupportUpdateRequest = operations['admin___hatask___support___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskSupportUpdateResponse = operations['admin___hatask___support___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminHataskUpdateDecorationRequest = operations['admin___hatask___update-decoration']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
 type AdminInviteCreateRequest = operations['admin___invite___create']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -369,6 +429,24 @@ type AdminQueueShowJobResponse = operations['admin___queue___show-job']['respons
 type AdminQueueStatsResponse = operations['admin___queue___stats']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type AdminRecordModerationExecuteRequest = operations['admin___record-moderation___execute']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminRecordModerationExecuteResponse = operations['admin___record-moderation___execute']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminRecordModerationHistoryRequest = operations['admin___record-moderation___history']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminRecordModerationHistoryResponse = operations['admin___record-moderation___history']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminRecordModerationPreviewRequest = operations['admin___record-moderation___preview']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminRecordModerationPreviewResponse = operations['admin___record-moderation___preview']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type AdminRegistrationApplicationsRequest = operations['admin___registration-applications']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -376,6 +454,9 @@ type AdminRegistrationApplicationsResponse = operations['admin___registration-ap
 
 // @public (undocumented)
 type AdminRejectRegistrationRequest = operations['admin___reject-registration']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminRejectRegistrationResponse = operations['admin___reject-registration']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type AdminRelaysAddRequest = operations['admin___relays___add']['requestBody']['content']['application/json'];
@@ -388,6 +469,12 @@ type AdminRelaysListResponse = operations['admin___relays___list']['responses'][
 
 // @public (undocumented)
 type AdminRelaysRemoveRequest = operations['admin___relays___remove']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminResendRegistrationRejectionRequest = operations['admin___resend-registration-rejection']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminResendRegistrationRejectionResponse = operations['admin___resend-registration-rejection']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type AdminResetPasswordRequest = operations['admin___reset-password']['requestBody']['content']['application/json'];
@@ -517,6 +604,12 @@ type AdminUpdateProxyAccountResponse = operations['admin___update-proxy-account'
 
 // @public (undocumented)
 type AdminUpdateUserNoteRequest = operations['admin___update-user-note']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminVoteRegistrationRequest = operations['admin___vote-registration']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminVoteRegistrationResponse = operations['admin___vote-registration']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type Announcement = components['schemas']['Announcement'];
@@ -715,6 +808,52 @@ export abstract class ChannelConnection<Channel extends AnyOf<Channels> = AnyOf<
 
 // @public (undocumented)
 export type Channels = {
+    hatadyTimeline: {
+        params: {
+            scope: 'mine' | 'recent' | 'following';
+            kind?: 'study' | 'movie' | 'game' | 'exercise' | 'work' | 'cooking';
+        };
+        events: {
+            activity: (payload: {
+                seq: number;
+                key: string;
+                activity: HataHatadyActivitiesResponse['items'][number];
+            }) => void;
+            removed: (payload: {
+                seq: number;
+                key: string;
+                id: string;
+            }) => void;
+            synced: (payload: {
+                seq: number;
+                requestId: number;
+            }) => void;
+            resyncRequired: (payload: {
+                seq: number;
+                requestId?: number;
+            }) => void;
+        };
+        receives: {
+            sync: {
+                ids: string[];
+                seenThrough: number;
+                requestId: number;
+            };
+        };
+    };
+    ltlPunch: {
+        params: null;
+        events: {
+            state: (payload: LtlPunchState | null) => void;
+        };
+        receives: {
+            sync: Record<string, never>;
+            attack: {
+                eventId: string;
+                requestId: string;
+            };
+        };
+    };
     main: {
         params: null;
         events: {
@@ -731,9 +870,29 @@ export type Channels = {
                 marker: string;
                 file: DriveFile;
             }) => void;
-            readAllNotifications: () => void;
-            unreadNotification: (payload: Notification_2) => void;
-            notificationFlushed: () => void;
+            readAllNotifications: (payload: {
+                ids: string[];
+                unreadNotificationsCount: number;
+                revision: string;
+            }) => void;
+            readNotification: (payload: {
+                id: string;
+                unreadNotificationsCount: number;
+                revision: string;
+            }) => void;
+            notificationChanged: (payload: {
+                ids: string[];
+                unreadNotificationsCount: number;
+                revision: string;
+            }) => void;
+            unreadNotification: (payload: Notification_2 & {
+                unreadNotificationsCount: number;
+                revision: string;
+            }) => void;
+            notificationFlushed: (payload: {
+                unreadNotificationsCount: number;
+                revision: string;
+            }) => void;
             unreadAntenna: (payload: Antenna) => void;
             newChatMessage: (payload: ChatMessage) => void;
             readAllAnnouncements: () => void;
@@ -1678,6 +1837,7 @@ declare namespace entities {
         AdminAnnouncementsListResponse,
         AdminAnnouncementsUpdateRequest,
         AdminApproveRegistrationRequest,
+        AdminApproveRegistrationResponse,
         AdminAvatarDecorationsCopyRequest,
         AdminAvatarDecorationsCopyResponse,
         AdminAvatarDecorationsCreateRequest,
@@ -1692,6 +1852,8 @@ declare namespace entities {
         AdminCaptchaSaveRequest,
         AdminChannelsListRequest,
         AdminChannelsListResponse,
+        AdminCleanupLegacyRejectedRegistrationsRequest,
+        AdminCleanupLegacyRejectedRegistrationsResponse,
         AdminDeleteAccountRequest,
         AdminDeleteAllFilesOfAUserRequest,
         AdminDriveFilesRequest,
@@ -1728,6 +1890,23 @@ declare namespace entities {
         AdminGetUserIpsResponse,
         AdminHataConsentListRequest,
         AdminHataConsentListResponse,
+        AdminHataskRecordsListRequest,
+        AdminHataskRecordsListResponse,
+        AdminHataskRecordsReviewRequest,
+        AdminHataskRecordsReviewResponse,
+        AdminHataskRecordsShowRequest,
+        AdminHataskRecordsShowResponse,
+        AdminHataskSupportRegisterRequest,
+        AdminHataskSupportRegisterResponse,
+        AdminHataskSupportShowRequest,
+        AdminHataskSupportShowResponse,
+        AdminHataskSupportSupportersRequest,
+        AdminHataskSupportSupportersResponse,
+        AdminHataskSupportUnregisterRequest,
+        AdminHataskSupportUnregisterResponse,
+        AdminHataskSupportUpdateRequest,
+        AdminHataskSupportUpdateResponse,
+        AdminHataskUpdateDecorationRequest,
         AdminInviteCreateRequest,
         AdminInviteCreateResponse,
         AdminInviteListRequest,
@@ -1752,13 +1931,22 @@ declare namespace entities {
         AdminQueueShowJobLogsRequest,
         AdminQueueShowJobLogsResponse,
         AdminQueueStatsResponse,
+        AdminRecordModerationExecuteRequest,
+        AdminRecordModerationExecuteResponse,
+        AdminRecordModerationHistoryRequest,
+        AdminRecordModerationHistoryResponse,
+        AdminRecordModerationPreviewRequest,
+        AdminRecordModerationPreviewResponse,
         AdminRegistrationApplicationsRequest,
         AdminRegistrationApplicationsResponse,
         AdminRejectRegistrationRequest,
+        AdminRejectRegistrationResponse,
         AdminRelaysAddRequest,
         AdminRelaysAddResponse,
         AdminRelaysListResponse,
         AdminRelaysRemoveRequest,
+        AdminResendRegistrationRejectionRequest,
+        AdminResendRegistrationRejectionResponse,
         AdminResetPasswordRequest,
         AdminResetPasswordResponse,
         AdminResolveAbuseUserReportRequest,
@@ -1802,6 +1990,8 @@ declare namespace entities {
         AdminUpdateProxyAccountRequest,
         AdminUpdateProxyAccountResponse,
         AdminUpdateUserNoteRequest,
+        AdminVoteRegistrationRequest,
+        AdminVoteRegistrationResponse,
         AnnouncementsRequest,
         AnnouncementsResponse,
         AnnouncementsShowRequest,
@@ -2078,6 +2268,7 @@ declare namespace entities {
         HashtagsTrendResponse,
         HashtagsUsersRequest,
         HashtagsUsersResponse,
+        HataConsentGetResponse,
         HataConsentUpdateRequest,
         HataConsentUpdateResponse,
         HataEarthquakeHistoryRequest,
@@ -2087,6 +2278,10 @@ declare namespace entities {
         HataEarthquakeNotificationSettingsUpdateResponse,
         HataEarthquakeTsunamiRequest,
         HataEarthquakeTsunamiResponse,
+        HataEmojiVoteShowRequest,
+        HataEmojiVoteShowResponse,
+        HataEmojiVoteVoteRequest,
+        HataEmojiVoteVoteResponse,
         HataFeedbackAgreeRequest,
         HataFeedbackAgreeResponse,
         HataFeedbackAvailableResponse,
@@ -2100,10 +2295,18 @@ declare namespace entities {
         HataFeedbackCommentsReactRequest,
         HataFeedbackCommentsReactResponse,
         HataFeedbackEmojiCategoriesResponse,
+        HataFeedbackEmojiChangeRequestsRequest,
+        HataFeedbackEmojiChangeRequestsResponse,
+        HataFeedbackEmojiChangeRequestsApproveRequest,
+        HataFeedbackEmojiChangeRequestsCreateRequest,
+        HataFeedbackEmojiChangeRequestsCreateResponse,
+        HataFeedbackEmojiChangeRequestsHoldRequest,
+        HataFeedbackEmojiChangeRequestsRejectRequest,
         HataFeedbackEmojiQuotaResponse,
         HataFeedbackEmojiRequestsRequest,
         HataFeedbackEmojiRequestsResponse,
         HataFeedbackEmojiRequestsApproveRequest,
+        HataFeedbackEmojiRequestsCancelRequest,
         HataFeedbackEmojiRequestsCreateRequest,
         HataFeedbackEmojiRequestsCreateResponse,
         HataFeedbackEmojiRequestsHoldRequest,
@@ -2118,6 +2321,8 @@ declare namespace entities {
         HataFeedbackIssuesExportResponse,
         HataFeedbackIssuesShowRequest,
         HataFeedbackIssuesShowResponse,
+        HataFeedbackIssuesStatusCountsRequest,
+        HataFeedbackIssuesStatusCountsResponse,
         HataFeedbackIssuesUpdateRequest,
         HataFeedbackIssuesUpdateResponse,
         HataFeedbackModeratorsGrantRequest,
@@ -2139,6 +2344,12 @@ declare namespace entities {
         HataHatadyAdminBooksRequest,
         HataHatadyAdminBooksResponse,
         HataHatadyAdminDeleteBookRequest,
+        HataHatadyAdminModerationListRequest,
+        HataHatadyAdminModerationListResponse,
+        HataHatadyAdminModerationReviewRequest,
+        HataHatadyAdminModerationReviewResponse,
+        HataHatadyAdminModerationShowRequest,
+        HataHatadyAdminModerationShowResponse,
         HataHatadyBookmarksCreateRequest,
         HataHatadyBookmarksCreateResponse,
         HataHatadyBookmarksDeleteRequest,
@@ -2159,6 +2370,8 @@ declare namespace entities {
         HataHatadyCommentsCreateResponse,
         HataHatadyCommentsDeleteRequest,
         HataHatadyCommentsDeleteResponse,
+        HataHatadyCommentsUpdateRequest,
+        HataHatadyCommentsUpdateResponse,
         HataHatadyFollowersRemoveRequest,
         HataHatadyFollowingCreateRequest,
         HataHatadyFollowingDeleteRequest,
@@ -2187,11 +2400,15 @@ declare namespace entities {
         HataHatadyMediaCommentsUpdateResponse,
         HataHatadyMediaReactionsCreateRequest,
         HataHatadyMediaReactionsDeleteRequest,
+        HataHatadyMediaReactionsListRequest,
+        HataHatadyMediaReactionsListResponse,
         HataHatadyMediaSessionsCreateRequest,
         HataHatadyMediaSessionsCreateResponse,
         HataHatadyMediaSessionsDeleteRequest,
         HataHatadyMediaSessionsListRequest,
         HataHatadyMediaSessionsListResponse,
+        HataHatadyMediaSessionsShowRequest,
+        HataHatadyMediaSessionsShowResponse,
         HataHatadyMediaSessionsUpdateRequest,
         HataHatadyMediaSessionsUpdateResponse,
         HataHatadyMediaWorksCreateRequest,
@@ -2210,10 +2427,15 @@ declare namespace entities {
         HataHatadyMemosUpdateResponse,
         HataHatadyNotificationsRequest,
         HataHatadyNotificationsResponse,
+        HataHatadyNotificationsDeleteRequest,
+        HataHatadyNotificationsMarkAsReadRequest,
+        HataHatadyNotificationsRestoreRequest,
         HataHatadyNotificationsUnreadCountResponse,
         HataHatadyProfileUpdateRequest,
         HataHatadyReactionsCreateRequest,
         HataHatadyReactionsDeleteRequest,
+        HataHatadyReactionsListRequest,
+        HataHatadyReactionsListResponse,
         HataHatadySearchRequest,
         HataHatadySearchResponse,
         HataHatadyStatsRequest,
@@ -2231,6 +2453,14 @@ declare namespace entities {
         HataHatadyTimelineResponse,
         HataHatadyUsersShowRequest,
         HataHatadyUsersShowResponse,
+        HataHatagoesHomeDailyRequest,
+        HataHatagoesHomeDailyResponse,
+        HataHatagoesHomeIssuesResponse,
+        HataHatagoesNotificationsUnreadCountResponse,
+        HataHatagoesSearchRequest,
+        HataHatagoesSearchResponse,
+        HataHatagoesShowRequest,
+        HataHatagoesShowResponse,
         HataHataskEmotionAnalysisCreateRequest,
         HataHataskEmotionAnalysisCreateResponse,
         HataHataskEmotionAnalysisDeleteRequest,
@@ -2243,6 +2473,7 @@ declare namespace entities {
         HataMascotGetResponse,
         HataMascotUpdateRequest,
         HataMascotUpdateResponse,
+        HataUiSAnnouncementClaimResponse,
         HataskEventsCloseRequest,
         HataskEventsCreateRequest,
         HataskEventsCreateResponse,
@@ -2254,12 +2485,28 @@ declare namespace entities {
         HataskEventsRsvpRequest,
         HataskEventsUpdateRequest,
         HataskEventsUpdateResponse,
+        HataskFlowersDropsPourRequest,
+        HataskFlowersDropsPourResponse,
+        HataskFlowersDropsShowRequest,
+        HataskFlowersDropsShowResponse,
+        HataskFlowersFestivalShowRequest,
+        HataskFlowersFestivalShowResponse,
+        HataskFlowersHarvestRequest,
+        HataskFlowersHarvestResponse,
         HataskFlowersListRequest,
         HataskFlowersListResponse,
+        HataskFlowersRenameRequest,
+        HataskFlowersRenameResponse,
+        HataskFlowersStateRequest,
+        HataskFlowersStateResponse,
         HataskFlowersSyncRequest,
         HataskFlowersSyncResponse,
         HataskFlowersVisibilityUpdateRequest,
         HataskFlowersVisibilityUpdateResponse,
+        HataskFlowersZukanClaimSeedRequest,
+        HataskFlowersZukanClaimSeedResponse,
+        HataskFlowersZukanShowRequest,
+        HataskFlowersZukanShowResponse,
         HataskPlannerCommitRequest,
         HataskPlannerCommitResponse,
         HataskPlannerCommitBatchRequest,
@@ -2267,6 +2514,30 @@ declare namespace entities {
         HataskPlannerCreateShadowRequest,
         HataskPlannerCreateShadowResponse,
         HataskPlannerGetResponse,
+        HataskRankingListRequest,
+        HataskRankingListResponse,
+        HataskRankingParticipationRequest,
+        HataskRankingParticipationResponse,
+        HataskRecipesCookedCreateRequest,
+        HataskRecipesCookedCreateResponse,
+        HataskRecipesCookedDeleteRequest,
+        HataskRecipesCookedListRequest,
+        HataskRecipesCookedListResponse,
+        HataskRecipesCreateRequest,
+        HataskRecipesCreateResponse,
+        HataskRecipesDeleteRequest,
+        HataskRecipesListRequest,
+        HataskRecipesListResponse,
+        HataskRecipesShowRequest,
+        HataskRecipesShowResponse,
+        HataskRecipesUpdateRequest,
+        HataskRecipesUpdateResponse,
+        HataskRecordsExportResponse,
+        HataskRecordsImportRequest,
+        HataskRecordsImportResponse,
+        HataskSupportShowResponse,
+        HataskSupportSupportersRequest,
+        HataskSupportSupportersResponse,
         IResponse,
         I2faDoneRequest,
         I2faDoneResponse,
@@ -2389,6 +2660,14 @@ declare namespace entities {
         NotesEventsSearchResponse,
         NotesFavoritesCreateRequest,
         NotesFavoritesDeleteRequest,
+        NotesFavoritesFoldersCreateRequest,
+        NotesFavoritesFoldersCreateResponse,
+        NotesFavoritesFoldersDeleteRequest,
+        NotesFavoritesFoldersDeleteResponse,
+        NotesFavoritesFoldersListResponse,
+        NotesFavoritesFoldersUpdateRequest,
+        NotesFavoritesFoldersUpdateResponse,
+        NotesFavoritesMoveRequest,
         NotesFeaturedRequest,
         NotesFeaturedResponse,
         NotesGlobalTimelineRequest,
@@ -2407,6 +2686,7 @@ declare namespace entities {
         NotesReactionsRequest,
         NotesReactionsResponse,
         NotesReactionsCreateRequest,
+        NotesReactionsCreateResponse,
         NotesReactionsDeleteRequest,
         NotesRenotesRequest,
         NotesRenotesResponse,
@@ -2435,6 +2715,10 @@ declare namespace entities {
         NotesUserListTimelineRequest,
         NotesUserListTimelineResponse,
         NotificationsCreateRequest,
+        NotificationsMarkAsReadRequest,
+        NotificationsShowRequest,
+        NotificationsShowResponse,
+        NotificationsUnreadCountResponse,
         PagePushRequest,
         PagesCreateRequest,
         PagesCreateResponse,
@@ -2583,6 +2867,7 @@ declare namespace entities {
         NoteReaction,
         NoteReactionWithNote,
         NoteFavorite,
+        NoteFavoriteFolder,
         Notification_2 as Notification,
         DriveFile,
         DriveFolder,
@@ -2929,6 +3214,9 @@ type HashtagsUsersRequest = operations['hashtags___users']['requestBody']['conte
 type HashtagsUsersResponse = operations['hashtags___users']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type HataConsentGetResponse = operations['hata___consent___get']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type HataConsentUpdateRequest = operations['hata___consent___update']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -3094,6 +3382,9 @@ export type HatadyNotification = {
 };
 
 // @public (undocumented)
+export const hatadyNotificationSubtypes: readonly ["follow", "comment", "reaction", "milestone", "goalDone", "mediaComment", "mediaReply", "mediaReaction"];
+
+// @public (undocumented)
 type HataEarthquakeHistoryRequest = operations['hata___earthquake___history']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -3113,6 +3404,18 @@ type HataEarthquakeTsunamiRequest = operations['hata___earthquake___tsunami']['r
 
 // @public (undocumented)
 type HataEarthquakeTsunamiResponse = operations['hata___earthquake___tsunami']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataEmojiVoteShowRequest = operations['hata___emoji-vote___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataEmojiVoteShowResponse = operations['hata___emoji-vote___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataEmojiVoteVoteRequest = operations['hata___emoji-vote___vote']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataEmojiVoteVoteResponse = operations['hata___emoji-vote___vote']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataFeedbackAgreeRequest = operations['hata___feedback___agree']['requestBody']['content']['application/json'];
@@ -3154,10 +3457,34 @@ type HataFeedbackCommentsResponse = operations['hata___feedback___comments']['re
 type HataFeedbackEmojiCategoriesResponse = operations['hata___feedback___emoji-categories']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type HataFeedbackEmojiChangeRequestsApproveRequest = operations['hata___feedback___emoji-change-requests___approve']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataFeedbackEmojiChangeRequestsCreateRequest = operations['hata___feedback___emoji-change-requests___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataFeedbackEmojiChangeRequestsCreateResponse = operations['hata___feedback___emoji-change-requests___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataFeedbackEmojiChangeRequestsHoldRequest = operations['hata___feedback___emoji-change-requests___hold']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataFeedbackEmojiChangeRequestsRejectRequest = operations['hata___feedback___emoji-change-requests___reject']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataFeedbackEmojiChangeRequestsRequest = operations['hata___feedback___emoji-change-requests']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataFeedbackEmojiChangeRequestsResponse = operations['hata___feedback___emoji-change-requests']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type HataFeedbackEmojiQuotaResponse = operations['hata___feedback___emoji-quota']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataFeedbackEmojiRequestsApproveRequest = operations['hata___feedback___emoji-requests___approve']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataFeedbackEmojiRequestsCancelRequest = operations['hata___feedback___emoji-requests___cancel']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
 type HataFeedbackEmojiRequestsCreateRequest = operations['hata___feedback___emoji-requests___create']['requestBody']['content']['application/json'];
@@ -3206,6 +3533,12 @@ type HataFeedbackIssuesShowRequest = operations['hata___feedback___issues___show
 
 // @public (undocumented)
 type HataFeedbackIssuesShowResponse = operations['hata___feedback___issues___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataFeedbackIssuesStatusCountsRequest = operations['hata___feedback___issues___status-counts']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataFeedbackIssuesStatusCountsResponse = operations['hata___feedback___issues___status-counts']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataFeedbackIssuesUpdateRequest = operations['hata___feedback___issues___update']['requestBody']['content']['application/json'];
@@ -3271,6 +3604,24 @@ type HataHatadyAdminBooksResponse = operations['hata___hatady___admin___books'][
 type HataHatadyAdminDeleteBookRequest = operations['hata___hatady___admin___delete-book']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
+type HataHatadyAdminModerationListRequest = operations['hata___hatady___admin___moderation___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyAdminModerationListResponse = operations['hata___hatady___admin___moderation___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyAdminModerationReviewRequest = operations['hata___hatady___admin___moderation___review']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyAdminModerationReviewResponse = operations['hata___hatady___admin___moderation___review']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyAdminModerationShowRequest = operations['hata___hatady___admin___moderation___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyAdminModerationShowResponse = operations['hata___hatady___admin___moderation___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type HataHatadyBookmarksCreateRequest = operations['hata___hatady___bookmarks___create']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -3329,6 +3680,12 @@ type HataHatadyCommentsRequest = operations['hata___hatady___comments']['request
 
 // @public (undocumented)
 type HataHatadyCommentsResponse = operations['hata___hatady___comments']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyCommentsUpdateRequest = operations['hata___hatady___comments___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyCommentsUpdateResponse = operations['hata___hatady___comments___update']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataHatadyFollowersRemoveRequest = operations['hata___hatady___followers___remove']['requestBody']['content']['application/json'];
@@ -3415,6 +3772,12 @@ type HataHatadyMediaReactionsCreateRequest = operations['hata___hatady___media__
 type HataHatadyMediaReactionsDeleteRequest = operations['hata___hatady___media___reactions___delete']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
+type HataHatadyMediaReactionsListRequest = operations['hata___hatady___media___reactions___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaReactionsListResponse = operations['hata___hatady___media___reactions___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type HataHatadyMediaSessionsCreateRequest = operations['hata___hatady___media___sessions___create']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -3428,6 +3791,12 @@ type HataHatadyMediaSessionsListRequest = operations['hata___hatady___media___se
 
 // @public (undocumented)
 type HataHatadyMediaSessionsListResponse = operations['hata___hatady___media___sessions___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaSessionsShowRequest = operations['hata___hatady___media___sessions___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaSessionsShowResponse = operations['hata___hatady___media___sessions___show']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataHatadyMediaSessionsUpdateRequest = operations['hata___hatady___media___sessions___update']['requestBody']['content']['application/json'];
@@ -3478,10 +3847,19 @@ type HataHatadyMemosUpdateRequest = operations['hata___hatady___memos___update']
 type HataHatadyMemosUpdateResponse = operations['hata___hatady___memos___update']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type HataHatadyNotificationsDeleteRequest = operations['hata___hatady___notifications___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyNotificationsMarkAsReadRequest = operations['hata___hatady___notifications___mark-as-read']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
 type HataHatadyNotificationsRequest = operations['hata___hatady___notifications']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
 type HataHatadyNotificationsResponse = operations['hata___hatady___notifications']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyNotificationsRestoreRequest = operations['hata___hatady___notifications___restore']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
 type HataHatadyNotificationsUnreadCountResponse = operations['hata___hatady___notifications___unread-count']['responses']['200']['content']['application/json'];
@@ -3494,6 +3872,12 @@ type HataHatadyReactionsCreateRequest = operations['hata___hatady___reactions___
 
 // @public (undocumented)
 type HataHatadyReactionsDeleteRequest = operations['hata___hatady___reactions___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyReactionsListRequest = operations['hata___hatady___reactions___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyReactionsListResponse = operations['hata___hatady___reactions___list']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataHatadySearchRequest = operations['hata___hatady___search']['requestBody']['content']['application/json'];
@@ -3545,6 +3929,30 @@ type HataHatadyUsersShowRequest = operations['hata___hatady___users___show']['re
 
 // @public (undocumented)
 type HataHatadyUsersShowResponse = operations['hata___hatady___users___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatagoesHomeDailyRequest = operations['hata___hatagoes___home___daily']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatagoesHomeDailyResponse = operations['hata___hatagoes___home___daily']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatagoesHomeIssuesResponse = operations['hata___hatagoes___home___issues']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatagoesNotificationsUnreadCountResponse = operations['hata___hatagoes___notifications___unread-count']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatagoesSearchRequest = operations['hata___hatagoes___search']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatagoesSearchResponse = operations['hata___hatagoes___search']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatagoesShowRequest = operations['hata___hatagoes___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatagoesShowResponse = operations['hata___hatagoes___show']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataHataskEmotionAnalysisCreateRequest = operations['hata___hatask___emotion-analysis___create']['requestBody']['content']['application/json'];
@@ -3616,10 +4024,46 @@ type HataskEventsUpdateRequest = operations['hatask___events___update']['request
 type HataskEventsUpdateResponse = operations['hatask___events___update']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type HataskFlowersDropsPourRequest = operations['hatask___flowers___drops___pour']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersDropsPourResponse = operations['hatask___flowers___drops___pour']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersDropsShowRequest = operations['hatask___flowers___drops___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersDropsShowResponse = operations['hatask___flowers___drops___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersFestivalShowRequest = operations['hatask___flowers___festival___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersFestivalShowResponse = operations['hatask___flowers___festival___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersHarvestRequest = operations['hatask___flowers___harvest']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersHarvestResponse = operations['hatask___flowers___harvest']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type HataskFlowersListRequest = operations['hatask___flowers___list']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
 type HataskFlowersListResponse = operations['hatask___flowers___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersRenameRequest = operations['hatask___flowers___rename']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersRenameResponse = operations['hatask___flowers___rename']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersStateRequest = operations['hatask___flowers___state']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersStateResponse = operations['hatask___flowers___state']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataskFlowersSyncRequest = operations['hatask___flowers___sync']['requestBody']['content']['application/json'];
@@ -3632,6 +4076,18 @@ type HataskFlowersVisibilityUpdateRequest = operations['hatask___flowers___visib
 
 // @public (undocumented)
 type HataskFlowersVisibilityUpdateResponse = operations['hatask___flowers___visibility___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersZukanClaimSeedRequest = operations['hatask___flowers___zukan___claim-seed']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersZukanClaimSeedResponse = operations['hatask___flowers___zukan___claim-seed']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersZukanShowRequest = operations['hatask___flowers___zukan___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersZukanShowResponse = operations['hatask___flowers___zukan___show']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataskPlannerCommitBatchRequest = operations['hatask___planner___commit-batch']['requestBody']['content']['application/json'];
@@ -3653,6 +4109,81 @@ type HataskPlannerCreateShadowResponse = operations['hatask___planner___create-s
 
 // @public (undocumented)
 type HataskPlannerGetResponse = operations['hatask___planner___get']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRankingListRequest = operations['hatask___ranking___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRankingListResponse = operations['hatask___ranking___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRankingParticipationRequest = operations['hatask___ranking___participation']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRankingParticipationResponse = operations['hatask___ranking___participation']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesCookedCreateRequest = operations['hatask___recipes___cooked___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesCookedCreateResponse = operations['hatask___recipes___cooked___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesCookedDeleteRequest = operations['hatask___recipes___cooked___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesCookedListRequest = operations['hatask___recipes___cooked___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesCookedListResponse = operations['hatask___recipes___cooked___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesCreateRequest = operations['hatask___recipes___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesCreateResponse = operations['hatask___recipes___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesDeleteRequest = operations['hatask___recipes___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesListRequest = operations['hatask___recipes___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesListResponse = operations['hatask___recipes___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesShowRequest = operations['hatask___recipes___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesShowResponse = operations['hatask___recipes___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesUpdateRequest = operations['hatask___recipes___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecipesUpdateResponse = operations['hatask___recipes___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecordsExportResponse = operations['hatask___records___export']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecordsImportRequest = operations['hatask___records___import']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskRecordsImportResponse = operations['hatask___records___import']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskSupportShowResponse = operations['hatask___support___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskSupportSupportersRequest = operations['hatask___support___supporters']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskSupportSupportersResponse = operations['hatask___support___supporters']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataUiSAnnouncementClaimResponse = operations['hata___ui-s-announcement___claim']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type I2faDoneRequest = operations['i___2fa___done']['requestBody']['content']['application/json'];
@@ -3980,6 +4511,21 @@ type IWebhooksTestRequest = operations['i___webhooks___test']['requestBody']['co
 type IWebhooksUpdateRequest = operations['i___webhooks___update']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
+export type LtlPunchState = {
+    id: string;
+    revision: number;
+    startedAt: number;
+    fallAt: number;
+    endsAt: number;
+    finishedAt: number | null;
+    status: 'active' | 'won' | 'escaped';
+    hp: number;
+    maxHp: number;
+    people: number;
+    serverNow: number;
+};
+
+// @public (undocumented)
 type MeDetailed = components['schemas']['MeDetailed'];
 
 // @public (undocumented)
@@ -4011,8 +4557,21 @@ type ModerationLog = {
     id: ID;
     createdAt: DateString;
     userId: User['id'];
-    user: UserDetailedNotMe;
+    user: UserLite;
+    isRedacted?: boolean;
 } & ({
+    type: 'voteRegistrationApplication';
+    info: ModerationLogPayloads['voteRegistrationApplication'];
+} | {
+    type: 'deleteHatadyRecord' | 'deleteHataskRecord' | 'warnHatadyUser' | 'warnHataskUser';
+    info: ModerationLogPayloads['deleteHatadyRecord'];
+} | {
+    type: 'approveRegistrationApplication';
+    info: ModerationLogPayloads['approveRegistrationApplication'];
+} | {
+    type: 'rejectRegistrationApplication';
+    info: ModerationLogPayloads['rejectRegistrationApplication'];
+} | {
     type: 'updateServerSettings';
     info: ModerationLogPayloads['updateServerSettings'];
 } | {
@@ -4174,7 +4733,7 @@ type ModerationLog = {
 });
 
 // @public (undocumented)
-export const moderationLogTypes: readonly ["updateServerSettings", "suspend", "unsuspend", "updateUserNote", "addCustomEmoji", "updateCustomEmoji", "deleteCustomEmoji", "assignRole", "unassignRole", "createRole", "updateRole", "deleteRole", "clearQueue", "promoteQueue", "deleteDriveFile", "deleteNote", "createGlobalAnnouncement", "createUserAnnouncement", "updateGlobalAnnouncement", "updateUserAnnouncement", "deleteGlobalAnnouncement", "deleteUserAnnouncement", "resetPassword", "suspendRemoteInstance", "unsuspendRemoteInstance", "updateRemoteInstanceNote", "markSensitiveDriveFile", "unmarkSensitiveDriveFile", "resolveAbuseReport", "forwardAbuseReport", "updateAbuseReportNote", "createInvitation", "createAd", "updateAd", "deleteAd", "createAvatarDecoration", "updateAvatarDecoration", "deleteAvatarDecoration", "unsetMfa", "unsetUserAvatar", "unsetUserBanner", "createSystemWebhook", "updateSystemWebhook", "deleteSystemWebhook", "createAbuseReportNotificationRecipient", "updateAbuseReportNotificationRecipient", "deleteAbuseReportNotificationRecipient", "deleteAccount", "deletePage", "deleteFlash", "deleteGalleryPost", "deleteChatRoom", "updateProxyAccountDescription"];
+export const moderationLogTypes: readonly ["deleteHatadyRecord", "deleteHataskRecord", "warnHatadyUser", "warnHataskUser", "voteRegistrationApplication", "approveRegistrationApplication", "rejectRegistrationApplication", "updateServerSettings", "suspend", "unsuspend", "updateUserNote", "addCustomEmoji", "updateCustomEmoji", "deleteCustomEmoji", "assignRole", "unassignRole", "createRole", "updateRole", "deleteRole", "clearQueue", "promoteQueue", "deleteDriveFile", "deleteNote", "createGlobalAnnouncement", "createUserAnnouncement", "updateGlobalAnnouncement", "updateUserAnnouncement", "deleteGlobalAnnouncement", "deleteUserAnnouncement", "resetPassword", "suspendRemoteInstance", "unsuspendRemoteInstance", "updateRemoteInstanceNote", "markSensitiveDriveFile", "unmarkSensitiveDriveFile", "resolveAbuseReport", "forwardAbuseReport", "updateAbuseReportNote", "createInvitation", "createAd", "updateAd", "deleteAd", "createAvatarDecoration", "updateAvatarDecoration", "deleteAvatarDecoration", "unsetMfa", "unsetUserAvatar", "unsetUserBanner", "createSystemWebhook", "updateSystemWebhook", "deleteSystemWebhook", "createAbuseReportNotificationRecipient", "updateAbuseReportNotificationRecipient", "deleteAbuseReportNotificationRecipient", "deleteAccount", "deletePage", "deleteFlash", "deleteGalleryPost", "deleteChatRoom", "updateProxyAccountDescription"];
 
 // @public (undocumented)
 type MuteCreateRequest = operations['mute___create']['requestBody']['content']['application/json'];
@@ -4215,6 +4774,9 @@ type NoteDraft = components['schemas']['NoteDraft'];
 
 // @public (undocumented)
 type NoteFavorite = components['schemas']['NoteFavorite'];
+
+// @public (undocumented)
+type NoteFavoriteFolder = components['schemas']['NoteFavoriteFolder'];
 
 // @public (undocumented)
 type NoteHistory = components['schemas']['NoteHistory'];
@@ -4295,6 +4857,30 @@ type NotesFavoritesCreateRequest = operations['notes___favorites___create']['req
 type NotesFavoritesDeleteRequest = operations['notes___favorites___delete']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
+type NotesFavoritesFoldersCreateRequest = operations['notes___favorites___folders___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type NotesFavoritesFoldersCreateResponse = operations['notes___favorites___folders___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type NotesFavoritesFoldersDeleteRequest = operations['notes___favorites___folders___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type NotesFavoritesFoldersDeleteResponse = operations['notes___favorites___folders___delete']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type NotesFavoritesFoldersListResponse = operations['notes___favorites___folders___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type NotesFavoritesFoldersUpdateRequest = operations['notes___favorites___folders___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type NotesFavoritesFoldersUpdateResponse = operations['notes___favorites___folders___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type NotesFavoritesMoveRequest = operations['notes___favorites___move']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
 type NotesFeaturedRequest = operations['notes___featured']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -4341,6 +4927,9 @@ type NotesPollsVoteRequest = operations['notes___polls___vote']['requestBody']['
 
 // @public (undocumented)
 type NotesReactionsCreateRequest = operations['notes___reactions___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type NotesReactionsCreateResponse = operations['notes___reactions___create']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type NotesReactionsDeleteRequest = operations['notes___reactions___delete']['requestBody']['content']['application/json'];
@@ -4445,7 +5034,19 @@ type Notification_2 = components['schemas']['Notification'];
 type NotificationsCreateRequest = operations['notifications___create']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
-export const notificationTypes: readonly ["note", "follow", "mention", "reply", "renote", "quote", "reaction", "pollEnded", "scheduledNotePosted", "scheduledNotePostFailed", "receiveFollowRequest", "followRequestAccepted", "groupInvited", "app", "hataFeed", "earthquake", "addedToPrivateChannel", "removedFromPrivateChannel", "roleAssigned", "chatRoomInvitationReceived", "achievementEarned", "exportCompleted", "test", "login", "createToken"];
+type NotificationsMarkAsReadRequest = operations['notifications___mark-as-read']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type NotificationsShowRequest = operations['notifications___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type NotificationsShowResponse = operations['notifications___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type NotificationsUnreadCountResponse = operations['notifications___unread-count']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+export const notificationTypes: readonly ["note", "follow", "mention", "reply", "renote", "quote", "reaction", "pollEnded", "scheduledNotePosted", "scheduledNotePostFailed", "receiveFollowRequest", "followRequestAccepted", "groupInvited", "app", "hataFeed", "hatady", "hataskFlowerReady", "hataskFlowerBloomed", "hataskZukanUpdated", "hataskFestivalBloomed", "hataskDecorationUnlocked", "earthquake", "addedToPrivateChannel", "removedFromPrivateChannel", "roleAssigned", "chatRoomInvitationReceived", "achievementEarned", "exportCompleted", "test", "login", "createToken"];
 
 // @public (undocumented)
 export function nyaize(text: string): string;
@@ -4666,7 +5267,7 @@ type RoleLite = components['schemas']['RoleLite'];
 type RolePolicies = components['schemas']['RolePolicies'];
 
 // @public (undocumented)
-export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "btlAvailable", "canPublicNote", "canEditNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canHideAds", "mascotMaxExpressions", "mascotMaxPhrases", "mascotMaxCharacters", "hataSideStudioProfileLimit", "canUseMascot", "canAccessHataFeed", "canUseHatadySync", "hatadyBookLimit", "hatadyBookmarkLimit", "hatadyGameTitleLimit", "canMakePrivateChannel", "canRequestRemoteEmoji", "emojiRequestLimit", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable", "canSetFederationAvatarShape"];
+export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "btlAvailable", "canPublicNote", "canEditNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canHideAds", "mascotMaxExpressions", "mascotMaxPhrases", "mascotMaxCharacters", "hataSideStudioProfileLimit", "canUseMascot", "canAccessHataFeed", "canUseHatadySync", "hatadyBookLimit", "hatadyBookmarkLimit", "hatadyGameTitleLimit", "canMakePrivateChannel", "canRequestRemoteEmoji", "emojiRequestLimit", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "favoriteFolderLimit", "canCreateFavoriteSubfolders", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable", "canSetFederationAvatarShape"];
 
 // @public (undocumented)
 type RolesListResponse = operations['roles___list']['responses']['200']['content']['application/json'];
@@ -5131,10 +5732,10 @@ type VerifyEmailRequest = operations['verify-email']['requestBody']['content']['
 
 // Warnings were encountered during analysis:
 //
-// src/entities.ts:56:2 - (ae-forgotten-export) The symbol "ModerationLogPayloads" needs to be exported by the entry point index.d.ts
+// src/entities.ts:57:2 - (ae-forgotten-export) The symbol "ModerationLogPayloads" needs to be exported by the entry point index.d.ts
 // src/streaming.ts:57:3 - (ae-forgotten-export) The symbol "ReconnectingWebSocket" needs to be exported by the entry point index.d.ts
-// src/streaming.types.ts:244:4 - (ae-forgotten-export) The symbol "ReversiUpdateKey" needs to be exported by the entry point index.d.ts
-// src/streaming.types.ts:255:4 - (ae-forgotten-export) The symbol "ReversiUpdateSettings" needs to be exported by the entry point index.d.ts
+// src/streaming.types.ts:281:4 - (ae-forgotten-export) The symbol "ReversiUpdateKey" needs to be exported by the entry point index.d.ts
+// src/streaming.types.ts:292:4 - (ae-forgotten-export) The symbol "ReversiUpdateSettings" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
