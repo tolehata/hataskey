@@ -234,6 +234,21 @@ async function save() {
 	saveError.value = '';
 	savedId.value = null;
 	try {
+		// The server removes the decoration from wearers who no longer qualify as soon as this
+		// is saved. Ask first whenever the change can take it away from someone wearing it now.
+		const now = Date.now();
+		const becomesReward = params.requiresHataskFlowerCompletion && (replaceFromId != null || !currentDecoration.requiresHataskFlowerCompletion);
+		const outsidePeriod = (params.availableFrom != null && Date.parse(params.availableFrom) > now)
+			|| (params.availableUntil != null && Date.parse(params.availableUntil) <= now);
+		if (becomesReward || outsidePeriod) {
+			const { canceled } = await os.confirm({
+				type: 'warning',
+				title: '着用中の人からデコが外れます',
+				text: `保存すると、「${currentDecoration.name}」を着用している人のうち${becomesReward ? 'お花図鑑を達成していない人' : ''}${becomesReward && outsidePeriod ? '、および' : ''}${outsidePeriod ? '期間外になる全員' : ''}から、すぐにデコが外れます。外れたデコは自動では戻りません。`,
+				okText: '保存する',
+			});
+			if (canceled) return;
+		}
 		await misskeyApi('admin/hatask/update-decoration', { ...params, ...(replaceFromId ? { replaceFromId } : {}) });
 		const decoration = decorations.value.find(item => item.id === id);
 		if (decoration) Object.assign(decoration, params);

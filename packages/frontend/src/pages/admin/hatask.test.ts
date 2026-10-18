@@ -220,6 +220,44 @@ describe('Hatask管理のアイコンデコ設定', () => {
 		expect(container.textContent).toContain('設定を保存しました');
 	});
 
+	test('通常のデコを特典にする保存は着用者から外れることを確認し、キャンセルなら送らず入力を保つ', async () => {
+		const container = await mount();
+		await toggle(container, '[data-completion]', true);
+		confirm.mockResolvedValueOnce({ canceled: true });
+		find<HTMLButtonElement>(container, '[data-save]').click();
+		await settle();
+		expect(confirm).toHaveBeenCalledOnce();
+		expect(confirm.mock.calls[0][0].text).toContain('お花図鑑を達成していない人');
+		expect(saveCalls()).toHaveLength(0);
+		expect(find<HTMLInputElement>(container, '[data-completion] input').checked).toBe(true);
+		expect(find<HTMLButtonElement>(container, '[data-save]').disabled).toBe(false);
+		find<HTMLButtonElement>(container, '[data-save]').click();
+		await settle();
+		expect(saveCalls()).toHaveLength(1);
+	});
+
+	test('期間を過去で終えると全員から外れることを確認する', async () => {
+		const container = await mount();
+		await toggle(container, '[data-period]', true);
+		await date(container, '[data-end]', '2020-01-01T00:00');
+		find<HTMLButtonElement>(container, '[data-save]').click();
+		await settle();
+		expect(confirm).toHaveBeenCalledOnce();
+		expect(confirm.mock.calls[0][0].text).toContain('期間外になる全員');
+		expect(saveCalls()).toHaveLength(1);
+	});
+
+	test('着用者に影響しない保存では確認を出さない', async () => {
+		decorations[0].requiresHataskFlowerCompletion = true;
+		const container = await mount();
+		await toggle(container, '[data-period]', true);
+		await date(container, '[data-end]', '2999-01-01T00:00');
+		find<HTMLButtonElement>(container, '[data-save]').click();
+		await settle();
+		expect(confirm).not.toHaveBeenCalled();
+		expect(saveCalls()).toHaveLength(1);
+	});
+
 	test('保存中の二重送信と別デコへの切り替えを止める', async () => {
 		const container = await mount();
 		await toggle(container, '[data-completion]', true);
