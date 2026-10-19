@@ -146,3 +146,6 @@ HATA-PITFALLS.md
 
 # 花常の開発書類・作業進捗・画像生成用リファレンス（実行時アセットではないため配布しない）
 /packages/frontend/hanaawase/
+
+# HataIgo の法務調査・実装指示書・デザイン handoff（特許の分析を含むため公開しない）
+/packages/frontend/hataigo/
