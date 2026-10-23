@@ -135,7 +135,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 			</button>
 		</div>
 
-		<div v-if="sideReactions" ref="sideEl" :class="$style.side">
+		<div v-if="sideReactions" ref="sideEl" :class="$style.side" :style="{ minHeight: rxOpen && sideOverflow ? `${Math.max(100, sideLayoutRows * 56 - 14)}px` : undefined }">
 			<!-- CSS grid だと付与・変更直後の枠が一部しか描かれない環境があるため、位置を明示して並べる。 -->
 			<div :class="$style.sideGrid">
 				<XReaction v-for="(r, i) in sideList" :key="r.reaction" custom :noteId="appearNote.id" :note="appearNote" :reaction="r.reaction" :reactionEmojis="$appearNote.reactionEmojis" :myReaction="$appearNote.myReaction" :count="r.count" :isInitial="true" :class="$style.sideChip" :style="sideCell(i)" :data-reaction="r.reaction" :data-mine="r.mine ? 'true' : undefined" :aria-label="r.title" @activate="toggleReaction(r.reaction, $event)">
@@ -143,7 +143,7 @@ Hataskey UI 3: タイムラインのノート。ルーム表示(右端にリア�
 					<span>{{ r.count }}</span>
 				</XReaction>
 				<button v-if="canAddReaction" type="button" :class="$style.sideAdd" :style="sideCell(sideList.length)" :title="copy.addReaction" @click="react($event)"><SmilePlus :size="18"/></button>
-				<button v-if="sideOverflow" type="button" :class="$style.sideMore" :style="sideCell(sideList.length + (canAddReaction ? 1 : 0))" :data-open="rxOpen ? 'true' : undefined" :title="copy.allReactions" @click="rxOpen = !rxOpen">
+				<button v-if="sideOverflow" type="button" :class="$style.sideMore" :style="sideCell(sideList.length + (canAddReaction ? 1 : 0))" :data-open="rxOpen ? 'true' : undefined" :aria-expanded="rxOpen" :title="copy.allReactions" @click="rxOpen = !rxOpen">
 					<component :is="rxOpen ? ChevronRight : ChevronLeft" :size="15"/>{{ rxOpen ? '' : `+${reactions.length - sideCap}` }}
 				</button>
 			</div>
@@ -270,6 +270,7 @@ const showContent = ref(false);
 const showMuted = ref(false);
 const rxOpen = ref(false);
 const sideRows = ref(2);
+const sideMaxCols = ref(2);
 const inlineOverflow = ref(0);
 const inlineHidden = ref(0);
 const inlineCollapsedHeight = ref(0);
@@ -368,7 +369,7 @@ watch(() => reactions.value.map(r => `${r.reaction}\u0000${r.count}\u0000${r.min
 	});
 });
 
-// 右端のリアクション列: 本文の高さに収まる行数×2列を基本とし、溢れたら「+N」で横に広げる。
+// 右端のリアクション列: 通常は本文の高さに収まる2列。展開時も本文の幅を残す。
 const SIDE_COLS = 2;
 const sideCapacity = computed(() => sideRows.value * SIDE_COLS);
 // 自分のリアクションが付いている間は、絵文字の横の追加ボタンを出さない(変更は他の絵文字を押す)。
@@ -379,13 +380,18 @@ const sideOverflow = computed(() => !sideFitsAll.value);
 const sideList = computed(() => rxOpen.value ? reactions.value : reactions.value.slice(0, sideCap.value));
 const sideCols = computed(() => {
 	if (!rxOpen.value || !sideOverflow.value) return SIDE_COLS;
-	return Math.max(SIDE_COLS, Math.ceil((reactions.value.length + (canAddReaction.value ? 2 : 1)) / sideRows.value));
+	return Math.min(sideMaxCols.value, Math.max(SIDE_COLS, Math.ceil((reactions.value.length + (canAddReaction.value ? 2 : 1)) / sideRows.value)));
 });
+const sideLayoutRows = computed(() => rxOpen.value && sideOverflow.value
+	? Math.max(sideRows.value, Math.ceil((reactions.value.length + (canAddReaction.value ? 2 : 1)) / sideCols.value))
+	: sideRows.value);
 const sideWidth = computed(() => sideCols.value * 58 + 10);
 
-// 縦に sideRows 個ずつ詰めて、あふれたら左の列から右へ並べる。
+watch(sideOverflow, overflow => { if (sideReactions.value && !overflow) rxOpen.value = false; });
+
+// 幅の上限を超えた分は下へ並べ、すべてのリアクションと閉じるボタンを枠内に収める。
 function sideCell(index: number) {
-	return { left: `${Math.floor(index / sideRows.value) * 58}px`, top: `${(index % sideRows.value) * 56}px` };
+	return { left: `${Math.floor(index / sideLayoutRows.value) * 58}px`, top: `${(index % sideLayoutRows.value) * 56}px` };
 }
 
 const articleStyle = computed(() => ({
@@ -662,8 +668,21 @@ async function toggleThread() {
 function measure() {
 	const side = sideEl.value;
 	if (side) {
-		const rows = Math.max(1, Math.floor((side.clientHeight + 14) / 56));
-		if (rows !== sideRows.value) sideRows.value = rows;
+		const article = articleEl.value;
+		if (article) {
+			const style = window.getComputedStyle(article);
+			const padding = (Number.parseFloat(style.paddingLeft) || 0) + (Number.parseFloat(style.paddingRight) || 0);
+			const avatar = Number.parseFloat(style.getPropertyValue('--hk3-note-avatar-size')) || 44;
+			const gap = Number.parseFloat(style.columnGap) || 0;
+			const available = Math.max(0, article.clientWidth - padding - avatar - gap * 2);
+			// Gridの列幅に依存しない外枠から上限を決め、本文に少なくとも半分を残す。
+			sideMaxCols.value = Math.max(SIDE_COLS, Math.floor((available / 2 - 10) / 58));
+		}
+		// 展開した幅で本文が折り返すと高さも変わる。展開中に行数へ戻すと幅と高さが振動する。
+		if (!rxOpen.value) {
+			const rows = Math.max(1, Math.floor((side.clientHeight + 14) / 56));
+			if (rows !== sideRows.value) sideRows.value = rows;
+		}
 	}
 	const inline = inlineEl.value;
 	if (inline && inline.children.length > 0) {

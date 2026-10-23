@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, defineComponent, h, inject, nextTick } from 'vue';
+import { createApp, defineComponent, h, inject, nextTick, reactive } from 'vue';
 import type { entities } from 'cherrypick-js';
 import Hk3Note from './Hk3Note.vue';
 import externalNoteSource from '@/components/MkExternalNote.vue?raw';
@@ -73,11 +73,11 @@ function note(id: string, reactions: Record<string, number> = {}) {
 
 const cleanups: (() => void)[] = [];
 
-function mount(current: entities.Note, threadReply = false, mobile = false) {
+function mount(current: entities.Note, threadReply = false, mobile = false, size: 'sm' | 'lg' = 'sm') {
 	const host = window.document.createElement('div');
 	if (mobile) host.dataset.mobile = 'true';
 	window.document.body.append(host);
-	const app = createApp({ render: () => h(Hk3Note, { note: current, size: 'sm', threadReply }) });
+	const app = createApp({ render: () => h(Hk3Note, { note: current, size, threadReply }) });
 	app.component('Mfm', defineComponent({
 		props: ['text', 'enableEmojiMenuReaction'],
 		setup(props) {
@@ -181,6 +181,65 @@ describe('UI S visibility rail', () => {
 });
 
 describe('UI S note reaction actions', () => {
+	it.each([[20, false], [200, false], [20, true], [200, true]] as const)('keeps the expanded side stable and within the note (%i reactions, own=%s)', async (count, own) => {
+		const current = reactive(note('target', Object.fromEntries(Array.from({ length: count }, (_, i) => [`reaction-${i}`, 1]))));
+		current.myReaction = own ? 'reaction-0' : null;
+		const host = mount(current, false, false, 'lg');
+		const article = host.querySelector('article');
+		const firstReaction = host.querySelector('button[data-reaction]');
+		const grid = firstReaction?.parentElement;
+		const side = grid?.parentElement;
+		const more = grid?.querySelector<HTMLButtonElement>('button:last-child');
+		if (!article || !grid || !side || !more) throw new Error('Missing side reactions');
+		let width = 900;
+		article.style.padding = '18px 20px';
+		article.style.columnGap = '12px';
+		article.style.setProperty('--hk3-note-avatar-size', '44px');
+		Object.defineProperty(article, 'clientWidth', { configurable: true, get: () => width });
+		const sideWidth = () => Number.parseFloat(article.style.gridTemplateColumns.match(/([\d.]+)px$/)?.[1] ?? '0');
+		// Narrowing the body changes its wrapped height. Feeding this back into
+		// the row count used to alternate the reaction width on every resize.
+		Object.defineProperty(side, 'clientHeight', { configurable: true, get: () => Math.max(Number.parseFloat(side.style.minHeight) || 0, sideWidth() > 126 ? 282 : 100) });
+		const remeasure = async () => {
+			resizeCallback?.([], {} as ResizeObserver);
+			measureFrame?.(0);
+			await settle();
+		};
+		await remeasure();
+		more.click(); await settle();
+		const expanded = article.style.gridTemplateColumns;
+		for (let i = 0; i < 8; i++) {
+			await remeasure();
+			expect(article.style.gridTemplateColumns).toBe(expanded);
+		}
+		const assertFits = () => {
+			expect(grid.querySelectorAll('button[data-reaction]')).toHaveLength(count);
+			expect(sideWidth()).toBeLessThanOrEqual(width / 2);
+			for (const cell of grid.children as HTMLCollectionOf<HTMLElement>) {
+				expect(Number.parseFloat(cell.style.left) + 52).toBeLessThanOrEqual(sideWidth() - 10);
+				expect(Number.parseFloat(cell.style.top) + 50).toBeLessThanOrEqual(side.clientHeight + 8);
+			}
+		};
+		assertFits();
+		width = 600;
+		await remeasure();
+		assertFits();
+		more.click(); await settle();
+		await remeasure();
+		expect(sideWidth()).toBe(126);
+		expect(side.style.minHeight).toBe('');
+		expect(grid.querySelectorAll('button[data-reaction]').length).toBeLessThan(count);
+		more.click(); await settle();
+		await remeasure();
+		assertFits();
+		current.reactions = { 'reaction-0': 1 };
+		await settle();
+		await remeasure();
+		expect(sideWidth()).toBe(126);
+		expect(side.style.minHeight).toBe('');
+		expect(more.isConnected).toBe(false);
+	});
+
 	it('shows three mobile rows without an expand button when all chips fit', async () => {
 		const host = mount(note('target', Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`reaction-${i}`, 1]))), false, true);
 		const list = await layoutReactionRows(host, 2);
