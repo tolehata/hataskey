@@ -5,11 +5,13 @@
 
 import { EventEmitter } from 'node:events';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import Ajv from 'ajv';
+import _Ajv from 'ajv';
 import { HataigoGameChannel } from '@/server/api/stream/channels/hataigo-game.js';
 import { HataigoError } from '@/misc/hataigo/types.js';
 import { hataigoApi, hataigoActionSchema, hataigoErrorCode } from '@/misc/hataigo/api.js';
-import { isHataigoReaction } from '@/misc/hataigo/presence.js';
+import { isHataigoReaction, parseHataigoPresence } from '@/misc/hataigo/presence.js';
+
+const Ajv = _Ajv.default;
 
 vi.mock('@/core/HataigoChatService.js', () => ({ HataigoChatService: class {} }));
 vi.mock('@/core/HataigoService.js', () => ({ HataigoService: class {} }));
@@ -26,7 +28,7 @@ function fixture({ participant = true, authenticated = true, write = true } = {}
 	const subscriber = new EventEmitter();
 	const sent = vi.fn();
 	const games = { get: vi.fn(async () => game), act: vi.fn(async () => game), claimTimeout: vi.fn(async () => game), rateLimit: vi.fn(async () => {}) };
-	const redis = { eval: vi.fn(async () => 2) };
+	const redis = { eval: vi.fn(async (): Promise<unknown> => [2, 1]) };
 	const events = { publishHataigoGameStream: vi.fn() };
 	const connection = { user: viewer, subscriber, hasPermission: vi.fn((permission: string) => authenticated && (permission === 'read:account' || write)), sendMessageToWs: sent, disconnectChannel: vi.fn() };
 	const chat = { getPacked: vi.fn(async () => ({ id: 'message1', text: 'public' })), post: vi.fn(async () => {}), delete: vi.fn(async () => {}) };
@@ -81,12 +83,12 @@ describe('HataIgo streaming authorization', () => {
 	});
 	test('releases a late presence join when disposal happens while Redis is awaiting', async () => {
 		const f = fixture({ participant: false });
-		let release: (value: number) => void = () => {};
-		f.redis.eval.mockImplementationOnce(() => new Promise<number>(resolve => { release = resolve; }));
+		let release: (value: unknown) => void = () => {};
+		f.redis.eval.mockImplementationOnce(() => new Promise<unknown>(resolve => { release = resolve; }));
 		const connecting = f.channel.init({ gameId: 'game1' });
 		await flush();
 		f.channel.dispose();
-		release(2);
+		release([2, 1]);
 		expect(await connecting).toBe(false);
 		await flush();
 		const operations = f.redis.eval.mock.calls as unknown as unknown[][];
@@ -94,6 +96,57 @@ describe('HataIgo streaming authorization', () => {
 		expect(f.events.publishHataigoGameStream.mock.calls.every(([, type]) => type === 'spectators')).toBe(true);
 		expect(f.subscriber.listenerCount('hataigoGameStream:game1')).toBe(0);
 	});
+	test('shares one access re-check across spectator counts and reactions, but re-checks moves and chat every time', async () => {
+		let now = 1_000_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		const f = fixture();
+		// Events are delivered through one queue; waiting on its tail settles every event emitted so far.
+		const settle = () => (f.channel as unknown as { pending: Promise<void> }).pending;
+		expect(await f.channel.init({ gameId: 'game1' })).toBe(true);
+		expect(f.games.get).toHaveBeenCalledTimes(1);
+		f.sent.mockClear();
+		for (let n = 0; n < 5; n++) f.subscriber.emit('hataigoGameStream:game1', { type: 'spectators', body: { count: n } });
+		for (let n = 0; n < 3; n++) f.subscriber.emit('hataigoGameStream:game1', { type: 'reacted', body: { reaction: '👏' } });
+		await settle();
+		expect(f.games.get).toHaveBeenCalledTimes(1);
+		expect(f.sent.mock.calls.filter(([, body]) => body.type === 'spectators' || body.type === 'reacted')).toHaveLength(8);
+		f.subscriber.emit('hataigoGameStream:game1', { type: 'updated', body: { revision: 1 } });
+		await settle();
+		expect(f.games.get).toHaveBeenCalledTimes(2);
+		// Once the window passes, a count event re-checks again and a lost access still revokes the room.
+		now += 30001;
+		f.games.get.mockRejectedValue(new HataigoError('NOT_FOUND'));
+		f.subscriber.emit('hataigoGameStream:game1', { type: 'spectators', body: { count: 9 } });
+		await settle();
+		expect(f.games.get).toHaveBeenCalledTimes(3);
+		expect(f.sent.mock.calls.some(([, body]) => body.type === 'spectators' && body.body.count === 9)).toBe(false);
+		expect(f.sent).toHaveBeenCalledWith('channel', { id: 'c1', type: 'revoked', body: {} });
+	});
+	test('announces the spectator count to the room only when it changes, and still tells a joiner the current count', async () => {
+		const f = fixture({ participant: false });
+		f.redis.eval.mockResolvedValue([2, 0]);
+		expect(await f.channel.init({ gameId: 'game1' })).toBe(true);
+		expect(f.events.publishHataigoGameStream).not.toHaveBeenCalled();
+		expect(f.sent).toHaveBeenCalledWith('channel', { id: 'c1', type: 'spectators', body: { count: 2 } });
+		const pulse = (f.channel as unknown as { pulse(): Promise<void> }).pulse;
+		await pulse();
+		expect(f.events.publishHataigoGameStream).not.toHaveBeenCalled();
+		expect(f.sent.mock.calls.filter(([, body]) => body.type === 'spectators')).toHaveLength(1);
+		f.redis.eval.mockResolvedValue([3, 1]);
+		await pulse();
+		expect(f.events.publishHataigoGameStream).toHaveBeenCalledWith('game1', 'spectators', { count: 3 });
+		f.redis.eval.mockResolvedValue([3, 0]);
+		f.channel.dispose();
+		await flush();
+		expect(f.events.publishHataigoGameStream).toHaveBeenCalledTimes(1);
+		expect(f.redis.eval.mock.calls.at(-1)?.slice(0, 4)).toEqual([expect.any(String), 2, 'hataigo:presence:{game1}', 'hataigo:presence:{game1}:announced']);
+	});
+});
+
+test('presence results outside {count, changed} are ignored', () => {
+	expect(parseHataigoPresence([4, 1])).toEqual({ count: 4, changed: true });
+	expect(parseHataigoPresence([4, 0])).toEqual({ count: 4, changed: false });
+	for (const raw of [4, null, [], [-1, 1], [1.5, 1], ['x', 1]]) expect(parseHataigoPresence(raw)).toBeNull();
 });
 
 test('API and streaming errors conceal missing versus inaccessible game identities', async () => {
