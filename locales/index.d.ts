@@ -31607,14 +31607,6 @@ export interface Locale extends ILocale {
             };
             "_shared": {
                 /**
-                 * C/C++ プレイグラウンド
-                 */
-                "cppPlayground": string;
-                /**
-                 * ブラウザ内だけで C/C++ を書いて実行できる遊び場（サーバーに送られません）。
-                 */
-                "cppPlaygroundDescription": string;
-                /**
                  * 投稿前カウントダウン
                  */
                 "postCountdown": string;
@@ -34691,10 +34683,6 @@ export interface Locale extends ILocale {
                  */
                 "betaFeatures": string;
                 /**
-                 * C/C++ プレイグラウンド
-                 */
-                "cppPlayground": string;
-                /**
                  * 投稿前カウントダウン
                  */
                 "postCountdown": string;
@@ -37148,92 +37136,6 @@ export interface Locale extends ILocale {
              * このリアクションを非表示
              */
             "hideReaction": string;
-        };
-        "_cppPlayground": {
-            /**
-             * C/C++ プレイグラウンド
-             */
-            "title": string;
-            /**
-             * ブラウザ内だけで C/C++ を実行する遊び場です（サーバーには送られません）。実行エンジンは
-             */
-            "introductionBefore": string;
-            /**
-             * で、C/C++ のサブセットに対応します。STL・テンプレート・モダンC++の一部は動作しないことがあります。
-             */
-            "introductionAfter": string;
-            /**
-             * サンプル:
-             */
-            "samples": string;
-            /**
-             * 入力を足す
-             */
-            "addInputSample": string;
-            /**
-             * 標準入力（stdin）
-             */
-            "stdin": string;
-            /**
-             * cin / scanf で読み取る入力をここに（1行ずつ）。
-             */
-            "stdinCaption": string;
-            /**
-             * 実行中…
-             */
-            "running": string;
-            /**
-             * 実行
-             */
-            "run": string;
-            /**
-             * 停止
-             */
-            "stop": string;
-            /**
-             * 出力クリア
-             */
-            "clearOutput": string;
-            /**
-             * 出力
-             */
-            "output": string;
-            /**
-             * （ここに実行結果が表示されます）
-             */
-            "outputPlaceholder": string;
-            /**
-             * ベータ機能です。うまく動かない場合は HataFeed からイシューを立ててください。
-             */
-            "betaNotice": string;
-            /**
-             * [実行が時間内に終わりませんでした（無限ループ等の可能性）。中断しました]
-             */
-            "timeout": string;
-            /**
-             * [エラー] {error}
-             */
-            "error": ParameterizedString<"error">;
-            /**
-             * 不明なエラー
-             */
-            "unknownError": string;
-            /**
-             * [終了コード {code}]
-             */
-            "exitCode": ParameterizedString<"code">;
-            /**
-             * [実行エンジンエラー] {error}
-             */
-            "engineError": ParameterizedString<"error">;
-            /**
-             * [停止しました]
-             */
-            "stopped": string;
-            /**
-             * ベータ機能へ
-             */
-            "backToBeta": string;
         };
         "_registrationApplications": {
             "_flow": {
@@ -43154,7 +43056,7 @@ export interface Locale extends ILocale {
                 };
                 "data": {
                     /**
-                     * データとバックアップ
+                     * データと連携、バックアップ
                      */
                     "label": string;
                     /**
@@ -43240,7 +43142,7 @@ export interface Locale extends ILocale {
              */
             "skipToContent": string;
             /**
-             * 設定を検索（透過率・ノートの間隔・bot…）
+             * お困りでしょうか？
              */
             "searchTrigger": string;
             /**
@@ -43594,6 +43496,10 @@ export interface Locale extends ILocale {
                  * 設定を検索
                  */
                 "inputLabel": string;
+                /**
+                 * お困りでしょうか？
+                 */
+                "placeholder": string;
                 /**
                  * {count}件
                  */

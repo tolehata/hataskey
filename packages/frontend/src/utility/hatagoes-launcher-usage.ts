@@ -29,7 +29,6 @@ export const HATAGOES_USAGE_ALIAS: Readonly<Record<string, string>> = {
 	'hatask.side-studio': 'studio',
 	'hatask.earthquake': 'earthquake',
 	'hatask.mascot': 'mascot',
-	'hatask.cpp-playground': 'cpp',
 	'hatask.hata-docs': 'docs',
 	'hatask.games': 'games',
 	'hatask.settings': 'hatasettings',

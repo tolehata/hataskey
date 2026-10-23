@@ -3,7 +3,7 @@
 <section>
 	<header :class="$style.head"><div><h1>ベータ機能</h1><p>試験中の機能です。気づいたことはイシューへ</p></div><button type="button" class="hy-secondary" @click="emit('createIssue')"><i class="ti ti-pencil-plus" aria-hidden="true"></i>イシューを作成</button></header>
 	<div :class="$style.grid">
-		<section v-for="feature in hataBetaFeatures" :key="feature.id" class="hf-panel" :class="$style.card"><i class="ti ti-code" :class="$style.icon" aria-hidden="true"></i><h2>{{ feature.title }}</h2><p>{{ feature.desc }}</p><button type="button" class="hy-secondary" @click="router.push(feature.route as never)"><i class="ti ti-arrow-right" aria-hidden="true"></i>プレイグラウンドを開く</button></section>
+		<section v-for="feature in hataBetaFeatures" :key="feature.id" class="hf-panel" :class="$style.card"><i class="ti ti-code" :class="$style.icon" aria-hidden="true"></i><h2>{{ feature.title }}</h2><p>{{ feature.desc }}</p><button type="button" class="hy-secondary" @click="router.push(feature.route as never)"><i class="ti ti-arrow-right" aria-hidden="true"></i>開く</button></section>
 		<section class="hf-panel" :class="$style.card"><i class="ti ti-clock" :class="$style.icon" aria-hidden="true"></i><h2>投稿前カウントダウン</h2><p>投稿を待っている間に、取り消したりすぐ投稿したりできます</p><MkSwitch v-model="postDelayEnabledModel">{{ copy.enableCountdown }}</MkSwitch><div v-if="postDelayEnabledModel" :class="$style.presets" role="group" :aria-label="copy.waitTimePresets"><span>{{ copy.waitTime }}</span><button v-for="seconds in POST_SEND_DELAY_PRESETS" :key="seconds" type="button" class="hy-secondary" :aria-pressed="postDelaySecondsModel === seconds" @click="postDelaySecondsModel = seconds">{{ tx.seconds({ count: seconds }) }}</button></div></section>
 	</div>
 </section>

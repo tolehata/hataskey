@@ -64,7 +64,7 @@
 		</template>
 		<template v-else-if="page === 'roadmap'">
 			<section class="card"><h4><i class="ti ti-route"></i>{{ exampleCopy.roadmap }}</h4><div class="row"><i class="ti ti-circle-dashed"></i><span>{{ exampleCopy.calendarImprovement }}<small class="line">{{ exampleCopy.inProgress }}</small></span></div><div class="row"><i class="ti ti-calendar-clock"></i><span>{{ exampleCopy.issueSearchImprovement }}<small class="line">{{ exampleCopy.planned }}</small></span></div></section>
-			<section class="card"><h4><i class="ti ti-flask"></i>{{ exampleCopy.betaFeatures }}</h4><p>{{ exampleCopy.cppPlayground }}</p><p>{{ exampleCopy.postCountdown }}</p></section>
+			<section class="card"><h4><i class="ti ti-flask"></i>{{ exampleCopy.betaFeatures }}</h4><p>{{ exampleCopy.postCountdown }}</p></section>
 		</template>
 		<template v-else-if="page === 'notifications'">
 			<section class="card"><h4><i class="ti ti-bell"></i>{{ exampleCopy.notifications }} <span class="notificationTools"><i class="ti ti-checks"></i><i class="ti ti-filter"></i><i class="ti ti-x"></i></span></h4><div class="row"><i class="ti ti-message-circle"></i><span>{{ exampleCopy.commentReceived }}<small class="line">{{ exampleCopy.confirmed }}</small></span></div><div class="row"><i class="ti ti-mood-smile"></i><span>{{ exampleCopy.emojiApproved }}<small class="line">:wakaba:</small></span></div></section>

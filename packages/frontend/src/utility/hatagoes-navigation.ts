@@ -32,7 +32,7 @@ export function hatagoesAppForPath(path: string): HatagoesApp | null {
 	const match = HATAGOES_CATALOG.find(screen => screen.path.split('?')[0] === base);
 	if (match) return match.app;
 	// Games and tools have their own detail URLs; keep their original semantics.
-	if (/^\/(?:reversi|bubble-game|flash|scratchpad|playground|pages|play|gallery)(?:\/|$)/u.test(base)) return 'hatask';
+	if (/^\/(?:reversi|bubble-game|flash|scratchpad|pages|play|gallery)(?:\/|$)/u.test(base)) return 'hatask';
 	return null;
 }
 

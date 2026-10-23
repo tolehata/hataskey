@@ -110,15 +110,7 @@ export interface HataBetaFeature {
 	icon: string;
 	route: string;
 }
-export const hataBetaFeatures: HataBetaFeature[] = [
-	{
-		id: 'cpp-playground',
-		title: copy.cppPlayground,
-		desc: copy.cppPlaygroundDescription,
-		icon: 'Code',
-		route: '/playground/cpp',
-	},
-];
+export const hataBetaFeatures: HataBetaFeature[] = [];
 
 // 旗鯖fork: トグル式(ページではなくスイッチで切り替える)のベータ機能。
 //   ベータページのスイッチと、ベータボタンのバッジ数の両方で数える。
