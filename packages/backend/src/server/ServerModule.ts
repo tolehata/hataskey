@@ -48,7 +48,9 @@ import { RoleTimelineChannelService } from './api/stream/channels/role-timeline.
 import { ChatUserChannelService } from './api/stream/channels/chat-user.js';
 import { ChatRoomChannelService } from './api/stream/channels/chat-room.js';
 import { ReversiChannelService } from './api/stream/channels/reversi.js';
+import { HataigoChannelService } from './api/stream/channels/hataigo.js';
 import { ReversiGameChannelService } from './api/stream/channels/reversi-game.js';
+import { HataigoGameChannelService } from './api/stream/channels/hataigo-game.js';
 import { SigninWithPasskeyApiService } from './api/SigninWithPasskeyApiService.js';
 import { BubbleTimelineChannelService } from './api/stream/channels/bubble-timeline.js';
 import { LtlPunchChannelService } from './api/stream/channels/ltl-punch.js';
@@ -94,7 +96,9 @@ import { HatadyTimelineChannelService } from './api/stream/channels/hatady-timel
 		ChatUserChannelService,
 		ChatRoomChannelService,
 		ReversiChannelService,
+		HataigoChannelService,
 		ReversiGameChannelService,
+		HataigoGameChannelService,
 		HomeTimelineChannelService,
 		HybridTimelineChannelService,
 		LocalTimelineChannelService,

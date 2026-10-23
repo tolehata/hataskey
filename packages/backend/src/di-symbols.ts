@@ -98,6 +98,8 @@ export const DI = {
 	chatRoomInvitationsRepository: Symbol('chatRoomInvitationsRepository'),
 	bubbleGameRecordsRepository: Symbol('bubbleGameRecordsRepository'),
 	reversiGamesRepository: Symbol('reversiGamesRepository'),
+	hataigoGamesRepository: Symbol('hataigoGamesRepository'),
+	hataigoChatMessagesRepository: Symbol('hataigoChatMessagesRepository'),
 	noteDraftsRepository: Symbol('noteDraftsRepository'),
 	noteHistoryRepository: Symbol('noteHistoryRepository'),
 	registrationApplicationsRepository: Symbol('registrationApplicationsRepository'),

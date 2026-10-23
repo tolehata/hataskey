@@ -63,6 +63,8 @@ import {
 	miRepository,
 	MiRetentionAggregation,
 	MiReversiGame,
+	MiHataigoGame,
+	MiHataigoChatMessage,
 	MiRole,
 	MiRoleAssignment,
 	MiSignin,
@@ -621,6 +623,18 @@ const $reversiGamesRepository: Provider = {
 	inject: [DI.db],
 };
 
+const $hataigoChatMessagesRepository: Provider = {
+	provide: DI.hataigoChatMessagesRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHataigoChatMessage).extend(miRepository as MiRepository<MiHataigoChatMessage>),
+	inject: [DI.db],
+};
+
+const $hataigoGamesRepository: Provider = {
+	provide: DI.hataigoGamesRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHataigoGame).extend(miRepository as MiRepository<MiHataigoGame>),
+	inject: [DI.db],
+};
+
 const $abuseReportResolversRepository: Provider = {
 	provide: DI.abuseReportResolversRepository,
 	useFactory: (db: DataSource) => db.getRepository(MiAbuseReportResolver).extend(miRepository as MiRepository<MiAbuseReportResolver>),
@@ -916,6 +930,8 @@ const $feedbackProjectsRepository: Provider = {
 		$chatApprovalsRepository,
 		$bubbleGameRecordsRepository,
 		$reversiGamesRepository,
+		$hataigoGamesRepository,
+		$hataigoChatMessagesRepository,
 		$abuseReportResolversRepository,
 		$noteHistoryRepository,
 		$registrationApplicationsRepository,
@@ -1035,6 +1051,8 @@ const $feedbackProjectsRepository: Provider = {
 		$chatApprovalsRepository,
 		$bubbleGameRecordsRepository,
 		$reversiGamesRepository,
+		$hataigoGamesRepository,
+		$hataigoChatMessagesRepository,
 		$abuseReportResolversRepository,
 		$noteHistoryRepository,
 		$registrationApplicationsRepository,

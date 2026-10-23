@@ -12,6 +12,8 @@ import { bindThis } from '@/decorators.js';
 import { IdService } from '@/core/IdService.js';
 import type { Config } from '@/config.js';
 import { ReversiService } from '@/core/ReversiService.js';
+import { HataigoChatService } from '@/core/HataigoChatService.js';
+import { HataigoService } from '@/core/HataigoService.js';
 import { QueueLoggerService } from '../QueueLoggerService.js';
 import type * as Bull from 'bullmq';
 
@@ -40,6 +42,8 @@ export class CleanProcessorService {
 
 		private queueLoggerService: QueueLoggerService,
 		private reversiService: ReversiService,
+		private hataigoService: HataigoService,
+		private hataigoChatService: HataigoChatService,
 		private idService: IdService,
 	) {
 		this.logger = this.queueLoggerService.logger.createSubLogger('clean');
@@ -74,6 +78,8 @@ export class CleanProcessorService {
 		}
 
 		this.reversiService.cleanOutdatedGames();
+		await this.hataigoService.sweepTimeouts();
+		await this.hataigoChatService.cleanExpired();
 
 		// 古い登録申請のクリーンアップ
 		// pending: 30日経過で削除

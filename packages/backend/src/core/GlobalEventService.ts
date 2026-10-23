@@ -212,6 +212,19 @@ export interface ChatEventTypes {
 	};
 }
 
+export interface HataigoEventTypes {
+	matched: { gameId: string };
+	invited: { gameId: string };
+}
+
+export interface HataigoGameEventTypes {
+	chatMessage: { messageId: string };
+	chatDeleted: { messageId: string };
+	updated: { revision: number };
+	reacted: { reaction: string };
+	spectators: { count: number };
+}
+
 export interface ReversiEventTypes {
 	matched: {
 		game: Packed<'ReversiGameDetailed'>;
@@ -364,6 +377,14 @@ export type GlobalEvents = {
 		name: `chatRoomStream:${MiChatRoom['id']}`;
 		payload: EventTypesToEventPayload<ChatEventTypes>;
 	};
+	hataigo: {
+		name: `hataigoStream:${string}`;
+		payload: EventTypesToEventPayload<HataigoEventTypes>;
+	};
+	hataigoGame: {
+		name: `hataigoGameStream:${string}`;
+		payload: EventTypesToEventPayload<HataigoGameEventTypes>;
+	};
 	reversi: {
 		name: `reversiStream:${MiUser['id']}`;
 		payload: EventTypesToEventPayload<ReversiEventTypes>;
@@ -479,6 +500,16 @@ export class GlobalEventService {
 	@bindThis
 	public publishChatRoomStream<K extends keyof ChatEventTypes>(toRoomId: MiChatRoom['id'], type: K, value?: ChatEventTypes[K]): void {
 		this.publish(`chatRoomStream:${toRoomId}`, type, typeof value === 'undefined' ? null : value);
+	}
+
+	@bindThis
+	public publishHataigoStream<K extends keyof HataigoEventTypes>(userId: string, type: K, value: HataigoEventTypes[K]): void {
+		this.publish(`hataigoStream:${userId}`, type, value);
+	}
+
+	@bindThis
+	public publishHataigoGameStream<K extends keyof HataigoGameEventTypes>(gameId: string, type: K, value: HataigoGameEventTypes[K]): void {
+		this.publish(`hataigoGameStream:${gameId}`, type, value);
 	}
 
 	@bindThis

@@ -6,6 +6,7 @@
  */
 
 import { Module } from '@nestjs/common';
+import { HATAIGO_CHAT_POLICY, hataigoChatRetentionPolicy } from '@/misc/hataigo/chat-policy.js';
 import { FanoutTimelineEndpointService } from '@/core/FanoutTimelineEndpointService.js';
 import { AbuseReportService } from '@/core/AbuseReportService.js';
 import { SystemWebhookEntityService } from '@/core/entities/SystemWebhookEntityService.js';
@@ -110,6 +111,9 @@ import { ChannelFollowingService } from './ChannelFollowingService.js';
 import { ChatService } from './ChatService.js';
 import { RegistryApiService } from './RegistryApiService.js';
 import { ReversiService } from './ReversiService.js';
+import { HataigoService } from './HataigoService.js';
+import { HataigoWithdrawalService } from './HataigoWithdrawalService.js';
+import { HataigoChatService } from './HataigoChatService.js';
 import { PageService } from './PageService.js';
 import { ActivityPubAccessControlService } from './ActivityPubAccessControlService.js';
 
@@ -168,6 +172,7 @@ import { FlashEntityService } from './entities/FlashEntityService.js';
 import { FlashLikeEntityService } from './entities/FlashLikeEntityService.js';
 import { RoleEntityService } from './entities/RoleEntityService.js';
 import { ReversiGameEntityService } from './entities/ReversiGameEntityService.js';
+import { HataigoGameEntityService } from './entities/HataigoGameEntityService.js';
 import { MetaEntityService } from './entities/MetaEntityService.js';
 
 import { ApAudienceService } from './activitypub/ApAudienceService.js';
@@ -288,6 +293,10 @@ const $ChannelFollowingService: Provider = { provide: 'ChannelFollowingService',
 const $ChatService: Provider = { provide: 'ChatService', useExisting: ChatService };
 const $RegistryApiService: Provider = { provide: 'RegistryApiService', useExisting: RegistryApiService };
 const $ReversiService: Provider = { provide: 'ReversiService', useExisting: ReversiService };
+const $HataigoChatPolicy: Provider = { provide: HATAIGO_CHAT_POLICY, useValue: hataigoChatRetentionPolicy };
+const $HataigoWithdrawalService: Provider = { provide: 'HataigoWithdrawalService', useExisting: HataigoWithdrawalService };
+const $HataigoChatService: Provider = { provide: 'HataigoChatService', useExisting: HataigoChatService };
+const $HataigoService: Provider = { provide: 'HataigoService', useExisting: HataigoService };
 const $PageService: Provider = { provide: 'PageService', useExisting: PageService };
 const $ActivityPubAccessControlService: Provider = { provide: 'ActivityPubAccessControlService', useExisting: ActivityPubAccessControlService };
 
@@ -348,6 +357,7 @@ const $FlashEntityService: Provider = { provide: 'FlashEntityService', useExisti
 const $FlashLikeEntityService: Provider = { provide: 'FlashLikeEntityService', useExisting: FlashLikeEntityService };
 const $RoleEntityService: Provider = { provide: 'RoleEntityService', useExisting: RoleEntityService };
 const $ReversiGameEntityService: Provider = { provide: 'ReversiGameEntityService', useExisting: ReversiGameEntityService };
+const $HataigoGameEntityService: Provider = { provide: 'HataigoGameEntityService', useExisting: HataigoGameEntityService };
 const $MetaEntityService: Provider = { provide: 'MetaEntityService', useExisting: MetaEntityService };
 const $SystemWebhookEntityService: Provider = { provide: 'SystemWebhookEntityService', useExisting: SystemWebhookEntityService };
 
@@ -477,6 +487,10 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		ChatService,
 		RegistryApiService,
 		ReversiService,
+		HataigoService,
+		HataigoChatService,
+		HataigoWithdrawalService,
+		$HataigoChatPolicy,
 		PageService,
 		NoteHistorySerivce,
 		ActivityPubAccessControlService,
@@ -538,6 +552,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		FlashLikeEntityService,
 		RoleEntityService,
 		ReversiGameEntityService,
+		HataigoGameEntityService,
 		MetaEntityService,
 		SystemWebhookEntityService,
 
@@ -652,6 +667,9 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$ChatService,
 		$RegistryApiService,
 		$ReversiService,
+		$HataigoService,
+		$HataigoChatService,
+		$HataigoWithdrawalService,
 		$PageService,
 		$ActivityPubAccessControlService,
 
@@ -712,6 +730,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$FlashLikeEntityService,
 		$RoleEntityService,
 		$ReversiGameEntityService,
+		$HataigoGameEntityService,
 		$MetaEntityService,
 		$SystemWebhookEntityService,
 
@@ -838,6 +857,9 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		ChatService,
 		RegistryApiService,
 		ReversiService,
+		HataigoService,
+		HataigoChatService,
+		HataigoWithdrawalService,
 		PageService,
 		NoteHistorySerivce,
 		ActivityPubAccessControlService,
@@ -898,6 +920,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		FlashLikeEntityService,
 		RoleEntityService,
 		ReversiGameEntityService,
+		HataigoGameEntityService,
 		MetaEntityService,
 		SystemWebhookEntityService,
 
@@ -1004,6 +1027,9 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$ChatService,
 		$RegistryApiService,
 		$ReversiService,
+		$HataigoService,
+		$HataigoChatService,
+		$HataigoWithdrawalService,
 		$PageService,
 		$ActivityPubAccessControlService,
 
@@ -1062,6 +1088,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$FlashLikeEntityService,
 		$RoleEntityService,
 		$ReversiGameEntityService,
+		$HataigoGameEntityService,
 		$MetaEntityService,
 		$SystemWebhookEntityService,
 

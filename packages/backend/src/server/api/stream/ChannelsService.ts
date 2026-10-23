@@ -25,7 +25,9 @@ import { RoleTimelineChannelService } from './channels/role-timeline.js';
 import { ChatUserChannelService } from './channels/chat-user.js';
 import { ChatRoomChannelService } from './channels/chat-room.js';
 import { ReversiChannelService } from './channels/reversi.js';
+import { HataigoChannelService } from './channels/hataigo.js';
 import { ReversiGameChannelService } from './channels/reversi-game.js';
+import { HataigoGameChannelService } from './channels/hataigo-game.js';
 import { type MiChannelService } from './channel.js';
 
 @Injectable()
@@ -51,7 +53,9 @@ export class ChannelsService {
 		private chatUserChannelService: ChatUserChannelService,
 		private chatRoomChannelService: ChatRoomChannelService,
 		private reversiChannelService: ReversiChannelService,
+		private hataigoChannelService: HataigoChannelService,
 		private reversiGameChannelService: ReversiGameChannelService,
+		private hataigoGameChannelService: HataigoGameChannelService,
 	) {
 	}
 
@@ -78,7 +82,9 @@ export class ChannelsService {
 			case 'chatUser': return this.chatUserChannelService;
 			case 'chatRoom': return this.chatRoomChannelService;
 			case 'reversi': return this.reversiChannelService;
+			case 'hataigo': return this.hataigoChannelService;
 			case 'reversiGame': return this.reversiGameChannelService;
+			case 'hataigoGame': return this.hataigoGameChannelService;
 
 			default:
 				throw new Error(`no such channel: ${name}`);

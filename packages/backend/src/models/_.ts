@@ -76,6 +76,8 @@ import { MiRelay } from '@/models/Relay.js';
 import { MiRenoteMuting } from '@/models/RenoteMuting.js';
 import { MiRetentionAggregation } from '@/models/RetentionAggregation.js';
 import { MiReversiGame } from '@/models/ReversiGame.js';
+import { MiHataigoGame } from '@/models/HataigoGame.js';
+import { MiHataigoChatMessage } from '@/models/HataigoChatMessage.js';
 import { MiRole } from '@/models/Role.js';
 import { MiRoleAssignment } from '@/models/RoleAssignment.js';
 import { MiSignin } from '@/models/Signin.js';
@@ -286,6 +288,8 @@ export {
 	MiChatApproval,
 	MiBubbleGameRecord,
 	MiReversiGame,
+	MiHataigoGame,
+	MiHataigoChatMessage,
 	MiRegistrationApplication,
 	MiHataskEvent,
 	MiHataskRsvp,
@@ -407,6 +411,8 @@ export type ChatRoomInvitationsRepository = Repository<MiChatRoomInvitation> & M
 export type ChatApprovalsRepository = Repository<MiChatApproval> & MiRepository<MiChatApproval>;
 export type BubbleGameRecordsRepository = Repository<MiBubbleGameRecord> & MiRepository<MiBubbleGameRecord>;
 export type ReversiGamesRepository = Repository<MiReversiGame> & MiRepository<MiReversiGame>;
+export type HataigoChatMessagesRepository = Repository<MiHataigoChatMessage> & MiRepository<MiHataigoChatMessage>;
+export type HataigoGamesRepository = Repository<MiHataigoGame> & MiRepository<MiHataigoGame>;
 export type NoteHistoryRepository = Repository<NoteHistory> & MiRepository<NoteHistory>;
 export type RegistrationApplicationsRepository = Repository<MiRegistrationApplication> & MiRepository<MiRegistrationApplication>;
 export type HataskEventsRepository = Repository<MiHataskEvent> & MiRepository<MiHataskEvent>;
