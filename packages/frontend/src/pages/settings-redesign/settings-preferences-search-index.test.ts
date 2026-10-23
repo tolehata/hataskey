@@ -367,9 +367,9 @@ describe('redesigned preferences search index', () => {
 
 	test('manifest destinationと明示source mapが、旧markerではない関連fallbackの正本になる', () => {
 		const destinations = settingsDestinationCatalogItemsV2();
-		// Hataskey UI S を Hataskey UI 節に追加した現在の destination は52件。
-		expect(destinations).toHaveLength(52);
-		expect(new Set(destinations.map(item => item.destinationId)).size).toBe(52);
+		// Hataskey UI S と、コンカレント連携(BETA)を加えた現在の destination は53件。
+		expect(destinations).toHaveLength(53);
+		expect(new Set(destinations.map(item => item.destinationId)).size).toBe(53);
 		for (const destination of destinations) expect(destination.label.trim(), destination.destinationId).not.toBe('');
 		const mappedSources = [
 			['src/pages/settings/accounts.vue', 'account-switch', 'account-profiles', '/settings/accounts'],

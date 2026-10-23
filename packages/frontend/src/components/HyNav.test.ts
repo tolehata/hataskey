@@ -21,6 +21,8 @@ vi.mock('@/utility/hatady-prefs.js', async () => {
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { close: '閉じる', notifications: '通知' } } }));
 vi.mock('@/components/MkNotification.vue', () => ({ default: { props: ['notification'], template: '<p data-local-notification>{{ notification.id }}</p>' } }));
 vi.mock('@/components/MkExternalNotificationToast.vue', () => ({ default: { props: ['notification'], template: '<p data-external-notification>{{ notification.id }}</p>' } }));
+// The real toast imports the router (and through it every page); the toast host only needs a placeholder here.
+vi.mock('@/components/concrnt/ConcrntNotificationToast.vue', () => ({ default: { props: ['notification'], template: '<p data-concrnt-notification>{{ notification.id }}</p>' } }));
 
 const cleanups: Array<() => void> = [];
 let reduced = false, baseWidth = 280, toastHeight = 60;

@@ -58,7 +58,7 @@ function normal(saved = 'local') {
 	}>('src/ui/simple.vue', ['getInitialTab', 'tab', 'visibleTopTabs', 'tabOrder', 'switchTab'], {
 				prefer: { r: { 'simpleUi.topNav': topNav, 'simpleUi.showTrendingTab': ref(true), 'simpleUi.showHatadyTab': ref(true) } },
 				i18n: { ts: { _hata: { _hataskeyUi3: { tabTrending: 'Trending', tabHatady: 'Hatady' } } } },
-				miLocalStorage: storage, showOHTL: ref(true), showOLTL: ref(true),
+				miLocalStorage: storage, showOHTL: ref(true), showOLTL: ref(true), showCTL: ref(false),
 				isCollectionTimelinePage: ref(false), timelinePickerKind: ref(null), contentEl: ref(null),
 			}, true);
 	return { ...state, topNav, storage };
@@ -68,7 +68,7 @@ type Tab = { id: string; type: string };
 type Frame = { id: string; activeTab: string; tabs: Tab[] };
 type Slot = { id: string; frames: Frame[] };
 
-function deck() {
+function deck(concrnt = false) {
 	const profile = ref({ slots: [
 		{ id: 'main', frames: [{ id: 'frame', activeTab: 'local', tabs: [{ id: 'local', type: 'local' }, { id: 'home', type: 'home' }, { id: 'global', type: 'global' }] }] },
 		{ id: 'restricted', frames: [{ id: 'restricted-frame', activeTab: 'social', tabs: [{ id: 'social', type: 'social' }] }] },
@@ -88,7 +88,7 @@ function deck() {
 				'newTab', 'newFrameFromTab', 'newSlotFromTab', 'addSlotWithTab', 'columnTypeMenu', 'addColumn',
 			], {
 				activeProfile: profile, commitActiveProfile: (update: (p: typeof profile.value) => typeof profile.value) => { profile.value = update(profile.value); },
-				genId: () => String(nextId++), externalReady: ref(true),
+				genId: () => String(nextId++), externalReady: ref(true), concrntReady: ref(concrnt),
 				COLUMN_META: new Proxy({}, { get: (_target, key) => ({ title: String(key) }) }),
 				copy: { addColumn: 'add' }, os: { select },
 			});
@@ -96,6 +96,17 @@ function deck() {
 }
 
 describe('Hataskey UI role-based timeline availability', () => {
+	test('CTL is offered in both deck add menus only while Concrnt is connected', async () => {
+		for (const connected of [false, true]) {
+			const state = deck(connected);
+			const menu = state.columnTypeMenu({}, vi.fn()).map(item => item.text);
+			await state.addColumn({ currentTarget: {} });
+			const choices = state.select.mock.calls[0][0].items.map((item: { value: string }) => item.value);
+			expect(menu.includes('CTL（コンカレント）')).toBe(connected);
+			expect(choices.includes('ctl')).toBe(connected);
+		}
+	});
+
 	test.each([[false, false], [true, false], [false, true], [true, true]])('LTL=%s GTL=%s: account policies override server defaults', (ltl, gtl) => {
 		Object.assign(policies, { ltlAvailable: ltl, gtlAvailable: gtl });
 		for (const type of ['local', 'social', 'media']) expect(isHataskeyTimelineAllowed(type)).toBe(ltl);

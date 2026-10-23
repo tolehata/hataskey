@@ -38,6 +38,8 @@ vi.mock('@/utility/sound.js', () => ({ playMisskeySfx: mocks.sound }));
 vi.mock('@/utility/haptic.js', () => ({ haptic: vi.fn() }));
 vi.mock('@/router.js', () => ({ mainRouter: { pushByPath: mocks.navigate } }));
 vi.mock('@/i.js', () => ({ $i: { id: 'me', mutedWords: [], hardMutedWords: [] } }));
+// Not connected: keeps these tests independent of the Concrnt runtime and its preference/uploader imports.
+vi.mock('@/utility/concrnt/runtime.js', () => ({ concrntState: { connection: null, settings: { enabled: false, notifications: false, popups: false }, notifications: [], toasts: [] } }));
 vi.mock('@/i18n.js', () => ({ i18n: { tsx: { newNoteRecivedCount: ({ n }: { n: number }) => `${n} new notes` }, ts: {
 	options: 'Options', showRenotes: 'Renotes', fileAttachedOnly: 'Files', withSensitive: 'Sensitive', retry: 'Retry',
 	_hata: {

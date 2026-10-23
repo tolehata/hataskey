@@ -42,6 +42,8 @@ function iconClass(icon: string): string | null {
 
 describe('settings destination icons', () => {
 	const names = tablerIconNames();
+	// Third-party brand marks that are not in Tabler. Each must be defined by its own stylesheet.
+	const brandIcons = new Map([['concrnt-icon', 'src/components/concrnt/concrnt-icon.css']]);
 
 	test('検出器が生きている', () => {
 		// ⚠️陽性対照。実在する名前は通り、実在しない名前は落ちること。
@@ -60,6 +62,11 @@ describe('settings destination icons', () => {
 		for (const section of settingsDestinationSections) {
 			for (const [label, icon] of [[section.label, section.icon] as const, ...section.items.map(item => [item.label, item.icon] as const)]) {
 				const name = iconClass(icon);
+				const brandCss = brandIcons.get(icon.trim());
+				if (brandCss != null) {
+					if (!readFileSync(resolve(process.cwd(), brandCss), 'utf8').includes(`.${icon.trim()}`)) missing.push(`${label}: ${icon} (${brandCss} に定義が無い)`);
+					continue;
+				}
 				if (name == null) {
 					missing.push(`${label}: ${icon} (ti-* が読み取れない)`);
 					continue;
