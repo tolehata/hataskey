@@ -20,6 +20,7 @@
 	},
 	"dependencies": {
 		"@analytics/google-analytics": "1.1.0",
+		"@concrnt/client": "2.0.6",
 		"@dice-roller/rpg-dice-roller": "^5.5.0",
 		"@discordapp/twemoji": "16.0.1",
 		"@github/webauthn-json": "2.1.1",
@@ -36,7 +37,6 @@
 		"@twemoji/parser": "16.0.0",
 		"@vitejs/plugin-vue": "6.0.8",
 		"@vue/compiler-sfc": "3.5.42",
-		"JSCPP": "2.0.9",
 		"aiscript-vscode": "github:aiscript-dev/aiscript-vscode#v0.1.15",
 		"analytics": "0.8.19",
 		"astring": "1.9.0",

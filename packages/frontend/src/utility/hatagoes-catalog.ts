@@ -20,6 +20,8 @@ export type HatagoesCatalogEntry = {
 	/** Existing modal action on the owning app. Path is its real route fallback. */
 	readonly action?: 'settings' | 'drawing-tool' | 'whats-new';
 	readonly access?: HatagoesAccess;
+	/** HataGoes の中で展開せず、HataGoes を出てそのページを独立した画面として開く */
+	readonly standalone?: true;
 };
 
 // Paths are taken from router.definition.ts. Hatady and HataFeed use in-page
@@ -68,9 +70,10 @@ export const HATAGOES_CATALOG = [
 	{ id: 'hatask.games', app: 'hatask', label: 'ゲーム', icon: 'ti ti-device-gamepad', path: '/games' },
 	{ id: 'hatask.bubble-game', app: 'hatask', label: 'バブルゲーム', icon: 'ti ti-bubble', path: '/bubble-game' },
 	{ id: 'hatask.reversi', app: 'hatask', label: 'リバーシ', icon: 'ti ti-grid-dots', path: '/reversi' },
+	// 旗鯖fork: HataIgo — not a HataGoes app tab; one entry under All apps that opens /hataigo.
+	{ id: 'hatask.hataigo', app: 'hatask', label: 'HataIgo', icon: 'ti ti-circles', path: '/hataigo', standalone: true },
 	{ id: 'hatask.clicker', app: 'hatask', label: 'クリッカー', icon: 'ti ti-pointer', path: '/clicker' },
 	{ id: 'hatask.qr', app: 'hatask', label: 'QRコード', icon: 'ti ti-qrcode', path: '/qr' },
-	{ id: 'hatask.cpp-playground', app: 'hatask', label: 'C++ プレイグラウンド', icon: 'ti ti-code', path: '/playground/cpp' },
 	{ id: 'hatask.scratchpad', app: 'hatask', label: 'スクラッチパッド', icon: 'ti ti-pencil', path: '/scratchpad' },
 	{ id: 'hatask.api-console', app: 'hatask', label: 'APIコンソール', icon: 'ti ti-terminal', path: '/api-console' },
 	{ id: 'hatask.hata-docs', app: 'hatask', label: 'Hata Docs', icon: 'ti ti-book', path: '/hata-docs' },
@@ -94,10 +97,10 @@ const hiddenHataGoesIds = new Set<string>([
 export function isHatagoesVisibleScreen(screen: HatagoesCatalogEntry): boolean {
 	return !hiddenHataGoesIds.has(screen.id);
 }
-const developerIds = new Set<string>(['hatask.cpp-playground', 'hatask.scratchpad', 'hatask.api-console']);
+const developerIds = new Set<string>(['hatask.scratchpad', 'hatask.api-console']);
 const gameIds = new Set<string>(['hatask.games', 'hatask.bubble-game', 'hatask.reversi', 'hatask.clicker']);
 const contentIds = new Set<string>(['hatask.intro', 'hatask.hata-docs', 'hatask.pages', 'hatask.play', 'hatask.gallery', 'hatask.whats-new']);
-const hataskeyIds = new Set<string>(['hatask.tools', 'hatask.card-maker', 'hatask.emotion-analysis', 'hatask.drawing-tool', 'hatask.side-studio', 'hatask.earthquake', 'hatask.mascot', 'hatask.qr', 'hatask.settings', 'hatask.support-admin']);
+const hataskeyIds = new Set<string>(['hatask.tools', 'hatask.card-maker', 'hatask.emotion-analysis', 'hatask.drawing-tool', 'hatask.side-studio', 'hatask.earthquake', 'hatask.mascot', 'hatask.hataigo', 'hatask.qr', 'hatask.settings', 'hatask.support-admin']);
 
 /** Presentation only: route ownership and saved pin IDs remain stable. */
 export function getHatagoesCatalogGroup(screen: HatagoesCatalogEntry): HatagoesCatalogGroup {

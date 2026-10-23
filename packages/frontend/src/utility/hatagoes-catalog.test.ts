@@ -45,13 +45,15 @@ describe('HataGoes screen catalog', () => {
 		expect(getHatagoesScreen('hatady.records')).toMatchObject({ path: '/hatady', tab: 'records' });
 		expect(getHatagoesScreen('hatady.collection')).toMatchObject({ path: '/hatady', tab: 'collection' });
 		expect(getHatagoesScreen('hatafeed.issues')).toMatchObject({ path: '/hatafeed', tab: 'issues' });
+		expect(getHatagoesScreen('hatask.hataigo')).toMatchObject({ app: 'hatask', path: '/hataigo', standalone: true });
+		expect(HATAGOES_CATALOG.filter(screen => 'standalone' in screen).map(screen => screen.id)).toEqual(['hatask.hataigo']);
+		expect(HATAGOES_CATALOG.some(screen => (screen.app as string) === 'hataigo')).toBe(false);
 	});
 
 	test('exposes existing peripheral tools and keeps retired games out', () => {
 		for (const [id, path] of [
 			['hatask.clicker', '/clicker'],
 			['hatask.qr', '/qr'],
-			['hatask.cpp-playground', '/playground/cpp'],
 			['hatask.scratchpad', '/scratchpad'],
 			['hatask.api-console', '/api-console'],
 			['hatask.hata-docs', '/hata-docs'],
@@ -60,7 +62,8 @@ describe('HataGoes screen catalog', () => {
 			['hatask.gallery', '/gallery'],
 		]) expect(getHatagoesScreen(id)?.path).toBe(path);
 		expect(HATAGOES_CATALOG.map(screen => screen.path)).not.toContain('/hanaawase');
-		for (const id of ['hatask.stacking-game', 'hatask.whack-emoji', 'hatask.emoji-shoot']) {
+		expect(HATAGOES_CATALOG.map(screen => screen.path)).not.toContain('/playground/cpp');
+		for (const id of ['hatask.stacking-game', 'hatask.whack-emoji', 'hatask.emoji-shoot', 'hatask.cpp-playground']) {
 			expect(getHatagoesScreen(id)).toBeUndefined();
 			// 廃止前に保存したピンは枠を消費せずに読み飛ばす
 			expect(normalizeHatagoesPins([id, 'hatask.todo'])).toEqual(['hatask.todo']);
@@ -75,7 +78,7 @@ describe('HataGoes screen catalog', () => {
 			['hatask.scratchpad', 'developer'], ['hatask.api-console', 'developer'],
 			['hatask.reversi', 'games'], ['hatask.clicker', 'games'], ['hatask.bubble-game', 'games'],
 			['hatask.play', 'contents'], ['hatask.gallery', 'contents'],
-			['hatask.card-maker', 'hataskey'], ['hatask.recipe', 'hatask'],
+			['hatask.card-maker', 'hataskey'], ['hatask.hataigo', 'hataskey'], ['hatask.recipe', 'hatask'],
 		] as const) expect(getHatagoesCatalogGroup(getHatagoesScreen(id)!)).toBe(group);
 	});
 

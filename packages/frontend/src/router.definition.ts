@@ -212,6 +212,10 @@ export const ROUTE_DEF = [{
 		name: 'external-account',
 		component: page(() => import('@/pages/settings/external-account.vue')),
 	}, {
+		path: '/concrnt',
+		name: 'concrnt-settings',
+		component: page(() => import('@/pages/settings/concrnt.vue')),
+	}, {
 		path: '/hidden-reactions',
 		name: 'hidden-reactions',
 		component: page(() => import('@/pages/settings/hidden-reactions-manage.vue')),
@@ -573,12 +577,19 @@ export const ROUTE_DEF = [{
 	path: '/my/notifications',
 	name: 'my-notifications',
 	component: page(() => import('@/pages/notifications.vue')),
+	query: { tab: 'initialTab' },
 	loginRequired: true,
 }, {
 	// 旗鯖fork: 外部アカウント連携時に表示される、外部通知専用ページ
 	path: '/my/external-notifications',
 	name: 'my-external-notifications',
 	component: page(() => import('@/pages/external-notifications.vue')),
+	loginRequired: true,
+}, {
+	path: '/concrnt',
+	name: 'concrnt',
+	component: page(() => import('@/pages/concrnt.vue')),
+	query: { tab: 'initialTab' },
 	loginRequired: true,
 }, {
 	path: '/my/favorites',
@@ -658,6 +669,16 @@ export const ROUTE_DEF = [{
 	component: page(() => import('@/pages/drop-and-fusion.vue')),
 	loginRequired: true,
 }, {
+	// 旗鯖fork: HataIgo — 削除時は pages/hataigo/ + components/hataigo/ + utility/hataigo/ + assets/hataigo/ + 本ブロック
+	path: '/hataigo',
+	component: page(() => import('@/pages/hataigo/index.vue')),
+	loginRequired: true,
+}, {
+	// HataIgo: 対局リンク。閲覧可否はサーバーが確認する。
+	path: '/hataigo/:gameId',
+	component: page(() => import('@/pages/hataigo/index.vue')),
+	loginRequired: true,
+}, {
 	path: '/reversi',
 	component: page(() => import('@/pages/reversi/index.vue')),
 	loginRequired: false,
@@ -726,10 +747,6 @@ export const ROUTE_DEF = [{
 	// 旗鯖fork: 廃止した HataSNSCordUI の旧入口。ブックマーク等から来ても行き止まりにしない。
 	path: '/hatafeed/hatacording-ui',
 	redirect: '/',
-}, {
-	path: '/playground/cpp',
-	component: page(() => import('@/pages/cpp-playground.vue')),
-	loginRequired: true,
 }, {
 	path: '/earthquake',
 	component: page(() => import('@/pages/earthquake.vue')),

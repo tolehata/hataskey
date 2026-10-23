@@ -123,6 +123,12 @@
 				<circle cx="63" cy="46" r="4" fill="var(--hfi-cut)"/>
 				<circle cx="71" cy="54" r="4" fill="var(--hfi-cut)"/>
 			</g>
+			<g v-else-if="shape === 'igo'">
+				<rect x="20" y="20" width="60" height="60" rx="9" fill="var(--hfi-ink)"/>
+				<path d="M34 28 V72 M50 28 V72 M66 28 V72 M28 34 H72 M28 50 H72 M28 66 H72" fill="none" stroke="var(--hfi-cut)" stroke-width="3.5" stroke-linecap="round"/>
+				<circle cx="34" cy="34" r="8" fill="var(--hfi-ink)" stroke="var(--hfi-cut)" stroke-width="3.5"/>
+				<circle cx="66" cy="66" r="8" fill="var(--hfi-cut)" stroke="var(--hfi-ink)" stroke-width="3.5"/>
+			</g>
 			<g v-else-if="shape === 'intro'">
 				<path d="M50 30 C40 24 28 24 18 28 V76 C28 72 40 72 50 78 C60 72 72 72 82 76 V28 C72 24 60 24 50 30Z" fill="var(--hfi-ink)" stroke="var(--hfi-ink)" stroke-width="3" stroke-linejoin="round"/>
 				<path d="M50 33 V74" fill="none" stroke="var(--hfi-cut)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -137,11 +143,6 @@
 			<g v-else-if="shape === 'support'">
 				<path d="M50 80 C34 68 18 56 18 40 C18 29 26 22 35 22 C42 22 47 26 50 31 C53 26 58 22 65 22 C74 22 82 29 82 40 C82 56 66 68 50 80Z" fill="var(--hfi-ink)" stroke="var(--hfi-ink)" stroke-width="3" stroke-linejoin="round"/>
 				<path d="M30 48 H40 L44 40 L52 58 L57 48 H70" fill="none" stroke="var(--hfi-cut)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-			</g>
-			<g v-else-if="shape === 'code'">
-				<rect x="16" y="24" width="68" height="52" rx="9" fill="var(--hfi-ink)"/>
-				<path d="M37 40 L28 50 L37 60 M63 40 L72 50 L63 60" fill="none" stroke="var(--hfi-cut)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-				<path d="M54 38 L46 62" fill="none" stroke="var(--hfi-cut)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
 			</g>
 			<g v-else-if="shape === 'note'">
 				<rect x="24" y="16" width="52" height="68" rx="8" fill="var(--hfi-ink)"/>
