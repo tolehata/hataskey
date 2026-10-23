@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test, vi } from 'vitest';
-import Ajv from 'ajv';
+import _Ajv from 'ajv';
 import CapabilityEndpoint from '@/server/api/endpoints/hataigo/chat-capability.js';
 import ChatMessagesEndpoint from '@/server/api/endpoints/hataigo/chat-messages.js';
 import ChatPostEndpoint from '@/server/api/endpoints/hataigo/chat-post.js';
@@ -16,6 +16,8 @@ import InvitationsEndpoint from '@/server/api/endpoints/hataigo/invitations.js';
 import VerifyEndpoint from '@/server/api/endpoints/hataigo/verify.js';
 import { hataigoReadQuota, hataigoSettingsSchema } from '@/misc/hataigo/api.js';
 import { HataigoError } from '@/misc/hataigo/types.js';
+
+const Ajv = _Ajv.default;
 
 vi.mock('@/core/HataigoChatService.js', () => ({ HataigoChatService: class {} }));
 vi.mock('@/core/HataigoService.js', () => ({ HataigoService: class {} }));

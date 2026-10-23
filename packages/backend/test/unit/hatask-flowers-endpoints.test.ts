@@ -11,7 +11,7 @@ import { meta as listMeta, paramDef as listParamDef } from '@/server/api/endpoin
 import SyncHataskFlowersEndpoint, { meta as syncMeta, paramDef as syncParamDef, parseHataskFlowerHarvestedAt } from '@/server/api/endpoints/hatask/flowers/sync.js';
 import { meta as visibilityMeta, paramDef as visibilityParamDef } from '@/server/api/endpoints/hatask/flowers/visibility/update.js';
 
-const Ajv = (_Ajv as unknown as { default: typeof _Ajv }).default ?? _Ajv;
+const Ajv = _Ajv.default;
 
 function compile(schema: unknown) {
 	const ajv = new Ajv({ useDefaults: true });

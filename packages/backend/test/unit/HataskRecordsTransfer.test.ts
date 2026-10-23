@@ -12,7 +12,7 @@ const envelope = (data: Record<string, unknown>) => ({ format: 'hatask-records-e
 
 describe('Hatask record transfer', () => {
 	test('AJV accepts optional journal fields omitted from import input', () => {
-		const Ajv = (_Ajv as unknown as { default: typeof _Ajv }).default ?? _Ajv;
+		const Ajv = _Ajv.default;
 		const validate = new Ajv({ useDefaults: true }).compile(importParamDef);
 		const minimalMood = { id: mood.id, date: mood.date, time: mood.time, level: mood.level };
 		expect(validate(envelope({ moods: [minimalMood] })), JSON.stringify(validate.errors)).toBe(true);

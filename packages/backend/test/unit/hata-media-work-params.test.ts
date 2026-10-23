@@ -7,7 +7,7 @@ import { describe, expect, test } from 'vitest';
 import { paramDef as createWorkParamDef } from '@/server/api/endpoints/hata/hatady/media/works/create.js';
 import { paramDef as createSessionParamDef } from '@/server/api/endpoints/hata/hatady/media/sessions/create.js';
 
-const Ajv = (_Ajv as unknown as { default: typeof _Ajv }).default ?? _Ajv;
+const Ajv = _Ajv.default;
 
 // エンドポイント本体と同じ設定で組む(endpoint-base.ts と揃える)。
 function compile(schema: unknown) {

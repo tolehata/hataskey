@@ -8,7 +8,7 @@ import { dirname, join, relative } from 'node:path';
 import _Ajv from 'ajv';
 import { describe, expect, test } from 'vitest';
 
-const Ajv = (_Ajv as unknown as { default: typeof _Ajv }).default ?? _Ajv;
+const Ajv = _Ajv.default;
 
 /*
  * 旗鯖fork(Hatady): 「映画を保存できない」の原因になった罠を再発させないための構造テスト。

@@ -17,7 +17,7 @@ import UpdateHataskEventEndpoint, { meta as updateMeta, paramDef as updateParamD
 import { hashHataskEvent, isValidHataskEventSchedule, packHataskEvent } from '@/server/api/endpoints/hatask/events/_shared.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
 
-const Ajv = (_Ajv as unknown as { default: typeof _Ajv }).default ?? _Ajv;
+const Ajv = _Ajv.default;
 
 function compile(schema: unknown) {
 	const ajv = new Ajv({ useDefaults: true });
