@@ -216,7 +216,7 @@ describe('暁の親結線', () => {
 	test('設定の読込中やテーマ欠落時も記録カードは暁になり、保存済みの旧テーマは変えない', () => {
 		const body = page.match(/const plannerTheme=computed<HataskPlannerTheme>\(\(\)=>\{([\s\S]*?)\n\}\);/u)?.[1];
 		if (!body) throw new Error('Missing planner theme computation');
-		for (const theme of [undefined, null, '', 'akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu']) {
+		for (const theme of [undefined, null, '', 'akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu', 'halloween']) {
 			const settings = { value: { theme } };
 			const result: unknown = runInNewContext(`(() => {${body}})()`, { settings }, { timeout: 100 });
 			expect(result).toBe(theme || 'akatsuki');

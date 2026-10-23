@@ -195,8 +195,8 @@ describe('Hataskの初回導入と設定読込', () => {
 		expect(current.state.showTutorial.value).toBe(false);
 	});
 
-	test('旧版の案内を未読でも、既存利用者には再訪・再読込で告知せず設定済みの5テーマを保持する', async () => {
-		const themes = ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu'];
+	test('旧版の案内を未読でも、既存利用者には再訪・再読込で告知せず保存済みテーマを保持する', async () => {
+		const themes = ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu', 'halloween'];
 		for (const theme of themes) {
 			for (const oldFlags of [{}, { v2Onboarded: false, akatsukiNoticeShown: false, hatakyuNoticeShown: false }]) {
 				const saved = { theme, tutorialDone: true, customPreference: { keep: ['saved'] }, ...oldFlags };

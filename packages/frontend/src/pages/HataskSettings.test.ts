@@ -86,6 +86,24 @@ beforeEach(() => {
 afterEach(() => { for (const { app, container } of mounted.splice(0)) { app.unmount(); container.remove(); } });
 
 describe('Hatask theme settings and persistence safety', () => {
+	test.each([
+		{ month: 8, recommended: false }, { month: 9, recommended: true }, { month: 10, recommended: false },
+	])('ハロウィンは月=$monthでも選択を維持し、おすすめ表示は10月だけにする', async ({ month, recommended }) => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date(2026, month, 15, 12));
+		try {
+			const saved = { theme: 'halloween', autoTheme: false, darkMode: true, custom: { keep: 'data' } };
+			readSettings = async () => saved;
+			const { container, changed } = await mountSettings();
+			expect(themeButton(container, 'ハロウィン').getAttribute('aria-pressed')).toBe('true');
+			expect(container.querySelector('[data-theme-description="halloween"]')?.textContent?.includes('10月のおすすめ')).toBe(recommended);
+			expect(container.querySelector('.htk-theme-preview[data-theme="halloween"]')?.getAttribute('data-mode')).toBe('dark');
+			expect(writes()).toHaveLength(0);
+			expect(changed).not.toHaveBeenCalled();
+			expect(saved).toEqual({ theme: 'halloween', autoTheme: false, darkMode: true, custom: { keep: 'data' } });
+		} finally { vi.useRealTimers(); }
+	});
+
 	test('shows the theme and all settings together and updates the modal palette with the saved theme', async () => {
 		readSettings = async () => ({ theme: 'koke', autoTheme: false, darkMode: true });
 		const { container } = await mountSettings(false, 'appearance');
@@ -114,8 +132,8 @@ describe('Hatask theme settings and persistence safety', () => {
 		const { container, changed } = await mountSettings();
 		expect(container.querySelector('[data-akatsuki-navigation]')).toBeNull();
 		await openThemes(container);
-		const names = [copy.themeAkatsuki, copy.themeKoke, copy.themeKisetsu, copy.themeKashin, copy.themeSuri, copy.themeHatakyu];
-		expect(names.map(name => themeButton(container, name).getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false', 'false', 'false']);
+		const names = [copy.themeAkatsuki, copy.themeKoke, copy.themeKisetsu, copy.themeKashin, copy.themeSuri, copy.themeHatakyu, 'ハロウィン'];
+		expect(names.map(name => themeButton(container, name).getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false', 'false', 'false', 'false']);
 		expect(writes()).toHaveLength(0);
 		expect(changed).not.toHaveBeenCalled();
 	});
@@ -131,6 +149,7 @@ describe('Hatask theme settings and persistence safety', () => {
 	test.each([
 		['koke', copy.themeKoke],
 		['kisetsu', copy.themeKisetsu], ['kashin', copy.themeKashin], ['suri', copy.themeSuri], ['hatakyu', copy.themeHatakyu],
+		['halloween', 'ハロウィン'],
 	])('keeps the saved %s selection and unrelated settings', async (theme, name) => {
 		const saved = { theme, darkMode: true, autoTheme: false, weekStart: 'sun', custom: { keep: 'data' } };
 		readSettings = async () => saved;
@@ -236,7 +255,7 @@ describe('暁の自動配色案内と手動設定の保存', () => {
 		{ theme: 'akatsuki', label: appThemeLabel }, { theme: undefined, label: appThemeLabel },
 		{ theme: 'koke', label: appThemeLabel },
 		{ theme: 'kisetsu', label: osThemeLabel }, { theme: 'kashin', label: osThemeLabel },
-		{ theme: 'suri', label: osThemeLabel }, { theme: 'hatakyu', label: osThemeLabel },
+		{ theme: 'suri', label: osThemeLabel }, { theme: 'hatakyu', label: osThemeLabel }, { theme: 'halloween', label: appThemeLabel },
 	])('$themeでは正しい自動配色名を表示し、autoとmanualの保存でもほかの設定を保つ', async ({ theme, label }) => {
 		const saved = {
 			theme, autoTheme: true, darkMode: false, weekStart: 'sun', animations: false,

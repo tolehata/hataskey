@@ -1223,6 +1223,7 @@ const tutThemes=computed(() => [
   {id:'suri',jp:copy.themeSuri,desc:copy.themeSuriDescription},
   // 旗鯖fork(ハタキュ): コルク板の地色と、紙に載る青。
   {id:'hatakyu',jp:copy.themeHatakyu,desc:copy.themeHatakyuDescription},
+  { id: 'halloween', jp: 'ハロウィン', desc: new Date().getMonth() === 9 ? '10月のおすすめ · 月明かりと秋の夜' : '月明かりと、おばけたちの秋の夜' },
 ] satisfies { id: HataskPlannerTheme; jp: string; desc: string }[]);
 function pickTutTheme(id:string){settings.value.theme=id;saveSettings()}
 function setTutMode(dark:boolean){settings.value.darkMode=dark;settings.value.autoTheme=false;saveSettings()}
@@ -1842,9 +1843,9 @@ function detectMisskeyTheme():'dark'|'light'{
 }
 const misskeyTheme=ref(detectMisskeyTheme());
 const themeMode = computed(() => {
-	// 暁・苔の自動配色は、本体で選択中のテーマに追従する。ほかのテーマの自動配色と手動指定は従来どおり。
+	// 暁・苔・ハロウィンの自動配色は、設定プレビューと同じ本体テーマに追従する。
 	if (settings.value.autoTheme) {
-		if (isAkatsuki.value || settings.value.theme === 'koke') return store.r.darkMode.value ? 'dark' : 'light';
+		if (isAkatsuki.value || settings.value.theme === 'koke' || settings.value.theme === 'halloween') return store.r.darkMode.value ? 'dark' : 'light';
 		return (prefersDark.value || misskeyTheme.value === 'dark') ? 'dark' : 'light';
 	}
 	return settings.value.darkMode ? 'dark' : 'light';
@@ -2378,7 +2379,7 @@ async function movePlannerTemplate(template:HataskPlannerTemplate,direction:-1|1
 // ===== Calendar / Todo redesign controlled models =====
 const plannerTheme=computed<HataskPlannerTheme>(()=>{
 	const theme = settings.value.theme || 'akatsuki';
-	return theme === 'akatsuki' || theme === 'koke' ? theme : theme === 'kashin' || theme === 'suri' || theme === 'hatakyu' ? theme : 'kisetsu';
+	return theme === 'akatsuki' || theme === 'koke' ? theme : theme === 'kashin' || theme === 'suri' || theme === 'hatakyu' || theme === 'halloween' ? theme : 'kisetsu';
 });
 const plannerReadOnly=computed(()=>plannerStorageState.value!=='ready'&&plannerStorageState.value!=='saved');
 const plannerCalendarView=ref<HataskCalendarView>('month');

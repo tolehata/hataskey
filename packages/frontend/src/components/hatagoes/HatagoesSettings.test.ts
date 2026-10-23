@@ -14,7 +14,7 @@ vi.mock('@/components/hatask/HataskThemePreview.vue', async () => {
 });
 
 let cleanup: (() => void) | undefined;
-afterEach(() => { cleanup?.(); cleanup = undefined; });
+afterEach(() => { cleanup?.(); cleanup = undefined; vi.useRealTimers(); });
 
 async function mount(withFeed = false) {
 	const props = reactive({
@@ -64,7 +64,7 @@ describe('HataGoes settings categories', () => {
 		expect(view.save).not.toHaveBeenCalled();
 		const sections = [...view.target.querySelectorAll<HTMLElement>('section')];
 		expect(sections.find(section => section.getAttribute('aria-label') === 'ホーム専用テーマ')).toBe(sections[1]);
-		expect(view.target.querySelectorAll('[data-theme]')).toHaveLength(6);
+		expect(view.target.querySelectorAll('[data-theme]')).toHaveLength(7);
 		const next = view.target.querySelector<HTMLButtonElement>('[aria-label="次のテーマ"]');
 		next?.click();
 		expect(view.save).toHaveBeenLastCalledWith('theme', { theme: 'koke', darkMode: false, autoTheme: true });
@@ -81,9 +81,40 @@ describe('HataGoes settings categories', () => {
 		expect(view.save).toHaveBeenLastCalledWith('theme', { theme: 'koke', darkMode: true, autoTheme: false });
 		expect(view.target.textContent).not.toContain('上部ナビに表示するアプリ');
 		expect(view.props.pins).toEqual(['hatask.cal']);
-		const card = view.target.querySelector<HTMLInputElement>('input[aria-label="みんなのきょうを表示"]');
+		const card = view.target.querySelector<HTMLInputElement>('input[aria-label="あなたのイシューを表示"]');
 		card?.click();
-		expect(view.save).toHaveBeenLastCalledWith('cardsV3', expect.arrayContaining([expect.objectContaining({ id: 'feed', hidden: true })]));
+		expect(view.save).toHaveBeenLastCalledWith('cardsV3', expect.arrayContaining([expect.objectContaining({ id: 'issues', hidden: true })]));
+	});
+
+	test('offers Halloween in October without selecting it automatically and saves its independent theme choice', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date(2026, 9, 19, 12));
+		const view = await mount();
+		const cardsBefore = view.props.cardsV3.map(card => ({ ...card }));
+		expect(view.target.querySelector('[data-theme="halloween"]')?.textContent).toContain('10月のおすすめ');
+		expect(view.props.theme.theme).toBe('akatsuki');
+		expect(view.save).not.toHaveBeenCalled();
+		view.target.querySelector<HTMLButtonElement>('[aria-label="ハロウィン テーマへ移動"]')?.click();
+		expect(view.save).toHaveBeenLastCalledWith('theme', { theme: 'halloween', darkMode: false, autoTheme: true });
+		expect(view.props.cardsV3).toEqual(cardsBefore);
+		view.props.theme = { theme: 'halloween', darkMode: true, autoTheme: false };
+		await nextTick();
+		expect(view.target.querySelector('[data-theme="halloween"]')?.getAttribute('aria-pressed')).toBe('true');
+		expect(view.target.querySelector('[data-preview="halloween"]')?.getAttribute('data-mode')).toBe('dark');
+		search(view.target, 'ハロウィン');
+		await nextTick();
+		expect(view.target.querySelector('section[aria-label="ホーム専用テーマ"]')).not.toBeNull();
+		expect(view.target.textContent).not.toContain('一致する設定はありません。');
+	});
+
+	test('keeps Halloween selectable outside October without seasonal recommendation copy', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date(2026, 10, 1, 12));
+		const view = await mount();
+		expect(view.target.querySelector('[data-theme="halloween"]')?.textContent).toContain('かぼちゃ色と夜の紫');
+		expect(view.target.querySelector('[data-theme="halloween"]')?.textContent).not.toContain('10月のおすすめ');
+		view.target.querySelector<HTMLButtonElement>('[aria-label="ハロウィン テーマへ移動"]')?.click();
+		expect(view.save).toHaveBeenLastCalledWith('theme', { theme: 'halloween', darkMode: false, autoTheme: true });
 	});
 
 	test('supports keyboard theme navigation and locks controls while saving', async () => {
@@ -102,7 +133,7 @@ describe('HataGoes settings categories', () => {
 	test('keeps the home preview in saved order and omits hidden cards', async () => {
 		const view = await mount();
 		const preview = view.target.querySelector('[aria-label="現在のホームの並び"]');
-		expect(preview?.querySelectorAll('[data-card]')).toHaveLength(10);
+		expect(preview?.querySelectorAll('[data-card]')).toHaveLength(8);
 		expect(preview?.firstElementChild?.hasAttribute('data-preview-launcher')).toBe(true);
 		expect(preview?.querySelector('[data-card]')?.textContent).toContain('きょうの記録');
 		view.props.cardsV3 = [{ id: 'flower', hidden: false }, { id: 'daily', hidden: true }, ...view.props.cardsV3.filter(card => card.id !== 'flower' && card.id !== 'daily')];
@@ -111,32 +142,100 @@ describe('HataGoes settings categories', () => {
 		expect(preview?.textContent).not.toContain('きょうの記録');
 		view.target.querySelector<HTMLButtonElement>('[aria-label="配置プレビューの画面幅"] button:last-child')?.click();
 		await nextTick();
-		expect(preview?.firstElementChild?.hasAttribute('data-preview-launcher')).toBe(true);
+		expect(preview?.lastElementChild?.hasAttribute('data-preview-launcher')).toBe(true);
 	});
 
-	test('mobile preview starts in the real default order and saves that visual order when moved', async () => {
+	test('mobile preview groups all five daily records, keeps the launcher last and preserves grouped settings when moved', async () => {
 		const view = await mount();
+		view.props.cardsV3 = view.props.cardsV3.map(card => card.id === 'mood' ? { ...card, hidden: true } : card);
+		const groupedBefore = view.props.cardsV3.filter(card => !['daily', 'schedule', 'issues'].includes(card.id)).map(card => ({ ...card }));
 		view.target.querySelector<HTMLButtonElement>('[aria-label="配置プレビューの画面幅"] button:last-child')?.click();
 		await nextTick();
 		const ids = () => [...view.target.querySelectorAll<HTMLElement>('[aria-label="現在のホームの並び"] [data-card]')].map(card => card.dataset.card);
-		expect(ids().slice(0, 7)).toEqual(['daily', 'schedule', 'todo', 'mood', 'flower', 'reading', 'meal']);
-		expect(view.target.querySelector('[data-card="daily"]')?.nextElementSibling?.hasAttribute('data-preview-launcher')).toBe(true);
-		expect(view.target.querySelector('[aria-label="現在のホームの並び"]')?.className).toMatch(/cardPreviewHalfPair/u);
-		expect(ids()).not.toContain('history');
-		expect(view.target.textContent).toContain('先週のきょうはPCに表示されます。設定はPCプレビューで変更できます。');
-		view.target.querySelector<HTMLButtonElement>('[aria-label="おはなを前へ"]')?.click();
+		const preview = view.target.querySelector('[aria-label="現在のホームの並び"]')!;
+		expect(ids()).toEqual(['daily', 'schedule', 'issues']);
+		expect(preview.lastElementChild?.hasAttribute('data-preview-launcher')).toBe(true);
+		expect(preview.getAttribute('data-half-pair')).toBe('true');
+		expect([...preview.querySelectorAll('[aria-label="きょうの記録にまとめる項目"] span')].map(item => item.textContent)).toEqual(['きもち', 'ごはん', 'ToDo', '水やり', '読書']);
+		expect(view.target.textContent).toContain('モバイルでは5つの記録を「きょうの記録」にまとめます。');
+		expect(view.target.querySelector('[aria-label="いまのきもちを表示"]')).toBeNull();
+		expect(view.save).not.toHaveBeenCalled();
+		view.target.querySelector<HTMLButtonElement>('[aria-label="あなたのイシューを前へ"]')?.click();
 		const saved = view.save.mock.lastCall?.[1] as HatagoesCardV3[];
-		expect(saved.map(card => card.id).slice(0, 7)).toEqual(['daily', 'schedule', 'todo', 'flower', 'mood', 'reading', 'meal']);
-		expect(saved.map(card => card.id)).toContain('history');
-		expect(saved.at(-1)?.id).toBe('feed');
+		expect(saved.map(card => card.id)).toEqual(['daily', 'issues', 'flower', 'todo', 'mood', 'meal', 'reading', 'schedule']);
+		expect(saved.filter(card => !['daily', 'schedule', 'issues'].includes(card.id))).toEqual(groupedBefore);
 		view.props.cardsV3 = saved;
 		await nextTick();
-		expect(ids().slice(0, 7)).toEqual(saved.map(card => card.id).slice(0, 7));
-		expect(view.target.querySelector('[aria-label="現在のホームの並び"]')?.className).not.toMatch(/cardPreviewHalfPair/u);
+		expect(ids()).toEqual(['daily', 'issues', 'schedule']);
 		view.target.querySelector<HTMLButtonElement>('[aria-label="配置プレビューの画面幅"] button:first-child')?.click();
 		await nextTick();
-		expect(ids()).toContain('history');
-		expect(view.target.querySelector('[aria-label="先週のきょうを表示"]')).not.toBeNull();
+		expect(ids()).toEqual(saved.filter(card => !card.hidden).map(card => card.id));
+		expect(view.target.querySelector('[aria-label="いまのきもちを表示"]')).not.toBeNull();
+	});
+
+	test('hiding daily restores independent cards and expands unpaired schedule or issues', async () => {
+		const view = await mount();
+		view.target.querySelector<HTMLButtonElement>('[aria-label="配置プレビューの画面幅"] button:last-child')?.click();
+		await nextTick();
+		view.target.querySelector<HTMLInputElement>('[aria-label="きょうの記録を表示"]')?.click();
+		view.props.cardsV3 = view.save.mock.lastCall?.[1] as HatagoesCardV3[];
+		await nextTick();
+		const preview = view.target.querySelector('[aria-label="現在のホームの並び"]')!;
+		expect([...preview.querySelectorAll<HTMLElement>('[data-card]')].map(card => card.dataset.card)).toEqual(['schedule', 'todo', 'mood', 'flower', 'reading', 'meal', 'issues']);
+		expect(preview.getAttribute('data-half-pair')).toBe('false');
+		expect(preview.getAttribute('data-flower-pair')).toBe('true');
+		expect(preview.lastElementChild?.hasAttribute('data-preview-launcher')).toBe(true);
+		view.props.cardsV3 = normalizeHatagoesCardsV3(undefined).map(card => ({ ...card, hidden: card.id === 'issues' }));
+		await nextTick();
+		expect(preview.getAttribute('data-half-pair')).toBe('false');
+		expect([...preview.querySelectorAll<HTMLElement>('[data-card]')].map(card => card.dataset.card)).toEqual(['daily', 'schedule']);
+		view.props.cardsV3 = normalizeHatagoesCardsV3(undefined).map(card => ({ ...card, hidden: card.id === 'schedule' }));
+		await nextTick();
+		expect(preview.getAttribute('data-half-pair')).toBe('false');
+		expect([...preview.querySelectorAll<HTMLElement>('[data-card]')].map(card => card.dataset.card)).toEqual(['daily', 'issues']);
+		view.props.cardsV3 = normalizeHatagoesCardsV3([{ id: 'schedule' }, { id: 'daily' }, { id: 'issues' }]);
+		await nextTick();
+		expect(preview.getAttribute('data-half-pair')).toBe('false');
+		expect([...preview.querySelectorAll<HTMLElement>('[data-card]')].map(card => card.dataset.card)).toEqual(['schedule', 'daily', 'issues']);
+	});
+
+	test('keeps adjacent schedule and issues full width when daily is hidden', async () => {
+		const view = await mount();
+		view.props.cardsV3 = normalizeHatagoesCardsV3(undefined).map(card => ({ ...card, hidden: card.id !== 'schedule' && card.id !== 'issues' }));
+		view.target.querySelector<HTMLButtonElement>('[aria-label="配置プレビューの画面幅"] button:last-child')?.click();
+		await nextTick();
+		const preview = view.target.querySelector('[aria-label="現在のホームの並び"]')!;
+		expect([...preview.querySelectorAll<HTMLElement>('[data-card]')].map(card => card.dataset.card)).toEqual(['schedule', 'issues']);
+		expect(preview.getAttribute('data-half-pair')).toBe('false');
+		expect(preview.getAttribute('data-flower-pair')).toBe('false');
+	});
+
+	test('pairs only adjacent flower and reading cards in the mobile fallback', async () => {
+		const view = await mount();
+		view.props.cardsV3 = normalizeHatagoesCardsV3([{ id: 'flower' }, { id: 'reading' }, { id: 'daily', hidden: true }]);
+		view.target.querySelector<HTMLButtonElement>('[aria-label="配置プレビューの画面幅"] button:last-child')?.click();
+		await nextTick();
+		const preview = view.target.querySelector('[aria-label="現在のホームの並び"]')!;
+		expect(preview.getAttribute('data-flower-pair')).toBe('true');
+		expect(preview.getAttribute('data-half-pair')).toBe('false');
+		view.props.cardsV3 = normalizeHatagoesCardsV3([{ id: 'flower' }, { id: 'mood' }, { id: 'reading' }, { id: 'daily', hidden: true }]);
+		await nextTick();
+		expect(preview.getAttribute('data-flower-pair')).toBe('false');
+		view.props.cardsV3 = normalizeHatagoesCardsV3([{ id: 'flower' }, { id: 'reading', hidden: true }, { id: 'daily', hidden: true }]);
+		await nextTick();
+		expect(preview.getAttribute('data-flower-pair')).toBe('false');
+	});
+
+	test('filters retired cards passed by an older caller without changing props or emitting a save', async () => {
+		const view = await mount();
+		const legacy = [{ id: 'feed', hidden: false }, { id: 'reading', hidden: true }, { id: 'history', hidden: false }, { id: 'daily', hidden: false }];
+		view.props.cardsV3 = legacy as HatagoesCardV3[];
+		await nextTick();
+		expect(view.target.querySelector('[data-card="history"]')).toBeNull();
+		expect(view.target.querySelector('[data-card="feed"]')).toBeNull();
+		expect(view.target.querySelector('[aria-label="読みかけを表示"]')?.getAttribute('type')).toBe('checkbox');
+		expect(view.props.cardsV3).toEqual(legacy);
+		expect(view.save).not.toHaveBeenCalled();
 	});
 
 	test('starts with the actual narrow layout and keeps an explicit preview choice', async () => {
@@ -202,7 +301,7 @@ describe('HataGoes settings categories', () => {
 		expect(reset.disabled).toBe(true);
 		view.props.cardsV3 = [
 			{ id: 'flower', hidden: true },
-			...view.props.cardsV3.filter(card => card.id !== 'flower').map(card => card.id === 'feed' ? { ...card, hidden: true } : card),
+			...view.props.cardsV3.filter(card => card.id !== 'flower').map(card => card.id === 'issues' ? { ...card, hidden: true } : card),
 		];
 		await nextTick();
 		expect(reset.disabled).toBe(false);
@@ -210,7 +309,7 @@ describe('HataGoes settings categories', () => {
 		const saved = view.save.mock.lastCall?.[1] as HatagoesCardV3[];
 		expect(saved.map(card => card.id)).toEqual(normalizeHatagoesCardsV3(undefined).map(card => card.id));
 		expect(saved.find(card => card.id === 'flower')?.hidden).toBe(true);
-		expect(saved.find(card => card.id === 'feed')?.hidden).toBe(true);
+		expect(saved.find(card => card.id === 'issues')?.hidden).toBe(true);
 		expect(view.target.textContent).toContain('表示・非表示はそのままです。');
 		view.props.saving = true;
 		await nextTick();
@@ -221,9 +320,9 @@ describe('HataGoes settings categories', () => {
 
 	test('searches common and app settings and hides HataFeed when unavailable', async () => {
 		const view = await mount();
-		expect(view.target.textContent).toContain('ホームのカード（10件）');
-		expect(view.target.textContent).toContain('先週のきょう');
-		expect(view.target.textContent).toContain('みんなのきょう');
+		expect(view.target.textContent).toContain('ホームのカード（8件）');
+		expect(view.target.textContent).not.toContain('先週のきょう');
+		expect(view.target.textContent).not.toContain('みんなのきょう');
 		expect([...view.target.querySelectorAll('section button')].some(button => button.textContent === 'HataFeed')).toBe(false);
 		search(view.target, 'Hatady');
 		await nextTick();

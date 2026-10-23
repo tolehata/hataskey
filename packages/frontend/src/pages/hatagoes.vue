@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<div ref="shellRoot" data-hatagoes-root :data-active="shellActive" :class="[$style.shell, themeClasses]" :data-hatask-theme="hataskPaletteTheme" :data-hatask-mode="hataskPaletteMode" :data-hatady-theme="activeTheme" :style="shellStyle">
-	<header ref="shellHeader" :class="$style.header" :data-home="location.view === 'home'" :data-home-feed="homeInFeed">
-		<div :class="$style.brandGroup"><button ref="exitButton" type="button" :class="$style.iconButton" aria-label="終了" title="終了" @click="requestExit"><i class="ti ti-x" aria-hidden="true"></i></button><button type="button" :class="$style.brand" :aria-label="brandLabel" @click="openBrandHome"><HataAppLogo :key="brandApp" :monochrome="brandOnDark" :app="brandApp" :size="narrowShell ? 28 : 24" motion="startup" :active="shellActive" :tapSequence="logoTapSequence[brandApp]"/><Transition mode="out-in" :enterActiveClass="$style.brandEnter" :leaveActiveClass="$style.brandLeave" :enterFromClass="$style.brandHidden" :leaveToClass="$style.brandHidden"><HataAppWordmark :key="brandApp" :class="$style.brandText" :app="brandApp" :onDark="brandOnDark"/></Transition></button><small v-if="location.view === 'home' && homeInFeed" :class="$style.homeSubtitle">みんなのきょう</small></div>
+<div ref="shellRoot" data-hatagoes-root :data-active="shellActive" :data-narrow="narrowShell" :class="[$style.shell, themeClasses]" :data-hatask-theme="hataskPaletteTheme" :data-hatask-mode="hataskPaletteMode" :data-hatady-theme="activeTheme" :style="shellStyle">
+	<header ref="shellHeader" :class="$style.header" :data-home="location.view === 'home'">
+		<div :class="$style.brandGroup"><button ref="exitButton" type="button" :class="$style.iconButton" aria-label="終了" title="終了" @click="requestExit"><i class="ti ti-x" aria-hidden="true"></i></button><button type="button" :class="$style.brand" :aria-label="brandLabel" @click="openBrandHome"><HataAppLogo :key="brandApp" :monochrome="brandOnDark" :app="brandApp" :size="narrowShell ? 28 : 24" motion="startup" :active="shellActive" :tapSequence="logoTapSequence[brandApp]"/><Transition mode="out-in" :enterActiveClass="$style.brandEnter" :leaveActiveClass="$style.brandLeave" :enterFromClass="$style.brandHidden" :leaveToClass="$style.brandHidden"><HataAppWordmark :key="brandApp" :class="$style.brandText" :app="brandApp" :onDark="brandOnDark"/></Transition></button></div>
 		<div :class="$style.appsSlot"><nav ref="appsCapsule" :class="$style.apps" :style="{ '--hg-app-count': apps.length + 1 }" aria-label="アプリ" @pointerenter="onNoticePointerEnter" @pointerleave="noticeHovered = false" @pointercancel="noticeHovered = false" @focusin="onNoticeFocusIn" @focusout="onNoticeFocusOut">
 			<div v-if="shellActive && !dialogNoticeTarget && noticeGlowVisible && !narrowShell && noticeGeometryReady" :class="$style.noticeBloom" :data-leaving="noticeGlowLeaving" aria-hidden="true"><svg :viewBox="noticeViewBox" :style="noticeSvgStyle"><path v-for="path in noticePaths" :key="path" :d="path" pathLength="100" :style="{ strokeDashoffset: noticeProgress }"/></svg></div>
 			<button type="button" aria-label="HataGoesホーム" title="HataGoesホーム" :aria-current="location.view === 'home' ? 'page' : undefined" @click="tapLogo('hatagoes'); common('home')"><HataAppLogo bare app="hatagoes" :size="20" :active="shellActive" :tapSequence="logoTapSequence.hatagoes"/><span>ホーム</span></button>
@@ -11,7 +11,6 @@
 			<div ref="desktopNoticeHost" :class="$style.noticeHost" :style="noticeHostStyle"></div>
 		</nav></div>
 		<div :class="$style.actions">
-			<button v-if="location.view === 'home' && homeInFeed" type="button" :class="$style.homeTop" aria-label="先頭へ戻る" title="先頭へ戻る" @click="scrollHomeTop"><i class="ti ti-arrow-bar-to-up"></i></button>
 			<button type="button" :class="$style.createButton" aria-label="作成" title="作成" @pointerdown="startLongPress" @pointerup="endLongPress" @pointerleave="cancelLongPress" @pointercancel="cancelLongPress" @click="showCreate"><i class="ti ti-plus"></i></button>
 			<button ref="searchButton" type="button" aria-label="横断検索" title="横断検索" @click="openSearch"><i class="ti ti-search"></i></button>
 			<div v-show="hatadyHeaderVisible && narrowShell" ref="hatadyMobileOverview" :class="$style.hatadyOverview"></div>
@@ -43,7 +42,7 @@
 	<div :class="$style.body">
 		<div ref="contentSurface" :class="$style.content">
 			<div v-if="message" :class="$style.message" role="alert">{{ message }} <button type="button" aria-label="閉じる" @click="message = ''">×</button></div>
-			<div v-show="location.view === 'home' || location.view === 'search'" ref="homeScrollEl" data-hatagoes-home-scroll :class="[$style.common, $style.homeScroll]"><HatagoesHome ref="homeRef" :monochrome="brandOnDark" :cards="prefs.cards.value" :cardsV3="prefs.cardsV3?.value" :launcherApps="launcherApps" :revision="revision" :active="shellActive && (location.view === 'home' || location.view === 'search')" :busyTodoIds="busyTodoIds" :busyActions="busyActions" @navigate="navigate" @create="create" @toggleTodo="toggleTodo" @recordMood="recordMood" @water="water" @recordMeal="recordMeal" @recordReading="recordReading" @feedState="homeInFeed = $event" @openApp="openHomeLauncherScreen" @allApps="openAllDirectory"/></div>
+			<div v-show="location.view === 'home' || location.view === 'search'" ref="homeScrollEl" data-hatagoes-home-scroll :class="[$style.common, $style.homeScroll]"><HatagoesHome ref="homeRef" :monochrome="brandOnDark" :cards="prefs.cards.value" :cardsV3="prefs.cardsV3?.value" :launcherApps="launcherApps" :halloween="prefs.theme.value.theme === 'halloween'" :recordRevision="homeRecordRevision" :revision="revision" :viewport="homeScrollEl" :decorationHost="shellRoot" :active="shellActive && (location.view === 'home' || location.view === 'search')" :busyTodoIds="busyTodoIds" :busyActions="busyActions" @navigate="navigate" @create="create" @toggleTodo="toggleTodo" @recordMood="recordMood" @water="water" @recordMeal="recordMeal" @recordReading="recordReading" @openApp="openHomeLauncherScreen" @allApps="openAllDirectory"/></div>
 			<div v-show="location.view === 'notifications'" :class="$style.common"><HatagoesNotifications :active="shellActive && location.view === 'notifications'" :pollingActive="shellActive" :revision="revision" @count="unread = $event" @navigate="navigate"/></div>
 			<div v-if="visited.settings" v-show="location.view === 'settings'" :class="$style.common">
 				<HatagoesSettings :monochrome="brandOnDark" :pins="visiblePins" :appPins="visibleAppPins" :availableApps="apps.map(app => app.id)" :cards="prefs.cards.value" :cardsV3="prefs.cardsV3?.value" :theme="prefs.theme.value" :ready="prefs.ready.value" :saving="prefs.saving.value" :error="prefs.error.value" :screens="screens" @save="saveSetting" @retry="prefs.load" @appSettings="openAppSettings" @editAppPins="editAppPins" @navigate="navigate" @replayIntroduction="replayIntroduction"/>
@@ -173,7 +172,7 @@ const router = useRouter();
 const closeWindow = inject(DI.pageWindowClose, null);
 const prefs = useHatagoesPreferences();
 const homeRef = ref<InstanceType<typeof HatagoesHome> | null>(null);
-const homeInFeed = ref(false);
+const homeRecordRevision = ref(0);
 const location = ref(readHatagoesLocation(router.getCurrentFullPath()));
 const shellActive = ref(true);
 const introductionOpen = ref(false);
@@ -297,8 +296,8 @@ const mobilePillStyle = ref<PillStyle>(hiddenPill);
 let surfaceMotion: ReturnType<typeof captureHatagoesPageTurn> | undefined;
 const appNames = { hatask: 'Hatask', hatady: 'Hatady', hatafeed: 'HataFeed' };
 const brandLabel = computed(() => location.value.view === 'app' ? appNames[location.value.app] : 'HataGoes');
-const brandApp = computed<HataApp>(() => location.value.view === 'app' ? location.value.app : 'hatagoes');
-const logoTapSequence = reactive<Record<HataApp, number>>({ hatagoes: 0, hatask: 0, hatady: 0, hatafeed: 0 });
+const brandApp = computed<'hatagoes' | HatagoesApp>(() => location.value.view === 'app' ? location.value.app : 'hatagoes');
+const logoTapSequence = reactive<Record<HataApp, number>>({ hatagoes: 0, hatask: 0, hatady: 0, hatafeed: 0, hataigo: 0 });
 
 function tapLogo(app: HataApp): void { logoTapSequence[app]++; }
 
@@ -620,6 +619,8 @@ async function openScreen(screen: HatagoesCatalogEntry) {
 		try { const bridge = await ensureBridge(screen.app); if (!shellActive.value) return; if (!bridge.openTool) throw new Error('tool'); await bridge.openTool(screen.action); launcherUsage.value = recordHatagoesScreenUsage($i?.id, screen.id, screens.value); } catch { message.value = 'この画面を開けませんでした。'; }
 		return;
 	}
+	// 旗鯖fork: HataIgo などは HataGoes の中で展開せず、独立した画面へ移る（アプリ内の openStandalone と同じ移り方）
+	if (screen.standalone) { launcherUsage.value = recordHatagoesScreenUsage($i?.id, screen.id, screens.value); router.pushByPath(screen.path); return; }
 	navigate(hatagoesScreenPath(screen));
 }
 
@@ -711,7 +712,7 @@ function openSearchResult(item: Endpoints['hata/hatagoes/search']['res']['items'
 	router.pushByPath(hatagoesSearchResultUrl(item));
 }
 
-function changed() { revision.value++; }
+function changed() { revision.value++; if (shellActive.value && location.value.view === 'home') homeRecordRevision.value++; }
 
 const busyTodoIds = ref<string[]>([]);
 const busyActions = ref<string[]>([]);
@@ -901,7 +902,6 @@ function resetHomeScrollOnEntry() {
 	void nextTick(() => {
 		if (!shellActive.value || location.value.view !== 'home') return;
 		if (homeScrollEl.value) homeScrollEl.value.scrollTop = 0;
-		homeInFeed.value = false;
 	});
 }
 
@@ -1013,12 +1013,14 @@ provideMetadataReceiver(() => undefined);
 	--MI_THEME-focus: var(--hy-accent);
 }
 .brandGroup > button, .apps > button, .actions > button, .mobileNav > button, .screenNav > button, .screenCapsule > button { font: inherit; color: inherit; }
+:is(.shell, .overlayTheme, :global([data-hatagoes-palette]))[data-hatask-theme='halloween'] { background-size: var(--bg-size, auto); --MI_THEME-fgOnAccent: var(--htk-on-ink); }
+/* The wide shell's app capsule covers the mobile moon position. Follow the shell width, including in windows. */
+.shell[data-hatask-theme='halloween'][data-hatask-mode='dark'][data-narrow='false'] { background-image: radial-gradient(circle at 24% 34px, #ffe9b8 0 16px, #ffcf7a44 17px, transparent 90px), radial-gradient(ellipse at 100% 100%, #6b3fa066, transparent 55%), linear-gradient(180deg, #1e1530, #120c1a); }
+.shell[data-hatask-theme='halloween'][data-hatask-mode='light'][data-narrow='false'] { background-image: radial-gradient(circle at 24% 34px, #fff4c7 0 15px, #96632c 15px 16px, #e7b45a55 17px, transparent 90px), radial-gradient(circle at 92% 0%, #ffd58a80, transparent 22%), radial-gradient(#6b3fa014 1.2px, transparent 1.5px); }
 .header { position: relative; z-index: 6; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 16px 28px 8px; flex-shrink: 0; }
 .brandGroup > button, .apps > button, .actions > button, .mobileNav > button, .screenNav > button, .screenCapsule > button, .screenGrid > button { border: 0; border-radius: var(--hg-button); background: transparent; cursor: pointer; min-height: 44px; padding: 8px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
 .brandGroup > button, .apps > button, .actions > button, .mobileNav > button, .screenNav > button, .screenCapsule > button { transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease; }
 .brandGroup { display: flex; align-items: center; justify-self: start; min-width: 0; gap: 5px; }
-.homeSubtitle { color: var(--muted, var(--MI_THEME-fg)); font-size: 11px; font-weight: 700; }
-.homeTop { display: none !important; }
 .brandGroup .iconButton { min-width: 36px; width: 36px; padding: 6px; color: var(--fg, var(--MI_THEME-fg)); }
 .navEnter { transition: opacity 160ms ease, transform 160ms ease; }
 .navLeave { position: absolute; transition: opacity 120ms ease, transform 120ms ease; pointer-events: none; }
@@ -1093,7 +1095,7 @@ provideMetadataReceiver(() => undefined);
 .screenNav > .staffButton { color: var(--accent); }
 .screenNav > .projectButton { max-width: 190px; overflow: hidden; white-space: nowrap; border: 1px solid var(--rule); background: var(--surface); }
 .projectButton span { overflow: hidden; text-overflow: ellipsis; }
-.badge { position: absolute; top: 0; right: 0; padding: 1px 4px; border-radius: 8px; font-size: 10px; background: var(--accent); color: var(--MI_THEME-fgOnAccent); }
+.badge { position: absolute; top: 0; right: 0; padding: 1px 4px; border-radius: 8px; font-size: 10px; background: var(--accent); color: var(--on-accent, var(--MI_THEME-fgOnAccent)); }
 .body { position: relative; z-index: 0; display: flex; flex: 1; min-height: 0; }
 .content { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
 .common, .appPane { flex: 1; min-height: 0; overflow: auto; }
@@ -1158,11 +1160,8 @@ provideMetadataReceiver(() => undefined);
 	.header[data-home='true'] .brandGroup { grid-column: 1; grid-row: 1; width: 100%; gap: 2px; }
 	.header[data-home='true'] .brandGroup .iconButton { width: 32px; min-width: 32px; padding: 6px; }
 	.header[data-home='true'] .brand { min-height: 44px; padding: 0 !important; }
-	.header[data-home='true'] .homeSubtitle { display: none; }
 	.header[data-home='true'] .actions { grid-column: 2; grid-row: 1; justify-self: end; position: relative; z-index: 1; max-width: 100%; }
 	.header[data-home='true'] .actions button { min-width: 32px; padding: 6px; }
-	.header[data-home='true'] .homeTop { display: inline-flex !important; }
-	.header[data-home-feed='false'] .homeTop { display: none !important; }
 	.brand { gap: 4px !important; font-size: 22px !important; }
 	.appsSlot { display: none; }
 	.screenNav { padding: 2px 12px 8px; }
@@ -1210,9 +1209,5 @@ provideMetadataReceiver(() => undefined);
 	.mobileCreate i { transition: transform 300ms cubic-bezier(.22,1,.36,1); }
 	.homeScroll { scroll-snap-type: y proximity; }
 	.mobileCreate[data-open='true'] i { transform: rotate(45deg); }
-}
-@container (max-width: 360px) {
-	.header[data-home='true'][data-home-feed='true'] { grid-template-rows: 44px auto; }
-	.header[data-home='true'][data-home-feed='true'] .actions { grid-column: 1 / -1; grid-row: 2; }
 }
 </style>

@@ -233,6 +233,7 @@ const v2Themes = computed(() => [
 	{ id:'suri', name:copy.themeSuri, description:copy.themeSuriDescription, head:"'Zen Kaku Gothic Antique',sans-serif" },
 	// 旗鯖fork(ハタキュ): プレビューの地色はコルク、紙はクリーム、アクセントは紙に載る青。
 	{ id:'hatakyu', name:copy.themeHatakyu, description:copy.themeHatakyuDescription, head:"'Zen Maru Gothic',sans-serif" },
+	{ id: 'halloween', name: 'ハロウィン', description: '月明かりと、おばけたちの秋の夜', cardDescription: new Date().getMonth() === 9 ? '10月のおすすめ\n月明かりと、おばけたちの秋の夜' : undefined, head: "'Zen Maru Gothic',sans-serif" },
 ] satisfies { id: HataskPlannerTheme; name: string; description: string; cardDescription?: string; head: string }[]);
 const syncItems = computed(() => [
 	{ id: 'schedule', label: copy.syncSchedule },
@@ -250,7 +251,7 @@ const settings = ref<any>({ ...defaultSettings });
 // Match Hatask's active theme, including its display-only fallback for empty legacy values.
 const isAkatsuki = computed(() => !settings.value.theme || settings.value.theme === 'akatsuki');
 const previewMode = computed<'light' | 'dark'>(() => (settings.value.autoTheme ? store.r.darkMode.value : settings.value.darkMode) ? 'dark' : 'light');
-const autoAppearanceLabel = computed(() => isAkatsuki.value || settings.value.theme === 'koke' ? copy.autoAppearanceTheme : copy.autoAppearance);
+const autoAppearanceLabel = computed(() => isAkatsuki.value || settings.value.theme === 'koke' || settings.value.theme === 'halloween' ? copy.autoAppearanceTheme : copy.autoAppearance);
 const plannerImportInput = ref<HTMLInputElement|null>(null);
 const plannerSafetyBusy = ref(false);
 const plannerSafetyMessage = ref('');

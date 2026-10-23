@@ -7,7 +7,7 @@ export const hatagoesFeatures: Record<string, IntroFeature> = {
 		name: 'HataGoesのホーム', icon: 'home', title: '予定と記録をホームで確認する',
 		benefit: 'Hatask・Hatady・HataFeedを切り替えて使えます。ホームでは予定やToDo、きもち、読みかけの本などを確認できます。',
 		where: 'メニュー → HataGoes → ホーム',
-		steps: ['メニューから「HataGoes」を開きます。', 'ホームのカードで、予定や残している記録を確認します。ToDoは左の四角から完了にできます。', 'PCは上部、スマホは下部のボタンから、使いたいアプリを選びます。', 'HataGoesのアイコンでホームへ戻ります。終了するときは左上の×を押します。'],
+		steps: ['メニューから「HataGoes」を開きます。', 'ホームで予定や記録を確認します。スマホでは「きょうの記録」の行を押すと、きもち・ごはん・ToDo・水やり・読書の操作が開きます。', 'PCは上部、スマホは下部のボタンから、使いたいアプリを選びます。', 'HataGoesのアイコンでホームへ戻ります。終了するときは左上の×を押します。'],
 		note: '「きょうの記録」はきもち・ごはん・ToDo・水やり・読書の記録状況を示します。すべてを毎日そろえる必要はありません。HataFeedなどの表示はサーバーやアカウントの設定によって異なります。',
 		source: 'navbar.ts; pages/hatagoes.vue; components/hatagoes/HatagoesHome.vue',
 	},
@@ -16,7 +16,7 @@ export const hatagoesFeatures: Record<string, IntroFeature> = {
 		benefit: '「すべての App」からアプリを探せます。よく使う項目は＋メニューに8件まで追加できます。',
 		where: 'HataGoesのホーム → すべての App ／ ＋ → 編集',
 		steps: ['ホームの「すべての App」を開き、名前でアプリを探します。HataIntroもここから開けます。', '使いたいアプリを押して開きます。長押し、または右クリックでは「＋にピン留め」を選べます。', '＋メニューの「編集」から、項目の追加・解除・並べ替えを行います。', '「保存」を押すと、選んだ項目が＋メニューに表示されます。'],
-		note: 'ホームの「よく使う App」は、利用状況に合わせて並びます。Hatask内のナビは「全てのアプリ」の鉛筆から編集する別の設定です。「きょう」を含めてスマホは5項目、PCは6項目まで表示でき、「きょう」は外せません。',
+		note: 'ホームの「Favorite App」は、利用状況に合わせて並びます。Hatask内のナビは「全てのアプリ」の鉛筆から編集する別の設定です。「きょう」を含めてスマホは5項目、PCは6項目まで表示でき、「きょう」は外せません。',
 		source: 'pages/hatagoes.vue; components/hatagoes/HatagoesScreenPicker.vue; components/hatagoes/HatagoesAppPins.vue; utility/hatagoes-hatask-pins.ts; utility/hatagoes-launcher-usage.ts',
 	},
 	goesSearch: {
@@ -32,13 +32,13 @@ export const hatagoesFeatures: Record<string, IntroFeature> = {
 		benefit: 'ホームのテーマ、カードの表示と並び、＋メニューの項目を自分に合わせて選べます。',
 		where: 'HataGoesのホーム → 歯車',
 		steps: ['ホームの歯車を押し、HataGoesの設定を開きます。', 'ホーム専用テーマを選びます。明るさは端末に合わせるか、手動で選べます。', '「ホームのカード」で表示・非表示を選び、矢印で順番を変えます。PCではハンドルのドラッグでも並べ替えられます。', '各アプリの設定を変えるときは「各アプリの設定」から選びます。'],
-		note: 'ホーム専用テーマはHataGoesのホームにだけ適用されます。「みんなのきょう」は最後に固定され、「先週のきょう」はPCに表示されます。アプリ内の歯車ではアプリの設定と共通設定を選べます。',
+		note: 'ホーム専用テーマはHataGoesのホームにだけ適用されます。スマホでは5つの記録を「きょうの記録」にまとめます。アプリ内の歯車ではアプリの設定と共通設定を選べます。',
 		source: 'components/hatagoes/HatagoesSettings.vue; pages/hatagoes.vue; utility/hatagoes-preferences.ts',
 	},
 };
 
 export const hatagoesGuideDetails: Record<string, IntroDetail> = {
-	goesHome: { result: 'ホームのカードとアプリの切り替え場所が分かります。', practice: '図でToDoを完了にし、水やりの表示が変わる様子を試してください。', aliases: 'HataGoes ハタゴーズ ホーム きょうの記録 水やり みんなのきょう', related: ['goesApps', 'goesSearch', 'todo', 'hatady'], help: [['スマホではどこから切り替えますか？', '下部のアプリボタンから切り替えます。中央の＋は作成やアプリへの移動に使います。'], ['HataGoesを終了するには？', '左上の×を押します。スマホでは確認画面で「終了する」を選びます。']] },
+	goesHome: { result: 'ホームのカードとアプリの切り替え場所が分かります。', practice: '図でToDoを完了にし、水やりの表示が変わる様子を試してください。', aliases: 'HataGoes ハタゴーズ ホーム きょうの記録 水やり', related: ['goesApps', 'goesSearch', 'todo', 'hatady'], help: [['スマホではどこから切り替えますか？', '下部のアプリボタンから切り替えます。中央の＋は作成やアプリへの移動に使います。'], ['HataGoesを終了するには？', '左上の×を押します。スマホでは確認画面で「終了する」を選びます。']] },
 	goesApps: { result: 'アプリ一覧から目的の画面を開き、＋メニューに追加できます。', practice: '図で＋メニューを編集し、追加・並べ替え・保存を試してください。', aliases: 'アプリ一覧 全てのアプリ すべてのApp ピン留め ＋メニュー ショートカット HataIntro', related: ['goesHome', 'goesSettings'], help: [['アプリが見つからないときは？', 'ホームの「すべての App」で探してください。アプリ内の一覧はそのアプリの項目に絞られます。'], ['項目を外すと記録は消えますか？', '＋メニューから入口を外す操作です。予定や記録は削除されません。']] },
 	goesSearch: { result: 'アプリごとに画面を開かず、検索から目的の情報を探せます。', practice: '図で「本」と検索し、対象をHatadyに絞って詳細を開いてください。', aliases: '横断検索 検索 虫眼鏡 記録 作品 本 イシュー 人', related: ['goesHome', 'hatady', 'feed'], help: [['検索結果をもう一度見るには？', '虫眼鏡から検索を開き直します。開いている間の検索語と結果は残ります。'], ['全体のノート検索と同じですか？', 'HataGoesの横断検索はアプリの記録や作品、イシュー、人などを探す機能です。タイムラインのノート検索とは別です。']] },
 	goesSettings: { result: 'ホームの見た目と、カードの表示・順番を変更できます。', practice: '図でテーマを切り替え、カードの表示と順番を変えてください。', aliases: 'HataGoes 設定 テーマ カード 並べ替え 表示 非表示 ダークモード', related: ['goesHome', 'goesApps', 'theme'], help: [['アプリを開いているときの歯車は？', 'そのアプリの設定と、HataGoesの共通設定を選ぶ画面が開きます。'], ['紹介をもう一度見たいときは？', '共通設定の「HataGoesの紹介」から「紹介をもう一度見る」を選びます。']] },

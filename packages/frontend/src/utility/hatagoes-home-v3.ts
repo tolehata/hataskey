@@ -12,7 +12,6 @@ export type HatagoesJournalV3 = {
 	mood?: HataskJournalEntry;
 	week: { date: string; label: string; mood?: HataskJournalEntry }[];
 	meals: { slot: HatagoesMealSlot; entry?: HataskJournalEntry }[];
-	history: { date: string; mood?: HataskJournalEntry; meals: HataskJournalEntry[] };
 };
 
 export async function loadHatagoesDaily(): Promise<HatagoesDailySummary> {
@@ -26,7 +25,6 @@ export function buildHatagoesJournalV3(moodRows: readonly unknown[], mealRows: r
 	const meals = selectJournalEntries(mealRows, 'meal');
 	const today = journalLocalDateTime(now).date;
 	const dayAgo = (offset: number) => { const day = new Date(now); day.setDate(day.getDate() - offset); return day; };
-	const historyDate = journalLocalDateTime(dayAgo(7)).date;
 	return {
 		today,
 		mood: moods.find(entry => entry.date === today),
@@ -35,7 +33,6 @@ export function buildHatagoesJournalV3(moodRows: readonly unknown[], mealRows: r
 			return { date, label: day.toLocaleDateString('ja-JP', { weekday: 'short' }), mood: moods.find(entry => entry.date === date) };
 		}),
 		meals: (['breakfast', 'lunch', 'dinner'] as const).map(slot => ({ slot, entry: meals.find(entry => entry.date === today && entry.slot === slot) })),
-		history: { date: historyDate, mood: moods.find(entry => entry.date === historyDate), meals: meals.filter(entry => entry.date === historyDate) },
 	};
 }
 

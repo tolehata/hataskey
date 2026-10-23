@@ -36,7 +36,7 @@ function modeExpression(legacyControl: boolean): string {
 		function visit(node: ts.Node): ts.Node {
 			if (ts.isBlock(node)) {
 				const statements = node.statements.filter(statement => {
-					if (ts.isIfStatement(statement) && statement.expression.getText(page) === "isAkatsuki.value || settings.value.theme === 'koke'") {
+					if (ts.isIfStatement(statement) && statement.expression.getText(page) === "isAkatsuki.value || settings.value.theme === 'koke' || settings.value.theme === 'halloween'") {
 						removed++;
 						return false;
 					}
@@ -133,6 +133,13 @@ describe('Hatask暁の自動配色と本体テーマの接続', () => {
 		expect(current.themeMode.value).toBe(signal.appDark ? 'light' : 'dark');
 	});
 
+	test.each(signals)('ハロウィンはOS=$osDark・旧判定=$detectedでも設定プレビューと同じ本体darkMode=$appDarkを使う', signal => {
+		const current = fixture({ ...signal, settings: { theme: 'halloween' } });
+		expect(current.themeMode.value).toBe(signal.appDark ? 'dark' : 'light');
+		current.appDark.value = !signal.appDark;
+		expect(current.themeMode.value).toBe(signal.appDark ? 'light' : 'dark');
+	});
+
 	test('本体テーマ変更にリアクティブに追従し、OSや旧DOM色判定だけの変更では配色を変えない', async () => {
 		const current = fixture();
 		const seen: Mode[] = [];
@@ -162,7 +169,7 @@ describe('Hatask暁の自動配色と本体テーマの接続', () => {
 		}
 	});
 
-	test.each(['akatsuki', 'koke', ...legacyThemes, undefined])('autoを切った%sテーマは手動値を優先し、autoへ戻しても手動値を失わない', theme => {
+	test.each(['akatsuki', 'koke', 'halloween', ...legacyThemes, undefined])('autoを切った%sテーマは手動値を優先し、autoへ戻しても手動値を失わない', theme => {
 		const current = fixture({ settings: { theme, autoTheme: false, darkMode: false }, osDark: true, appDark: true, detected: 'dark' });
 		expect(current.themeMode.value).toBe('light');
 		current.settings.value.darkMode = true;

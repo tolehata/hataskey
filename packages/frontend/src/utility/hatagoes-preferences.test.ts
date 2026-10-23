@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from 'vitest';
 
 const api = vi.hoisted(() => vi.fn());
 vi.mock('./misskey-api.js', () => ({ misskeyApi: api }));
-import { normalizeHatagoesCards, normalizeHatagoesCardsV3, useHatagoesPreferences } from './hatagoes-preferences.js';
+import { normalizeHatagoesCards, normalizeHatagoesCardsV3, normalizeHatagoesTheme, useHatagoesPreferences } from './hatagoes-preferences.js';
 import { getHatagoesAppPinCandidates, HATAGOES_APP_PIN_LIMIT, normalizeHatagoesAppPins } from './hatagoes-app-pins.js';
 import { DEFAULT_HATAGOES_HATASK_PINS } from './hatagoes-hatask-pins.js';
 
@@ -23,17 +23,47 @@ describe('HataGoes account preferences', () => {
 		expect(normalized.slice(0, 7)).toEqual(saved);
 		expect(normalized.slice(7)).toEqual([{ id: 'community', hidden: false }, { id: 'roadmap', hidden: false }]);
 	});
-	test('starts v3 cards in design order, migrates only matching hidden choices, and fixes feed last', () => {
+	test('starts eight v3 cards in design order and migrates only matching hidden choices', () => {
 		const legacy = [{ id: 'issues', hidden: true }, { id: 'reading', hidden: false }, { id: 'meal', hidden: true }, { id: 'community', hidden: true }];
 		expect(normalizeHatagoesCardsV3(undefined, legacy)).toEqual([
 			{ id: 'daily', hidden: false }, { id: 'schedule', hidden: false }, { id: 'flower', hidden: false }, { id: 'todo', hidden: false },
 			{ id: 'mood', hidden: false }, { id: 'meal', hidden: true }, { id: 'reading', hidden: false }, { id: 'issues', hidden: true },
-			{ id: 'history', hidden: false }, { id: 'feed', hidden: false },
 		]);
 		const saved = normalizeHatagoesCardsV3([{ id: 'feed', hidden: true }, { id: 'mood', hidden: false }, { id: 'daily', hidden: true }], legacy);
-		expect(saved.map(card => card.id)).toEqual(['mood', 'daily', 'schedule', 'flower', 'todo', 'meal', 'reading', 'issues', 'history', 'feed']);
-		expect(saved.find(card => card.id === 'feed')?.hidden).toBe(true);
+		expect(saved.map(card => card.id)).toEqual(['mood', 'daily', 'schedule', 'flower', 'todo', 'meal', 'reading', 'issues']);
+		expect(saved.find(card => card.id === 'daily')?.hidden).toBe(true);
 		expect(saved.find(card => card.id === 'issues')?.hidden).toBe(false);
+	});
+
+	test('discards retired and malformed cards while preserving the remaining order and hidden choices', () => {
+		const saved = [
+			{ id: 'feed', hidden: false }, { id: 'issues', hidden: true }, null, { id: 'mood', hidden: false },
+			{ id: 'history', hidden: true }, { id: 'issues', hidden: false }, { id: 'unknown', hidden: true },
+			{ id: 'daily', hidden: true }, { id: 'meal', hidden: 'true' },
+		];
+		const before = JSON.stringify(saved);
+		expect(normalizeHatagoesCardsV3(saved)).toEqual([
+			{ id: 'issues', hidden: true }, { id: 'mood', hidden: false }, { id: 'daily', hidden: true }, { id: 'meal', hidden: false },
+			{ id: 'schedule', hidden: false }, { id: 'flower', hidden: false }, { id: 'todo', hidden: false }, { id: 'reading', hidden: false },
+		]);
+		expect(JSON.stringify(saved)).toBe(before);
+		expect(normalizeHatagoesCardsV3({ cards: saved })).toEqual(normalizeHatagoesCardsV3(undefined));
+	});
+
+	test('reads old v3 cards without rewriting saved data and preserves settings on failed writes', async () => {
+		const cardsV3 = [{ id: 'feed', hidden: false }, { id: 'reading', hidden: true }, { id: 'history', hidden: false }, { id: 'daily', hidden: false }];
+		const before = JSON.stringify(cardsV3);
+		api.mockReset().mockResolvedValueOnce({ theme: { theme: 'halloween' }, cardsV3 }).mockRejectedValueOnce(new Error('offline'));
+		const prefs = useHatagoesPreferences();
+		await prefs.load();
+		expect(api.mock.calls.map(call => call[0])).toEqual(['i/registry/get-all']);
+		expect(prefs.cardsV3.value.slice(0, 2)).toEqual([{ id: 'reading', hidden: true }, { id: 'daily', hidden: false }]);
+		expect(prefs.cardsV3.value).toHaveLength(8);
+		const loaded = prefs.cardsV3.value.map(card => ({ ...card }));
+		await expect(prefs.save('cardsV3', [{ id: 'daily', hidden: true }])).rejects.toThrow('offline');
+		expect(prefs.cardsV3.value).toEqual(loaded);
+		expect(prefs.error.value).toBe(true);
+		expect(JSON.stringify(cardsV3)).toBe(before);
 	});
 
 	test('loads v3 cards independently and saves only cardsV3', async () => {
@@ -42,9 +72,23 @@ describe('HataGoes account preferences', () => {
 		await prefs.load();
 		expect(prefs.cardsV3.value.find(card => card.id === 'meal')?.hidden).toBe(true);
 		await prefs.save('cardsV3', [{ id: 'daily', hidden: true }, { id: 'feed', hidden: true }]);
-		expect(api.mock.calls.at(-1)?.[1]).toMatchObject({ key: 'cardsV3' });
+		expect(api.mock.calls.at(-1)?.[1]).toEqual({ scope: ['client', 'hatagoes'], key: 'cardsV3', value: prefs.cardsV3.value });
+		expect(prefs.cardsV3.value.map(card => card.id)).toEqual(['daily', 'schedule', 'flower', 'todo', 'mood', 'meal', 'reading', 'issues']);
 		expect(prefs.cardsV3.value.find(card => card.id === 'daily')?.hidden).toBe(true);
 		expect(prefs.cards.value.find(card => card.id === 'meal')?.hidden).toBe(true);
+	});
+	test('saves Halloween only in the HataGoes theme key and retains the explicit mode', async () => {
+		api.mockReset().mockResolvedValueOnce({ theme: { theme: 'akatsuki', darkMode: true, autoTheme: false }, cardsV3: [{ id: 'mood', hidden: true }] }).mockResolvedValue(null);
+		const prefs = useHatagoesPreferences();
+		await prefs.load();
+		const cardsBefore = prefs.cardsV3.value.map(card => ({ ...card }));
+		const theme = { theme: 'halloween', darkMode: true, autoTheme: false };
+		await prefs.save('theme', theme);
+		expect(api.mock.calls.at(-1)?.[1]).toEqual({ scope: ['client', 'hatagoes'], key: 'theme', value: theme });
+		expect(prefs.theme.value).toEqual(theme);
+		expect(prefs.cardsV3.value).toEqual(cardsBefore);
+		expect(normalizeHatagoesTheme(theme)).toEqual(theme);
+		expect(normalizeHatagoesTheme({ theme: 'unknown', autoTheme: false })).toEqual({ theme: 'akatsuki', darkMode: false, autoTheme: false });
 	});
 	test('K22 app pins start empty and normalize only explicit candidates up to eight', () => {
 		expect(normalizeHatagoesAppPins(undefined)).toEqual([]);

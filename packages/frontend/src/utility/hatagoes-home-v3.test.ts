@@ -16,9 +16,9 @@ describe('home journal projection', () => {
 		expect(result.meals[1].entry).toBeUndefined();
 		expect(JSON.stringify({ moods, meals })).toBe(before);
 	});
-	test('last week means seven local calendar days across month boundaries', () => {
+	test('the week crosses month boundaries without projecting the retired history card', () => {
 		const result = buildHatagoesJournalV3([{ id: 'past', date: '2026-09-26', time: '12:00', level: 4, note: 'ゆっくりできた' }], [], new Date(2026, 9, 3, 1));
-		expect(result.history).toMatchObject({ date: '2026-09-26', mood: { note: 'ゆっくりできた' }, meals: [] });
+		expect(result).not.toHaveProperty('history');
 		expect(result.week[0].date).toBe('2026-09-27');
 	});
 });

@@ -18,11 +18,10 @@ export const HATAGOES_HOME_CARDS_V3 = [
 	{ id: 'flower', label: 'おはな' }, { id: 'todo', label: 'ToDo' },
 	{ id: 'mood', label: 'いまのきもち' }, { id: 'meal', label: 'きょうのごはん' },
 	{ id: 'reading', label: '読みかけ' }, { id: 'issues', label: 'あなたのイシュー' },
-	{ id: 'history', label: '先週のきょう' }, { id: 'feed', label: 'みんなのきょう' },
 ] as const;
 export type HatagoesCardV3Id = (typeof HATAGOES_HOME_CARDS_V3)[number]['id'];
 export type HatagoesCardV3 = { id: HatagoesCardV3Id; hidden: boolean };
-export const HATAGOES_THEMES = ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu'] as const;
+export const HATAGOES_THEMES = ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu', 'halloween'] as const;
 export type HatagoesTheme = (typeof HATAGOES_THEMES)[number];
 export type HatagoesHomeTheme = { theme: HatagoesTheme; darkMode: boolean; autoTheme: boolean };
 const scope = ['client', 'hatagoes'];
@@ -49,7 +48,7 @@ export function normalizeHatagoesCardsV3(value: unknown, legacy?: unknown): Hata
 		if (definition && !cards.some(card => card.id === definition.id)) cards.push({ id: definition.id, hidden: v.hidden === true });
 	}
 	for (const definition of HATAGOES_HOME_CARDS_V3) if (!cards.some(card => card.id === definition.id)) cards.push({ id: definition.id, hidden: !Array.isArray(value) && legacyHidden.has(definition.id) });
-	return [...cards.filter(card => card.id !== 'feed'), cards.find(card => card.id === 'feed')!];
+	return cards;
 }
 
 export function normalizeHatagoesTheme(value: unknown): HatagoesHomeTheme {

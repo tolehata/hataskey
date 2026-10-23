@@ -11,7 +11,7 @@ import { describe, expect, test } from 'vitest';
 import type { HataskPlannerTheme } from './hatask-planner-types.js';
 
 const directory = resolve(process.cwd(), 'src/components/hatask');
-const themes: HataskPlannerTheme[] = ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu'];
+const themes: HataskPlannerTheme[] = ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu', 'halloween'];
 
 function component(name: string) { return parse(readFileSync(resolve(directory, `${name}.vue`), 'utf8')); }
 
@@ -25,7 +25,7 @@ function contrast(a: string, b: string): number {
 }
 
 describe('暁の子 UI テーマ契約', () => {
-	test('暁・苔と既存の4テーマを同じ型で受け取る', () => {
+	test('保存済みテーマとハロウィンを同じ型で受け取る', () => {
 		const typeSource = readFileSync(resolve(directory, 'hatask-planner-types.ts'), 'utf8');
 		const themeType = typeSource.match(/export type HataskPlannerTheme = ([^;]+);/u)?.[1];
 		expect(themeType?.match(/'[^']+'/gu)?.map(value => value.slice(1, -1))).toEqual(themes);

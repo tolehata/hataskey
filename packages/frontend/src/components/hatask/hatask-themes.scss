@@ -199,6 +199,48 @@
   --ink-line: #b59465; --hak-badge-bg: #145fb8; --paper2: #3a3128;
 }
 .htk-root[data-mode][data-theme='hatakyu'][data-mode] .htk-akatsuki-layout { background-size: 7px 9px, 11px 13px, auto; background-position: 0 0, 4px 6px, 0 0; }
+.htk-root[data-theme='halloween'][data-mode],
+.htk-modal-ov[data-theme='halloween'][data-mode],
+.htk-event-details-theme[data-theme='halloween'][data-mode],
+.htk-theme-preview[data-theme='halloween'][data-mode],
+.htk-theme-action[data-theme='halloween'][data-mode],
+[data-hatask-support][data-theme='halloween'][data-mode],
+[data-hatask-ranking][data-theme='halloween'][data-mode],
+[data-hatask-theme][data-hatask-mode][data-hatask-theme='halloween'],
+.htk-root[data-mode][data-theme='halloween'] .htk-akatsuki-layout[data-enabled='true'] {
+  --bg: #f7ecdc; --surface: #fffaf2; --fg: #2a1a2e; --fg-2: #5e4a5a; --fg-3: #6e5866;
+  --rule: #e6d2b8; --rule2: #8a6a8a; --accent: #e8661c; --accent-ink: #b3470b; --on-accent: #2a1a2e;
+  --accent2: #6b3fa0; --on-accent2: #ffffff;
+  --rail-paper: #f0e1d4; --aside-paper: #f3e5db;
+  --candy-1: #f5b20c; --candy-2: #ff8a2a; --candy-3: #fff3dc;
+  --fill: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  --shadow: 0 2px 0 #2a1a2e0f, 0 18px 36px -24px #6b3fa073;
+  --card-radius: 24px; --case-radius: 999px; --control-radius: 999px;
+  --htk-font-head: 'Zen Maru Gothic', 'Zen Kaku Gothic New', sans-serif;
+  --htk-on-ink: #ffffff; --ink-line: #b3470b; --skin-edge: transparent; --hak-badge-bg: #b3470b;
+  --MI_THEME-fgOnAccent: var(--htk-on-ink);
+  --bg-image: radial-gradient(circle at 57% 24px, #fff4c7 0 12px, #96632c 12px 13px, #e7b45a55 14px, transparent 70px), radial-gradient(circle at 88% 0%, #ffd58a80, transparent 32%), radial-gradient(#6b3fa014 1.2px, transparent 1.5px);
+  --bg-size: auto, auto, 16px 16px;
+}
+.htk-root[data-theme='halloween'][data-mode][data-mode='dark'],
+.htk-modal-ov[data-theme='halloween'][data-mode][data-mode='dark'],
+.htk-event-details-theme[data-theme='halloween'][data-mode][data-mode='dark'],
+.htk-theme-preview[data-theme='halloween'][data-mode][data-mode='dark'],
+.htk-theme-action[data-theme='halloween'][data-mode][data-mode='dark'],
+[data-hatask-support][data-theme='halloween'][data-mode][data-mode='dark'],
+[data-hatask-ranking][data-theme='halloween'][data-mode][data-mode='dark'],
+[data-hatask-theme][data-hatask-mode][data-hatask-theme='halloween'][data-hatask-mode='dark'],
+.htk-root[data-mode][data-theme='halloween'][data-mode='dark'] .htk-akatsuki-layout[data-enabled='true'] {
+  --bg: #150f1f; --surface: #231a31; --fg: #f8ecdf; --fg-2: #cbb8d6; --fg-3: #bba8c8;
+  --rule: #45345a; --rule2: #927da5; --accent: #ff8a2a; --accent-ink: #ffa457; --on-accent: #1c1206;
+  --accent2: #b48cff; --on-accent2: #150f1f; --rail-paper: #1c1428; --aside-paper: #20172c;
+  --candy-1: #ffd23f; --candy-3: #fff4e0;
+  --fill: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  --htk-on-ink: #1c1206; --shadow: 0 0 0 1px #ff8a2a12, 0 18px 40px -22px #000d;
+  --ink-line: #ffa457;
+  --bg-image: radial-gradient(circle at 57% 24px, #ffe9b8 0 13px, #ffcf7a44 14px, transparent 70px), radial-gradient(ellipse at 0% 100%, #6b3fa066, transparent 60%), linear-gradient(180deg, #1e1530, #120c1a);
+  --bg-size: auto;
+}
 .htk-root[data-theme]:not([data-theme='akatsuki']) :is(.hak-desktop-case, .hak-mobile-case, .hak-bottom-case, .hak-focus-options, .hak-search-results, .hak-fab-sheet) { border-radius: var(--case-radius); border-color: var(--rule); background: var(--surface); box-shadow: var(--shadow); }
 .htk-root[data-theme]:not([data-theme='akatsuki']) :is(.hak-rail-tab, .hak-focus-option, .hak-mobile-tab, .hak-action-button, .hak-small-button, .hak-suggestion, .hak-rich-status) { border-radius: var(--control-radius); }
 .htk-root[data-theme]:not([data-theme='akatsuki']) :is(.hak-stats, .hak-side-case, .hak-focus-panel, .hak-favorites-editor) { border-radius: var(--card-radius); border-color: var(--rule); box-shadow: var(--shadow); }
@@ -220,6 +262,7 @@
 .htk-root:not([data-theme='akatsuki']) .htk-akatsuki-layout { background: var(--bg-image), var(--bg); }
 .htk-root[data-mode][data-theme='kashin'] .htk-akatsuki-layout { background-size: 18px 18px; }
 .htk-root[data-mode][data-theme='hatakyu'] .htk-akatsuki-layout { background-size: 7px 9px, 11px 13px, auto; background-position: 0 0, 4px 6px, 0 0; }
+.htk-root[data-theme='halloween'], .htk-root[data-mode][data-theme='halloween'] .htk-akatsuki-layout { background-size: var(--bg-size); }
 .htk-root[data-theme='hatakyu'] .hak-home-summary :is(.hak-dow, .hak-day-count) { color: var(--fg); }
 
 .htk-root[data-theme], .htk-theme-preview[data-theme], [data-hatask-theme][data-hatask-mode] { color-scheme: light; }
