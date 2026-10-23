@@ -9,7 +9,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<HataAppLogo app="hataigo" :size="56"/>
 			<span :class="$style.wordmark"><HataAppWordmark app="hataigo"/></span>
 		</div>
-		<p :class="$style.tagline">囲碁を、Hataskeyで。</p>
+		<p :class="$style.tagline">囲碁を、<span :class="$style.brandName">Hataskey</span>で。</p>
 		<ul :class="$style.badges">
 			<li><i class="ti ti-palette" aria-hidden="true"></i>盤の見た目6種</li>
 			<li><i class="ti ti-file-text" aria-hidden="true"></i>SGFの読み込み・保存</li>
@@ -107,6 +107,8 @@ onBeforeUnmount(stop);
 .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .wordmark { font-size: clamp(40px, 6cqw, 56px); line-height: 1; }
 .tagline { margin: 4px 0 0; font: 700 clamp(20px, 2.6cqw, 26px)/1.45 'Zen Maru Gothic', sans-serif; letter-spacing: -.02em; }
+/* HataAppWordmark が読み込む Righteous と同じ書体。 */
+.brandName { font-family: 'HataAppRighteous', Righteous, sans-serif; font-weight: 400; font-synthesis: none; letter-spacing: 0; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 0; padding: 0; list-style: none; }
 .badges li { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: #ffffffb3; color: #3e3352; font-size: 12px; font-weight: 700; }
 .badges i { color: var(--hi-fuji); }
@@ -129,6 +131,9 @@ onBeforeUnmount(stop);
 @container release (max-width: 620px) {
 	.showcase { --hi-radius: 16px; --hi-pad: 16px; --hi-gap: 10px; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hero' 'board' 'modes'; }
 	.wordmark { font-size: 40px; }
+	/* スマホでは紹介のカードをロゴと文字だけにする。 */
+	.hero { align-items: center; }
+	.tagline, .badges, .start { display: none; }
 	.board { max-width: 240px; }
 	.modes { grid-template-columns: minmax(0, 1fr); }
 }
