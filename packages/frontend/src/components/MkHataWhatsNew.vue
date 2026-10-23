@@ -20,6 +20,7 @@ The caller keeps the dialog queue and records the displayed version on closed.
 				<div v-if="currentStory.feature === 'hatagoes'" :class="$style.mergeStage" data-reveal="stage" data-feature-mock aria-hidden="true" inert>
 					<HatagoesMergeMotion :active="mergeActive" :loop="true"/>
 				</div>
+				<HataigoShowcase v-else-if="currentStory.feature === 'hataigo'" data-reveal="stage" :animate="hataigoActive" @start="startHataigo"/>
 				<a v-else :class="$style.releaseNotesLink" :href="currentStory.cards[0].link?.url" target="_blank" rel="noopener noreferrer" data-reveal="stage">{{ currentStory.cards[0].link?.label }}<i class="ti ti-external-link" aria-hidden="true"></i></a>
 			</section>
 		</div>
@@ -37,6 +38,7 @@ The caller keeps the dialog queue and records the displayed version on closed.
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import ReleaseOpening from './hata-whats-new/ReleaseOpening.vue';
 import HatagoesMergeMotion from './hatagoes/motion/HatagoesMergeMotion.vue';
+import HataigoShowcase from './hata-whats-new/HataigoShowcase.vue';
 import { createReveal } from './hata-whats-new/reveal.js';
 import { getHataWhatsNewStories, getHataWhatsNewDisplayVersion, HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
 import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
@@ -62,7 +64,7 @@ const pageId = ref(HATA_WHATS_NEW.groups[0].cards[0].id);
 const page = computed(() => Math.max(0, stories.value.findIndex(story => story.id === pageId.value || story.cards.some(card => card.id === pageId.value))) + 1);
 const totalPages = computed(() => stories.value.length);
 const currentStory = computed(() => stories.value[page.value - 1]);
-const isBrandLabel = computed(() => ['HataGoes', 'Hataskey UI S 2', 'HataFeed', 'Hatask'].includes(currentStory.value.label));
+const isBrandLabel = computed(() => ['HataGoes', 'HataIgo', 'Hataskey UI S 2', 'HataFeed', 'Hatask'].includes(currentStory.value.label));
 const opened = ref(true);
 const closing = ref(false);
 const contentReady = ref(false);
@@ -74,6 +76,7 @@ const reduced = ref(media.matches);
 const documentVisible = ref(!window.document.hidden);
 const motion = computed(() => opened.value && prefer.r.animation.value && !reduced.value && documentVisible.value);
 const mergeActive = computed(() => opened.value && contentReady.value && !changing.value && currentStory.value.feature === 'hatagoes' && documentVisible.value);
+const hataigoActive = computed(() => motion.value && contentReady.value && !changing.value && currentStory.value.feature === 'hataigo');
 const modalMotionPreset = computed<'none' | 'dissolve' | undefined>(() => !documentVisible.value ? 'none' : hataGoesHost ? undefined : !prefer.r.animation.value || reduced.value ? 'none' : contentReady.value ? 'dissolve' : undefined);
 const reveal = createReveal();
 let bodyObserver: ResizeObserver | undefined;
@@ -155,6 +158,13 @@ function dismiss() {
 	closing.value = contentReady.value && motion.value;
 	stop();
 	modal.value?.close();
+}
+
+// 旗鯖fork: 案内を閉じてから HataIgo へ移る。ルーターは押されたときだけ読み込む。
+async function startHataigo() {
+	dismiss();
+	const { mainRouter } = await import('@/router.js');
+	mainRouter.pushByPath('/hataigo');
 }
 
 function onClosed() {

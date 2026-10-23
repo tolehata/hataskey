@@ -3,11 +3,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { compileStyleAsync } from '@vue/compiler-sfc';
-import { createApp, defineComponent, h, nextTick, computed } from 'vue';
+import { createApp, defineComponent, h, nextTick, computed, ref as createRef } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import MkHataWhatsNew from './MkHataWhatsNew.vue';
 import HataFeedHome from './HataFeedHome.vue';
 import NotificationPreview from './hata-whats-new/NotificationPreview.vue';
+import HataigoShowcase from './hata-whats-new/HataigoShowcase.vue';
 import { sampleIssues, sampleRequests, sampleActivity } from './hata-whats-new/samples.js';
 import type { Locale } from '../../../../locales/index.js';
 import type { App, PropType } from 'vue';
@@ -39,6 +40,8 @@ vi.mock('@/utility/hatakyu-assets.js', () => ({ useHatakyuBranding: () => true, 
 vi.mock('@/components/MkHatakyuIllustration.vue', () => ({ default: { template: '<img alt="" data-mascot>' } }));
 vi.mock('./hata-whats-new/UiS2Feature.vue', () => ({ default: { props: ['scene', 'motion'], template: '<div data-feature-mock inert aria-hidden="true">Hataskey UI S 2 scene {{ scene }}</div>' } }));
 vi.mock('./hatagoes/motion/HatagoesMergeMotion.vue', () => ({ default: { props: ['active', 'loop'], template: '<div :data-merge-active="active">HataGoes Merge</div>' } }));
+const routerPush = vi.hoisted(() => vi.fn());
+vi.mock('@/router.js', () => ({ mainRouter: { pushByPath: routerPush } }));
 vi.mock('@/components/HyDialog.vue', () => ({ default: { setup() { throw new Error('A decorative preview opened a live dialog'); } } }));
 vi.mock('@/components/MkHataskeyNotificationToasts.vue', () => ({ default: { setup() { throw new Error('A decorative preview started a live receiver'); } } }));
 vi.mock('@/components/MkModal.vue', async () => {
@@ -77,7 +80,7 @@ let modalCloseCalls: number;
 let deferModalClose: boolean;
 let closed: ReturnType<typeof vi.fn>;
 
-const approvedIds = ['hatagoes-motion', 'release-notes'];
+const approvedIds = ['hataigo', 'release-notes'];
 
 async function flush() { for (let i = 0; i < 10; i++) await nextTick(); }
 
@@ -235,14 +238,18 @@ describe('production update introduction', () => {
 	});
 	test('the two release pages keep focus and show the release-notes link', async () => {
 		await mount();
-		expect(requiredElement('[data-story] h2').textContent).toBe('三つが、ひとつに。そして、進む。');
-		expect(requiredElement('[data-feature-mock]').textContent).toContain('HataGoes Merge');
-		expect(requiredElement('[data-feature-mock] [data-merge-active]').getAttribute('data-merge-active')).toBe('true');
+		expect(requiredElement('[data-story] h2').textContent).toBe('一局、打ちませんか。');
+		const showcase = requiredElement('[data-hataigo-showcase]');
+		expect(showcase.getAttribute('data-reveal')).toBe('stage');
+		expect(showcase.textContent).toContain('囲碁を、Hataskeyで。');
+		for (const mode of ['ひとりで並べる', 'AIと打つ', '人と打つ']) expect(showcase.textContent).toContain(mode);
+		// Motion is off here, so the decorative board shows the whole sequence at rest.
+		expect(showcase.querySelectorAll('svg [data-color]')).toHaveLength(16);
 		await next();
 		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('release-notes');
-		expect(requiredElement('[data-story] h2').textContent).toBe('詳細はリリースノートをご確認ください');
+		expect(requiredElement('[data-story] h2').textContent).toBe('詳しくはリリースノートをご確認ください');
 		const link = requiredElement<HTMLAnchorElement>('[data-story] a');
-		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-1282');
+		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-1283');
 		expect(link.target).toBe('_blank');
 		expect(link.rel).toBe('noopener noreferrer');
 		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
@@ -256,8 +263,8 @@ describe('production update introduction', () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
-		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.8.2)');
-		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hatagoes-motion');
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.8.3)');
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hataigo');
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		store.r.darkMode.value = true; await flush();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-mode')).toBe('dark');
@@ -278,7 +285,7 @@ describe('production update introduction', () => {
 		hataFeedNotify('本体での更新'); expect(received).toHaveBeenCalledWith('本体での更新');
 		expect(closed).not.toHaveBeenCalled();
 		requiredElement<HTMLButtonElement>('[aria-label="戻る"]').click(); await flush();
-		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hatagoes-motion');
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hataigo');
 		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		expect(misskeyApi).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled(); expect(prefer.commit).not.toHaveBeenCalled();
@@ -289,7 +296,7 @@ describe('production update introduction', () => {
 		await mount();
 		for (const height of [600, 469, 470, 380]) {
 			bodyHeight = height; resizeCallbacks.forEach(callback => callback()); await flush();
-			expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hatagoes-motion');
+			expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hataigo');
 			expect(host.querySelector('footer')?.textContent).toContain('/ 2');
 		}
 		await next();
@@ -348,7 +355,42 @@ describe('production update introduction', () => {
 		prefer.r.animation.value = setting !== 'preference'; reduced = setting === 'reduced'; hidden = setting === 'hidden';
 		await mount();
 		expect(requiredElement('[data-modal]').getAttribute('data-motion-preset')).toBe('none');
-		if (setting !== 'hidden') expect(requiredElement('[data-merge-active]').getAttribute('data-merge-active')).toBe('true');
+		expect(requiredElement('[data-hataigo-showcase]').querySelectorAll('svg [data-color]')).toHaveLength(16);
+	});
+	test('the HataIgo start button closes the notice once and opens HataIgo', async () => {
+		routerPush.mockClear();
+		await mount();
+		const start = [...host.querySelectorAll<HTMLButtonElement>('[data-hataigo-showcase] button')].find(button => button.textContent.includes('HataIgoをはじめる'));
+		expect(start).toBeDefined();
+		start?.click(); await flush();
+		expect(closed).toHaveBeenCalledTimes(1);
+		// The router is imported lazily on click, so wait for that module to resolve.
+		await vi.waitFor(() => expect(routerPush).toHaveBeenCalledExactlyOnceWith('/hataigo'));
+		expect(host.querySelector('[data-story]')).toBeNull();
+	});
+	test('the HataIgo board places stones one by one only while animated and releases its timer', async () => {
+		vi.useFakeTimers();
+		try {
+			const animate = createRef(true);
+			app = createApp(defineComponent({ setup: () => () => h(HataigoShowcase, { animate: animate.value }) }));
+			globals(app); app.mount(host); await flush();
+			const stones = () => host.querySelectorAll('svg [data-color]').length;
+			expect(stones()).toBe(0);
+			vi.advanceTimersByTime(560); await flush();
+			expect(stones()).toBe(1);
+			expect(host.querySelector('svg [data-color]')?.getAttribute('data-color')).toBe('black');
+			vi.advanceTimersByTime(560); await flush();
+			expect(stones()).toBe(2);
+			animate.value = false; await flush();
+			expect(stones()).toBe(16);
+			expect(vi.getTimerCount()).toBe(0);
+			animate.value = true; await flush();
+			expect(stones()).toBe(0);
+			app.unmount(); app = undefined;
+			expect(vi.getTimerCount()).toBe(0);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 	test('back/forward labels stay accessible while visible buttons are icons, and motion stops on close', async () => {
 		prefer.r.animation.value = true;

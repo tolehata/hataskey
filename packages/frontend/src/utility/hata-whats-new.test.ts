@@ -5,15 +5,19 @@ import { describe, expect, test } from 'vitest';
 import { getHataWhatsNewDisplayVersion, getHataWhatsNewStories, HATA_WHATS_NEW, HATA_WHATS_NEW_THEMES } from './hata-whats-new.js';
 
 const root = path.resolve(process.cwd(), '../..');
-const ids = ['hatagoes-motion', 'release-notes'];
+const ids = ['hataigo', 'release-notes'];
 describe('approved release stories', () => {
 	test('the displayed-version gate stays aligned with the package and release metadata', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 		expect(HATA_WHATS_NEW.version).toBe(pkg.version);
-		expect(HATA_WHATS_NEW.version).toBe('2026.10.0-hata.12.8.2');
+		expect(HATA_WHATS_NEW.version).toBe('2026.10.0-hata.12.8.3');
 		const version = getHataWhatsNewDisplayVersion(pkg.version);
-		expect(version).toBe('hata-12.8.2');
+		expect(version).toBe('hata-12.8.3');
 		const changelog = fs.readFileSync(path.join(root, 'HATA-CHANGELOG.md'), 'utf8');
+		expect(changelog.indexOf('## hata-12.8.3\n')).toBeGreaterThan(0);
+		expect(changelog.indexOf('## hata-12.8.3\n')).toBeLessThan(changelog.indexOf('## hata-12.8.2\n'));
+		expect(changelog.indexOf('### HataIgo\n')).toBeGreaterThan(changelog.indexOf('## hata-12.8.3\n'));
+		expect(changelog.indexOf('### HataIgo\n')).toBeLessThan(changelog.indexOf('## hata-12.8.2\n'));
 		expect(changelog.indexOf('## hata-12.8.2\n')).toBeGreaterThan(0);
 		expect(changelog.indexOf('## hata-12.8.2\n')).toBeLessThan(changelog.indexOf('## hata-12.8.1\n'));
 		expect(changelog.indexOf('## hata-12.8.1\n')).toBeGreaterThan(0);
@@ -32,8 +36,8 @@ describe('approved release stories', () => {
 		expect(stories).toHaveLength(2);
 		expect(stories.map(story => story.id)).toEqual(ids);
 		expect(stories.map(story => story.cards.length)).toEqual([1, 1]);
-		expect(stories[0].feature).toBe('hatagoes');
-		expect(stories[1].title).toBe('詳細はリリースノートをご確認ください');
+		expect(stories[0].feature).toBe('hataigo');
+		expect(stories[1].title).toBe('詳しくはリリースノートをご確認ください');
 	});
 
 	test('the six approved themes keep their persisted ids and the new moss theme', () => {
@@ -43,7 +47,7 @@ describe('approved release stories', () => {
 	test('the final page links to this fork’s release notes', () => {
 		const cards = HATA_WHATS_NEW.groups.flatMap(group => group.cards);
 		expect(cards.map(card => card.id)).toEqual(ids);
-		expect(cards[1].link).toEqual({ label: 'リリースノートを開く', url: 'https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-1282' });
+		expect(cards[1].link).toEqual({ label: 'リリースノートを開く', url: 'https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-1283' });
 	});
 
 	test('release copy contains no implementation paths or internal storage and API terminology', () => {
