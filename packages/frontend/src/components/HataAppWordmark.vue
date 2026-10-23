@@ -34,6 +34,7 @@ const parts = computed(() => hataAppNames[props.app]);
 	color: #2b1f2c;
 }
 .tail { color: #c23a62; }
+.wordmark[data-app='hataigo'] .tail { color: #6b4fb8; }
 .wordmark[data-app='hatask'] .tail { color: #8a6200; }
 .wordmark[data-app='hatady'] .tail { color: #1d7457; }
 .wordmark[data-app='hatafeed'] .tail { color: #2c64a0; }

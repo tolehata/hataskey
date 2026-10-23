@@ -26,6 +26,9 @@ describe('HataGoes navigation', () => {
 		expect(isHatagoesCurrentScreen(getHatagoesScreen('hatafeed.beta')!, '/hatafeed?tab=beta')).toBe(true);
 		expect(isHatagoesCurrentScreen(getHatagoesScreen('hatady.records')!, '/hatady?tab=collection')).toBe(false);
 		expect(isHatagoesCurrentScreen(getHatagoesScreen('hatady.settings')!, '/hatady')).toBe(false);
+		const igo = getHatagoesScreen('hatask.hataigo');
+		if (!igo) throw new Error('Missing HataIgo screen registration');
+		expect(isHatagoesCurrentScreen(igo, '/hataigo')).toBe(true);
 	});
 	test('preserves legacy Hatask notification targets and explicit tab precedence', () => {
 		expect(hatagoesTab('/hatask?notice=calendar')).toBe('cal');
@@ -57,6 +60,12 @@ describe('HataGoes navigation', () => {
 		expect(hatagoesPageKey('/hatask')).not.toBe(hatagoesPageKey('/hatady'));
 		expect(hatagoesPaneKey('/hatask?tab=todo')).toBe(hatagoesPaneKey('/hatask?tab=mood'));
 		expect(hatagoesPaneKey('/hatask/card-maker')).not.toBe(hatagoesPaneKey('/hatask'));
+	});
+
+	test('opens HataIgo like other games: a tool page, not an app tab of its own', () => {
+		expect(hatagoesAppForPath('/hataigo')).toBe('hatask');
+		expect(hatagoesPaneKey('/hataigo')).toBe('tool:/hataigo');
+		expect(hatagoesPaneKey('/hataigo/game-123')).toBe('tool:/hataigo/game-123');
 	});
 
 	test('clears detail targets and returns Feed detail or beta routes to its tabbed root', () => {

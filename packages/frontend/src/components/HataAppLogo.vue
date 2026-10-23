@@ -14,6 +14,7 @@
 		<!-- In capsule tabs, black details cut through to the actual tab background. -->
 		<component :is="bare ? 'mask' : 'g'" :id="bare ? maskId : undefined" :maskUnits="bare ? 'userSpaceOnUse' : undefined" :x="bare ? 0 : undefined" :y="bare ? 0 : undefined" :width="bare ? 100 : undefined" :height="bare ? 100 : undefined" :style="bare ? { maskType: 'luminance' } : undefined">
 			<rect
+				v-if="app !== 'hataigo'"
 				:class="{ [$style.startPole]: starting }"
 				:x="app === 'hatagoes' ? 19 : 20"
 				:y="app === 'hatagoes' ? 16 : 18"
@@ -45,11 +46,15 @@
 									<rect x="32" y="-4.6" width="6" height="9.2" rx="3" :fill="cutColor"/>
 								</g>
 							</template>
-							<template v-else>
+							<template v-else-if="app === 'hatafeed'">
 								<path d="M30 26 H72 a9 9 0 0 1 9 9 V57 a9 9 0 0 1 -9 9 H46 L32 78 V66 H30 Z" :fill="markColor"/>
 								<line x1="43" y1="57" x2="60" y2="40" :stroke="cutColor" stroke-width="7" stroke-linecap="round"/>
 								<circle cx="63" cy="37" r="9" :fill="cutColor"/>
 								<circle cx="67.5" cy="32.5" r="4.6" :fill="markColor"/>
+							</template>
+							<template v-else>
+								<circle cx="52" cy="42" r="19" :fill="markColor"/>
+								<circle cx="66" cy="62" r="14" :fill="cutColor" :stroke="markColor" stroke-width="5"/>
 							</template>
 						</g>
 					</g>
@@ -133,6 +138,7 @@ defineExpose({ replayTap, replayStartup });
 .tile[data-app='hatask'] { background: #f6cf4a; }
 .tile[data-app='hatady'] { background: #9fdcc4; }
 .tile[data-app='hatafeed'] { background: #b9d7f2; }
+.tile[data-app='hataigo'] { background: #d6cbf3; }
 .tile[data-monochrome='true'] { background: #1d1b1f; }
 .tile[data-bare='true'] { border-radius: 0; background: transparent; overflow: visible; }
 .tile svg { display: block; }

@@ -33,9 +33,14 @@ describe('HataGoes screen picker', () => {
 		expect(view.open).toHaveBeenCalledWith(expect.objectContaining({ id: 'hatask.cal' }));
 	});
 
-	test('long pressing an App opens pin actions without navigating', async () => {
+	test.each([
+		['HataIntro', 'hatask.intro', 'intro'],
+		['HataIgo', 'hatask.hataigo', 'igo'],
+	])('long pressing %s opens App pin actions without navigating', async (label, id, feature) => {
 		const view = mount();
-		const destination = button(view.target, 'HataIntro');
+		const destination = button(view.target, label);
+		expect(destination.closest('section[aria-label="Hataskey App"]')).not.toBeNull();
+		expect(destination.querySelector(`[data-hata-feature="${feature}"]`)).not.toBeNull();
 		pointer(destination, 'pointerdown');
 		await vi.advanceTimersByTimeAsync(550);
 		pointer(destination, 'pointerup'); destination.click();
@@ -43,7 +48,7 @@ describe('HataGoes screen picker', () => {
 		expect(view.open).not.toHaveBeenCalled();
 		const add = [...view.target.querySelectorAll('button')].find(item => item.textContent === '＋にピン留め')!;
 		add.click();
-		expect(view.saveAppPins).toHaveBeenCalledWith(['hatask.intro']);
+		expect(view.saveAppPins).toHaveBeenCalledWith([id]);
 	});
 
 	test('scroll gestures cancel long pressing', async () => {

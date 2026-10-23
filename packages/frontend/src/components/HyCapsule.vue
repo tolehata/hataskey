@@ -6,8 +6,10 @@
 	role="group"
 	data-hy-page-controls
 	:aria-label="label"
+	:data-sliding="sliding === true"
 	:style="{ '--hy-label-width': `${labelWidth}px` }"
 >
+	<span v-if="sliding" :class="$style.indicator" :data-animate="indicator.animate.value" :style="indicator.style.value" aria-hidden="true"></span>
 	<button
 		v-for="option in options"
 		:key="option.value"
@@ -31,15 +33,19 @@
 
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { useSlidingIndicator } from '@/utility/sliding-indicator.js';
 
 const props = defineProps<{
 	modelValue: string;
 	options: ReadonlyArray<{ value: string; label: string; icon: string; disabled?: boolean }>;
 	label: string;
+	/** 選択の下地をタブの間で滑らせる（旗鯖fork: HataIgo で使う。既定はオフで従来どおり） */
+	sliding?: boolean;
 }>();
 const emit = defineEmits<{ (event: 'update:modelValue', value: string): void }>();
 const root = useTemplateRef('root');
 const labelWidth = ref(84);
+const indicator = useSlidingIndicator(root, '[data-active="true"]', () => props.modelValue);
 let observer: ResizeObserver | undefined;
 
 function measure(): void {
@@ -76,6 +82,30 @@ onUnmounted(() => observer?.disconnect());
 	overflow-x: auto;
 	overflow-y: hidden;
 	scrollbar-width: none;
+}
+.indicator {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 0;
+	border-radius: 999px;
+	background: var(--hy-soft);
+	pointer-events: none;
+}
+.indicator[data-animate='true'] {
+	transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), width 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.15s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+	.indicator[data-animate='true'] {
+		transition: none;
+	}
+}
+.case[data-sliding='true'] > .tab {
+	position: relative;
+	z-index: 1;
+}
+.case[data-sliding='true'] > .tab[data-active='true'] {
+	background: transparent;
 }
 .case::-webkit-scrollbar {
 	display: none;

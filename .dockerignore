@@ -47,3 +47,6 @@ temp/
 mockups/
 
 .pnpm-store/
+
+# HataIgo の要件・参照デザイン・非公開の作業記録を出荷しない
+packages/frontend/hataigo/

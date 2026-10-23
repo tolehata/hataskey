@@ -43,7 +43,7 @@ vi.mock('@/router.js', async () => {
 	const { Nirax } = await import('@/lib/nirax.js');
 	const Page = { render: () => null };
 	return { useRouter: () => {
-		fixture.router ??= new Nirax([{ path: '/', component: Page }, { path: '/hatagoes', component: Page }], fixture.initialPath, true, Page);
+		fixture.router ??= new Nirax([{ path: '/', component: Page }, { path: '/hatagoes', component: Page }, { path: '/hataigo', component: Page }], fixture.initialPath, true, Page);
 		return fixture.router;
 	} };
 });
@@ -106,14 +106,13 @@ vi.mock('@/components/hatagoes/HatagoesPane.vue', async () => {
 });
 vi.mock('@/components/hatagoes/HatagoesHome.vue', async () => {
 	const { defineComponent, h } = await import('vue');
-	return { default: defineComponent({ props: { active: Boolean, launcherApps: Array }, emits: ['recordMood', 'water', 'recordMeal', 'recordReading', 'feedState', 'openApp', 'allApps'], setup(props, { emit, expose }) {
+	return { default: defineComponent({ props: { active: Boolean, launcherApps: Array, recordRevision: Number, decorationHost: Object as PropType<HTMLElement> }, emits: ['recordMood', 'water', 'recordMeal', 'recordReading', 'openApp', 'allApps'], setup(props, { emit, expose }) {
 		expose({ scrollToTop: () => { fixture.homeScrolls++; }, markWatered: vi.fn() });
-		return () => h('div', { 'data-home-active': props.active }, [
+		return () => h('div', { 'data-home-active': props.active, 'data-record-revision': props.recordRevision, 'data-decoration-host': props.decorationHost?.getAttribute('data-hatagoes-root') === '' ? 'shell' : 'missing' }, [
 			h('button', { 'data-action': 'mood', onClick: () => emit('recordMood', 3) }),
 			h('button', { 'data-action': 'water', onClick: () => emit('water', '2026-10-03') }),
 			h('button', { 'data-action': 'meal', onClick: () => emit('recordMeal', 'lunch') }),
 			h('button', { 'data-action': 'reading', onClick: () => emit('recordReading', 'book') }),
-			h('button', { 'data-action': 'feed', onClick: () => emit('feedState', true) }),
 			h('button', { 'data-action': 'launcher-open', onClick: () => emit('openApp', 'hatask.cal') }),
 			h('button', { 'data-action': 'launcher-all', onClick: () => emit('allApps') }),
 			h('div', { 'data-launcher-apps': '' }, (props.launcherApps as Array<{ id: string }>).map(screen => screen.id).join(',')),
@@ -338,16 +337,15 @@ describe('HataGoes common create', () => {
 		expect(window.document.body.querySelector('#hatagoes-screens-heading')?.textContent).toBe('全てのアプリ');
 	});
 
-	test('shows Home header actions without a redundant subtitle and keeps the feed state label', async () => {
+	test('shows Home header actions and returns to top without the retired feed header', async () => {
 		const target = await mount('/hatagoes');
 		const header = target.querySelector('header')!;
+		expect(target.querySelector('[data-home-active]')?.getAttribute('data-decoration-host')).toBe('shell');
 		for (const label of ['横断検索', '3アプリの通知', '設定', '再読み込み']) {
 			expect(header.querySelector(`button[aria-label="${label}"]`)).not.toBeNull();
 		}
 		expect(header.querySelector('small')).toBeNull();
-		(target.querySelector('[data-action="feed"]') as HTMLButtonElement).click();
-		await settle();
-		expect(header.querySelector('small')?.textContent).toBe('みんなのきょう');
+		expect(header.querySelector('button[aria-label="先頭へ戻る"]')).toBeNull();
 		const homeScrolls = fixture.homeScrolls;
 		(header.querySelector('button[class*=brand]') as HTMLButtonElement).click();
 		expect(router().getCurrentFullPath()).toBe('/hatagoes');
@@ -395,14 +393,15 @@ describe('HataGoes common create', () => {
 		expect(target.querySelector('[data-hatagoes-mobile-create] form[data-meal-slot="lunch"]')).not.toBeNull();
 		const mobileNav = target.querySelector('nav[aria-label="モバイルアプリ"]')!;
 		for (const app of ['ホーム', 'Hatask', 'Hatady', 'HataFeed']) expect(mobileNav.textContent).toContain(app);
+		expect(mobileNav.textContent).not.toContain('HataIgo');
 		expect(mobileNav.querySelector('button[aria-label="作成を閉じる"]')).not.toBeNull();
 		expect(mobileNav.parentElement?.querySelector(':scope > button[aria-label="作成を閉じる"]')).toBeNull();
 		(target.querySelector('nav[aria-label="モバイルアプリ"] button[aria-label="HataGoesホーム"]') as HTMLButtonElement).click();
 		expect(fixture.homeScrolls).toBe(1);
-		(target.querySelector('[data-action="feed"]') as HTMLButtonElement).click();
+		expect(target.querySelector('[data-home-active]')?.getAttribute('data-record-revision')).toBe('1');
+		(target.querySelector('button[aria-label="再読み込み"]') as HTMLButtonElement).click();
 		await settle();
-		(target.querySelector('button[aria-label="先頭へ戻る"]') as HTMLButtonElement).click();
-		expect(fixture.homeScrolls).toBe(2);
+		expect(target.querySelector('[data-home-active]')?.getAttribute('data-record-revision')).toBe('1');
 	});
 
 	test('keeps one plus button in the third mobile tab on Home and app screens', async () => {
@@ -418,6 +417,7 @@ describe('HataGoes common create', () => {
 		(nav.querySelector('button[aria-label="HataGoesホーム"]') as HTMLButtonElement).click(); await settle();
 		expect(nav.querySelector('button[aria-label="作成"]')).toBe(plus);
 		expect(nav.parentElement?.querySelector(':scope > button[aria-label="作成"]')).toBeNull();
+		expect(nav.querySelector('button[aria-label="HataIgo"]')).toBeNull();
 	});
 	test('opens both other apps on mobile Home and resets their disclosure state on reopening', async () => {
 		const target = await mount('/hatagoes');
@@ -770,6 +770,18 @@ describe('HataGoes common create', () => {
 		expect(date?.style.display).toBe('none');
 	});
 
+	test('background layout follows the actual shell width when resizing across the mobile boundary', async () => {
+		const target = await mount('/hatagoes');
+		const shell = target.querySelector<HTMLElement>('[data-hatagoes-root]');
+		if (!shell) throw new Error('Missing HataGoes shell');
+		for (const width of [390, 1280, 850, 851, 320]) {
+			Object.defineProperty(shell, 'clientWidth', { configurable: true, value: width });
+			window.dispatchEvent(new Event('resize'));
+			await settle();
+			expect(shell.dataset.narrow).toBe(String(width <= 850));
+		}
+	});
+
 	test('mobile Hatady releases the date column and hosts overview immediately before notifications', async () => {
 		const target = await mount(hatagoesUrl('/hatady?tab=home'));
 		const shell = target.querySelector<HTMLElement>('[data-hatagoes-root]');
@@ -906,6 +918,17 @@ describe('HataGoes common create', () => {
 		const picker = window.document.body.querySelector('[role="dialog"][aria-labelledby="hatagoes-screens-heading"]')!;
 		expect(picker.querySelector('button[aria-label="Hatask モデレーション"]')).not.toBeNull();
 		expect(picker.querySelector('button[aria-label="Hata Docs"]')).toBeNull();
+	});
+
+	test('opens HataIgo as its own page instead of inside HataGoes', async () => {
+		const target = await mount(hatagoesUrl('/hatask?tab=todo'));
+		(target.querySelector('nav[aria-label="画面一覧"] button[aria-label="全てのアプリ"]') as HTMLButtonElement).click();
+		await settle();
+		const igo = window.document.body.querySelector<HTMLButtonElement>('[role="dialog"][aria-labelledby="hatagoes-screens-heading"] button[aria-label="HataIgo"]');
+		expect(igo).not.toBeNull();
+		igo?.click();
+		await settle();
+		expect(router().getCurrentFullPath()).toBe('/hataigo');
 	});
 
 	test('keeps the owning app palette in its directory', async () => {

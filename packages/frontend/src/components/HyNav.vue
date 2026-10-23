@@ -23,6 +23,7 @@
 		:modelValue="modelValue"
 		:options="options"
 		label="Hatady"
+		:sliding="sliding"
 		:class="$style.tabs"
 		@update:modelValue="emit('update:modelValue', $event)"
 	>
@@ -41,7 +42,7 @@ import { prefer } from '@/preferences.js';
 import MkHataskeyNotificationToasts from '@/components/MkHataskeyNotificationToasts.vue';
 import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey, NOTIFICATION_TOAST_DURATION, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 
-const props = defineProps<{ modelValue: string; options: ReadonlyArray<{ value: string; label: string; icon: string }>; preview?: boolean }>();
+const props = defineProps<{ modelValue: string; options: ReadonlyArray<{ value: string; label: string; icon: string }>; preview?: boolean; sliding?: boolean }>();
 const emit = defineEmits<{ (event: 'update:modelValue', value: string): void }>();
 const surface = useTemplateRef('surface'),
 	host = useTemplateRef('host');
