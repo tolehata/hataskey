@@ -126,14 +126,16 @@ function fetchAccount(token: string, id?: string, forceShowDialog?: boolean): Pr
 export function updateCurrentAccount(accountData: Misskey.entities.MeDetailed) {
 	if (!$i) return;
 	const token = $i.token;
-	for (const key of Object.keys($i)) {
-		delete $i[key];
-	}
+	// 旗鯖fork: 全キーを消してから入れ直すと、flush: 'sync' のwatcherが id・権限・token の欠けた
+	// $i を見て認証なしでAPIを叩く(登録申請管理画面が権限なし表示になる)。上書きしてから古いキーだけ消す。
 	for (const [key, value] of Object.entries(accountData)) {
 		$i[key] = value;
 	}
-	store.set('accountInfos', { ...store.s.accountInfos, [host + '/' + $i.id]: $i });
 	$i.token = token;
+	for (const key of Object.keys($i)) {
+		if (key !== 'token' && !Object.hasOwn(accountData, key)) delete $i[key];
+	}
+	store.set('accountInfos', { ...store.s.accountInfos, [host + '/' + $i.id]: $i });
 	miLocalStorage.setItem('account', JSON.stringify($i));
 }
 
