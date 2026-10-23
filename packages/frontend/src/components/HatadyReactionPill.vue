@@ -162,6 +162,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" module>
-.icon { height: 1.3em; }
+/* 旗鯖fork(Hatady): 大きさは置き場所の側が --hy-reaction-icon-size で決める（UI S の記録カード）。未指定の面は従来の 1.3em。 */
+.icon { height: var(--hy-reaction-icon-size, 1.3em); }
 .count { line-height: 1; }
 </style>

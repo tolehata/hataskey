@@ -41,12 +41,12 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 				<i class="ti ti-eye-off"></i>
 				{{ activityCopy.spoilerRecord }}
 			</summary>
-			<p v-if="study.body" :class="$style.note">{{ study.body }}</p>
+			<RecordText v-if="study.body" :text="study.body"/>
 			<MkMediaList v-if="study.files?.length" :mediaList="study.files" :user="activity.user"/>
 			<ActivityLogDetail v-if="detailed" :record="study"/>
 		</details>
 		<template v-else>
-			<p v-if="study.body" :class="$style.note">{{ study.body }}</p>
+			<RecordText v-if="study.body" :text="study.body"/>
 			<MkMediaList v-if="study.files?.length" :mediaList="study.files" :user="activity.user"/>
 			<ActivityLogDetail v-if="detailed" :record="study"/>
 		</template>
@@ -95,7 +95,7 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 		</div>
 	</template>
 	<template v-else>
-		<p :class="$style.note">{{ raw.body || raw.note }}</p>
+		<RecordText :text="raw.body || raw.note || ''"/>
 		<div :class="$style.meta">
 			<span>{{ raw.subject || raw.genre }}</span>
 			<span v-if="durationSeconds != null">
@@ -147,7 +147,7 @@ Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示�
 </template>
 
 <script lang="ts" setup>
-import { computed, defineComponent, h, ref, useCssModule } from 'vue';
+import { computed, defineComponent, h, ref, resolveComponent, useCssModule } from 'vue';
 import type { HatadyActivity, HatadyMediaSession, HatadyMediaVisibility } from '@/utility/hatady-media.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
@@ -358,6 +358,17 @@ const VisibilityChip = defineComponent({
 	},
 });
 
+// 旗鯖fork(Hatady): UI S の Hatady では本文を MFM で描き、:name: をカスタム絵文字の画像
+// （通常ノート本文と同じ 2em）で出す。Hatady 本体・UI の面は従来どおりプレーンテキストのまま。
+// Mfm は HatadyConversation と同じくグローバル登録のものを使う（直接 import すると preferences まで連れてくる）。
+const RecordText = defineComponent({
+	name: 'RecordText',
+	props: { text: { type: String, required: true } },
+	setup(p) {
+		return () => h('p', { class: styles.note }, props.variant === 'uis' ? [h(resolveComponent('Mfm'), { text: p.text })] : p.text);
+	},
+});
+
 const ActivityLogDetail = defineComponent({
 	props: { record: { type: Object, required: true } },
 	setup(p) {
@@ -404,7 +415,7 @@ const ActivityMediaDetail = defineComponent({
 						p.rows.map((row) => h('span', { key: row.key }, [h('b', row.label), ` ${row.value}`])),
 					)
 					: null,
-				p.session.note ? h('p', { class: styles.note }, p.session.note) : null,
+				p.session.note ? h(RecordText, { text: p.session.note }) : null,
 				p.session.files?.length ? h(MkMediaList, { mediaList: p.session.files }) : null,
 			]);
 	},
@@ -444,6 +455,8 @@ const ActivityMediaDetail = defineComponent({
 	--hy-surface-2: color-mix(in srgb, var(--hy-surface) 85%, transparent);
 	border-radius: 18px;
 	backdrop-filter: blur(14px);
+	/* 旗鯖fork(Hatady): リアクションの絵文字は 12px の 1.3em（約16px）だと小さすぎたので、UI S のカードだけ大きくする。 */
+	--hy-reaction-icon-size: 24px;
 }
 .head {
 	display: grid;
