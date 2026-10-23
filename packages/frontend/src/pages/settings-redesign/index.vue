@@ -8,7 +8,7 @@
 				<button type="button" :class="$style.iconButton" :aria-label="showOverview ? bentoCopy.settingsExit : bentoCopy.allCategories" @click="showOverview ? goSettingsBack() : goSettingsTop()"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
 				<h1 v-if="!hideShellTitle" :class="$style.title">{{ i18n.ts.settings }}</h1>
 			</div>
-			<button ref="searchButtonEl" type="button" :class="$style.searchTrigger" @click="openSearch"><i class="ti ti-search" aria-hidden="true"></i><span>{{ showSearchHint ? copy.searchHint : copy.searchTrigger }}</span></button>
+			<button ref="searchButtonEl" type="button" :class="$style.searchTrigger" :aria-label="copy.search.inputLabel" @click="openSearch"><i class="ti ti-search" aria-hidden="true"></i><span>{{ showSearchHint ? copy.searchHint : copy.searchTrigger }}</span></button>
 			<div :class="$style.headerTrailing">
 				<button v-if="isHatasabaUi2SurfaceActive" type="button" :class="$style.iconButton" :aria-label="copy.ui2.openPreview" @click="openHatasabaUi2Preview"><i class="ti ti-eye" aria-hidden="true"></i></button>
 				<button type="button" :class="$style.iconButton" :aria-label="bentoCopy.profileMenu" :title="bentoCopy.profileMenu" data-settings-search-group-id="settings.group.preferences-backup-suggestion" @click="openPreferencesProfileMenu"><i class="ti ti-settings-2" aria-hidden="true"></i></button>
@@ -165,6 +165,7 @@ const settingsCatalogPresentation: SettingsCatalogPresentationV2 = {
 		'/settings/custom-css': copy.catalog.fallback.customCss,
 		'/settings/account-stats': copy.catalog.fallback.accountStats,
 		'/settings/external-account': copy.catalog.fallback.externalAccount,
+		'/settings/concrnt': { label: 'コンカレント連携(BETA)' },
 		'/settings/hata-custom': copy.catalog.fallback.hataCustom,
 		'/settings/hidden-reactions': copy.catalog.fallback.hiddenReactions,
 	},
@@ -1682,9 +1683,12 @@ html:active-view-transition-type(settings-bento)::view-transition-new(root) {
 .contentCard[data-page-enter='forward'] { animation: settingsPageForward 220ms ease; }
 .contentCard[data-page-enter='back'] { animation: settingsPageBack 220ms ease; }
 .scope[data-smartphone='true'] {
-	.header { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'leading trailing' 'search search'; gap: 8px; padding: 12px 16px; }
-	.headerLeading, .headerTrailing { gap: 8px; }
-	.title { font-size: 1.2em; }
+	/* 旗鯖fork: モバイルでは見出しを戻るボタンと右側ボタンの間で中央に置く。 */
+	.header { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: 'leading title trailing' 'search search search'; gap: 8px; padding: 12px 16px; }
+	.headerLeading { display: contents; }
+	.headerLeading > .iconButton { grid-area: leading; justify-self: start; }
+	.headerTrailing { gap: 8px; }
+	.title { grid-area: title; font-size: 1.2em; text-align: center; }
 	.searchTrigger { max-width: none; }
 	.layout { display: block; overflow-y: auto; padding: 0 16px 24px; }
 	.nav, .main { overflow: visible; padding: 0; }

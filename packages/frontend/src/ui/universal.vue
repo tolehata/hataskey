@@ -55,6 +55,7 @@ import { mainRouter } from '@/router.js';
 import { prefer } from '@/preferences.js';
 import { shouldSuggestRestoreBackup } from '@/preferences/utility.js';
 import { DI } from '@/di.js';
+import { concrntPagePostContextKey } from '@/utility/concrnt/post-interceptor.js';
 import { shouldSuggestReload } from '@/utility/reload-suggest.js';
 import { rightWidgetsCollapsed as savedRightWidgetsCollapsed, setRightWidgetsCollapsed } from '@/utility/hatasaba-device-prefs.js';
 import { useHatagoesBarCollapse } from '@/utility/hatagoes-bar-collapse.js';
@@ -84,6 +85,7 @@ const pageMetadata = ref<null | PageMetadata>(null);
 const widgetsShowing = ref(false);
 
 provide(DI.router, mainRouter);
+provide(concrntPagePostContextKey, () => true);
 provideMetadataReceiver((metadataGetter) => {
 	const info = metadataGetter();
 	pageMetadata.value = info;

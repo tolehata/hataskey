@@ -36,7 +36,7 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 					<template #page><RouterView v-if="!isHome"/></template>
 					<template #timeline>
 						<Hk3Timeline v-if="isHome || sidePageSession" ref="timelineRef" :active="timelineVisible" :narrow="sidePageSplit" :confirmationActive="confirmationActive" @punchBusy="punchBusy = $event">
-							<Hk3Composer v-show="!isHatadyTimeline" ref="composerRef" :inert="isHatadyTimeline" :aria-hidden="isHatadyTimeline" :menuPlacement="prefer.r.hataskeyUi3ComposerPosition.value === 'top' ? 'down' : 'up'"/>
+							<Hk3Composer v-show="!isHatadyTimeline && !isConcrntTimeline" ref="composerRef" :inert="isHatadyTimeline || isConcrntTimeline" :aria-hidden="isHatadyTimeline || isConcrntTimeline" :menuPlacement="prefer.r.hataskeyUi3ComposerPosition.value === 'top' ? 'down' : 'up'"/>
 							<button v-if="isHatadyTimeline" type="button" :class="$style.hatadyRecordBar" @click="launchHatadyRecord"><BookOpen :size="18"/>{{ i18n.ts._hata._hatasabaUi._simple.record }}</button>
 						</Hk3Timeline>
 					</template>
@@ -61,12 +61,12 @@ Hataskey UI 3 Beta の画面全体。デスクトップは「メニュー | タ�
 			<template #page><RouterView v-if="!isHome"/></template>
 			<template #timeline>
 				<Hk3Timeline v-if="isHome || sidePageSession" ref="timelineRef" compact :active="timelineVisible" :narrow="false" :confirmationActive="confirmationActive" :mobileComposerTarget="mobileDockRef?.composerTarget ?? null" :mobileComposerOpen="mobileDockRef?.composerOpened ?? false" :mobileDockHeight="mobileDockRef?.dockHeight ?? 0" :mobileMenuOpen="mobileDockExpanded || drawerOpen || mobilePane != null" @punchBusy="punchBusy = $event" @mobileCollection="mobileDockRef?.openCollection($event)" @revealComposer="mobileDockRef?.openComposer()">
-					<Hk3Composer v-show="!isHatadyTimeline" ref="composerRef" :inert="isHatadyTimeline" :aria-hidden="isHatadyTimeline" compact menuPlacement="up" @posted="mobileDockRef?.closeComposer(true)"/>
+					<Hk3Composer v-show="!isHatadyTimeline && !isConcrntTimeline" ref="composerRef" :inert="isHatadyTimeline || isConcrntTimeline" :aria-hidden="isHatadyTimeline || isConcrntTimeline" compact menuPlacement="up" @posted="mobileDockRef?.closeComposer(true)"/>
 				</Hk3Timeline>
 			</template>
 		</Hk3SideWorkspace>
 
-		<Hk3MobileDock ref="mobileDockRef" :confirmationActive="confirmationActive" :composerBlocked="composerRef?.collapseBlocked ?? false" :composeKind="isHatadyTimeline ? 'hatady' : 'note'" :navigation="isHome ? timelineRef?.mobileNavigation ?? null : null" :items="mobileNav" :home="isHome" :drawerOpen="drawerOpen" :motion="!reduceMotionActive" :guideSeen="mobileGuideSeen" :suspended="mobileDockSuspended" :pullState="isHome && timelineVisible ? timelineRef?.mobilePullState ?? null : null" :attachPullGesture="isHome && timelineVisible ? timelineRef?.attachMobilePullGesture ?? null : null" :inert="mobilePane != null" @compose="onMobileCompose" @navigate="goMobile" @menu="toggleMobileDrawer" @requestTimeline="requestMobileTimeline" @menuOpen="mobileMenuOpen = $event" @searchOpen="onMobileSearchOpen" @dismissGuide="dismissMobileGuide"/>
+		<Hk3MobileDock ref="mobileDockRef" :confirmationActive="confirmationActive" :composerBlocked="composerRef?.collapseBlocked ?? false" :composeKind="isConcrntTimeline ? 'concrnt' : isHatadyTimeline ? 'hatady' : 'note'" :navigation="isHome ? timelineRef?.mobileNavigation ?? null : null" :items="mobileNav" :home="isHome" :drawerOpen="drawerOpen" :motion="!reduceMotionActive" :guideSeen="mobileGuideSeen" :suspended="mobileDockSuspended" :pullState="isHome && timelineVisible ? timelineRef?.mobilePullState ?? null : null" :attachPullGesture="isHome && timelineVisible ? timelineRef?.attachMobilePullGesture ?? null : null" :inert="mobilePane != null" @compose="onMobileCompose" @navigate="goMobile" @menu="toggleMobileDrawer" @requestTimeline="requestMobileTimeline" @menuOpen="mobileMenuOpen = $event" @searchOpen="onMobileSearchOpen" @dismissGuide="dismissMobileGuide"/>
 		<Hk3MobileRightPane :pane="mobilePane" :glass="prefer.r.hataskeyUi3RightPaneBackground.value" :motion="!reduceMotionActive" @close="closeMobilePane" @tabChange="mobilePane = $event"/>
 	</div>
 </div>
@@ -116,6 +116,10 @@ import { useStream } from '@/stream.js';
 import { openHatadyRecord } from '@/utility/hatady-record-launcher.js';
 import { acceptNotificationUnreadState } from '@/utility/notification-unread-state.js';
 import { useHatagoesBarCollapse } from '@/utility/hatagoes-bar-collapse.js';
+import { concrntPagePostContextKey, interceptConcrntPostRequest } from '@/utility/concrnt/post-interceptor.js';
+import { CONCRNT_NOTIFICATION_EVENT } from '@/utility/concrnt/events.js';
+import { concrntDisplayName, concrntNotificationLabels } from '@/utility/concrnt/content.js';
+import type { ConcrntNotification } from '@/utility/concrnt/types.js';
 
 const HatasabaDeck = defineAsyncComponent(() => import('@/ui/_common_/hatasaba-deck.vue'));
 
@@ -131,10 +135,13 @@ const composeWindowEl = shallowRef<HTMLElement | null>(null);
 const punchBusy = ref(false);
 const timelineRef = shallowRef<InstanceType<typeof Hk3Timeline> | null>(null);
 const isHatadyTimeline = computed(() => timelineVisible.value && timelineRef.value?.mobileNavigation.active === 'hatady' && !deckActive.value);
+const isConcrntTimeline = computed(() => timelineVisible.value && timelineRef.value?.mobileNavigation.active === 'ctl' && !deckActive.value);
 
 function launchHatadyRecord() { void openHatadyRecord({ variant: 'uis', onDone: () => timelineRef.value?.reload() }); }
 
 function onMobileCompose() {
+	if (mainRouter.currentRoute.value.name === 'concrnt' || mainRouter.currentRoute.value.path === '/timeline') { void os.post(); return; }
+	if (isConcrntTimeline.value) { void timelineRef.value?.focusConcrntComposer(); return; }
 	if (isHatadyTimeline.value) launchHatadyRecord();
 	else composerRef.value?.focus();
 }
@@ -174,6 +181,7 @@ const sidePageSession = sidePage.session;
 const sidePageSplit = sidePage.split;
 const timelineVisible = sidePage.timelineVisible;
 const workspaceMode = sidePage.mode;
+provide(concrntPagePostContextKey, () => !isHome.value && !deckActive.value);
 let sidePageOpener: HTMLElement | null = null;
 
 function onSideNavigate(to?: string) {
@@ -485,6 +493,8 @@ const windowStyle = computed(() => {
 });
 
 function toggleComposeWindow() {
+	if (mainRouter.currentRoute.value.name === 'concrnt' || mainRouter.currentRoute.value.path === '/timeline') { void os.post(); return; }
+	if (isConcrntTimeline.value) { void timelineRef.value?.focusConcrntComposer(); return; }
 	composeWindowOpen.value = !composeWindowOpen.value;
 	if (composeWindowOpen.value) void nextTick(() => composerRef.value?.focus());
 }
@@ -524,6 +534,18 @@ function startWindowDrag(ev: PointerEvent) {
 // ===== 投稿要求の受け取り =====
 // 返信・引用などは、表示中の UI3 投稿欄へ移す。デッキ中は投稿ウィンドウを開いて受け取る。
 function interceptPostForm(request: PostFormProps): boolean {
+	// The current timeline page owns its request even when the home timeline is retained.
+	if (mainRouter.currentRoute.value.name === 'concrnt' || mainRouter.currentRoute.value.path === '/timeline') return false;
+	if (isConcrntTimeline.value) {
+		return interceptConcrntPostRequest(request, () => {
+			if (isMobile.value) {
+				mobileDockRef.value?.closeMenu();
+				closeMobilePane();
+				drawerOpen.value = false;
+			}
+			return timelineRef.value?.focusConcrntComposer();
+		});
+	}
 	if (!hk3CanAdoptPostForm(request)) return false;
 	if (isMobile.value) {
 		mobileDockRef.value?.closeMenu();
@@ -717,7 +739,19 @@ function navbarNoticeToast(notice: HataskeyNavbarNotice): Omit<Hk3Toast, 'id'> {
 	}
 }
 
+// 旗鯖fork: コンカレントの通知は外部の通知としてバナーへ（本人のIDは出さない）。
+function concrntToast(notification: ConcrntNotification): Omit<Hk3Toast, 'id'> {
+	const icons = { reaction: 'smile', like: 'heart', reply: 'reply', reroute: 'repeat', mention: 'mention', follow: 'userPlus', other: 'bell' } as const;
+	const uri = notification.type === 'reply' || notification.type === 'mention' ? notification.messageUri ?? notification.targetUri : notification.targetUri ?? notification.messageUri;
+	return {
+		icon: icons[notification.type], user: null, emojiUrl: notification.emoji?.imageUrl,
+		text: `コンカレント：${concrntDisplayName(notification.authorName)}が${concrntNotificationLabels[notification.type]}`,
+		onClick: () => { if (uri) void import('@/utility/concrnt/composer.js').then(({ openConcrntMessage }) => openConcrntMessage(uri)); else mainRouter.pushByPath('/my/notifications?tab=concrnt'); },
+	};
+}
+
 function toastFromItem(item: HataskeyToast): Omit<Hk3Toast, 'id'> {
+	if (item.source === 'concrnt') return concrntToast(item.notification);
 	if (item.source !== 'status') return notificationToast(item.notification, item.source === 'external' ? item.host ?? '' : undefined);
 	if (item.navbarNotice) return navbarNoticeToast(item.navbarNotice);
 	return { icon: item.favoriteSaved ? 'star' : 'check', user: item.welcomeUser ?? null, welcome: !!item.welcomeUser, text: item.message };
@@ -736,6 +770,12 @@ function onExternalNotification(ev: Event) {
 	if (!timelineVisible.value) return;
 	const notification = (ev as CustomEvent<Misskey.entities.Notification>).detail;
 	if (notification) noticeContext.enqueue(notification, 'external', performance.now(), prefer.s['external.host'] || undefined);
+}
+
+function onConcrntNotification(ev: Event) {
+	if (!timelineVisible.value) return;
+	const notification = (ev as CustomEvent<ConcrntNotification>).detail;
+	if (notification) noticeContext.enqueueConcrnt(notification, performance.now());
 }
 
 let releaseNotificationChannel: (() => void) | null = null;
@@ -812,6 +852,7 @@ onMounted(() => {
 	noticeContext.target.value = rootEl.value;
 	releaseNoticeContext = registerNotificationPageContext(noticeContext, () => timelineVisible.value && !(isMobile.value && (drawerOpen.value || mobilePane.value != null)));
 	window.addEventListener('external-notification', onExternalNotification);
+	window.addEventListener(CONCRNT_NOTIFICATION_EVENT, onConcrntNotification);
 });
 
 onBeforeUnmount(() => {
@@ -829,6 +870,7 @@ onBeforeUnmount(() => {
 	releasePostFormInterceptor?.();
 	releaseNoticeContext?.();
 	window.removeEventListener('external-notification', onExternalNotification);
+	window.removeEventListener(CONCRNT_NOTIFICATION_EVENT, onConcrntNotification);
 });
 </script>
 

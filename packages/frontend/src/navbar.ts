@@ -14,6 +14,7 @@ import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { prefer } from '@/preferences.js';
+import { concrntState } from '@/utility/concrnt/runtime.js';
 
 export const navbarItemDef = reactive({
 	notifications: {
@@ -43,6 +44,13 @@ export const navbarItemDef = reactive({
 			return $i != null && token != null && host != null && host !== '' && !disabled;
 		}),
 		to: '/my/external-notifications',
+	},
+	concrnt: {
+		title: 'CTL',
+		icon: 'concrnt-icon',
+		show: computed(() => $i != null),
+		indicated: computed(() => concrntState.settings.notifications && concrntState.notifications.some(item => !concrntState.read.includes(item.uri))),
+		to: '/concrnt',
 	},
 	drive: {
 		title: i18n.ts.drive,
@@ -164,6 +172,12 @@ export const navbarItemDef = reactive({
 		icon: 'ti ti-medal',
 		show: computed(() => $i != null),
 		to: '/my/achievements',
+	},
+	hataigo: {
+		title: 'HataIgo',
+		icon: 'ti ti-circles',
+		show: computed(() => $i != null),
+		to: '/hataigo',
 	},
 	games: {
 		title: 'Hataskey Games',

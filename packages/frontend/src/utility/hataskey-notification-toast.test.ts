@@ -106,7 +106,7 @@ describe('Hataskey notification queue', () => {
 		expect(queue.items.value).toHaveLength(2);
 		queue.enqueue(notification('third'), 'local', 0);
 		queue.enqueue(notification('fourth'), 'local', 0);
-		expect(queue.items.value.map(item => item.source === 'status' ? null : item.notification.id)).toEqual(['fourth', 'third', 'same']);
+		expect(queue.items.value.map(item => item.source === 'local' || item.source === 'external' ? item.notification.id : null)).toEqual(['fourth', 'third', 'same']);
 	});
 	it.each([true, false])('uses one shared latest notification in the navbar (mobile=%s)', (mobile) => {
 		const queue = createHataskeyNotificationToasts(computed(() => mobile), computed(() => !mobile));
@@ -114,7 +114,7 @@ describe('Hataskey notification queue', () => {
 		queue.enqueue(notification('remote'), 'external', 100);
 		expect(queue.items.value.map(item => item.source)).toEqual(['external']);
 		queue.enqueue(notification('flower'), 'local', 200);
-		expect(queue.items.value.map(item => item.source === 'status' ? null : item.notification.id)).toEqual(['flower']);
+		expect(queue.items.value.map(item => item.source === 'local' || item.source === 'external' ? item.notification.id : null)).toEqual(['flower']);
 	});
 	it('preserves the active timer when the navbar disappears or the device changes', () => {
 		const mobile = ref(false);
@@ -244,5 +244,16 @@ describe('notification outline and copy', () => {
 		expect(parts).toEqual(['お花が咲いたよ、', '見てね。', '「収穫できます！」', '明日も。']);
 		expect(parts.join('')).toBe(text);
 		expect(splitNotificationText('長い名前やhttps://example.test/path')).toEqual(['長い名前やhttps://example.test/path']);
+	});
+});
+
+describe('Concrnt notifications in the shared toast queue', () => {
+	it('labels Concrnt as its own outside source and de-duplicates by URI', () => {
+		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
+		const item = { uri: 'ccfs://con1self/n/1', schema: 's', type: 'reaction' as const, author: 'con1other', authorName: '相手', authorProfile: 'main', createdAt: '2026-10-21T00:00:00Z' };
+		queue.enqueueConcrnt(item, 0);
+		queue.enqueueConcrnt({ ...item }, 10);
+		queue.enqueue(notification('local'), 'local', 20);
+		expect(queue.items.value.map(entry => entry.source)).toEqual(['local', 'concrnt']);
 	});
 });

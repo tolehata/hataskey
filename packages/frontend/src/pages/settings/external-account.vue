@@ -5,176 +5,122 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <SearchMarker path="/settings/external-account" :label="accountCopy.title" :keywords="externalAccountKeywords" icon="ti ti-link">
-	<div class="_gaps_m">
-		<FormSection first>
-			<template #label><i class="ti ti-link"></i> {{ accountCopy.title }}</template>
+	<div class="hatady-scope concrnt-ui" data-hatady-theme="hataskey" data-connection-settings>
+		<div class="connection-settings">
+			<header class="connection-header">
+				<span class="connection-mark"><i class="ti ti-link" aria-hidden="true"></i></span>
+				<div><span class="connection-eyebrow">{{ localInstanceName }} / {{ i18n.ts.settings }}</span><h1>{{ accountCopy.title }}</h1></div>
+			</header>
+			<nav class="connection-nav" :aria-label="accountCopy.title">
+				<HyCapsule v-model="section" :options="sections" :label="accountCopy.title"/>
+			</nav>
 
-			<div class="_gaps_s">
-				<MkInfo>
-					{{ accountCopy.introduction }}
-				</MkInfo>
+			<template v-if="section === 'account'">
+				<section class="connection-card">
+					<div v-if="isLinked" class="connection-identity">
+						<img v-if="externalAvatarUrl" :src="externalAvatarUrl" class="connection-avatar" alt=""/>
+						<span v-else class="connection-avatar"><i class="ti ti-user" aria-hidden="true"></i></span>
+						<div class="connection-identity-text"><strong>@{{ externalUsername }}</strong><ConcrntServerIdentity :server="linkedServer" fallbackIcon="ti ti-server"/></div>
+						<span class="connection-status" :data-muted="!externalEnabled">{{ externalEnabled ? accountCopy.linked : '一時停止中' }}</span>
+					</div>
+					<h2 v-else><i class="ti ti-user" aria-hidden="true"></i>{{ accountCopy.linkSection }}</h2>
+					<p class="connection-description">{{ accountCopy.introduction }}</p>
+					<label class="connection-row">
+						<span><strong>{{ accountCopy.enable }}</strong><small>連携情報を残したまま、表示・投稿への利用を切り替えます。通知は別に設定できます。</small></span>
+						<span class="connection-switch"><input type="checkbox" role="switch" :aria-label="accountCopy.enable" :checked="externalEnabled" @change="onEnabledChange"/></span>
+					</label>
+					<template v-if="externalEnabled && !isLinked">
+						<fieldset class="connection-servers" :disabled="linking">
+							<legend class="connection-field">{{ accountCopy.destination }}</legend>
+							<label v-for="option in hostOptions" :key="option.value" class="connection-server-choice" :data-active="selectedHost === option.value || undefined">
+								<input v-model="selectedHost" type="radio" name="external-server" :value="option.value"/>
+								<ConcrntServerIdentity :server="serverInfo(option.value)" fallbackIcon="ti ti-server"/>
+								<i v-if="selectedHost === option.value" class="ti ti-check" aria-hidden="true"></i>
+							</label>
+						</fieldset>
+						<p class="connection-description">{{ accountCopy.chooseServer }}</p>
+						<div class="connection-actions"><button type="button" class="hy-primary" :disabled="linking || !selectedHost" @click="startMiAuth"><i class="ti ti-link" aria-hidden="true"></i>{{ linking ? accountCopy.linking : accountCopy.linkAction }}</button></div>
+					</template>
+					<div v-if="isLinked" class="connection-actions"><button type="button" class="hy-secondary connection-danger" @click="unlinkAccount"><i class="ti ti-unlink" aria-hidden="true"></i>{{ accountCopy.unlink }}</button></div>
+				</section>
+				<section v-if="isLinked" class="connection-card">
+					<h2><i class="ti ti-server" aria-hidden="true"></i>連携先について</h2>
+					<div class="connection-row" data-stack="true"><span><strong>{{ accountCopy.destination }}</strong><small>MiAuthで連携した外部アカウントです。</small></span><ConcrntServerIdentity :server="linkedServer" fallbackIcon="ti ti-server"/></div>
+					<p class="connection-note"><i class="ti ti-info-circle" aria-hidden="true"></i><span>接続先を変更するときは、現在の連携を解除してから連携し直します。コンカレント連携は独立した設定です。</span></p>
+				</section>
+			</template>
 
-				<MkSwitch :modelValue="externalEnabled" @update:modelValue="onToggleEnabled">
-					<template #label>{{ accountCopy.enable }}</template>
-				</MkSwitch>
-			</div>
-		</FormSection>
+			<template v-if="section === 'display' && externalEnabled && isLinked">
+				<section class="connection-card">
+					<h2><i class="ti ti-layout-list" aria-hidden="true"></i>{{ accountCopy.timelineSettings }}</h2>
+					<label class="connection-row"><span><strong>{{ accountCopy.showOhtl }}</strong><small>{{ accountCopy.ohtlDescription }}</small></span><span class="connection-switch"><input type="checkbox" role="switch" :aria-label="accountCopy.showOhtl" :checked="enableOHTL" @change="onTimelineChange('external.enableOHTL', $event)"/></span></label>
+					<label class="connection-row"><span><strong>{{ accountCopy.showOltl }}</strong><small>{{ accountCopy.oltlDescription }}</small></span><span class="connection-switch"><input type="checkbox" role="switch" :aria-label="accountCopy.showOltl" :checked="enableOLTL" @change="onTimelineChange('external.enableOLTL', $event)"/></span></label>
+				</section>
+			</template>
 
-		<FormSection v-if="externalEnabled">
-			<template #label>{{ accountCopy.linkSection }}</template>
+			<section v-if="section === 'notifications' && externalEnabled && isLinked" class="connection-card">
+				<h2><i class="ti ti-bell" aria-hidden="true"></i>{{ i18n.ts._hata._common.externalNotifications }}</h2>
+				<label class="connection-row"><span><strong>{{ accountCopy.disableNotificationPopup }}</strong><small>{{ accountCopy.disableNotificationPopupDescription }}</small></span><span class="connection-switch"><input type="checkbox" role="switch" :aria-label="accountCopy.disableNotificationPopup" :checked="disableNotificationToast" @change="onNotificationChange"/></span></label>
+				<p class="connection-note"><i class="ti ti-info-circle" aria-hidden="true"></i><span>オンにすると、ポップアップ・リアルタイム接続・通知バッジの更新を停止します。コンカレントの通知設定とは別に管理します。</span></p>
+				<div class="connection-actions"><MkA class="hy-secondary" to="/my/external-notifications"><i class="ti ti-bell" aria-hidden="true"></i>外部通知を開く</MkA></div>
+			</section>
 
-			<div v-if="!isLinked" class="_gaps_s">
-				<!-- 接続先選択 -->
-				<div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 4px;">
-					{{ accountCopy.chooseServer }}
-				</div>
-				<MkSelect v-model="selectedHost" :items="hostOptions">
-					<template #label>{{ accountCopy.destination }}</template>
-				</MkSelect>
-
-				<MkButton :disabled="linking || !selectedHost" primary @click="startMiAuth">
-					<i class="ti ti-link"></i> {{ linking ? accountCopy.linking : accountCopy.linkAction }}
-				</MkButton>
-			</div>
-
-			<div v-else class="_gaps_s">
-				<MkInfo>
-					<i class="ti ti-check"></i> {{ accountCopy.linked }}
-				</MkInfo>
-
-				<div :class="$style.linkedAccount">
-					<div :class="$style.linkedAccountInfo">
-						<div :class="$style.linkedAccountHost">
-							<i class="ti ti-server"></i> {{ externalHost }}
+			<template v-if="section === 'data' && externalEnabled">
+				<section v-if="isLinked" class="connection-card">
+					<h2><i class="ti ti-star" aria-hidden="true"></i>{{ accountCopy.favoriteEmojiSection }}</h2>
+					<p class="connection-description">{{ accountCopy.favoriteEmojiDescription }}</p>
+					<div v-if="extFavEmojis.length" class="connection-emojis">
+						<div v-for="(emoji, idx) in extFavEmojis" :key="emoji + idx" class="connection-emoji">
+							<img v-if="emoji.startsWith(':') && getCustomEmojiUrl(emoji)" :src="getCustomEmojiUrl(emoji)" :alt="emoji"/>
+							<span v-else>{{ emoji }}</span>
+							<button type="button" :aria-label="`${emoji}をお気に入りから削除`" @click="removeExtFavEmoji(idx)"><i class="ti ti-x" aria-hidden="true"></i></button>
 						</div>
-						<div :class="$style.linkedAccountUser">
-							<i class="ti ti-user"></i> @{{ externalUsername }}
-						</div>
 					</div>
-					<MkButton danger @click="unlinkAccount">
-						<i class="ti ti-unlink"></i> {{ accountCopy.unlink }}
-					</MkButton>
-				</div>
-			</div>
-		</FormSection>
-
-		<FormSection v-if="externalEnabled && isLinked">
-			<template #label>{{ accountCopy.timelineSettings }}</template>
-
-			<div class="_gaps_s">
-				<MkSwitch v-model="enableOHTL">
-					<template #label><i class="ti ti-home"></i> {{ accountCopy.showOhtl }}</template>
-					<template #caption>{{ accountCopy.ohtlDescription }}</template>
-				</MkSwitch>
-
-				<MkSwitch v-model="enableOLTL">
-					<template #label><i class="ti ti-planet"></i> {{ accountCopy.showOltl }}</template>
-					<template #caption>{{ accountCopy.oltlDescription }}</template>
-				</MkSwitch>
-
-				<!-- 旗鯖fork: 外部通知のトースト無効化トグル
-				     ONの時、WebSocket接続も行わない(リソース節約、通知バッジ更新も止まる) -->
-				<MkSwitch v-model="disableNotificationToast" @update:modelValue="onDisableNotifToastChange">
-					<template #label><i class="ti ti-bell-off"></i> {{ accountCopy.disableNotificationPopup }}</template>
-					<template #caption>{{ accountCopy.disableNotificationPopupDescription }}</template>
-				</MkSwitch>
-			</div>
-		</FormSection>
-
-		<FormSection v-if="externalEnabled && isLinked">
-			<template #label><i class="ti ti-star"></i> {{ accountCopy.favoriteEmojiSection }}</template>
-			<div class="_gaps_s">
-				<div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 8px;">
-					{{ accountCopy.favoriteEmojiDescription }}<br/>
-					{{ accountCopy.favoriteEmojiInteraction }}
-				</div>
-
-				<div v-if="extFavEmojis.length > 0" :class="$style.emojiGrid">
-					<div
-						v-for="(emoji, idx) in extFavEmojis"
-						:key="emoji + idx"
-						:class="$style.emojiItem"
-					>
-						<img v-if="emoji.startsWith(':')" :src="getCustomEmojiUrl(emoji)" :alt="emoji" :class="$style.emojiItemImg"/>
-						<span v-else :class="$style.emojiItemUnicode">{{ emoji }}</span>
-						<button class="_button" :class="$style.emojiRemoveBtn" @click="removeExtFavEmoji(idx)">
-							<i class="ti ti-x"></i>
-						</button>
+					<p v-else class="connection-note">{{ accountCopy.noFavoriteEmoji }}</p>
+					<div class="connection-actions">
+						<button type="button" class="hy-secondary" @click="addExtFavEmojiFromPicker"><i class="ti ti-plus" aria-hidden="true"></i>{{ accountCopy.addEmoji }}</button>
+						<button v-if="extFavEmojis.length" type="button" class="hy-secondary connection-danger" @click="clearExtFavEmojis"><i class="ti ti-trash" aria-hidden="true"></i>{{ accountCopy.deleteAll }}</button>
 					</div>
-				</div>
-				<div v-else style="opacity: 0.5; font-size: 0.9em; padding: 8px 0;">
-					{{ accountCopy.noFavoriteEmoji }}
-				</div>
+					<p class="connection-note"><i class="ti ti-info-circle" aria-hidden="true"></i><span>{{ accountCopy.favoriteEmojiInteraction }}</span></p>
+				</section>
+				<section class="connection-card">
+					<h2><i class="ti ti-photo" aria-hidden="true"></i>{{ accountCopy.emojiCacheSection }}</h2>
+					<p class="connection-description">{{ accountCopy.emojiCacheIntroduction }} {{ accountCopy.emojiCachePurpose }}</p>
+					<div class="connection-actions"><button type="button" class="hy-secondary" @click="clearEmojiCache"><i class="ti ti-trash" aria-hidden="true"></i>{{ accountCopy.clearCache }}</button></div>
+					<p class="connection-note"><i class="ti ti-info-circle" aria-hidden="true"></i><span><strong>{{ accountCopy.historyKeptTitle }}</strong> {{ accountCopy.historyKeptDescription }}</span></p>
+					<details class="connection-details">
+						<summary>{{ accountCopy.cacheStoredTitle }}</summary>
+						<ul><li>{{ accountCopy.cacheUrlListBefore }} <strong>{{ accountCopy.cacheUrlListName }}</strong>{{ accountCopy.cacheUrlListAfter }}</li><li>{{ accountCopy.cacheServerLimitBefore }} <strong>{{ accountCopy.cacheServerLimitValue }}</strong>{{ accountCopy.cacheServerLimitAfter }}</li><li>{{ accountCopy.cacheDurationBefore }} <strong>{{ accountCopy.cacheDurationValue }}</strong>{{ accountCopy.cacheDurationAfter }}</li></ul>
+						<strong>{{ accountCopy.cacheClearTitle }}</strong><ul><li>{{ accountCopy.cacheClearAll }}</li><li>{{ accountCopy.cacheReloadNext }}</li></ul>
+						<strong>{{ accountCopy.cacheUseTitle }}</strong><ul><li>{{ accountCopy.cacheUseStale }}</li><li>{{ accountCopy.cacheUseDeleted }}</li><li>{{ accountCopy.cacheUsePrivacy }}</li></ul>
+					</details>
+				</section>
+			</template>
 
-				<div style="display: flex; gap: 8px; flex-wrap: wrap;">
-					<MkButton @click="addExtFavEmojiFromPicker">
-						<i class="ti ti-plus"></i> {{ accountCopy.addEmoji }}
-					</MkButton>
-					<MkButton v-if="extFavEmojis.length > 0" danger @click="clearExtFavEmojis">
-						<i class="ti ti-trash"></i> {{ accountCopy.deleteAll }}
-					</MkButton>
-				</div>
-			</div>
-		</FormSection>
-
-		<!-- 旗鯖fork: 外部TL絵文字キャッシュの管理 -->
-		<FormSection v-if="externalEnabled">
-			<template #label><i class="ti ti-photo"></i> {{ accountCopy.emojiCacheSection }}</template>
-			<div class="_gaps_s">
-				<MkInfo>
-					{{ accountCopy.emojiCacheIntroduction }}<br/>
-					{{ accountCopy.emojiCachePurpose }}
-				</MkInfo>
-
-				<div style="font-size: 0.9em; line-height: 1.6;">
-					<b style="display: block; margin-bottom: 4px;">📦 {{ accountCopy.cacheStoredTitle }}</b>
-					<ul style="margin: 0 0 8px 1.2em; padding: 0; opacity: 0.85;">
-						<li>{{ accountCopy.cacheUrlListBefore }} <b>{{ accountCopy.cacheUrlListName }}</b>{{ accountCopy.cacheUrlListAfter }}</li>
-						<li>{{ accountCopy.cacheServerLimitBefore }} <b>{{ accountCopy.cacheServerLimitValue }}</b>{{ accountCopy.cacheServerLimitAfter }}</li>
-						<li>{{ accountCopy.cacheDurationBefore }} <b>{{ accountCopy.cacheDurationValue }}</b>{{ accountCopy.cacheDurationAfter }}</li>
-					</ul>
-					<b style="display: block; margin-bottom: 4px;">🗑️ {{ accountCopy.cacheClearTitle }}</b>
-					<ul style="margin: 0 0 8px 1.2em; padding: 0; opacity: 0.85;">
-						<li>{{ accountCopy.cacheClearAll }}</li>
-						<li>{{ accountCopy.cacheReloadNext }}</li>
-					</ul>
-					<b style="display: block; margin-bottom: 4px;">💡 {{ accountCopy.cacheUseTitle }}</b>
-					<ul style="margin: 0 0 8px 1.2em; padding: 0; opacity: 0.85;">
-						<li>{{ accountCopy.cacheUseStale }}</li>
-						<li>{{ accountCopy.cacheUseDeleted }}</li>
-						<li>{{ accountCopy.cacheUsePrivacy }}</li>
-					</ul>
-					<div style="opacity: 0.7; margin-top: 8px;">
-						<i class="ti ti-info-circle"></i>
-						<b>{{ accountCopy.historyKeptTitle }}</b>
-						{{ accountCopy.historyKeptDescription }}
-					</div>
-				</div>
-
-				<div>
-					<MkButton danger @click="clearEmojiCache">
-						<i class="ti ti-trash"></i> {{ accountCopy.clearCache }}
-					</MkButton>
-				</div>
-			</div>
-		</FormSection>
+			<section v-if="section !== 'account' && (!externalEnabled || (!isLinked && section !== 'data'))" class="connection-card connection-empty">
+				<i class="ti ti-link" aria-hidden="true"></i><h2>{{ accountCopy.linkSection }}</h2>
+				<p class="connection-description">アカウントの連携を有効にすると、この設定を利用できます。</p>
+				<div class="connection-actions"><button type="button" class="hy-primary" @click="section = 'account'">アカウント設定へ</button></div>
+			</section>
+		</div>
 	</div>
 </SearchMarker>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, defineAsyncComponent, onMounted } from 'vue';
-import MkSwitch from '@/components/MkSwitch.vue';
-import MkButton from '@/components/MkButton.vue';
-import MkInfo from '@/components/MkInfo.vue';
-import MkSelect from '@/components/MkSelect.vue';
-import FormSection from '@/components/form/section.vue';
+import { ref, computed, defineAsyncComponent, onMounted, reactive, watch } from 'vue';
+import HyCapsule from '@/components/HyCapsule.vue';
+import ConcrntServerIdentity from '@/components/concrnt/ConcrntServerIdentity.vue';
+import { fetchExternalServerInfo } from '@/utility/external-server-info.js';
+import type { ExternalServerInfo } from '@/utility/external-server-info.js';
+import '@/components/concrnt/concrnt-ui.css';
+import { instance } from '@/instance.js';
 import { prefer } from '@/preferences.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 import { genId } from '@/utility/id.js';
-import { hostname } from '@@/js/config.js';
+import { hostname, instanceName } from '@@/js/config.js';
 import { getExternalFavoriteEmojis, setExternalFavoriteEmojis, removeExternalFavoriteEmoji, getExternalCustomEmojis, clearExternalEmojiCache, isAllowedExternalHost } from '@/utility/external-api.js';
 import type { ExternalCustomEmoji } from '@/utility/external-api.js';
 import { i18n } from '@/i18n.js';
@@ -183,6 +129,27 @@ const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components
 const accountCopy = i18n.ts._hata._externalAccount;
 const accountCopyx = i18n.tsx._hata._externalAccount;
 const externalAccountKeywords = ['external', 'ohtl', 'oltl', 'timeline', accountCopy.searchKeyword];
+const localInstanceName = computed(() => instance.name || instanceName);
+const section = ref('account');
+const sections = [
+	{ value: 'account', label: 'アカウント', icon: 'ti ti-user' },
+	{ value: 'display', label: '表示・投稿', icon: 'ti ti-layout-list' },
+	{ value: 'notifications', label: '通知', icon: 'ti ti-bell' },
+	{ value: 'data', label: '絵文字・データ', icon: 'ti ti-database' },
+];
+
+function onEnabledChange(event: Event) {
+	onToggleEnabled((event.target as HTMLInputElement).checked);
+}
+
+function onTimelineChange(key: 'external.enableOHTL' | 'external.enableOLTL', event: Event) {
+	prefer.commit(key, (event.target as HTMLInputElement).checked);
+}
+
+async function onNotificationChange(event: Event) {
+	await prefer.commit('external.disableNotificationToast', (event.target as HTMLInputElement).checked);
+	await onDisableNotifToastChange();
+}
 
 const externalEnabled = prefer.model('external.enabled');
 const externalHost = prefer.model('external.host');
@@ -252,6 +219,23 @@ const hostOptions = computed(() => {
 });
 
 const selectedHost = ref(hostOptions.value.length > 0 ? hostOptions.value[0].value : '');
+
+// 旗鯖fork: 接続先はURLではなく、サーバーが公開している名前とアイコンで示す（コンカレント連携と同じ表示）。
+const serverInfos = reactive<Record<string, ExternalServerInfo>>({});
+const knownServerName = (host: string) => hostOptions.value.find(option => option.value === host)?.label.replace(/\s*\([^)]*\)$/u, '');
+
+function serverInfo(host: string): ExternalServerInfo {
+	return serverInfos[host] ?? { domain: host, name: knownServerName(host) ?? host };
+}
+
+function loadServerInfo(host: string | null | undefined): void {
+	if (!host || serverInfos[host]) return;
+	void fetchExternalServerInfo(host, knownServerName(host)).then(info => { serverInfos[host] = info; });
+}
+
+const linkedServer = computed(() => serverInfo(externalHost.value ?? ''));
+watch(externalHost, host => loadServerInfo(host), { immediate: true });
+watch(() => externalEnabled.value && !isLinked.value, choosing => { if (choosing) for (const option of hostOptions.value) loadServerInfo(option.value); }, { immediate: true });
 
 // 選択中のホストが旗鯖かどうか
 function isHataSaba(host: string): boolean {
@@ -478,87 +462,3 @@ definePage({
 	icon: 'ti ti-link',
 });
 </script>
-
-<style lang="scss" module>
-.linkedAccount {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 16px;
-	background: var(--MI_THEME-panel);
-	border-radius: 8px;
-}
-
-.linkedAccountInfo {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.linkedAccountHost {
-	font-weight: bold;
-	display: flex;
-	align-items: center;
-	gap: 8px;
-}
-
-.linkedAccountUser {
-	opacity: 0.7;
-	display: flex;
-	align-items: center;
-	gap: 8px;
-}
-
-.emojiGrid {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-	padding: 8px 0;
-}
-
-.emojiItem {
-	position: relative;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 42px;
-	height: 42px;
-	border-radius: 8px;
-	background: var(--MI_THEME-bg);
-
-	&:hover {
-		.emojiRemoveBtn {
-			opacity: 1;
-		}
-	}
-}
-
-.emojiItemImg {
-	width: 32px;
-	height: 32px;
-	object-fit: contain;
-}
-
-.emojiItemUnicode {
-	font-size: 1.5em;
-	line-height: 1;
-}
-
-.emojiRemoveBtn {
-	position: absolute;
-	top: -4px;
-	right: -4px;
-	width: 18px;
-	height: 18px;
-	border-radius: 50%;
-	background: var(--MI_THEME-accent);
-	color: var(--MI_THEME-fgOnAccent);
-	font-size: 0.6em;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	opacity: 0;
-	transition: opacity 0.15s;
-	cursor: pointer;
-}
-</style>

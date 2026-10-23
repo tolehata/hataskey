@@ -15,10 +15,11 @@ describe('settings navigation IDs', () => {
 		const navigationIds = [...destinationsSource.matchAll(/destination\('([^']+)'/gu)].map(match => match[1]);
 		expect(navStart).toBeGreaterThan(-1);
 		expect(guardStart).toBeGreaterThan(navStart);
-		// Hataskey UI S を Hataskey UI 節に追加した現在の destination は52件。
-		expect(navigationIds).toHaveLength(52);
+		// コンカレント連携を独立した項目に追加した現在の destination は53件。
+		expect(navigationIds).toHaveLength(53);
 		expect(new Set(navigationIds).size).toBe(navigationIds.length);
 		expect(navigationIds).toContain('account-plugins');
+		expect(navigationIds).toContain('account-concrnt');
 
 		expect(() => assertUniqueNavigationIds([
 			{ items: [{ id: 'settings.unique' }] },

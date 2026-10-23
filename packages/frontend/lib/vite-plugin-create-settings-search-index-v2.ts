@@ -125,6 +125,7 @@ export type SettingsStorageRefV2 =
 	| { kind: 'pref'; key: string }
 	| { kind: 'pizzax'; store: 'base' | 'deck'; key: string; scope: 'device' | 'account' | 'deviceAccount' }
 	| { kind: 'local'; key: string; family?: boolean }
+	| { kind: 'indexeddb'; database: string; store: string; key: string; fields: readonly string[] }
 	| { kind: 'registry'; scope: readonly string[]; key: string }
 	| { kind: 'api'; endpoint: string; fields?: readonly string[] };
 
@@ -365,6 +366,7 @@ function isDirectDestructiveAction(node: ElementNode): boolean {
  * turns a banner-dismissal into a user setting. */
 const EXPLICIT_NON_SETTING_ACTIONS_V2: Readonly<Record<string, ReadonlySet<string>>> = {
 	'src/pages/settings/index.vue': new Set(['skipAutoBackup']),
+	'src/pages/settings/external-account.vue': new Set(['section']),
 };
 
 function isExplicitNonSettingActionV2(sourceFile: string, click: string): boolean {
@@ -2419,6 +2421,14 @@ type ExplicitControlStorageBindingV2 = {
  * of receiving a made-up persistence scope.
  */
 const NON_PERSISTENT_FORM_CONTROL_EXCLUSIONS_V2: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+	'src/components/concrnt/ConcrntSettings.vue': {
+		domainDraft: 'Concrnt連携ウィザードの接続先候補。検索からドメイン確認や認証を開始しない',
+		secretDraft: 'Concrnt認証専用の一時サブキー入力。秘密情報は検索項目・検索語へ含めない',
+		saveDraft: 'Concrnt連携の確定前だけ保持する保存方法の下書き。連携後の保存方法設定を検索対象にする',
+	},
+	'src/pages/settings/external-account.vue': {
+		selectedHost: 'MiAuth認証を始める前の接続先候補。検索から認証フローを開始しない',
+	},
 	'src/pages/settings/2fa.qrdialog.vue': {
 		token: '二段階認証登録の一時確認コードであり、保存済み設定値ではない。検索から認証フローを開始しない',
 	},
@@ -2434,6 +2444,20 @@ const NON_PERSISTENT_FORM_CONTROL_EXCLUSIONS_V2: Readonly<Record<string, Readonl
  * or the exact local/profile key used by that control.
  */
 const EXPLICIT_CONTROL_STORAGE_BINDINGS_V2: Readonly<Record<string, Readonly<Record<string, ExplicitControlStorageBindingV2>>>> = {
+	'src/components/concrnt/ConcrntSettings.vue': {
+		"change:updateBoolean('enabled',$event)": concrntSettingsStorageBindingV2('enabled'),
+		"change:updateBoolean('notifications',$event)": concrntSettingsStorageBindingV2('notifications'),
+		"change:updateBoolean('popups',$event)": concrntSettingsStorageBindingV2('popups'),
+		"change:updateSave('device',$event)": concrntSettingsStorageBindingV2('save'),
+		"change:updateSave('session',$event)": concrntSettingsStorageBindingV2('save'),
+		'change:updateProfile': concrntSettingsStorageBindingV2('profile'),
+	},
+	'src/pages/settings/external-account.vue': {
+		'change:onEnabledChange': { refs: [{ kind: 'pref', key: 'external.enabled' }], evidence: 'onEnabledChange() → onToggleEnabled() → externalEnabled は prefer.model(external.enabled) を更新する' },
+		"change:onTimelineChange('external.enableOHTL',$event)": { refs: [{ kind: 'pref', key: 'external.enableOHTL' }], evidence: 'onTimelineChange() は引数の external.enableOHTL を prefer.commit で更新する' },
+		"change:onTimelineChange('external.enableOLTL',$event)": { refs: [{ kind: 'pref', key: 'external.enableOLTL' }], evidence: 'onTimelineChange() は引数の external.enableOLTL を prefer.commit で更新する' },
+		'change:onNotificationChange': { refs: [{ kind: 'pref', key: 'external.disableNotificationToast' }], evidence: 'onNotificationChange() は external.disableNotificationToast を prefer.commit で更新する' },
+	},
 	'src/components/HataFeedDisplaySettings.vue': {
 		'click:choose(theme.value)': { refs: [{ kind: 'local', key: 'hatafeedTheme' }], evidence: 'choose() は setHataFeedTheme を通じて端末の hatafeedTheme を即時更新する' },
 	},
@@ -2567,9 +2591,18 @@ function explicitControlStorageBindingV2(
 	if (sourceBindings == null) return undefined;
 	const click = normalizedExpression(eventHandlerExpression(node, 'click'));
 	const clickHandler = click == null ? undefined : /^([A-Za-z_$][\w$]*)\b/u.exec(click)?.[1];
+	const change = normalizedExpression(eventHandlerExpression(node, 'change'));
 	return (modelExpression == null ? undefined : sourceBindings[`model:${modelExpression}`])
 		?? (click == null ? undefined : sourceBindings[`click:${click}`])
-		?? (clickHandler == null ? undefined : sourceBindings[`click:${clickHandler}`]);
+		?? (clickHandler == null ? undefined : sourceBindings[`click:${clickHandler}`])
+		?? (change == null ? undefined : sourceBindings[`change:${change}`]);
+}
+
+function concrntSettingsStorageBindingV2(field: 'enabled' | 'save' | 'profile' | 'notifications' | 'popups'): ExplicitControlStorageBindingV2 {
+	return {
+		refs: [{ kind: 'indexeddb', database: 'HataskeyConcrnt', store: 'private', key: '${encodeURIComponent(owner)}:connection', fields: [`settings.${field}`] }],
+		evidence: `updateConcrntSettings() → ConcrntStorage.saveConnection() が HataskeyConcrnt/private の owner 別 connection レコード内 settings.${field} を更新する。クラウド同期・設定バックアップには含めない`,
+	};
 }
 
 function nonPersistentFormControlExclusionV2(sourceFile: string, modelExpression: string | undefined): string | undefined {
@@ -2581,6 +2614,7 @@ function storageRefIdentityV2(ref: SettingsStorageRefV2): string {
 		case 'pref': return `pref:${ref.key}`;
 		case 'pizzax': return `pizzax:${ref.store}:${ref.scope}:${ref.key}`;
 		case 'local': return `local:${ref.key}`;
+		case 'indexeddb': return `indexeddb:${ref.database}:${ref.store}:${ref.key}:${ref.fields.join(',')}`;
 		case 'registry': return `registry:${ref.scope.join('/')}:${ref.key}`;
 		case 'api': return `api:${ref.endpoint}:${(ref.fields ?? []).join(',')}`;
 	}
@@ -2633,7 +2667,7 @@ function deriveSettingsMetadataV2(
 	// A preference/local model is the storage operation for this exact control.
 	// The surrounding page may also contain API calls for an unrelated submit
 	// button, so do not turn a source-level API import into a false mixed scope.
-	const apiRefs = preferenceKeys.length === 0 && pizzaxRefs.length === 0 && localRefs.length === 0
+	const apiRefs = explicitBinding == null && preferenceKeys.length === 0 && pizzaxRefs.length === 0 && localRefs.length === 0
 		? apiRefsForControlV2(sourceFile, route, sourceCode, node)
 		: [];
 	const storageRefs = uniqueStorageRefsV2([
@@ -2645,7 +2679,7 @@ function deriveSettingsMetadataV2(
 		...(explicitBinding?.refs ?? []),
 	]);
 	const hasProfile = storageRefs.some(ref => ref.kind === 'pref');
-	const hasDevice = storageRefs.some(ref => ref.kind === 'local' || (ref.kind === 'pizzax' && ref.scope !== 'account'));
+	const hasDevice = storageRefs.some(ref => ref.kind === 'local' || ref.kind === 'indexeddb' || (ref.kind === 'pizzax' && ref.scope !== 'account'));
 	const hasAccount = storageRefs.some(ref => ref.kind === 'registry' || ref.kind === 'api' || (ref.kind === 'pizzax' && ref.scope === 'account'));
 	// Hatady deliberately keeps a device cache for an account-registry source of
 	// truth. That is not a mixed user choice, but it must be named explicitly.
@@ -2660,7 +2694,7 @@ function deriveSettingsMetadataV2(
 		persistenceEvidence = `アカウントAPI/Registry: ${storageRefs.filter(ref => ref.kind === 'api' || ref.kind === 'registry').map(ref => ref.kind === 'api' ? ref.endpoint : `${ref.scope.join('/')}:${ref.key}`).join(', ')}${accountWithDeviceCache ? '（miLocalStorageは初期表示用キャッシュ）' : ''}`;
 	} else if (hasDevice) {
 		persistence = 'device';
-		persistenceEvidence = `miLocalStorage/Pizzax端末値: ${storageRefs.filter(ref => ref.kind === 'local' || ref.kind === 'pizzax').map(ref => ref.kind === 'local' ? ref.key : `${ref.store}:${ref.key}`).join(', ')}`;
+		persistenceEvidence = `端末保存値: ${storageRefs.filter(ref => ref.kind === 'local' || ref.kind === 'indexeddb' || ref.kind === 'pizzax').map(ref => storageRefIdentityV2(ref)).join(', ')}`;
 	} else if (hasProfile) {
 		persistence = 'profile';
 		persistenceEvidence = `prefer設定値: ${preferenceKeys.join(', ')}`;
@@ -2799,11 +2833,15 @@ export function collectSettingsControlDescriptorsV2(
 			if (isSearchDescriptorNode(sourceFile, node, persistentHandlers)) {
 				const modelExpression = directiveExpression(node, 'model') ?? expressionOf(findAttribute(node.props, 'modelValue'));
 				const directPreferenceKeys = preferenceKeysForControlV2(node, modelExpression, preferenceBindings, handlerBodiesByName);
+				// Native change handlers need their exact preference identity. Existing
+				// click-action IDs keep their previous label-based identity.
+				const explicitPreferenceKeys = eventHandlerExpression(node, 'change') == null ? []
+					: explicitControlStorageBindingV2(sourceFile, modelExpression, node)?.refs.flatMap(ref => ref.kind === 'pref' ? [ref.key] : []) ?? [];
 				const pizzaxRefs = pizzaxRefsForControlV2(node, modelExpression, pizzaxBindings, handlerBodiesByName);
 				const ui2PreferenceKeys = sourceFile === 'src/components/HatasabaUi2SettingsBody.vue'
 					? UI2_DRAFT_PREFERENCE_KEYS[modelExpression ?? ''] ?? []
 					: [];
-				const profilePreferenceKeys = [...new Set([...next.preferenceKeys, ...directPreferenceKeys, ...ui2PreferenceKeys])];
+				const profilePreferenceKeys = [...new Set([...next.preferenceKeys, ...directPreferenceKeys, ...explicitPreferenceKeys, ...ui2PreferenceKeys])];
 				const preferenceKeys = [...new Set([...profilePreferenceKeys, ...pizzaxRefs.map(ref => ref.key)])];
 				const namedLabelTemplate = namedSlotTemplate(node, 'label', true);
 				const nativeControl = node.tag === 'input' || node.tag === 'select' || node.tag === 'textarea';
@@ -2821,7 +2859,7 @@ export function collectSettingsControlDescriptorsV2(
 				const meaningfulPlaceholderTemplate = isMeaningfulPlaceholderV2(placeholderTemplate, rowLabelTemplate)
 					? placeholderTemplate
 					: undefined;
-				const ownLabelTemplate = namedLabelTemplate || ariaLabelTemplate || meaningfulPlaceholderTemplate || (nativeControl ? '' : textTemplate(node.children));
+				const ownLabelTemplate = ariaLabelTemplate || namedLabelTemplate || meaningfulPlaceholderTemplate || (nativeControl ? '' : textTemplate(node.children));
 				// Only explicit row copy participates here. Broad ancestor text and
 				// MkInfo/description siblings are intentionally absent.
 				const fallbackCandidates = [
@@ -2975,6 +3013,16 @@ type StaticReachabilityGroupSpecV2 = {
 };
 
 const STATIC_REACHABILITY_GROUP_SPECS_V2: readonly StaticReachabilityGroupSpecV2[] = [
+	{
+		stableId: 'settings.group.concrnt-connection-settings',
+		sourceFile: 'src/components/concrnt/ConcrntSettings.vue',
+		labelExpression: 'コンカレント連携(BETA)',
+		labelI18nKeys: [],
+		aliases: ['Concrnt', 'コンカレント', 'CTL', 'コンカレントの通知', 'プロフィール', '端末に保存'],
+		sourceSemanticGroupId: 'settings.semantic.feature.concrnt-linking',
+		unmet: [{ kind: 'runtime-data', id: 'concrnt-account-and-section', behavior: 'explain' }],
+		matches: (node, isRoot) => isRoot && node.tag === 'div',
+	},
 	{
 		stableId: 'settings.group.preference-profile-backups',
 		sourceFile: 'src/pages/settings/profiles.vue',
@@ -3437,6 +3485,7 @@ const EXPLICIT_SOURCE_SEMANTIC_GROUPS: Readonly<Record<string, string>> = {
 	// list of named features -- it must not become a route/category catch-all.
 	'src/components/HatadyDisplaySettings.vue': 'settings.semantic.feature.hatady-display-settings',
 	'src/components/HataFeedDisplaySettings.vue': 'settings.semantic.feature.hatafeed-display-settings',
+	'src/components/concrnt/ConcrntSettings.vue': 'settings.semantic.feature.concrnt-linking',
 	// The permanent surface is a named, user-visible feature area. Its root
 	// category landing and the three child groups are genuine peers, unlike a
 	// route-wide fallback, so it supplies relation evidence for the canonical
@@ -3712,6 +3761,13 @@ const STATIC_GROUP_METADATA_OVERRIDES_V2: Readonly<Record<string, StaticGroupMet
  * static, user-visible host that contains it.
  */
 function sourceScopedStaticGroupMetadataV2(host: StaticGroupHostV2): StaticGroupMetadataOverrideV2 | undefined {
+	if (host.reachabilitySpec?.stableId === 'settings.group.concrnt-connection-settings') {
+		return staticGroupMetadataOverrideV2(
+			'device', 'immediate', 'all', 'hatasaba', 'all',
+			'Concrntの連携設定は独立した端末IndexedDBに保持する。検索は常設設定画面へ移動し、認証・連携・カプセル選択を自動実行しない',
+			[{ kind: 'indexeddb', database: 'HataskeyConcrnt', store: 'private', key: '${encodeURIComponent(owner)}:connection', fields: ['settings'] }],
+		);
+	}
 	if (host.reachabilitySpec?.stableId === 'settings.group.preference-profile-backups') {
 		return staticGroupMetadataOverrideV2(
 			'account', 'immediate', 'all', 'core', 'all',
@@ -4042,6 +4098,9 @@ function unmetForConditionalControlV2(
 	conditions: readonly string[],
 ): SettingsActivationUnmetV2[] {
 	const condition = conditions.join(' ');
+	if (sourceFile === 'src/components/concrnt/ConcrntSettings.vue') {
+		return [{ kind: 'runtime-data', id: 'concrnt-account-and-section', behavior: 'explain' }];
+	}
 	if (sourceFile === 'src/pages/settings/2fa.vue') {
 		return [{ kind: 'preference', id: 'two-factor-authentication', behavior: 'explain' }];
 	}

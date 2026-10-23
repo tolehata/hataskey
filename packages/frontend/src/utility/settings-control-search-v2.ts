@@ -35,6 +35,7 @@ export type SettingsStorageRefV2 =
 	| { kind: 'pref'; key: string }
 	| { kind: 'pizzax'; store: 'base' | 'deck'; key: string; scope: 'device' | 'account' | 'deviceAccount' }
 	| { kind: 'local'; key: string; family?: boolean }
+	| { kind: 'indexeddb'; database: string; store: string; key: string; fields: readonly string[] }
 	| { kind: 'registry'; scope: readonly string[]; key: string }
 	| { kind: 'api'; endpoint: string; fields?: readonly string[] };
 

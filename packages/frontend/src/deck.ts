@@ -63,7 +63,7 @@ export type Column = {
 	notificationFilterKnownTypes?: string[];
 	notificationFilterDetails?: NotificationFilterDetails;
 	excludeBots?: boolean;
-	tl?: BasicTimelineType | 'ohtl' | 'oltl' | 'trending';
+	tl?: BasicTimelineType | 'ohtl' | 'oltl' | 'trending' | 'ctl';
 	withRenotes?: boolean;
 	withReplies?: boolean;
 	withSensitive?: boolean;

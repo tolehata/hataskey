@@ -110,6 +110,7 @@ export const settingsDestinationSections: SettingsDestinationSection[] = [{
 }, {
 	id: 'connections', label: copy.nav.externalServices, description: copy.nav.externalServicesDescription, icon: 'ti ti-link', items: [
 		destination('account-external', copy.nav.externalAccount, '/settings/external-account', 'ti ti-user-share', { primary: true, showCount: true }),
+		destination('account-concrnt', 'コンカレント連携(BETA)', '/settings/concrnt', 'concrnt-icon', { primary: true, showCount: true }),
 		destination('account-connect', copy.nav.serviceConnect, '/settings/connect', 'ti ti-link', { primary: true, showCount: true }),
 		destination('account-apps', copy.nav.linkedApps, '/settings/apps', 'ti ti-apps', { primary: true, showCount: true }),
 		destination('account-plugins', copy.nav.plugins, '/settings/plugin', 'ti ti-plug', { primary: true, showCount: true }),

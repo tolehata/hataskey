@@ -71,7 +71,7 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 									<button v-for="f in filters" :key="f.key" type="button" role="menuitemcheckbox" :aria-checked="f.on" :class="$style.option" :data-on="f.on ? 'true' : undefined" @click="toggleFilter(f.key)">
 										<component :is="f.icon" :size="18"/><span>{{ f.label }}</span><span :class="$style.optionCheck"><Check v-if="f.on" :size="16"/></span>
 									</button>
-								<button type="button" role="menuitemcheckbox" :aria-checked="live" :class="$style.option" :data-on="live ? 'true' : undefined" :disabled="tab === 'trending' || isExternalTab || isHatadyTab" @click="toggleLive">
+								<button type="button" role="menuitemcheckbox" :aria-checked="live" :class="$style.option" :data-on="live ? 'true' : undefined" :disabled="tab === 'trending' || isExternalTab || isHatadyTab || isConcrntTab" @click="toggleLive">
 										<component :is="live ? Zap : ZapOff" :size="18"/><span>{{ copy.realtime }}</span><span :class="$style.optionCheck"><Check v-if="live" :size="16"/></span>
 									</button>
 									<button type="button" role="menuitem" :class="$style.option" @click="openRssSettings"><Rss :size="18"/><span>{{ copy._rss.settings }}</span></button>
@@ -144,9 +144,11 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 		<div v-if="emojiVoteActive" ref="voteEffectsEl" :class="$style.voteEffects" aria-hidden="true"></div>
 		<div ref="scrollEl" data-timeline-tab-gestures :class="$style.scroll" @touchstart.passive="timelineTabGestures.touchStart" @touchmove="timelineTabGestures.touchMove" @touchend="timelineTabGestures.touchEnd" @touchcancel="timelineTabGestures.touchCancel" @wheel="timelineTabGestures.wheel">
 			<!-- 外部アカウントのタイムラインは、Hataskey UI と同じ外部TL部品で表示する。 -->
+			<ConcrntTimeline v-if="concrntMounted" v-show="isConcrntTab" ref="concrntTimelineRef" embedded hataskeyUi :active="active && isConcrntTab && !confirmationActive" :class="$style.external"/>
 			<MkExternalTimeline v-if="isExternalTab && externalHost && externalToken" :key="tab" ref="externalTimelineRef" :src="tab === 'ohtl' ? 'ohtl' : 'oltl'" :newNotesNavbarKey="`hk3:${tab}`" :host="externalHost" :token="externalToken" :sound="active" :simpleUi="true" :hataskeyUi="true" :class="$style.external"/>
+
 			<MkHatadyTimeline v-else-if="isHatadyTab" ref="hatadyTimelineRef" variant="uis" :active="active && !confirmationActive" newNotesNavbarKey="hk3:hatady"/>
-			<component :is="prefer.r.enablePullToRefresh.value ? MkPullToRefresh : 'div'" v-else :refresher="refreshFromPull">
+			<component :is="prefer.r.enablePullToRefresh.value ? MkPullToRefresh : 'div'" v-else-if="!isConcrntTab" :refresher="refreshFromPull">
 				<div v-if="isCollectionTab && !activeCollection" :class="$style.state">
 					<MkLoading v-if="loading || activeCollectionState === 'loading'"/>
 					<template v-else><span>{{ activeCollectionState === 'error' ? copy.loadFailed : tab === 'list' ? collectionCopy.noLists : collectionCopy.noAntennas }}</span><button type="button" :class="$style.retry" @click="openCollection(tab as CollectionKind, $event)">{{ activeCollectionState === 'error' ? copy.retry : tab === 'list' ? collectionCopy.selectList : collectionCopy.selectAntenna }}</button></template>
@@ -184,7 +186,7 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 		</div>
 	</div>
 	<Teleport :to="mobileComposerTarget ?? 'body'" :disabled="!compact || !mobileComposerTarget">
-	<div ref="composerEl" data-hata-collapse-part :class="$style.composer" :data-docked="compact && mobileComposerTarget ? true : undefined" :data-motion="motionEnabled" :data-position="composerPosition" :data-hidden="composerScroll.hidden.value ? true : undefined" :inert="composerScroll.hidden.value || mobileMenuOpen" :aria-hidden="composerScroll.hidden.value || mobileMenuOpen">
+	<div v-show="!isConcrntTab" ref="composerEl" data-hata-collapse-part :class="$style.composer" :data-docked="compact && mobileComposerTarget ? true : undefined" :data-motion="motionEnabled" :data-position="composerPosition" :data-hidden="composerScroll.hidden.value ? true : undefined" :inert="composerScroll.hidden.value || mobileMenuOpen" :aria-hidden="composerScroll.hidden.value || mobileMenuOpen">
 		<div :class="$style.composerBody"><slot/></div>
 	</div>
 	</Teleport>
@@ -192,7 +194,7 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useId, watch } from 'vue';
+import { defineAsyncComponent, computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useId, watch } from 'vue';
 import MkHatadyTimeline from '@/components/MkHatadyTimeline.vue';
 import { AtSign, Ellipsis, Bell, ChartBar, Check, Clock, Paperclip, Pencil, SmilePlus, Star, Trash2, Eye, Filter, Heart, Image, Moon, Quote, Repeat2, Reply, Rss, SendHorizontal, Sun, UserPlus, Zap, ZapOff } from '@lucide/vue';
 import * as Misskey from 'cherrypick-js';
@@ -215,6 +217,8 @@ import type { TimelineAdMarker } from '@/utility/timeline-ad.js';
 import MkTimelineNewNotesContent from '@/components/MkTimelineNewNotesContent.vue';
 import MkLtlPunch from '@/components/MkLtlPunch.vue';
 import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
+import { concrntState } from '@/utility/concrnt/runtime.js';
+const ConcrntTimeline = defineAsyncComponent(() => import('@/components/concrnt/ConcrntTimeline.vue'));
 import MkPullToRefresh from '@/components/MkPullToRefresh.vue';
 import { attachNavbarPullGesture, createNavbarPullRefresh, navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
 import type { NavbarPullState } from '@/utility/navbar-pull-refresh.js';
@@ -267,7 +271,7 @@ const props = withDefaults(defineProps<{
 const composerPosition = computed(() => props.compact ? 'bottom' : prefer.r.hataskeyUi3ComposerPosition.value);
 
 type CollectionKind = 'list' | 'antenna';
-type TabId = 'following' | 'local' | 'social' | 'mixed' | 'trending' | 'hatady' | 'ohtl' | 'oltl' | CollectionKind;
+type TabId = 'following' | 'local' | 'social' | 'mixed' | 'trending' | 'hatady' | 'ohtl' | 'oltl' | 'ctl' | CollectionKind;
 type CollectionItem = { id: string; name: string };
 type CollectionState = 'loading' | 'error' | 'empty' | 'ready';
 type FilterKey = 'withRenotes' | 'onlyFiles' | 'withSensitive';
@@ -298,12 +302,17 @@ const allTabs = computed<{ id: TabId; label: string; icon: string; external?: bo
 	...(prefer.r['simpleUi.showHatadyTab'].value ? [{ id: 'hatady' as const, label: copy.tabHatady, icon: 'ti ti-book-2' }] : []),
 	...(externalLinked.value && prefer.r['external.enableOHTL'].value ? [{ id: 'ohtl' as const, label: copy.tabExternalHome, icon: 'ti ti-home', external: true }] : []),
 	...(externalLinked.value && prefer.r['external.enableOLTL'].value ? [{ id: 'oltl' as const, label: copy.tabExternalLocal, icon: 'ti ti-planet', external: true }] : []),
+	...(concrntState.connection && concrntState.settings.enabled ? [{ id: 'ctl' as const, label: 'CTL', icon: 'concrnt-icon', external: true }] : []),
 ]);
 const tabs = computed(() => allTabs.value.filter(t => t.external || isHataskeyTimelineAllowed(t.id)));
 const storedTab = miLocalStorage.getItem('hataskeyUi3Tab') as TabId | null;
 const tab = ref<TabId>(storedTab && (tabs.value.some(t => t.id === storedTab) || ($i && (storedTab === 'list' || storedTab === 'antenna'))) ? storedTab : (tabs.value.some(t => t.id === 'local') ? 'local' : 'following'));
 const live = ref(miLocalStorage.getItem('hataskeyUi3Live') === 'true');
 const isExternalTab = computed(() => tab.value === 'ohtl' || tab.value === 'oltl');
+const isConcrntTab = computed(() => tab.value === 'ctl');
+const concrntMounted = ref(isConcrntTab.value);
+watch(isConcrntTab, active => { if (active) concrntMounted.value = true; });
+const concrntTimelineRef = shallowRef<{ reloadTimeline: () => Promise<void>; focusComposer: () => Promise<void> } | null>(null);
 const isHatadyTab = computed(() => tab.value === 'hatady');
 // 外部TLの新着はその部品がキューを持つ。ここでは知らせだけ受け取り、上部の新着バナーで出す。
 const externalNewNotes = createHataskeyTimelineNewNotes(() => isExternalTab.value || isHatadyTab.value ? `hk3:${tab.value}` : null);
@@ -766,7 +775,8 @@ onBeforeUnmount(() => { pullRefresh.dispose(); setHk3ToastsPaused(pullToastOwner
 async function refreshFromPull() {
 	if (!props.active || props.confirmationActive) return Promise.resolve();
 	homeScroll.cancel();
-	if (isExternalTab.value) await externalTimelineRef.value?.reloadTimeline(true);
+	if (isConcrntTab.value) await concrntTimelineRef.value?.reloadTimeline();
+	else if (isExternalTab.value) await externalTimelineRef.value?.reloadTimeline(true);
 	else if (isHatadyTab.value) await hatadyTimelineRef.value?.refreshFromPull();
 	else {
 		await reload(false, true);
@@ -844,7 +854,7 @@ async function reload(collectionValidated = false, preserveIncoming = false) {
 	if (!preserveIncoming) queue.value = [];
 	loadMoreFailed.value = false;
 	if (!preserveIncoming) disconnect();
-	if (isExternalTab.value) {
+	if (isExternalTab.value || isConcrntTab.value) {
 		notes.value = [];
 		loading.value = false;
 		return;
@@ -922,7 +932,7 @@ let connection: { dispose: () => void } | null = null;
 let streamRevision = 0;
 
 function connect() {
-	if (tab.value === 'trending' || tab.value === 'hatady' || tab.value === 'ohtl' || tab.value === 'oltl') return;
+	if (tab.value === 'trending' || tab.value === 'hatady' || tab.value === 'ctl' || tab.value === 'ohtl' || tab.value === 'oltl') return;
 	const filter = store.s.tl.filter;
 	const params = { withRenotes: filter.withRenotes, withFiles: filter.onlyFiles ? true : undefined };
 	const revision = streamRevision;
@@ -1043,7 +1053,7 @@ function discardPendingPost() {
 }
 
 function acceptsPostedNote(note: Misskey.entities.Note): boolean {
-	if (isExternalTab.value || isHatadyTab.value || isCollectionTab.value || tab.value === 'trending' || note.channelId) return false;
+	if (isExternalTab.value || isConcrntTab.value || isHatadyTab.value || isCollectionTab.value || tab.value === 'trending' || note.channelId) return false;
 	if ((tab.value === 'local' || tab.value === 'mixed') && note.visibility !== 'public') return false;
 	return !filterState.value.onlyFiles || (note.files?.length ?? 0) > 0;
 }
@@ -1535,7 +1545,7 @@ const mobileNavigation = computed<Hk3MobileNavigation>(() => ({
 	},
 	options: [
 		...filters.value.map(f => ({ id: f.key, label: f.label, icon: f.key === 'withRenotes' ? 'ti ti-repeat' : f.key === 'onlyFiles' ? 'ti ti-photo' : 'ti ti-eye', checked: f.on, action: () => toggleFilter(f.key) })),
-		{ id: 'live', label: copy.realtime, icon: 'ti ti-bolt', checked: live.value, disabled: tab.value === 'trending' || isExternalTab.value || isHatadyTab.value, action: toggleLive },
+		{ id: 'live', label: copy.realtime, icon: 'ti ti-bolt', checked: live.value, disabled: tab.value === 'trending' || isExternalTab.value || isHatadyTab.value || isConcrntTab.value, action: toggleLive },
 		{ id: 'rss', label: copy._rss.settings, icon: 'ti ti-rss', action: openRssSettings },
 	],
 }));
@@ -1547,7 +1557,7 @@ provide(hk3ComposerEmojiHostKey, {
 	open: emojiHostOpen,
 });
 
-defineExpose({ scrollTop, scrollHomeTop, reload, mobileNavigation, mobilePullState, attachMobilePullGesture });
+defineExpose({ focusConcrntComposer: () => concrntTimelineRef.value?.focusComposer(), scrollTop, scrollHomeTop, reload, mobileNavigation, mobilePullState, attachMobilePullGesture });
 </script>
 
 <style lang="scss" module>

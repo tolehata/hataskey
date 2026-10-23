@@ -25,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						type="search"
 						autocomplete="off"
 						spellcheck="false"
-						:placeholder="copy.search.inputLabel"
+						:placeholder="copy.search.placeholder"
 						:aria-label="copy.search.inputLabel"
 						role="combobox"
 						aria-autocomplete="list"

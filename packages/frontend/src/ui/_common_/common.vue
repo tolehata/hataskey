@@ -106,6 +106,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <!-- 旗鯖fork: 外部通知トースト (右下スライドイン、UI被らず) -->
 <XExternalNotificationToastContainer v-if="$i && !hataskeyToasts" />
+<XConcrntNotificationToasts v-if="$i && !hataskeyToasts" />
 
 <!-- 旗鯖fork: フローティングマスコット(段階C) -->
 <MkMascotFloating v-if="$i" />
@@ -139,6 +140,7 @@ const XStreamIndicator = defineAsyncComponent(() => import('./stream-indicator.v
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
 // 旗鯖fork: 外部通知トーストコンテナ (右下表示)
 const XExternalNotificationToastContainer = defineAsyncComponent(() => import('@/components/MkExternalNotificationToastContainer.vue'));
+const XConcrntNotificationToasts = defineAsyncComponent(() => import('@/components/concrnt/ConcrntNotificationToasts.vue'));
 const MkMascotFloating = defineAsyncComponent(() => import('@/components/MkMascotFloating.vue'));
 
 const props = withDefaults(defineProps<{ loadingIntegrated?: boolean }>(), { loadingIntegrated: false });

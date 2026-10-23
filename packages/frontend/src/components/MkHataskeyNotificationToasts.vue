@@ -20,6 +20,8 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { entities } from 'cherrypick-js';
 import type { HataskeyNotificationToasts } from '@/utility/hataskey-notification-toast.js';
+import type { ConcrntNotification } from '@/utility/concrnt/types.js';
+import { CONCRNT_NOTIFICATION_EVENT } from '@/utility/concrnt/events.js';
 import { getNotificationPageContext, getToastDuration, hataskeyToastMotionEnabled } from '@/utility/hataskey-notification-toast.js';
 import MkHataskeyNotificationToast from '@/components/MkHataskeyNotificationToast.vue';
 import MkNotificationToastRing from '@/components/MkNotificationToastRing.vue';
@@ -126,8 +128,18 @@ function onExternalNotification(event: Event) {
 	if (notification) context.enqueue(notification, 'external', performance.now(), prefer.s['external.host'] ?? undefined);
 }
 
+// 旗鯖fork: コンカレントの通知も外部連携と同じ受け口で「外部」として出す（受け取り条件も外部通知に揃える）。
+function onConcrntNotification(event: Event) {
+	if (!props.receiveExternal || notificationToastsSuppressed.value || window.document.hidden) return;
+	const pageContext = getNotificationPageContext();
+	if (pageContext && pageContext !== context) return;
+	const notification = (event as CustomEvent<ConcrntNotification>).detail;
+	if (notification) context.enqueueConcrnt(notification, performance.now());
+}
+
 onMounted(() => {
 	window.addEventListener('external-notification', onExternalNotification);
+	window.addEventListener(CONCRNT_NOTIFICATION_EVENT, onConcrntNotification);
 	window.document.addEventListener('visibilitychange', onVisibilityChange);
 	reducedMotionQuery.addEventListener('change', onReducedMotion);
 });
@@ -137,6 +149,7 @@ onUnmounted(() => {
 	context.clear();
 	context.height.value = 0;
 	window.removeEventListener('external-notification', onExternalNotification);
+	window.removeEventListener(CONCRNT_NOTIFICATION_EVENT, onConcrntNotification);
 	window.document.removeEventListener('visibilitychange', onVisibilityChange);
 	reducedMotionQuery.removeEventListener('change', onReducedMotion);
 });

@@ -201,7 +201,7 @@ export const bentoDestinationLinkSections: readonly {
 	{ sectionId: 'apps.section0', destinationIds: ['hata-hatask', 'hata-hatady', 'hata-hatafeed'], explain: true },
 	{ sectionId: 'apps.section1', destinationIds: ['hata-earthquake', 'hata-mascot'], explain: true },
 	{ sectionId: 'data.section1', destinationIds: ['hata-settings-transfer'], explain: false },
-	{ sectionId: 'data.section3', destinationIds: ['account-external', 'account-connect', 'account-apps'], explain: true },
+	{ sectionId: 'data.section3', destinationIds: ['account-external', 'account-concrnt', 'account-connect', 'account-apps'], explain: true },
 	{ sectionId: 'advanced.section2', destinationIds: ['account-plugins', 'display-css'], explain: true },
 ];
 
@@ -402,6 +402,7 @@ const destinationCategories: Readonly<Record<string, SettingsBentoCategoryId>> =
 	'account-export': 'data',
 	'account-profiles': 'data',
 	'account-external': 'data',
+	'account-concrnt': 'data',
 	'account-connect': 'data',
 	'account-apps': 'data',
 	'account-plugins': 'advanced',

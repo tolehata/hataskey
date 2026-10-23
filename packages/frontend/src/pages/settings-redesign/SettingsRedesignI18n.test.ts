@@ -74,7 +74,8 @@ describe('settings redesign translations', () => {
 		// ⚠️旧設定から一覧へ戻る導線の文言を足したので217へ。
 		// ⚠️無操作のときに出す検索の案内文を足したので218へ。
 		// ⚠️「いまの値をすぐ変える」の節ごと mobile.changeCurrentValues を外したので217へ。
-		expect(ja.size).toBe(218);
+		// ⚠️検索欄の例文（search.placeholder「お困りでしょうか？」）を足したので219へ。
+		expect(ja.size).toBe(219);
 		assertSameLocaleShape(ja, en);
 		assertSameLocaleShape(ja, zh);
 		expect(ja.get('search.relatedHeading')).toBe('こちらをお探しですか？');
@@ -84,7 +85,7 @@ describe('settings redesign translations', () => {
 		expect(ja.get('nav.hataFeedHataLyze')).not.toContain('HATAlyze');
 		expect(ja.get('legacySettings')).toBe('旧設定');
 		expect(ja.get('search.searchTrigger')).toBeUndefined();
-		expect(ja.get('searchTrigger')).toBe('設定を検索（透過率・ノートの間隔・bot…）');
+		expect(ja.get('searchTrigger')).toBe('お困りでしょうか？');
 		expect(ja.get('ui2.recommendedInUse')).toBe('推奨・使用中');
 		expect(ja.get('ui2.saveAndReload')).toBe('保存して再読み込み');
 		expect(ja.get('ui2.basicItemCount')).toBe('{count}項目');

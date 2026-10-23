@@ -36,7 +36,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</svg>
 		<button v-tooltip="i18n.ts.settings" :class="$style.menu" class="_button" @click.stop="showSettingsMenu"><i class="ti ti-dots"></i></button>
 	</header>
-	<div v-if="active" ref="body" :class="$style.body">
+	<div v-if="active || preserveBody" v-show="active" ref="body" :class="$style.body">
 		<slot></slot>
 	</div>
 </div>
@@ -65,10 +65,12 @@ const props = withDefaults(defineProps<{
 	handleScrollToTop?: boolean;
 	menu?: MenuItem[];
 	refresher?: () => Promise<void>;
+	preserveBody?: boolean;
 }>(), {
 	isStacked: false,
 	naked: false,
 	handleScrollToTop: true,
+	preserveBody: false,
 });
 
 const emit = defineEmits<{

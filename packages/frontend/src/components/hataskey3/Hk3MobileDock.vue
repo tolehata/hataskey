@@ -6,7 +6,7 @@
 	<div :class="$style.body" :style="{ height: `${bodyHeight + pullExtension}px` }">
 		<!-- Never conditionally mount: the Timeline owns the teleported composer and its draft. -->
 		<div :id="`${instanceId}-composer`" ref="composerTarget" :class="$style.composer" :data-hidden="expanded || !home || !composerOpened && !confirmationActive" :inert="expanded || !home || !composerOpened && !confirmationActive || pullBusy || suspended" :aria-hidden="expanded || !home || !composerOpened && !confirmationActive || pullBusy || suspended" @focusin="dismissGuide" @transitionrun.capture="composerTransitionStarted" @transitionend.capture="composerTransitionFinished" @transitioncancel.capture="composerTransitionFinished"></div>
-		<button v-if="home" ref="composeButton" type="button" :class="$style.composeButton" data-compose-opener :data-compose-kind="composeKind ?? 'note'" :data-hidden="expanded || pullVisible || composerOpened || confirmationActive" :inert="expanded || pullBusy || composerOpened || confirmationActive" :aria-hidden="expanded || pullVisible || composerOpened || confirmationActive" :aria-label="composeKind === 'hatady' ? i18n.ts._hata._hatasabaUi._simple.record : i18n.ts._hata._hataskeyUi3.note" :aria-controls="composeKind === 'hatady' ? undefined : `${instanceId}-composer`" :aria-expanded="composeKind === 'hatady' ? undefined : composerOpened || confirmationActive" @click="emit('compose')"><BookOpen v-if="composeKind === 'hatady'" :size="20"/><Pencil v-else :size="20"/></button>
+		<button v-if="home" ref="composeButton" type="button" :class="$style.composeButton" data-compose-opener :data-compose-kind="composeKind ?? 'note'" :data-hidden="expanded || pullVisible || composerOpened || confirmationActive" :inert="expanded || pullBusy || composerOpened || confirmationActive" :aria-hidden="expanded || pullVisible || composerOpened || confirmationActive" :aria-label="composeKind === 'concrnt' ? 'CTLに投稿' : composeKind === 'hatady' ? i18n.ts._hata._hatasabaUi._simple.record : i18n.ts._hata._hataskeyUi3.note" :aria-controls="composeKind !== 'note' && composeKind ? undefined : `${instanceId}-composer`" :aria-expanded="composeKind !== 'note' && composeKind ? undefined : composerOpened || confirmationActive" @click="emit('compose')"><i v-if="composeKind === 'concrnt'" class="concrnt-icon" aria-hidden="true"></i><BookOpen v-else-if="composeKind === 'hatady'" :size="20"/><Pencil v-else :size="20"/></button>
 		<div :class="$style.searchSurface" :data-active="searchOpened" :inert="!searchOpened" :aria-hidden="!searchOpened">
 			<MkMobileNavbarSearch ref="searchContent" :active="searchOpened" :maxHeight="searchMaxHeight" :motion="motion" @height="updateSearchHeight" @close="closeSearch()"/>
 		</div>
@@ -94,7 +94,7 @@ import { UI_S_BOTTOM_NAV_MAX } from '@/utility/hatasaba-navigation.js';
 import type { NavbarPullState } from '@/utility/navbar-pull-refresh.js';
 
 type MobilePullGestureAttacher = (root: HTMLElement, onClaim: () => void, canStart: () => boolean) => { dispose: () => void };
-const props = defineProps<{ navigation: Hk3MobileNavigation | null; items: Hk3MobileNavItem[]; home: boolean; drawerOpen: boolean; motion: boolean; guideSeen: boolean; suspended?: boolean; confirmationActive?: boolean; composerBlocked?: boolean; composeKind?: 'note' | 'hatady'; pullState?: Readonly<NavbarPullState> | null; attachPullGesture?: MobilePullGestureAttacher | null }>();
+const props = defineProps<{ navigation: Hk3MobileNavigation | null; items: Hk3MobileNavItem[]; home: boolean; drawerOpen: boolean; motion: boolean; guideSeen: boolean; suspended?: boolean; confirmationActive?: boolean; composerBlocked?: boolean; composeKind?: 'note' | 'hatady' | 'concrnt'; pullState?: Readonly<NavbarPullState> | null; attachPullGesture?: MobilePullGestureAttacher | null }>();
 const emit = defineEmits<{ navigate: [path: string]; menu: []; requestTimeline: []; menuOpen: [open: boolean]; searchOpen: [open: boolean]; compose: []; dismissGuide: [] }>();
 const copy = i18n.ts._hata._hataskeyUi3._mobileNavigation;
 const MOBILE_NAV_ITEMS_MAX = UI_S_BOTTOM_NAV_MAX;
@@ -222,7 +222,7 @@ watch(() => props.navigation, navigation => {
 });
 watch(() => props.drawerOpen, value => { if (value) { closeComposer(true); closeSearch(false); closeMenu(); } });
 watch(() => props.home, value => { if (!value) closeComposer(true); });
-watch(() => props.composeKind, value => { if (value === 'hatady') closeComposer(true); });
+watch(() => props.composeKind, value => { if (value === 'hatady' || value === 'concrnt') closeComposer(true); });
 watch(() => props.confirmationActive, value => { if (value) openComposer(); });
 watch(() => props.suspended, suspended => {
 	if (suspended) {

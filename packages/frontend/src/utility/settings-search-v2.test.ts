@@ -85,6 +85,44 @@ function controlFixture(): TestControlItem[] {
 }
 
 describe('settings-search-v2', () => {
+	test('Concrntの正式routeを独立した端末設定として索引へ登録する', () => {
+		const catalog = buildSettingsCatalogV2([
+			{ id: 'concrnt', path: '/settings/concrnt', label: 'コンカレント連携(BETA)', keywords: ['concrnt'], texts: [], icon: 'concrnt-icon' },
+			{ id: 'misskey-external', path: '/settings/external-account', label: '外部アカウント連携', keywords: ['external account'], texts: [] },
+		]);
+		const concrnt = catalog.byLegacyId.get('concrnt');
+		expect(concrnt).toMatchObject({ route: '/settings/concrnt', categoryId: 'data-connect', persistence: 'device', owner: 'hatasaba', icon: 'concrnt-icon', semanticGroupId: 'settings.semantic.feature.concrnt-linking' });
+		expect(concrnt?.activation).toBeUndefined();
+		expect(catalog.byLegacyId.get('misskey-external')?.route).toBe('/settings/external-account');
+		expect(catalog.fallbackRoutes).not.toContain('/settings/concrnt');
+		for (const query of ['Concrnt', 'コンカレント', 'CTL', 'concurrent']) {
+			expect(searchSettingsV2(catalog, query).results.some(result => result.route === '/settings/concrnt')).toBe(true);
+		}
+	});
+
+	test('Concrntの条件付き設定は常設group focusと未充足説明を保ち、自動activationを作らない', () => {
+		const group = 'settings.group.concrnt-connection-settings';
+		const catalog = buildSettingsCatalogV2([], [{
+			stableId: 'settings.control.concrnt-notifications', route: '/settings/concrnt', label: 'コンカレントの通知を表示', aliases: ['Concrnt'], preferenceKeys: [],
+			sourceFile: 'src/components/concrnt/ConcrntSettings.vue', sourceLine: 118, destructive: false, persistence: 'device', owner: 'hatasaba',
+			focusId: group, sourceSemanticGroupId: 'settings.semantic.feature.concrnt-linking', unmet: [{ kind: 'runtime-data', id: 'concrnt-account-and-section', behavior: 'explain' }],
+		}]);
+		expect(catalog.byStableId.get('settings.control.concrnt-notifications')).toMatchObject({ route: '/settings/concrnt', persistence: 'device', focusId: group, unmet: [{ kind: 'runtime-data', id: 'concrnt-account-and-section', behavior: 'explain' }] });
+		expect(catalog.byStableId.get('settings.control.concrnt-notifications')?.activation).toBeUndefined();
+	});
+
+	test('外部通知の関連先はcontrol IDに依存せず連携の有効設定へ結び、タイムライン設定は混ぜない', () => {
+		const items = [
+			{ stableId: 'settings.control.external-enabled-native', label: '外部アカウント連携を有効にする', preferenceKeys: ['external.enabled'] },
+			{ stableId: 'settings.control.external-toast-native', label: '外部通知のポップアップを無効化', preferenceKeys: ['external.disableNotificationToast'] },
+			{ stableId: 'settings.control.external-timeline-native', label: '外部ホームタイムラインを表示', preferenceKeys: ['external.enableOHTL'] },
+		].map((item, index) => ({ ...item, route: '/settings/external-account', aliases: [], sourceFile: 'src/pages/settings/external-account.vue', sourceLine: index + 1, destructive: false, sourceSemanticGroupId: 'settings.semantic.feature.external-account-linking' }));
+		const catalog = buildSettingsCatalogV2([], items);
+		const toast = catalog.byStableId.get('settings.control.external-toast-native');
+		expect(toast?.relatedIds).toContain('settings.control.external-enabled-native');
+		expect(toast?.relatedIds).not.toContain('settings.control.external-timeline-native');
+	});
+
 	test('全件を落とさず、13の生成不能ルートを明示登録する', () => {
 		const source = Array.from({ length: 278 }, (_, index) => ({
 			id: `fixture-${index}`,

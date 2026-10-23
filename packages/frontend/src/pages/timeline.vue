@@ -23,7 +23,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				{{ i18n.tsx.thereIsSchedulePost({ n: schedulePostList }) }}
 			</button>
 		</MkInfo>
-		<MkPostForm v-if="prefer.r.showFixedPostForm.value" :class="$style.postForm" class="_panel" fixed :autofocus="false" style="margin-bottom: var(--MI-margin);"/>
+		<MkPostForm v-if="prefer.r.showFixedPostForm.value" v-show="src !== 'ctl'" :inert="src === 'ctl'" :class="$style.postForm" class="_panel" fixed :autofocus="false" style="margin-bottom: var(--MI-margin);"/>
+		<ConcrntTimeline v-if="concrntMounted" v-show="src === 'ctl'" ref="concrntTlComponent" embedded :active="pageActive && src === 'ctl'" :class="$style.tl"/>
 		
 		<!-- 外部タイムライン -->
 		<MkExternalTimeline
@@ -50,7 +51,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:class="$style.tl"
 		/>
 		<MkStreamingNotesTimeline
-			v-else-if="src !== 'ohtl' && src !== 'oltl'"
+			v-else-if="src !== 'ohtl' && src !== 'oltl' && src !== 'ctl'"
 			ref="tlComponent"
 			:key="src + withRenotes + withReplies + onlyFiles + onlyCats + withSensitive"
 			:class="$style.tl"
@@ -68,7 +69,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, watch, provide, useTemplateRef, defineAsyncComponent, ref, onMounted, onActivated, onUnmounted } from 'vue';
+import { computed, watch, provide, inject, useTemplateRef, defineAsyncComponent, ref, onMounted, onActivated, onDeactivated, onUnmounted } from 'vue';
 import type { Tab } from '@/components/global/MkPageHeader.tabs.vue';
 import type { MenuItem } from '@/types/menu.js';
 import type { BasicTimelineType } from '@/timelines.js';
@@ -92,6 +93,17 @@ import { prefer } from '@/preferences.js';
 import { globalEvents } from '@/events.js';
 import { suggestReload } from '@/utility/reload-suggest.js';
 import MkInfo from '@/components/MkInfo.vue';
+import { concrntState } from '@/utility/concrnt/runtime.js';
+import { concrntPagePostContextKey, interceptConcrntPostRequest } from '@/utility/concrnt/post-interceptor.js';
+import { mainRouter, useRouter } from '@/router.js';
+
+const ConcrntTimeline = defineAsyncComponent(() => import('@/components/concrnt/ConcrntTimeline.vue'));
+const concrntTlComponent = useTemplateRef('concrntTlComponent');
+const showCTL = computed(() => concrntState.connection != null && concrntState.settings.enabled);
+const pageActive = ref(true);
+const pagePostContext = inject(concrntPagePostContextKey, () => false);
+const timelineRouter = useRouter();
+const timelineRoutePath = timelineRouter.currentRoute.value.path;
 
 // 外部サーバー連携設定
 const isExternalEnabled = computed(() => {
@@ -121,13 +133,15 @@ const schedulePostList = $i ? (await misskeyApi('notes/drafts/list', { scheduled
 const tlComponent = useTemplateRef('tlComponent');
 const trendingTlComponent = useTemplateRef('trendingTlComponent');
 
-type TimelinePageSrc = BasicTimelineType | `list:${string}` | 'ohtl' | 'oltl' | 'trending';
+type TimelinePageSrc = BasicTimelineType | `list:${string}` | 'ohtl' | 'oltl' | 'trending' | 'ctl';
 
 const srcWhenNotSignin = ref<'local' | 'global'>(isAvailableBasicTimeline('local') ? 'local' : 'global');
 const src = computed<TimelinePageSrc>({
 	get: () => ($i ? store.r.tl.value.src : srcWhenNotSignin.value),
 	set: (x) => saveSrc(x),
 });
+const concrntMounted = ref(false);
+watch(src, value => { if (value === 'ctl') concrntMounted.value = true; }, { immediate: true });
 const withRenotes = computed<boolean>({
 	get: () => store.r.tl.value.filter.withRenotes,
 	set: (x) => saveTlFilter('withRenotes', x),
@@ -394,6 +408,7 @@ function switchTlIfNeeded() {
 }
 
 function reloadTimeline() {
+	if (src.value === 'ctl') { void concrntTlComponent.value?.reloadTimeline(); return; }
 	globalEvents.emit('reloadTimeline');
 }
 
@@ -405,6 +420,16 @@ function showDraftMenu(scheduled: boolean) {
 	const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkNoteDraftsDialog.vue')), { scheduled }, { closed: () => dispose() });
 }
 
+function interceptConcrntPostForm(request: Parameters<typeof os.post>[0]): boolean {
+	if (!pagePostContext() || timelineRouter !== mainRouter || timelineRouter.currentRoute.value.path !== timelineRoutePath
+		|| !pageActive.value || src.value !== 'ctl' || !concrntTlComponent.value) return false;
+	return interceptConcrntPostRequest(request ?? {}, () => concrntTlComponent.value?.focusComposer());
+}
+
+let releaseConcrntPostInterceptor: (() => void) | undefined;
+onMounted(() => { releaseConcrntPostInterceptor = os.registerPostFormInterceptor(interceptConcrntPostForm); });
+onUnmounted(() => { releaseConcrntPostInterceptor?.(); });
+
 onMounted(() => {
 	switchTlIfNeeded();
 });
@@ -414,10 +439,13 @@ onUnmounted(() => {
 });
 
 onActivated(() => {
+	pageActive.value = true;
 	switchTlIfNeeded();
 });
+onDeactivated(() => { pageActive.value = false; });
 
 const headerActions = computed(() => {
+	if (src.value === 'ctl') return [{ icon: 'ti ti-refresh', text: i18n.ts.reload, handler: () => { void concrntTlComponent.value?.reloadTimeline(); } }];
 	const items = [{
 		icon: 'ti ti-dots',
 		text: i18n.ts.options,
@@ -641,7 +669,7 @@ const headerTabs = computed(() => [
 	title: 'OLTL',
 	icon: 'ti ti-planet',
 	iconOnly: false,
-}] : [])] as Tab[]);
+}] : []), ...(showCTL.value ? [{ key: 'ctl', title: 'CTL', icon: 'concrnt-icon', iconOnly: false }] : [])] as Tab[]);
 
 const headerTabsWhenNotLogin = computed(() => [
 	// 旗鯖fork: 未ログイン時もトレンドは通常タブの右端に配置
@@ -662,7 +690,7 @@ const headerTabsWhenNotLogin = computed(() => [
 definePage(() => ({
 	title: i18n.ts.timeline,
 	// 旗鯖fork: トレンドタブのアイコン対応
-	icon: src.value === 'trending' ? 'ti ti-flame' : isBasicTimeline(src.value) ? basicTimelineIconClass(src.value) : 'ti ti-home',
+	icon: src.value === 'ctl' ? 'concrnt-icon' : src.value === 'trending' ? 'ti ti-flame' : isBasicTimeline(src.value) ? basicTimelineIconClass(src.value) : 'ti ti-home',
 }));
 </script>
 

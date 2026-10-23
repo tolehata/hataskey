@@ -6,18 +6,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<XColumn :menu="menu" :column="column" :isStacked="isStacked" :refresher="reloadTimeline">
+<XColumn :menu="menu" :column="column" :isStacked="isStacked" :refresher="reloadTimeline" :preserveBody="column.tl === 'ctl'">
 	<template #header>
 		<i v-if="column.tl != null" :class="timelineIcon"/>
 		<span style="margin-left: 8px;">{{ column.name || timelineName || i18n.ts._deck._columns.tl }}</span>
 	</template>
 
 	<!-- 外部タイムライン -->
+	<ConcrntTimeline v-if="column.tl === 'ctl'" ref="concrntTimeline" embedded :active="column.active !== false"/>
 	<MkExternalTimeline
-		v-if="isExternalTimeline && isExternalEnabled"
+		v-else-if="isExternalTimeline && isExternalEnabled"
 		ref="externalTimeline"
 		:key="column.tl"
-		:src="column.tl as 'ohtl' | 'oltl'"
+		:src="(column.tl as 'ohtl' | 'oltl')"
 		:host="externalHost"
 		:token="externalToken"
 		:sound="true"
@@ -62,7 +63,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { onMounted, watch, ref, useTemplateRef, computed } from 'vue';
+import { onMounted, watch, ref, useTemplateRef, computed, defineAsyncComponent } from 'vue';
 import XColumn from './column.vue';
 import type { Column } from '@/deck.js';
 import type { MenuItem } from '@/types/menu.js';
@@ -77,6 +78,9 @@ import { i18n } from '@/i18n.js';
 import { hasWithReplies, isAvailableBasicTimeline, basicTimelineIconClass, isBasicTimeline } from '@/timelines.js';
 import { soundSettingsButton } from '@/ui/deck/tl-note-notification.js';
 import { prefer } from '@/preferences.js';
+import { concrntState } from '@/utility/concrnt/runtime.js';
+
+const ConcrntTimeline = defineAsyncComponent(() => import('@/components/concrnt/ConcrntTimeline.vue'));
 
 const timelineCopy = i18n.ts._hata._timelineCustom;
 
@@ -88,6 +92,7 @@ const props = defineProps<{
 const timeline = useTemplateRef('timeline');
 const externalTimeline = useTemplateRef('externalTimeline');
 const trendingTimeline = useTemplateRef('trendingTimeline');
+const concrntTimeline = useTemplateRef('concrntTimeline');
 
 // 外部サーバー連携設定
 const isExternalEnabled = computed(() => {
@@ -105,6 +110,7 @@ const isExternalTimeline = computed(() => {
 
 // タイムラインアイコン
 const timelineIcon = computed(() => {
+	if (props.column.tl === 'ctl') return 'concrnt-icon';
 	if (props.column.tl === 'ohtl') return 'ti ti-home';
 	if (props.column.tl === 'oltl') return 'ti ti-planet';
 	// 旗鯖fork: トレンドタイムラインアイコン
@@ -114,6 +120,7 @@ const timelineIcon = computed(() => {
 
 // タイムライン名
 const timelineName = computed(() => {
+	if (props.column.tl === 'ctl') return 'CTL';
 	if (props.column.tl === 'ohtl') return 'OHTL';
 	if (props.column.tl === 'oltl') return 'OLTL';
 	// 旗鯖fork: トレンドタイムライン名
@@ -122,6 +129,7 @@ const timelineName = computed(() => {
 });
 
 async function reloadTimeline() {
+	if (props.column.tl === 'ctl') { await concrntTimeline.value?.reloadTimeline(); return; }
 	if (isExternalTimeline.value) {
 		await externalTimeline.value?.reloadTimeline();
 		return;
@@ -213,6 +221,8 @@ async function setType() {
 		}
 	}
 
+	if (concrntState.connection && concrntState.settings.enabled) items.push({ value: 'ctl', label: 'CTL（コンカレント）' });
+
 	const { canceled, result: src } = await os.select({
 		title: i18n.ts.timeline,
 		items,
@@ -238,6 +248,10 @@ const menu = computed<MenuItem[]>(() => {
 		text: i18n.ts.timeline,
 		action: setType,
 	});
+	if (props.column.tl === 'ctl') {
+		menuItems.push({ type: 'link', text: 'コンカレント連携(BETA)の設定', icon: 'concrnt-icon', to: '/settings/concrnt' });
+		return menuItems;
+	}
 
 	// 外部タイムラインの場合はサウンド設定のみ
 	if (isExternalTimeline.value) {

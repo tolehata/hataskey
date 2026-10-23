@@ -208,7 +208,7 @@ const KNOWN_SETTINGS_ROUTES = new Set([
 	'/settings/theme', '/settings/navbar', '/settings/timeline', '/settings/statusbar', '/settings/sounds', '/settings/plugin/install', '/settings/plugin',
 	'/settings/account-data', '/settings/mute-block', '/settings/connect', '/settings/apps', '/settings/webhook/edit/:webhookId', '/settings/webhook/new',
 	'/settings/deck', '/settings/custom-css', '/settings/profiles', '/settings/accounts', '/settings/other', '/settings/hata-custom', '/settings/external-account',
-	'/settings/hidden-reactions', '/settings/account-stats', '/settings/cherrypick', '/settings/hatafeed',
+	'/settings/hidden-reactions', '/settings/account-stats', '/settings/cherrypick', '/settings/hatafeed', '/settings/concrnt',
 ]);
 
 const ENGLISH_CATEGORY_LABELS_V2: Record<string, string> = {
@@ -281,6 +281,7 @@ const FALLBACK_SEMANTIC_GROUPS: Readonly<Record<string, string>> = {
 };
 
 const LEGACY_ROUTE_SEMANTIC_GROUPS: Readonly<Record<string, string>> = {
+	'/settings/concrnt': 'settings.semantic.feature.concrnt-linking',
 	'/settings/emoji-palette': 'settings.semantic.feature.emoji-input',
 	// The code editor is the install form itself; the existing Plugin settings
 	// marker is its named management peer, rather than a generic same-route
@@ -319,6 +320,7 @@ const KNOWN_ALIASES: Array<[string, string[]]> = [
 ];
 
 const KEYWORD_ALIASES: Record<string, string[]> = {
+	concrnt: ['コンカレント', 'Concrnt', 'concurrent', 'CTL'],
 	note: ['ノート'], notes: ['ノート'], gap: ['間隔', 'すき間'], spacing: ['間隔'], timeline: ['タイムライン'],
 	font: ['フォント'], blur: ['ぼかし'], send: ['送信'], enter: ['Enter'], bottom: ['下', '下部'],
 };
@@ -418,7 +420,7 @@ function categoryFor(
 	else if (/font|theme|custom-css|blur|opacity|transparent|semi|フォント|テーマ|カスタムcss|ぼかし|透過|半透明/u.test(value)) id = 'theme-font';
 	else if (/timeline|send|enter|posting|投稿|送信|タイムライン/u.test(value)) id = 'timeline-posting';
 	else if (/navbar|deck|avatar-decoration|statusbar|display|表示|ナビ|デッキ/u.test(value)) id = 'display-notes';
-	else if (/drive|account-data|apps|connect|webhook|external-account|データ|連携/u.test(value)) id = 'data-connect';
+	else if (/drive|account-data|apps|connect|webhook|external-account|concrnt|データ|連携/u.test(value)) id = 'data-connect';
 	else if (/profile|privacy|security|accounts|account|email|プロフィール|プライバシー|セキュリティ|アカウント/u.test(value)) id = 'account';
 	else if (/ui|interface|misskey/u.test(value)) id = 'misskey-ui';
 	return { id, label: categoryLabelV2(id, presentation) };
@@ -426,7 +428,7 @@ function categoryFor(
 
 function catalogOwnerFor(sourceFile: string | undefined, route: string): SettingsOwnerV2 {
 	if (route === '/settings/cherrypick') return 'cherrypick';
-	if (route === '/settings/hata-custom'
+	if (route === '/settings/hata-custom' || route === '/settings/concrnt'
 		|| sourceFile === 'settings-shell'
 		|| sourceFile?.includes('HatasabaUi2') === true
 		|| sourceFile?.includes('HataSettings') === true
@@ -481,6 +483,16 @@ function applicableUiCovers(source: SettingsApplicableUiV2, target: SettingsAppl
 }
 
 function metadataForLegacyDescriptor(route: string, sourceFile?: string): Pick<SettingsCatalogDescriptorV2, 'persistence' | 'saveMode' | 'availability' | 'owner' | 'applicableUi' | 'metadataEvidence'> {
+	if (route === '/settings/concrnt') return {
+		persistence: 'device', saveMode: 'immediate', availability: 'all', owner: 'hatasaba', applicableUi: 'all',
+		metadataEvidence: {
+			persistence: 'ConcrntStorage stores settings in the owner-scoped HataskeyConcrnt/private IndexedDB connection record; preferences sync and export exclude it',
+			saveMode: 'updateConcrntSettings persists each confirmed setting change',
+			availability: 'The Concrnt settings page has no viewport restriction',
+			owner: 'Hataskey independent Concrnt v2 integration',
+			applicableUi: 'The Concrnt settings route is shared by all shells',
+		},
+	};
 	return {
 		persistence: 'profile',
 		saveMode: 'immediate',
@@ -686,6 +698,7 @@ const MAX_NEARBY_FEATURE_DISTANCE = 6;
 const FINITE_GROUP_PEER_FEATURES = new Set([
 	'settings.semantic.feature.preference-profiles',
 	'settings.semantic.feature.external-account-linking',
+	'settings.semantic.feature.concrnt-linking',
 	'settings.semantic.feature.mute-block',
 	'settings.semantic.feature.plugin-install',
 	'settings.semantic.feature.statusbar-editor',
@@ -848,7 +861,7 @@ function relationEvidence(
 		&& (isExternalNotificationLabel(a.label) || isExternalNotificationLabel(b.label))) {
 		const toast = isExternalNotificationLabel(a.label) ? a : b;
 		const target = toast === a ? b : a;
-		if (target.stableId === 'settings.control.externalenabled-xrluci'
+		if (target.preferenceKeys.includes('external.enabled')
 			|| target.stableId === 'settings.fallback.settings-external-account') {
 			return { stableId: b.stableId, kind: 'sameTopic', reasonKey: 'sameFeature', reason: relationReasonV2('sameFeature', presentation), weight: 1.05 };
 		}

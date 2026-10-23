@@ -116,6 +116,10 @@ export async function mainBoot() {
 	// 廃止した接続先の認証情報を common() 内で消してから、許可された外部通知ストリームだけを起動する。
 	const { startExternalNotificationStream } = await import('@/utility/external-notification-stream.js');
 	startExternalNotificationStream();
+	if ($i) {
+		const { initializeConcrnt } = await import('@/utility/concrnt/runtime.js');
+		void initializeConcrnt();
+	}
 
 	reactionPicker.init();
 	emojiPicker.init();

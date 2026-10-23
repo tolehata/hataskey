@@ -29,12 +29,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 		/>
 		<MkNotesTimeline v-else-if="tab === 'mentions'" key="mentions" :paginator="mentionsPaginator" :notification="notification"/>
 		<MkNotesTimeline v-else-if="tab === 'directNotes'" key="directNotes" :paginator="directNotesPaginator" :notification="true"/>
+		<!-- 旗鯖fork: コンカレントの通知を外部の通知として同じページに並べる -->
+		<ConcrntNotificationList v-else-if="tab === 'concrnt'" ref="concrntList" key="concrnt"/>
 	</div>
 </PageWithHeader>
 </template>
 
 <script lang="ts" setup>
-import { computed, markRaw, onMounted, provide, ref } from 'vue';
+import { computed, defineAsyncComponent, markRaw, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { notificationTypes, hatadyNotificationSubtypes } from 'cherrypick-js';
 import MkStreamingNotificationsTimeline from '@/components/MkStreamingNotificationsTimeline.vue';
 import MkNotesTimeline from '@/components/MkNotesTimeline.vue';
@@ -52,6 +54,9 @@ import { Paginator } from '@/utility/paginator.js';
 import { navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
 import { $i } from '@/i.js';
 import { refreshNotificationUnreadState } from '@/utility/notification-unread-sync.js';
+import { concrntState } from '@/utility/concrnt/runtime.js';
+
+const ConcrntNotificationList = defineAsyncComponent(() => import('@/components/concrnt/ConcrntNotificationList.vue'));
 
 // This page has no visible navbar pull indicator; its timelines own pull refresh.
 provide(navbarPullRefreshKey, null);
@@ -62,12 +67,15 @@ onMounted(() => {
 	}
 });
 
-const noteTab = ref<'mentions' | 'directNotes' | null>(null);
+type NoteTab = 'mentions' | 'directNotes' | 'concrnt';
+const noteTab = ref<NoteTab | null>(null);
+const concrntList = useTemplateRef<{ reload: () => Promise<void>; markAllRead: () => Promise<void> }>('concrntList');
+const showConcrnt = computed(() => concrntState.connection != null && concrntState.settings.enabled);
 const notificationBrand = computed(() => hataNotificationView.value.brand);
-const tab = computed<HataNotificationBrand | 'mentions' | 'directNotes'>({
+const tab = computed<HataNotificationBrand | NoteTab>({
 	get: () => noteTab.value ?? notificationBrand.value,
 	set: value => {
-		if (value === 'mentions' || value === 'directNotes') {
+		if (value === 'mentions' || value === 'directNotes' || value === 'concrnt') {
 			noteTab.value = value;
 		} else {
 			noteTab.value = null;
@@ -92,7 +100,14 @@ const showBots = computed({
 const props = defineProps<{
 	disableRefreshButton?: boolean;
 	notification?: boolean;
+	initialTab?: string;
 }>();
+
+// 旗鯖fork: /my/notifications?tab=concrnt から開いたときはコンカレントのタブを選ぶ。
+watch(() => [props.initialTab, showConcrnt.value] as const, ([initial, available]) => {
+	if (initial === 'concrnt' && available) noteTab.value = 'concrnt';
+}, { immediate: true });
+watch(showConcrnt, available => { if (!available && noteTab.value === 'concrnt') noteTab.value = null; });
 
 function typeSwitch(type: string, choices: readonly string[], key: 'includeTypes' | 'includeHatadySubtypes') {
 	return computed({
@@ -167,7 +182,15 @@ function setFilter(ev: Event) {
 	os.popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement, appearance);
 }
 
-const headerActions = computed(() => [deviceKind === 'desktop' && !props.disableRefreshButton ? {
+const headerActions = computed(() => noteTab.value === 'concrnt' ? [{
+	icon: 'ti ti-refresh',
+	text: i18n.ts.reload,
+	handler: () => { void concrntList.value?.reload(); },
+}, {
+	text: i18n.ts.markAllAsRead,
+	icon: 'ti ti-check',
+	handler: () => { void concrntList.value?.markAllRead(); },
+}] : [deviceKind === 'desktop' && !props.disableRefreshButton ? {
 	icon: 'ti ti-refresh',
 	text: i18n.ts.reload,
 	handler: (ev: Event) => {
@@ -200,7 +223,8 @@ const headerTabs = computed(() => ([
 	{ key: 'hatady', icon: 'ti ti-book-2' },
 	{ key: 'hatask', icon: 'ti ti-flower' },
 	{ key: 'hataFeed', icon: 'ti ti-message-report' },
-] as const).map(item => ({ ...item, title: item.key === 'mentions' ? i18n.ts.mentions : item.key === 'directNotes' ? i18n.ts.directNotes : i18n.ts._hata._notificationBrands[item.key] })));
+] as const).map((item): { key: HataNotificationBrand | NoteTab; icon: string; title: string } => ({ ...item, title: item.key === 'mentions' ? i18n.ts.mentions : item.key === 'directNotes' ? i18n.ts.directNotes : i18n.ts._hata._notificationBrands[item.key] }))
+	.concat(showConcrnt.value ? [{ key: 'concrnt', icon: 'concrnt-icon', title: 'コンカレント（外部）' }] : []));
 
 definePage(() => !props.notification ? {
 	title: i18n.ts.notifications,

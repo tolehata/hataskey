@@ -44,6 +44,15 @@ const routes = readSettingsRoutesV2(`
 
 const extensionTargets = [
 	{
+		filePath: 'src/components/concrnt/ConcrntSettings.vue',
+		routeOverride: '/settings/concrnt',
+		persistence: 'device',
+		saveMode: 'immediate',
+		availability: 'all',
+		owner: 'hatasaba',
+		applicableUi: 'all',
+	},
+	{
 		filePath: 'src/pages/settings/index.vue',
 		routeOverride: '/settings',
 		persistence: 'device',
@@ -210,7 +219,7 @@ async function buildRealCatalogFromVirtualModule() {
 		targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 		mainVirtualModule: 'search-index-v2:settings-real-catalog',
 		routerDefinitionPath: 'src/router.definition.ts',
-		expectedControlCount: 521,
+		expectedControlCount: 532,
 	});
 	const load = typeof plugin.load === 'function' ? plugin.load : undefined;
 	if (load == null) throw new Error('settings V2 plugin did not expose virtual loader');
@@ -531,7 +540,7 @@ describe('settings control search index V2', () => {
 		expect(parseSfc(injected.code).errors).toHaveLength(0);
 	});
 
-	test('実設定49ファイルの主要フォーム352項目を漏れなく分類する', async () => {
+	test('実設定50ファイルの主要フォーム352項目を漏れなく分類する', async () => {
 		const [routerSource, files] = await Promise.all([
 			fs.readFile('src/router.definition.ts', 'utf8'),
 			glob('src/pages/settings/*.vue'),
@@ -540,7 +549,7 @@ describe('settings control search index V2', () => {
 		const entries = (await Promise.all(files.sort().map(async file => collectSettingsControlDescriptorsV2(
 			file, await fs.readFile(file, 'utf8'), currentRoutes,
 		)))).flat();
-		expect(files).toHaveLength(49);
+		expect(files).toHaveLength(50);
 		// The LTL emoji vote and device swipe switches add two controls to the measured 350-item
 		// settings-page population; the extension targets are counted separately.
 		expect(entries).toHaveLength(352);
@@ -561,6 +570,7 @@ describe('settings control search index V2', () => {
 			'サウンドイベントごとのv-for行で同じ子SFCが複製されるため、検索はサウンド設定グループへ集約する': 4,
 			'選択済みステータスバーごとのv-for行で同じ子SFCが複製されるため、検索はステータスバー設定グループへ集約する': 18,
 			'インストール済みテーマを閲覧・削除対象として選ぶ一時状態で、選択自体は保存しない': 1,
+			'MiAuth認証を始める前の接続先候補。検索から認証フローを開始しない': 1,
 			'readonly の表示専用コントロールで、設定値を変更できない': 3,
 			'Webhook編集は動的webhookIdを必要とし、検索から固定URLへ到達できない': 11,
 		});
@@ -580,16 +590,16 @@ describe('settings control search index V2', () => {
 		const bySource = Object.fromEntries([
 			'src/components/HatasabaUi2SettingsBody.vue', 'src/components/HatasabaUi2ImmediateSettings.vue', 'src/components/HataFeedDisplaySettings.vue', 'src/components/HatadyDisplaySettings.vue', 'src/components/MkUISetup.vue', 'src/pages/HataskSettings.vue', 'src/pages/MkMascotSettings.vue', 'src/pages/settings/hata-custom.vue',
 		].map(sourceFile => [sourceFile, Object.fromEntries(classifications.map(classification => [classification, inventory.items.filter(item => item.sourceFile === sourceFile && item.classification === classification).length]))]));
-		// Measured target closure: 49 settings SFCs plus 12 extension targets.
+		// Measured target closure: 50 settings SFCs plus 13 extension targets.
 		// Keep the raw population separate from the smaller catalog-descriptor
 		// count so new visible buttons cannot disappear behind an old total.
-		expect(inventory.files).toHaveLength(59);
-		expect(inventory.items).toHaveLength(685);
+		expect(inventory.files).toHaveLength(61);
+		expect(inventory.items).toHaveLength(712);
 		expect(Object.fromEntries(classifications.map(classification => [classification, inventory.items.filter(item => item.classification === classification).length]))).toEqual({
-			'user-facing-setting': 447,
-			'navigation-action': 151,
-			'save-cancel': 26,
-			'disabled-display-only': 16,
+			'user-facing-setting': 452,
+			'navigation-action': 167,
+			'save-cancel': 30,
+			'disabled-display-only': 18,
 			'runtime-collection': 44,
 			destructive: 1,
 		});
@@ -609,7 +619,7 @@ describe('settings control search index V2', () => {
 		expect(inventory.items.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		// Carousel arrows and dots remain in the raw inventory even when a
 		// static theme group owns their search destination.
-		expect(resolved).toHaveLength(685);
+		expect(resolved).toHaveLength(712);
 		expect(resolved.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		const descriptorIds = new Set(controls.descriptors.filter(descriptor => descriptor.searchable).map(descriptor => descriptor.stableId));
 		expect(resolved.filter(item => item.descriptorStableId != null).every(item => descriptorIds.has(item.descriptorStableId!))).toBe(true);
@@ -1352,10 +1362,10 @@ describe('settings control search index V2', () => {
 			const absoluteFile = path.join(process.cwd(), sourceFile);
 			return collectFileMarkers(absoluteFile, legacyAssigner.processFile(absoluteFile, source).code);
 		}))).flat();
-		expect(settingsFiles).toHaveLength(49);
-		expect(inventory.files).toHaveLength(59);
-		expect(legacy).toHaveLength(280);
-		validateSettingsControlDescriptorsV2(inventory.descriptors, 521);
+		expect(settingsFiles).toHaveLength(50);
+		expect(inventory.files).toHaveLength(61);
+		expect(legacy).toHaveLength(281);
+		validateSettingsControlDescriptorsV2(inventory.descriptors, 532);
 		expect(inventory.descriptors.filter(entry => entry.activation?.kind === 'popup' && entry.route === '/settings/hata-custom').length).toBeGreaterThan(15);
 		expect(inventory.results.reduce((count, result) => count + (result.injected.code.match(/data-settings-search-id=/gu)?.length ?? 0), 0)).toBeGreaterThan(0);
 		expect(inventory.results.flatMap(result => parseSfc(result.injected.code).errors)).toHaveLength(0);
@@ -1391,12 +1401,12 @@ describe('settings control search index V2', () => {
 		await expect(load!.call({}, '\0search-index-v2:missing')).rejects.toThrow('target matched no SFC');
 	});
 
-	test('新しい仮想モジュールは59 source SFC・521項目とactivationを配信する', async () => {
+	test('新しい仮想モジュールは61 source SFC・532項目とactivationを配信する', async () => {
 		const plugin = pluginCreateSettingsSearchIndexV2({
 			targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 			mainVirtualModule: 'search-index-v2:settings',
 			routerDefinitionPath: 'src/router.definition.ts',
-			expectedControlCount: 521,
+			expectedControlCount: 532,
 			modulesToHmrOnUpdate: ['src/pages/settings-redesign/index.vue'],
 		});
 		const load = typeof plugin.load === 'function' ? plugin.load : undefined;
@@ -1407,7 +1417,7 @@ describe('settings control search index V2', () => {
 		const inventoryJson = (generated as string).match(/^export const settingsControlSearchIndexV2 = ([\s\S]+);\n$/u)?.[1];
 		expect(inventoryJson).toBeDefined();
 		const inventory = JSON.parse(inventoryJson!) as Array<{ sourceFile: string; route: string; activation?: { kind: string; popup?: string } }>;
-		expect(inventory).toHaveLength(521);
+		expect(inventory).toHaveLength(532);
 		// Safe `editor.copy` controls stay individual; only the three dynamic
 		// runtime/value areas become semantic groups.
 		expect(inventory.filter(entry => entry.sourceFile === 'src/components/HatasabaUi2SettingsBody.vue' && entry.activation?.popup === 'hatasaba-ui2')).toHaveLength(16);
@@ -1639,7 +1649,7 @@ describe('settings control search index V2', () => {
 		expect(stableIdAliases.get('settings.control.i18n-ts-enableall-1fiasic')).toBe('settings.destination.misskey-data-saver');
 		expect(stableIdAliases.get('settings.control.i18n-ts-disableall-1y966ue')).toBe('settings.destination.misskey-data-saver');
 		expect(stableIdAliases.get('settings.group.src-pages-settings-preferences-vue-pu703b')).toBe(generatedPreferenceSearchId('additionalUnicodeEmojiIndexes'));
-		expect(productionZeroRelated).toHaveLength(0);
+		expect(productionZeroRelated.map(descriptor => ({ stableId: descriptor.stableId, label: descriptor.label, semanticGroupId: descriptor.semanticGroupId, sourceSemanticGroupId: descriptor.sourceSemanticGroupId }))).toEqual([]);
 		assertSettingsCatalogRelationsV2(productionCatalog);
 		const legacyPreferenceMarkers = new Set(productionCatalog.descriptors
 			.filter(descriptor => descriptor.source === 'legacy' && descriptor.route === '/settings/preferences')
@@ -1655,9 +1665,9 @@ describe('settings control search index V2', () => {
 		}
 		expect(relationSuspects).toHaveLength(0);
 		expect(labelAuditIssues).toHaveLength(0);
-		expect(descriptors).toHaveLength(521);
-		expect(legacy).toHaveLength(280);
-		expect(catalog.byLegacyId.size).toBe(280);
+		expect(descriptors).toHaveLength(532);
+		expect(legacy).toHaveLength(281);
+		expect(catalog.byLegacyId.size).toBe(281);
 		expect(controls).toHaveLength(descriptors.filter((descriptor: { searchable: boolean }) => descriptor.searchable).length);
 		expect(catalog.descriptors.filter(descriptor => descriptor.source === 'control' && descriptor.searchable && !descriptor.destructive).every(descriptor => descriptor.related.length > 0 || descriptor.noRelatedReason != null)).toBe(true);
 		expect(catalog.descriptors.filter(descriptor => descriptor.searchable && !descriptor.destructive).filter(descriptor => /^(?:i18n|editor|draft|copy|model(?:Value)?|value|prefer|store)(?:[.\[]|$)/u.test(descriptor.label))).toHaveLength(0);

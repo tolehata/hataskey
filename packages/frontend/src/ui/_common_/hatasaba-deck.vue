@@ -186,8 +186,10 @@
 // 旗鯖fork: Hataskey UI 3 のデッキ表示では、見た目と投稿欄を UI3 に揃える。
 const props = withDefaults(defineProps<{
 	hk3?: boolean;
+	active?: boolean;
 }>(), {
 	hk3: false,
+	active: true,
 });
 
 import { computed, ref, shallowReactive, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent, type Component } from 'vue';
@@ -215,6 +217,7 @@ import { deepClone } from '@/utility/clone.js';
 import { deepEqual } from '@/utility/deep-equal.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
+import { concrntState } from '@/utility/concrnt/runtime.js';
 
 const copy = i18n.ts._hata._hatasabaUi._deck;
 const copyx = i18n.tsx._hata._hatasabaUi._deck;
@@ -223,13 +226,14 @@ const numberFormatter = new Intl.NumberFormat(versatileLang);
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
 const WidgetExternalNotifications = defineAsyncComponent(() => import('@/widgets/WidgetExternalNotifications.vue'));
 const MkEarthquakeColumn = defineAsyncComponent(() => import('@/components/MkEarthquakeColumn.vue'));
+const ConcrntTimeline = defineAsyncComponent(() => import('@/components/concrnt/ConcrntTimeline.vue'));
 // 旗鯖fork(新デッキ): クリップ/お気に入りタブ用の Paginator ラッパー。
 const MkDeckPaginatedNotes = defineAsyncComponent(() => import('@/components/MkDeckPaginatedNotes.vue'));
 
 // ===== 型 =====
 type DeckLayout = 'row' | 'grid2' | 'grid3' | 'stack';
 // 旗鯖fork(新デッキ): 'clip' / 'favorites' を追加。clip は sourceId=clipId を要求、favorites は不要。
-type ColumnType = 'home' | 'local' | 'social' | 'global' | 'trending' | 'hatady' | 'ohtl' | 'oltl' | 'list' | 'antenna' | 'channel' | 'mentions' | 'directs' | 'notifications' | 'externalNotifications' | 'widgets' | 'postForm' | 'earthquake' | 'clip' | 'favorites';
+type ColumnType = 'home' | 'local' | 'social' | 'global' | 'trending' | 'hatady' | 'ohtl' | 'oltl' | 'ctl' | 'list' | 'antenna' | 'channel' | 'mentions' | 'directs' | 'notifications' | 'externalNotifications' | 'widgets' | 'postForm' | 'earthquake' | 'clip' | 'favorites';
 
 // tab = カラム本体(表示内容)
 type DeckTab = {
@@ -651,6 +655,7 @@ const layout = computed<DeckLayout>(() => activeProfile.value?.layout ?? 'row');
 const externalHost = computed(() => prefer.s['external.host']);
 const externalToken = computed(() => prefer.s['external.token']);
 const externalReady = computed(() => externalHost.value != null && externalHost.value !== '' && externalToken.value != null);
+const concrntReady = computed(() => concrntState.connection != null && concrntState.settings.enabled);
 
 // ===== commit系 =====
 function commitProfiles(list: DeckProfile[]) { prefer.commit('simpleUi.deckProfilesV2', list); }
@@ -670,6 +675,7 @@ const COLUMN_META: Record<ColumnType, { title: string; icon: string }> = {
 	hatady: { title: copy.columnHatady, icon: 'ti ti-book-2' },
 	ohtl: { title: copy.columnExternalHome, icon: 'ti ti-home-link' },
 	oltl: { title: copy.columnExternalLocal, icon: 'ti ti-world-share' },
+	ctl: { title: 'CTL', icon: 'concrnt-icon' },
 	list: { title: copy.columnList, icon: 'ti ti-list' },
 	antenna: { title: copy.columnAntenna, icon: 'ti ti-antenna' },
 	channel: { title: copy.columnChannel, icon: 'ti ti-device-tv' },
@@ -705,6 +711,7 @@ function resolveColumn(tab: DeckTab): Component {
 	if (tab.type === 'channel' && tab.sourceId) return notesTimeline;
 	if ((tab.type === 'ohtl' || tab.type === 'oltl') && externalReady.value) return MkExternalTimeline;
 	if (tab.type === 'externalNotifications' && externalReady.value) return WidgetExternalNotifications;
+	if (tab.type === 'ctl') return ConcrntTimeline;
 	if (tab.type === 'trending') return MkTrendingTimeline;
 	if (tab.type === 'hatady') return MkHatadyTimeline;
 	if (tab.type === 'notifications') return MkStreamingNotificationsTimeline;
@@ -725,6 +732,7 @@ function buildColumnProps(tab: DeckTab): Record<string, unknown> {
 	if (tab.type === 'channel' && tab.sourceId) return { src: 'channel', channel: tab.sourceId, withRenotes: wr };
 	if ((tab.type === 'ohtl' || tab.type === 'oltl') && externalReady.value) return { src: tab.type, host: externalHost.value, token: externalToken.value, sound: false, simpleUi: true, hataskeyUi: true };
 	if (tab.type === 'externalNotifications' && externalReady.value) return { widget: { id: `deck-extnotif-${tab.id}`, name: 'externalNotifications', data: {} }, showHeader: false };
+	if (tab.type === 'ctl') return { embedded: true, hataskeyUi: true };
 	if (tab.type === 'trending') return {};
 	if (tab.type === 'hatady') return { variant: props.hk3 ? 'uis' : 'ui' };
 	if (tab.type === 'notifications') {
@@ -771,6 +779,7 @@ function columnProps(tab: DeckTab, frame: DeckFrame): Record<string, unknown> {
 	const cached = columnPropsCache.get(tab.id);
 	const value = cached?.signature === signature ? cached.value : buildColumnProps(tab);
 	if (cached?.signature !== signature) columnPropsCache.set(tab.id, { signature, value });
+	if (tab.type === 'ctl') return { ...value, active: props.active && activeTabOf(frame).id === tab.id };
 	if (tab.type === 'hatady') return { ...value, active: activeTabOf(frame).id === tab.id };
 	return tab.type === 'local' ? {
 		...value,
@@ -793,15 +802,18 @@ function recordInColumn(tabId: string) {
 	void openHatadyRecord({ variant: props.hk3 ? 'uis' : 'ui', onDone: () => colRefs.get(tabId)?.reloadTimeline?.() });
 }
 function onDeckKeydown(event: KeyboardEvent) {
-	if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing || !['p', 'n'].includes(event.key.toLowerCase())) return;
+	if (!props.active || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing || !['p', 'n'].includes(event.key.toLowerCase())) return;
 	const target = event.target;
 	if (!(target instanceof HTMLElement) || target.closest('input, textarea, [contenteditable="true"]')) return;
 	const frameId = target.closest<HTMLElement>('[data-deck-frame]')?.dataset.deckFrame;
-	const frame = slots.value.flatMap(slot => slot.frames).find(item => item.id === frameId);
-	if (!frame || activeTabOf(frame).type !== 'hatady') return;
+	const frame = visibleSlots.value.flatMap(slot => slot.frames).find(item => item.id === frameId);
+	if (!frame) return;
+	const tab = activeTabOf(frame);
+	if (tab.type !== 'hatady' && tab.type !== 'ctl') return;
 	event.preventDefault();
 	event.stopPropagation();
-	recordInColumn(activeTabOf(frame).id);
+	if (tab.type === 'ctl') void colRefs.get(tab.id)?.focusComposer?.();
+	else recordInColumn(tab.id);
 }
 
 // 旗鯖fork(#9): タブペイン(スクロール領域)の要素参照。タブクリックで最上部へ戻すのに使う。
@@ -860,6 +872,7 @@ function reloadAll() {
 	for (const slot of slots.value) {
 		for (const frame of slot.frames) {
 			for (const tab of frame.tabs) {
+				if (tab.type === 'ctl' && props.active && activeTabOf(frame).id === tab.id) colRefs.get(tab.id)?.reloadTimeline?.();
 				if (tab.type === 'externalNotifications') colRefs.get(tab.id)?.fetchNotifications?.();
 				if (tab.type === 'ohtl' || tab.type === 'oltl') colRefs.get(tab.id)?.reload?.();
 			}
@@ -1402,6 +1415,7 @@ function columnTypeMenu(anchor: HTMLElement, onPick: (partial: Partial<DeckTab> 
 		{ text: COLUMN_META.channel.title, icon: 'ti ti-device-tv', action: () => pickChannelId(anchor, (id, name) => onPick({ type: 'channel', sourceId: id, name })) },
 		{ text: COLUMN_META.clip.title, icon: 'ti ti-paperclip', action: () => pickClipId(anchor, (id, name) => onPick({ type: 'clip', sourceId: id, name })) },
 		{ text: COLUMN_META.favorites.title, icon: 'ti ti-star', action: () => onPick({ type: 'favorites' }) },
+		...(concrntReady.value ? [{ text: 'CTL（コンカレント）', icon: COLUMN_META.ctl.icon, action: () => onPick({ type: 'ctl' as const }) }] : []),
 		...(externalReady.value ? [
 			{ type: 'divider' as const },
 			{ text: COLUMN_META.ohtl.title, icon: 'ti ti-home-link', action: () => onPick({ type: 'ohtl' as const }) },
@@ -1435,6 +1449,7 @@ async function addColumn(ev: MouseEvent) {
 		{ value: 'channel', label: COLUMN_META.channel.title },
 		{ value: 'clip', label: COLUMN_META.clip.title },
 		{ value: 'favorites', label: COLUMN_META.favorites.title },
+		...(concrntReady.value ? [{ value: 'ctl', label: 'CTL（コンカレント）' }] : []),
 		...(ext ? [
 			{ value: 'ohtl', label: COLUMN_META.ohtl.title },
 			{ value: 'oltl', label: COLUMN_META.oltl.title },

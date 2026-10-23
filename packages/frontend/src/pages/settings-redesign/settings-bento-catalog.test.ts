@@ -49,6 +49,6 @@ describe('settings presentation category contract', () => {
 			for (const id of section.destinationIds) expect(section.sectionId.startsWith(`${bentoCategoryForDestination(id)}.`), id).toBe(true);
 		}
 		expect(bentoDestinationLinkSections.find(section => section.sectionId === 'timeline.section6')?.destinationIds).toEqual(['misskey-deck']);
-		expect(bentoDestinationLinkSections.find(section => section.sectionId === 'data.section3')?.destinationIds).toEqual(['account-external', 'account-connect', 'account-apps']);
+		expect(bentoDestinationLinkSections.find(section => section.sectionId === 'data.section3')?.destinationIds).toEqual(['account-external', 'account-concrnt', 'account-connect', 'account-apps']);
 	});
 });

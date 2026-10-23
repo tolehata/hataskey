@@ -2,6 +2,7 @@
 import { computed, shallowReactive, shallowRef } from 'vue';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { entities } from 'cherrypick-js';
+import type { ConcrntNotification } from '@/utility/concrnt/types.js';
 
 export const NOTIFICATION_TOAST_DURATION = 5000;
 export const NOTE_ACTION_TOAST_DURATION = 3000;
@@ -31,7 +32,7 @@ export type HataskeyToast = {
 	host?: string;
 	elapsed: number;
 	updatedAt: number;
-} & ({ source: 'local' | 'external'; notification: entities.Notification } | { source: 'status'; message: string; welcomeUser?: entities.UserLite; favoriteSaved?: true; navbarNotice?: HataskeyNavbarNotice });
+} & ({ source: 'local' | 'external'; notification: entities.Notification } | { source: 'concrnt'; notification: ConcrntNotification } | { source: 'status'; message: string; welcomeUser?: entities.UserLite; favoriteSaved?: true; navbarNotice?: HataskeyNavbarNotice });
 
 export function getToastDuration(item: HataskeyToast): number {
 	return item.source === 'status' && item.navbarNotice?.kind === 'noteAction' ? NOTE_ACTION_TOAST_DURATION : NOTIFICATION_TOAST_DURATION;
@@ -63,7 +64,14 @@ export function createHataskeyNotificationToasts(nativeMobile: ComputedRef<boole
 
 	function enqueue(notification: entities.Notification, source: 'local' | 'external', now = performance.now(), host?: string) {
 		const item = shallowReactive({ id: ++sequence, notification, source, host, elapsed: 0, updatedAt: now });
-		const previous = items.value.filter(x => !(x.source !== 'status' && x.source === source && x.host === host && x.notification.id === notification.id));
+		const previous = items.value.filter(x => !((x.source === 'local' || x.source === 'external') && x.source === source && x.host === host && x.notification.id === notification.id));
+		items.value = [item, ...previous].slice(0, integrated.value ? 1 : 3);
+	}
+
+	/** Concrnt is shown like the external account: a labelled outside source in the same queue. */
+	function enqueueConcrnt(notification: ConcrntNotification, now = performance.now()) {
+		const item = shallowReactive<HataskeyToast>({ id: ++sequence, source: 'concrnt', notification, elapsed: 0, updatedAt: now });
+		const previous = items.value.filter(x => !(x.source === 'concrnt' && x.notification.uri === notification.uri));
 		items.value = [item, ...previous].slice(0, integrated.value ? 1 : 3);
 	}
 
@@ -98,7 +106,7 @@ export function createHataskeyNotificationToasts(nativeMobile: ComputedRef<boole
 		items.value = [];
 	}
 
-	return { mobile, integrated, canIntegrateStatus, navbarNotice, items, target, outline, height, paused, surface, registerSurface, enqueue, enqueueStatus, enqueueNavbarNotice, dismissNavbarNotice, dismiss, tick, clear };
+	return { mobile, integrated, canIntegrateStatus, navbarNotice, items, target, outline, height, paused, surface, registerSurface, enqueue, enqueueConcrnt, enqueueStatus, enqueueNavbarNotice, dismissNavbarNotice, dismiss, tick, clear };
 }
 
 export type HataskeyNotificationToasts = ReturnType<typeof createHataskeyNotificationToasts>;
