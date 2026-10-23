@@ -49,10 +49,10 @@ test('normal UI keeps its composer and timeline after repeated tab transitions a
 		showFixedPostForm: true, isExternalTab: false, isHatadyTab: false, timelineSlideDirection: 1,
 		timelineGlassBg: false, punchBusy: false, normalLtlVoteActive: false,
 		nativeNavbarVisible: false, ltlEmojiVoteEffects: null, ltlEmojiVoteNavbarTarget: null,
-		externalHost: null, externalToken: null,
+		externalHost: null, externalToken: null, isConcrntTab: false,
 		$style: {
 			timelineEnterActive: 'enter', timelineLeaveActive: 'leave', timelineEnterFrom: 'from',
-			timelineEnterTo: 'to', timelineLeaveFrom: 'to', timelineLeaveTo: 'from', timelineContainer: 'tl',
+			timelineEnterTo: 'to', timelineLeaveFrom: 'to', timelineLeaveTo: 'from', timelineContainer: 'tl', timelineContainerConcrntHidden: 'ctl-hidden',
 		},
 		prepareTimelineLeave: () => {}, onTouchStart: () => {}, onTouchMove: () => {},
 		onTouchEnd: () => {}, onTouchCancel: () => {},
@@ -105,6 +105,16 @@ test('normal UI keeps its composer and timeline after repeated tab transitions a
 			assert.equal(textarea.value, 'unfinished draft');
 			assert.equal(mounted, mountedBeforeHide, `${key} does not remount the timeline`);
 		}
+		// The CTL tab hides the normal timeline by class (never v-show on the keyed child) and keeps it mounted.
+		state.isConcrntTab = true;
+		await Vue.nextTick();
+		const container = host.querySelector('[data-hata-collapse-items]');
+		assert.ok(container?.classList.contains('ctl-hidden'), 'CTL hides the normal timeline');
+		state.isConcrntTab = false;
+		await Vue.nextTick();
+		assert.ok(!host.querySelector('[data-hata-collapse-items]')?.classList.contains('ctl-hidden'), 'leaving CTL shows it again');
+		assert.equal(host.querySelector('textarea'), textarea);
+		assert.equal(mounted, mountedBeforeHide, 'switching to and from CTL does not remount the timeline');
 	} finally {
 		app.unmount();
 		for (const timer of timers) clearTimeout(timer);

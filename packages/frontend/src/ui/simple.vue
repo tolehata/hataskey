@@ -303,7 +303,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div v-show="!isPageView && !deckActive" style="height: 100%;">
 					<div v-if="showFixedPostForm" v-show="!isExternalTab && !isHatadyTab && !isConcrntTab" :inert="isExternalTab || isHatadyTab || isConcrntTab" :class="$style.fixedFormHost"><MkPostForm :class="$style.fixedPostForm" class="_panel" fixed :autofocus="false"/></div>
 					<Transition :css="newNotesMotionEnabled" :enterActiveClass="$style.timelineEnterActive" :leaveActiveClass="$style.timelineLeaveActive" :enterFromClass="$style.timelineEnterFrom" :enterToClass="$style.timelineEnterTo" :leaveFromClass="$style.timelineLeaveFrom" :leaveToClass="$style.timelineLeaveTo" mode="out-in" @beforeLeave="prepareTimelineLeave">
-						<div v-show="!isConcrntTab" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="[$style.timelineContainer, { [$style.timelineContainerWithFixedForm]: showFixedPostForm && !isExternalTab && !isHatadyTab }]" :style="{ '--timeline-slide-direction': timelineSlideDirection }" :data-timeline-motion="newNotesMotionEnabled" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart.passive="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" @touchcancel="onTouchCancel">
+						<div :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="[$style.timelineContainer, { [$style.timelineContainerWithFixedForm]: showFixedPostForm && !isExternalTab && !isHatadyTab, [$style.timelineContainerConcrntHidden]: isConcrntTab }]" :style="{ '--timeline-slide-direction': timelineSlideDirection }" :data-timeline-motion="newNotesMotionEnabled" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart.passive="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" @touchcancel="onTouchCancel">
 							<KeepAlive>
 								<MkStreamingNotesTimeline v-if="tab === 'mixed'" key="mixed" newNotesNavbarKey="main:mixed" src="global" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
 								<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" ref="punchTimeline" :updatesPaused="punchBusy" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive && !punchBusy" :emojiVoteEffectTarget="ltlEmojiVoteEffects" :emojiVoteNavbar="normalLtlVoteActive && nativeNavbarVisible" :emojiVoteNavbarTarget="normalLtlVoteActive && nativeNavbarVisible ? ltlEmojiVoteNavbarTarget : null" @emojiVoteNavbarState="emojiVoteNavbarState = $event"/>
@@ -3859,6 +3859,9 @@ onUnmounted(() => {
     padding-top:calc(56px);
 }
 .timelineContainerWithFixedForm { padding-top:0; }
+/* 旗鯖fork: CTL 表示中は通常TLを隠す。Transition 直下の子に v-show を付けると persisted 扱いになり、
+   キー付きの入れ替えが壊れる (タブ切り替えで投稿欄・TL が消える不具合の再発)。クラスで隠す。 */
+.timelineContainerConcrntHidden { display:none!important; }
 .fixedFormHost { max-width:800px; margin:0 auto; padding-top:calc(56px + env(safe-area-inset-top,0px)); }
 .desktopLayout .fixedFormHost { padding-top:56px; }
 /* 旗鯖fork: タイムライン上部固定投稿フォーム */
