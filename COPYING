@@ -33,8 +33,9 @@ License: MIT
 https://github.com/infinitered/nsfwjs/blob/master/LICENSE
 
 
-Concrnt logo (packages/frontend/assets/concrnt/logo.svg)
+Concrnt logo (packages/frontend/assets/concrnt/logo.svg, packages/frontend/assets/concrnt/mark.svg)
 Source: https://github.com/concrnt/concrnt-square/blob/1d4711ff06905f667d12d0e658df3eca3eca46b1/public/assets/Concrnt-Logo-Circle.svg
+mark.svg is a modified monochrome variant of the same logo (the mark cut out of the disc, for use as a CSS mask).
 
 MIT License
 
