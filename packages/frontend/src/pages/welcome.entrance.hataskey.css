@@ -202,7 +202,9 @@ html:has([data-hataskey-entrance])::view-transition-new(hataskey-welcome){animat
 [data-hataskey-entrance] .federation-track.is-reverse{animation-direction:reverse;animation-duration:38s}
 [data-hataskey-entrance] .federation-group{display:flex;align-items:center;gap:9px;padding-right:9px}
 [data-hataskey-entrance] .federation-server{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 13px;border:1px solid var(--divider);border-radius:999px;background:var(--panel);box-shadow:0 1px 3px rgba(34,66,69,.05);color:var(--fgSoft);font-size:11.5px;font-weight:600;white-space:nowrap}
-[data-hataskey-entrance] .federation-server::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accentedBg)}
+[data-hataskey-entrance] .federation-server-icon{display:block;flex:none;width:20px;height:20px;border-radius:6px;object-fit:contain}
+[data-hataskey-entrance] .federation-server-name{max-width:18em;overflow:hidden;text-overflow:ellipsis}
+[data-hataskey-entrance] .federation-server-host{color:var(--fgMuted);font-weight:400}
 [data-hataskey-entrance] .federation-belt:focus-within .federation-track,[data-hataskey-entrance] .federation-window:hover .federation-track{animation-play-state:paused}
 
 [data-hataskey-entrance] #top{isolation:isolate}

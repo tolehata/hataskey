@@ -11,7 +11,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div class="federation-window">
 		<div v-for="(row, rowIndex) in rows" :key="rowIndex" class="federation-track" :class="{ 'is-reverse': rowIndex === 1 }">
 			<div v-for="copy in 2" :key="copy" class="federation-group" role="list" :aria-hidden="copy === 2 ? true : undefined" :inert="copy === 2">
-				<MkA v-for="server in row" :key="server.id" class="federation-server" role="listitem" :to="`/instance-info/${server.host}`" behavior="window">{{ server.host }}</MkA>
+				<MkA v-for="server in row" :key="server.id" class="federation-server" role="listitem" :to="`/instance-info/${server.host}`" behavior="window">
+					<img class="federation-server-icon" :src="getProxiedImageUrlNullable(server.iconUrl || server.faviconUrl, 'preview') ?? fallbackIcon" width="20" height="20" alt="" loading="lazy" decoding="async" @error="onIconError"/>
+					<span class="federation-server-name">{{ server.name?.trim() || server.host }}</span><span v-if="server.name?.trim()" class="federation-server-host">({{ server.host }})</span>
+				</MkA>
 			</div>
 		</div>
 	</div>
@@ -24,12 +27,20 @@ import type * as Misskey from 'cherrypick-js';
 import MkA from '@/components/global/MkA.vue';
 import { instance } from '@/instance.js';
 import { misskeyApiGet } from '@/utility/misskey-api.js';
+import { getProxiedImageUrlNullable } from '@/utility/media-proxy.js';
 
 const emit = defineEmits<{
 	(ev: 'resize'): void;
 }>();
 
 const instances = ref<Misskey.entities.FederationInstance[]>([]);
+const fallbackIcon = '/client-assets/dummy.png';
+
+function onIconError(event: Event): void {
+	const image = event.currentTarget;
+	if (image instanceof HTMLImageElement && image.getAttribute('src') !== fallbackIcon) image.src = fallbackIcon;
+}
+
 const enabled = computed(() => instance.federation === 'all');
 const rows = computed(() => {
 	const midpoint = Math.ceil(instances.value.length / 2);

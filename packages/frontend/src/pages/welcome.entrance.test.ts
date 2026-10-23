@@ -18,6 +18,7 @@ type MockMeta = {
 	name: string | null;
 	description: string | null;
 	iconUrl: string | null;
+	mediaProxy: string;
 	backgroundImageUrl: string | null;
 	repositoryUrl: string | null;
 	impressumUrl: string | null;
@@ -47,7 +48,7 @@ vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: mocks.api, misskeyApiGe
 vi.mock('@/instance.js', async () => {
 	const { reactive: makeReactive } = await import('vue');
 	return { instance: makeReactive<MockMeta>({
-		name: '実サーバー', description: null, iconUrl: null, backgroundImageUrl: null, repositoryUrl: null,
+		name: '実サーバー', description: null, iconUrl: null, mediaProxy: 'https://server.test/proxy', backgroundImageUrl: null, repositoryUrl: null,
 		impressumUrl: null, tosUrl: null, privacyPolicyUrl: null,
 		federation: 'all', policies: { ltlAvailable: true }, clientOptions: { showTimelineForVisitor: true },
 	}) };
@@ -420,14 +421,18 @@ describe('ログイン前の連合帯', () => {
 		expect(item.container.querySelector('.federation-belt')).toBeNull();
 	});
 
-	test('取得完了までは隠し、実ホストを2行の複製ループへ表示する', async () => {
+	test('取得完了までは隠し、実サーバーのアイコン・名前・ホストを2行の複製ループへ表示する', async () => {
 		const pending = deferred<entities.FederationInstance[]>();
 		mocks.get.mockReturnValueOnce(pending.promise);
 		const onResize = vi.fn();
 		const item = mount(WelcomeFederation, { onResize });
 		expect(item.container.querySelector('.federation-belt')).toBeNull();
 		expect(mocks.get).toHaveBeenCalledWith('federation/instances', { sort: '+pubSub', limit: 20, blocked: false });
-		pending.resolve(['one', 'two', 'three', 'four'].map(id => serverFixture(id)));
+		pending.resolve([
+			{ ...serverFixture('one'), name: 'ひとつのサーバー', iconUrl: 'https://one.test/icon.png' },
+			{ ...serverFixture('two'), name: 'ふたつのサーバー', faviconUrl: 'https://two.test/favicon.ico' },
+			serverFixture('three'), { ...serverFixture('four'), name: '   ' },
+		]);
 		await flush();
 		const tracks = item.container.querySelectorAll('.federation-track');
 		expect(tracks).toHaveLength(2);
@@ -441,6 +446,21 @@ describe('ログイン前の連合帯', () => {
 			expect(groups[0].textContent).toBe(groups[1].textContent);
 		}
 		expect(item.container.querySelector('.federation-server')?.getAttribute('href')).toBe('/instance-info/one.test');
+		const firstGroup = item.container.querySelector('.federation-group');
+		const servers = firstGroup?.querySelectorAll('.federation-server');
+		const icon = servers?.[0].querySelector('img');
+		if (!icon) throw new Error('Missing federated server icon');
+		expect(servers?.[0].textContent).toContain('ひとつのサーバー');
+		expect(servers?.[0].querySelector('.federation-server-host')?.textContent).toBe('(one.test)');
+		expect(new URL(icon.src).searchParams.get('url')).toBe('https://one.test/icon.png');
+		expect(icon.src).toContain('https://server.test/proxy/preview.webp');
+		expect(new URL(servers?.[1].querySelector('img')?.src ?? '').searchParams.get('url')).toBe('https://two.test/favicon.ico');
+		const fallbackServer = tracks[1].querySelector('.federation-server');
+		expect(fallbackServer?.textContent.trim()).toBe('three.test');
+		expect(fallbackServer?.querySelector('img')?.getAttribute('src')).toBe('/client-assets/dummy.png');
+		expect(tracks[1].querySelectorAll('.federation-server')[1].textContent.trim()).toBe('four.test');
+		icon.dispatchEvent(new Event('error'));
+		expect(icon.getAttribute('src')).toBe('/client-assets/dummy.png');
 		expect(onResize).toHaveBeenCalledOnce();
 	});
 
