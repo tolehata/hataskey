@@ -333,6 +333,20 @@ describe('registration list moderator security', () => {
 		expect(result[0].review.decidedBy?.name).toContain('［メールアドレス非公開］');
 	});
 
+	test('moderators see staff names written as "name@status" as they are', async () => {
+		const f = moderatorFixture();
+		f.review.packReview.mockReturnValue({
+			revision: reviewRevision,
+			voters: [{ userId: 'other', name: '旗茶@審査中', username: 'other', isCurrent: true, choice: 'oppose', reason: '連絡先 contact@another.test', votedAt: '2026-09-18T00:00:00Z' }],
+			decidedBy: { userId: 'admin', name: '鯖缶@運営', username: 'admin' },
+		});
+		const result = await f.list.exec({ status: 'pending' }, f.me, null, null);
+		expect(result[0].review.voters[0].name).toBe('旗茶@審査中');
+		expect(result[0].review.decidedBy?.name).toBe('鯖缶@運営');
+		// Free-text vote reasons still use the generic email rule.
+		expect(result[0].review.voters[0].reason).toBe('連絡先 ［メールアドレス非公開］');
+	});
+
 	test('ordinary callers rejected by staff validation cannot even query saved applications', async () => {
 		const f = moderatorFixture();
 		f.review.assertStaff.mockRejectedValue({ code: 'REGISTRATION_REVIEW_FORBIDDEN' });

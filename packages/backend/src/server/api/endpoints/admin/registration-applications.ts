@@ -7,7 +7,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import { Raw } from 'typeorm';
-import { redactRegistrationReviewText } from '@/misc/registration-review-privacy.js';
+import { redactRegisteredEmail, redactRegistrationReviewText } from '@/misc/registration-review-privacy.js';
 import { ApiError } from '@/server/api/error.js';
 import { RegistrationApplicationReviewService } from '@/core/RegistrationApplicationReviewService.js';
 import { rejectionNotificationSchema, rejectionNotificationRetryAvailable } from '@/core/RegistrationRejectionNotificationService.js';
@@ -97,10 +97,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 			if (!currentViewer || currentViewer.isRoot !== viewer.isRoot || currentViewer.eligibilityKey !== viewer.eligibilityKey) throw new ApiError(registrationReviewErrors.forbidden);
 			return applications.map(app => {
 				const redact = (value: string | null) => viewer.isRoot ? value : redactRegistrationReviewText(value, app.email);
+				// 担当者名は公開プロフィールの表示名。「名前@ひとこと」をメール扱いしないよう、申請者のメールだけを隠す。
+				const redactName = (value: string | null) => viewer.isRoot ? value : redactRegisteredEmail(value, app.email);
 				const review = this.registrationReviewService.packReview(app, staff, currentViewer);
 				if (!viewer.isRoot) {
-					review.voters = review.voters.map(voter => ({ ...voter, name: redact(voter.name), reason: redact(voter.reason) }));
-					if (review.decidedBy) review.decidedBy = { ...review.decidedBy, name: redact(review.decidedBy.name) };
+					review.voters = review.voters.map(voter => ({ ...voter, name: redactName(voter.name), reason: redact(voter.reason) }));
+					if (review.decidedBy) review.decidedBy = { ...review.decidedBy, name: redactName(review.decidedBy.name) };
 				}
 				return {
 					id: app.id,

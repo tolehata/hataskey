@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from 'vitest';
-import { redactRegistrationReviewText } from '@/misc/registration-review-privacy.js';
+import { redactRegisteredEmail, redactRegistrationReviewText } from '@/misc/registration-review-privacy.js';
 
 describe('registration review text privacy', () => {
 	test.each([null, '', '参加したいです。連絡はSNSでお願いします。'])('preserves empty values and ordinary review text (%s)', value => {
@@ -64,6 +64,15 @@ describe('registration review text privacy', () => {
 	test('malformed URI text does not throw or prevent plain email removal', () => {
 		expect(() => redactRegistrationReviewText('%broken alice@example.test', null)).not.toThrow();
 		expect(redactRegistrationReviewText('%broken alice@example.test', null)).not.toContain('alice@example.test');
+	});
+
+	test('staff display names keep "name@status" text but still hide the registered email', () => {
+		const name = '旗茶@審査中 ｜ ａｂｃ';
+		expect(redactRegistrationReviewText(name, 'alice@example.test')).toContain('［メールアドレス非公開］'); // Positive control: the generic rule hides it.
+		expect(redactRegisteredEmail(name, 'alice@example.test')).toBe(name);
+		expect(redactRegisteredEmail(name, null)).toBe(name);
+		expect(redactRegisteredEmail(null, 'alice@example.test')).toBeNull();
+		expect(redactRegisteredEmail('ａｌｉｃｅ＠ｅｘａｍｐｌｅ．ｔｅｓｔ さん', 'alice@example.test')).toBe('［メールアドレス非公開］ さん');
 	});
 
 	test('the registered email is matched literally even with regular expression characters', () => {
