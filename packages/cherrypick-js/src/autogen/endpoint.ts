@@ -673,6 +673,36 @@ import type {
 	HataMascotUpdateRequest,
 	HataMascotUpdateResponse,
 	HataUiSAnnouncementClaimResponse,
+	HataigoActionRequest,
+	HataigoActionResponse,
+	HataigoCancelGameRequest,
+	HataigoCancelGameResponse,
+	HataigoChatCapabilityResponse,
+	HataigoChatDeleteRequest,
+	HataigoChatMessagesRequest,
+	HataigoChatMessagesResponse,
+	HataigoChatPostRequest,
+	HataigoChatPostResponse,
+	HataigoClaimTimeoutRequest,
+	HataigoClaimTimeoutResponse,
+	HataigoGamesRequest,
+	HataigoGamesResponse,
+	HataigoInvitationsResponse,
+	HataigoMatchRequest,
+	HataigoMatchResponse,
+	HataigoMyStatsResponse,
+	HataigoReadyRequest,
+	HataigoReadyResponse,
+	HataigoRespondInviteRequest,
+	HataigoRespondInviteResponse,
+	HataigoSettingsRequest,
+	HataigoSettingsResponse,
+	HataigoShowGameRequest,
+	HataigoShowGameResponse,
+	HataigoSurrenderRequest,
+	HataigoSurrenderResponse,
+	HataigoVerifyRequest,
+	HataigoVerifyResponse,
 	HataskEventsCloseRequest,
 	HataskEventsCreateRequest,
 	HataskEventsCreateResponse,
@@ -1473,6 +1503,24 @@ export type Endpoints = {
 	'hata/mascot/get': { req: EmptyRequest; res: HataMascotGetResponse };
 	'hata/mascot/update': { req: HataMascotUpdateRequest; res: HataMascotUpdateResponse };
 	'hata/ui-s-announcement/claim': { req: EmptyRequest; res: HataUiSAnnouncementClaimResponse };
+	'hataigo/action': { req: HataigoActionRequest; res: HataigoActionResponse };
+	'hataigo/cancel-game': { req: HataigoCancelGameRequest; res: HataigoCancelGameResponse };
+	'hataigo/cancel-match': { req: EmptyRequest; res: EmptyResponse };
+	'hataigo/chat-capability': { req: EmptyRequest; res: HataigoChatCapabilityResponse };
+	'hataigo/chat-delete': { req: HataigoChatDeleteRequest; res: EmptyResponse };
+	'hataigo/chat-messages': { req: HataigoChatMessagesRequest; res: HataigoChatMessagesResponse };
+	'hataigo/chat-post': { req: HataigoChatPostRequest; res: HataigoChatPostResponse };
+	'hataigo/claim-timeout': { req: HataigoClaimTimeoutRequest; res: HataigoClaimTimeoutResponse };
+	'hataigo/games': { req: HataigoGamesRequest; res: HataigoGamesResponse };
+	'hataigo/invitations': { req: EmptyRequest; res: HataigoInvitationsResponse };
+	'hataigo/match': { req: HataigoMatchRequest; res: HataigoMatchResponse };
+	'hataigo/my-stats': { req: EmptyRequest; res: HataigoMyStatsResponse };
+	'hataigo/ready': { req: HataigoReadyRequest; res: HataigoReadyResponse };
+	'hataigo/respond-invite': { req: HataigoRespondInviteRequest; res: HataigoRespondInviteResponse };
+	'hataigo/settings': { req: HataigoSettingsRequest; res: HataigoSettingsResponse };
+	'hataigo/show-game': { req: HataigoShowGameRequest; res: HataigoShowGameResponse };
+	'hataigo/surrender': { req: HataigoSurrenderRequest; res: HataigoSurrenderResponse };
+	'hataigo/verify': { req: HataigoVerifyRequest; res: HataigoVerifyResponse };
 	'hatask/events/close': { req: HataskEventsCloseRequest; res: EmptyResponse };
 	'hatask/events/create': { req: HataskEventsCreateRequest; res: HataskEventsCreateResponse };
 	'hatask/events/delete': { req: HataskEventsDeleteRequest; res: EmptyResponse };

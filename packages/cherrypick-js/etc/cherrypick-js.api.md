@@ -2474,6 +2474,36 @@ declare namespace entities {
         HataMascotUpdateRequest,
         HataMascotUpdateResponse,
         HataUiSAnnouncementClaimResponse,
+        HataigoActionRequest,
+        HataigoActionResponse,
+        HataigoCancelGameRequest,
+        HataigoCancelGameResponse,
+        HataigoChatCapabilityResponse,
+        HataigoChatDeleteRequest,
+        HataigoChatMessagesRequest,
+        HataigoChatMessagesResponse,
+        HataigoChatPostRequest,
+        HataigoChatPostResponse,
+        HataigoClaimTimeoutRequest,
+        HataigoClaimTimeoutResponse,
+        HataigoGamesRequest,
+        HataigoGamesResponse,
+        HataigoInvitationsResponse,
+        HataigoMatchRequest,
+        HataigoMatchResponse,
+        HataigoMyStatsResponse,
+        HataigoReadyRequest,
+        HataigoReadyResponse,
+        HataigoRespondInviteRequest,
+        HataigoRespondInviteResponse,
+        HataigoSettingsRequest,
+        HataigoSettingsResponse,
+        HataigoShowGameRequest,
+        HataigoShowGameResponse,
+        HataigoSurrenderRequest,
+        HataigoSurrenderResponse,
+        HataigoVerifyRequest,
+        HataigoVerifyResponse,
         HataskEventsCloseRequest,
         HataskEventsCreateRequest,
         HataskEventsCreateResponse,
@@ -2905,6 +2935,8 @@ declare namespace entities {
         RolePolicies,
         ReversiGameLite,
         ReversiGameDetailed,
+        HataigoGameDetailed,
+        HataigoChatMessage,
         MetaLite,
         MetaDetailedOnly,
         MetaDetailed,
@@ -3977,6 +4009,102 @@ type HataHataskEmotionAnalysisShowRequest = operations['hata___hatask___emotion-
 
 // @public (undocumented)
 type HataHataskEmotionAnalysisShowResponse = operations['hata___hatask___emotion-analysis___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoActionRequest = operations['hataigo___action']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoActionResponse = operations['hataigo___action']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoCancelGameRequest = operations['hataigo___cancel-game']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoCancelGameResponse = operations['hataigo___cancel-game']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoChatCapabilityResponse = operations['hataigo___chat-capability']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoChatDeleteRequest = operations['hataigo___chat-delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoChatMessage = components['schemas']['HataigoChatMessage'];
+
+// @public (undocumented)
+type HataigoChatMessagesRequest = operations['hataigo___chat-messages']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoChatMessagesResponse = operations['hataigo___chat-messages']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoChatPostRequest = operations['hataigo___chat-post']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoChatPostResponse = operations['hataigo___chat-post']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoClaimTimeoutRequest = operations['hataigo___claim-timeout']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoClaimTimeoutResponse = operations['hataigo___claim-timeout']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoGameDetailed = components['schemas']['HataigoGameDetailed'];
+
+// @public (undocumented)
+type HataigoGamesRequest = operations['hataigo___games']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoGamesResponse = operations['hataigo___games']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoInvitationsResponse = operations['hataigo___invitations']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoMatchRequest = operations['hataigo___match']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoMatchResponse = operations['hataigo___match']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoMyStatsResponse = operations['hataigo___my-stats']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoReadyRequest = operations['hataigo___ready']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoReadyResponse = operations['hataigo___ready']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoRespondInviteRequest = operations['hataigo___respond-invite']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoRespondInviteResponse = operations['hataigo___respond-invite']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoSettingsRequest = operations['hataigo___settings']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoSettingsResponse = operations['hataigo___settings']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoShowGameRequest = operations['hataigo___show-game']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoShowGameResponse = operations['hataigo___show-game']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoSurrenderRequest = operations['hataigo___surrender']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoSurrenderResponse = operations['hataigo___surrender']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoVerifyRequest = operations['hataigo___verify']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataigoVerifyResponse = operations['hataigo___verify']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataLoginRankingResponse = operations['hata___login-ranking']['responses']['200']['content']['application/json'];

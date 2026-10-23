@@ -3885,6 +3885,168 @@ export type paths = {
          */
         post: operations["hata___ui-s-announcement___claim"];
     };
+    "/hataigo/action": {
+        /**
+         * hataigo/action
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hataigo___action"];
+    };
+    "/hataigo/cancel-game": {
+        /**
+         * hataigo/cancel-game
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hataigo___cancel-game"];
+    };
+    "/hataigo/cancel-match": {
+        /**
+         * hataigo/cancel-match
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hataigo___cancel-match"];
+    };
+    "/hataigo/chat-capability": {
+        /**
+         * hataigo/chat-capability
+         * @description No description provided.
+         *
+         *     **Credential required**: *No* / **Permission**: *read:account*
+         */
+        post: operations["hataigo___chat-capability"];
+    };
+    "/hataigo/chat-delete": {
+        /**
+         * hataigo/chat-delete
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hataigo___chat-delete"];
+    };
+    "/hataigo/chat-messages": {
+        /**
+         * hataigo/chat-messages
+         * @description No description provided.
+         *
+         *     **Credential required**: *No* / **Permission**: *read:account*
+         */
+        post: operations["hataigo___chat-messages"];
+    };
+    "/hataigo/chat-post": {
+        /**
+         * hataigo/chat-post
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hataigo___chat-post"];
+    };
+    "/hataigo/claim-timeout": {
+        /**
+         * hataigo/claim-timeout
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hataigo___claim-timeout"];
+    };
+    "/hataigo/games": {
+        /**
+         * hataigo/games
+         * @description No description provided.
+         *
+         *     **Credential required**: *No* / **Permission**: *read:account*
+         */
+        post: operations["hataigo___games"];
+    };
+    "/hataigo/invitations": {
+        /**
+         * hataigo/invitations
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations["hataigo___invitations"];
+    };
+    "/hataigo/match": {
+        /**
+         * hataigo/match
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hataigo___match"];
+    };
+    "/hataigo/my-stats": {
+        /**
+         * hataigo/my-stats
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations["hataigo___my-stats"];
+    };
+    "/hataigo/ready": {
+        /**
+         * hataigo/ready
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hataigo___ready"];
+    };
+    "/hataigo/respond-invite": {
+        /**
+         * hataigo/respond-invite
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hataigo___respond-invite"];
+    };
+    "/hataigo/settings": {
+        /**
+         * hataigo/settings
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hataigo___settings"];
+    };
+    "/hataigo/show-game": {
+        /**
+         * hataigo/show-game
+         * @description No description provided.
+         *
+         *     **Credential required**: *No* / **Permission**: *read:account*
+         */
+        post: operations["hataigo___show-game"];
+    };
+    "/hataigo/surrender": {
+        /**
+         * hataigo/surrender
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations["hataigo___surrender"];
+    };
+    "/hataigo/verify": {
+        /**
+         * hataigo/verify
+         * @description No description provided.
+         *
+         *     **Credential required**: *No* / **Permission**: *read:account*
+         */
+        post: operations["hataigo___verify"];
+    };
     "/hatask/events/close": {
         /**
          * hatask/events/close
@@ -7903,6 +8065,229 @@ export type components = {
             timeLimitForEachTurn: number;
             logs: number[][];
             map: string[];
+        };
+        HataigoGameDetailed: {
+            /** Format: id */
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** Format: date-time */
+            endedAt: string | null;
+            /** Format: id */
+            user1Id: string | null;
+            /** Format: id */
+            user2Id: string | null;
+            user1: components["schemas"]["UserLite"] | null;
+            user2: components["schemas"]["UserLite"] | null;
+            black: number | null;
+            /** @enum {string} */
+            phase: "waiting" | "playing" | "scoring" | "ended";
+            settings: {
+                size: number;
+                handicap: number;
+                komi: number;
+                /** @enum {string} */
+                rules: "japanese";
+                clock: {
+                    /** @enum {string} */
+                    kind: "byoyomi" | "correspondence";
+                    mainSec?: number;
+                    periodSec?: number;
+                    periods?: number;
+                    perMoveSec?: number;
+                };
+            };
+            user1Ready: boolean;
+            user2Ready: boolean;
+            isInvitation: boolean;
+            invitationAccepted: boolean;
+            revision: number;
+            allowSpectate: boolean;
+            allowSpectatorChat: boolean;
+            publicAfterEnd: boolean;
+            visibility: {
+                user1: {
+                    allowSpectate: boolean;
+                    allowSpectatorChat: boolean;
+                    publicAfterEnd: boolean;
+                };
+                user2: {
+                    allowSpectate: boolean;
+                    allowSpectatorChat: boolean;
+                    publicAfterEnd: boolean;
+                };
+            } | null;
+            announcements: {
+                user1: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    visibility: "home" | "followers" | "public";
+                    allowName: boolean;
+                };
+                user2: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    visibility: "home" | "followers" | "public";
+                    allowName: boolean;
+                };
+            } | null;
+            announcementState: {
+                user1: {
+                    /** @enum {string} */
+                    status: "none" | "pending" | "sent" | "cancelled";
+                    text: string | null;
+                    /** Format: id */
+                    noteId: string | null;
+                    attempts: number;
+                    nextAttemptAtMs: number;
+                    lastError: string | null;
+                };
+                user2: {
+                    /** @enum {string} */
+                    status: "none" | "pending" | "sent" | "cancelled";
+                    text: string | null;
+                    /** Format: id */
+                    noteId: string | null;
+                    attempts: number;
+                    nextAttemptAtMs: number;
+                    lastError: string | null;
+                };
+            } | null;
+            state: {
+                board: {
+                    size: number;
+                    cells: ("black" | "white" | null)[];
+                    hash: string;
+                };
+                /** @enum {string} */
+                toPlay: "black" | "white";
+                /** @enum {string} */
+                phase: "playing" | "scoring" | "finished";
+                komi: number;
+                handicap: number;
+                prisoners: {
+                    black: number;
+                    white: number;
+                };
+                previousBoard: {
+                    size: number;
+                    cells: ("black" | "white" | null)[];
+                    hash: string;
+                } | null;
+                consecutivePasses: number;
+                moves: {
+                    /** @enum {string} */
+                    color: "black" | "white";
+                    point: {
+                        x: number;
+                        y: number;
+                    } | null;
+                    captured: {
+                        x: number;
+                        y: number;
+                    }[];
+                }[];
+                repetitionThreshold: number;
+                occurrences: Record<string, never>;
+                repetition: {
+                    /** @enum {string} */
+                    type: "repetition";
+                    key: string;
+                    count: number;
+                } | null;
+                scoring: {
+                    deadStones: {
+                        x: number;
+                        y: number;
+                    }[];
+                    neutralPoints: {
+                        x: number;
+                        y: number;
+                    }[];
+                    acceptedBy: ("black" | "white")[];
+                    /** @enum {string|null} */
+                    resumeRequestedBy: "black" | "white" | null;
+                };
+                noResultAcceptedBy: ("black" | "white")[];
+                result: {
+                    /** @enum {string} */
+                    reason: "score" | "resign" | "timeout" | "noResult";
+                    /** @enum {string|null} */
+                    winner: "black" | "white" | "draw" | null;
+                    score?: {
+                        black: {
+                            territory: number;
+                            prisoners: number;
+                            deadStones: number;
+                            total: number;
+                        };
+                        white: {
+                            territory: number;
+                            prisoners: number;
+                            deadStones: number;
+                            total: number;
+                            komi: number;
+                        };
+                        /** @enum {string} */
+                        winner: "black" | "white" | "draw";
+                        margin: number;
+                        territory: {
+                            black: {
+                                x: number;
+                                y: number;
+                            }[];
+                            white: {
+                                x: number;
+                                y: number;
+                            }[];
+                            neutral: {
+                                x: number;
+                                y: number;
+                            }[];
+                        };
+                    };
+                } | null;
+            } | null;
+            clock: {
+                state: {
+                    black: {
+                        mainRemainingMs: number;
+                        periodsRemaining: number;
+                    };
+                    white: {
+                        mainRemainingMs: number;
+                        periodsRemaining: number;
+                    };
+                    /** @enum {string|null} */
+                    runningColor: "black" | "white" | null;
+                    turnStartedAtMs: number | null;
+                };
+                /** @enum {string|null} */
+                expiredColor: "black" | "white" | null;
+                remainingTurnMs: number | null;
+                deadlineAtMs: number | null;
+            } | null;
+            serverNowMs: number;
+            /** @enum {string|null} */
+            myColor: "black" | "white" | null;
+            isParticipant: boolean;
+        };
+        HataigoChatMessage: {
+            /** Format: id */
+            id: string;
+            /** Format: id */
+            gameId: string;
+            /** Format: id */
+            userId: string | null;
+            user: components["schemas"]["UserLite"] | null;
+            text: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            deleted: boolean;
         };
         MetaLite: {
             maintainerName: string | null;
@@ -41215,6 +41600,1268 @@ export interface operations {
                 content: {
                     "application/json": {
                         claimed: boolean;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hataigo___action: {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    gameId: string;
+                    expectedRevision: number;
+                    action: {
+                        /** @enum {string} */
+                        type: "play";
+                        point: {
+                            x: number;
+                            y: number;
+                        };
+                    } | {
+                        /** @enum {string} */
+                        type: "setScoring";
+                        marks: {
+                            deadStones: {
+                                x: number;
+                                y: number;
+                            }[];
+                            neutralPoints: {
+                                x: number;
+                                y: number;
+                            }[];
+                        };
+                    } | {
+                        /** @enum {string} */
+                        type: "pass" | "resign" | "acceptScore" | "requestResume" | "acceptNoResult";
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoGameDetailed"];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "hataigo___cancel-game": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    gameId: string;
+                    expectedRevision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoGameDetailed"];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "hataigo___cancel-match": {
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "hataigo___chat-capability": {
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        enabled: boolean;
+                        retentionDays: number | null;
+                        disclosureVersion: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "hataigo___chat-delete": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    messageId: string;
+                    /** @enum {string} */
+                    reason: "abuse" | "spam" | "other";
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "hataigo___chat-messages": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    gameId: string;
+                    /** Format: misskey:id */
+                    untilId?: string;
+                    /** @default 20 */
+                    limit?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoChatMessage"][];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "hataigo___chat-post": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    gameId: string;
+                    text: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoChatMessage"];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "hataigo___claim-timeout": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    gameId: string;
+                    expectedRevision?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoGameDetailed"];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hataigo___games: {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default false */
+                    my?: boolean;
+                    /** @default false */
+                    ongoing?: boolean;
+                    /** @default false */
+                    ended?: boolean;
+                    /** @default 20 */
+                    limit?: number;
+                    /** Format: misskey:id */
+                    untilId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoGameDetailed"][];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hataigo___invitations: {
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoGameDetailed"][];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hataigo___match: {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    userId?: string | null;
+                    /** @default 19 */
+                    size?: number;
+                    /**
+                     * @default byoyomi
+                     * @enum {string}
+                     */
+                    clockKind?: "byoyomi" | "correspondence";
+                    /** @default false */
+                    allowSpectate?: boolean;
+                    /** @default false */
+                    allowSpectatorChat?: boolean;
+                    /** @default false */
+                    publicAfterEnd?: boolean;
+                    /** @default false */
+                    anySize?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoGameDetailed"] | null;
+                };
+            };
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "hataigo___my-stats": {
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        wins: number;
+                        losses: number;
+                        draws: number;
+                        streak: number;
+                        wins9: number;
+                        wins19: number;
+                        distinctOpponents: number;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hataigo___ready: {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    gameId: string;
+                    expectedRevision: number;
+                    ready: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoGameDetailed"];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "hataigo___respond-invite": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    gameId: string;
+                    expectedRevision: number;
+                    accept: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoGameDetailed"];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hataigo___settings: {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    gameId: string;
+                    expectedRevision: number;
+                    settings: {
+                        size?: number;
+                        handicap?: number;
+                        komi?: number;
+                        /** @enum {string} */
+                        rules?: "japanese";
+                        allowSpectate?: boolean;
+                        allowSpectatorChat?: boolean;
+                        publicAfterEnd?: boolean;
+                        announcement?: {
+                            enabled?: boolean;
+                            /** @enum {string} */
+                            visibility?: "home" | "followers" | "public";
+                            allowName?: boolean;
+                        };
+                        clock?: {
+                            /** @enum {string} */
+                            kind: "byoyomi";
+                            mainSec: number;
+                            periodSec: number;
+                            periods: number;
+                        } | {
+                            /** @enum {string} */
+                            kind: "correspondence";
+                            perMoveSec: number;
+                        };
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoGameDetailed"];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "hataigo___show-game": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    gameId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoGameDetailed"];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hataigo___surrender: {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    gameId: string;
+                    expectedRevision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HataigoGameDetailed"];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hataigo___verify: {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    gameId: string;
+                    revision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        desynced: boolean;
+                        game?: components["schemas"]["HataigoGameDetailed"];
                     };
                 };
             };
