@@ -3,7 +3,7 @@
 import { watch } from 'vue';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { $i } from '@/i.js';
-import { updateCurrentAccount } from '@/accounts.js';
+import { replaceCurrentAccountData } from '@/accounts.js';
 
 const state = vi.hoisted(() => ({
 	store: { s: { accountTokens: {}, accountInfos: {} }, set: vi.fn() },
@@ -36,7 +36,7 @@ test('同期watcherは更新中もid・権限・tokenの欠けた$iを見ない'
 	const seen: unknown[][] = [];
 	// 登録申請管理画面と同じく flush: 'sync' で権限とtokenを読む。
 	const stop = watch(() => [me.id, me.isAdmin, me.isModerator, me.token], value => { seen.push(value); }, { flush: 'sync' });
-	updateCurrentAccount({ id: 'mod', username: 'mod-renamed', isAdmin: false, isModerator: true } as never);
+	replaceCurrentAccountData({ id: 'mod', username: 'mod-renamed', isAdmin: false, isModerator: true } as never);
 	stop();
 	expect(seen).toEqual([]);
 	expect(me).toEqual({ id: 'mod', username: 'mod-renamed', isAdmin: false, isModerator: true, token: 'native-token' });
@@ -45,7 +45,7 @@ test('同期watcherは更新中もid・権限・tokenの欠けた$iを見ない'
 test('権限が変わったときだけ一度通知し、そのときtokenは残っている', () => {
 	const seen: unknown[][] = [];
 	const stop = watch(() => [me.isModerator, me.token], value => { seen.push(value); }, { flush: 'sync' });
-	updateCurrentAccount({ id: 'mod', username: 'mod', isAdmin: false, isModerator: false } as never);
+	replaceCurrentAccountData({ id: 'mod', username: 'mod', isAdmin: false, isModerator: false } as never);
 	stop();
 	expect(seen).toEqual([[false, 'native-token']]);
 });

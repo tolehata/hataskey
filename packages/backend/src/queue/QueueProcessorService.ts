@@ -50,6 +50,8 @@ import { CleanChartsProcessorService } from './processors/CleanChartsProcessorSe
 import { CheckHataskFlowersProcessorService } from './processors/CheckHataskFlowersProcessorService.js';
 import { CheckHataskMoodRemindersProcessorService } from './processors/CheckHataskMoodRemindersProcessorService.js';
 import { CheckExpiredMutingsProcessorService } from './processors/CheckExpiredMutingsProcessorService.js';
+import { ArchiveAnnouncementProcessorService } from './processors/ArchiveAnnouncementProcessorService.js';
+import type { ArchiveAnnouncementJobData } from './types.js';
 import { BakeBufferedReactionsProcessorService } from './processors/BakeBufferedReactionsProcessorService.js';
 import { CleanProcessorService } from './processors/CleanProcessorService.js';
 import { AggregateRetentionProcessorService } from './processors/AggregateRetentionProcessorService.js';
@@ -148,6 +150,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 		private checkHataskFlowersProcessorService: CheckHataskFlowersProcessorService,
 		private checkHataskMoodRemindersProcessorService: CheckHataskMoodRemindersProcessorService,
 		private checkExpiredMutingsProcessorService: CheckExpiredMutingsProcessorService,
+		private archiveAnnouncementProcessorService: ArchiveAnnouncementProcessorService,
 		private bakeBufferedReactionsProcessorService: BakeBufferedReactionsProcessorService,
 		private checkModeratorsActivityProcessorService: CheckModeratorsActivityProcessorService,
 		private cleanProcessorService: CleanProcessorService,
@@ -196,6 +199,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 					case 'checkHataskFlowers': return this.checkHataskFlowersProcessorService.process();
 					case 'checkHataskMoodReminders': return this.checkHataskMoodRemindersProcessorService.process();
 					case 'checkExpiredMutings': return this.checkExpiredMutingsProcessorService.process();
+					case 'archiveAnnouncement': return this.archiveAnnouncementProcessorService.process(job as Bull.Job<ArchiveAnnouncementJobData>);
 					case 'bakeBufferedReactions': return this.bakeBufferedReactionsProcessorService.process();
 					case 'checkModeratorsActivity': return this.checkModeratorsActivityProcessorService.process();
 					case 'clean': return this.cleanProcessorService.process();

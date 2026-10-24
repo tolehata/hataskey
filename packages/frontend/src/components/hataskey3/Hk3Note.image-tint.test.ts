@@ -44,7 +44,7 @@ vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn() }));
 vi.mock('@/utility/get-note-menu.js', () => ({ getNoteMenu: vi.fn(), getRenoteMenu: vi.fn(), getCopyNoteLinkMenu: mocks.copyLink, getAbuseNoteMenu: mocks.abuse }));
 vi.mock('@/utility/please-login.js', () => ({ pleaseLogin: vi.fn() }));
 vi.mock('@/utility/sound.js', () => ({ playMisskeySfx: vi.fn() }));
-vi.mock('@/filters/note.js', () => ({ notePage: (linked: { id: string }) => `/notes/${linked.id}` }));
+vi.mock('@@/js/note.js', () => ({ notePage: (linked: { id: string }) => `/notes/${linked.id}` }));
 vi.mock('@/filters/user.js', () => ({ userPage: (user: { id: string }) => `/users/${user.id}` }));
 vi.mock('@/components/MkMediaList.vue', () => ({ default: { template: '<div data-attachment-stub />' } }));
 vi.mock('./hk3-image-edge-tint.js', () => ({

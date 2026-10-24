@@ -19,7 +19,7 @@ vi.mock('@/preferences.js', () => ({ prefer: { s: { useGroupedNotifications: fal
 vi.mock('@/store.js', () => ({ store: { s: { get realtimeMode() { return fixture.realtimeMode; } } } }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { noNotifications: 'empty', loadMore: 'more' } } }));
 vi.mock('@/i.js', () => ({ get $i() { return fixture.account; } }));
-vi.mock('@/accounts.js', () => ({ updateCurrentAccountPartial: (partial: object) => {
+vi.mock('@/accounts.js', () => ({ updateCurrentAccount: (partial: object) => {
 	Object.assign(fixture.account!, partial);
 	fixture.accountUpdates(partial);
 } }));

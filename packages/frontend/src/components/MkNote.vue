@@ -384,7 +384,7 @@ import MkUrlPreview from '@/components/MkUrlPreview.vue';
 import MkEvent from '@/components/MkEvent.vue';
 import { pleaseLogin } from '@/utility/please-login.js';
 import { checkWordMute } from '@/utility/check-word-mute.js';
-import { notePage } from '@/filters/note.js';
+import { notePage } from '@@/js/note.js';
 import { userPage } from '@/filters/user.js';
 import number from '@/filters/number.js';
 import * as os from '@/os.js';

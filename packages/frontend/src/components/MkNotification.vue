@@ -290,7 +290,7 @@ import HataAppLogo from '@/components/HataAppLogo.vue';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import { store } from '@/store.js';
 import { getNoteSummary } from '@/utility/get-note-summary.js';
-import { notePage } from '@/filters/note.js';
+import { notePage } from '@@/js/note.js';
 import { userPage } from '@/filters/user.js';
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';

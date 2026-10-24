@@ -107,6 +107,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						:file="file"
 						:folder="folder"
 						:isSelected="selectedFiles.some(x => x.id === file.id)"
+						:isDisabled="excludeSensitive && file.isSensitive"
 						@click="onFileClick($event, file)"
 						@dragstart="onFileDragstart(file, $event)"
 						@dragend="isDragSource = false"
@@ -159,10 +160,12 @@ const props = withDefaults(defineProps<{
 	initialFolder?: Misskey.entities.DriveFolder | Misskey.entities.DriveFolder['id'] | null;
 	type?: string;
 	multiple?: boolean;
+	excludeSensitive?: boolean;
 	select?: 'file' | 'folder' | null;
 }>(), {
 	initialFolder: null,
 	multiple: false,
+	excludeSensitive: false,
 	select: null,
 });
 
@@ -450,6 +453,8 @@ function deleteFolder(folderToDelete: Misskey.entities.DriveFolder) {
 }
 
 function onFileClick(ev: MouseEvent, file: Misskey.entities.DriveFile) {
+	if (props.excludeSensitive && file.isSensitive) return;
+
 	if (ev.shiftKey) {
 		isEditMode.value = true;
 	}

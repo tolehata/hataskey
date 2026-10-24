@@ -24,7 +24,7 @@ async function setup(kind: 'main' | 'antenna' = 'main') {
 		}),
 	};
 	const connection = {
-		user: { id: 'viewer' }, userProfile: { mutedInstances: [] }, subscriber, sendMessageToWs,
+		user: { id: 'viewer' }, userProfile: { mutedInstances: [] }, userMutedInstances: new Set<string>(), subscriber, sendMessageToWs,
 		userIdsWhoMeMuting: new Set(), userIdsWhoBlockingMe: new Set(), userIdsWhoMeMutingRenotes: new Set(),
 		hasPermission: () => true, isChannelConnected: () => true,
 		noteStreamingHidingService: { filter: vi.fn(async (value: Packed<'Note'>) => value) },

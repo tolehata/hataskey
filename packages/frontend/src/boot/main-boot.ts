@@ -25,7 +25,7 @@ import { mainRouter } from '@/router.js';
 import { makeHotkey } from '@/utility/hotkey.js';
 import { addCustomEmoji, removeCustomEmojis, updateCustomEmojis } from '@/custom-emojis.js';
 import { prefer } from '@/preferences.js';
-import { updateCurrentAccountPartial } from '@/accounts.js';
+import { updateCurrentAccount } from '@/accounts.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { userName } from '@/filters/user.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -438,7 +438,7 @@ export async function mainBoot() {
 				if ($i?.id !== notificationOwnerId) return;
 				const count = acceptNotificationUnreadState(notificationOwnerId, state);
 				if (count === null) return;
-				updateCurrentAccountPartial({ hasUnreadNotification: count > 0, unreadNotificationsCount: count });
+				updateCurrentAccount({ hasUnreadNotification: count > 0, unreadNotificationsCount: count });
 			};
 			let unreadSnapshotRequest = 0;
 			const refreshUnreadSnapshot = async () => {
@@ -459,7 +459,7 @@ export async function mainBoot() {
 				const profile = { ...i } as typeof i & { hasUnreadNotification?: boolean; unreadNotificationsCount?: number };
 				delete profile.hasUnreadNotification;
 				delete profile.unreadNotificationsCount;
-				updateCurrentAccountPartial(profile);
+				updateCurrentAccount(profile);
 			});
 
 			main.on('readAllNotifications', updateUnread);
@@ -469,12 +469,12 @@ export async function mainBoot() {
 			main.on('unreadNotification', updateUnread);
 
 			main.on('newChatMessage', () => {
-				updateCurrentAccountPartial({ hasUnreadChatMessages: true });
+				updateCurrentAccount({ hasUnreadChatMessages: true });
 				sound.playMisskeySfx('chatMessage');
 			});
 
 			main.on('readAllAnnouncements', () => {
-				updateCurrentAccountPartial({ hasUnreadAnnouncement: false });
+				updateCurrentAccount({ hasUnreadAnnouncement: false });
 			});
 
 			// 個人宛てお知らせが発行されたとき

@@ -50,7 +50,7 @@ vi.mock('./use-hk3-reactions.js', async () => {
 	const { computed } = await import('vue');
 	return { useHk3Reactions: (_id: string, source: () => Record<string, number>) => computed(source) };
 });
-vi.mock('@/filters/note.js', () => ({ notePage: (note: entities.Note) => `/notes/${note.id}` }));
+vi.mock('@@/js/note.js', () => ({ notePage: (note: entities.Note) => `/notes/${note.id}` }));
 vi.mock('@/filters/user.js', () => ({ userPage: (user: entities.UserLite) => `/users/${user.id}` }));
 vi.mock('@/components/MkMediaList.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/MkPoll.vue', () => ({ default: { render: () => null } }));

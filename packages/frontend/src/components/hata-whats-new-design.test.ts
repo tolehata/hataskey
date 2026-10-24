@@ -249,7 +249,7 @@ describe('production update introduction', () => {
 		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('release-notes');
 		expect(requiredElement('[data-story] h2').textContent).toBe('詳しくはリリースノートをご確認ください');
 		const link = requiredElement<HTMLAnchorElement>('[data-story] a');
-		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-1283');
+		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-129');
 		expect(link.target).toBe('_blank');
 		expect(link.rel).toBe('noopener noreferrer');
 		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
@@ -263,7 +263,7 @@ describe('production update introduction', () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
-		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.8.3)');
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.9)');
 		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hataigo');
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		store.r.darkMode.value = true; await flush();

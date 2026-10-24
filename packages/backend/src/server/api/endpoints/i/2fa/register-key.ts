@@ -103,15 +103,6 @@ export const meta = {
 							type: 'array',
 							items: {
 								type: 'string',
-								enum: [
-									'ble',
-									'cable',
-									'hybrid',
-									'internal',
-									'nfc',
-									'smart-card',
-									'usb',
-								],
 							},
 						},
 					},

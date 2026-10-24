@@ -10,13 +10,13 @@ describe('approved release stories', () => {
 	test('the displayed-version gate stays aligned with the package and release metadata', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 		expect(HATA_WHATS_NEW.version).toBe(pkg.version);
-		expect(HATA_WHATS_NEW.version).toBe('2026.10.0-hata.12.8.3');
+		expect(HATA_WHATS_NEW.version).toBe('2026.10.1-hata.12.9');
 		const version = getHataWhatsNewDisplayVersion(pkg.version);
-		expect(version).toBe('hata-12.8.3');
+		expect(version).toBe('hata-12.9');
 		const changelog = fs.readFileSync(path.join(root, 'HATA-CHANGELOG.md'), 'utf8');
-		expect(changelog.indexOf('## hata-12.8.3\n')).toBeGreaterThan(0);
-		expect(changelog.indexOf('## hata-12.8.3\n')).toBeLessThan(changelog.indexOf('## hata-12.8.2\n'));
-		expect(changelog.indexOf('### HataIgo\n')).toBeGreaterThan(changelog.indexOf('## hata-12.8.3\n'));
+		expect(changelog.indexOf('## hata-12.9\n')).toBeGreaterThan(0);
+		expect(changelog.indexOf('## hata-12.9\n')).toBeLessThan(changelog.indexOf('## hata-12.8.2\n'));
+		expect(changelog.indexOf('### HataIgo\n')).toBeGreaterThan(changelog.indexOf('## hata-12.9\n'));
 		expect(changelog.indexOf('### HataIgo\n')).toBeLessThan(changelog.indexOf('## hata-12.8.2\n'));
 		expect(changelog.indexOf('## hata-12.8.2\n')).toBeGreaterThan(0);
 		expect(changelog.indexOf('## hata-12.8.2\n')).toBeLessThan(changelog.indexOf('## hata-12.8.1\n'));
@@ -47,7 +47,7 @@ describe('approved release stories', () => {
 	test('the final page links to this fork’s release notes', () => {
 		const cards = HATA_WHATS_NEW.groups.flatMap(group => group.cards);
 		expect(cards.map(card => card.id)).toEqual(ids);
-		expect(cards[1].link).toEqual({ label: 'リリースノートを開く', url: 'https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-1283' });
+		expect(cards[1].link).toEqual({ label: 'リリースノートを開く', url: 'https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-129' });
 	});
 
 	test('release copy contains no implementation paths or internal storage and API terminology', () => {

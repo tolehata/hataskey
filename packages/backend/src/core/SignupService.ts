@@ -108,6 +108,14 @@ export class SignupService {
 			if (details == null) throw new Error('Missing signup data');
 			const { username, hash, host, keyPair } = details;
 			secret = details.secret;
+			// 上流 2026.10.1 のセキュリティ修正: ローカルユーザーのユーザー名は host が NULL のため、(usernameLower, host) の
+			// 複合ユニークインデックスでは重複を防げない（NULLは互いにdistinct扱い）。
+			// 同一ユーザー名の並行サインアップをトランザクション単位のadvisory lockで直列化し、
+			// チェック→挿入のTOCTOU競合を排除する。
+			await transactionalEntityManager.query(
+				'SELECT pg_advisory_xact_lock(hashtext($1))',
+				[`signup:username:${username.toLowerCase()}`],
+			);
 			const exist = await transactionalEntityManager.findOneBy(MiUser, {
 				usernameLower: username.toLowerCase(),
 				host: IsNull(),

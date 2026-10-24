@@ -18,6 +18,7 @@ import { SystemWebhookDeliverProcessorService } from './processors/SystemWebhook
 import { CheckHataskFlowersProcessorService } from './processors/CheckHataskFlowersProcessorService.js';
 import { CheckHataskMoodRemindersProcessorService } from './processors/CheckHataskMoodRemindersProcessorService.js';
 import { CheckExpiredMutingsProcessorService } from './processors/CheckExpiredMutingsProcessorService.js';
+import { ArchiveAnnouncementProcessorService } from './processors/ArchiveAnnouncementProcessorService.js';
 import { BakeBufferedReactionsProcessorService } from './processors/BakeBufferedReactionsProcessorService.js';
 import { CleanChartsProcessorService } from './processors/CleanChartsProcessorService.js';
 import { CleanProcessorService } from './processors/CleanProcessorService.js';
@@ -65,6 +66,7 @@ import { RebuildTrendingProcessorService } from './processors/RebuildTrendingPro
 		ResyncChartsProcessorService,
 		CleanChartsProcessorService,
 		CheckExpiredMutingsProcessorService,
+		ArchiveAnnouncementProcessorService,
 		BakeBufferedReactionsProcessorService,
 		CleanProcessorService,
 		DeleteDriveFilesProcessorService,

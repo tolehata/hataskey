@@ -83,6 +83,7 @@ function fixture() {
 					return lockedApplication;
 				},
 				findOneBy: async () => null,
+				query: async () => [],
 				save: async (entity: unknown) => {
 					saves(entity);
 					const phase = entity instanceof MiUser ? 'account' : entity instanceof MiUserKeypair ? 'keypair' : entity instanceof MiUserProfile ? 'profile' : 'usedName';

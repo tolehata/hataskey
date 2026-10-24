@@ -114,6 +114,8 @@ function fixture(options: { invited?: boolean; memberCount?: number; ownerId?: s
 		chatRoomsRepository: roomRepository, chatRoomInvitationsRepository: invitationRepository,
 		chatRoomMembershipsRepository: membershipRepository, usersRepository, userEntityService,
 		idService: { gen: () => `new${nextId++}` }, notificationService,
+		// 上流 2026.10.1: ルーム招待時にブロック状態を確認する。
+		userBlockingService: { checkBlocked: vi.fn(async () => false) },
 	});
 	const inbox = Object.assign(Object.create(ApInboxService.prototype), {
 		config: { url: localUrl }, chatRoomsRepository: roomRepository, usersRepository,

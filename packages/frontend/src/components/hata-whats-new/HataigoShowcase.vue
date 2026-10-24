@@ -1,6 +1,6 @@
 <!-- SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork: hata-12.8.3 の更新案内で HataIgo を紹介する。HataIgo 本体の部品は読み込まない（撤去時に案内が壊れないように）。
+旗鯖fork: hata-12.9 の更新案内で HataIgo を紹介する。HataIgo 本体の部品は読み込まない（撤去時に案内が壊れないように）。
 -->
 <template>
 <div :class="$style.showcase" data-hataigo-showcase>

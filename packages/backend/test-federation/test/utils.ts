@@ -1,4 +1,5 @@
 import { deepStrictEqual, strictEqual } from 'assert';
+import { vi } from 'vitest';
 import { readFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -155,6 +156,38 @@ export async function createRole(
 		policies: {},
 		...params,
 	});
+}
+
+type WaitForOptions = NonNullable<Parameters<typeof vi.waitFor>[1]>;
+
+/** 連合の反映を待つ上限 */
+const FEDERATION_TIMEOUT = 10000;
+
+/** 連合の反映は非同期なので、固定時間ではなく条件が満たされるまで待つ (上流 Misskey から移植) */
+export const WAIT_FOR_FEDERATION: WaitForOptions = { timeout: FEDERATION_TIMEOUT, interval: 250 };
+
+/** followee 側から見たフォロワー数が期待値になるまで待つ */
+export async function waitForFollowers(followee: LoginUser, count: number, options: WaitForOptions = WAIT_FOR_FEDERATION): Promise<void> {
+	await vi.waitFor(async () => {
+		const followers = await followee.client.request('users/followers', { userId: followee.id });
+		strictEqual(followers.length, count);
+	}, options);
+}
+
+/** {@link waitForFollowers} の follower 側版 (Accept が返ってきたことを確認する) */
+export async function waitForFollowing(follower: LoginUser, count: number, options: WaitForOptions = WAIT_FOR_FEDERATION): Promise<void> {
+	await vi.waitFor(async () => {
+		const following = await follower.client.request('users/following', { userId: follower.id });
+		strictEqual(following.length, count);
+	}, options);
+}
+
+/** フォロー関係が両方のサーバーで反映されるまで待つ */
+export async function waitForFollowRelation(follower: LoginUser, followee: LoginUser, count: number, options: WaitForOptions = WAIT_FOR_FEDERATION): Promise<void> {
+	await Promise.all([
+		waitForFollowing(follower, count, options),
+		waitForFollowers(followee, count, options),
+	]);
 }
 
 export async function resolveRemoteUser(

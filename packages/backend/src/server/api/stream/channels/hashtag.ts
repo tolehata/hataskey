@@ -4,7 +4,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { normalizeForSearch } from '@/misc/normalize-for-search.js';
+import { normalizeTag } from '@/misc/normalize-tag.js';
 import type { Packed } from '@/misc/json-schema.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { bindThis } from '@/decorators.js';
@@ -31,8 +31,13 @@ class HashtagChannel extends Channel {
 	@bindThis
 	public async init(params: JsonObject) {
 		if (!Array.isArray(params.q)) return;
-		if (!params.q.every(x => Array.isArray(x) && x.every(y => typeof y === 'string'))) return;
-		this.q = params.q;
+		// 上流 2026.10.1 のセキュリティ修正: 空のタグ組・長すぎるタグを拒否し、照合前に正規化する。
+		if (!params.q.every((x): x is string[] => (
+			Array.isArray(x) &&
+			x.length >= 1 &&
+			x.every(y => typeof y === 'string' && Array.from(y).length <= 128)
+		))) return;
+		this.q = params.q.map(tags => tags.map(tag => normalizeTag(tag)));
 
 		// Subscribe stream
 		this.subscriber.on('notesStream', this.onNote);
@@ -41,7 +46,7 @@ class HashtagChannel extends Channel {
 	@bindThis
 	private async onNote(note: Packed<'Note'>) {
 		const noteTags = note.tags ? note.tags.map((t: string) => t.toLowerCase()) : [];
-		const matched = this.q.some(tags => tags.every(tag => noteTags.includes(normalizeForSearch(tag))));
+		const matched = this.q.some(tags => tags.every(tag => noteTags.includes(tag)));
 		if (!matched) return;
 
 		if (this.isNoteMutedOrBlocked(note)) return;

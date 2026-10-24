@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import * as nodemailer from 'nodemailer';
+import { createTransport } from 'nodemailer';
 import juice from 'juice';
 import { Inject, Injectable } from '@nestjs/common';
 import { UtilityService } from '@/core/UtilityService.js';
@@ -82,17 +82,17 @@ export class EmailService {
 
 	private async deliverEmail(to: string, message: { subject: string; html: string; text: string }) {
 		const enableAuth = this.meta.smtpUser != null && this.meta.smtpUser !== '';
-		const transporter = nodemailer.createTransport({
-			host: this.meta.smtpHost,
-			port: this.meta.smtpPort,
+		const transporter = createTransport({
+			host: this.meta.smtpHost ?? undefined,
+			port: this.meta.smtpPort ?? undefined,
 			secure: this.meta.smtpSecure,
 			ignoreTLS: !enableAuth,
 			proxy: this.config.proxySmtp,
 			auth: enableAuth ? {
-				user: this.meta.smtpUser,
-				pass: this.meta.smtpPass,
+				user: this.meta.smtpUser!,
+				pass: this.meta.smtpPass ?? undefined,
 			} : undefined,
-		} as any);
+		});
 
 		const inlinedHtml = juice(message.html);
 		try {

@@ -53,6 +53,7 @@ import { FeedService } from './FeedService.js';
 import { UrlPreviewService } from './UrlPreviewService.js';
 import { ClientLoggerService } from './ClientLoggerService.js';
 import { legacyAppIconRoutes, resolveAppIconUrl } from './app-icon.js';
+import { htmlToPlainText } from '@/misc/html-to-plain-text.js';
 import type { FastifyError, FastifyInstance, FastifyPluginOptions, FastifyReply } from 'fastify';
 
 const _filename = fileURLToPath(import.meta.url);
@@ -501,7 +502,8 @@ export class ClientServerService {
 				img: this.meta.bannerUrl,
 				url: this.config.url,
 				title: this.meta.name ?? 'CherryPick',
-				desc: this.meta.description,
+				// 上流 2026.10.1: サーバーの紹介にHTMLを使ってもリンクプレビューの説明文にタグを出さない
+				desc: this.meta.description == null ? undefined : htmlToPlainText(this.meta.description),
 				...await this.generateCommonPugData(this.meta),
 				...data,
 			});

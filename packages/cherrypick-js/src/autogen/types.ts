@@ -6459,6 +6459,8 @@ export type components = {
             autoSensitive: boolean;
             carefulBot: boolean;
             autoAcceptFollowed: boolean;
+            followApprovalLocalSeconds: number | null;
+            followApprovalRemoteSeconds: number | null;
             noCrawle: boolean;
             preventAiLearning: boolean;
             isExplorable: boolean;
@@ -9857,6 +9859,8 @@ export interface operations {
                     progressSteps?: string[] | null;
                     /** @default null */
                     progressCompleted?: boolean[] | null;
+                    /** @default null */
+                    autoArchiveAt?: number | null;
                 };
             };
         };
@@ -10034,9 +10038,13 @@ export interface operations {
                         updatedAt: string | null;
                         text: string;
                         title: string;
-                        icon: string | null;
-                        display: string;
+                        /** @enum {string} */
+                        icon: "info" | "warning" | "error" | "success" | "maintenance";
+                        /** @enum {string} */
+                        display: "normal" | "banner" | "dialog";
                         isActive: boolean;
+                        /** Format: date-time */
+                        autoArchiveAt: string | null;
                         forExistingUsers: boolean;
                         silence: boolean;
                         needConfirmationToRead: boolean;
@@ -10114,6 +10122,7 @@ export interface operations {
                     isActive?: boolean;
                     progressSteps?: string[] | null;
                     progressCompleted?: boolean[] | null;
+                    autoArchiveAt?: number | null;
                 };
             };
         };
@@ -46627,7 +46636,7 @@ export interface operations {
                         excludeCredentials: {
                             id: string;
                             type: string;
-                            transports: ("ble" | "cable" | "hybrid" | "internal" | "nfc" | "smart-card" | "usb")[];
+                            transports: string[];
                         }[] | null;
                         authenticatorSelection: {
                             /** @enum {string} */
@@ -49904,6 +49913,8 @@ export interface operations {
                     hataskFlowerCount?: number;
                     carefulBot?: boolean;
                     autoAcceptFollowed?: boolean;
+                    followApprovalLocalSeconds?: number | null;
+                    followApprovalRemoteSeconds?: number | null;
                     noCrawle?: boolean;
                     preventAiLearning?: boolean;
                     requireSigninToViewContents?: boolean;

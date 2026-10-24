@@ -1358,6 +1358,7 @@ _deck:
     antenna: "Antene"
     list: "Liste"
     channel: "Canale"
+    clip: "Clip"
     mentions: "Mențiuni"
     direct: "Note directe"
     roleTimeline: "Cronologia rolului"

@@ -89,6 +89,7 @@ function signupFixture(enabled: boolean) {
 		findOneBy: vi.fn().mockResolvedValue(null),
 		update: vi.fn().mockResolvedValue({ affected: 1 }),
 		save: vi.fn(async (entity: unknown) => { persisted.push(entity); return entity; }),
+		query: vi.fn().mockResolvedValue([]),
 	};
 	let commits = 0;
 	let rollbacks = 0;
@@ -365,6 +366,9 @@ describe('SignupService application-only guard', () => {
 		expect(account).toMatchObject({ username: 'HaTa_Test', usernameLower: 'hata_test' });
 		expect(f.persisted.find(entity => entity instanceof MiUsedUsername)).toMatchObject({ username: 'hata_test' });
 		expect(f.transaction.findOneBy).toHaveBeenCalledWith(MiUser, expect.objectContaining({ usernameLower: 'hata_test' }));
+		// 上流 2026.10.1: 同じユーザー名の並行サインアップは、重複チェックの前に advisory lock で直列化する。
+		expect(f.transaction.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', ['signup:username:hata_test']);
+		expect(f.transaction.query.mock.invocationCallOrder[0]).toBeLessThan(f.transaction.findOneBy.mock.invocationCallOrder[0]);
 	});
 
 	test('direct application signup is blocked in OFF mode before account work', async () => {

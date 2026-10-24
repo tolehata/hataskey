@@ -61,7 +61,7 @@ import MkButton from '@/components/MkButton.vue';
 import MkAnnouncementProgress from '@/components/MkAnnouncementProgress.vue';
 import { i18n } from '@/i18n.js';
 import { $i } from '@/i.js';
-import { updateCurrentAccountPartial } from '@/accounts.js';
+import { updateCurrentAccount } from '@/accounts.js';
 import { mainRouter } from '@/router.js';
 
 const props = defineProps<{
@@ -84,7 +84,7 @@ async function ok() {
 
 	modal.value?.close();
 	misskeyApi('i/read-announcement', { announcementId: props.announcement.id });
-	updateCurrentAccountPartial({
+	updateCurrentAccount({
 		unreadAnnouncements: $i!.unreadAnnouncements.filter(a => a.id !== props.announcement.id),
 	});
 }

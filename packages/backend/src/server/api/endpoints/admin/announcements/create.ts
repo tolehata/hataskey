@@ -6,6 +6,7 @@
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { AnnouncementService } from '@/core/AnnouncementService.js';
+import { ApiError } from '../../../error.js';
 
 export const meta = {
 	tags: ['admin'],
@@ -13,6 +14,14 @@ export const meta = {
 	requireCredential: true,
 	requireModerator: true,
 	kind: 'write:admin:announcements',
+
+	errors: {
+		invalidAutoArchiveAt: {
+			message: 'Invalid auto archive date.',
+			code: 'INVALID_AUTO_ARCHIVE_AT',
+			id: '2a892bd5-487d-46a2-a5fe-3d85ad51defe',
+		},
+	},
 
 	res: {
 		type: 'object',
@@ -75,6 +84,7 @@ export const paramDef = {
 			minItems: 4, maxItems: 4,
 			items: { type: 'boolean' },
 		},
+		autoArchiveAt: { type: 'integer', nullable: true, default: null },
 	},
 	required: ['title', 'text', 'imageUrl'],
 } as const;
@@ -85,7 +95,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private announcementService: AnnouncementService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			const { raw, packed } = await this.announcementService.create({
+			const autoArchiveAt = ps.autoArchiveAt != null ? new Date(ps.autoArchiveAt) : null;
+			if (ps.autoArchiveAt != null && (ps.autoArchiveAt <= Date.now() || Number.isNaN(autoArchiveAt?.getTime()))) {
+				throw new ApiError(meta.errors.invalidAutoArchiveAt);
+			}
+
+			const { packed } = await this.announcementService.create({
 				updatedAt: null,
 				title: ps.title,
 				text: ps.text,
@@ -100,6 +115,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				// 旗鯖fork: メンテ進捗バーは icon === 'maintenance' のときだけ保存する
 				progressSteps: ps.icon === 'maintenance' ? ps.progressSteps : null,
 				progressCompleted: ps.icon === 'maintenance' ? ps.progressCompleted : null,
+				autoArchiveAt,
 			}, me);
 
 			return packed;

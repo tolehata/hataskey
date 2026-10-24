@@ -2410,6 +2410,7 @@ _deck:
     antenna: "Антенны"
     list: "Списки"
     channel: "Каналы"
+    clip: "Подборка"
     mentions: "Упоминания"
     direct: "Личное"
     roleTimeline: "История Ролей"

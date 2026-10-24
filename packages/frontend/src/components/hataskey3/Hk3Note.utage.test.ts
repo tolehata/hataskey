@@ -35,7 +35,7 @@ vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn() }));
 vi.mock('@/utility/get-note-menu.js', () => ({ getNoteMenu: vi.fn(), getRenoteMenu: vi.fn(), getCopyNoteLinkMenu: vi.fn(), getAbuseNoteMenu: vi.fn() }));
 vi.mock('@/utility/please-login.js', () => ({ pleaseLogin: vi.fn() }));
 vi.mock('@/utility/sound.js', () => ({ playMisskeySfx: vi.fn() }));
-vi.mock('@/filters/note.js', () => ({ notePage: () => '/notes/note' }));
+vi.mock('@@/js/note.js', () => ({ notePage: () => '/notes/note' }));
 vi.mock('@/filters/user.js', () => ({ userPage: () => '/users/author' }));
 vi.mock('@/components/MkMediaList.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/MkPoll.vue', () => ({ default: { render: () => null } }));

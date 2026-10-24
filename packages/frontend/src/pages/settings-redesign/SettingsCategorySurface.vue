@@ -38,7 +38,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<h3 :class="$style.cardTitle">{{ section.label }}</h3>
 			<SettingsSectionExplainer v-if="section.explain" :sectionId="section.sectionId" :motionEnabled="motionEnabled"/>
 			<div :class="$style.links">
-				<MkButton v-if="section.sectionId === 'apps.section0'" link to="/hatagoes?view=settings"><HataAppNavIcon app="hatagoes" :size="24" :monochrome="store.r.darkMode.value"/><HataAppWordmark app="hatagoes" :onDark="store.r.darkMode.value"/></MkButton>
+				<MkA v-if="section.sectionId === 'apps.section0'" :class="$style.link" to="/hatagoes?view=settings" data-settings-destination-id="hatagoes-settings">
+					<HataAppNavIcon app="hatagoes" :size="24" :monochrome="store.r.darkMode.value"/>
+					<span :class="$style.linkLabel" data-brand="HataGoes"><HataAppWordmark app="hatagoes" :onDark="store.r.darkMode.value"/></span>
+					<i class="ti ti-chevron-right" aria-hidden="true"></i>
+				</MkA>
 				<button v-for="destination in section.destinations" :key="destination.id" type="button" :class="$style.link" :data-settings-destination-id="destination.id" @click="emit('openDestination', destination.id, $event)">
 					<HataAppNavIcon v-if="destination.app != null" :app="destination.app" :size="24" :monochrome="store.r.darkMode.value"/>
 					<img v-else-if="destination.iconImage" :class="$style.linkImage" :src="destination.iconImage" alt="" aria-hidden="true">
@@ -73,6 +77,7 @@ import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import { hataAppForSettingsBrand } from '@/utility/hata-app-brand.js';
 import { store } from '@/store.js';
 import MkButton from '@/components/MkButton.vue';
+import MkA from '@/components/global/MkA.vue';
 import { provideMetadataReceiver } from '@/page.js';
 import { i18n } from '@/i18n.js';
 
@@ -164,7 +169,7 @@ const destinationSections = computed(() => categoryDestinationSections.value.map
 .ownerCard[data-settings-owner], .ownerCard[data-settings-leading-destinations], .ownerCard[data-settings-action-section], .ownerCard[data-full-width='true'] { column-span: all; }
 .cardTitle { margin: 0 0 14px; font-size: 1.06em; line-height: 1.5; }
 .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 12px; }
-.link { display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; min-height: 64px; padding: 16px 18px; border: 1px solid var(--MI_THEME-divider); border-radius: 16px; background: var(--MI_THEME-panel); color: var(--MI_THEME-fg); font: inherit; text-align: start; cursor: pointer; }
+.link { box-sizing: border-box; display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; min-height: 64px; padding: 16px 18px; border: 1px solid var(--MI_THEME-divider); border-radius: 16px; background: var(--MI_THEME-panel); color: var(--MI_THEME-fg); font: inherit; text-align: start; cursor: pointer; }
 .linkLabel { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .linkDescription { display: block; margin-top: 4px; color: var(--MI_THEME-fgMuted); font-size: .85em; font-weight: normal; }
 .linkImage { width: 24px; height: 24px; object-fit: contain; }

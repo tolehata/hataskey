@@ -214,7 +214,7 @@ import { noteEvents, useNoteCapture } from '@/composables/use-note-capture.js';
 import { checkWordMute } from '@/utility/check-word-mute.js';
 import { getAppearNote } from '@/utility/get-appear-note.js';
 import { pleaseLogin } from '@/utility/please-login.js';
-import { notePage } from '@/filters/note.js';
+import { notePage } from '@@/js/note.js';
 import type { MenuItem } from '@/types/menu.js';
 import { userPage } from '@/filters/user.js';
 import { shouldCollapsed, shouldMfmCollapsed } from '@@/js/collapsed.js';

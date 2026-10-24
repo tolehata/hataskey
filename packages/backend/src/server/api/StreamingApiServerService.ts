@@ -12,7 +12,7 @@ import type { UsersRepository, MiAccessToken } from '@/models/_.js';
 import { NotificationService } from '@/core/NotificationService.js';
 import { bindThis } from '@/decorators.js';
 import { CacheService } from '@/core/CacheService.js';
-import { MiLocalUser } from '@/models/User.js';
+import type { MiLocalUser } from '@/models/User.js';
 import { UserService } from '@/core/UserService.js';
 import { ChannelFollowingService } from '@/core/ChannelFollowingService.js';
 import type { GlobalEvents } from '@/core/GlobalEventService.js';
@@ -36,6 +36,8 @@ export class StreamingApiServerService {
 	#cleanConnectionsIntervalId: NodeJS.Timeout | null = null;
 	#userSessions = new Map<string, Set<StreamingSession>>();
 	#globalEv = new EventEmitter();
+	// 上流 2026.10.1: 同じユーザーの複数接続で最終アクセス日時の更新を重ねない
+	#activeUsers = new Map<MiLocalUser['id'], { connections: number; intervalId: NodeJS.Timeout; }>();
 
 	constructor(
 		@Inject(DI.redisForSub)
@@ -83,6 +85,8 @@ export class StreamingApiServerService {
 	public attach(server: http.Server): void {
 		this.#wss = new WebSocket.WebSocketServer({
 			noServer: true,
+			maxPayload: 1024 * 1024, // 1MiB
+			perMessageDeflate: false,
 		});
 
 		server.on('upgrade', async (request, socket, head) => {
@@ -209,15 +213,10 @@ export class StreamingApiServerService {
 
 			this.#connections.set(connection, Date.now());
 
-			const userUpdateIntervalId = user ? setInterval(() => {
-				this.usersService.updateLastActiveDate(user);
-			}, 1000 * 60 * 5) : null;
-			if (user) {
-				this.usersService.updateLastActiveDate(user);
-			}
+			if (user) this.onUserConnected(user);
 
 			connection.once('close', () => {
-				if (userUpdateIntervalId) clearInterval(userUpdateIntervalId);
+				if (user) this.onUserDisconnected(user);
 			});
 
 			connection.on('pong', () => {
@@ -240,6 +239,35 @@ export class StreamingApiServerService {
 	}
 
 	// 旗鯖fork: 本家 2026.6.0 から取り込み: detach() を Promise 化して wss.close() の完了を待ち、リークした WS 接続による shutdown 警告(UnhandledPromiseRejectionWarning 経路) を抑止
+	@bindThis
+	private onUserConnected(user: MiLocalUser): void {
+		const activeUser = this.#activeUsers.get(user.id);
+		if (activeUser) {
+			activeUser.connections++;
+			return;
+		}
+
+		this.usersService.updateLastActiveDate(user);
+		this.#activeUsers.set(user.id, {
+			connections: 1,
+			intervalId: setInterval(() => {
+				this.usersService.updateLastActiveDate(user);
+			}, 1000 * 60 * 5),
+		});
+	}
+
+	@bindThis
+	private onUserDisconnected(user: MiLocalUser): void {
+		const activeUser = this.#activeUsers.get(user.id);
+		if (!activeUser) return;
+
+		activeUser.connections--;
+		if (activeUser.connections <= 0) {
+			clearInterval(activeUser.intervalId);
+			this.#activeUsers.delete(user.id);
+		}
+	}
+
 	@bindThis
 	public detach(): Promise<void> {
 		this.redisForSub.off('message', this.onRedisMessage);

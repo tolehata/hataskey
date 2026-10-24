@@ -355,7 +355,7 @@ import MkEvent from '@/components/MkEvent.vue';
 import { pleaseLogin } from '@/utility/please-login.js';
 import { checkWordMute } from '@/utility/check-word-mute.js';
 import { userPage } from '@/filters/user.js';
-import { notePage } from '@/filters/note.js';
+import { notePage } from '@@/js/note.js';
 import number from '@/filters/number.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';

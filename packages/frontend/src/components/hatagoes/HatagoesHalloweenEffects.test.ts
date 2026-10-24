@@ -4,7 +4,6 @@ import { resolve } from 'node:path';
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createApp, h, nextTick, reactive } from 'vue';
 import { compileStyleAsync, parse } from '@vue/compiler-sfc';
-import type { Node as CssNode } from 'postcss';
 
 vi.mock('@/preferences.js', async () => ({ prefer: { r: { animation: (await import('vue')).ref(true) } } }));
 import { prefer } from '@/preferences.js';
@@ -13,6 +12,8 @@ import HatagoesHalloweenEffects from './HatagoesHalloweenEffects.vue';
 const cleanups: Array<() => void> = [];
 let media: MediaQueryList;
 type StyleRule = { selector: string; property: string; value: string; containers: string[] };
+// Only the fields walked here; avoids comparing two bundled postcss type trees.
+type CssParent = { type: string; name?: string; params?: unknown; parent?: CssParent };
 const compiledRules: StyleRule[] = [];
 
 beforeAll(async () => {
@@ -25,8 +26,8 @@ beforeAll(async () => {
 			compiled.rawResult.root.walkRules(rule => {
 				const selector = normalizeSelector(rule.selector);
 				const containers: string[] = [];
-				for (let parent: CssNode | undefined = rule.parent; parent; parent = parent.parent) {
-					if (parent.type === 'atrule' && 'name' in parent && parent.name === 'container' && 'params' in parent) containers.push(String(parent.params));
+				for (let parent = rule.parent as CssParent | undefined; parent; parent = parent.parent) {
+					if (parent.type === 'atrule' && parent.name === 'container' && parent.params != null) containers.push(String(parent.params));
 				}
 				rule.walkDecls(declaration => { compiledRules.push({ selector, property: declaration.prop, value: declaration.value, containers }); });
 			});

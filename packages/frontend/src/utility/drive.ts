@@ -181,10 +181,12 @@ export function chooseFileFromPcAndUpload(
 
 export function chooseDriveFile(options: {
 	multiple?: boolean;
+	excludeSensitive?: boolean;
 } = {}): Promise<Misskey.entities.DriveFile[]> {
 	return new Promise(async resolve => {
 		const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkDriveFileSelectDialog.vue').then(x => x.default), {
 			multiple: options.multiple ?? false,
+			excludeSensitive: options.excludeSensitive ?? false,
 		}, {
 			done: files => {
 				if (files) {

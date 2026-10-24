@@ -79,7 +79,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import * as os from '@/os.js';
-import { notePage } from '@/filters/note.js';
+import { notePage } from '@@/js/note.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 import bytes from '@/filters/bytes.js';

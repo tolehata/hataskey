@@ -9,7 +9,7 @@ const fixture = vi.hoisted(() => ({
 	updates: vi.fn(),
 }));
 vi.mock('@/i.js', () => ({ $i: fixture.account }));
-vi.mock('@/accounts.js', () => ({ updateCurrentAccountPartial: (partial: object) => {
+vi.mock('@/accounts.js', () => ({ updateCurrentAccount: (partial: object) => {
 	Object.assign(fixture.account, partial);
 	fixture.updates(partial);
 } }));

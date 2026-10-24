@@ -111,7 +111,7 @@ class MainChannel extends Channel {
 			case 'notification':
 			case 'unreadNotification': {
 				// Ignore notifications from instances the user has muted
-				if (isUserFromMutedInstance(data.body, new Set<string>(this.userProfile?.mutedInstances ?? []))) return;
+				if (isUserFromMutedInstance(data.body, this.userMutedInstances)) return;
 				if (data.body.userId && this.userIdsWhoMeMuting.has(data.body.userId)) return;
 
 				const notification = await this.filterNotification(data.body, viewer.id);
