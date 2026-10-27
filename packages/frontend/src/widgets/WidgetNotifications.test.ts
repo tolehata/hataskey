@@ -10,6 +10,7 @@ import WidgetNotifications from './WidgetNotifications.vue';
 type Filter = { excludeTypes: string[]; knownTypes: string[]; excludeBots: boolean; filterDetails: { includeBrands?: string[] | null; includeHataskApp?: boolean; excludeHatadySubtypes?: string[]; knownHatadySubtypes?: string[] } };
 const popup = vi.hoisted(() => vi.fn());
 vi.mock('@/os.js', () => ({ popupAsyncWithDialog: popup, form: vi.fn() }));
+vi.mock('@/accounts.js', () => ({ updateCurrentAccount: vi.fn() }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { notifications: '通知', settings: '設定', markAllAsRead: '既読' } } }));
 vi.mock('@/components/MkNotificationSelectWindow.vue', () => ({ default: {} }));
 vi.mock('@/components/MkContainer.vue', async () => {

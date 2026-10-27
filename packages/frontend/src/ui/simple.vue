@@ -201,18 +201,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- Top pill navbar (timeline tabs) - scroll reactive -->
 			<div
 				v-show="nativeNavbarVisible || mobileToastVisible || punchVisible" data-hata-collapse-group
-				:inert="navbarSearchOpen" :data-toast-motion="prefer.r.animation.value" :data-hidden="!pullRefresh.active.value && !navbarLoadingShown && !punchVisible && !showTopBar && !mobileToastVisible && !navbarNewNotes && !emojiVoteInNavbar && !notificationToasts.navbarNotice.value"
+				:inert="navbarSearchOpen" :data-toast-motion="prefer.r.animation.value" :data-hidden="!pullRefresh.active.value && !navbarLoadingShown && !punchVisible && !showTopBar && !mobileToastVisible && !navbarNewNotes && !emojiVoteInNavbar && !navbarNotificationShowing && !navbarNotificationShrinking"
 				:data-emoji-vote="emojiVoteInNavbar"
 				:data-notification-only="mobileNotificationOnly && !punchVisible"
 				:class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight]"
 			>
-				<div ref="topNavStackEl" :class="$style.topNavStack" :data-navbar-notice="notificationToasts.navbarNotice.value?.kind" :data-pull-active="pullRefresh.active.value" :data-pull-phase="pullRefresh.state.value.phase" :data-pull-motion="newNotesMotionEnabled" :style="[emojiVoteNavbarStackStyle, pullRefresh.style.value, navbarPullFrameStyle]">
+				<div ref="topNavStackEl" :class="$style.topNavStack" :data-navbar-notice="navbarNotificationKind" :data-notification-sizing="navbarNotificationSizing" :data-pull-active="pullRefresh.active.value" :data-pull-phase="pullRefresh.state.value.phase" :data-pull-motion="newNotesMotionEnabled" :style="[emojiVoteNavbarStackStyle, navbarNotificationWidthStyle, pullRefresh.style.value, navbarPullFrameStyle]">
 					<div ref="notificationOutlineEl" :class="$style.topPillFrame" :aria-busy="nativeNavbarVisible && pendingApiRequestsCount > 0" :data-emoji-celebrating="emojiVoteInNavbar && emojiVoteNavbarState.celebrating" :data-emoji-leaving="emojiVoteInNavbar && emojiVoteNavbarState.leaving">
+						<div v-if="navbarNotificationShowing" ref="notificationBloomEl" :class="$style.notificationBloom" :data-leaving="navbarNotificationLeaving" aria-hidden="true">
+							<MkNotificationToastRing :target="notificationBloomEl" :elapsed="newNotesMotionEnabled ? navbarNotificationElapsed : navbarNotificationDuration" :duration="navbarNotificationDuration" integrated :motion="newNotesMotionEnabled"/>
+						</div>
 						<MkNavbarLoadingRing v-if="nativeNavbarVisible" :target="notificationOutlineEl" :active="pendingApiRequestsCount > 0" :motion="newNotesMotionEnabled" @visibleChange="navbarLoadingVisible = $event"/>
 						<MkLtlEmojiVoteOutline v-if="emojiVoteInNavbar" :target="notificationOutlineEl"/>
-						<div ref="navbarPullPillEl" :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value" :data-new-notes="!!navbarNewNotesContent" :data-emoji-vote="emojiVoteInNavbar">
+						<div ref="navbarPullPillEl" :class="$style.topPill" :data-notification="navbarNotificationShowing" :data-new-notes="!!navbarNewNotesContent" :data-emoji-vote="emojiVoteInNavbar">
 							<div :class="$style.navbarPullContent" :inert="pullRefresh.state.value.height > 8" :aria-hidden="pullRefresh.state.value.height > 8">
-								<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${notificationToasts.integrated.value && !notificationToasts.surface.value ? notificationToasts.height.value : 0}px` }"></div>
+								<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${navbarNotificationShowing ? navbarNotificationHeight : 0}px` }"></div>
 								<div v-show="!mobileNotificationOnly || punchVisible" ref="emojiVoteNavbarNav" :class="$style.topPillNav">
 									<div ref="emojiVoteNavbarTabs" :class="$style.topPillTabs">
 										<template v-for="item in visibleTopTabs" :key="item.id">
@@ -497,7 +500,9 @@ import XCommon from './_common_/common.vue';
 import MkTimelineNewNotesContent from '@/components/MkTimelineNewNotesContent.vue';
 import MkNavbarLoadingRing from '@/components/MkNavbarLoadingRing.vue';
 import { pendingApiRequestsCount } from '@/utility/misskey-api.js';
-import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
+import { createHataskeyNotificationToasts, getToastDuration, hataskeyNotificationToastsKey, NOTIFICATION_TOAST_DURATION } from '@/utility/hataskey-notification-toast.js';
+import type { HataskeyNavbarNotice } from '@/utility/hataskey-notification-toast.js';
+import MkNotificationToastRing from '@/components/MkNotificationToastRing.vue';
 import { attachNavbarPullGesture, createNavbarPullRefresh, navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
 import { concrntState } from '@/utility/concrnt/runtime.js';
 import { concrntPagePostContextKey, interceptConcrntPostRequest } from '@/utility/concrnt/post-interceptor.js';
@@ -532,6 +537,7 @@ import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
 import MkHatadyTimeline from '@/components/MkHatadyTimeline.vue';
 import { openHatadyRecord } from '@/utility/hatady-record-launcher.js';
 import { acceptNotificationUnreadState } from '@/utility/notification-unread-state.js';
+import { refreshNotificationUnreadState } from '@/utility/notification-unread-sync.js';
 import { provideMetadataReceiver, provideReactiveMetadata } from '@/page.js';
 import { mainRouter } from '@/router.js';
 import { DI } from '@/di.js';
@@ -548,7 +554,7 @@ import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { clearCache } from '@/utility/clear-cache.js';
 import { playHataIconMotion, playHataNavigationMotion } from '@/utility/hata-icon-motion.js';
 import { createHataTimelineCollapseEffect } from '@/utility/hata-timeline-collapse-effect.js';
-import { getAccountMenu } from '@/accounts.js';
+import { getAccountMenu, updateCurrentAccount } from '@/accounts.js';
 import { instance } from '@/instance.js';
 import { store } from '@/store.js';
 import { deepMerge } from '@/utility/merge.js';
@@ -1967,13 +1973,115 @@ watch([emojiVoteInNavbar, emojiVoteNavbarNav, emojiVoteNavbarTabs], ([visible, n
 	onCleanup(() => observer.disconnect());
 }, { flush: 'post' });
 const mobileToastVisible = ref(false);
-let toastCollapseTimer: number | undefined;
-watch(() => !isDesktop.value && !notificationToasts.surface.value && notificationToasts.items.value.length > 0, visible => {
-	window.clearTimeout(toastCollapseTimer);
-	if (visible) mobileToastVisible.value = true;
-	else toastCollapseTimer = window.setTimeout(() => { mobileToastVisible.value = false; }, prefer.s.animation && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 350 : 0);
+const notificationBloomEl = ref<HTMLElement | null>(null);
+const navbarNotificationShowing = ref(false);
+const navbarNotificationLeaving = ref(false);
+const navbarNotificationShrinking = ref(false);
+const navbarNotificationSizing = ref(false);
+const navbarNotificationHeight = ref(64);
+const navbarNotificationElapsed = ref(0);
+const navbarNotificationDuration = ref(NOTIFICATION_TOAST_DURATION);
+const navbarNotificationKind = ref<HataskeyNavbarNotice['kind']>();
+const navbarNotificationHeldWidth = ref(0);
+const navbarNotificationWidthStyle = computed(() => navbarNotificationHeldWidth.value > 0 ? { width: `${navbarNotificationHeldWidth.value}px` } : {});
+const navbarNotification = computed(() => !notificationToasts.surface.value && notificationToasts.integrated.value ? notificationToasts.items.value[0] : undefined);
+let navbarNotificationExitTimer: number | undefined;
+let navbarNotificationShrinkTimer: number | undefined;
+let navbarNotificationWidthAnimation: Animation | undefined;
+let navbarNotificationRevision = 0;
+
+function cancelNavbarNotificationWidth() {
+	navbarNotificationRevision++;
+	navbarNotificationWidthAnimation?.cancel();
+	navbarNotificationWidthAnimation = undefined;
+	navbarNotificationHeldWidth.value = 0;
+	navbarNotificationSizing.value = false;
+}
+
+function resetNavbarNotification() {
+	window.clearTimeout(navbarNotificationExitTimer);
+	window.clearTimeout(navbarNotificationShrinkTimer);
+	cancelNavbarNotificationWidth();
+	navbarNotificationShowing.value = false;
+	navbarNotificationLeaving.value = false;
+	navbarNotificationShrinking.value = false;
+	navbarNotificationKind.value = undefined;
+	mobileToastVisible.value = false;
+}
+
+function finishNavbarNotificationExit() {
+	const element = topNavStackEl.value;
+	const from = element?.getBoundingClientRect().width;
+	resetNavbarNotification();
+	if (!newNotesMotionEnabled.value) return;
+
+	// HyNav keeps its glow for 550ms, then closes the empty host over 350ms.
+	// Keep mobile-only hosts mounted for that height transition as well.
+	navbarNotificationShrinking.value = true;
+	mobileToastVisible.value = !isDesktop.value;
+	const revision = navbarNotificationRevision;
+	navbarNotificationShrinkTimer = window.setTimeout(() => {
+		navbarNotificationShrinking.value = false;
+		mobileToastVisible.value = false;
+		cancelNavbarNotificationWidth();
+	}, 350);
+	nextTick(() => {
+		if (!element?.isConnected || !from || revision !== navbarNotificationRevision || !newNotesMotionEnabled.value || pullRefresh.active.value || emojiVoteInNavbar.value) return;
+		const to = element.getBoundingClientRect().width;
+		if (from <= to + 0.5 || !element.animate) return;
+
+		// Measure intrinsic layout first; stretch the existing pill only while
+		// its enclosing stack is held or animated. No fixed width survives.
+		navbarNotificationSizing.value = true;
+		const animation = element.animate([{ width: `${from}px` }, { width: `${to}px` }], {
+			duration: 350,
+			easing: 'cubic-bezier(.22,1,.36,1)',
+		});
+		navbarNotificationWidthAnimation = animation;
+		animation.onfinish = () => {
+			if (navbarNotificationWidthAnimation === animation) {
+				navbarNotificationWidthAnimation = undefined;
+				navbarNotificationSizing.value = false;
+			}
+		};
+	});
+}
+
+watch([navbarNotification, newNotesMotionEnabled, notificationToasts.surface, nativeNavbarVisible, isDesktop], ([notice, motion, surface, native, desktop]) => {
+	if (surface || (desktop && !native) || (!notice && notificationToasts.items.value.length > 0)) {
+		resetNavbarNotification();
+	} else if (notice) {
+		resetNavbarNotification();
+		navbarNotificationShowing.value = true;
+		navbarNotificationHeight.value = notificationToasts.height.value || navbarNotificationHeight.value;
+		navbarNotificationElapsed.value = notice.elapsed;
+		navbarNotificationDuration.value = getToastDuration(notice);
+		navbarNotificationKind.value = notice.source === 'status' ? notice.navbarNotice?.kind : undefined;
+		mobileToastVisible.value = !desktop;
+	} else if (!motion) {
+		resetNavbarNotification();
+	} else if (navbarNotificationShowing.value && !navbarNotificationLeaving.value) {
+		navbarNotificationLeaving.value = true;
+		if (!pullRefresh.active.value && !emojiVoteInNavbar.value) {
+			navbarNotificationHeldWidth.value = topNavStackEl.value?.getBoundingClientRect().width ?? 0;
+			navbarNotificationSizing.value = navbarNotificationHeldWidth.value > 0;
+		}
+		navbarNotificationExitTimer = window.setTimeout(finishNavbarNotificationExit, 550);
+	}
+}, { immediate: true });
+watch([() => navbarNotification.value?.elapsed, notificationToasts.height], ([elapsed, height]) => {
+	if (!navbarNotification.value) return;
+	if (elapsed != null) navbarNotificationElapsed.value = elapsed;
+	if (height > 0) navbarNotificationHeight.value = height;
+}, { immediate: true });
+watch([pullRefresh.active, emojiVoteInNavbar], ([pulling, voting]) => {
+	if (pulling || voting) cancelNavbarNotificationWidth();
 });
-onUnmounted(() => window.clearTimeout(toastCollapseTimer));
+window.addEventListener('resize', cancelNavbarNotificationWidth);
+onUnmounted(() => {
+	resetNavbarNotification();
+	window.removeEventListener('resize', cancelNavbarNotificationWidth);
+});
 provide(hataskeyNotificationToastsKey, notificationToasts);
 
 function closeTimelinePickerOnOutsidePointer(ev: PointerEvent) {
@@ -2241,28 +2349,11 @@ const syncUnreadFromI = () => {
 };
 watch(() => [$i?.unreadNotificationsCount, $i?.hasUnreadNotification], syncUnreadFromI);
 
-// 初期状態の取得（$i に値があればそれを使い、無ければ API 取得）
+// 起動時と定期確認では、イベントを取り逃した未読件数もサーバーから同期する。
 const checkUnread = async() => {
-	try {
-		syncUnreadFromI();
-		// $i に何も値が無い場合のフォールバック: API で直近1件取得
-		if (!$i || (typeof $i.hasUnreadNotification !== 'boolean' && typeof $i.unreadNotificationsCount !== 'number')) {
-			// 旗鯖fork: os.api は存在しないため misskeyApi を動的importして使う(従来はcatchで握り潰され未読フォールバックが機能していなかった)
-			const ownerId = $i?.id;
-			const { misskeyApi } = await import('@/utility/misskey-api.js');
-			const r = await misskeyApi('i/notifications', { limit: 1, markAsRead: false });
-			if ($i?.id !== ownerId) return;
-			if (typeof $i?.unreadNotificationsCount === 'number') { syncUnreadFromI(); return; }
-			const first = Array.isArray(r) ? (r as Array<{ isRead?: boolean }>)[0] : undefined;
-			if (first && first.isRead !== true) {
-				hasUnreadNotif.value = true;
-				unreadNotifCount.value = Math.max(1, unreadNotifCount.value);
-			} else {
-				hasUnreadNotif.value = false;
-				unreadNotifCount.value = 0;
-			}
-		}
-	} catch {}
+	syncUnreadFromI();
+	await refreshNotificationUnreadState($i?.id);
+	syncUnreadFromI();
 };
 
 // useStream() でストリームのシングルトンを取得し、main チャンネルを購読
@@ -2285,8 +2376,8 @@ const initStream = () => {
 			if ($i?.id !== ownerId) return;
 			const count = acceptNotificationUnreadState(ownerId, state);
 			if (count === null) return;
-			unreadNotifCount.value = count;
-			hasUnreadNotif.value = count > 0;
+			updateCurrentAccount({ hasUnreadNotification: count > 0, unreadNotificationsCount: count });
+			syncUnreadFromI();
 		};
 		mainCh.on('unreadNotification', updateUnread);
 		mainCh.on('readNotification', updateUnread);
@@ -2319,7 +2410,7 @@ function scheduleStreamRetry() {
 	}, 2000);
 }
 
-// $i.unreadNotificationsCount を定期的にポーリング（ストリーム不調時の保険）
+// サーバーの未読件数を定期的に再取得（ストリーム不調時の保険）
 const startUnreadPoll = () => {
 	if (unreadPollTimer) return;
 	unreadPollTimer = window.setInterval(checkUnread, 60000);
@@ -3636,6 +3727,7 @@ onUnmounted(() => {
 
 // ナビの内容のクリップを保ち、通知のぼかした縁取りだけを背面へ広げる。
 .topPillFrame {
+    --hata-toast-leave-offset:-10px;
     position:relative; isolation:isolate; border-radius:24px;
     width:max-content; max-width:100%; min-width:0;
 }
@@ -3644,6 +3736,21 @@ onUnmounted(() => {
     stroke-width:40; stroke-linecap:round;
     filter:blur(14px); opacity:.55;
 }
+// Like HyNav, keep the native glow alive after the shared card has left.
+.topPillFrame > svg[data-integrated='true']:not([data-emoji-vote-outline]) { display:none; }
+.notificationBloom {
+    position:absolute; inset:0; border-radius:inherit; z-index:-1; pointer-events:none;
+    opacity:1; transition:opacity .55s cubic-bezier(.4,0,.2,1);
+}
+.notificationBloom > svg {
+    overflow:visible; stroke-width:40; stroke-linecap:round;
+    filter:blur(14px); opacity:.55; transition:filter .55s ease;
+}
+.notificationBloom path { transition:stroke-dashoffset .1s linear; }
+.notificationBloom[data-leaving='true'] { opacity:0; }
+.notificationBloom[data-leaving='true'] > svg { filter:blur(20px); }
+.topNavStack[data-notification-sizing='true'] .topPillFrame,
+.topNavStack[data-notification-sizing='true'] .topPill { width:100%; }
 // Reuse the notification's blurred outer SVG path; keep it mounted while the
 // vote and its width collapse so the light fades along the changing outline.
 .topPillFrame > svg[data-emoji-vote-outline='true'] {
@@ -3717,7 +3824,7 @@ onUnmounted(() => {
 }
 .notificationViewport {
 	order:3; position:relative; width:100%; min-width:0; overflow:hidden;
-    transition:height .35s cubic-bezier(.22,1,.36,1);
+    transition:height .35s ease;
 }
 .notificationViewport[data-mobile='true'] { order:0; }
 .newNotesViewport {
@@ -3746,10 +3853,13 @@ onUnmounted(() => {
 }
 
 .topBar[data-toast-motion='false'] .notificationViewport,
+.topBar[data-toast-motion='false'] .notificationBloom,
+.topBar[data-toast-motion='false'] .notificationBloom > svg,
+.topBar[data-toast-motion='false'] .notificationBloom path,
 .topBar[data-toast-motion='false'] .newNotesViewport,
 .topBar[data-toast-motion='false'] .newNotesButton { transition:none; }
 @media (prefers-reduced-motion:reduce) {
-    .notificationViewport, .newNotesViewport, .newNotesButton { transition:none; }
+    .notificationViewport, .notificationBloom, .notificationBloom > svg, .notificationBloom path, .newNotesViewport, .newNotesButton { transition:none; }
 }
 
 .timelinePicker {

@@ -12,7 +12,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div :class="$style.tail">
 		<header :class="$style.header">
 			<span :class="$style.brandTag">{{ i18n.ts._hata._notificationBrands.hataFeed }}</span>
-			<span :class="$style.headerText"><HataAppWordmark app="hatafeed" inheritColor/></span>
 			<MkTime v-if="withTime" :time="group.createdAt" :class="$style.headerTime" :mode="prefer.s.enableAbsoluteTime ? 'absolute' : 'relative'"/>
 		</header>
 		<button
@@ -49,7 +48,6 @@ import { prefer } from '@/preferences.js';
 import { i18n } from '@/i18n.js';
 import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
 import HataAppLogo from '@/components/HataAppLogo.vue';
-import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import { store } from '@/store.js';
 
 withDefaults(defineProps<{
@@ -162,11 +160,6 @@ const copyx = i18n.tsx._hata._hatafeed._notificationGroup;
 	display: flex;
 	align-items: baseline;
 	white-space: nowrap;
-}
-
-.headerText {
-	display: block;
-	font-weight: 700;
 }
 
 .headerTime {

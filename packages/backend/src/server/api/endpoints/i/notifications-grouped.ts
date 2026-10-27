@@ -70,6 +70,160 @@ export const paramDef = {
 	required: [],
 } as const;
 
+function groupNotifications(notifications: MiNotification[]) {
+	// grouping
+	// 旗鯖fork: リアクション通知のグルーピングを「隣接比較」から「全体集約」方式に変更。
+	// 旧実装は prev (直前) のみと比較していたため、同じノートへのリアクションが時系列で
+	// 飛び石になると複数グループに分裂し、(1) 同じ投稿の通知が重複表示される、
+	// (2) 分裂で水増しされたグループが slice(limit) で切られてリアクションが欠落する、
+	// という不具合があった。リアクションは全体を走査して noteId / notifierId で集約することで
+	// 飛び石でも 1 グループにまとめ、重複と欠落を解消する。
+	// renote / note のグルーピングは Misskey 標準の隣接比較のまま (問題が無いため変更しない)。
+
+	// (1) リアクション通知を noteId ごとに集約 (同じノートへの複数ユーザー → reaction:grouped 候補)
+	const reactionsByNote = new Map<string, FilterUnionByProperty<MiNotification, 'type', 'reaction'>[]>();
+	for (const n of notifications) {
+		if (n.type !== 'reaction' || n.noteId == null) continue;
+		const arr = reactionsByNote.get(n.noteId);
+		if (arr) arr.push(n as any);
+		else reactionsByNote.set(n.noteId, [n as any]);
+	}
+
+	// (2) 「そのノートへのリアクションが自分だけ (1件)」のものは groupedByUser 候補に回す。
+	//     2件以上のノートは reaction:grouped として確定 (同じノートへの複数人リアクションを最優先)。
+	const groupedReactionNoteIds = new Set<string>(); // reaction:grouped に確定した noteId
+	const singleReactions: FilterUnionByProperty<MiNotification, 'type', 'reaction'>[] = []; // groupedByUser 候補
+	for (const [noteId, arr] of reactionsByNote) {
+		if (arr.length >= 2) {
+			groupedReactionNoteIds.add(noteId);
+		} else {
+			singleReactions.push(arr[0]);
+		}
+	}
+
+	// (3) 単独リアクションを notifierId ごとに集約 (同じユーザーが複数ノート → reaction:groupedByUser 候補)
+	const reactionsByUser = new Map<string, FilterUnionByProperty<MiNotification, 'type', 'reaction'>[]>();
+	for (const n of singleReactions) {
+		if (n.notifierId == null) continue;
+		const arr = reactionsByUser.get(n.notifierId);
+		if (arr) arr.push(n);
+		else reactionsByUser.set(n.notifierId, [n]);
+	}
+	const groupedByUserNotifierIds = new Set<string>(); // groupedByUser に確定した notifierId
+	for (const [notifierId, arr] of reactionsByUser) {
+		if (arr.length >= 2) groupedByUserNotifierIds.add(notifierId);
+	}
+
+	// (4) 元の時系列順を保ったまま 1 パスで構築する。
+	//     各グループは「最初に出現した位置」に 1 つだけ置き、以降の同グループ要素はスキップする。
+	const emittedReactionNoteIds = new Set<string>();
+	const emittedByUserNotifierIds = new Set<string>();
+	const groupedNotifications: MiGroupedNotification[] = [];
+	const memberIds = new Map<MiGroupedNotification, string[]>();
+	const append = (group: MiGroupedNotification, ids: string[]) => { groupedNotifications.push(group); memberIds.set(group, ids); };
+
+	for (let i = 0; i < notifications.length; i++) {
+		const notification = notifications[i];
+
+		// --- リアクション: 全体集約の結果を使って 1 グループ = 1 エントリで出力 ---
+		if (notification.type === 'reaction' && notification.noteId != null) {
+			const noteId = notification.noteId;
+			// 同じノートへの複数人リアクション → reaction:grouped
+			if (groupedReactionNoteIds.has(noteId)) {
+				if (emittedReactionNoteIds.has(noteId)) continue; // 既に出力済みなのでスキップ (重複防止)
+				emittedReactionNoteIds.add(noteId);
+				const arr = reactionsByNote.get(noteId)!;
+				append({
+					type: 'reaction:grouped',
+					id: arr[arr.length - 1].id, // 取得順で末尾の通知IDをページ境界に使う
+					createdAt: arr[0].createdAt,
+					noteId,
+					reactions: arr.map(r => ({
+						userId: r.notifierId!,
+						reaction: r.reaction!,
+					})),
+				}, arr.map(item => item.id));
+				continue;
+			}
+			// 同じユーザーが複数ノートにリアクション → reaction:groupedByUser
+			if (notification.notifierId != null && groupedByUserNotifierIds.has(notification.notifierId)) {
+				const notifierId = notification.notifierId;
+				if (emittedByUserNotifierIds.has(notifierId)) continue; // 既に出力済みなのでスキップ
+				emittedByUserNotifierIds.add(notifierId);
+				const arr = reactionsByUser.get(notifierId)!;
+				append({
+					type: 'reaction:groupedByUser',
+					id: arr[arr.length - 1].id,
+					createdAt: arr[0].createdAt,
+					notifierId,
+					reactions: arr.map(r => ({
+						noteId: r.noteId!,
+						reaction: r.reaction!,
+						createdAt: r.createdAt,
+					})),
+				}, arr.map(item => item.id));
+				continue;
+			}
+			// どちらにも属さない完全な単発リアクションはそのまま
+			append(notification, [notification.id]);
+			continue;
+		}
+
+		// --- renote / note: Misskey標準の隣接比較を維持 ---
+		const prevGroupedNotification = groupedNotifications.at(-1);
+		if (prevGroupedNotification != null && i > 0) {
+			const prev = notifications[i - 1];
+			if (prev.type === 'renote' && notification.type === 'renote' && prev.targetNoteId === notification.targetNoteId) {
+				let target = prevGroupedNotification;
+				if (target.type !== 'renote:grouped') {
+					const previousIds = memberIds.get(target) ?? [prev.id];
+					memberIds.delete(target);
+					groupedNotifications[groupedNotifications.length - 1] = {
+						type: 'renote:grouped',
+						id: '',
+						createdAt: notification.createdAt,
+						noteId: prev.noteId!,
+						userIds: [prev.notifierId!],
+					};
+					target = groupedNotifications.at(-1)!;
+					memberIds.set(target, previousIds);
+				}
+				(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'renote:grouped'>).userIds.push(notification.notifierId!);
+				target.id = notification.id;
+				memberIds.get(target)!.push(notification.id);
+				continue;
+			}
+			if (prev.type === 'note' && notification.type === 'note') {
+				let target = prevGroupedNotification;
+				if (target.type !== 'note:grouped') {
+					const previousIds = memberIds.get(target) ?? [prev.id];
+					memberIds.delete(target);
+					groupedNotifications[groupedNotifications.length - 1] = {
+						type: 'note:grouped',
+						id: '',
+						createdAt: notification.createdAt,
+						noteIds: [notification.noteId],
+						notifierIds: [prev.notifierId!],
+					};
+					target = groupedNotifications.at(-1)!;
+					memberIds.set(target, previousIds);
+				}
+				if (!(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'note:grouped'>).notifierIds.includes(notification.notifierId)) {
+					(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'note:grouped'>).notifierIds.push(notification.notifierId!);
+				}
+				(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'note:grouped'>).noteIds.push(notification.noteId!);
+				target.id = notification.id;
+				memberIds.get(target)!.push(notification.id);
+				continue;
+			}
+		}
+
+		append(notification, [notification.id]);
+	}
+
+	return { groups: groupedNotifications, memberIds };
+}
+
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
 	constructor(
@@ -105,157 +259,19 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				return [];
 			}
 
-			// grouping
-			// 旗鯖fork: リアクション通知のグルーピングを「隣接比較」から「全体集約」方式に変更。
-			// 旧実装は prev (直前) のみと比較していたため、同じノートへのリアクションが時系列で
-			// 飛び石になると複数グループに分裂し、(1) 同じ投稿の通知が重複表示される、
-			// (2) 分裂で水増しされたグループが slice(limit) で切られてリアクションが欠落する、
-			// という不具合があった。リアクションは全体を走査して noteId / notifierId で集約することで
-			// 飛び石でも 1 グループにまとめ、重複と欠落を解消する。
-			// renote / note のグルーピングは Misskey 標準の隣接比較のまま (問題が無いため変更しない)。
-
-			// (1) リアクション通知を noteId ごとに集約 (同じノートへの複数ユーザー → reaction:grouped 候補)
-			const reactionsByNote = new Map<string, FilterUnionByProperty<MiNotification, 'type', 'reaction'>[]>();
-			for (const n of notifications) {
-				if (n.type !== 'reaction' || n.noteId == null) continue;
-				const arr = reactionsByNote.get(n.noteId);
-				if (arr) arr.push(n as any);
-				else reactionsByNote.set(n.noteId, [n as any]);
+			let pageNotifications = notifications;
+			let grouped = groupNotifications(pageNotifications);
+			// A page must cover a contiguous range of source notifications. Otherwise
+			// a reaction group can move the cursor past an omitted, still-unread row.
+			while (grouped.groups.length > ps.limit) {
+				const nextGroup = grouped.groups[ps.limit];
+				const nextId = grouped.memberIds.get(nextGroup)?.[0];
+				if (nextId == null) throw new Error('Missing notification group members');
+				const boundary = pageNotifications.findIndex(notification => notification.id === nextId);
+				pageNotifications = pageNotifications.slice(0, boundary);
+				grouped = groupNotifications(pageNotifications);
 			}
-
-			// (2) 「そのノートへのリアクションが自分だけ (1件)」のものは groupedByUser 候補に回す。
-			//     2件以上のノートは reaction:grouped として確定 (同じノートへの複数人リアクションを最優先)。
-			const groupedReactionNoteIds = new Set<string>(); // reaction:grouped に確定した noteId
-			const singleReactions: FilterUnionByProperty<MiNotification, 'type', 'reaction'>[] = []; // groupedByUser 候補
-			for (const [noteId, arr] of reactionsByNote) {
-				if (arr.length >= 2) {
-					groupedReactionNoteIds.add(noteId);
-				} else {
-					singleReactions.push(arr[0]);
-				}
-			}
-
-			// (3) 単独リアクションを notifierId ごとに集約 (同じユーザーが複数ノート → reaction:groupedByUser 候補)
-			const reactionsByUser = new Map<string, FilterUnionByProperty<MiNotification, 'type', 'reaction'>[]>();
-			for (const n of singleReactions) {
-				if (n.notifierId == null) continue;
-				const arr = reactionsByUser.get(n.notifierId);
-				if (arr) arr.push(n);
-				else reactionsByUser.set(n.notifierId, [n]);
-			}
-			const groupedByUserNotifierIds = new Set<string>(); // groupedByUser に確定した notifierId
-			for (const [notifierId, arr] of reactionsByUser) {
-				if (arr.length >= 2) groupedByUserNotifierIds.add(notifierId);
-			}
-
-			// (4) 元の時系列順を保ったまま 1 パスで構築する。
-			//     各グループは「最初に出現した位置」に 1 つだけ置き、以降の同グループ要素はスキップする。
-			const emittedReactionNoteIds = new Set<string>();
-			const emittedByUserNotifierIds = new Set<string>();
-			const groupedNotifications: MiGroupedNotification[] = [];
-			const memberIds = new Map<MiGroupedNotification, string[]>();
-			const append = (group: MiGroupedNotification, ids: string[]) => { groupedNotifications.push(group); memberIds.set(group, ids); };
-
-			for (let i = 0; i < notifications.length; i++) {
-				const notification = notifications[i];
-
-				// --- リアクション: 全体集約の結果を使って 1 グループ = 1 エントリで出力 ---
-				if (notification.type === 'reaction' && notification.noteId != null) {
-					const noteId = notification.noteId;
-					// 同じノートへの複数人リアクション → reaction:grouped
-					if (groupedReactionNoteIds.has(noteId)) {
-						if (emittedReactionNoteIds.has(noteId)) continue; // 既に出力済みなのでスキップ (重複防止)
-						emittedReactionNoteIds.add(noteId);
-						const arr = reactionsByNote.get(noteId)!;
-						append({
-							type: 'reaction:grouped',
-							id: arr[arr.length - 1].id, // 最新の通知IDを代表に
-							createdAt: arr[0].createdAt,
-							noteId,
-							reactions: arr.map(r => ({
-								userId: r.notifierId!,
-								reaction: r.reaction!,
-							})),
-						}, arr.map(item => item.id));
-						continue;
-					}
-					// 同じユーザーが複数ノートにリアクション → reaction:groupedByUser
-					if (notification.notifierId != null && groupedByUserNotifierIds.has(notification.notifierId)) {
-						const notifierId = notification.notifierId;
-						if (emittedByUserNotifierIds.has(notifierId)) continue; // 既に出力済みなのでスキップ
-						emittedByUserNotifierIds.add(notifierId);
-						const arr = reactionsByUser.get(notifierId)!;
-						append({
-							type: 'reaction:groupedByUser',
-							id: arr[arr.length - 1].id,
-							createdAt: arr[0].createdAt,
-							notifierId,
-							reactions: arr.map(r => ({
-								noteId: r.noteId!,
-								reaction: r.reaction!,
-								createdAt: r.createdAt,
-							})),
-						}, arr.map(item => item.id));
-						continue;
-					}
-					// どちらにも属さない完全な単発リアクションはそのまま
-					append(notification, [notification.id]);
-					continue;
-				}
-
-				// --- renote / note: Misskey標準の隣接比較を維持 ---
-				const prevGroupedNotification = groupedNotifications.at(-1);
-				if (prevGroupedNotification != null && i > 0) {
-					const prev = notifications[i - 1];
-					if (prev.type === 'renote' && notification.type === 'renote' && prev.targetNoteId === notification.targetNoteId) {
-						let target = prevGroupedNotification;
-						if (target.type !== 'renote:grouped') {
-							const previousIds = memberIds.get(target) ?? [prev.id];
-							memberIds.delete(target);
-							groupedNotifications[groupedNotifications.length - 1] = {
-								type: 'renote:grouped',
-								id: '',
-								createdAt: notification.createdAt,
-								noteId: prev.noteId!,
-								userIds: [prev.notifierId!],
-							};
-							target = groupedNotifications.at(-1)!;
-							memberIds.set(target, previousIds);
-						}
-						(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'renote:grouped'>).userIds.push(notification.notifierId!);
-						target.id = notification.id;
-						memberIds.get(target)!.push(notification.id);
-						continue;
-					}
-					if (prev.type === 'note' && notification.type === 'note') {
-						let target = prevGroupedNotification;
-						if (target.type !== 'note:grouped') {
-							const previousIds = memberIds.get(target) ?? [prev.id];
-							memberIds.delete(target);
-							groupedNotifications[groupedNotifications.length - 1] = {
-								type: 'note:grouped',
-								id: '',
-								createdAt: notification.createdAt,
-								noteIds: [notification.noteId],
-								notifierIds: [prev.notifierId!],
-							};
-							target = groupedNotifications.at(-1)!;
-							memberIds.set(target, previousIds);
-						}
-						if (!(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'note:grouped'>).notifierIds.includes(notification.notifierId)) {
-							(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'note:grouped'>).notifierIds.push(notification.notifierId!);
-						}
-						(target as FilterUnionByProperty<MiGroupedNotification, 'type', 'note:grouped'>).noteIds.push(notification.noteId!);
-						target.id = notification.id;
-						memberIds.get(target)!.push(notification.id);
-						continue;
-					}
-				}
-
-				append(notification, [notification.id]);
-			}
-
-			const limitedGroupedNotifications = groupedNotifications.slice(0, ps.limit);
+			const { groups: limitedGroupedNotifications, memberIds } = grouped;
 
 			const packed = await this.notificationEntityService.packGroupedMany(limitedGroupedNotifications, me.id);
 			const selected = new Map(limitedGroupedNotifications.map(group => [group.id, memberIds.get(group) ?? [group.id]]));

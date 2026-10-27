@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { computed, createApp, defineComponent, h, nextTick, provide, ref } from 'vue';
+import { computed, createApp as createVueApp, defineComponent, h, nextTick, provide, ref } from 'vue';
 import * as Vue from 'vue';
 import { compileTemplate, parse } from '@vue/compiler-sfc';
 import type { App } from 'vue';
@@ -13,6 +13,7 @@ import { mainRouter } from '@/router.js';
 import { popups } from '@/os.js';
 import MkHataskeyNotificationToasts from '@/components/MkHataskeyNotificationToasts.vue';
 import MkToast from '@/components/MkToast.vue';
+import MkTimelineNewNotesContent from '@/components/MkTimelineNewNotesContent.vue';
 import { createHataskeyTimelineNewNotes, useRetainedHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
 import { i18n } from '@/i18n.js';
 import simpleSource from '@/ui/simple.vue?raw';
@@ -39,6 +40,16 @@ let app: App | undefined;
 let frameCallback: FrameRequestCallback | undefined;
 const note = (id: string): entities.Notification => ({ id, type: 'test', createdAt: '2026-09-07T00:00:00Z' });
 
+// Every shell/page/popup fixture needs the globals resolved by the real toast,
+// including components in inactive template branches.
+function createApp(...args: Parameters<typeof createVueApp>) {
+	const application = createVueApp(...args);
+	application.component('Mfm', { props: ['text'], template: '<span data-test-mfm>{{ text }}</span>' });
+	application.component('MkAvatar', { props: ['user'], template: '<span data-test-avatar/>' });
+	application.component('MkCustomEmoji', { props: ['name', 'url'], template: '<img :src="url" :alt="`:${name}:`" data-test-emoji/>' });
+	return application;
+}
+
 it('limits forced toast motion to the surface that explicitly opts in', () => {
 	const regular = { active: ref(true), target: ref<HTMLElement | null>(null), outline: ref<HTMLElement | null>(null), animations: ref(true) };
 	const goes = { ...regular, forceAnimations: ref(true) };
@@ -59,6 +70,9 @@ beforeEach(() => {
 	}));
 	vi.stubGlobal('cancelAnimationFrame', vi.fn());
 	vi.spyOn(window.document, 'hidden', 'get').mockReturnValue(false);
+	// happy-dom supplies no layout. Give visible hosts/cards explicit geometry so
+	// the real ring can satisfy its readiness check and expose countdown progress.
+	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 360, 64));
 	vi.stubGlobal('ResizeObserver', class {
 		observe() { /* Geometry is tested separately; happy-dom has no layout. */ }
 		disconnect() { /* No browser observer is allocated. */ }
@@ -114,6 +128,7 @@ function mount(mobile = false, navbar = true, withNewNotes = false, preloaded = 
 	const handler = simpleSource.match(/function showNavbarNewNotes\(\) \{[^}]+\}/)?.[0];
 	if (!handler) throw new Error('Missing native navbar new-notes handler');
 	const NewNotesRow = defineComponent({
+		components: { MkTimelineNewNotesContent },
 		setup: () => {
 			const newNotesMotionEnabled = computed(() => prefer.r.animation.value);
 			const navbarNewNotesContent = useRetainedHataskeyTimelineNewNotes(newNotes.notice, newNotesMotionEnabled);
@@ -136,9 +151,6 @@ function mount(mobile = false, navbar = true, withNewNotes = false, preloaded = 
 		withNewNotes ? h(Vue.Teleport, { to: bar }, h(NewNotesRow)) : null,
 	] }));
 	app.config.globalProperties.$style = { newNotesViewport: 'new-notes-viewport', newNotesContent: 'new-notes-content', newNotesButton: 'new-notes-button' };
-	app.component('Mfm', { props: ['text'], template: '<span data-test-mfm>{{ text }}</span>' });
-	app.component('MkAvatar', { props: ['user'], template: '<span data-test-avatar/>' });
-	app.component('MkCustomEmoji', { props: ['name', 'url'], template: '<img :src="url" :alt="`:${name}:`" data-test-emoji/>' });
 	app.mount(root);
 	return { context, bar, target, visible, newNotes, updateNewNotes, showNewNotes };
 }
@@ -278,8 +290,6 @@ describe('Hataskey notification host', () => {
 				return () => h(MkToast, { message, welcome: true, onClosed: closed });
 			},
 		});
-		popupApp.component('Mfm', { props: ['text'], template: '<span>{{ text }}</span>' });
-		popupApp.component('MkAvatar', { template: '<span/>' });
 		try {
 			popupApp.mount(root);
 			await nextTick();
@@ -303,8 +313,6 @@ describe('Hataskey notification host', () => {
 		const root = window.document.createElement('div');
 		window.document.body.append(root);
 		app = createApp({ render: () => h(MkToast, { message: '表示メッセージ', welcome }) });
-		app.component('Mfm', { props: ['text'], template: '<span>{{ text }}</span>' });
-		app.component('MkAvatar', { template: '<span/>' });
 		app.mount(root);
 		await nextTick();
 		expect(root.textContent).toContain('表示メッセージ');
@@ -441,8 +449,6 @@ describe('Hataskey notification host', () => {
 				return () => h(MkToast, { message: 'コピーしました', icon: 'copied' });
 			},
 		});
-		app.component('Mfm', { props: ['text'], template: '<span>{{ text }}</span>' });
-		app.component('MkAvatar', { template: '<span/>' });
 		app.mount(root);
 		await nextTick();
 		expect(root.textContent).toContain('コピーしました');
@@ -509,8 +515,6 @@ describe('Hataskey notification host', () => {
 		const root = window.document.createElement('div');
 		window.document.body.append(root);
 		const pageApp = createApp({ render: () => h(MkHataskeyNotificationToasts, { context: page, receiveExternal: receiveExternal.value }) });
-		pageApp.component('Mfm', { props: ['text'], template: '<span>{{ text }}</span>' });
-		pageApp.component('MkAvatar', { props: ['user'], template: '<span/>' });
 		try {
 			pageApp.mount(root);
 			window.dispatchEvent(new CustomEvent('external-notification', { detail: note('page-owned') }));

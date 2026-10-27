@@ -8,7 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<template #icon><i class="ti ti-bell"></i></template>
 	<template #header>{{ i18n.ts.notifications }}</template>
 	<template #func="{ buttonStyleClass }">
-		<button v-tooltip="i18n.ts.markAllAsRead" class="_button" :class="buttonStyleClass" @click="os.apiWithDialog('notifications/mark-all-as-read', {})"><i class="ti ti-check"></i></button>
+		<button v-tooltip="i18n.ts.markAllAsRead" class="_button" :class="buttonStyleClass" @click="readAllNotifications"><i class="ti ti-check"></i></button>
 		<button v-tooltip="i18n.ts.settings" class="_button" :class="buttonStyleClass" @click="configureNotification()"><i class="ti ti-settings"></i></button>
 	</template>
 
@@ -31,6 +31,8 @@ import { i18n } from '@/i18n.js';
 import { hasConfiguredNotificationFilter, migrateNotificationFilterSnapshot, resolveNotificationFilter, resolveNotificationFilterDetails, serializeNotificationFilterDetails } from '@/utility/notification-filter.js';
 import { deepClone } from '@/utility/clone.js';
 import { deepEqual } from '@/utility/deep-equal.js';
+import { $i } from '@/i.js';
+import { refreshNotificationUnreadState } from '@/utility/notification-unread-sync.js';
 
 const name = 'notifications';
 
@@ -96,6 +98,16 @@ onMounted(() => {
 	widgetProps.notificationFilterKnownTypes = migrated.knownTypes;
 	save();
 });
+
+async function readAllNotifications() {
+	const ownerId = $i?.id;
+	try {
+		await os.apiWithDialog('notifications/mark-all-as-read', {});
+		await refreshNotificationUnreadState(ownerId);
+	} catch {
+		// apiWithDialog reports the failed read request.
+	}
+}
 
 const configureNotification = async () => {
 	const initialRawDetails = deepClone(widgetProps.notificationFilterDetails);

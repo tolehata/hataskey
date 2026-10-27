@@ -77,6 +77,7 @@ import MkButton from '@/components/MkButton.vue';
 import * as os from '@/os.js';
 import { ensureSignin } from '@/i.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { refreshNotificationUnreadState } from '@/utility/notification-unread-sync.js';
 import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
 import MkPushNotificationAllowButton from '@/components/MkPushNotificationAllowButton.vue';
@@ -99,7 +100,13 @@ const sendReadMessage = computed(() => pushRegistrationInServer.value?.sendReadM
 const userLists = await misskeyApi('users/lists/list');
 
 async function readAllNotifications() {
-	await os.apiWithDialog('notifications/mark-all-as-read', {});
+	const ownerId = $i.id;
+	try {
+		await os.apiWithDialog('notifications/mark-all-as-read', {});
+		await refreshNotificationUnreadState(ownerId);
+	} catch {
+		// apiWithDialog reports the failed read request.
+	}
 }
 
 async function updateReceiveConfig(type: typeof notificationTypes[number], value: NotificationConfig) {

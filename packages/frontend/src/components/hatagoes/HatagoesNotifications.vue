@@ -105,6 +105,6 @@ onUnmounted(() => { request++; pageMotion?.cancel(); window.clearInterval(timer)
 .hgn-timeline :deep([data-notification-brand]) { color: var(--MI_THEME-fg); }
 .hgn-timeline :deep([data-notification-brand-label]) { color: var(--MI_THEME-fg); }
 .hgn-timeline :deep([data-notification-body]) { opacity: 1; }
-.hgn-timeline :deep([data-notification-body-link]) { color: var(--MI_THEME-link); text-decoration: underline; text-underline-offset: 2px; }
+.hgn-timeline :deep([data-notification-body-link]) { color: var(--MI_THEME-link); text-decoration: none; }
 .hgn-timeline :deep([data-notification-date-separator]) { width: fit-content; max-width: calc(100% - 20px); margin: 12px auto; padding: 6px 14px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; background: var(--fill, color-mix(in srgb, var(--MI_THEME-accent) 6%, var(--MI_THEME-panel))); color: var(--fg-2, var(--MI_THEME-fg)); font-size: 12px; font-weight: 700; }
 </style>

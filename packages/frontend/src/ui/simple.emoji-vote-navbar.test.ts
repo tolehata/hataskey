@@ -188,7 +188,9 @@ function fixture(options: { host?: boolean; tab?: string; deck?: boolean; page?:
 				'navbarPullPillEl', 'navbarPullFrameStyle',
 			], bindings, navbarWidthStatements) as typeof state;
 			return {
-				...bindings, ...state, hostAvailable, showTopBar, footerIsDark: false,
+				...bindings, ...state, hostAvailable, showTopBar, footerIsDark: false, navbarSearchOpen: false,
+				navbarNotificationShowing: Vue.computed(() => notificationToasts.items.value.length > 0 && notificationToasts.integrated.value),
+				navbarNotificationShrinking: false, navbarNotificationSizing: false, navbarNotificationKind: undefined, navbarNotificationWidthStyle: {},
 				mobileToastVisible: false, prefer: { r: { animation: Vue.ref(true) } },
 				withRenotes: true, withSensitive: true, onlyFiles: false, timelineGlassBg: false, ltlEmojiVoteEffects: null,
 			};
