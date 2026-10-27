@@ -85,13 +85,15 @@ export default abstract class Channel {
 		this.connection = connection;
 	}
 
-	protected sendNote(note: Packed<'Note'>): Promise<void> {
+	protected sendNote(note: Packed<'Note'>, canSend?: () => Awaitable<boolean>): Promise<void> {
 		// Visibility checks may query the database. Keep their completion order from
 		// changing the publication order seen by the timeline.
 		return this.noteQueue(async () => {
 			if (!this.connection.isChannelConnected(this)) return;
 			const filtered = await this.connection.noteStreamingHidingService.filter(note, this.user?.id ?? null);
-			if (filtered != null && this.connection.isChannelConnected(this)) this.send('note', filtered);
+			if (filtered == null) return;
+			if (canSend && !await canSend()) return;
+			if (this.connection.isChannelConnected(this)) this.send('note', filtered);
 		});
 	}
 

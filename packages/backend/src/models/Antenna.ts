@@ -93,6 +93,11 @@ export class MiAntenna {
 	@Column('boolean', {
 		default: false,
 	})
+	public excludeOwnNotes: boolean;
+
+	@Column('boolean', {
+		default: false,
+	})
 	public withReplies: boolean;
 
 	@Column('boolean')

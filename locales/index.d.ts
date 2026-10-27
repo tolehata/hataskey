@@ -2336,6 +2336,10 @@ export interface Locale extends ILocale {
      */
     "antennaExcludeBots": string;
     /**
+     * 自分のノートを除外
+     */
+    "antennaExcludeOwnNotes": string;
+    /**
      * スペースで区切るとAND指定になり、改行で区切るとOR指定になります
      */
     "antennaKeywordsDescription": string;

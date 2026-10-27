@@ -114,6 +114,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				.leftJoinAndSelect('reply.user', 'replyUser')
 				.leftJoinAndSelect('renote.user', 'renoteUser');
 
+			// Also hide own notes collected before this option was enabled.
+			if (antenna.excludeOwnNotes) query.andWhere('note.userId != :antennaOwnerId', { antennaOwnerId: antenna.userId });
+
 			// NOTE: センシティブ除外の設定はこのエンドポイントでは無視する。
 			// https://github.com/misskey-dev/misskey/pull/15346#discussion_r1929950255
 

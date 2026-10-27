@@ -159,6 +159,7 @@ describe('アンテナ', () => {
 			withFile: false,
 			withReplies: false,
 			excludeBots: false,
+			excludeOwnNotes: false,
 			localOnly: false,
 			notify: false,
 		};

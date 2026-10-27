@@ -85,6 +85,7 @@ export class ExportAntennasProcessorService {
 					caseSensitive: antenna.caseSensitive,
 					localOnly: antenna.localOnly,
 					excludeBots: antenna.excludeBots,
+					excludeOwnNotes: antenna.excludeOwnNotes,
 					withReplies: antenna.withReplies,
 					withFile: antenna.withFile,
 					excludeNotesInSensitiveChannel: antenna.excludeNotesInSensitiveChannel,

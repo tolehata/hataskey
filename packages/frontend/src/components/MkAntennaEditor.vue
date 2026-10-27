@@ -24,6 +24,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template #caption>{{ i18n.ts.antennaUsersDescription }} <button class="_textButton" @click="addUser">{{ i18n.ts.addUser }}</button></template>
 			</MkTextarea>
 			<MkSwitch v-model="excludeBots">{{ i18n.ts.antennaExcludeBots }}</MkSwitch>
+			<MkSwitch v-model="excludeOwnNotes">{{ i18n.ts.antennaExcludeOwnNotes }}</MkSwitch>
 			<MkSwitch v-model="withReplies">{{ i18n.ts.withReplies }}</MkSwitch>
 			<MkTextarea v-model="keywords">
 				<template #label>{{ i18n.ts.antennaKeywords }}</template>
@@ -82,6 +83,7 @@ const initialAntenna = deepMerge<PartialAllowedAntenna>(props.antenna ?? {}, {
 	keywords: [],
 	excludeKeywords: [],
 	excludeBots: false,
+	excludeOwnNotes: false,
 	withReplies: false,
 	caseSensitive: false,
 	localOnly: false,
@@ -147,6 +149,7 @@ const excludeKeywords = ref<string>(initialAntenna.excludeKeywords.map(x => x.jo
 const caseSensitive = ref<boolean>(initialAntenna.caseSensitive);
 const localOnly = ref<boolean>(initialAntenna.localOnly);
 const excludeBots = ref<boolean>(initialAntenna.excludeBots);
+const excludeOwnNotes = ref<boolean>(initialAntenna.excludeOwnNotes);
 const withReplies = ref<boolean>(initialAntenna.withReplies);
 const withFile = ref<boolean>(initialAntenna.withFile);
 const excludeNotesInSensitiveChannel = ref<boolean>(initialAntenna.excludeNotesInSensitiveChannel);
@@ -177,6 +180,7 @@ async function saveAntenna() {
 		userListId: userListId.value,
 		userGroupId: userGroupId.value,
 		excludeBots: excludeBots.value,
+		excludeOwnNotes: excludeOwnNotes.value,
 		withReplies: withReplies.value,
 		withFile: withFile.value,
 		excludeNotesInSensitiveChannel: excludeNotesInSensitiveChannel.value,

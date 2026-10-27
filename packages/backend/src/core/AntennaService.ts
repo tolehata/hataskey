@@ -103,6 +103,8 @@ export class AntennaService implements OnApplicationShutdown {
 
 	@bindThis
 	public async checkHitAntenna(antenna: MiAntenna, note: (MiNote | Packed<'Note'>), noteUser: { id: MiUser['id']; username: string; host: string | null; isBot: boolean; }): Promise<boolean> {
+		if (antenna.excludeOwnNotes && note.userId === antenna.userId) return false;
+
 		if (antenna.excludeNotesInSensitiveChannel && note.channel?.isSensitive) return false;
 
 		if (antenna.excludeBots && noteUser.isBot) return false;

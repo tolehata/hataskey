@@ -59,9 +59,12 @@ class AntennaChannel extends Channel {
 	@bindThis
 	private async onEvent(data: GlobalEvents['antenna']['payload']) {
 		if (data.type === 'note') {
+			const user = this.user;
+			if (!user) return;
+
 			let note: Packed<'Note'>;
 			try {
-				note = await this.noteEntityService.pack(data.body.id, this.user, { detail: true });
+				note = await this.noteEntityService.pack(data.body.id, user, { detail: true });
 			} catch (error) {
 				if (error instanceof PrivateChannelNoteVisibilityError || error instanceof EntityNotFoundError) return;
 				throw error;
@@ -69,7 +72,13 @@ class AntennaChannel extends Channel {
 
 			if (this.isNoteMutedOrBlocked(note)) return;
 
-			await this.sendNote(note);
+			await this.sendNote(note, async () => {
+				// Recheck after packing, queueing, and visibility checks have completed.
+				// Other authors' replies/renotes/quotes need no lookup.
+				if (note.userId !== user.id) return true;
+				const antenna = await this.antennasRepository.findOneBy({ id: this.antennaId, userId: user.id });
+				return antenna != null && !antenna.excludeOwnNotes;
+			});
 		} else {
 			this.send(data.type, data.body);
 		}

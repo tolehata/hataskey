@@ -7683,6 +7683,8 @@ export type components = {
             /** @default false */
             excludeBots: boolean;
             /** @default false */
+            excludeOwnNotes: boolean;
+            /** @default false */
             withReplies: boolean;
             withFile: boolean;
             isActive: boolean;
@@ -18985,6 +18987,8 @@ export interface operations {
                     caseSensitive: boolean;
                     localOnly?: boolean;
                     excludeBots?: boolean;
+                    /** @default false */
+                    excludeOwnNotes?: boolean;
                     withReplies: boolean;
                     withFile: boolean;
                     excludeNotesInSensitiveChannel?: boolean;
@@ -19393,6 +19397,7 @@ export interface operations {
                     caseSensitive?: boolean;
                     localOnly?: boolean;
                     excludeBots?: boolean;
+                    excludeOwnNotes?: boolean;
                     withReplies?: boolean;
                     withFile?: boolean;
                     excludeNotesInSensitiveChannel?: boolean;
