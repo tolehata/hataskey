@@ -497,3 +497,35 @@ describe('コミュニティのURI', () => {
 		api.dispose();
 	});
 });
+
+describe('他のユーザーのentity', () => {
+	function unsigned(author = ccid, home = domain): SignedDocument {
+		const text = JSON.stringify({ kind: 'entity', key: rootURI, value: { domain: home }, author, schema: 'https://schema.concrnt.net/entity.json', createdAt: '2025-06-02T17:52:00.976672Z' });
+		return { document: text, proof: { type: 'none' } } as unknown as SignedDocument;
+	}
+
+	test('v1から移行した署名なしのentityでも所属サーバーを引ける', async () => {
+		fixture({ entity: unsigned() });
+		const api = createAnonymousConcrntApi(domain);
+		await expect(api.getEntity(ccid)).resolves.toMatchObject({ kind: 'entity', author: ccid, value: { domain } });
+		await expect(api.getDocument(messageURI)).resolves.toMatchObject({ key: messageURI, author: ccid });
+		api.dispose();
+	});
+
+	test('署名なしでも作者が違えば拒否し、付いている署名は検証する', async () => {
+		const forged = entity();
+		forged.proof.signature = '0'.repeat(130);
+		for (const sd of [unsigned('con13yvjv8q96evepw2derwzgcz7yrmp984ldq0exp'), forged]) {
+			fixture({ entity: sd });
+			const api = createAnonymousConcrntApi(domain);
+			await expect(api.getEntity(ccid)).rejects.toMatchObject({ code: 'auth' });
+			api.dispose();
+		}
+	});
+
+	test('自分の連携確認では署名なしのentityを受け入れない', async () => {
+		const fetcher = fixture({ entity: unsigned() });
+		await expect(verifyConcrntCredential(credential)).rejects.toMatchObject({ code: 'auth', phase: 'identity' });
+		expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/api/v2/register'))).toBe(false);
+	});
+});

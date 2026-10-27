@@ -280,6 +280,20 @@ function directDocument(sd: SignedDocument, ccid: string): Document<unknown> {
 	return doc;
 }
 
+/**
+ * Another user's entity, used only to locate their server. Accounts migrated from Concrnt v1 are
+ * served by the home server with `proof: { type: 'none' }`; the official client accepts them without
+ * a signature. A present signature must still verify. Our own entity keeps using directDocument.
+ */
+function entityDocument(sd: SignedDocument, ccid: string): Document<unknown> {
+	if (object(sd.proof) && sd.proof.type === 'none') {
+		const doc = documentOf(sd);
+		if (doc.author !== ccid) fail('auth');
+		return doc;
+	}
+	return directDocument(sd, ccid);
+}
+
 function resourceURI(uri: string): ReturnType<typeof parseCCURI> {
 	try {
 		if (typeof uri !== 'string' || uri.length > 4096 || !/^(?:cckv|ccfs):\/\//u.test(uri) || /[\s\\?#]/u.test(uri)) fail('invalid-input');
@@ -484,7 +498,7 @@ export class ConcrntApi extends Api {
 		const uri = `cckv://${owner}${normalizedHint ? `@${normalizedHint}` : ''}`;
 		const server = await this.getServer(this.home);
 		const sd = await this.fetchWithCache<SignedDocument>(this.home, renderUriTemplate(server, 'net.concrnt.core.resolve', { uri, owner }), uri, { ...opts, auth: 'no-auth' });
-		const doc = directDocument(sd, owner);
+		const doc = entityDocument(sd, owner);
 		if (doc.kind !== 'entity' || doc.schema !== ENTITY_SCHEMA || !object(doc.value) || typeof doc.value.domain !== 'string' || !matchesDocumentKey(sd, `cckv://${owner}`)) fail('capability');
 		normalizeConcrntDomain(doc.value.domain);
 		return doc as Document<Entity>;
