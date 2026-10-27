@@ -4,7 +4,7 @@
 
 ## 概要
 
-- **ベースバージョン**: Misskey 2026.10.0（CherryPick ベース）
+- **ベースバージョン**: Misskey 2026.10.1（CherryPick ベース）
 - **最新バージョン**: [hata-12.9](./HATA-CHANGELOG.md#hata-129)
 - **チェンジログ**: [HATA-CHANGELOG.md](./HATA-CHANGELOG.md)
 
