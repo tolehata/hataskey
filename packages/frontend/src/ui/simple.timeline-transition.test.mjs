@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
+import { setTimeout, clearTimeout } from 'node:timers';
 import { test } from 'vitest';
 import * as Vue from 'vue';
 import { parse, compileTemplate } from '@vue/compiler-sfc';
@@ -6,7 +7,11 @@ import simpleSource from './simple.vue?raw';
 
 const assert = process.getBuiltinModule('assert/strict');
 
-test('normal UI keeps its composer and timeline after repeated tab transitions and page/deck hiding', async () => {
+test.each([
+	{ animation: true, reducedMotion: false },
+	{ animation: false, reducedMotion: false },
+	{ animation: true, reducedMotion: true },
+])('normal UI preserves its timeline and draft with animation=$animation and reducedMotion=$reducedMotion', async ({ animation, reducedMotion }) => {
 	const descriptor = parse(simpleSource).descriptor;
 	let transition;
 	let wrapper;
@@ -30,6 +35,13 @@ test('normal UI keeps its composer and timeline after repeated tab transitions a
 	});
 	assert.deepEqual(compiled.errors, []);
 	assert.doesNotMatch(compiled.code, /persisted:/);
+	const motionSource = descriptor.scriptSetup.content.match(/const newNotesMotionEnabled = (computed\([^\n]+\));/);
+	assert.ok(motionSource, 'use the production app / OS motion preference expression');
+	const animationPreference = Vue.ref(animation);
+	const reducedMotionPreference = Vue.ref(reducedMotion);
+	const motionEnabled = new Function('computed', 'prefer', 'newNotesReducedMotion', `return ${motionSource[1]}`)(
+		Vue.computed, { r: { animation: animationPreference } }, reducedMotionPreference,
+	);
 
 	let mounted = 0;
 	const errors = [];
@@ -45,11 +57,11 @@ test('normal UI keeps its composer and timeline after repeated tab transitions a
 	};
 	const state = Vue.reactive({
 		tab: 'local', withRenotes: true, withSensitive: true, onlyFiles: false,
-		newNotesMotionEnabled: true, isPageView: false, deckActive: false,
+		newNotesMotionEnabled: motionEnabled, isPageView: false, deckActive: false,
 		showFixedPostForm: true, isExternalTab: false, isHatadyTab: false, timelineSlideDirection: 1,
 		timelineGlassBg: false, punchBusy: false, normalLtlVoteActive: false,
 		nativeNavbarVisible: false, ltlEmojiVoteEffects: null, ltlEmojiVoteNavbarTarget: null,
-		externalHost: null, externalToken: null, isConcrntTab: false,
+		externalHost: null, externalToken: null, isConcrntTab: false, concrntMounted: false,
 		$style: {
 			timelineEnterActive: 'enter', timelineLeaveActive: 'leave', timelineEnterFrom: 'from',
 			timelineEnterTo: 'to', timelineLeaveFrom: 'to', timelineLeaveTo: 'from', timelineContainer: 'tl', timelineContainerConcrntHidden: 'ctl-hidden',
@@ -67,6 +79,15 @@ test('normal UI keeps its composer and timeline after repeated tab transitions a
 	document.body.append(host);
 	app.mount(host);
 	try {
+		// Check each ordinary switch as well as a burst; a missing timeline must not
+		// be masked by a later switch repairing the DOM.
+		for (const [tab, src] of [['following', 'home'], ['social', 'social'], ['local', 'local']]) {
+			state.tab = tab;
+			await Vue.nextTick();
+			await new Promise(resolve => setTimeout(resolve, 100));
+			assert.deepEqual(errors, []);
+			assert.equal(host.querySelector('[data-mounted-timeline]')?.getAttribute('data-src'), src);
+		}
 		for (let i = 0; i < 12; i++) {
 			state.tab = ['local', 'following', 'social', 'mixed'][i % 4];
 			await Vue.nextTick();
@@ -115,9 +136,30 @@ test('normal UI keeps its composer and timeline after repeated tab transitions a
 		assert.ok(!host.querySelector('[data-hata-collapse-items]')?.classList.contains('ctl-hidden'), 'leaving CTL shows it again');
 		assert.equal(host.querySelector('textarea'), textarea);
 		assert.equal(mounted, mountedBeforeHide, 'switching to and from CTL does not remount the timeline');
+		// Motion preferences can change while the UI is mounted (OS setting or
+		// another tab syncing preferences). Filters replace the same keyed root.
+		for (const enabled of [true, false, true, false]) {
+			animationPreference.value = enabled;
+			reducedMotionPreference.value = false;
+			state.tab = enabled ? 'following' : 'social';
+			state.onlyFiles = !state.onlyFiles;
+			await Vue.nextTick();
+			await new Promise(resolve => setTimeout(resolve, 100));
+			assert.deepEqual(errors, []);
+			assert.equal(host.querySelector('[data-mounted-timeline]')?.getAttribute('data-src'), enabled ? 'home' : 'social');
+			assert.equal(host.querySelector('textarea'), textarea);
+			assert.equal(textarea.value, 'unfinished draft');
+		}
 	} finally {
-		app.unmount();
-		for (const timer of timers) clearTimeout(timer);
-		host.remove();
+		try {
+			app.unmount();
+		} catch (error) {
+			// A broken transition can also break teardown; retain the original
+			// rendering assertion instead of masking it with that second error.
+			assert.ok(errors.length > 0, `unexpected teardown error: ${error}`);
+		} finally {
+			for (const timer of timers) clearTimeout(timer);
+			host.remove();
+		}
 	}
 });
