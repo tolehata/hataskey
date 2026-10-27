@@ -203,7 +203,7 @@ const FALLBACKS = [
 ] as const;
 
 const KNOWN_SETTINGS_ROUTES = new Set([
-	'/settings', '/settings/profile', '/settings/avatar-decoration', '/settings/privacy', '/settings/emoji-palette', '/settings/drive', '/settings/drive/cleaner',
+	'/settings', '/settings/profile', '/settings/note-charm', '/settings/avatar-decoration', '/settings/privacy', '/settings/emoji-palette', '/settings/drive', '/settings/drive/cleaner',
 	'/settings/notifications', '/settings/email', '/settings/security', '/settings/preferences', '/settings/theme/install', '/settings/theme/manage',
 	'/settings/theme', '/settings/navbar', '/settings/timeline', '/settings/statusbar', '/settings/sounds', '/settings/plugin/install', '/settings/plugin',
 	'/settings/account-data', '/settings/mute-block', '/settings/connect', '/settings/apps', '/settings/webhook/edit/:webhookId', '/settings/webhook/new',
@@ -405,7 +405,8 @@ function categoryFor(
 	// `/settings/hata-custom` is a launch surface, not a product category.  Its
 	// individual source and activation are the only deterministic evidence for
 	// the redesigned IA, so resolve those before route/term heuristics.
-	if (sourceFile === 'src/components/HatasabaUi2SettingsBody.vue'
+	if (route === '/settings/note-charm') id = 'account';
+	else if (sourceFile === 'src/components/HatasabaUi2SettingsBody.vue'
 		|| sourceFile === 'src/components/HatasabaUi2ImmediateSettings.vue'
 		|| /hatasaba-ui2|hatasaba-ui-/u.test(semantic)
 		|| (context.activation?.kind === 'popup' && context.activation.popup === 'hatasaba-ui2')) id = 'hataskey-ui';

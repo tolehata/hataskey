@@ -15,6 +15,7 @@ const { api, copy } = vi.hoisted(() => ({
 		externalTlConsented: '外部TL同意済み', externalTlNotConsented: '外部TL未同意',
 		customFontConsented: 'フォント同意済み', customFontNotConsented: 'フォント未同意',
 		mascotConsented: 'マスコット同意済み', mascotNotConsented: 'マスコット未同意',
+		noteCharmConsented: 'チャーム同意済み', noteCharmNotConsented: 'チャーム未同意', noteCharmAgreedAt: 'チャーム同意日時',
 		drawingConsented: 'Hatadint同意済み', drawingNotConsented: 'Hatadint未同意',
 		drawingFirstAgreedAt: '初回同意日時', drawingVersion: '同意した版',
 		matchingUsers: '該当ユーザー数', noUsers: '該当するユーザーがいません', loadMore: 'もっと読み込む', refresh: '更新',
@@ -42,6 +43,7 @@ function user(id: string, agreed = true) {
 		hataConsentExternalTl: false, hataConsentExternalTlDate: null,
 		hataConsentCustomFont: false, hataConsentCustomFontDate: null,
 		hataConsentMascot: false, hataConsentMascotDate: null,
+		hataConsentNoteCharm: agreed, hataConsentNoteCharmDate: agreed ? '2026-10-27T01:23:00.000Z' : null,
 		hataConsentDrawing: agreed, hataConsentDrawingDate: agreed ? consentDate : null, hataConsentDrawingVersion: agreed ? '2026-09-09' : null,
 	};
 }
@@ -91,12 +93,35 @@ describe('Hatadintの管理者向け同意一覧', () => {
 		expect(container.textContent).toContain('Hatadint未同意');
 		expect(container.textContent).toContain('初回同意日時');
 		expect(container.textContent).toContain('同意した版: 2026-09-09');
-		expect(container.querySelector('time')?.dateTime).toBe(consentDate);
-		expect(container.querySelector('time')?.textContent).toMatch(/\d{1,2}:\d{2}/);
+		expect(container.querySelector<HTMLTimeElement>(`time[datetime="${consentDate}"]`)?.dateTime).toBe(consentDate);
+		expect(container.querySelector(`time[datetime="${consentDate}"]`)?.textContent).toMatch(/\d{1,2}:\d{2}/);
 		expect([...container.querySelectorAll('button')].map(item => item.textContent)).toEqual([
-			copy.all, copy.externalTlConsented, copy.customFontConsented, copy.mascotConsented, copy.drawingConsented, copy.drawingNotConsented,
+			copy.all, copy.externalTlConsented, copy.customFontConsented, copy.mascotConsented, copy.noteCharmConsented, copy.noteCharmNotConsented, copy.drawingConsented, copy.drawingNotConsented,
 		]);
 		expect(api).toHaveBeenCalledExactlyOnceWith('admin/hata/consent-list', { limit: 50, offset: 0, filter: 'all', username: null });
+	});
+
+	test('チャーム同意状態と日時を表示し、同意を代行変更する操作を持たない', async () => {
+		const { container } = await mount();
+		const rows = [...container.querySelectorAll('strong')].map(item => item.parentElement!.parentElement!);
+		expect(rows[0].textContent).toContain(copy.noteCharmConsented);
+		expect(rows[0].querySelector('time')?.dateTime).toBe('2026-10-27T01:23:00.000Z');
+		expect(rows[0].querySelector('time')?.textContent).toContain(copy.noteCharmAgreedAt);
+		expect(rows[1].textContent).toContain(copy.noteCharmNotConsented);
+		expect(rows.every(row => row.querySelectorAll('button, input').length === 0)).toBe(true);
+		expect(api.mock.calls.every(([endpoint]) => endpoint === 'admin/hata/consent-list')).toBe(true);
+	});
+
+	test.each(['noteCharm', 'noteCharmPending'] as const)('%sでチャームの同意を絞り込み、件数と追加ページを同じ条件で取得する', async filter => {
+		const { container } = await mount();
+		api.mockResolvedValueOnce({ users: [user('first', filter === 'noteCharm')], total: 2 });
+		const target = button(container, filter === 'noteCharm' ? copy.noteCharmConsented : copy.noteCharmNotConsented); target.click(); await settle();
+		expect(target.getAttribute('aria-pressed')).toBe('true');
+		expect(api).toHaveBeenLastCalledWith('admin/hata/consent-list', { limit: 50, offset: 0, filter, username: null });
+		expect(container.textContent).toContain('2');
+		api.mockResolvedValueOnce({ users: [user('second', filter === 'noteCharm')], total: 2 }); button(container, copy.loadMore).click(); await settle();
+		expect(api).toHaveBeenLastCalledWith('admin/hata/consent-list', { limit: 50, offset: 1, filter, username: null });
+		expect([...container.querySelectorAll('strong')].map(item => item.textContent)).toEqual(['first', 'second']);
 	});
 
 	test.each(['drawing', 'drawingPending'] as const)('%sは対応するサーバーフィルタを使い選択状態を示す', async filter => {

@@ -8,11 +8,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 	v-if="!hardMuted && muted === false && !hideAsBot"
 	ref="rootEl"
 	v-hotkey="keymap"
-	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender && utageState === 'none' && !noteGlassActive, [$style.utageActive]: utageState !== 'none' && utageOutsideFrame }]"
+	:data-note-charm-layout="charmLayout ? 'on' : null"
+	:data-note-charm-host="noteCharm ? 'on' : null"
+	:data-note-charm-compact="compactCharm ? 'true' : null"
+	:style="noteCharm ? { '--note-charm-size': `${noteCharm.size}px` } : undefined"
+	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender && utageState === 'none' && !noteGlassActive && !noteCharm, [$style.utageActive]: utageState !== 'none' && utageOutsideFrame }]"
 	:data-utage-state="utageState !== 'none' ? utageState : null"
 	:data-utage-motion="prefer.s.animation ? null : 'reduced'"
 	tabindex="0"
 >
+	<MkNoteCharm v-if="noteCharm && !renoteCollapsed && !replyCollapsed && (!isRenote || note.renote != null)" :charm="noteCharm" :wind="noteCharmDisplay.wind" :motion="!mock && noteCharmDisplay.motion" :interactive="!mock" :compact="compactCharm"/>
 	<div v-if="pinned" :class="$style.tip"><i class="ti ti-pin"></i> {{ i18n.ts.pinnedNote }}</div>
 	<div v-if="isRenote || (appearNote.reply && prefer.s.collapseReplies)" :class="$style.renote">
 		<div v-if="note.channel" :class="$style.colorBar" :style="{ borderLeftColor: note.channel.color }"></div>
@@ -73,7 +78,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkTip v-if="showUtageTip" k="note.utage" style="margin-bottom: 8px;">
 			{{ utageCopy.tipBefore }}<b style="color: var(--MI_THEME-success);">{{ utageCopy.tipSuccess }}</b>{{ utageCopy.tipMiddle }}<b style="color: var(--MI_THEME-error);">{{ utageCopy.tipFailure }}</b>{{ utageCopy.tipAfter }}
 		</MkTip>
-		<div ref="utageBubble" :class="[$style.bubbleBody, { [$style.utageFlashing]: utageState === 'flashing' && utageOutsideFrame, [$style.utageReviving]: utageState === 'reviving' && utageOutsideFrame, [$style.utageFailed]: utageState === 'failed' && utageOutsideFrame, [$style.utageSuccess]: utageState === 'success' && utageOutsideFrame }]">
+		<div ref="utageBubble" :data-note-charm-frame="noteCharm ? 'on' : null" :data-note-charm-attachment="utageOutsideFrame ? 'frame' : 'root'" :class="[$style.bubbleBody, { [$style.utageFlashing]: utageState === 'flashing' && utageOutsideFrame, [$style.utageReviving]: utageState === 'reviving' && utageOutsideFrame, [$style.utageFailed]: utageState === 'failed' && utageOutsideFrame, [$style.utageSuccess]: utageState === 'success' && utageOutsideFrame }]">
 		<span v-if="utageOutsideFrame && (utageState === 'flashing' || utageState === 'failed' || utageState === 'success')" :class="$style.utageSurface" :data-utage-surface="utageState" aria-hidden="true"></span>
 		<!-- 旗鯖fork: C7 宴 結果バッジ (吹き出し右下隅) -->
 		<div v-if="utageState === 'failed'" :class="[$style.utageBadge, $style.utageBadgeFailed]">{{ utageCopy.failed }}</div>
@@ -422,6 +427,12 @@ import { store } from '@/store.js';
 import { scrollToVisibility } from '@/utility/scroll-to-visibility.js';
 import detectLanguage from '@/utility/detect-language.js';
 import MkInfo from '@/components/MkInfo.vue';
+import MkNoteCharm from '@/components/MkNoteCharm.vue';
+import { useNoteCharmAvailability } from '@/composables/use-note-charm-context.js';
+import { useNoteCharmMobileDisplay } from '@/utility/note-charm-device.js';
+import { noteCharmDisplay } from '@/utility/hatasaba-device-prefs.js';
+import type { NoteCharm } from '@/utility/note-charm-physics.js';
+import '@/note-charm.scss';
 import Hk3VisibilityRail from '@/components/hataskey3/Hk3VisibilityRail.vue';
 
 const utageCopy = i18n.ts._hata._utage;
@@ -441,6 +452,7 @@ const props = withDefaults(defineProps<{
 	note: Misskey.entities.Note;
 	pinned?: boolean;
 	mock?: boolean;
+	charmPreview?: NoteCharm | null;
 	withHardMute?: boolean;
 	notification?: boolean;
 	forceShowReplyTargetNote?: boolean;
@@ -496,6 +508,18 @@ if (noteViewInterruptors.length > 0) {
 
 const isRenote = Misskey.note.isPureRenote(note);
 const appearNote = getAppearNote(note) ?? note;
+const charmUiAvailable = useNoteCharmAvailability();
+const charmMobileDisplay = useNoteCharmMobileDisplay();
+const charmLayout = computed(() => !charmMobileDisplay.value && (props.mock ? props.charmPreview !== undefined : charmUiAvailable.value));
+const compactCharm = computed(() => props.notification || (ui === 'simple' && prefer.r['simpleUi.noteSpacing'].value === 'compact'));
+const noteCharm = computed<NoteCharm | null>(() => {
+	if (charmMobileDisplay.value) return null;
+	if (props.mock && props.charmPreview !== undefined) return props.charmPreview;
+	if (!charmUiAvailable.value || !noteCharmDisplay.value.show) return null;
+	if ($i && appearNote.user.id === $i.id) return $i.policies.canUseNoteCharm ? $i.noteCharm ?? null : null;
+	if (!noteCharmDisplay.value.showOthers) return null;
+	return appearNote.user.noteCharm ?? null;
+});
 const { $note: $appearNote, subscribe: subscribeManuallyToNoteCapture } = useNoteCapture({
 	note: appearNote,
 	parentNote: note,
@@ -1193,6 +1217,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	position: relative;
 	font-size: 1.05em;
 	overflow: clip;
+	&[data-note-charm-host='on'] { overflow: visible; contain: layout style; }
 	margin-bottom: 12px;
 	&::after {
 		content: "";

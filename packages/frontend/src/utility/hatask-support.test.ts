@@ -13,7 +13,7 @@ const snapshot = (value: SupportSnapshot['value'], extra: Partial<SupportSnapsho
 
 describe('Hatask support display projections', () => {
 	test('metadata covers every approved benefit without storing production limits', () => {
-		expect(SUPPORT_POLICIES.map(item => item.key)).toEqual(['driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'favoriteFolderLimit', 'canCreateFavoriteSubfolders', 'avatarDecorationLimit', 'emojiRequestLimit', 'hatadyBookLimit', 'canUseHatadySync', 'canUseMascot', 'mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters', 'rateLimitFactor']);
+		expect(SUPPORT_POLICIES.map(item => item.key)).toEqual(['driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'favoriteFolderLimit', 'canCreateFavoriteSubfolders', 'avatarDecorationLimit', 'emojiRequestLimit', 'hatadyBookLimit', 'canUseHatadySync', 'canUseNoteCharm', 'canUseMascot', 'mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters', 'rateLimitFactor']);
 		expect(SUPPORT_POLICIES.every(item => !('value' in item) && !('roleId' in item))).toBe(true);
 	});
 	test('localizes only the canonical defaults and retains administrator copy', () => {
@@ -28,6 +28,7 @@ describe('Hatask support display projections', () => {
 		['canMakePrivateChannel', snapshot(true), '作成できます'], ['canMakePrivateChannel', snapshot(false), '作成できません'],
 		['favoriteFolderLimit', snapshot(2), '2 個'], ['favoriteFolderLimit', snapshot(5), '5 個'],
 		['emojiRequestLimit', snapshot(0, { available: false }), '0 件 / 7日'], ['emojiRequestLimit', snapshot(10), '10 件 / 7日'], ['emojiRequestLimit', snapshot(30), '30 件 / 7日'],
+		['canUseNoteCharm', snapshot(true), '利用できます'], ['canUseNoteCharm', snapshot(false), '利用できません'],
 		['canCreateFavoriteSubfolders', snapshot(true), '作成できます'], ['canCreateFavoriteSubfolders', snapshot(false), '作成できません'],
 		['canUseHatadySync', snapshot(true), '同期できます'], ['canUseHatadySync', snapshot(false), '同期できません'],
 		['hatadyBookLimit', snapshot(1000), '1,000 冊'], ['mascotMaxExpressions', snapshot(20), '20 表情 / キャラクター'],

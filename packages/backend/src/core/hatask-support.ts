@@ -8,7 +8,7 @@ import type { MiRole } from '@/models/Role.js';
 
 export const HATASK_SUPPORT_POLICY_KEYS = [
 	'driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'avatarDecorationLimit', 'emojiRequestLimit',
-	'favoriteFolderLimit', 'canCreateFavoriteSubfolders',
+	'favoriteFolderLimit', 'canCreateFavoriteSubfolders', 'canUseNoteCharm',
 	'hatadyBookLimit', 'canUseHatadySync', 'canUseMascot', 'mascotMaxExpressions', 'mascotMaxPhrases',
 	'mascotMaxCharacters', 'rateLimitFactor',
 ] as const satisfies readonly (keyof RolePolicies)[];
@@ -93,5 +93,6 @@ export function supportRolePolicies(base: RolePolicies, role: Pick<MiRole, 'poli
 	}
 	result.favoriteFolderLimit = normalizeFavoriteFolders([result.favoriteFolderLimit]);
 	result.canCreateFavoriteSubfolders = result.canCreateFavoriteSubfolders === true;
+	result.canUseNoteCharm = result.canUseNoteCharm === true;
 	return result;
 }

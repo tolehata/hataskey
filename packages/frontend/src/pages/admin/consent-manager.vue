@@ -18,6 +18,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'externalTl'" @click="setFilter('externalTl')">{{ copy.externalTlConsented }}</button>
 					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'customFont'" @click="setFilter('customFont')">{{ copy.customFontConsented }}</button>
 					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'mascot'" @click="setFilter('mascot')">{{ copy.mascotConsented }}</button>
+					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'noteCharm'" @click="setFilter('noteCharm')">{{ copy.noteCharmConsented }}</button>
+					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'noteCharmPending'" @click="setFilter('noteCharmPending')">{{ copy.noteCharmNotConsented }}</button>
 					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'drawing'" @click="setFilter('drawing')">{{ copy.drawingConsented }}</button>
 					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'drawingPending'" @click="setFilter('drawingPending')">{{ copy.drawingNotConsented }}</button>
 				</div>
@@ -68,6 +70,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<span v-else :class="[$style.badge, $style.badgeGray]">
 								<i class="ti ti-mood-off"></i> {{ copy.mascotNotConsented }}
 							</span>
+							<span v-if="u.hataConsentNoteCharm" :class="[$style.badge, $style.badgePurple]">
+								<i class="ti ti-diamond" aria-hidden="true"></i> {{ copy.noteCharmConsented }}
+								<time v-if="u.hataConsentNoteCharmDate" :datetime="u.hataConsentNoteCharmDate" :class="$style.badgeDate">{{ copy.noteCharmAgreedAt }}: {{ formatDate(u.hataConsentNoteCharmDate, true) }}</time>
+							</span>
+							<span v-else :class="[$style.badge, $style.badgeGray]">
+								<i class="ti ti-diamond" aria-hidden="true"></i> {{ copy.noteCharmNotConsented }}
+							</span>
 							<span v-if="u.hataConsentDrawing" :class="[$style.badge, $style.badgeBlue]">
 								<i class="ti ti-palette" aria-hidden="true"></i> {{ copy.drawingConsented }}
 								<time v-if="u.hataConsentDrawingDate" :datetime="u.hataConsentDrawingDate" :class="$style.badgeDate">{{ copy.drawingFirstAgreedAt }}: {{ formatDate(u.hataConsentDrawingDate, true) }}</time>
@@ -103,7 +112,7 @@ const PAGE_SIZE = 50;
 
 const loading = ref(true);
 const searchQuery = ref('');
-type ConsentFilter = 'all' | 'externalTl' | 'customFont' | 'mascot' | 'drawing' | 'drawingPending';
+type ConsentFilter = 'all' | 'externalTl' | 'customFont' | 'mascot' | 'noteCharm' | 'noteCharmPending' | 'drawing' | 'drawingPending';
 const filterMode = ref<ConsentFilter>('all');
 
 interface ConsentUser {
@@ -117,6 +126,8 @@ interface ConsentUser {
 	hataConsentCustomFontDate: string | null;
 	hataConsentMascot: boolean;
 	hataConsentMascotDate: string | null;
+	hataConsentNoteCharm: boolean;
+	hataConsentNoteCharmDate: string | null;
 	hataConsentDrawing: boolean;
 	hataConsentDrawingDate: string | null;
 	hataConsentDrawingVersion: string | null;

@@ -196,8 +196,8 @@ describe('Hatask支援管理の権限境界と保持', () => {
 });
 
 describe('支援特典の値と実効権限', () => {
-	test('14項目が実ポリシーに存在する', () => {
-		expect(HATASK_SUPPORT_POLICY_KEYS).toHaveLength(14);
+	test('15項目が実ポリシーに存在する', () => {
+		expect(HATASK_SUPPORT_POLICY_KEYS).toHaveLength(15);
 		for (const key of HATASK_SUPPORT_POLICY_KEYS) expect(DEFAULT_POLICIES).toHaveProperty(key);
 	});
 

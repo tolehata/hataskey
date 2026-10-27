@@ -33,6 +33,7 @@ import { HttpRequestService } from '@/core/HttpRequestService.js';
 import type { Config } from '@/config.js';
 import { AvatarDecorationService } from '@/core/AvatarDecorationService.js';
 import { notificationRecieveConfig } from '@/models/json-schema/user.js';
+import { noteCharmSettingsSchema, validateNoteCharmUpdate } from '@/misc/note-charm.js';
 import { isLocalProfileBadgeOnlyUpdate } from '@/misc/local-profile-badge.js';
 import { ApiLoggerService } from '../../ApiLoggerService.js';
 import { ApiError } from '../../error.js';
@@ -122,6 +123,18 @@ export const meta = {
 			id: '25c90186-4ab0-49c8-9bba-a1fa6c202ba4',
 		},
 
+		invalidNoteCharmFile: {
+			message: 'The note charm must use your non-sensitive PNG, WebP or JPEG file up to 5 MiB.',
+			code: 'INVALID_NOTE_CHARM_FILE',
+			id: '934b07a3-0bb3-49cc-954e-7d7505ff394b',
+		},
+
+		noteCharmNotConsented: {
+			message: 'You must agree to the note charm terms before using this feature.',
+			code: 'NOTE_CHARM_NOT_CONSENTED',
+			id: '017f8d7c-d8f0-4bbb-ae6c-35a5a41547b2',
+		},
+
 		restrictedByRole: {
 			message: 'This feature is restricted by your role.',
 			code: 'RESTRICTED_BY_ROLE',
@@ -160,6 +173,7 @@ export const paramDef = {
 		location: { ...locationSchema, nullable: true },
 		birthday: { ...birthdaySchema, nullable: true },
 		lang: { type: 'string', enum: [null, ...Object.keys(langmap)] as string[], nullable: true },
+		noteCharm: noteCharmSettingsSchema,
 		avatarId: { type: 'string', format: 'misskey:id', nullable: true },
 		avatarDecorations: { type: 'array', maxItems: 16, items: {
 			type: 'object',
@@ -393,6 +407,18 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			}
 			if (typeof ps.autoSensitive === 'boolean') profileUpdates.autoSensitive = ps.autoSensitive;
 			if (ps.emailNotificationTypes !== undefined) profileUpdates.emailNotificationTypes = ps.emailNotificationTypes;
+
+			if (ps.noteCharm !== undefined) {
+				if (ps.noteCharm !== null) {
+					if (profile.hataConsentNoteCharm !== true) throw new ApiError(meta.errors.noteCharmNotConsented);
+					policies ??= await this.roleService.getUserPolicies(user.id);
+					if (!policies.canUseNoteCharm) throw new ApiError(meta.errors.restrictedByRole);
+					const file = await this.driveFilesRepository.findOneBy({ id: ps.noteCharm.fileId });
+					const error = validateNoteCharmUpdate(ps.noteCharm, policies.canUseNoteCharm, user.id, file);
+					if (error) throw new ApiError(meta.errors[error]);
+				}
+				updates.noteCharm = ps.noteCharm;
+			}
 
 			if (ps.avatarId) {
 				policies ??= await this.roleService.getUserPolicies(user.id);

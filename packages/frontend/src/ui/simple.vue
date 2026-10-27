@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div ref="timelineCollapseRoot" :class="[$style.root, { [$style.desktopLayout]: isDesktop }]" :style="{ '--simple-announcements-height': `${announcementsHeight}px` }" :data-hata-foldable="isFoldableWide ? 'true' : undefined">
+<div ref="timelineCollapseRoot" :class="[$style.root, { [$style.desktopLayout]: isDesktop }]" :style="{ '--simple-announcements-height': `${announcementsHeight}px`, '--note-charm-rail-width': `${CHARM_RAIL_WIDTH}px` }" :data-hata-foldable="isFoldableWide ? 'true' : undefined" :data-note-charm-lane="noteCharmShellAvailable && isDesktop && !deckActive ? 'on' : undefined">
 	<!-- PC/タブレット: オリジナル左サイドバー (上部メニューモード時は隠す) -->
 	<nav v-if="isDesktop && !topNavActive" ref="desktopNavEl" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarWide]: !sidebarFolded && studioProfile.expanded.width === 'wide', [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed }]">
 		<!-- バナーすりガラス背景 -->
@@ -160,6 +160,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</nav>
 
 	<div :class="[$style.mainColumn, { [$style.mainColumnShifted]: isDesktop && userPanelUserId }]">
+		<!-- 同じ背景画像で、ノート列と外側のチャーム領域を覆う。スクロール領域の外に置く。 -->
+		<div v-if="timelineGlassBg && $i?.bannerUrl" :class="$style.timelineBanner">
+			<img :src="$i.bannerUrl" :class="$style.timelineBannerImg"/>
+		</div>
 		<div :class="$style.mainColumnInner">
 			<div v-if="$i" ref="announcementsEl" :class="$style.announcementsBanner">
 				<XAnnouncements/>
@@ -293,12 +297,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div style="width: 38px;"></div>
 			</header>
 
-			<!-- 旗鯖fork: 通常表示(デッキUIではない)タイムラインの背景にヘッダー画像のぼかしを敷く(無効化可)。
-             .content(スクロール領域)の外、.mainColumnInner 直下に置くことで、タイムラインを
-             スクロールしても背景が流れず固定表示される(デッキ版の .deckBanner と同じ考え方)。 -->
-			<div v-if="timelineGlassBg && $i?.bannerUrl" :class="$style.timelineBanner">
-				<img :src="$i.bannerUrl" :class="$style.timelineBannerImg"/>
-			</div>
 			<div ref="contentEl" :inert="navbarSearchOpen" data-timeline-tab-gestures :class="$style.content" @scroll="onContentScroll" @wheel="onContentWheel">
 				<div v-show="!isPageView && !deckActive" style="height: 100%;">
 					<div v-if="showFixedPostForm" v-show="!isExternalTab && !isHatadyTab && !isConcrntTab" :inert="isExternalTab || isHatadyTab || isConcrntTab" :class="$style.fixedFormHost"><MkPostForm :class="$style.fixedPostForm" class="_panel" fixed :autofocus="false"/></div>
@@ -476,7 +474,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<!-- PC/タブレット: 右ウィジェットバー -->
 	<!-- 旗鯖fork: 折りたたみ端末の広い面でも、このバーだけPCと同じ構成・同じ表示で常時出す。
 	     ⚠️isDesktop は広げない(下部ナビ等までPC化して「モバイル表示のまま」が崩れるため)。 -->
-	<div v-if="(isDesktop || isFoldableWide) && !deckActive" :inert="navbarSearchOpen" data-hata-collapse-part :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
+	<div v-if="(isDesktop || isFoldableWide) && !deckActive" :inert="navbarSearchOpen" data-note-charm-exclusion data-hata-collapse-part :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
 		<div v-if="glassEffect" :class="$style.desktopWidgetsBanner">
 			<img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.desktopWidgetsBannerImg"/>
 		</div>
@@ -492,6 +490,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, defineAsyncComponent, watch } from 'vue';
+import { noteCharmDeckActiveKey, useNoteCharmAvailability } from '@/composables/use-note-charm-context.js';
+import { CHARM_RAIL_WIDTH } from '@/utility/note-charm-physics.js';
 import { instanceName } from '@@/js/config.js';
 import XCommon from './_common_/common.vue';
 import MkTimelineNewNotesContent from '@/components/MkTimelineNewNotesContent.vue';
@@ -653,6 +653,8 @@ const widgetsShowing = ref(false);
 // 旗鯖fork: デッキモード (デスクトップのみ)。サイドメニュー下部のトグルで切替。
 const deckMode = prefer.r['simpleUi.deckMode'];
 const deckActive = computed(() => isDesktop.value && deckMode.value && !isPageView.value);
+provide(noteCharmDeckActiveKey, deckActive);
+const noteCharmShellAvailable = useNoteCharmAvailability();
 // 旗鯖fork: デッキを初めて開いた時、チュートリアル(ウィザード)を表示する。
 // watch の登録は isDesktop/isPageView 定義後に行う(下方の onMounted 付近)。
 let deckTutorialShown = false;
@@ -1012,9 +1014,10 @@ const ltlEmojiVoteViewport = ref({ top: '0px', left: '0px', width: '0px', height
 watch([normalLtlVoteActive, contentEl], ([active, content], _old, onCleanup) => {
 	if (!active || !content) return;
 	const update = () => {
-		const width = Math.min(content.clientWidth, 800);
+		const contentWidth = Math.max(0, content.clientWidth - (Number.parseFloat(getComputedStyle(content).paddingRight) || 0));
+		const width = Math.min(contentWidth, 800);
 		ltlEmojiVoteViewport.value = {
-			top: `${content.offsetTop}px`, left: `${content.offsetLeft + (content.clientWidth - width) / 2}px`,
+			top: `${content.offsetTop}px`, left: `${content.offsetLeft + (contentWidth - width) / 2}px`,
 			width: `${width}px`, height: `${content.clientHeight}px`,
 		};
 	};
@@ -3263,11 +3266,8 @@ onUnmounted(() => {
     filter:blur(20px) saturate(1.2);
     transform:scale(1.1);
 }
-/* 旗鯖fork: 通常表示(デッキUIではない)タイムライン背景のヘッダー画像ぼかし。
-   .mainColumnInner 直下(.content の兄弟、position:relative; overflow:hidden)に配置し、
-   .content(スクロール領域)の外側で固定表示させる。z-index は auto(0相当)のままとし、
-   後続の DOM 順(.content)より奥、topBar/topNav/pageHeader(いずれも明示z-indexあり)より
-   手前に来ないよう揃える。 */
+/* 背景はmainColumn全体に敷き、チャーム領域まで途切れず覆う。
+   後続のmainColumnInnerとユーザーパネルより奥で、スクロールには追従させない。 */
 .timelineBanner {
     position:absolute;
     inset:0;
@@ -3390,6 +3390,37 @@ onUnmounted(() => {
     position:relative;
     overflow:hidden;
 }
+// Reserve the lane inside the column so its scrollbar stays beyond the charms.
+.root[data-note-charm-lane='on'] > .mainColumn > .mainColumnInner {
+    box-sizing:border-box;
+    padding-right:var(--note-charm-rail-width);
+
+    > .topBar {
+        right:var(--note-charm-rail-width);
+    }
+
+    > .content {
+        box-sizing:border-box;
+        margin-right:calc(-1 * var(--note-charm-rail-width));
+        padding-right:var(--note-charm-rail-width);
+
+        // Routed pages own their scrollbar; expand only the outer router chain.
+        > .pageContainer {
+            margin-right:calc(-1 * var(--note-charm-rail-width));
+
+            > :global(._pageContainer) {
+                box-sizing:border-box;
+                padding-right:var(--note-charm-rail-width);
+
+                > :global(._pageScrollable), > :global(._pageScrollableReversed) {
+                    box-sizing:border-box;
+                    margin-right:calc(-1 * var(--note-charm-rail-width));
+                    padding-right:var(--note-charm-rail-width);
+                }
+            }
+        }
+    }
+}
 .mainColumnShifted {
     flex-direction:row;
 }
@@ -3459,6 +3490,7 @@ onUnmounted(() => {
 
 // ===== ユーザーパネル（デスクトップ） =====
 .userPanelDesktop {
+    z-index:0;
     width:340px;
     flex-shrink:0;
     height:var(--MI-viewport-height, 100dvh);

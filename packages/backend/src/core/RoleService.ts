@@ -84,6 +84,7 @@ export type RolePolicies = {
 	clipLimit: number;
 	favoriteFolderLimit: number;
 	canCreateFavoriteSubfolders: boolean;
+	canUseNoteCharm: boolean;
 	noteEachClipsLimit: number;
 	userListLimit: number;
 	userEachUserListsLimit: number;
@@ -143,6 +144,7 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	clipLimit: 10,
 	favoriteFolderLimit: 2,
 	canCreateFavoriteSubfolders: false,
+	canUseNoteCharm: false,
 	noteEachClipsLimit: 200,
 	userListLimit: 10,
 	userEachUserListsLimit: 50,
@@ -440,6 +442,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 
 		basePolicies.favoriteFolderLimit = normalizeFavoriteFolderLimit([basePolicies.favoriteFolderLimit]);
 		basePolicies.canCreateFavoriteSubfolders = basePolicies.canCreateFavoriteSubfolders === true;
+		basePolicies.canUseNoteCharm = basePolicies.canUseNoteCharm === true;
 		if (userId == null) return basePolicies;
 
 		const roles = await this.getUserRoles(userId);
@@ -508,6 +511,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			clipLimit: calc('clipLimit', vs => Math.max(...vs)),
 			favoriteFolderLimit: calc('favoriteFolderLimit', normalizeFavoriteFolderLimit),
 			canCreateFavoriteSubfolders: calc('canCreateFavoriteSubfolders', vs => vs.some(v => v === true)),
+			canUseNoteCharm: calc('canUseNoteCharm', vs => vs.some(v => v === true)),
 			noteEachClipsLimit: calc('noteEachClipsLimit', vs => Math.max(...vs)),
 			userListLimit: calc('userListLimit', vs => Math.max(...vs)),
 			userEachUserListsLimit: calc('userEachUserListsLimit', vs => Math.max(...vs)),

@@ -26,7 +26,9 @@ export const meta = {
 
 export const paramDef = {
 	type: 'object',
-	properties: {},
+	properties: {
+		type: { type: 'string', enum: ['drawing', 'noteCharm'], default: 'drawing' },
+	},
 	required: [],
 } as const;
 
@@ -36,8 +38,15 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		@Inject(DI.userProfilesRepository)
 		private userProfilesRepository: UserProfilesRepository,
 	) {
-		super(meta, paramDef, async (_ps, me) => {
+		super(meta, paramDef, async (ps, me) => {
 			const profile = await this.userProfilesRepository.findOneByOrFail({ userId: me.id });
+			if (ps.type === 'noteCharm') {
+				return {
+					agreed: profile.hataConsentNoteCharm === true,
+					agreedAt: profile.hataConsentNoteCharmDate?.toISOString() ?? null,
+					version: null,
+				};
+			}
 			return {
 				agreed: profile.hataConsentDrawing,
 				agreedAt: profile.hataConsentDrawingDate?.toISOString() ?? null,

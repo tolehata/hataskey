@@ -422,6 +422,13 @@ function staticGroupKeyForNode(sourceFile: string, node: ElementNode): string {
 function staticGroupContext(sourceFile: string, ancestors: readonly ElementNode[]): { key: string; label: string } {
 	for (let index = ancestors.length - 1; index >= 0; index--) {
 		const ancestor = ancestors[index]!;
+		// These finite radio options own one audited fieldset descriptor. Its
+		// conditional focus is separately redirected to the permanent root;
+		// retain the fieldset identity here so its raw rows cannot disappear.
+		if (sourceFile === 'src/components/MkNoteCharmSettings.vue' && ancestor.tag === 'fieldset'
+			&& normalizedExpression(expressionOf(findAttribute(ancestor.props, 'class'))) === '$style.patternField') {
+			return { key: staticGroupKeyForNode(sourceFile, ancestor), label: 'チャームの模様' };
+		}
 		if (!['SearchMarker', 'MkFolder', 'FormSection', 'FormSlot', 'section', 'fieldset'].includes(ancestor.tag)) continue;
 		// The candidate's own directives are not enough: an otherwise plain
 		// FormSection below an outer `v-if` is just as absent as the branch that
@@ -1264,6 +1271,10 @@ type SettingsTransitiveControlDispositionDefinitionV2 = Pick<SettingsTransitiveC
 };
 
 const TRANSITIVE_SETTINGS_COMPONENT_DISPOSITIONS_V2: Readonly<Record<string, SettingsTransitiveControlDispositionDefinitionV2>> = {
+	'src/components/MkNoteCharmPreview.vue': {
+		disposition: 'nonsetting',
+		reason: 'MkNoteCharmPreviewはinert内でmockの実MkNoteにサンプルを渡す読取専用preview。設定値・保存先を所有せず、投稿やメディア操作のimport閉包は設定面ではない',
+	},
 	'src/components/MkCode.vue': {
 		disposition: 'nonsetting',
 		reason: 'MkCodeのcopy/showは表示中コードのコピー・展開だけで、prefer.s.dataSaver.codeは読取のみ。設定値を更新しない',
@@ -2130,6 +2141,16 @@ function sourceControlLabelTemplateV2(sourceFile: string, node: ElementNode, tem
 		&& template === '${autoAppearanceLabel}') {
 		return '${i18n.ts._hata._hatask._settings.autoAppearanceTheme} / ${i18n.ts._hata._hatask._settings.autoAppearance}';
 	}
+	if (sourceFile === 'src/components/MkNoteCharmSettings.vue') {
+		if (normalizedExpression(eventHandlerExpression(node, 'click')) === 'chooseImage'
+			&& template === '${draft.fileId ? i18n.ts._noteCharm.replaceImage : i18n.ts._noteCharm.chooseImage}') {
+			return '${i18n.ts._noteCharm.chooseImage} / ${i18n.ts._noteCharm.replaceImage}';
+		}
+		if (directiveExpression(node, 'model') === 'draft.size'
+			&& template === '${i18n.ts._noteCharm.width}${draft.size} px') {
+			return '${i18n.ts._noteCharm.width}';
+		}
+	}
 	return template;
 }
 
@@ -2444,6 +2465,18 @@ const NON_PERSISTENT_FORM_CONTROL_EXCLUSIONS_V2: Readonly<Record<string, Readonl
  * or the exact local/profile key used by that control.
  */
 const EXPLICIT_CONTROL_STORAGE_BINDINGS_V2: Readonly<Record<string, Readonly<Record<string, ExplicitControlStorageBindingV2>>>> = {
+	'src/components/MkNoteCharmSettings.vue': {
+		'model:draft.enabled': noteCharmAccountStorageBindingV2(),
+		'model:draft.size': noteCharmAccountStorageBindingV2(),
+		'model:draft.color': noteCharmAccountStorageBindingV2(),
+		'click:chooseImage': noteCharmAccountStorageBindingV2(),
+		'click:removeImage': noteCharmAccountStorageBindingV2(),
+		'click:save': noteCharmAccountStorageBindingV2(),
+		'model:noteCharmDisplay.show': { refs: [{ kind: 'local', key: 'noteCharmDisplay' }], evidence: 'setNoteCharmDisplay({ show }) は端末の noteCharmDisplay を即時更新する' },
+		'model:noteCharmDisplay.showOthers': { refs: [{ kind: 'local', key: 'noteCharmDisplay' }], evidence: 'setNoteCharmDisplay({ showOthers }) は端末の noteCharmDisplay を即時更新する' },
+		'model:noteCharmDisplay.motion': { refs: [{ kind: 'local', key: 'noteCharmDisplay' }], evidence: 'setNoteCharmDisplay({ motion }) は端末の noteCharmDisplay を即時更新する' },
+		'model:noteCharmDisplay.wind': { refs: [{ kind: 'local', key: 'noteCharmDisplay' }], evidence: 'setNoteCharmDisplay({ wind }) は端末の noteCharmDisplay を即時更新する' },
+	},
 	'src/components/concrnt/ConcrntSettings.vue': {
 		"change:updateBoolean('enabled',$event)": concrntSettingsStorageBindingV2('enabled'),
 		"change:updateBoolean('notifications',$event)": concrntSettingsStorageBindingV2('notifications'),
@@ -2598,6 +2631,13 @@ function explicitControlStorageBindingV2(
 		?? (change == null ? undefined : sourceBindings[`change:${change}`]);
 }
 
+function noteCharmAccountStorageBindingV2(): ExplicitControlStorageBindingV2 {
+	return {
+		refs: [{ kind: 'api', endpoint: 'i/update', fields: ['noteCharm'] }],
+		evidence: 'draftの画像・有効状態・幅・模様・色はsave()がpayload()をi/update.noteCharmへ明示保存する',
+	};
+}
+
 function concrntSettingsStorageBindingV2(field: 'enabled' | 'save' | 'profile' | 'notifications' | 'popups'): ExplicitControlStorageBindingV2 {
 	return {
 		refs: [{ kind: 'indexeddb', database: 'HataskeyConcrnt', store: 'private', key: '${encodeURIComponent(owner)}:connection', fields: [`settings.${field}`] }],
@@ -2707,7 +2747,8 @@ function deriveSettingsMetadataV2(
 		throw new Error(`settings V2 missing persistence evidence: ${sourceFile}:${node.loc.start.line} (${normalizedExpression(eventHandlerExpression(node, 'click')) ?? modelExpression ?? node.tag})`);
 	}
 	const handlerText = [eventHandlerExpression(node, 'click'), eventHandlerExpression(node, 'update:modelValue'), eventHandlerExpression(node, 'input')].filter(Boolean).join(' ');
-	const buffered = sourceFile === 'src/components/HatasabaUi2SettingsBody.vue'
+	const buffered = (sourceFile === 'src/components/MkNoteCharmSettings.vue' && hasAccount)
+		|| sourceFile === 'src/components/HatasabaUi2SettingsBody.vue'
 		|| /\b(?:save|saveDisplaySettings|saveSettings|applyHataSettingsTransfer)\b/u.test(handlerText)
 		|| (sourceFile === 'src/pages/MkMascotSettings.vue');
 	const reload = sourceFile === 'src/components/HatasabaUi2SettingsBody.vue'
@@ -3013,6 +3054,26 @@ type StaticReachabilityGroupSpecV2 = {
 };
 
 const STATIC_REACHABILITY_GROUP_SPECS_V2: readonly StaticReachabilityGroupSpecV2[] = [
+	{
+		stableId: 'settings.group.note-charm-settings',
+		sourceFile: 'src/components/MkNoteCharmSettings.vue',
+		labelExpression: 'i18n.ts._noteCharm.title',
+		labelI18nKeys: ['i18n.ts._noteCharm.title'],
+		aliases: ['ノートチャーム'],
+		sourceSemanticGroupId: 'settings.semantic.feature.note-charm',
+		unmet: [{ kind: 'policy', id: 'note-charm-role-and-ui', behavior: 'explain' }],
+		materialize: false,
+		matches: (node, isRoot) => isRoot && node.tag === 'section',
+	},
+	{
+		stableId: 'settings.group.note-charm-pattern',
+		sourceFile: 'src/components/MkNoteCharmSettings.vue',
+		labelExpression: 'i18n.ts._noteCharm.pattern',
+		labelI18nKeys: ['i18n.ts._noteCharm.pattern'],
+		aliases: ['チャームの模様', '切り抜き', '透明', 'ドット', 'ストライプ', 'チェック'],
+		sourceSemanticGroupId: 'settings.semantic.feature.note-charm',
+		matches: node => node.tag === 'fieldset' && normalizedExpression(expressionOf(findAttribute(node.props, 'class'))) === '$style.patternField',
+	},
 	{
 		stableId: 'settings.group.concrnt-connection-settings',
 		sourceFile: 'src/components/concrnt/ConcrntSettings.vue',
@@ -3460,6 +3521,7 @@ function hataCustomLegacyCategoryShortcutV2(
 // separate group descriptor.  Keeping the mapping finite makes any new
 // source prove its own relation evidence instead of inheriting a broad route.
 const EXPLICIT_SOURCE_SEMANTIC_GROUPS: Readonly<Record<string, string>> = {
+	'src/components/MkNoteCharmSettings.vue': 'settings.semantic.feature.note-charm',
 	// A compact dialog/popup has a visible feature heading, but no static
 	// FormSection host spanning its controls. These are hand-audited feature
 	// scopes, never a generic route/category fallback.
@@ -3761,6 +3823,13 @@ const STATIC_GROUP_METADATA_OVERRIDES_V2: Readonly<Record<string, StaticGroupMet
  * static, user-visible host that contains it.
  */
 function sourceScopedStaticGroupMetadataV2(host: StaticGroupHostV2): StaticGroupMetadataOverrideV2 | undefined {
+	if (host.reachabilitySpec?.stableId === 'settings.group.note-charm-pattern') {
+		return staticGroupMetadataOverrideV2(
+			'account', 'buffered', 'all', 'hatasaba', 'all',
+			'模様のradio選択肢はdraft.patternを編集し、save()がi/update.noteCharmへ明示保存する',
+			[{ kind: 'api', endpoint: 'i/update', fields: ['noteCharm'] }],
+		);
+	}
 	if (host.reachabilitySpec?.stableId === 'settings.group.concrnt-connection-settings') {
 		return staticGroupMetadataOverrideV2(
 			'device', 'immediate', 'all', 'hatasaba', 'all',
@@ -4018,9 +4087,12 @@ function groupActivation(
  * group as the focus target instead of trying to mutate the prerequisite.
  */
 function conditionNeedsStaticParentFocusV2(
-	control: Pick<SettingsControlSearchDescriptorV2, 'conditions' | 'activation' | 'searchable' | 'isGroup'>,
+	control: Pick<SettingsControlSearchDescriptorV2, 'stableId' | 'conditions' | 'activation' | 'searchable' | 'isGroup'>,
 ): boolean {
-	if (!control.searchable || control.isGroup === true) return false;
+	if (!control.searchable) return false;
+	// This reviewed runtime-radio group has the same canEdit prerequisite as
+	// individual controls and must participate in the static-focus audit.
+	if (control.isGroup === true && control.stableId !== 'settings.group.note-charm-pattern') return false;
 	// Activation opens only its exact category/popup surface. It must not mask
 	// a second v-if inside it (consent, selected character, policy, runtime row,
 	// and so on), but the category selector itself is a verified prerequisite
@@ -4098,6 +4170,9 @@ function unmetForConditionalControlV2(
 	conditions: readonly string[],
 ): SettingsActivationUnmetV2[] {
 	const condition = conditions.join(' ');
+	if (sourceFile === 'src/components/MkNoteCharmSettings.vue' && /\bcanEdit\b/u.test(condition)) {
+		return [{ kind: 'policy', id: 'note-charm-role-and-ui', behavior: 'explain' }];
+	}
 	if (sourceFile === 'src/components/concrnt/ConcrntSettings.vue') {
 		return [{ kind: 'runtime-data', id: 'concrnt-account-and-section', behavior: 'explain' }];
 	}
@@ -4222,7 +4297,7 @@ export function collectSettingsSearchDescriptorsV2(
 		if (hataCustomLegacyCategoryShortcutV2(sourceFile, host) != null) relevantGroupKeys.add(host.key);
 	}
 	const relevantHosts = [...hostsByKey.values()].filter(host => relevantGroupKeys.has(host.key));
-	const groups = relevantHosts.map(host => {
+	const groups: SettingsControlSearchDescriptorV2[] = relevantHosts.map(host => {
 			const categoryShortcut = hataCustomLegacyCategoryShortcutV2(sourceFile, host);
 			const activation = groupActivation(categoryShortcut == null
 				? target.activation ?? hataCustomConditionActivation(sourceFile, host.conditions)
@@ -4302,6 +4377,18 @@ export function collectSettingsSearchDescriptorsV2(
 				control.activation = withConditionalParentFocusV2(control.activation, crossSourceParent.stableId, crossSourceParent.unmet);
 			}
 		}
+	}
+	for (const group of groups.filter(candidate => candidate.stableId === 'settings.group.note-charm-pattern')) {
+		if (!conditionNeedsStaticParentFocusV2(group)) continue;
+		const focusHost = staticFocusHostForConditionalControlV2(group, undefined, [...hostsByKey.values()]);
+		if (focusHost == null) throw new Error('settings V2 note charm pattern has no static parent focus');
+		const unmet = unmetForConditionalControlV2(sourceFile, group.conditions);
+		group.focusId = focusHost.stableId;
+		group.focusHostSourceFile = focusHost.sourceFile;
+		group.focusHostSourceLine = focusHost.node.loc.start.line;
+		group.focusHostConditions = [...focusHost.conditions];
+		group.unmet = unmet;
+		group.activation = withConditionalParentFocusV2(group.activation, focusHost.stableId, unmet);
 	}
 	return [...controls, ...groups];
 }
@@ -4862,6 +4949,11 @@ export function injectSettingsSearchIdsV2(
 			continue;
 		}
 		appendRequiredAttribute(magic, host.node, 'data-settings-search-group-id', descriptor.focusId, sourceFile);
+		// Profile results have no popup activation, so navigation resolves their
+		// fallback controlId through the ordinary control selector as well.
+		if (sourceFile === 'src/components/MkNoteCharmSettings.vue' && host.stableId === 'settings.group.note-charm-settings') {
+			appendRequiredAttribute(magic, host.node, 'data-settings-search-id', descriptor.focusId, sourceFile);
+		}
 		focusHostIds.set(host.node, descriptor.focusId);
 	}
 	if (requiresRelatedImport) injectSettingsRelatedImportV2(magic, parsed, code);

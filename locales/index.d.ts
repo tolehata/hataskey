@@ -15852,6 +15852,18 @@ export interface Locale extends ILocale {
         };
         "_adminRoles": {
             /**
+             * ノートチャームを利用できる
+             */
+            "noteCharmAccessName": string;
+            /**
+             * ノートチャームの利用を許可
+             */
+            "noteCharmAccessToggle": string;
+            /**
+             * アカウントに1体のキャラクターを飾れます。既定は不許可です。
+             */
+            "noteCharmAccessBaseCaption": string;
+            /**
              * お気に入りフォルダの最大数
              */
             "favoriteFolderLimitName": string;
@@ -30050,6 +30062,24 @@ export interface Locale extends ILocale {
                          */
                         "disabledLabel": string;
                     };
+                    "canUseNoteCharm": {
+                        /**
+                         * ノートチャーム
+                         */
+                        "name": string;
+                        /**
+                         * ノートの外枠に、自分のキャラクターを1体飾れます。デッキ・UI Sでは利用できません。
+                         */
+                        "description": string;
+                        /**
+                         * 利用できます
+                         */
+                        "enabledLabel": string;
+                        /**
+                         * 利用できません
+                         */
+                        "disabledLabel": string;
+                    };
                     "canUseMascot": {
                         /**
                          * マスコット機能
@@ -36938,6 +36968,18 @@ export interface Locale extends ILocale {
              * マスコット未同意
              */
             "mascotNotConsented": string;
+            /**
+             * チャーム同意済み
+             */
+            "noteCharmConsented": string;
+            /**
+             * チャーム未同意
+             */
+            "noteCharmNotConsented": string;
+            /**
+             * 同意日時
+             */
+            "noteCharmAgreedAt": string;
             /**
              * Hatadint同意済み
              */
@@ -45339,6 +45381,234 @@ export interface Locale extends ILocale {
          * アイコンデコを読み込めませんでした
          */
         "loadFailed": string;
+    };
+    "_noteCharm": {
+        /**
+         * 同意済み
+         */
+        "consentAgreed": string;
+        /**
+         * 画像を選ぶ
+         */
+        "stepImage": string;
+        /**
+         * 見た目を調整
+         */
+        "stepStyle": string;
+        /**
+         * 保存
+         */
+        "stepSave": string;
+        /**
+         * ノートチャームの利用にあたって
+         */
+        "consentTitle": string;
+        /**
+         * 利用前に、次の内容を確認してください。
+         */
+        "consentBody": string;
+        /**
+         * 自作の画像、またはチャームとして表示・加工する許諾を得た画像を使用します。
+         */
+        "consentImageRights": string;
+        /**
+         * 第三者の著作権・商標権・肖像権などを侵害する画像や、サーバーの利用規約に反する画像は使用しません。
+         */
+        "consentProhibitedImages": string;
+        /**
+         * 画像はノートに添えて他の利用者に表示され、サイズ調整や縁取り・柄の重ね合わせが行われます。
+         */
+        "consentDisplay": string;
+        /**
+         * 同意したことと日時をアカウントに記録し、サーバー管理者が確認できます。
+         */
+        "consentRecord": string;
+        /**
+         * 同意して使う
+         */
+        "consentAgree": string;
+        /**
+         * 同意状況を確認できませんでした。
+         */
+        "consentLoadFailed": string;
+        /**
+         * 同意を記録できませんでした。もう一度お試しください。
+         */
+        "consentRecordFailed": string;
+        /**
+         * チャームを利用するには、利用条件への同意が必要です。
+         */
+        "consentRequired": string;
+        /**
+         * 利用条件への同意
+         */
+        "consentTerms": string;
+        /**
+         * 利用を許可するロールが必要です。
+         */
+        "roleCondition": string;
+        /**
+         * スマートフォン・モバイル表示・デッキ・UI Sでは利用できません。
+         */
+        "uiCondition": string;
+        /**
+         * ノートチャーム
+         */
+        "title": string;
+        /**
+         * ノートに飾る
+         */
+        "enabled": string;
+        /**
+         * キャラクター
+         */
+        "image": string;
+        /**
+         * 画像を選ぶ
+         */
+        "chooseImage": string;
+        /**
+         * 画像を変更
+         */
+        "replaceImage": string;
+        /**
+         * 飾りつけを削除
+         */
+        "removeImage": string;
+        /**
+         * 幅
+         */
+        "width": string;
+        /**
+         * 柄
+         */
+        "pattern": string;
+        /**
+         * 柄の色
+         */
+        "color": string;
+        /**
+         * 保存
+         */
+        "save": string;
+        /**
+         * 利用条件・保存した飾りつけ
+         */
+        "info": string;
+        /**
+         * 利用条件
+         */
+        "conditions": string;
+        /**
+         * 保存した飾りつけ
+         */
+        "saved": string;
+        /**
+         * アカウント共通で1体。変更は過去のノートにも反映されます。
+         */
+        "accountScope": string;
+        /**
+         * スマートフォンとモバイル表示ではノートチャームを利用できません。
+         */
+        "smartphoneUnavailable": string;
+        /**
+         * このロールではノートチャームを利用できません。
+         */
+        "roleUnavailable": string;
+        /**
+         * デッキ・UI Sではノートチャームを利用できません。
+         */
+        "uiUnavailable": string;
+        /**
+         * このロールと現在のUIではノートチャームを利用できません。
+         */
+        "bothUnavailable": string;
+        /**
+         * 保存した飾りつけはありません。
+         */
+        "noSaved": string;
+        /**
+         * PNG・WebP・JPEG / 5 MBまで
+         */
+        "fileRequirements": string;
+        /**
+         * 自分のドライブにある、センシティブでない5 MB以下のPNG・WebP・JPEGを選んでください。
+         */
+        "invalidFile": string;
+        /**
+         * 保存できませんでした。
+         */
+        "saveFailed": string;
+        /**
+         * 保存しました
+         */
+        "savedSuccessfully": string;
+        /**
+         * 今日も、好きなキャラクターと一緒に。
+         */
+        "sampleText": string;
+        /**
+         * チャームを持ち上げる
+         */
+        "lift": string;
+        /**
+         * チャームを下ろす
+         */
+        "lower": string;
+        /**
+         * チャームを表示
+         */
+        "show": string;
+        /**
+         * 他のユーザーのチャームを表示
+         */
+        "showOthers": string;
+        /**
+         * 他のユーザーのチャームを非表示
+         */
+        "hideOthers": string;
+        /**
+         * チャームを揺らす
+         */
+        "motion": string;
+        /**
+         * 風で揺らす
+         */
+        "wind": string;
+        /**
+         * 保存した画像を読み込めませんでした。
+         */
+        "imageLoadFailed": string;
+        /**
+         * 1体まで
+         */
+        "slotCount": string;
+        /**
+         * プレビュー
+         */
+        "preview": string;
+        "patterns": {
+            /**
+             * 切り抜き
+             */
+            "cutout": string;
+            /**
+             * クリア
+             */
+            "clear": string;
+            /**
+             * 水玉
+             */
+            "dots": string;
+            /**
+             * ストライプ
+             */
+            "stripes": string;
+            /**
+             * チェック
+             */
+            "check": string;
+        };
     };
 }
 declare const locales: {

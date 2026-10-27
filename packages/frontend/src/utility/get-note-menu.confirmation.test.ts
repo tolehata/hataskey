@@ -31,7 +31,7 @@ vi.mock('@/utility/favorite-folders.js', () => ({ openFavoriteFolderPicker: vi.f
 vi.mock('@/store.js', () => ({ store: { s: {} } }));
 vi.mock('@/instance.js', () => ({ instance: {} }));
 vi.mock('@/cache.js', () => ({ clipsCache: { fetch: vi.fn() }, favoritedChannelsCache: { fetch: vi.fn(async () => []) } }));
-vi.mock('@/local-storage.js', () => ({ miLocalStorage: { getItem: () => null } }));
+vi.mock('@/local-storage.js', () => ({ miLocalStorage: { getItem: () => null, setItem: vi.fn() } }));
 
 const releases: (() => void)[] = [];
 

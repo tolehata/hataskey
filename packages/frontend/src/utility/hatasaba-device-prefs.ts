@@ -234,3 +234,23 @@ export function setEarthquakePollSec(v: number): void {
 	earthquakePollSec.value = v;
 	miLocalStorage.setItem('hataEarthquakePollSec', String(v));
 }
+
+/** Viewer-only controls: account charm selection remains on the server. */
+export type NoteCharmDisplay = { show: boolean; motion: boolean; showOthers: boolean; wind: boolean };
+
+function readNoteCharmDisplay(): NoteCharmDisplay {
+	try {
+		const saved: unknown = JSON.parse(miLocalStorage.getItem('noteCharmDisplay') ?? '{}');
+		if (saved && typeof saved === 'object') {
+			const values = saved as Partial<NoteCharmDisplay>;
+			return { show: values.show !== false, motion: values.motion !== false, showOthers: values.showOthers !== false, wind: values.wind !== false };
+		}
+	} catch { /* Use defaults when device storage is unavailable. */ }
+	return { show: true, motion: true, showOthers: true, wind: true };
+}
+
+export const noteCharmDisplay = ref<NoteCharmDisplay>(readNoteCharmDisplay());
+export function setNoteCharmDisplay(patch: Partial<NoteCharmDisplay>): void {
+	noteCharmDisplay.value = { ...noteCharmDisplay.value, ...patch };
+	try { miLocalStorage.setItem('noteCharmDisplay', JSON.stringify(noteCharmDisplay.value)); } catch { /* Session preferences still apply. */ }
+}

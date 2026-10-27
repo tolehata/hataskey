@@ -25,6 +25,7 @@ export const paramDef = {
 			properties: {
 				favoriteFolderLimit: { type: 'integer', minimum: 0, maximum: 5 },
 				canCreateFavoriteSubfolders: { type: 'boolean' },
+				canUseNoteCharm: { type: 'boolean' },
 			},
 			additionalProperties: true,
 		},

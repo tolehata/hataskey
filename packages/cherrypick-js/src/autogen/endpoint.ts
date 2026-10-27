@@ -467,6 +467,7 @@ import type {
 	HashtagsTrendResponse,
 	HashtagsUsersRequest,
 	HashtagsUsersResponse,
+	HataConsentGetRequest,
 	HataConsentGetResponse,
 	HataConsentUpdateRequest,
 	HataConsentUpdateResponse,
@@ -1375,7 +1376,7 @@ export type Endpoints = {
 	'hashtags/show': { req: HashtagsShowRequest; res: HashtagsShowResponse };
 	'hashtags/trend': { req: EmptyRequest; res: HashtagsTrendResponse };
 	'hashtags/users': { req: HashtagsUsersRequest; res: HashtagsUsersResponse };
-	'hata/consent/get': { req: EmptyRequest; res: HataConsentGetResponse };
+	'hata/consent/get': { req: HataConsentGetRequest; res: HataConsentGetResponse };
 	'hata/consent/update': { req: HataConsentUpdateRequest; res: HataConsentUpdateResponse };
 	'hata/earthquake/history': { req: HataEarthquakeHistoryRequest; res: HataEarthquakeHistoryResponse };
 	'hata/earthquake/notification-settings': { req: EmptyRequest; res: HataEarthquakeNotificationSettingsResponse };

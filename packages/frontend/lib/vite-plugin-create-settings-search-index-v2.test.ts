@@ -44,6 +44,12 @@ const routes = readSettingsRoutesV2(`
 
 const extensionTargets = [
 	{
+		filePath: 'src/components/MkNoteCharmSettings.vue',
+		routeOverride: '/settings/note-charm',
+		owner: 'hatasaba',
+		applicableUi: 'all',
+	},
+	{
 		filePath: 'src/components/concrnt/ConcrntSettings.vue',
 		routeOverride: '/settings/concrnt',
 		persistence: 'device',
@@ -219,7 +225,7 @@ async function buildRealCatalogFromVirtualModule() {
 		targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 		mainVirtualModule: 'search-index-v2:settings-real-catalog',
 		routerDefinitionPath: 'src/router.definition.ts',
-		expectedControlCount: 536,
+		expectedControlCount: 548,
 	});
 	const load = typeof plugin.load === 'function' ? plugin.load : undefined;
 	if (load == null) throw new Error('settings V2 plugin did not expose virtual loader');
@@ -540,7 +546,7 @@ describe('settings control search index V2', () => {
 		expect(parseSfc(injected.code).errors).toHaveLength(0);
 	});
 
-	test('実設定50ファイルの主要フォーム352項目を漏れなく分類する', async () => {
+	test('実設定51ファイルの主要フォーム352項目を漏れなく分類する', async () => {
 		const [routerSource, files] = await Promise.all([
 			fs.readFile('src/router.definition.ts', 'utf8'),
 			glob('src/pages/settings/*.vue'),
@@ -549,7 +555,7 @@ describe('settings control search index V2', () => {
 		const entries = (await Promise.all(files.sort().map(async file => collectSettingsControlDescriptorsV2(
 			file, await fs.readFile(file, 'utf8'), currentRoutes,
 		)))).flat();
-		expect(files).toHaveLength(50);
+		expect(files).toHaveLength(51);
 		// The LTL emoji vote and device swipe switches add two controls to the measured 350-item
 		// settings-page population; the extension targets are counted separately.
 		expect(entries).toHaveLength(355);
@@ -590,17 +596,17 @@ describe('settings control search index V2', () => {
 		const bySource = Object.fromEntries([
 			'src/components/HatasabaUi2SettingsBody.vue', 'src/components/HatasabaUi2ImmediateSettings.vue', 'src/components/HataFeedDisplaySettings.vue', 'src/components/HatadyDisplaySettings.vue', 'src/components/MkUISetup.vue', 'src/pages/HataskSettings.vue', 'src/pages/MkMascotSettings.vue', 'src/pages/settings/hata-custom.vue',
 		].map(sourceFile => [sourceFile, Object.fromEntries(classifications.map(classification => [classification, inventory.items.filter(item => item.sourceFile === sourceFile && item.classification === classification).length]))]));
-		// Measured target closure: 50 settings SFCs plus 13 extension targets.
+		// Measured target closure: 50 settings SFCs plus 12 distinct extension targets.
 		// Keep the raw population separate from the smaller catalog-descriptor
 		// count so new visible buttons cannot disappear behind an old total.
-		expect(inventory.files).toHaveLength(61);
-		expect(inventory.items).toHaveLength(715);
+		expect(inventory.files).toHaveLength(63);
+		expect(inventory.items).toHaveLength(731);
 		expect(Object.fromEntries(classifications.map(classification => [classification, inventory.items.filter(item => item.classification === classification).length]))).toEqual({
-			'user-facing-setting': 452,
-			'navigation-action': 167,
-			'save-cancel': 30,
-			'disabled-display-only': 18,
-			'runtime-collection': 47,
+			'user-facing-setting': 461,
+			'navigation-action': 170,
+			'save-cancel': 32,
+			'disabled-display-only': 19,
+			'runtime-collection': 48,
 			destructive: 1,
 		});
 		expect(bySource).toEqual({
@@ -619,7 +625,7 @@ describe('settings control search index V2', () => {
 		expect(inventory.items.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		// Carousel arrows and dots remain in the raw inventory even when a
 		// static theme group owns their search destination.
-		expect(resolved).toHaveLength(715);
+		expect(resolved).toHaveLength(731);
 		expect(resolved.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		const descriptorIds = new Set(controls.descriptors.filter(descriptor => descriptor.searchable).map(descriptor => descriptor.stableId));
 		expect(resolved.filter(item => item.descriptorStableId != null).every(item => descriptorIds.has(item.descriptorStableId!))).toBe(true);
@@ -739,7 +745,7 @@ describe('settings control search index V2', () => {
 		expect(storageTargets('reactionAcceptance').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		expect(storageTargets('realtimeMode').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		const audit = collectSettingsStorageKeyAuditV2(input);
-		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 101 });
+		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 102 });
 		expect(audit.items.find(item => item.kind === 'local' && item.key === 'hataskeyUiSDisplaySize')).toMatchObject({
 			disposition: 'catalog-control', descriptorStableIds: ['settings.control.device.hataskey-ui-s-display-size'],
 		});
@@ -788,7 +794,7 @@ describe('settings control search index V2', () => {
 			expect(old[0]?.storageRefs, key).toContainEqual({ kind: 'pref', key });
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key), key).toMatchObject({ disposition: 'catalog-control', descriptorStableIds: old.map(item => item.stableId) });
 		}
-		expect(audit.items).toHaveLength(497);
+		expect(audit.items).toHaveLength(498);
 		expect(audit.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(audit.items.every(item => item.descriptorStableIds.length > 0
 			? item.disposition === 'catalog-control' || item.disposition === 'catalog-group'
@@ -800,7 +806,7 @@ describe('settings control search index V2', () => {
 			'preference:migration': 6, 'preference:deprecated': 17, 'preference:internal': 12,
 			'pizzax:catalog-control': 8, 'pizzax:catalog-group': 1, 'pizzax:runtime': 9,
 			'pizzax:migration': 3, 'pizzax:cache': 2, 'pizzax:deprecated': 78, 'pizzax:internal': 4,
-			'local:catalog-control': 14, 'local:catalog-group': 1, 'local:runtime': 12, 'local:migration': 22,
+			'local:catalog-control': 15, 'local:catalog-group': 1, 'local:runtime': 12, 'local:migration': 22,
 			'local:cache': 26, 'local:deprecated': 6, 'local:internal': 20,
 		});
 		expect(audit.items.filter(item => item.kind === 'pizzax' && item.disposition === 'catalog-control')
@@ -856,7 +862,7 @@ describe('settings control search index V2', () => {
 	test('実Vite入力でもstorage key XOR監査を実行し、runtime evidence変更を再生成対象にする', async () => {
 		const inventory = await collectRealSettingsInventory();
 		const audit = await collectSettingsStorageKeyAuditFromRepositoryV2(process.cwd(), inventory.files, inventory.descriptors);
-		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 101 });
+		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 102 });
 		for (const key of ['emojiAdditionNotice', 'hourlyTimeNotice']) {
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key)).toMatchObject({
 				disposition: 'catalog-control',
@@ -1033,6 +1039,110 @@ describe('settings control search index V2', () => {
 		});
 		await expect(collectSettingsTransitiveControlAuditV2(process.cwd(), targetSources.filter(source => source !== 'src/components/MkPushNotificationAllowButton.vue')))
 			.rejects.toThrow('unregistered transitive setting control: src/components/MkPushNotificationAllowButton.vue');
+	});
+
+	test('チャームは実ノートpreview境界で監査を閉じ、設定本体の未登録は拒否する', async () => {
+		const targets = [...new Set([...await glob('src/pages/settings/*.vue'), ...extensionTargets.map(target => target.filePath)])];
+		const audit = await collectSettingsTransitiveControlAuditV2(process.cwd(), targets);
+		expect(audit.find(item => item.sourceFile === 'src/components/MkNoteCharmSettings.vue')).toMatchObject({ disposition: 'registered-target' });
+		expect(audit.find(item => item.sourceFile === 'src/components/MkNoteCharmPreview.vue')).toMatchObject({
+			disposition: 'nonsetting', parentSourceFiles: ['src/components/MkNoteCharmSettings.vue'],
+			reason: expect.stringContaining('inert'),
+		});
+		expect(audit.some(item => item.sourceFile === 'src/components/MkMediaAudio.vue')).toBe(false);
+		const preview = await fs.readFile('src/components/MkNoteCharmPreview.vue', 'utf8');
+		expect(preview).toContain(' inert>');
+		expect(preview).toMatch(/<MkNote\b[^>]*:note="sampleNote"[^>]*:mock="true"/);
+		await expect(collectSettingsTransitiveControlAuditV2(process.cwd(), targets.filter(source => source !== 'src/components/MkNoteCharmSettings.vue')))
+			.rejects.toThrow('unregistered transitive setting control: src/components/MkNoteCharmSettings.vue');
+	});
+
+	test('チャームのアカウント下書きと端末即時設定は別々の保存根拠で検索できる', async () => {
+		const sourceFile = 'src/components/MkNoteCharmSettings.vue';
+		const source = await fs.readFile(sourceFile, 'utf8');
+		const descriptors = collectSettingsSearchDescriptorsV2(sourceFile, source, new Map(), targetMetadata(sourceFile));
+		for (const modelExpression of ['draft.enabled', 'draft.size', 'draft.color']) {
+			expect(descriptors.find(item => item.modelExpression === modelExpression)).toMatchObject({
+				searchable: true, route: '/settings/note-charm', persistence: 'account', saveMode: 'buffered',
+				storageRefs: [{ kind: 'api', endpoint: 'i/update', fields: ['noteCharm'] }],
+			});
+		}
+		for (const modelExpression of ['noteCharmDisplay.show', 'noteCharmDisplay.showOthers', 'noteCharmDisplay.motion', 'noteCharmDisplay.wind']) {
+			expect(descriptors.find(item => item.modelExpression === modelExpression)).toMatchObject({
+				searchable: true, persistence: 'device', saveMode: 'immediate',
+				storageRefs: [{ kind: 'local', key: 'noteCharmDisplay' }],
+			});
+		}
+		expect(descriptors.find(item => item.labelI18nKeys?.includes('i18n.ts._noteCharm.pattern') && item.isGroup)).toMatchObject({ searchable: true, persistence: 'account', saveMode: 'buffered' });
+		for (const action of ['chooseImage', 'removeImage']) {
+			expect(descriptors.find(item => item.sourceLine === collectSettingsInteractiveInventoryV2(sourceFile, source).find(control => control.actionExpression === action)?.sourceLine)).toMatchObject({ searchable: true, persistence: 'account', saveMode: 'buffered' });
+		}
+		const raw = collectSettingsInteractiveInventoryV2(sourceFile, source);
+		const groups = descriptors.filter(item => item.isGroup && item.staticGroupKey != null).map(item => ({ key: item.staticGroupKey!, stableId: item.stableId }));
+		const resolved = resolveSettingsInteractiveInventoryDispositionsV2(raw, descriptors, groups);
+		expect(resolved.find(item => item.component === 'input')).toMatchObject({ descriptorStableId: 'settings.group.note-charm-pattern' });
+		const pattern = descriptors.find(item => item.stableId === 'settings.group.note-charm-pattern');
+		expect(pattern).toMatchObject({
+			focusId: 'settings.group.note-charm-settings',
+			focusHostConditions: [],
+			unmet: [{ kind: 'policy', id: 'note-charm-role-and-ui', behavior: 'explain' }],
+		});
+		expect(collectSettingsDescriptorReachabilityAuditV2(descriptors).find(item => item.stableId === pattern?.stableId))
+			.toMatchObject({ disposition: 'parent-static-group', focusId: 'settings.group.note-charm-settings' });
+		expect(() => collectSettingsDescriptorReachabilityAuditV2(descriptors.map(item => item === pattern ? { ...item, focusId: undefined } : item)))
+			.toThrow('conditional control has no static parent focus: settings.group.note-charm-pattern');
+		expect(raw.find(item => item.actionExpression === 'save')).toMatchObject({ classification: 'save-cancel' });
+		const injected = injectSettingsSearchIdsV2(sourceFile, source, new Map(), targetMetadata(sourceFile)).code;
+		expect(parseSfc(injected).errors).toEqual([]);
+	});
+
+	test('チャーム検索の実navigation selectorは編集不可時も常設rootに一致する', async () => {
+		const sourceFile = 'src/components/MkNoteCharmSettings.vue';
+		const source = await fs.readFile(sourceFile, 'utf8');
+		const descriptors = collectSettingsSearchDescriptorsV2(sourceFile, source, new Map(), targetMetadata(sourceFile));
+		const translations = loadYaml(await fs.readFile('../../locales/ja-JP.yml', 'utf8')) as Record<string, unknown>;
+		const catalog = buildSettingsCatalogV2([], toSettingsControlCatalogItemsV2(descriptors, translations));
+		const injected = injectSettingsSearchIdsV2(sourceFile, source, new Map(), targetMetadata(sourceFile)).code;
+		const template = parseSfc(injected).descriptor.template;
+		if (template == null) throw new Error('injected template missing');
+		const navigation = await fs.readFile('src/pages/settings-redesign/index.vue', 'utf8');
+		const functionSource = navigation.match(/function focusTargetForNavigation\(target: SettingsSearchNavigationTargetV2\): NavigationFocusTarget \| null \{[\s\S]*?\n\}/u)?.[0];
+		if (functionSource == null) throw new Error('production navigation focus function missing');
+		const focusFor = new Function('descriptorForNavigationTarget', `return (${functionSource.replace('(target: SettingsSearchNavigationTargetV2): NavigationFocusTarget | null', '(target)')});`)((target: unknown) => target);
+		const attributeExpression = navigation.match(/const attribute = (focusTarget\.kind === 'group' \? 'data-settings-search-group-id' : 'data-settings-search-id');/u)?.[1];
+		if (attributeExpression == null) throw new Error('production navigation selector missing');
+		const attributeFor = new Function('focusTarget', `return ${attributeExpression};`);
+		const surface = document.createElement('div');
+		surface.innerHTML = template.content;
+		// The production component removes this entire edit branch when its role
+		// or UI prerequisite fails; the common section must survive both cases.
+		for (const branch of surface.querySelectorAll('[v-if="canEdit"]')) branch.remove();
+		for (const descriptor of catalog.descriptors.filter(item => item.focusId === 'settings.group.note-charm-settings')) {
+			const focus = focusFor(descriptor);
+			const attribute = attributeFor(focus);
+			const matches = [...surface.querySelectorAll(`[${attribute}]`)].filter(element => element.getAttribute(attribute) === focus.id);
+			expect(matches, descriptor.stableId).toHaveLength(1);
+			expect(matches[0]?.tagName).toBe('SECTION');
+			expect(matches[0]?.getAttribute('data-settings-search-group-id')).toBe(focus.id);
+		}
+		expect(catalog.descriptors.filter(item => item.focusId === 'settings.group.note-charm-settings').length).toBeGreaterThan(3);
+	});
+
+	test('チャーム追加後の実Vite設定で仮想module生成の全監査ゲートを通す', async () => {
+		const { settingsControlSearchIndexV2: options } = await import('../vite.config.js');
+		const plugin = pluginCreateSettingsSearchIndexV2(options);
+		const load = typeof plugin.load === 'function' ? plugin.load : undefined;
+		if (load == null) throw new Error('virtual loader missing');
+		const generated = await load.call({}, '\0' + options.mainVirtualModule);
+		const payload = (generated as string).match(/^export const settingsControlSearchIndexV2 = ([\s\S]+);\n$/u)?.[1];
+		if (payload == null) throw new Error('virtual catalog missing');
+		const descriptors = JSON.parse(payload);
+		expect(descriptors).toHaveLength(551);
+		const input = await collectStorageAuditInput();
+		const audit = collectSettingsStorageKeyAuditV2(input);
+		expect(audit.items.find(item => item.kind === 'local' && item.key === 'noteCharmDisplay')).toMatchObject({ disposition: 'catalog-control', descriptorStableIds: expect.any(Array) });
+		expect(() => collectSettingsStorageKeyAuditV2({ ...input, descriptors: input.descriptors.filter(item => !item.storageRefs?.some(ref => ref.kind === 'local' && ref.key === 'noteCharmDisplay')) }))
+			.toThrow('unclassified local key: noteCharmDisplay');
 	});
 
 	test('settings import閉包は未登録のv-for runtime childもfail-fastで検出する', async () => {
@@ -1362,10 +1472,10 @@ describe('settings control search index V2', () => {
 			const absoluteFile = path.join(process.cwd(), sourceFile);
 			return collectFileMarkers(absoluteFile, legacyAssigner.processFile(absoluteFile, source).code);
 		}))).flat();
-		expect(settingsFiles).toHaveLength(50);
-		expect(inventory.files).toHaveLength(61);
-		expect(legacy).toHaveLength(282);
-		validateSettingsControlDescriptorsV2(inventory.descriptors, 536);
+		expect(settingsFiles).toHaveLength(51);
+		expect(inventory.files).toHaveLength(63);
+		expect(legacy).toHaveLength(284);
+		validateSettingsControlDescriptorsV2(inventory.descriptors, 548);
 		expect(inventory.descriptors.filter(entry => entry.activation?.kind === 'popup' && entry.route === '/settings/hata-custom').length).toBeGreaterThan(15);
 		expect(inventory.results.reduce((count, result) => count + (result.injected.code.match(/data-settings-search-id=/gu)?.length ?? 0), 0)).toBeGreaterThan(0);
 		expect(inventory.results.flatMap(result => parseSfc(result.injected.code).errors)).toHaveLength(0);
@@ -1401,12 +1511,12 @@ describe('settings control search index V2', () => {
 		await expect(load!.call({}, '\0search-index-v2:missing')).rejects.toThrow('target matched no SFC');
 	});
 
-	test('新しい仮想モジュールは61 source SFC・536項目とactivationを配信する', async () => {
+	test('新しい仮想モジュールは63 source SFC・548項目とactivationを配信する', async () => {
 		const plugin = pluginCreateSettingsSearchIndexV2({
 			targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 			mainVirtualModule: 'search-index-v2:settings',
 			routerDefinitionPath: 'src/router.definition.ts',
-			expectedControlCount: 536,
+			expectedControlCount: 548,
 			modulesToHmrOnUpdate: ['src/pages/settings-redesign/index.vue'],
 		});
 		const load = typeof plugin.load === 'function' ? plugin.load : undefined;
@@ -1417,7 +1527,7 @@ describe('settings control search index V2', () => {
 		const inventoryJson = (generated as string).match(/^export const settingsControlSearchIndexV2 = ([\s\S]+);\n$/u)?.[1];
 		expect(inventoryJson).toBeDefined();
 		const inventory = JSON.parse(inventoryJson!) as Array<{ sourceFile: string; route: string; activation?: { kind: string; popup?: string } }>;
-		expect(inventory).toHaveLength(536);
+		expect(inventory).toHaveLength(548);
 		// Safe `editor.copy` controls stay individual; only the three dynamic
 		// runtime/value areas become semantic groups.
 		expect(inventory.filter(entry => entry.sourceFile === 'src/components/HatasabaUi2SettingsBody.vue' && entry.activation?.popup === 'hatasaba-ui2')).toHaveLength(16);
@@ -1500,7 +1610,7 @@ describe('settings control search index V2', () => {
 				if (/^(?:i18n|editor|draft|copy|model(?:Value)?|value|prefer|store)(?:[.\[]|$)/u.test(descriptor.label)) issues.push(`${descriptor.stableId}:internal`);
 				if (descriptor.label.length > 80) issues.push(`${descriptor.stableId}:long`);
 				if (/名前\s+このキャラを削除|動きなしぴょんぴょんガクガクゆらゆら回転/iu.test(descriptor.label)) issues.push(`${descriptor.stableId}:interactive-text`);
-				if (descriptor.sourceFile === 'src/pages/settings/profile.vue' && [93, 95].includes(descriptor.sourceLine ?? -1) && control?.aliases.includes('i18n.ts._profile.verifiedLinkDescription')) issues.push(`${descriptor.stableId}:metadata-notice-label`);
+				if (descriptor.sourceFile === 'src/pages/settings/profile.vue' && ['element.name', 'element.value'].includes(descriptor.modelExpression ?? '') && control?.aliases.includes('i18n.ts._profile.verifiedLinkDescription')) issues.push(`${descriptor.stableId}:metadata-notice-label`);
 				if (descriptor.sourceFile === 'src/pages/settings/privacy.vue' && [144, 154, 164, 173, 194, 204, 214, 223].includes(descriptor.sourceLine ?? -1) && control?.aliases.includes('i18n.ts._accountSettings.mayNotEffectSomeSituations')) issues.push(`${descriptor.stableId}:privacy-warning-label`);
 				return issues;
 			}),
@@ -1529,12 +1639,12 @@ describe('settings control search index V2', () => {
 		// notice must never become the searchable label.
 		const profileMetadataLabels = new Map(
 			descriptors
-				.filter(descriptor => descriptor.sourceFile === 'src/pages/settings/profile.vue' && [93, 95].includes(descriptor.sourceLine ?? -1))
-				.map(descriptor => [descriptor.sourceLine, descriptor.labelI18nKeys?.[0]]),
+				.filter(descriptor => descriptor.sourceFile === 'src/pages/settings/profile.vue' && ['element.name', 'element.value'].includes(descriptor.modelExpression ?? ''))
+				.map(descriptor => [descriptor.modelExpression, descriptor.labelI18nKeys?.[0]]),
 		);
 		expect(profileMetadataLabels).toEqual(new Map([
-			[93, 'i18n.ts._profile.metadataLabel'],
-			[95, 'i18n.ts._profile.metadataContent'],
+			['element.name', 'i18n.ts._profile.metadataLabel'],
+			['element.value', 'i18n.ts._profile.metadataContent'],
 		]));
 		const privacySlotLabels = new Map(
 			descriptors
@@ -1665,9 +1775,9 @@ describe('settings control search index V2', () => {
 		}
 		expect(relationSuspects).toHaveLength(0);
 		expect(labelAuditIssues).toHaveLength(0);
-		expect(descriptors).toHaveLength(536);
-		expect(legacy).toHaveLength(282);
-		expect(catalog.byLegacyId.size).toBe(282);
+		expect(descriptors).toHaveLength(548);
+		expect(legacy).toHaveLength(284);
+		expect(catalog.byLegacyId.size).toBe(284);
 		expect(controls).toHaveLength(descriptors.filter((descriptor: { searchable: boolean }) => descriptor.searchable).length);
 		expect(catalog.descriptors.filter(descriptor => descriptor.source === 'control' && descriptor.searchable && !descriptor.destructive).every(descriptor => descriptor.related.length > 0 || descriptor.noRelatedReason != null)).toBe(true);
 		expect(catalog.descriptors.filter(descriptor => descriptor.searchable && !descriptor.destructive).filter(descriptor => /^(?:i18n|editor|draft|copy|model(?:Value)?|value|prefer|store)(?:[.\[]|$)/u.test(descriptor.label))).toHaveLength(0);

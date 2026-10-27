@@ -98,6 +98,7 @@ function fixture(options: { savedTab?: string; width?: number; deck?: boolean; l
 		ref, computed, watch,
 		isHataskeyTimelineAllowed: () => true,
 		ResizeObserver: Observer,
+		getComputedStyle: window.getComputedStyle.bind(window),
 		['window']: { innerWidth: options.width ?? 1400 },
 		deckIgnoreWidth,
 		prefer: { r: { 'simpleUi.deckMode': ref(options.deck ?? false) } },
@@ -108,6 +109,8 @@ function fixture(options: { savedTab?: string; width?: number; deck?: boolean; l
 
 function contentFixture() {
 	const element = window.document.createElement('div');
+	window.document.body.append(element);
+	cleanupScopes.push(() => element.remove());
 	const geometry = { clientWidth: 1000, clientHeight: 640, offsetTop: 92, offsetLeft: 12 };
 	for (const name of Object.keys(geometry) as Array<keyof typeof geometry>) {
 		Object.defineProperty(element, name, { get: () => geometry[name], configurable: true });
@@ -148,6 +151,10 @@ describe('Hataskey normal LTL startup dependency order', () => {
 		expect(observerAt(observers, 0).observe).toHaveBeenCalledWith(content.element);
 		expect(state.ltlEmojiVoteViewport.value).toEqual({ top: '92px', left: '112px', width: '800px', height: '640px' });
 		Object.assign(content.geometry, { clientWidth: 590, clientHeight: 530, offsetTop: 144, offsetLeft: 4 });
+		observerAt(observers, 0).callback();
+		expect(state.ltlEmojiVoteViewport.value).toEqual({ top: '144px', left: '4px', width: '590px', height: '530px' });
+		content.element.style.paddingRight = '110px';
+		Object.assign(content.geometry, { clientWidth: 700 });
 		observerAt(observers, 0).callback();
 		expect(state.ltlEmojiVoteViewport.value).toEqual({ top: '144px', left: '4px', width: '590px', height: '530px' });
 	});

@@ -330,6 +330,9 @@ export const packedRolePoliciesSchema = {
 			type: 'integer',
 			optional: false, nullable: false,
 		},
+		canUseNoteCharm: {
+			type: 'boolean', nullable: false, optional: false,
+		},
 		canCreateFavoriteSubfolders: {
 			type: 'boolean',
 			optional: false, nullable: false,

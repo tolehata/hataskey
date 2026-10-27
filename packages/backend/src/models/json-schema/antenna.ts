@@ -82,6 +82,11 @@ export const packedAntennaSchema = {
 			optional: false, nullable: false,
 			default: false,
 		},
+		excludeOwnNotes: {
+			type: 'boolean',
+			optional: false, nullable: false,
+			default: false,
+		},
 		withReplies: {
 			type: 'boolean',
 			optional: false, nullable: false,

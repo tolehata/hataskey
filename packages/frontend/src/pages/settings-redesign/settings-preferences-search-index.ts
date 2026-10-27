@@ -120,6 +120,8 @@ const CURRENT_DESTINATION_BY_SOURCE_FILE: Readonly<Record<string, string>> = {
 // An isolated source row must move to an adjacent meaningful setting, never
 // just reopen the destination that already contains it.
 const RELATION_DESTINATION_BY_SOURCE_FILE: Readonly<Record<string, string>> = {
+	'src/pages/settings/note-charm.vue': 'account-profile',
+	'src/components/MkNoteCharmSettings.vue': 'account-profile',
 	'src/pages/settings/accounts.vue': 'account-profiles',
 	'src/pages/settings/avatar-decoration.vue': 'account-profile',
 	'src/pages/settings/cherrypick.vue': 'cherrypick-display',

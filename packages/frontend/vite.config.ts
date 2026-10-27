@@ -67,6 +67,12 @@ export const searchIndexes = [{
 /** Source-level settings-control inventory for the redesigned settings search. */
 export const settingsControlSearchIndexV2 = {
 	targetFilePaths: [
+		{
+			filePath: 'src/components/MkNoteCharmSettings.vue',
+			routeOverride: '/settings/note-charm',
+			owner: 'hatasaba',
+			applicableUi: 'all',
+		},
 		'src/pages/settings/*.vue',
 		{
 			filePath: 'src/components/concrnt/ConcrntSettings.vue',
@@ -181,14 +187,14 @@ export const settingsControlSearchIndexV2 = {
 	mainVirtualModule: 'search-index-v2:settings',
 	routerDefinitionPath: 'src/router.definition.ts',
 	// The shared UI2 body and immediate companion are independently inventoried:
-	// 536 source descriptors plus three explicit shell actions. Concrnt keeps
+	// 548 source descriptors plus three explicit shell actions. Concrnt keeps
 	// its device settings independent from the external-account preferences.
 	// HataFeed now
 	// owns its theme and existing leaves setting. The permanent
 	// UI2 root is a real focusable group for the former broad "UI" tab aliases;
 	// eight static popup controls resolve through the audited `editor.copy`
 	// proxy, while dynamic values/runtime collections use semantic groups.
-	expectedControlCount: 539,
+	expectedControlCount: 551,
 	manualDescriptors: [
 		{ stableId: 'settings.shell.clear-cache', route: '/settings', sourceFile: 'settings-shell', sourceLine: 0, component: 'SettingsShellAction', label: '', labelExpression: '${i18n.ts.clearCache}', labelI18nKeys: ['i18n.ts.clearCache'], preferenceKeys: [], legacyMarkerAncestorIds: [], conditions: [], searchable: true, destructive: true, persistence: 'device', saveMode: 'immediate', availability: 'all', owner: 'hatasaba', applicableUi: 'all', metadataEvidence: { persistence: '端末キャッシュを消去する既存shell操作', saveMode: '既存確認後に即時実行', availability: 'shell操作は端末幅を問わない', owner: 'settings shell', applicableUi: '全UIで表示するshell操作' }, relatedHostId: 'settings.shell.clear-cache' },
 		{ stableId: 'settings.shell.logout', route: '/settings', sourceFile: 'settings-shell', sourceLine: 0, component: 'SettingsShellAction', label: '', labelExpression: '${i18n.ts.logout}', labelI18nKeys: ['i18n.ts.logout'], preferenceKeys: [], legacyMarkerAncestorIds: [], conditions: [], searchable: true, destructive: true, persistence: 'account', saveMode: 'immediate', availability: 'all', owner: 'hatasaba', applicableUi: 'all', metadataEvidence: { persistence: '現在のアカウントsessionを終了する既存shell操作', saveMode: '既存確認後に即時実行', availability: 'shell操作は端末幅を問わない', owner: 'settings shell', applicableUi: '全UIで表示するshell操作' }, relatedHostId: 'settings.shell.logout' },

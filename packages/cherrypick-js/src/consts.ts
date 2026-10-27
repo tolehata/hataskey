@@ -236,6 +236,7 @@ export const rolePolicies = [
 	'mascotMaxPhrases',
 	'mascotMaxCharacters',
 	'hataSideStudioProfileLimit',
+	'canUseNoteCharm',
 	'canUseMascot',
 	'canAccessHataFeed',
 	'canUseHatadySync',

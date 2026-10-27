@@ -25,6 +25,7 @@ export const SUPPORT_POLICIES = [
 	{ key: 'emojiRequestLimit', name: '絵文字の申請可能数', icon: 'mood-smile', type: 'count', unit: '件 / 7日', description: '直近7日間のカスタム絵文字申請数の上限が増えます' },
 	{ key: 'hatadyBookLimit', name: 'Hatadyの本棚', icon: 'books', type: 'count', unit: '冊', description: '本棚に登録できる本の上限が増えます' },
 	{ key: 'canUseHatadySync', name: 'Hatadyの端末間データ同期', icon: 'devices', type: 'boolean', enabledLabel: '同期できます', disabledLabel: '同期できません', description: 'Hatadyの表示設定などを、\n同じアカウントの端末間で共有できます' },
+	{ key: 'canUseNoteCharm', name: 'ノートチャーム', icon: 'sparkles', type: 'boolean', enabledLabel: '利用できます', disabledLabel: '利用できません', description: 'ノートの外枠に、自分のキャラクターを1体飾れます。デッキ・UI Sでは利用できません。' },
 	{ key: 'canUseMascot', name: 'マスコット機能', icon: 'mood-smile', type: 'boolean', enabledLabel: '利用できます', disabledLabel: '利用できません', description: '好きな画像でマスコットを表示し、\n表情やセリフを設定できます' },
 	{ key: 'mascotMaxExpressions', name: 'マスコットの最大表情数', icon: 'mood-smile', type: 'count', unit: '表情 / キャラクター', description: '1キャラクターあたりに登録できる、\n通常の表情の上限が増えます' },
 	{ key: 'mascotMaxPhrases', name: 'マスコットの最大文言数', icon: 'message-circle', type: 'count', unit: '件 / キャラクター', description: '1キャラクターあたりに登録できる、\n通常のセリフの上限が増えます。表情ごとの上限ではありません' },

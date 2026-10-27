@@ -24,6 +24,7 @@ export type Keys = (
 	'fontSize' |
 	'useBoldFont' |
 	'ui' |
+	'noteCharmDisplay' |
 	'ui_temp' |
 	'ui_setup_completed' |
 	'bootloaderLocales' |

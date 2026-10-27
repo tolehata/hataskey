@@ -356,6 +356,18 @@ export class MiUserProfile {
 
 	@Column('boolean', {
 		default: false,
+		comment: 'ノートチャーム利用条件への同意フラグ',
+	})
+	public hataConsentNoteCharm: boolean;
+
+	@Column('timestamp with time zone', {
+		nullable: true,
+		comment: 'チャーム機能同意日時',
+	})
+	public hataConsentNoteCharmDate: Date | null;
+
+	@Column('boolean', {
+		default: false,
 		comment: 'Hatadint投稿・ドライブ保存の利用規約同意フラグ',
 	})
 	public hataConsentDrawing: boolean;

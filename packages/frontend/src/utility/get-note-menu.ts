@@ -31,6 +31,8 @@ import { addDividersBetweenMenuSections } from '@/utility/add-dividers-between-m
 import { popup } from '@/os.js';
 import { openFavoriteFolderPicker, removeFavoriteNote } from '@/utility/favorite-folders.js';
 import { requestNoteActionConfirmation } from '@/utility/note-action-confirmation.js';
+import { noteCharmDisplay, setNoteCharmDisplay } from '@/utility/hatasaba-device-prefs.js';
+import { isNoteCharmMobileDisplay } from '@/utility/note-charm-device.js';
 
 export async function getNoteClipMenu(props: {
 	note: Misskey.entities.Note;
@@ -774,6 +776,15 @@ export function getNoteMenu(props: {
 
 				return noteChildMenu;
 			},
+		});
+	}
+
+	if (!isNoteCharmMobileDisplay() && noteCharmDisplay.value.show && appearNote.userId !== $i?.id && appearNote.user.noteCharm) {
+		const showOthers = !noteCharmDisplay.value.showOthers;
+		menuItems.push({ type: 'divider' }, {
+			icon: showOthers ? 'ti ti-eye' : 'ti ti-eye-off',
+			text: showOthers ? i18n.ts._noteCharm.showOthers : i18n.ts._noteCharm.hideOthers,
+			action: () => setNoteCharmDisplay({ showOthers }),
 		});
 	}
 

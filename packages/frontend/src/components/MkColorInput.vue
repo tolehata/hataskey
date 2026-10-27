@@ -129,7 +129,7 @@ const onInput = () => {
 	height: 42px;
 	width: 100%;
 	margin: 0;
-	padding: 0 12px;
+	padding: 0;
 	font: inherit;
 	font-weight: normal;
 	font-size: 1em;
@@ -137,10 +137,26 @@ const onInput = () => {
 	background: var(--MI_THEME-panel);
 	border: solid 1px var(--MI_THEME-panel);
 	border-radius: 6px;
+	overflow: hidden;
 	outline: none;
 	box-shadow: none;
 	box-sizing: border-box;
 	transition: border-color 0.1s ease-out;
+
+	&::-webkit-color-swatch-wrapper {
+		padding: 0;
+		border-radius: inherit;
+	}
+
+	&::-webkit-color-swatch {
+		border: 0;
+		border-radius: inherit;
+	}
+
+	&::-moz-color-swatch {
+		border: 0;
+		border-radius: inherit;
+	}
 
 	&:hover {
 		border-color: var(--MI_THEME-inputBorderHover) !important;

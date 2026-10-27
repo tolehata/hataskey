@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { NOTE_CHARM_MAX_SIZE, NOTE_CHARM_MIN_SIZE } from '@/misc/note-charm.js';
+
 export const notificationRecieveConfig = {
 	type: 'object',
 	oneOf: [
@@ -37,6 +39,12 @@ export const notificationRecieveConfig = {
 	],
 } as const;
 
+const noteCharmAppearanceProperties = {
+	size: { type: 'number', nullable: false, optional: false, minimum: NOTE_CHARM_MIN_SIZE, maximum: NOTE_CHARM_MAX_SIZE },
+	pattern: { type: 'string', nullable: false, optional: false, enum: ['cutout', 'clear', 'dots', 'stripes', 'check'] },
+	color: { type: 'string', nullable: false, optional: false },
+} as const;
+
 export const packedUserLiteSchema = {
 	type: 'object',
 	properties: {
@@ -61,6 +69,13 @@ export const packedUserLiteSchema = {
 			nullable: true, optional: false,
 			example: 'cherrypick.example.com',
 			description: 'The local host is represented with `null`.',
+		},
+		noteCharm: {
+			type: 'object', nullable: true, optional: true,
+			properties: {
+				url: { type: 'string', format: 'url', nullable: false, optional: false },
+				...noteCharmAppearanceProperties,
+			},
 		},
 		avatarUrl: {
 			type: 'string',
@@ -488,6 +503,14 @@ export const packedUserDetailedNotMeOnlySchema = {
 export const packedMeDetailedOnlySchema = {
 	type: 'object',
 	properties: {
+		noteCharmSettings: {
+			type: 'object', nullable: true, optional: false,
+			properties: {
+				fileId: { type: 'string', format: 'id', nullable: false, optional: false },
+				enabled: { type: 'boolean', nullable: false, optional: false },
+				...noteCharmAppearanceProperties,
+			},
+		},
 		avatarId: {
 			type: 'string',
 			nullable: true, optional: false,

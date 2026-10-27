@@ -1049,7 +1049,7 @@ function relatedSourcesForCurrentNavigation() {
 }
 
 const pageOwnedRelatedRoutes: Readonly<Record<string, readonly string[]>> = {
-	'/settings/profile': ['/settings/avatar-decoration'],
+	'/settings/profile': ['/settings/avatar-decoration', '/settings/note-charm'],
 };
 
 const routeRelatedItems = computed<SettingsRelatedLink[]>(() => {
@@ -1386,6 +1386,7 @@ const activeBentoCategoryId = computed<SettingsBentoCategoryId | null>(() => {
 	if (embeddedPopup.value === 'settings-transfer') return 'data';
 	if (embeddedPopup.value != null) return 'apps';
 	if (requestedBentoCategoryId.value != null) return requestedBentoCategoryId.value;
+	if (currentPath.value === '/settings/note-charm') return 'profile';
 	for (const id of activeNavigationItemIds.value) {
 		const category = bentoCategoryForDestination(id);
 		if (category != null) return category;

@@ -470,6 +470,7 @@ export type HashtagsShowResponse = operations['hashtags___show']['responses']['2
 export type HashtagsTrendResponse = operations['hashtags___trend']['responses']['200']['content']['application/json'];
 export type HashtagsUsersRequest = operations['hashtags___users']['requestBody']['content']['application/json'];
 export type HashtagsUsersResponse = operations['hashtags___users']['responses']['200']['content']['application/json'];
+export type HataConsentGetRequest = operations['hata___consent___get']['requestBody']['content']['application/json'];
 export type HataConsentGetResponse = operations['hata___consent___get']['responses']['200']['content']['application/json'];
 export type HataConsentUpdateRequest = operations['hata___consent___update']['requestBody']['content']['application/json'];
 export type HataConsentUpdateResponse = operations['hata___consent___update']['responses']['200']['content']['application/json'];

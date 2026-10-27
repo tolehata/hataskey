@@ -14,6 +14,8 @@ import type { Packed } from '@/misc/json-schema.js';
 import type { Promiseable } from '@/misc/prelude/await-all.js';
 import { awaitAll } from '@/misc/prelude/await-all.js';
 import { toArray } from '@/misc/prelude/array.js';
+import { normalizeNoteCharmSettings, packNoteCharms } from '@/misc/note-charm.js';
+import type { PublicNoteCharm } from '@/misc/note-charm.js';
 import { canExposeLocalProfileBadge } from '@/misc/local-profile-badge.js';
 import { USER_ACTIVE_THRESHOLD, USER_ONLINE_THRESHOLD } from '@/const.js';
 import type { MiLocalUser, MiPartialLocalUser, MiPartialRemoteUser, MiRemoteUser, MiUser } from '@/models/User.js';
@@ -27,6 +29,7 @@ import {
 } from '@/models/User.js';
 import type {
 	BlockingsRepository,
+	DriveFilesRepository,
 	FollowingsRepository,
 	FollowRequestsRepository,
 	MiFollowing,
@@ -54,6 +57,7 @@ import type { NotificationService } from '@/core/NotificationService.js';
 import { AvatarDecorationService } from '@/core/AvatarDecorationService.js';
 import { ChatService } from '@/core/ChatService.js';
 import type { OnModuleInit } from '@nestjs/common';
+import type { DriveFileEntityService } from './DriveFileEntityService.js';
 import type { NoteEntityService } from './NoteEntityService.js';
 import type { PageEntityService } from './PageEntityService.js';
 
@@ -95,6 +99,7 @@ export class UserEntityService implements OnModuleInit {
 	private customEmojiService: CustomEmojiService;
 	private announcementService: AnnouncementService;
 	private roleService: RoleService;
+	private driveFileEntityService: DriveFileEntityService;
 	private federatedInstanceService: FederatedInstanceService;
 	private idService: IdService;
 	private avatarDecorationService: AvatarDecorationService;
@@ -112,6 +117,9 @@ export class UserEntityService implements OnModuleInit {
 
 		@Inject(DI.redis)
 		private redisClient: Redis.Redis,
+
+		@Inject(DI.driveFilesRepository)
+		private driveFilesRepository: DriveFilesRepository,
 
 		@Inject(DI.usersRepository)
 		private usersRepository: UsersRepository,
@@ -159,6 +167,7 @@ export class UserEntityService implements OnModuleInit {
 		this.customEmojiService = this.moduleRef.get('CustomEmojiService');
 		this.announcementService = this.moduleRef.get('AnnouncementService');
 		this.roleService = this.moduleRef.get('RoleService');
+		this.driveFileEntityService = this.moduleRef.get('DriveFileEntityService');
 		this.federatedInstanceService = this.moduleRef.get('FederatedInstanceService');
 		this.idService = this.moduleRef.get('IdService');
 		this.avatarDecorationService = this.moduleRef.get('AvatarDecorationService');
@@ -425,6 +434,7 @@ export class UserEntityService implements OnModuleInit {
 			userRelations?: Map<MiUser['id'], UserRelation>,
 			userMemos?: Map<MiUser['id'], string | null>,
 			pinNotes?: Map<MiUser['id'], MiUserNotePining[]>,
+			noteCharms?: ReadonlyMap<string, PublicNoteCharm | null>,
 			hataskFlowerCompletions?: ReadonlyMap<MiUser['id'], boolean>,
 		},
 	): Promise<Packed<S>> {
@@ -434,6 +444,8 @@ export class UserEntityService implements OnModuleInit {
 		}, options);
 
 		const user = typeof src === 'object' ? src : await this.usersRepository.findOneByOrFail({ id: src });
+
+		const noteCharms = opts.noteCharms ?? await this.packNoteCharms([user]);
 
 		const isDetailed = opts.schema !== 'UserLite';
 		const meId = me ? me.id : null;
@@ -507,6 +519,7 @@ export class UserEntityService implements OnModuleInit {
 			host: user.host,
 			avatarUrl: (user.avatarId == null ? null : user.avatarUrl) ?? this.getIdenticonUrl(user),
 			avatarBlurhash: (user.avatarId == null ? null : user.avatarBlurhash),
+			noteCharm: noteCharms.get(user.id) ?? null,
 			avatarDecorations: this.avatarDecorationService.packUserDecorations(user, opts.hataskFlowerCompletions),
 			isLocked: user.isLocked,
 			isBot: user.isBot,
@@ -607,6 +620,7 @@ export class UserEntityService implements OnModuleInit {
 			} : {}),
 
 			...(isDetailed && isMe ? {
+				noteCharmSettings: normalizeNoteCharmSettings(user.noteCharm),
 				avatarId: user.avatarId,
 				bannerId: user.bannerId,
 				followedMessage: profile!.followedMessage,
@@ -685,6 +699,21 @@ export class UserEntityService implements OnModuleInit {
 		return await awaitAll(packed);
 	}
 
+	private packNoteCharms(users: MiUser[]) {
+		return packNoteCharms(users, {
+			findConsentedUserIds: async userIds => {
+				const profiles = await this.userProfilesRepository.find({
+					select: { userId: true },
+					where: { userId: In(userIds), hataConsentNoteCharm: true },
+				});
+				return new Set(profiles.map(profile => profile.userId));
+			},
+			getPolicies: userId => this.roleService.getUserPolicies(userId),
+			findFiles: ids => this.driveFilesRepository.findBy({ id: In(ids) }),
+			getPublicUrl: file => this.driveFileEntityService.getPublicUrl(file),
+		});
+	}
+
 	public async packMany<S extends 'MeDetailed' | 'UserDetailedNotMe' | 'UserDetailed' | 'UserLite' = 'UserLite'>(
 		users: (MiUser['id'] | MiUser)[],
 		me?: { id: MiUser['id'] } | null | undefined,
@@ -744,6 +773,7 @@ export class UserEntityService implements OnModuleInit {
 			}
 		}
 
+		const noteCharms = await this.packNoteCharms(_users);
 		// 旗鯖fork: 報酬デコの着用者の図鑑達成を、ページ単位でまとめて判定する。
 		const hataskFlowerCompletions = await this.avatarDecorationService.getHataskFlowerCompletions(_users);
 
@@ -758,6 +788,7 @@ export class UserEntityService implements OnModuleInit {
 					userMemos: userMemos,
 					pinNotes: pinNotes,
 					hataskFlowerCompletions,
+					noteCharms,
 				},
 			)),
 		);

@@ -85,6 +85,10 @@ function controlFixture(): TestControlItem[] {
 }
 
 describe('settings-search-v2', () => {
+	test('専用チャームページの検索結果はプロフィールと同じアカウント分類を維持する', () => {
+		const catalog = buildSettingsCatalogV2([], [{ ...controlFixture()[0], stableId: 'settings.control.charm', route: '/settings/note-charm', label: 'チャームの色', aliases: [], preferenceKeys: [], sourceFile: 'src/components/MkNoteCharmSettings.vue' }]);
+		expect(catalog.byStableId.get('settings.control.charm')?.categoryId).toBe('account');
+	});
 	test('Concrntの正式routeを独立した端末設定として索引へ登録する', () => {
 		const catalog = buildSettingsCatalogV2([
 			{ id: 'concrnt', path: '/settings/concrnt', label: 'コンカレント連携(BETA)', keywords: ['concrnt'], texts: [], icon: 'concrnt-icon' },

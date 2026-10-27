@@ -5,6 +5,7 @@
 
 import { Entity, Column, Index, OneToOne, JoinColumn, PrimaryColumn } from 'typeorm';
 import { id } from './util/id.js';
+import type { NoteCharmSettings } from '@/misc/note-charm.js';
 import { MiDriveFile } from './DriveFile.js';
 
 @Entity('user')
@@ -155,6 +156,9 @@ export class MiUser {
 		scale?: number;
 		opacity?: number;
 	}[];
+
+	@Column('jsonb', { nullable: true })
+	public noteCharm: NoteCharmSettings | null;
 
 	@Index()
 	@Column('varchar', {

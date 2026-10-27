@@ -403,7 +403,7 @@ describe('settings redesign navigation contract', () => {
 		expect(shellSource).toContain('v-else-if="isServiceConnectionSurfaceActive"');
 		expect(shellSource).toContain('<SettingsServiceConnectionSurface');
 		expect(shellSource).toContain('inlineRelated: false');
-		expect(shellSource).toContain('\'/settings/profile\': [\'/settings/avatar-decoration\']');
+		expect(shellSource).toContain('\'/settings/profile\': [\'/settings/avatar-decoration\', \'/settings/note-charm\']');
 		expect(shellSource).toContain('pageOwnedRelatedRoutes[currentPath.value]?.includes(related.route) === true');
 	});
 

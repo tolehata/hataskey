@@ -18,9 +18,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<MkAvatar :class="$style.avatar" :user="$i" forceShowDecoration @click="changeAvatar"/>
 				<div class="_buttonsCenter">
 					<SearchMarker :keywords="['avatar', 'icon', 'change']">
-						<MkButton primary rounded @click="changeAvatar"><SearchLabel>{{ i18n.ts._profile.changeAvatar }}</SearchLabel></MkButton>
+						<MkButton :class="$style.avatarAction" primary rounded @click="changeAvatar"><SearchLabel>{{ i18n.ts._profile.changeAvatar }}</SearchLabel></MkButton>
 					</SearchMarker>
-					<MkButton primary rounded link to="/settings/avatar-decoration">{{ i18n.ts.decorate }} <i class="ti ti-sparkles"></i></MkButton>
+					<MkButton :class="$style.avatarAction" primary rounded link to="/settings/avatar-decoration">{{ i18n.ts.decorate }} <i class="ti ti-sparkles"></i></MkButton>
+					<SearchMarker :keywords="['note', 'charm', 'character', 'ノートチャーム']">
+						<MkButton :class="$style.avatarAction" primary rounded link to="/settings/note-charm"><SearchLabel>{{ i18n.ts._noteCharm.title }}</SearchLabel> <i class="ti ti-diamond"></i></MkButton>
+					</SearchMarker>
 				</div>
 			</div>
 		</div>
@@ -539,6 +542,12 @@ definePage(() => ({
 	margin-top: -50px;
 	padding-bottom: 16px;
 	text-align: center;
+}
+
+.avatarContainer .avatarAction {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .avatar {

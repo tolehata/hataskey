@@ -35,6 +35,8 @@ export const meta = {
 						hataConsentCustomFontDate: { type: 'string', format: 'date-time', nullable: true },
 						hataConsentMascot: { type: 'boolean' },
 						hataConsentMascotDate: { type: 'string', format: 'date-time', nullable: true },
+						hataConsentNoteCharm: { type: 'boolean' },
+						hataConsentNoteCharmDate: { type: 'string', format: 'date-time', nullable: true },
 						hataConsentDrawing: { type: 'boolean' },
 						hataConsentDrawingDate: { type: 'string', format: 'date-time', nullable: true },
 						hataConsentDrawingVersion: { type: 'string', nullable: true },
@@ -44,6 +46,7 @@ export const meta = {
 						'hataConsentExternalTl', 'hataConsentExternalTlDate',
 						'hataConsentCustomFont', 'hataConsentCustomFontDate',
 						'hataConsentMascot', 'hataConsentMascotDate',
+						'hataConsentNoteCharm', 'hataConsentNoteCharmDate',
 						'hataConsentDrawing', 'hataConsentDrawingDate', 'hataConsentDrawingVersion',
 					],
 				},
@@ -61,7 +64,7 @@ export const paramDef = {
 		offset: { type: 'integer', default: 0 },
 		filter: {
 			type: 'string',
-			enum: ['all', 'externalTl', 'customFont', 'mascot', 'drawing', 'drawingPending'],
+			enum: ['all', 'externalTl', 'customFont', 'mascot', 'noteCharm', 'noteCharmPending', 'drawing', 'drawingPending'],
 			default: 'all',
 		},
 		username: { type: 'string', nullable: true, default: null },
@@ -108,6 +111,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				profileQuery.andWhere('profile."hataConsentCustomFont" = true');
 			} else if (ps.filter === 'mascot') {
 				profileQuery.andWhere('profile."hataConsentMascot" = true');
+			} else if (ps.filter === 'noteCharm') {
+				profileQuery.andWhere('profile."hataConsentNoteCharm" = true');
+			} else if (ps.filter === 'noteCharmPending') {
+				profileQuery.andWhere('profile."hataConsentNoteCharm" = false');
 			} else if (ps.filter === 'drawing') {
 				profileQuery.andWhere('profile."hataConsentDrawing" = true');
 			} else if (ps.filter === 'drawingPending') {
@@ -142,6 +149,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 						hataConsentCustomFontDate: p?.hataConsentCustomFontDate?.toISOString() ?? null,
 						hataConsentMascot: p?.hataConsentMascot ?? false,
 						hataConsentMascotDate: p?.hataConsentMascotDate?.toISOString() ?? null,
+						hataConsentNoteCharm: p?.hataConsentNoteCharm ?? false,
+						hataConsentNoteCharmDate: p?.hataConsentNoteCharmDate?.toISOString() ?? null,
 						hataConsentDrawing: p?.hataConsentDrawing ?? false,
 						hataConsentDrawingDate: p?.hataConsentDrawingDate?.toISOString() ?? null,
 						hataConsentDrawingVersion: p?.hataConsentDrawingVersion ?? null,

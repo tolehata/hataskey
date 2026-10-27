@@ -167,6 +167,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</MkFolder>
 
 					<!-- 旗鯖fork: マスコット機能の利用可否(デフォルト不許可) -->
+					<MkFolder v-if="matchQuery([roleCopy.noteCharmAccessName, 'canUseNoteCharm'])">
+						<template #label>{{ roleCopy.noteCharmAccessName }}</template>
+						<template #suffix>{{ policies.canUseNoteCharm ? i18n.ts.yes : i18n.ts.no }}</template>
+						<MkSwitch v-model="policies.canUseNoteCharm">
+							<template #label>{{ roleCopy.noteCharmAccessToggle }}</template>
+							<template #caption>{{ roleCopy.noteCharmAccessBaseCaption }}</template>
+						</MkSwitch>
+					</MkFolder>
+
 					<MkFolder v-if="matchQuery([roleCopy.mascotAccessName, 'canUseMascot'])">
 						<template #label>{{ roleCopy.mascotAccessName }}</template>
 						<template #suffix>{{ policies.canUseMascot ? i18n.ts.yes : i18n.ts.no }}</template>
@@ -540,6 +549,7 @@ const roles = await misskeyApi('admin/roles/list');
 
 const policies = reactive({
 	...deepClone(instance.policies),
+	canUseNoteCharm: instance.policies.canUseNoteCharm ?? false,
 	favoriteFolderLimit: instance.policies.favoriteFolderLimit ?? 2,
 	canCreateFavoriteSubfolders: instance.policies.canCreateFavoriteSubfolders ?? false,
 });

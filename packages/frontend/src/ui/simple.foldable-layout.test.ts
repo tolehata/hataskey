@@ -9,7 +9,7 @@ import source from './simple.vue?raw';
 function normalizedDeclaration(selector: string, property: string, text = source): string | undefined {
 	const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	return text
-		.match(new RegExp(`${escapedSelector}\\s*\\{[^}]*${property}:\\s*([^;]+);`, 'u'))?.[1]
+		.match(new RegExp(`^${escapedSelector}\\s*\\{[^}]*${property}:\\s*([^;]+);`, 'mu'))?.[1]
 		.replace(/\s+/gu, '');
 }
 

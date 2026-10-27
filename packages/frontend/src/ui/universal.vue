@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div :class="[$style.root, { '_forceShrinkSpacer': deviceKind === 'smartphone' }]">
+<div :class="[$style.root, { '_forceShrinkSpacer': deviceKind === 'smartphone' }]" :data-note-charm-lane="noteCharmShellAvailable ? 'on' : undefined" :style="{ '--note-charm-rail-width': `${CHARM_RAIL_WIDTH}px` }">
 	<XTitlebar v-if="prefer.r.showTitlebar.value" style="flex-shrink: 0;"/>
 
 	<div :class="$style.nonTitlebarArea">
@@ -22,7 +22,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<XMobileFooterMenu v-if="isMobile && mainRouter.currentRoute.value.path !== '/hatagoes'" ref="navFooter" v-model:drawerMenuShowing="drawerMenuShowing" v-model:widgetsShowing="widgetsShowing"/>
 		</div>
 
-		<div v-if="isDesktop && !pageMetadata?.needWideArea && prefer.s.enableWidgetsArea" :class="$style.widgets" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'">
+		<div v-if="isDesktop && !pageMetadata?.needWideArea && prefer.s.enableWidgetsArea" data-note-charm-exclusion :class="$style.widgets" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'">
 			<div :class="$style.widgetsInner">
 				<XWidgets collapsible :collapsed="rightWidgetsCollapsed" @toggleCollapse="rightWidgetsCollapsed = !rightWidgetsCollapsed"/>
 			</div>
@@ -59,6 +59,8 @@ import { concrntPagePostContextKey } from '@/utility/concrnt/post-interceptor.js
 import { shouldSuggestReload } from '@/utility/reload-suggest.js';
 import { rightWidgetsCollapsed as savedRightWidgetsCollapsed, setRightWidgetsCollapsed } from '@/utility/hatasaba-device-prefs.js';
 import { useHatagoesBarCollapse } from '@/utility/hatagoes-bar-collapse.js';
+import { useNoteCharmAvailability } from '@/composables/use-note-charm-context.js';
+import { CHARM_RAIL_WIDTH } from '@/utility/note-charm-physics.js';
 
 const XWidgets = defineAsyncComponent(() => import('./_common_/widgets.vue'));
 const XStatusBars = defineAsyncComponent(() => import('@/ui/_common_/statusbars.vue'));
@@ -68,6 +70,7 @@ const isRoot = computed(() => mainRouter.currentRoute.value.name === 'index');
 const isHataGoesPage = computed(() => mainRouter.currentRoute.value.path === '/hatagoes');
 const sidebarCollapsed = useHatagoesBarCollapse(isHataGoesPage, () => false);
 const rightWidgetsCollapsed = useHatagoesBarCollapse(isHataGoesPage, () => savedRightWidgetsCollapsed.value, setRightWidgetsCollapsed);
+const noteCharmShellAvailable = useNoteCharmAvailability();
 
 const DESKTOP_THRESHOLD = 1100;
 const MOBILE_THRESHOLD = 500;
@@ -223,6 +226,11 @@ $widgets-hide-threshold: 1090px;
 .content {
 	flex: 1;
 	min-height: 0;
+}
+
+// Keep a stable outside lane even when the widget column is collapsed or absent.
+.root[data-note-charm-lane='on'] > .nonTitlebarArea > .contents {
+	margin-right: var(--note-charm-rail-width);
 }
 
 .statusbars {

@@ -51,7 +51,7 @@ export const paramDef = {
 	properties: {
 		type: {
 			type: 'string',
-			enum: ['externalTl', 'customFont', 'mascot', 'drawing'],
+			enum: ['externalTl', 'customFont', 'mascot', 'noteCharm', 'drawing'],
 		},
 		agree: { type: 'boolean' },
 	},
@@ -81,6 +81,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				await this.userProfilesRepository.update(me.id, {
 					hataConsentMascot: ps.agree,
 					hataConsentMascotDate: ps.agree ? now : null,
+				});
+			} else if (ps.type === 'noteCharm') {
+				await this.userProfilesRepository.update(me.id, {
+					hataConsentNoteCharm: ps.agree,
+					hataConsentNoteCharmDate: ps.agree ? now : null,
 				});
 			} else {
 				if (!ps.agree) throw new ApiError(meta.errors.consentCannotBeRevoked);

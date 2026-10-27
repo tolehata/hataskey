@@ -12,6 +12,7 @@ export function canExposeLocalProfileBadge(userHost: string | null, isSelf: bool
 }
 
 const LOCAL_PROFILE_BADGE_UPDATE_KEYS = new Set([
+	'noteCharm',
 	'showUtageSuccessCount',
 	'showUtageInterruptionCount',
 	'showHataskFlowerCount',
