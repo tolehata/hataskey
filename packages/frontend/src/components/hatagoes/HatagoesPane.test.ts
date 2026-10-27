@@ -6,6 +6,8 @@ const state = vi.hoisted(() => ({
 	routers: [] as unknown[],
 	hataskMounts: 0,
 	hataskLive: 0,
+	hataskMode: 'light' as 'light' | 'dark' | undefined,
+	pendingHatask: null as Promise<void> | null,
 	feedMounts: 0,
 	toolMounts: 0,
 	toolActivations: 0,
@@ -35,7 +37,7 @@ vi.mock('@/router.js', async () => {
 	const HataskOwner = defineComponent({ emits: ['tabChange'], setup(_props, { emit }) {
 		onMounted(() => { state.hataskMounts++; state.hataskLive++; });
 		onUnmounted(() => { state.hataskLive--; });
-		return () => h('button', { 'data-owner': 'hatask', onClick: () => emit('tabChange', 'todo') }, 'Hatask owner');
+		return () => h('button', { 'data-owner': 'hatask', class: 'htk-root', 'data-mode': state.hataskMode, onClick: () => emit('tabChange', 'todo') }, 'Hatask owner');
 	} });
 	const Tool = defineComponent({ setup() {
 		onMounted(() => { state.toolMounts++; });
@@ -56,7 +58,12 @@ vi.mock('@/router.js', async () => {
 		{ path: '/scratchpad', component: Tool },
 	];
 	return { createRouter: (path: string) => {
-		const router = new Nirax(routes, path, true, Tool);
+		const pending = state.pendingHatask;
+		const currentRoutes = pending ? routes.map(route => route.path === '/hatask' ? {
+			...route,
+			component: defineAsyncComponent(async () => { await pending; return HataskOwner; }),
+		} : route) : routes;
+		const router = new Nirax(currentRoutes, path, true, Tool);
 		state.routers.push(router);
 		return router;
 	} };
@@ -77,22 +84,70 @@ function mountPane(appName: 'hatask' | 'hatady' | 'hatafeed', initialPath: strin
 	const path = ref(initialPath);
 	const active = ref(initiallyActive);
 	const navigation: [string, boolean | undefined][] = [];
+	const modes: string[] = [];
 	const app = createApp(defineComponent({
 		render: () => h(HatagoesPane, {
 			app: appName, path: path.value, active: active.value,
 			onNavigate: (next: string, replace?: boolean) => navigation.push([next, replace]),
+			onMode: (mode: string) => modes.push(mode),
 		}),
 	}));
 	app.component('MkLoading', defineComponent({ render: () => h('span', 'loading') }));
 	app.mount(target);
 	cleanup = () => { app.unmount(); target.remove(); };
-	return { target, path, active, navigation, router: state.routers.at(-1) as Router };
+	return { target, path, active, navigation, modes, router: state.routers.at(-1) as Router };
 }
 
-beforeEach(() => { state.routers.length = 0; state.hataskMounts = 0; state.hataskLive = 0; state.feedMounts = 0; state.toolMounts = 0; state.toolActivations = 0; state.toolDeactivations = 0; });
+beforeEach(() => { state.routers.length = 0; state.hataskMounts = 0; state.hataskLive = 0; state.hataskMode = 'light'; state.pendingHatask = null; state.feedMounts = 0; state.toolMounts = 0; state.toolActivations = 0; state.toolDeactivations = 0; });
 afterEach(() => { cleanup?.(); cleanup = undefined; });
 
 describe('HataGoes embedded pane', () => {
+	test.each(['light', 'dark'] as const)('reports the first Hatask %s mode and subsequent changes exactly once', async mode => {
+		state.hataskMode = mode;
+		const view = mountPane('hatask', '/hatask');
+		await settle();
+		expect(view.modes).toEqual([mode]);
+		const root = view.target.querySelector<HTMLElement>('.htk-root');
+		if (!root) throw new Error('Missing Hatask root');
+		const next = mode === 'light' ? 'dark' : 'light';
+		root.dataset.mode = next;
+		await vi.waitFor(() => expect(view.modes).toEqual([mode, next]));
+		root.dataset.mode = next;
+		await settle();
+		expect(view.modes).toEqual([mode, next]);
+		root.dataset.mode = mode;
+		await vi.waitFor(() => expect(view.modes).toEqual([mode, next, mode]));
+	});
+
+	test('waits for an actual Hatask mode while its page is loading', async () => {
+		state.hataskMode = undefined;
+		const view = mountPane('hatask', '/hatask');
+		await settle();
+		expect(view.modes).toEqual([]);
+		const root = view.target.querySelector<HTMLElement>('.htk-root');
+		if (!root) throw new Error('Missing Hatask root');
+		root.dataset.mode = 'light';
+		await vi.waitFor(() => expect(view.modes).toEqual(['light']));
+	});
+
+	test('does not replace the Hatask mode when an auxiliary page has no Hatask root', async () => {
+		const view = mountPane('hatask', '/scratchpad');
+		await settle();
+		expect(view.modes).toEqual([]);
+	});
+
+	test('reports the first light mode when the asynchronous Hatask root is inserted', async () => {
+		let release!: () => void;
+		state.pendingHatask = new Promise<void>(resolve => { release = resolve; });
+		const view = mountPane('hatask', '/hatask');
+		await settle();
+		expect(view.target.querySelector('.htk-root')).toBeNull();
+		expect(view.modes).toEqual([]);
+		release();
+		await vi.waitFor(() => expect(view.modes).toEqual(['light']));
+		expect(view.target.querySelector('.htk-root')?.getAttribute('data-mode')).toBe('light');
+	});
+
 	test('keeps a changed community scope in the route for the next activation', async () => {
 		const view = mountPane('hatady', '/hatady?tab=records&hgScope=recent', false);
 		await settle();

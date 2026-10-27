@@ -175,9 +175,12 @@ function stopRestore() { restoring = false; restoreObserver?.disconnect(); windo
 
 onMounted(async () => {
 	await nextTick();
+	let reportedMode: string | undefined;
 	const readThemeMode = () => {
-		const mode = root.value?.querySelector<HTMLElement>('.htk-root[data-mode]')?.dataset.mode ?? 'light';
-		if (hataskMode.value !== mode) { hataskMode.value = mode; emit('mode', mode); }
+		const mode = root.value?.querySelector<HTMLElement>('.htk-root[data-mode]')?.dataset.mode;
+		if (mode !== 'light' && mode !== 'dark') return;
+		// Publish the first actual mode even when it matches the local light default.
+		if (reportedMode !== mode) { hataskMode.value = mode; reportedMode = mode; emit('mode', mode); }
 	};
 	if (props.app === 'hatask' && root.value) {
 		readThemeMode();

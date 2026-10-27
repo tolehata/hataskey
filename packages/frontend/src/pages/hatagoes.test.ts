@@ -11,6 +11,7 @@ import type { Nirax } from '@/lib/nirax.js';
 import { hatagoesUrl } from '@/utility/hatagoes-navigation.js';
 import { definePage, provideMetadataReceiver } from '@/page.js';
 import { $i } from '@/i.js';
+import { store } from '@/store.js';
 
 const fixture = vi.hoisted(() => ({
 	initialPath: '/hatagoes',
@@ -28,6 +29,7 @@ const fixture = vi.hoisted(() => ({
 	pendingCreate: null as Promise<void> | null,
 	closePopup: null as (() => void) | null,
 	appearance: null as { theme: string; cssVars: Record<string, string> } | null,
+	hataskMode: null as 'light' | 'dark' | null,
 	popupClosed: vi.fn(),
 }));
 
@@ -63,7 +65,7 @@ vi.mock('@/components/hatagoes/HatagoesPane.vue', async () => {
 	const { defineComponent, h, onMounted, onUnmounted } = await import('vue');
 	return { default: defineComponent({
 		props: { app: { type: String, required: true }, path: { type: String, required: true }, active: Boolean, hatadyHeaderDate: Object, hatadyHeaderActions: Object, hatadyHeaderOverview: { type: Object as PropType<HTMLElement | null>, default: null } },
-		emits: ['register', 'unregister', 'appearance'],
+		emits: ['register', 'unregister', 'appearance', 'mode'],
 		setup(props, { emit }) {
 			const session = inject(HATA_GOES_SESSION, null);
 			definePage(() => ({ title: `Embedded ${props.app}` }));
@@ -95,6 +97,7 @@ vi.mock('@/components/hatagoes/HatagoesPane.vue', async () => {
 			const register = () => emit('register', props.app, bridge);
 			onMounted(() => {
 				if (fixture.appearance && props.app === 'hatask') emit('appearance', fixture.appearance);
+				if (fixture.hataskMode && props.app === 'hatask') emit('mode', fixture.hataskMode);
 				fixture.registrations.set(props.app, register);
 				if (!fixture.delayedApps.has(props.app)) register();
 				if (props.app === 'hatask') fixture.closePopup = session?.track(() => fixture.popupClosed()) ?? null;
@@ -192,6 +195,8 @@ beforeEach(() => {
 	fixture.pendingCreate = null;
 	fixture.closePopup = null;
 	fixture.appearance = null;
+	fixture.hataskMode = null;
+	store.r.darkMode.value = false;
 	fixture.popupClosed.mockClear();
 	hatadyNotice.value = null;
 	hatadyDialogSurfaces.value = [];
@@ -380,6 +385,35 @@ describe('HataGoes common create', () => {
 		await settle();
 		expect(shell.dataset.hataskTheme).toBe('akatsuki');
 		expect(shell.dataset.hataskMode).toBe('light');
+	});
+
+	test.each([
+		['light', 'light'], ['light', 'dark'], ['dark', 'light'], ['dark', 'dark'],
+	] as const)('keeps independent Home %s and Hatask %s navigation palettes at narrow and wide widths', async (homeMode, appMode) => {
+		store.r.darkMode.value = homeMode === 'dark';
+		fixture.hataskMode = appMode;
+		fixture.appearance = { theme: 'akatsuki', cssVars: {} };
+		const target = await mount('/hatagoes');
+		const shell = target.querySelector<HTMLElement>('[data-hatagoes-root]');
+		if (!shell) throw new Error('Missing HataGoes shell');
+		const nav = shell.querySelector('nav[aria-label="画面一覧"]');
+		const openHatask = target.querySelector<HTMLButtonElement>('nav[aria-label="モバイルアプリ"] button[aria-label="Hatask"]');
+		const home = target.querySelector<HTMLButtonElement>('nav[aria-label="モバイルアプリ"] button[aria-label="HataGoesホーム"]');
+		if (!nav || !openHatask || !home) throw new Error('Missing HataGoes navigation');
+		for (const width of [390, 1280]) {
+			Object.defineProperty(shell, 'clientWidth', { configurable: true, value: width });
+			window.dispatchEvent(new Event('resize'));
+			await settle();
+			expect(shell.dataset.hataskMode).toBe(homeMode);
+			openHatask.click();
+			await settle();
+			expect(shell.dataset.hataskMode).toBe(appMode);
+			expect(nav.closest<HTMLElement>('[data-hatask-mode]')?.dataset.hataskMode).toBe(appMode);
+			expect(shell.dataset.narrow).toBe(String(width <= 850));
+			home.click();
+			await settle();
+			expect(shell.dataset.hataskMode).toBe(homeMode);
+		}
 	});
 
 	test('keeps Home quick actions in their owning apps and Home tab returns to top', async () => {
