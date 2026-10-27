@@ -531,7 +531,7 @@ function showRenoteMenu(ev: MouseEvent) {
  */
 function openReactionPicker(ev?: MouseEvent) {
 	// クリックされたボタン要素をアンカーに使用
-	const anchorEl = (reactionAddBtnEl.value ?? reactionBtnEl.value ?? (ev?.currentTarget as HTMLElement | null)) as HTMLElement | null;
+	const anchorEl = (ev?.currentTarget as HTMLElement | null) ?? reactionAddBtnEl.value ?? reactionBtnEl.value;
 
 	const { dispose } = os.popup(MkExternalReactionPicker, {
 		anchorElement: anchorEl,
