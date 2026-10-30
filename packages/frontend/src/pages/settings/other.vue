@@ -12,10 +12,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</MkSwitch>
 		-->
 
-		<!--
-		<MkSwitch v-model="reportError">{{ i18n.ts.sendErrorReports }}<template #caption>{{ i18n.ts.sendErrorReportsDescription }}</template></MkSwitch>
-		-->
-
 		<div class="_gaps_s">
 			<SearchMarker :keywords="['account', 'info']">
 				<MkFolder>
@@ -189,7 +185,6 @@ import { cloudBackup } from '@/preferences/utility.js';
 
 const $i = ensureSignin();
 
-const reportError = prefer.model('reportError');
 const skipNoteRender = prefer.model('skipNoteRender');
 const devMode = prefer.model('devMode');
 const stackingRouterView = prefer.model('experimental.stackingRouterView');

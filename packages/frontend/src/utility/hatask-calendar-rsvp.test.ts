@@ -70,8 +70,6 @@ type Runtime = {
 	togglePlannerCalendarFilter: (id: string) => void;
 	plannerEventForDate: (date: string) => CalendarSource[];
 	findPlannerCalendarSource: (event: { id: string }) => CalendarSource | undefined;
-	hasEventsOn: (date: string) => boolean;
-	eventDotsFor: (date: string) => CalendarSource[];
 	setRsvp: (id: string, status: Status) => Promise<void>;
 };
 
@@ -82,7 +80,7 @@ function fixture(shared: CalendarSource[], options: { local?: CalendarSource[]; 
 	const reload = vi.fn(async () => {});
 	const functions = [
 		'isDeclinedCalendarInvitation', 'plannerEventForDate', 'plannerEventSource', 'togglePlannerCalendarFilter',
-		'findPlannerCalendarSource', 'hasEventsOn', 'eventDotsFor', 'eDateTimeKey', 'localDateKey',
+		'findPlannerCalendarSource', 'eDateTimeKey', 'localDateKey',
 		'plannerAnchorDate', 'addCalendarDays', 'startOfPlannerWeek',
 		'plannerEventServerId', 'sharedEventData', 'sharedRsvpResponses', 'sharedRsvpMyStatus', 'isRsvpSaving', 'setRsvp',
 	];
@@ -147,18 +145,16 @@ describe('辞退した参加招待のカレンダー表示', () => {
 		expect(ids(f.runtime.plannerEventForDate('2026-09-13'))).toEqual([]);
 	});
 
-	test('絞り込みとホームの予定・日付の印を揃え、元の予定と回答は変更しない', () => {
+	test('絞り込みとホーム・カレンダーの予定を揃え、元の予定と回答は変更しない', () => {
 		const f = fixture([event('declined', { rsvpResponses: response('declined') })]);
 		const original = JSON.stringify(f.sharedEvents.value);
 		expect(f.runtime.upcoming).toEqual([]);
 		expect(f.runtime.public).toEqual([]);
 		expect(f.runtime.akatsukiEvents).toEqual([]);
-		expect(f.runtime.hasEventsOn('2026-09-12')).toBe(false);
-		expect(f.runtime.eventDotsFor('2026-09-12')).toEqual([]);
+		expect(f.runtime.plannerEventForDate('2026-09-12')).toEqual([]);
 		expect(f.runtime.findPlannerCalendarSource({ id: 'declined' })?.id).toBe('declined');
 		f.runtime.togglePlannerCalendarFilter('declined');
-		for (const items of [f.runtime.upcoming, f.runtime.public, f.runtime.akatsukiEvents, f.runtime.eventDotsFor('2026-09-12')]) expect(ids(items)).toEqual(['declined']);
-		expect(f.runtime.hasEventsOn('2026-09-12')).toBe(true);
+		for (const items of [f.runtime.upcoming, f.runtime.public, f.runtime.akatsukiEvents, f.runtime.plannerEventForDate('2026-09-12')]) expect(ids(items)).toEqual(['declined']);
 		expect(JSON.stringify(f.sharedEvents.value)).toBe(original);
 		expect(f.api).not.toHaveBeenCalled();
 	});

@@ -14,7 +14,6 @@ vi.mock('@/i18n.js', async () => {
 });
 import shellSource from './index.vue?raw';
 import bentoSource from './SettingsBentoNavigation.vue?raw';
-import mobileSource from './SettingsMobileOverview.vue?raw';
 import searchSource from './SettingsSearchPanel.vue?raw';
 import { settingsDestinationSections, settingsDestinations } from './settings-destinations.js';
 import { preferenceGroups } from './settings-preferences-catalog.js';
@@ -54,9 +53,9 @@ describe('settings redesign destination contract', () => {
 		expect(preferenceGroups['hataskey-ui-s']).toEqual({ title: 'Hataskey UI S', description: i18n.ts._hata._uiSetup.ui3SettingsDescription });
 	});
 	test('active, brand, search, and route contracts are wired', () => {
-		for (const source of [bentoSource, mobileSource]) expect(source).toContain('aria-current');
+		expect(bentoSource).toContain('aria-current');
 		expect(searchSource).toContain('aria-selected');
-		for (const source of [mobileSource, searchSource]) expect(source).toContain('settingsBrand');
+		expect(searchSource).toContain('settingsBrand');
 		for (const id of ['hataskey-ui', 'hataskey-tools']) {
 			expect(settingsDestinationSections.find(section => section.id === id)?.brand).toBeTruthy();
 		}

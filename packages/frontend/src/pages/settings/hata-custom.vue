@@ -856,7 +856,6 @@ const pfvbPublic = prefer.model('postFormVisibilityBorder.color.public');
 const pfvbHome = prefer.model('postFormVisibilityBorder.color.home');
 const pfvbFollowers = prefer.model('postFormVisibilityBorder.color.followers');
 const pfvbSpecified = prefer.model('postFormVisibilityBorder.color.specified');
-const weatherEffectScope = prefer.model('weatherEffect.scope');
 const weatherEffectDuration = prefer.model('weatherEffect.duration');
 
 // 旗鯖fork: 旧「Misskey UIで吹き出し表示を無効にする」トグルは廃止。

@@ -41,7 +41,7 @@ export const hatagoesGuideDetails: Record<string, IntroDetail> = {
 	goesHome: { result: 'ホームのカードとアプリの切り替え場所が分かります。', practice: '図でToDoを完了にし、水やりの表示が変わる様子を試してください。', aliases: 'HataGoes ハタゴーズ ホーム きょうの記録 水やり', related: ['goesApps', 'goesSearch', 'todo', 'hatady'], help: [['スマホではどこから切り替えますか？', '下部のアプリボタンから切り替えます。中央の＋は作成やアプリへの移動に使います。'], ['HataGoesを終了するには？', '左上の×を押します。スマホでは確認画面で「終了する」を選びます。']] },
 	goesApps: { result: 'アプリ一覧から目的の画面を開き、＋メニューに追加できます。', practice: '図で＋メニューを編集し、追加・並べ替え・保存を試してください。', aliases: 'アプリ一覧 全てのアプリ すべてのApp ピン留め ＋メニュー ショートカット HataIntro', related: ['goesHome', 'goesSettings'], help: [['アプリが見つからないときは？', 'ホームの「すべての App」で探してください。アプリ内の一覧はそのアプリの項目に絞られます。'], ['項目を外すと記録は消えますか？', '＋メニューから入口を外す操作です。予定や記録は削除されません。']] },
 	goesSearch: { result: 'アプリごとに画面を開かず、検索から目的の情報を探せます。', practice: '図で「本」と検索し、対象をHatadyに絞って詳細を開いてください。', aliases: '横断検索 検索 虫眼鏡 記録 作品 本 イシュー 人', related: ['goesHome', 'hatady', 'feed'], help: [['検索結果をもう一度見るには？', '虫眼鏡から検索を開き直します。開いている間の検索語と結果は残ります。'], ['全体のノート検索と同じですか？', 'HataGoesの横断検索はアプリの記録や作品、イシュー、人などを探す機能です。タイムラインのノート検索とは別です。']] },
-	goesSettings: { result: 'ホームの見た目と、カードの表示・順番を変更できます。', practice: '図でテーマを切り替え、カードの表示と順番を変えてください。', aliases: 'HataGoes 設定 テーマ カード 並べ替え 表示 非表示 ダークモード', related: ['goesHome', 'goesApps', 'theme'], help: [['アプリを開いているときの歯車は？', 'そのアプリの設定と、HataGoesの共通設定を選ぶ画面が開きます。'], ['紹介をもう一度見たいときは？', '共通設定の「HataGoesの紹介」から「紹介をもう一度見る」を選びます。']] },
+	goesSettings: { result: 'ホームの見た目と、カードの表示・順番を変更できます。', practice: '図でテーマを切り替え、カードの表示と順番を変えてください。', aliases: 'HataGoes 設定 テーマ カード 並べ替え 表示 非表示 ダークモード', related: ['goesHome', 'goesApps', 'theme'], help: [['アプリを開いているときの歯車は？', 'そのアプリの設定と、HataGoesの共通設定を選ぶ画面が開きます。']] },
 };
 
 export const hatagoesCourse: IntroCourse = {

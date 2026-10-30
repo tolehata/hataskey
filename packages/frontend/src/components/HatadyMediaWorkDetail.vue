@@ -545,7 +545,6 @@ import type {
 	HatadyMediaComment,
 	HatadyMediaKind,
 	HatadyMediaSession,
-	HatadyMediaSessionKind,
 	HatadyMediaWork,
 } from '@/utility/hatady-media.js';
 import HyDialog from '@/components/HyDialog.vue';
@@ -1063,22 +1062,6 @@ function fmtWhen(value: unknown): string {
 	return Number.isNaN(d.getTime()) ? '' : timeFormatter.format(d);
 }
 
-function sessionIcon(type: HatadyMediaSessionKind): string {
-	return type === 'movie_viewing'
-		? 'ti-movie'
-		: type === 'game_match'
-			? 'ti-swords'
-			: type === 'game_roguelike'
-				? 'ti-route-square'
-				: type === 'game_pve'
-					? 'ti-users'
-					: 'ti-device-gamepad-2';
-}
-
-function sessionKindLabel(type: HatadyMediaSessionKind): string {
-	return String(copy.session?.types?.[type] ?? type);
-}
-
 function movieOriginLabel(value: string): string {
 	const key = value === 'co_production' ? 'coProduction' : value === 'other' ? 'otherOrigin' : value;
 	return String(copy.form?.[key] ?? value);
@@ -1251,13 +1234,6 @@ async function openSessionForm(session?: HatadyMediaSession) {
 			closed: () => dispose(),
 		},
 	);
-}
-
-async function deleteSession(session: HatadyMediaSession) {
-	if (!(await confirmHatadyAction(props.variant, label('deleteSessionConfirm'), 'warning', popup))) return;
-	await mediaApi('hata/hatady/media/sessions/delete', { sessionId: session.id });
-	await loadSessions();
-	emit('changed');
 }
 
 async function toggleReaction(emoji: string) {

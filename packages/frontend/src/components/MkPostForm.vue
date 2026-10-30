@@ -450,11 +450,6 @@ const canPost = computed((): boolean => {
 		(!poll.value || poll.value.choices.length >= 2);
 });
 
-// cannot save pure renote as draft
-const canSaveAsServerDraft = computed((): boolean => {
-	return canPost.value && (textLength.value > 0 || files.value.length > 0 || poll.value != null || event.value != null);
-});
-
 const withHashtags = computed(store.makeGetterSetter('postFormWithHashtags'));
 const hashtags = computed(store.makeGetterSetter('postFormHashtags'));
 
@@ -619,10 +614,6 @@ function toggleEvent() {
 			metadata: {} as Record<string, never>,
 		};
 	}
-}
-
-function addTag(tag: string) {
-	insertTextAtCursor(textareaEl.value, ` #${tag} `);
 }
 
 function focus() {
@@ -806,20 +797,7 @@ function showOtherSettings() {
 		action: () => {
 			toggleDeliveryTargets();
 		},
-	}, { type: 'divider' }, /*{
-		type: 'button',
-		text: i18n.ts._drafts.saveToDraft,
-		icon: 'ti ti-cloud-upload',
-		action: async () => {
-			if (!canSaveAsServerDraft.value) {
-				return os.alert({
-					type: 'error',
-					text: i18n.ts._drafts.cannotCreateDraft,
-				});
-			}
-			saveServerDraft();
-		},
-	}, */...($i.policies.scheduledNoteLimit > 0 ? [{
+	}, { type: 'divider' }, ...($i.policies.scheduledNoteLimit > 0 ? [{
 		icon: 'ti ti-calendar-time',
 		text: i18n.ts.schedulePost + '...',
 		action: () => {

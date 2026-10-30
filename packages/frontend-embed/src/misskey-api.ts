@@ -4,10 +4,7 @@
  */
 
 import * as Misskey from 'cherrypick-js';
-import { ref } from 'vue';
 import { apiUrl } from '@@/js/config.js';
-
-export const pendingApiRequestsCount = ref(0);
 
 // Implements Misskey.api.ApiClient.request
 export function misskeyApi<
@@ -21,11 +18,6 @@ export function misskeyApi<
 	signal?: AbortSignal,
 ): Promise<_ResT> {
 	if (endpoint.includes('://')) throw new Error('invalid endpoint');
-	pendingApiRequestsCount.value++;
-
-	const onFinally = () => {
-		pendingApiRequestsCount.value--;
-	};
 
 	const promise = new Promise<_ResT>((resolve, reject) => {
 		// Send request
@@ -51,7 +43,8 @@ export function misskeyApi<
 		}).catch(reject);
 	});
 
-	promise.then(onFinally, onFinally);
+	// 呼び出し元が待機しない場合も、従来どおり未処理の拒否を抑える。
+	void promise.catch(() => {});
 
 	return promise;
 }
@@ -66,12 +59,6 @@ export function misskeyApiGet<
 	endpoint: E,
 	data: P = {} as any,
 ): Promise<_ResT> {
-	pendingApiRequestsCount.value++;
-
-	const onFinally = () => {
-		pendingApiRequestsCount.value--;
-	};
-
 	const query = new URLSearchParams(data as any);
 
 	const promise = new Promise<_ResT>((resolve, reject) => {
@@ -93,7 +80,8 @@ export function misskeyApiGet<
 		}).catch(reject);
 	});
 
-	promise.then(onFinally, onFinally);
+	// 返すPromiseの成功・失敗は変えず、未処理の拒否だけを抑える。
+	void promise.catch(() => {});
 
 	return promise;
 }

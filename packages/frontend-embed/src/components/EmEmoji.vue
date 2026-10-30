@@ -22,10 +22,5 @@ const url = computed(() => char2twemojiFilePath(props.emoji));
 .root {
 	height: 1.1em;
 	vertical-align: -0.235em;
-
-	&.large {
-		height: 1.3em;
-		vertical-align: -0.4em;
-	}
 }
 </style>

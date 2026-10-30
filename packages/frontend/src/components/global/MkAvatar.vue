@@ -31,20 +31,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 	/>
 	<MkUserOnlineIndicator v-if="indicator && !isToastAvatar" :class="$style.indicator" :user="user"/>
 	<div v-if="user.isCat && !isToastAvatar" :class="[$style.ears]">
-		<div :class="$style.earLeft">
-			<div v-if="false" :class="$style.layer">
-				<div :class="$style.plot" :style="{ backgroundImage: `url(${JSON.stringify(url)})` }"/>
-				<div :class="$style.plot" :style="{ backgroundImage: `url(${JSON.stringify(url)})` }"/>
-				<div :class="$style.plot" :style="{ backgroundImage: `url(${JSON.stringify(url)})` }"/>
-			</div>
-		</div>
-		<div :class="$style.earRight">
-			<div v-if="false" :class="$style.layer">
-				<div :class="$style.plot" :style="{ backgroundImage: `url(${JSON.stringify(url)})` }"/>
-				<div :class="$style.plot" :style="{ backgroundImage: `url(${JSON.stringify(url)})` }"/>
-				<div :class="$style.plot" :style="{ backgroundImage: `url(${JSON.stringify(url)})` }"/>
-			</div>
-		</div>
+		<div :class="$style.earLeft"/>
+		<div :class="$style.earRight"/>
 	</div>
 	<template v-if="showDecoration">
 		<img
@@ -319,33 +307,6 @@ onUnmounted(() => {
 				margin: 20%;
 				background: #df548f;
 			}
-
-			> .layer {
-				contain: strict;
-				position: absolute;
-				top: 0;
-				width: 280%;
-				height: 280%;
-
-				> .plot {
-					contain: strict;
-					position: absolute;
-					width: 100%;
-					height: 100%;
-					clip-path: path('M0 0H1V1H0z');
-					transform: scale(32767);
-					transform-origin: 0 0;
-					opacity: 0.5;
-
-					&:first-child {
-						opacity: 1;
-					}
-
-					&:last-child {
-						opacity: calc(1 / 3);
-					}
-				}
-			}
 		}
 
 		> .earLeft {
@@ -354,27 +315,6 @@ onUnmounted(() => {
 			&, &::after {
 				border-radius: 25% 75% 75%;
 			}
-
-			> .layer {
-				left: 0;
-				transform:
-					skew(-30deg)
-					rotate(-37.5deg)
-					translate(-2.82842712475%, /* -2 * sqrt(2) */
-										-38.5857864376%); /* 40 - 2 * sqrt(2) */
-
-				> .plot {
-					background-position: 20% 10%; /* ~= 37.5deg */
-
-					&:first-child {
-						background-position-x: 21%;
-					}
-
-					&:last-child {
-						background-position-y: 11%;
-					}
-				}
-			}
 		}
 
 		> .earRight {
@@ -382,28 +322,6 @@ onUnmounted(() => {
 
 			&, &::after {
 				border-radius: 75% 25% 75% 75%;
-			}
-
-			> .layer {
-				right: 0;
-				transform:
-					skew(30deg)
-					rotate(37.5deg)
-					translate(2.82842712475%, /* 2 * sqrt(2) */
-										-38.5857864376%); /* 40 - 2 * sqrt(2) */
-
-				> .plot {
-					position: absolute;
-					background-position: 80% 10%; /* ~= 37.5deg */
-
-					&:first-child {
-						background-position-x: 79%;
-					}
-
-					&:last-child {
-						background-position-y: 11%;
-					}
-				}
 			}
 		}
 	}

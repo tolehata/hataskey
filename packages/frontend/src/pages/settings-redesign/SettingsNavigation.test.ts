@@ -7,23 +7,12 @@ import { compileScript, parse } from '@vue/compiler-sfc';
 import { describe, expect, test } from 'vitest';
 import destinationsSource from './settings-destinations.ts?raw';
 import shellSource from './index.vue?raw';
-import { sectionLandingItem } from './settings-section-landing.js';
 
 describe('settings redesign navigation contract', () => {
-	test('Hataskeyカテゴリだけ現在のUIで初期タブを選び、明示タブと検索の遷移は変更しない', () => {
-		const section = { id: 'hataskey-ui', items: [{ id: 'hataskey-ui' }, { id: 'hataskey-ui-s' }] };
-		expect(sectionLandingItem(section, 'hataskey3')?.id).toBe('hataskey-ui-s');
-		expect(sectionLandingItem(section, 'simple')?.id).toBe('hataskey-ui');
-		expect(sectionLandingItem(section, 'deck')?.id).toBe('hataskey-ui');
-		expect(sectionLandingItem({ id: 'other', items: [{ id: 'first' }, { id: 'second' }] }, 'hataskey3')?.id).toBe('first');
+	test('明示した設定項目と検索結果は既存destinationへ移動する', () => {
 		expect(shellSource).toContain('function openBentoDestination(id: string, event?: MouseEvent)');
 		expect(shellSource).toContain('const accepted = await goToSetting(destination);');
 		expect(shellSource).toContain('if (await goToSetting(target)) closeSearch({ reason: \'select\' });');
-	});
-	test('an unset UI preserves the first-item landing fallback', () => {
-		const section = { id: 'hataskey-ui', items: [{ id: 'hataskey-ui' }, { id: 'hataskey-ui-s' }] };
-		expect(sectionLandingItem(section, null)).toBe(section.items[0]);
-		expect(sectionLandingItem({ id: 'hataskey-ui', items: [] }, null)).toBeUndefined();
 	});
 	test('shell SFC parses and compiles, including each navigation section only once', () => {
 		const parsed = parse(shellSource, { filename: 'settings-redesign/index.vue' });
@@ -451,5 +440,61 @@ describe('settings redesign navigation contract', () => {
 		expect(build).toBeGreaterThan(destinations);
 		expect(catchStart).toBeGreaterThan(build);
 		expect(errorState).toBeGreaterThan(catchStart);
+	});
+
+	test('設定トップは現役のBento一覧だけを表示する', () => {
+		expect(shellSource).toContain('<SettingsBentoNavigation');
+		expect(shellSource).not.toContain('<SettingsMobileOverview');
+	});
+
+	test('新カテゴリ選択は先頭設定のpopupを自動起動せずカテゴリURLへ移動する', () => {
+		const start = shellSource.indexOf('async function selectBentoCategory(id: string)');
+		const end = shellSource.indexOf('function openBentoDestination', start);
+		expect(start).toBeGreaterThan(-1);
+		const handler = shellSource.slice(start, end);
+		expect(handler).toContain('`/settings?category=${category.id}`');
+		expect(handler).not.toContain('goToSetting(');
+		expect(handler).not.toContain('openSettingsPopup(');
+	});
+
+	test('全端末のrootは一覧にし、旧glassUiの直URLも維持する', () => {
+		expect(shellSource).not.toContain('SETTINGS_DEFAULT_ROUTE');
+		expect(shellSource).toContain("currentPath.value === '/settings' && requestedBentoCategoryId.value == null && embeddedPopup.value == null");
+		expect(shellSource).toContain("if (activeNavigationTarget.value?.route !== currentPath.value) activeHataCustomCategory.value = 'glassUi';");
+	});
+
+	test('現在のカテゴリはmanifestの明示された遷移先を優先し、一意なrouteだけをfallbackにする', () => {
+		expect(shellSource).toMatch(/const navSections(?:\s*:[^=]+)?\s*=\s*settingsDestinationSections\.map\(/u);
+		expect(shellSource).toContain('const primaryDestinationCountByRoute = computed(() =>');
+		expect(shellSource).toContain('const currentFullPath = computed(() =>');
+		expect(shellSource).toContain('const currentDestinationId = computed(() =>');
+		expect(shellSource).toContain('const activeNavigationItemIds = computed(() =>');
+		expect(shellSource).toContain('primaryDestinationCountByRoute.value.get(item.route) === 1');
+		expect(shellSource).toContain('return explicitIds.size > 0 ? explicitIds : routeOnlyIds;');
+		expect(shellSource).toContain('for (const id of activeNavigationItemIds.value)');
+		expect(shellSource).toContain('bentoCategoryForDestination(id)');
+	});
+
+	test('通常routeも根拠のある別route関連を末尾へ出し、旧設定導線を残す', () => {
+		expect(shellSource).toContain('relatedSourcesForSettingsNavigationV2');
+		expect(shellSource).toContain('related.route === currentPath.value');
+		expect(shellSource).not.toContain('if (items.length === 3) return items;');
+		expect(shellSource).toContain('copy.legacySettings');
+		expect(shellSource).toContain('emit(\'openLegacy\')');
+	});
+
+	test('旧実装由来の項目も新カテゴリから既存destinationへ接続する', () => {
+		expect(shellSource).toContain('function openBentoDestination(id: string, event?: MouseEvent)');
+		expect(shellSource).toContain('const destination = destinationForId(id);');
+		expect(shellSource).toContain('const accepted = await goToSetting(destination);');
+	});
+
+	test('設定シェルはアプリ設定とOS設定の両方でモーションを停止する', () => {
+		expect(shellSource).toContain(':data-motion-enabled="motionEnabled ? \'true\' : \'false\'"');
+		expect(shellSource).toContain('prefer.r.animation?.value !== false && !prefersReducedMotion.value');
+		expect(shellSource).toContain('reducedMotionQuery.addEventListener(\'change\', syncReducedMotion)');
+		expect(shellSource).toContain('reducedMotionQuery.removeEventListener(\'change\', syncReducedMotion)');
+		expect(shellSource).toContain('.scope[data-motion-enabled=\'false\']');
+		expect(shellSource).toContain(':deep(*)');
 	});
 });

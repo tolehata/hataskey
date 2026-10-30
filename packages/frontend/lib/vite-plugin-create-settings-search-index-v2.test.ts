@@ -745,7 +745,7 @@ describe('settings control search index V2', () => {
 		expect(storageTargets('reactionAcceptance').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		expect(storageTargets('realtimeMode').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		const audit = collectSettingsStorageKeyAuditV2(input);
-		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 102 });
+		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 101 });
 		expect(audit.items.find(item => item.kind === 'local' && item.key === 'hataskeyUiSDisplaySize')).toMatchObject({
 			disposition: 'catalog-control', descriptorStableIds: ['settings.control.device.hataskey-ui-s-display-size'],
 		});
@@ -794,7 +794,7 @@ describe('settings control search index V2', () => {
 			expect(old[0]?.storageRefs, key).toContainEqual({ kind: 'pref', key });
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key), key).toMatchObject({ disposition: 'catalog-control', descriptorStableIds: old.map(item => item.stableId) });
 		}
-		expect(audit.items).toHaveLength(498);
+		expect(audit.items).toHaveLength(497);
 		expect(audit.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(audit.items.every(item => item.descriptorStableIds.length > 0
 			? item.disposition === 'catalog-control' || item.disposition === 'catalog-group'
@@ -807,7 +807,7 @@ describe('settings control search index V2', () => {
 			'pizzax:catalog-control': 8, 'pizzax:catalog-group': 1, 'pizzax:runtime': 9,
 			'pizzax:migration': 3, 'pizzax:cache': 2, 'pizzax:deprecated': 78, 'pizzax:internal': 4,
 			'local:catalog-control': 15, 'local:catalog-group': 1, 'local:runtime': 12, 'local:migration': 22,
-			'local:cache': 26, 'local:deprecated': 6, 'local:internal': 20,
+			'local:cache': 26, 'local:deprecated': 6, 'local:internal': 19,
 		});
 		expect(audit.items.filter(item => item.kind === 'pizzax' && item.disposition === 'catalog-control')
 			.map(item => item.key).sort()).toEqual([
@@ -862,7 +862,7 @@ describe('settings control search index V2', () => {
 	test('実Vite入力でもstorage key XOR監査を実行し、runtime evidence変更を再生成対象にする', async () => {
 		const inventory = await collectRealSettingsInventory();
 		const audit = await collectSettingsStorageKeyAuditFromRepositoryV2(process.cwd(), inventory.files, inventory.descriptors);
-		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 102 });
+		expect(audit.counts).toEqual({ preference: 291, pizzax: 105, local: 101 });
 		for (const key of ['emojiAdditionNotice', 'hourlyTimeNotice']) {
 			expect(audit.items.find(item => item.kind === 'preference' && item.key === key)).toMatchObject({
 				disposition: 'catalog-control',
@@ -998,26 +998,6 @@ describe('settings control search index V2', () => {
 			...input,
 			runtimeSources: input.runtimeSources.map(source => source.file === 'src/utility/hatasaba-device-prefs.ts'
 				? { ...source, code: source.code.replaceAll('hatagoes:', 'unreviewed:') }
-				: source),
-		})).toThrow('explicit local key has invalid evidence: ' + key);
-	});
-
-	test('HataGoes紹介表示済み印は独立したinternal keyとして分類し、未登録・証拠消失を拒否する', async () => {
-		const input = await collectStorageAuditInput();
-		const key = 'hatagoes:introduction-seen:${string}';
-		const audit = collectSettingsStorageKeyAuditV2(input);
-		expect(audit.items.find(item => item.kind === 'local' && item.key === key)).toMatchObject({
-			disposition: 'internal', descriptorStableIds: [],
-			reason: expect.stringContaining('[src/utility/hatasaba-device-prefs.ts]'),
-		});
-		expect(() => collectSettingsStorageKeyAuditV2({
-			...input,
-			localStorageDefinition: input.localStorageDefinition.replace(key, 'hatagoes:unreviewed-introduction:${string}'),
-		})).toThrow('unclassified local key: hatagoes:unreviewed-introduction:${string}');
-		expect(() => collectSettingsStorageKeyAuditV2({
-			...input,
-			runtimeSources: input.runtimeSources.map(source => source.file === 'src/utility/hatasaba-device-prefs.ts'
-				? { ...source, code: source.code.replaceAll('hatagoes:introduction-seen:', 'hatagoes:redacted-introduction:') }
 				: source),
 		})).toThrow('explicit local key has invalid evidence: ' + key);
 	});

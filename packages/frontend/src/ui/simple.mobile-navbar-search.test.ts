@@ -103,7 +103,7 @@ function mount() {
 			...bindings, ...state, i18n: { ts: { search: 'Search', close: 'Close' } },
 			isHataskPage: false, isExternalTab: false, isChannelDetailPage: false, isPageView: false,
 			bottomNavHasPage: false, footerIsDark: true, newNotesMotionEnabled: false,
-			isSearchPage: false, isHomeTL: true, isNotifPage: false, isHatadyPage: false, isHataFeedPage: false,
+			isSearchPage: false, isHomeTL: true, isNotifPage: false, isHataFeedPage: false,
 			hasUnreadNotif: false, showUnreadNotifCount: false, unreadNotifCount: 0,
 			playSimpleNavMotion: vi.fn(), goHome: vi.fn(), goToNotifications: vi.fn(), goToHatask: vi.fn(), goToHatady: vi.fn(), goToHataFeed: vi.fn(), onPostClick: vi.fn(),
 		};

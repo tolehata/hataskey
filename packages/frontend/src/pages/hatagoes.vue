@@ -45,7 +45,7 @@
 			<div v-show="location.view === 'home' || location.view === 'search'" ref="homeScrollEl" data-hatagoes-home-scroll :class="[$style.common, $style.homeScroll]"><HatagoesHome ref="homeRef" :monochrome="brandOnDark" :cards="prefs.cards.value" :cardsV3="prefs.cardsV3?.value" :launcherApps="launcherApps" :halloween="prefs.theme.value.theme === 'halloween'" :recordRevision="homeRecordRevision" :revision="revision" :viewport="homeScrollEl" :decorationHost="shellRoot" :active="shellActive && (location.view === 'home' || location.view === 'search')" :busyTodoIds="busyTodoIds" :busyActions="busyActions" @navigate="navigate" @create="create" @toggleTodo="toggleTodo" @recordMood="recordMood" @water="water" @recordMeal="recordMeal" @recordReading="recordReading" @openApp="openHomeLauncherScreen" @allApps="openAllDirectory"/></div>
 			<div v-show="location.view === 'notifications'" :class="$style.common"><HatagoesNotifications :active="shellActive && location.view === 'notifications'" :pollingActive="shellActive" :revision="revision" @count="unread = $event" @navigate="navigate"/></div>
 			<div v-if="visited.settings" v-show="location.view === 'settings'" :class="$style.common">
-				<HatagoesSettings :monochrome="brandOnDark" :pins="visiblePins" :appPins="visibleAppPins" :availableApps="apps.map(app => app.id)" :cards="prefs.cards.value" :cardsV3="prefs.cardsV3?.value" :theme="prefs.theme.value" :ready="prefs.ready.value" :saving="prefs.saving.value" :error="prefs.error.value" :screens="screens" @save="saveSetting" @retry="prefs.load" @appSettings="openAppSettings" @editAppPins="editAppPins" @navigate="navigate" @replayIntroduction="replayIntroduction"/>
+				<HatagoesSettings :monochrome="brandOnDark" :pins="visiblePins" :appPins="visibleAppPins" :availableApps="apps.map(app => app.id)" :cards="prefs.cards.value" :cardsV3="prefs.cardsV3?.value" :theme="prefs.theme.value" :ready="prefs.ready.value" :saving="prefs.saving.value" :error="prefs.error.value" :screens="screens" @save="saveSetting" @retry="prefs.load" @appSettings="openAppSettings" @editAppPins="editAppPins" @navigate="navigate"/>
 			</div>
 			<HatagoesPane v-for="slot in slots" v-show="location.view === 'app' && hatagoesPaneKey(location.path) === slot.key" :key="slot.key" :class="$style.appPane" :monochrome="brandOnDark" :app="slot.app" :path="slot.path" :appearance="appearances[slot.app]" :launcherApps="launcherApps" :wide="!narrowShell" :hatadyHeaderDate="narrowShell ? null : hatadyHeaderDate" :hatadyHeaderActions="hatadyHeaderActions" :hatadyHeaderOverview="narrowShell ? hatadyMobileOverview : hatadyHeaderActions" :active="shellActive && location.view === 'app' && hatagoesPaneKey(location.path) === slot.key" @navigate="(path, replace) => navigateFromPane(slot, path, replace)" @register="registerBridge" @unregister="unregisterBridge" @appearance="appearances[slot.app] = $event" @mode="appModes[slot.app] = $event" @changed="changed" @exit="exit" @leave="router.pushByPath($event)" @openLauncherScreen="openHomeLauncherScreen" @openAllApps="openDirectory"/>
 		</div>
@@ -84,7 +84,6 @@
 	</div>
 	<MkHataskeyNotificationToasts v-if="shellActive && !inheritedNotices" :context="noticeContext" :receiveExternal="ownsNoticeSurface"/>
 	<Teleport to="body">
-		<HatagoesIntroduction :open="shellActive && introductionOpen" :active="shellActive && introductionOpen" :mode="introductionMode" @finish="finishIntroduction" @closed="onIntroductionClosed"/>
 		<HatagoesDialog :open="shellActive && searchOpen" preferType="dialog" keepRendered @close="closeSearch" @closed="restoreSearchFocus">
 			<div :class="[$style.overlayTheme, themeClasses]" :data-hatask-theme="hataskPaletteTheme" :data-hatask-mode="hataskPaletteMode" :data-hatady-theme="activeTheme" :style="shellStyle">
 				<HatagoesSearch v-if="visited.search" :active="shellActive && searchOpen" :revision="revision" :monochrome="brandOnDark" @open="openSearchResult" @close="closeSearch"/>
@@ -145,7 +144,7 @@ import { createHataskeyNotificationToasts, getToastDuration, hataskeyNotificatio
 import { HATAGOES_CATALOG, getHatagoesScreen, isHatagoesVisibleScreen } from '@/utility/hatagoes-catalog.js';
 import { getHatagoesOrigin, hatagoesAppForPath, hatagoesPaneKey, hatagoesScreenPath, hatagoesUrl, isHatagoesCurrentScreen, isHatagoesIntroPath, isHatagoesPath, readHatagoesLocation } from '@/utility/hatagoes-navigation.js';
 import { hatagoesSearchResultUrl } from '@/utility/hatagoes-search.js';
-import { claimHatagoesIntroduction, markHatagoesIntroductionSeen, readHatagoesDeviceCache, releaseHatagoesIntroduction, writeHatagoesDeviceCache } from '@/utility/hatasaba-device-prefs.js';
+import { readHatagoesDeviceCache, writeHatagoesDeviceCache } from '@/utility/hatasaba-device-prefs.js';
 import { useHatagoesPreferences } from '@/utility/hatagoes-preferences.js';
 import { HATAGOES_HATASK_PIN_CANDIDATES, isHatagoesHataskPinCandidate } from '@/utility/hatagoes-hatask-pins.js';
 import { HATA_GOES_SESSION } from '@/utility/hatagoes-context.js';
@@ -166,7 +165,6 @@ import HatagoesSupportButton from '@/components/hatask/HatagoesSupportButton.vue
 import { useHataMascotSuppression } from '@/utility/hata-mascot-suppression.js';
 import HatagoesDialog from '@/components/hatagoes/HatagoesDialog.vue';
 import HatagoesCreateHost from '@/components/hatagoes/HatagoesCreateHost.vue';
-import HatagoesIntroduction from '@/components/hatagoes/HatagoesIntroduction.vue';
 
 const router = useRouter();
 const closeWindow = inject(DI.pageWindowClose, null);
@@ -175,40 +173,6 @@ const homeRef = ref<InstanceType<typeof HatagoesHome> | null>(null);
 const homeRecordRevision = ref(0);
 const location = ref(readHatagoesLocation(router.getCurrentFullPath()));
 const shellActive = ref(true);
-const introductionOpen = ref(false);
-const introductionMode = computed<'light' | 'dark'>(() => (prefs.theme.value.autoTheme ? store.r.darkMode.value : prefs.theme.value.darkMode) ? 'dark' : 'light');
-let introductionClaim: string | null = null;
-let introductionCompleted = false;
-let introductionFirstRun = false;
-let introductionPreferencesLoaded = false;
-
-function maybeOpenIntroduction() {
-	const accountId = $i?.id;
-	if (!introductionPreferencesLoaded || !shellActive.value || !accountId || introductionOpen.value || !claimHatagoesIntroduction(accountId)) return;
-	introductionClaim = accountId;
-	introductionCompleted = false;
-	introductionFirstRun = true;
-	introductionOpen.value = true;
-}
-
-function replayIntroduction() {
-	const accountId = $i?.id;
-	if (!shellActive.value || introductionOpen.value || !accountId || !claimHatagoesIntroduction(accountId, true)) return;
-	introductionClaim = accountId;
-	introductionCompleted = false;
-	introductionFirstRun = false;
-	introductionOpen.value = true;
-}
-
-function finishIntroduction() { if (introductionOpen.value) { introductionCompleted = true; introductionOpen.value = false; } }
-
-function onIntroductionClosed() {
-	if (introductionCompleted && introductionFirstRun && shellActive.value && introductionClaim) markHatagoesIntroductionSeen(introductionClaim);
-	introductionCompleted = false;
-	introductionFirstRun = false;
-	if (introductionClaim) releaseHatagoesIntroduction(introductionClaim);
-	introductionClaim = null;
-}
 
 useHataMascotSuppression(shellActive);
 const shellRoot = ref<HTMLElement>();
@@ -907,11 +871,6 @@ function resetHomeScrollOnEntry() {
 
 function deactivateShell() {
 	shellActive.value = false;
-	introductionCompleted = false;
-	introductionFirstRun = false;
-	introductionOpen.value = false;
-	if (introductionClaim) releaseHatagoesIntroduction(introductionClaim);
-	introductionClaim = null;
 	unregisterNoticeSurface();
 	noticeHovered.value = false;
 	noticeFocused.value = false;
@@ -932,7 +891,7 @@ function deactivateShell() {
 let shellSizeObserver: ResizeObserver | undefined;
 onMounted(() => {
 	resetHomeScrollOnEntry();
-	void prefs.load().finally(() => { introductionPreferencesLoaded = true; maybeOpenIntroduction(); }); window.addEventListener('focus', onFocus);
+	void prefs.load(); window.addEventListener('focus', onFocus);
 	if (typeof ResizeObserver !== 'undefined') {
 		shellSizeObserver = new ResizeObserver(syncShellSize);
 		for (const element of [shellRoot.value, shellHeader.value, appsCapsule.value, screenCapsule.value, mobileNoticeSurface.value, fallbackNoticeSurface.value, mobileCapsule.value, mobileDock.value, screenNav.value]) if (element) shellSizeObserver.observe(element);
@@ -941,7 +900,7 @@ onMounted(() => {
 	void nextTick(syncShellSize);
 	window.addEventListener('resize', syncShellSize);
 });
-onActivated(() => { shellActive.value = true; registerNoticeSurface(); applyLocation(router.getCurrentFullPath()); resetHomeScrollOnEntry(); maybeOpenIntroduction(); });
+onActivated(() => { shellActive.value = true; registerNoticeSurface(); applyLocation(router.getCurrentFullPath()); resetHomeScrollOnEntry(); });
 onDeactivated(deactivateShell);
 onBeforeUnmount(() => { window.removeEventListener('focus', onFocus); window.removeEventListener('resize', syncShellSize); shellSizeObserver?.disconnect(); window.clearTimeout(noticeGlowTimer); releaseFeedNotice(); releaseNoticeReceiver(); deactivateShell(); });
 applyLocation(router.getCurrentFullPath());

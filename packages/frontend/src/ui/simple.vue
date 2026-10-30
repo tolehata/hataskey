@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div ref="timelineCollapseRoot" :class="[$style.root, { [$style.desktopLayout]: isDesktop }]" :style="{ '--simple-announcements-height': `${announcementsHeight}px`, '--note-charm-rail-width': `${CHARM_RAIL_WIDTH}px` }" :data-hata-foldable="isFoldableWide ? 'true' : undefined" :data-note-charm-lane="noteCharmShellAvailable && !isHataGoesPage && isDesktop && !deckActive ? 'on' : undefined">
 	<!-- PC/タブレット: オリジナル左サイドバー (上部メニューモード時は隠す) -->
-	<nav v-if="isDesktop && !topNavActive" ref="desktopNavEl" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarWide]: !sidebarFolded && studioProfile.expanded.width === 'wide', [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed }]">
+	<nav v-if="isDesktop && !topNavActive" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarWide]: !sidebarFolded && studioProfile.expanded.width === 'wide', [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed }]">
 		<!-- バナーすりガラス背景 -->
 		<div v-if="glassEffect" :class="$style.sidebarBanner">
 			<img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.sidebarBannerImg"/>
@@ -395,7 +395,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-if="simpleDrawerShowing" :class="$style.drawerBg" @click="simpleDrawerShowing = false"></div>
 		</Transition>
 		<Transition name="simple-drawer">
-			<nav v-if="simpleDrawerShowing" ref="drawerNavEl" data-hata-collapse-teleport :class="[$style.drawerNav, { [$style.drawerNavSolid]: !glassEffect }]">
+			<nav v-if="simpleDrawerShowing" data-hata-collapse-teleport :class="[$style.drawerNav, { [$style.drawerNavSolid]: !glassEffect }]">
 				<!-- ヘッダー背景（すりガラス） -->
 				<div v-if="glassEffect" :class="$style.drawerBanner">
 					<img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.drawerBannerImg"/>
@@ -487,7 +487,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 
 	<XCommon v-model:widgetsShowing="widgetsShowing" :loadingIntegrated="nativeNavbarVisible && !!notificationOutlineEl"/>
-	<MkHataskeyUiSAnnouncement :navRoot="announcementNavRoot" :accountId="$i?.id ?? null" @switch="simpleDrawerShowing = false; void openUiSetup()"/>
 </div>
 </template>
 
@@ -517,7 +516,6 @@ import type { HataSideButton, HataSideGroup, HataSideWidget, HataSideWidgetKind 
 import { globalEvents } from '@/events.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
 import MkLtlPunch from '@/components/MkLtlPunch.vue';
-import MkHataskeyUiSAnnouncement from '@/components/MkHataskeyUiSAnnouncement.vue';
 import MkLtlEmojiVoteOutline from '@/components/MkLtlEmojiVoteOutline.vue';
 import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
 import { normalizeHatagoesSidebar } from '@/utility/hatagoes-sidebar.js';
@@ -652,8 +650,6 @@ const navbarSearchKeyboardInset = ref(0);
 const navbarSearchMaxHeight = computed(() => Math.max(0, navbarSearchViewportHeight.value - 150));
 let navbarSearchFocusVersion = 0;
 const simpleDrawerShowing = ref(false);
-const desktopNavEl = ref<HTMLElement | null>(null);
-const drawerNavEl = ref<HTMLElement | null>(null);
 const widgetsShowing = ref(false);
 
 // 旗鯖fork: デッキモード (デスクトップのみ)。サイドメニュー下部のトグルで切替。
@@ -675,9 +671,6 @@ function maybeShowDeckTutorial() {
 // 旗鯖fork: 上部メニューモード(デスクトップのみ)。ONで左サイドバーを隠し上部ナビバーを出す。
 const topNavMode = prefer.r['simpleUi.topNavMode'];
 const topNavActive = computed(() => isDesktop.value && topNavMode.value && !isPageView.value);
-const announcementNavRoot = computed(() => isDesktop.value
-	? (topNavActive.value ? null : desktopNavEl.value)
-	: (simpleDrawerShowing.value ? drawerNavEl.value : null));
 // 旗鯖fork: デッキ背景のヘッダー画像ぼかしを使わないオプション
 const deckNoBannerBg = computed(() => prefer.r['simpleUi.deckNoBannerBg'].value);
 // 旗鯖fork: 通常表示(デッキUIではない)タイムライン背景のヘッダー画像ぼかしを使わないオプション
@@ -691,12 +684,6 @@ const timelineGlassBg = computed(() => !isPageView.value && !deckActive.value &&
 
 function setDeckMode(v: boolean) {
 	prefer.commit('simpleUi.deckMode', v);
-}
-
-// 旗鯖fork: 上部メニューモード(topNav)⇔左サイドメニューの切替。
-// タスク4(上部ナビバー右ボタン)とタスク5(デッキUIメニュー)から共通で呼ぶ。
-function setTopNavMode(v: boolean) {
-	prefer.commit('simpleUi.topNavMode', v);
 }
 
 // 旗鯖fork: 左サイドメニューの手動縮小(折りたたみ)。
@@ -878,8 +865,6 @@ const showCTL = computed(() => concrntState.connection != null && concrntState.s
 // 旗鯖fork: 外部通知の未読有無 (件数ではなくドット表示。件数はWS+ポーリングで二重カウントの恐れがあるため)
 const extNotifHasUnread = ref(false);
 
-function openExtNotifPanel() { window.dispatchEvent(new CustomEvent('ext-tl-open-notif')); }
-
 // 旗鯖fork: 外部通知専用ページへ遷移。遷移と同時にバッジを強制解除する
 // (ページ側でも既読化するが、UI即時反映のためここでも消す)
 function goToExternalNotifications() {
@@ -912,7 +897,6 @@ const isPageView = ref(false);
 const isSearchPage = computed(() => { const r = mainRouter.currentRoute.value; return r.name === 'search' || r.path === '/search'; });
 const isNotifPage = computed(() => mainRouter.currentRoute.value.path === '/my/notifications');
 const isHataskPage = computed(() => { const p = mainRouter.currentRoute.value.path; return p === '/hatask' || p === '/hata-docs'; });
-const isHatadyPage = computed(() => mainRouter.currentRoute.value.path.startsWith('/hatady'));
 const isHataFeedPage = computed(() => mainRouter.currentRoute.value.path.startsWith('/hatafeed'));
 const isListTimelinePage = computed(() => isListTimelinePath(mainRouter.currentRoute.value.path));
 const isListPage = computed(() => mainRouter.currentRoute.value.path.startsWith('/my/lists') || isListTimelinePage.value);

@@ -14,14 +14,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import EmReactionIcon from '@/components/EmReactionIcon.vue';
 
 const props = defineProps<{
 	reaction: string;
 	count: number;
-	isInitial: boolean;
 	note: Misskey.entities.Note;
 }>();
 </script>
@@ -37,38 +35,8 @@ const props = defineProps<{
 	align-items: center;
 	justify-content: center;
 
-	&.canToggle {
-		background: var(--MI_THEME-buttonBg);
-
-		&:hover {
-			background: var(--MI_THEME-buttonHoverBg, rgba(0, 0, 0, 0.1));
-		}
-	}
-
 	&:not(.canToggle) {
 		cursor: default;
-	}
-
-	&.small {
-		height: 30px;
-		font-size: 1em;
-
-		> .count {
-			font-size: 0.9em;
-			line-height: 22px;
-		}
-	}
-
-	&.large {
-		height: 46px;
-		font-size: 1.8em;
-		border-radius: 4px 16px;
-
-		> .count {
-			font-size: 0.6em;
-			line-height: 50px;
-			margin: 0 0 0 8px;
-		}
 	}
 
 	&.reacted, &.reacted:hover {
@@ -78,10 +46,6 @@ const props = defineProps<{
 
 		> .count {
 			color: var(--MI_THEME-accent);
-		}
-
-		> .icon {
-			filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
 		}
 	}
 }

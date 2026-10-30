@@ -7,7 +7,6 @@ import hataskSource from '../HataskSettings.vue?raw';
 import hatadySource from '../../components/HatadyDisplaySettings.vue?raw';
 import previewSource from '../../components/MkHatasabaUi2PreviewWindow.vue?raw';
 import hataFeedSource from './HataFeedSettingsSurface.vue?raw';
-import mobileSource from './SettingsMobileOverview.vue?raw';
 import indexSource from './index.vue?raw';
 
 const brandSource = readFileSync(resolve(process.cwd(), 'src/pages/settings-redesign/settings-redesign-brand.scss'), 'utf8');
@@ -25,8 +24,6 @@ describe('settings brand coverage', () => {
 		// 旗鯖fork: 右上の「Hataskey UI／デッキ」表示は削除した。
 		//   ⚠️ブランド表記の検査は、残っている箇所で担保する。
 		expect(indexSource).toContain("@use './settings-redesign-brand.scss'");
-		expect(mobileSource).toContain('settingsBrandText: hasSettingsBrand(section.description)');
-		expect(mobileSource).toContain('settingsBrandText: hasSettingsBrand(activeCategory.description)');
 		expect(hataFeedSource).toContain('<HataFeedDisplaySettings embedded/>');
 		expect(hataSabaSource).toContain('settingsBrand');
 		expect(hataskSource).toContain('<span class="settingsBrandText">{{ copy.title }}</span>');

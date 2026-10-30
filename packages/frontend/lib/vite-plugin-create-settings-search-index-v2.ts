@@ -851,8 +851,6 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'通知画面のフィルターメニューが更新するBOT除外状態', ['src/pages/notifications.vue']);
 	add('preference', keys('showEventButtonInPostForm'), 'runtime',
 		'投稿面が参照する表示状態', ['src/components/MkPostForm.vue']);
-	add('preference', keys('simpleUi.collapseAnnounceShown simpleUi.deckAnnounceShown simpleUi.hatafeedIntroShown'), 'runtime',
-		'案内面のdismissまたは表示状態', ['src/ui/simple.vue']);
 	add('preference', keys('simpleUi.utageBadgeTipShown'), 'runtime',
 		'ユーザーページの宴バッジtip dismiss状態', ['src/pages/user/home.vue']);
 	add('preference', keys('nicknameMap'), 'runtime',
@@ -862,7 +860,7 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 	add('preference', keys('hataConsent.customFont hataConsent.customFontDate hataConsent.externalTl hataConsent.externalTlDate hataFont.customFontConsent'), 'internal',
 		'利用規約・同意dialogの結果または記録日時で、単独設定controlではない', ['src/pages/settings/hata-custom.vue', 'src/pages/settings/external-account.vue']);
 	add('preference', keys('reportError'), 'deprecated',
-		'唯一の設定switchがコメントアウトされたまま残る旧model定義', ['src/pages/settings/other.vue']);
+		'設定UIから廃止済みで、保存済みプロファイルを読むために残す互換定義', ['src/preferences/def.ts']);
 	add('preference', keys('showLikeButtonInNoteFooter'), 'migration',
 		'boot時に既定値へ正規化される廃止UIトグル', ['src/boot/main-boot.ts']);
 	add('preference', keys('renameTheButtonInPostFormToNyaManualSet'), 'internal',
@@ -934,8 +932,6 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'暁ホームの優先表示に使う端末・アカウント別のツール利用履歴で、設定項目ではない', ['src/utility/hatask-akatsuki-usage.ts']);
 	add('local', ["hatagoes:${'state' | 'create' | 'scroll'}:" + dynamicKey], 'cache',
 		'HataGoesの画面復元・最近の作成・スクロール位置を保持する端末・アカウント別キャッシュ', ['src/utility/hatasaba-device-prefs.ts']);
-	add('local', ['hatagoes:introduction-seen:' + dynamicKey], 'internal',
-		'HataGoesの初回紹介を表示済みか端末・アカウント別に記録する内部状態', ['src/utility/hatasaba-device-prefs.ts']);
 	add('local', [
 		'account', 'aiscriptSecure:' + dynamicKey, 'debug', 'hataNotificationFilterPolicyNoticeShown:' + dynamicKey,
 		'hataSideStudioTutorialDone', 'hataWhatsNewShownVersion', 'hata_muted_reactions_notice_shown', 'hatafeedIntroShown',
@@ -1376,10 +1372,6 @@ const TRANSITIVE_SETTINGS_COMPONENT_DISPOSITIONS_V2: Readonly<Record<string, Set
 	'src/components/HatadyExportDialog.vue': {
 		disposition: 'nonsetting',
 		reason: 'HatadyExportDialogは書き出し対象・期間を一回のexport実行のために選ぶworkflowで、設定値・到達先を永続化しない',
-	},
-	'src/components/HatadyStartupAnime.vue': {
-		disposition: 'nonsetting',
-		reason: 'HatadyStartupAnimeは紹介を再生する一時workflowであり、利用者設定を保存する独立targetではない',
 	},
 	'src/components/HatadyTutorial.vue': {
 		disposition: 'nonsetting',

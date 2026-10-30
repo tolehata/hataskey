@@ -53,7 +53,6 @@
 		</section>
 		<section v-if="visibleSettingsApps.length" key="app-settings" :class="$style.panel"><h2>各アプリの設定</h2><div :class="$style.rows"><button v-for="app in visibleSettingsApps" :key="app" type="button" :class="$style.navRow" @click="emit('appSettings', app)"><span :class="$style.appWordmark"><HataAppLogo :app="app" :size="16" :monochrome="monochrome"/><HataAppWordmark :app="app" :onDark="monochrome"/></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button></div></section>
 		<section v-if="matches('アカウント', 'プロフィール', 'account', 'profile')" key="account" :class="$style.panel"><h2>アカウント</h2><div :class="$style.rows"><button type="button" :class="$style.navRow" @click="emit('navigate', '/settings/profile')"><span>プロフィールとアカウント設定を開く</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button></div></section>
-		<section v-if="matches('HataGoes', '紹介', '再生', 'はじめかた')" key="introduction" :class="$style.panel"><h2>HataGoesの紹介</h2><div :class="$style.rows"><button type="button" :class="$style.navRow" @click="emit('replayIntroduction')"><span>紹介をもう一度見る</span><i class="ti ti-player-play" aria-hidden="true"></i></button></div></section>
 		<section v-if="matches('通知設定', '通知配信', 'プッシュ通知', 'notification')" key="notifications" :class="$style.panel"><h2>通知設定</h2><div :class="$style.rows"><button v-if="allowedApps.includes('hatask')" type="button" :class="$style.navRow" @click="emit('appSettings', 'hatask', 'moodReminder')"><span><HataAppWordmark app="hatask" :onDark="monochrome"/> きもち通知の時間</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button><button v-if="allowedApps.includes('hatask')" type="button" :class="$style.navRow" @click="emit('appSettings', 'hatask', 'notifications')"><span><HataAppWordmark app="hatask" :onDark="monochrome"/> 実績・テスト通知</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button><button type="button" :class="$style.navRow" @click="emit('navigate', '/settings/notifications')"><span>アカウント全体の通知配信設定を開く</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button></div><p :class="$style.note"><HataAppWordmark app="hatady" :onDark="monochrome"/>・<HataAppWordmark app="hatafeed" :onDark="monochrome"/> の通知一覧は各アプリから確認できます。</p></section>
 	</TransitionGroup>
 	<p :class="$style.footerNote">変更は自動で保存されます</p>
@@ -72,7 +71,7 @@ import HataAppLogo from '@/components/HataAppLogo.vue';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';
 
 const props = defineProps<{ pins: string[]; appPins?: string[]; availableApps?: readonly HatagoesApp[]; cards: HatagoesCard[]; cardsV3?: HatagoesCardV3[]; theme: HatagoesHomeTheme; ready: boolean; saving: boolean; error: boolean; screens: readonly HatagoesCatalogEntry[]; monochrome?: boolean }>();
-const emit = defineEmits<{ save: [key: 'pins' | 'cardsV3' | 'theme', value: unknown]; retry: []; appSettings: [app: HatagoesApp, section?: string]; editAppPins: []; navigate: [path: string]; replayIntroduction: [] }>();
+const emit = defineEmits<{ save: [key: 'pins' | 'cardsV3' | 'theme', value: unknown]; retry: []; appSettings: [app: HatagoesApp, section?: string]; editAppPins: []; navigate: [path: string] }>();
 const themeNames = { akatsuki: '暁', koke: '苔', kisetsu: '季', kashin: '花信', suri: '刷', hatakyu: 'ハタキュ', halloween: 'ハロウィン' };
 const themeDescriptions = { akatsuki: '夜明けのやわらかな光', koke: '森の静けさと深い緑', kisetsu: '和紙と墨の、移ろう四季', kashin: '花の便りのような明るさ', suri: '活版印刷の力強さ', hatakyu: 'コルクボードとメモ', halloween: 'かぼちゃ色と夜の紫' };
 const isOctober = new Date().getMonth() === 9;
@@ -141,7 +140,6 @@ const hasResults = computed(() => (!!props.appPins && matches('Appピン', 'ア�
 	|| matches('ホームのカード', 'カード', '並べ替え', '非表示', 'きょうの記録')
 	|| matches('ホーム専用テーマ', 'テーマ', '見た目', '明暗', 'ダークモード', 'ハロウィン', 'halloween')
 	|| matches('アカウント', 'プロフィール', 'account', 'profile')
-	|| matches('HataGoes', '紹介', '再生', 'はじめかた')
 	|| matches('通知設定', '通知配信', 'プッシュ通知', 'notification')
 	|| visibleSettingsApps.value.length > 0 || searchHits.value.length > 0);
 let touchStart: { x: number; y: number } | null = null;

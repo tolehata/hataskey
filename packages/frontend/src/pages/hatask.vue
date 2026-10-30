@@ -210,34 +210,6 @@
       @choose="resolveCalendarAction"
     />
   </div>
-  <div v-if="false" class="htk-lg htk-anim"><div class="htk-gc">
-    <div class="htk-cal-seg" style="margin-bottom:8px"><button :class="['htk-btn htk-xs',calViewMode==='calendar'&&'htk-sb-on']" @click="calViewMode='calendar'"><i class="ti ti-calendar"></i> {{copy.tabCalendar}}</button><button :class="['htk-btn htk-xs',calViewMode==='list'&&'htk-sb-on']" @click="calViewMode='list'"><i class="ti ti-list"></i> {{copy.list}}</button></div>
-    <template v-if="calViewMode==='calendar'">
-    <div class="htk-cal-hd"><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(-1)">&lt;</button></div><div class="htk-cal-ttl">{{calendarTitle}}</div><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(1)">&gt;</button><button class="htk-cal-nb" @click="goToday">●</button></div></div>
-    <div class="htk-cal-wk"><div v-for="(d,i) in calendarWeekdays" :key="i" :class="['htk-cal-wk-d',i===5&&'sat',i===6&&'sun']">{{d}}</div></div>
-    <div class="htk-cal-days"><div v-for="(cell,i) in calCells" :key="i" :class="['htk-cal-d',cell.om&&'om',cell.today&&'td',cell.selected&&'sel']" @click="!cell.om&&selectDay(cell.day)"><span>{{cell.day}}</span><div v-if="cell.dots&&cell.dots.length" class="htk-cal-dots"><span v-for="(dot,di) in cell.dots" :key="di" class="htk-cal-dot" :style="{background:dot.color}"></span></div></div></div>
-    </template>
-    <template v-else>
-      <div class="htk-cal-hd"><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(-1)">&lt;</button></div><div class="htk-cal-ttl">{{calendarTitle}}</div><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(1)">&gt;</button><button class="htk-cal-nb" @click="goToday">●</button></div></div>
-      <div style="display:flex;gap:4px;margin:8px 0;flex-wrap:wrap">
-        <button :class="['htk-btn htk-xs',calListMode==='day'&&'htk-sb-on']" @click="calListMode='day';calListPage=1">{{copy.day}}</button>
-        <button :class="['htk-btn htk-xs',calListMode==='week'&&'htk-sb-on']" @click="calListMode='week';calListPage=1">{{copy.week}}</button>
-        <button :class="['htk-btn htk-xs',calListMode==='month'&&'htk-sb-on']" @click="calListMode='month';calListPage=1">{{copy.month}}</button>
-        <span style="flex:1"></span>
-        <button :class="['htk-btn htk-xs',calListSort==='asc'&&'htk-sb-on']" @click="calListSort='asc';calListPage=1">{{copy.oldestFirst}}</button>
-        <button :class="['htk-btn htk-xs',calListSort==='desc'&&'htk-sb-on']" @click="calListSort='desc';calListPage=1">{{copy.newestFirst}}</button>
-      </div>
-      <div v-for="ev in pagedCalList" :key="ev.id" :class="['htk-dayev-row',viewingEvent?.id===ev.id&&'active']" @click="openEventDetail(ev)">
-        <div class="htk-dayev-dot" :style="{background:ev.color}"></div>
-        <div class="htk-dayev-body">
-          <div class="htk-dayev-title"><HataskEmoji :emoji="ev.emoji"/> {{ev.title}}<span v-if="ev.isShared" style="opacity:.4;font-size:.78em;margin-left:6px">@{{ev.username}}</span></div>
-          <div class="htk-dayev-time">{{eventDateTimeLabel(ev)}}</div>
-        </div>
-      </div>
-      <div v-if="!calListEvents.length" class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noEventsInPeriod}}</div></div>
-      <div v-if="calListTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="calListPage<=1" @click="calListPage--">&lt;</button><span class="htk-pager-t">{{calListPage}} / {{calListTotalPages}}</span><button class="htk-btn htk-xs" :disabled="calListPage>=calListTotalPages" @click="calListPage++">&gt;</button></div>
-    </template>
-  </div></div>
 
 					<Teleport to="body">
 						<div
@@ -868,7 +840,6 @@ const monthDayFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short
 const monthDayWeekdayFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric', weekday: 'short' });
 const weekdayLongFormatter = new Intl.DateTimeFormat(versatileLang, { weekday: 'long' });
 const weekdayShortFormatter = new Intl.DateTimeFormat(versatileLang, { weekday: 'short' });
-const calendarWeekdays = Array.from({ length: 7 }, (_, index) => weekdayShortFormatter.format(new Date(2024, 0, 1 + index)));
 
 const dataLoaded = ref(false);
 const loadedKeys = new Set<string>();
@@ -1867,7 +1838,6 @@ const calYear=ref(new Date().getFullYear());const calMonth=ref(new Date().getMon
 const calendarTitle = computed(() => yearMonthFormatter.format(new Date(calYear.value, calMonth.value, 1)));
 function chMo(d:number){calMonth.value+=d;if(calMonth.value>11){calMonth.value=0;calYear.value++}if(calMonth.value<0){calMonth.value=11;calYear.value--}selectedDay.value=null;viewingEvent.value=null}
 function goToday(){const n=new Date();calYear.value=n.getFullYear();calMonth.value=n.getMonth();selectedDay.value=n.getDate()}
-function selectDay(d:number){selectedDay.value=d;viewingEvent.value=null;const ds=`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;newEvent.value.date=ds;newEvent.value.dateEnd=ds;editingEvent.value=null}
 const selectedDateStr=computed(()=>{if(!selectedDay.value)return'';return`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(selectedDay.value).padStart(2,'0')}`});
 // ローカル + 共有予定を serverEventId で照合し、繰り返し予定を表示期間へ展開する。
 const allCalendarEvents=computed(()=>{
@@ -1905,8 +1875,6 @@ function isDeclinedCalendarInvitation(event: { userId?: string; rsvp?: boolean; 
 // 辞退は表示だけ除外し、詳細から回答を変更できるよう元の予定一覧を保持する。
 const visibleCalendarEvents = computed(() => allCalendarEvents.value.filter(event => showDeclinedInvitations.value || !isDeclinedCalendarInvitation(event)));
 
-function hasEventsOn(ds:string){return visibleCalendarEvents.value.some(e=>e.date===ds||(e.dateEnd&&e.date<=ds&&e.dateEnd>=ds))}
-function eventDotsFor(ds:string){return visibleCalendarEvents.value.filter(e=>e.date===ds||(e.dateEnd&&e.date<=ds&&e.dateEnd>=ds)).slice(0,3)}
 function startEditEvent(ev:any){
 	const sourceId=ev.sourceEventId||ev.id;
 	const localSource=events.value.find(event=>event.id===sourceId||event.serverEventId===sourceId);
@@ -1964,7 +1932,6 @@ async function deleteEventById(id:string,options:{skipConfirm?:boolean}={}){
 		os.toast(plannerCopy.publicSyncFailed);
 	}
 }
-const calCells=computed(()=>{const fd=new Date(calYear.value,calMonth.value,1).getDay();const dim=new Date(calYear.value,calMonth.value+1,0).getDate();const dip=new Date(calYear.value,calMonth.value,0).getDate();const so=fd===0?6:fd-1;const td=new Date();const cells:any[]=[];for(let i=so-1;i>=0;i--)cells.push({day:dip-i,om:true});for(let d=1;d<=dim;d++){const ds=`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;cells.push({day:d,om:false,today:d===td.getDate()&&calMonth.value===td.getMonth()&&calYear.value===td.getFullYear(),selected:d===selectedDay.value,hasEvents:hasEventsOn(ds),dots:eventDotsFor(ds)})}const rem=(7-cells.length%7)%7;for(let d=1;d<=rem;d++)cells.push({day:d,om:true});return cells});
 
 // Events
 const events=ref<HataskPlannerEvent[]>([]);
@@ -2913,49 +2880,6 @@ const showMealDisclaimer=ref(false);
 // サマリーは数値評価を出さない。記録した行為そのものを中立に肯定する労いのみ
 const mealTodayCount=computed(()=>{const today=localDateKey();return meals.value.filter(m=>m.date===today).length});
 const mealSummaryMessage=computed(()=>{const c=mealTodayCount.value;if(c===0)return copy.mealSummaryNone;if(c===1)return copy.mealSummaryOne;return copy.mealSummaryMany});
-
-// ===== PAGINATION =====
-const ITEMS_PER_PAGE = 10;
-const calListPage = ref(1);
-
-// Paginated events for selected day
-
-// Calendar list view
-const calListMode = ref<'day'|'week'|'month'>('day');
-const calListSort = ref<'asc'|'desc'>('asc');
-const calViewMode = ref<'calendar'|'list'>('calendar');
-
-const calListEvents = computed(()=>{
-  const now = new Date();
-  let start = '', end = '';
-  if(calListMode.value==='day'){
-    const d=selectedDateStr.value||`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-    start=d; end=d;
-  } else if(calListMode.value==='week'){
-    const base=selectedDay.value?new Date(calYear.value,calMonth.value,selectedDay.value):now;
-    const dow=base.getDay()||7;
-    const mon=new Date(base);mon.setDate(base.getDate()-(dow-1));
-    const sun=new Date(mon);sun.setDate(mon.getDate()+6);
-    start=`${mon.getFullYear()}-${String(mon.getMonth()+1).padStart(2,'0')}-${String(mon.getDate()).padStart(2,'0')}`;
-    end=`${sun.getFullYear()}-${String(sun.getMonth()+1).padStart(2,'0')}-${String(sun.getDate()).padStart(2,'0')}`;
-  } else {
-    start=`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-01`;
-    const dim=new Date(calYear.value,calMonth.value+1,0).getDate();
-    end=`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(dim).padStart(2,'0')}`;
-  }
-  let list=allCalendarEvents.value.filter(e=>{
-    if(e.date>=start&&e.date<=end)return true;
-    if(e.dateEnd&&e.date<=end&&e.dateEnd>=start)return true;
-    return false;
-  });
-  list.sort((a:any,b:any)=>{
-    const cmp=a.date.localeCompare(b.date)||(a.timeStart||'').localeCompare(b.timeStart||'');
-    return calListSort.value==='asc'?cmp:-cmp;
-  });
-  return list;
-});
-const calListTotalPages = computed(()=>Math.max(1,Math.ceil(calListEvents.value.length/ITEMS_PER_PAGE)));
-const pagedCalList = computed(()=>{const start=(calListPage.value-1)*ITEMS_PER_PAGE;return calListEvents.value.slice(start,start+ITEMS_PER_PAGE)});
 
 const weekMoods=computed(()=>{const now=new Date();const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);return Array.from({ length: 7 },(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const ds=d.toISOString().slice(0,10);const last=moods.value.filter(m=>m.date===ds).pop();return{day: weekdayShortFormatter.format(d),icon:last?moodIcons[last.level]:''};})});
 

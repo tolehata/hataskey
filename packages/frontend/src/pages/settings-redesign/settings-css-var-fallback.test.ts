@@ -16,7 +16,7 @@
 
 import { describe, expect, test } from 'vitest';
 import shell from './index.vue?raw';
-import mobileOverview from './SettingsMobileOverview.vue?raw';
+import bentoNavigation from './SettingsBentoNavigation.vue?raw';
 import searchPanel from './SettingsSearchPanel.vue?raw';
 import preferencesSurface from './SettingsPreferencesSurface.vue?raw';
 import relatedLinks from './SettingsRelatedLinks.vue?raw';
@@ -25,7 +25,7 @@ import previewWindow from '@/components/MkHatasabaUi2PreviewWindow.vue?raw';
 
 const SOURCES: Array<[string, string]> = [
 	['index.vue', shell],
-	['SettingsMobileOverview.vue', mobileOverview],
+	['SettingsBentoNavigation.vue', bentoNavigation],
 	['SettingsSearchPanel.vue', searchPanel],
 	['SettingsPreferencesSurface.vue', preferencesSurface],
 	['SettingsRelatedLinks.vue', relatedLinks],
@@ -53,8 +53,8 @@ describe('settings css variable fallback', () => {
 			expect(source, file).toContain('<template>');
 			expect(source, file).toContain('<style');
 		}
-		const fixture: Array<[string, string]> = SOURCES.map(([file, source]) => [file, file === 'SettingsMobileOverview.vue' ? `${source}\n.positiveControl { border-color: var(--settings-border); }` : source]);
-		expect(offendersIn(fixture)).toContain('SettingsMobileOverview.vue: var(--settings-border)');
+		const fixture: Array<[string, string]> = SOURCES.map(([file, source]) => [file, file === 'SettingsBentoNavigation.vue' ? `${source}\n.positiveControl { border-color: var(--settings-border); }` : source]);
+		expect(offendersIn(fixture)).toContain('SettingsBentoNavigation.vue: var(--settings-border)');
 	});
 
 	test('--settings-* は必ず既定値つきで参照する', () => {

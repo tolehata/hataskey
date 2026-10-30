@@ -9,7 +9,6 @@ import { load as loadYaml } from 'js-yaml';
 import { describe, expect, test } from 'vitest';
 import shellSource from './index.vue?raw';
 import gatewaySource from './gateway.vue?raw';
-import mobileSource from './SettingsMobileOverview.vue?raw';
 import panelSource from './SettingsSearchPanel.vue?raw';
 import relatedSource from './SettingsRelatedLinks.vue?raw';
 import controlRelatedSource from '@/components/settings-redesign/SettingsControlRelated.vue?raw';
@@ -129,8 +128,8 @@ describe('settings redesign translations', () => {
 		expect(() => assertSameLocaleShape(ja, broken)).toThrow();
 	});
 
-	test('shell/search/mobile/related/gateway/UI2 use the namespace instead of Japanese literals', () => {
-		for (const source of [shellSource, gatewaySource, mobileSource, panelSource, relatedSource, ui2BodySource, immediateSource, previewSource]) {
+	test('shell/search/related/gateway/UI2 use the namespace instead of Japanese literals', () => {
+		for (const source of [shellSource, gatewaySource, panelSource, relatedSource, ui2BodySource, immediateSource, previewSource]) {
 			expect(source).toContain('i18n.ts._hata._settingsRedesign');
 		}
 		for (const source of [shellSource, bentoSource, bentoCatalogSource]) expect(source).toContain('i18n.ts._hata._settingsBento');

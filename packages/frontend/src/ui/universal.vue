@@ -150,39 +150,6 @@ const onContextmenu = (ev) => {
 		},
 	}], ev);
 };
-
-function beforeEnter(el: Element) {
-	(el as HTMLElement).style.height = '0';
-}
-
-function beforeLeave(el: Element) {
-	const h = (el as HTMLElement).scrollHeight;
-	(el as HTMLElement).style.height = `${h}px`;
-	(el as HTMLElement).style.opacity = '1';
-}
-
-function enter(el: Element) {
-	if (!(el instanceof HTMLElement)) return;
-	const h = el.scrollHeight;
-	const dur = prefer.s.animation ? '0.5s' : '0s';
-	el.style.transition = `height ${dur}, opacity ${dur}`;
-	requestAnimationFrame(() => {
-		el.style.height = `${h}px`;
-		el.style.opacity = '1';
-	});
-}
-
-function leave(el: Element) {
-	if (!(el instanceof HTMLElement)) return;
-	const h = el.scrollHeight;
-	const dur = prefer.s.animation ? '0.5s' : '0s';
-	el.style.height = `${h}px`;
-	el.style.transition = `height ${dur}, opacity ${dur}`;
-	requestAnimationFrame(() => {
-		el.style.height = '0';
-		el.style.opacity = '0';
-	});
-}
 </script>
 
 <style lang="scss" module>

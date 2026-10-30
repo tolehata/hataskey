@@ -25,15 +25,14 @@ async function mount(withFeed = false) {
 	const editAppPins = vi.fn();
 	const appSettings = vi.fn();
 	const navigate = vi.fn();
-	const replayIntroduction = vi.fn();
 	const save = vi.fn();
 	const target = window.document.createElement('div');
 	window.document.body.append(target);
-	const app = createApp({ render: () => h(HatagoesSettings, { ...props, onEditAppPins: editAppPins, onAppSettings: appSettings, onNavigate: navigate, onReplayIntroduction: replayIntroduction, onSave: save }) });
+	const app = createApp({ render: () => h(HatagoesSettings, { ...props, onEditAppPins: editAppPins, onAppSettings: appSettings, onNavigate: navigate, onSave: save }) });
 	app.mount(target);
 	cleanup = () => { app.unmount(); target.remove(); };
 	await nextTick();
-	return { target, props, editAppPins, appSettings, navigate, replayIntroduction, save };
+	return { target, props, editAppPins, appSettings, navigate, save };
 }
 
 function search(target: ParentNode, value: string) {
@@ -44,14 +43,6 @@ function search(target: ParentNode, value: string) {
 }
 
 describe('HataGoes settings categories', () => {
-	test('紹介を端末の既読状態に関係なく再生できる', async () => {
-		const view = await mount();
-		search(view.target, '紹介');
-		await nextTick();
-		const replay = [...view.target.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.includes('紹介をもう一度見る'));
-		replay?.click();
-		expect(view.replayIntroduction).toHaveBeenCalledOnce();
-	});
 	test('uses the brand font only for English application names', async () => {
 		const view = await mount(true);
 		const wordmarks = [...view.target.querySelectorAll<HTMLElement>('[class*="appWordmark"]')];

@@ -21,7 +21,7 @@ import settingsBody from './HatasabaUi2SettingsBody.vue?raw';
 import immediateSettings from './HatasabaUi2ImmediateSettings.vue?raw';
 import previewWindow from './MkHatasabaUi2PreviewWindow.vue?raw';
 import shell from '@/pages/settings-redesign/index.vue?raw';
-import mobileOverview from '@/pages/settings-redesign/SettingsMobileOverview.vue?raw';
+import bentoNavigation from '@/pages/settings-redesign/SettingsBentoNavigation.vue?raw';
 import searchPanel from '@/pages/settings-redesign/SettingsSearchPanel.vue?raw';
 
 /** `<style ... module>` ブロックの中身だけを取り出す。 */
@@ -52,7 +52,7 @@ const SOURCES: Array<[string, string]> = [
 	['HatasabaUi2ImmediateSettings.vue', immediateSettings],
 	['MkHatasabaUi2PreviewWindow.vue', previewWindow],
 	['settings-redesign/index.vue', shell],
-	['SettingsMobileOverview.vue', mobileOverview],
+	['SettingsBentoNavigation.vue', bentoNavigation],
 	['SettingsSearchPanel.vue', searchPanel],
 ];
 

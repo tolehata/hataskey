@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <div :class="$style.root">
-	<XReaction v-for="[reaction, count] in reactions" :key="reaction" :reaction="reaction" :count="count" :isInitial="initialReactions.has(reaction)" :note="note" @reactionToggled="onMockToggleReaction"/>
+	<XReaction v-for="[reaction, count] in reactions" :key="reaction" :reaction="reaction" :count="count" :note="note"/>
 	<slot v-if="hasMoreReactions" name="more"></slot>
 </div>
 </template>
@@ -22,18 +22,11 @@ const props = withDefaults(defineProps<{
 	maxNumber: Infinity,
 });
 
-const initialReactions = new Set(Object.keys(props.note.reactions));
-
 const reactions = ref<[string, number][]>([]);
 const hasMoreReactions = ref(false);
 
 if (props.note.myReaction != null && !(props.note.myReaction in props.note.reactions)) {
 	reactions.value.push([props.note.myReaction, props.note.reactions[props.note.myReaction]]);
-}
-
-function onMockToggleReaction(emoji: string, count: number) {
-	const i = reactions.value.findIndex((item) => item[0] === emoji);
-	if (i < 0) return;
 }
 
 watch([() => props.note.reactions, () => props.maxNumber], ([newSource, maxNumber]) => {
@@ -67,20 +60,6 @@ watch([() => props.note.reactions, () => props.maxNumber], ([newSource, maxNumbe
 </script>
 
 <style lang="scss" module>
-.transition_x_move,
-.transition_x_enterActive,
-.transition_x_leaveActive {
-	transition: opacity 0.2s cubic-bezier(0,.5,.5,1), transform 0.2s cubic-bezier(0,.5,.5,1) !important;
-}
-.transition_x_enterFrom,
-.transition_x_leaveTo {
-	opacity: 0;
-	transform: scale(0.7);
-}
-.transition_x_leaveActive {
-	position: absolute;
-}
-
 .root {
 	display: flex;
 	flex-wrap: wrap;

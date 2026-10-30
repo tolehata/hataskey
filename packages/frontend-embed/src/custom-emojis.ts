@@ -44,18 +44,3 @@ export async function fetchCustomEmojis(force = false) {
 	set('emojis', res.emojis);
 	set('lastEmojisFetchedAt', now);
 }
-
-let cachedTags: string[] | null = null;
-export function getCustomEmojiTags() {
-	if (cachedTags) return cachedTags;
-
-	const tags = new Set<string>();
-	for (const emoji of customEmojis.value) {
-		for (const tag of emoji.aliases) {
-			tags.add(tag);
-		}
-	}
-	const res = Array.from(tags);
-	cachedTags = res;
-	return res;
-}
