@@ -4,7 +4,6 @@ on:
   pull_request_target:
     branches:
       - master
-      - develop
       - improve-cherrypick-js-autogen-check
     paths:
       - packages/backend/**
