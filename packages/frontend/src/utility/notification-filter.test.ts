@@ -12,9 +12,9 @@ import type * as Misskey from 'cherrypick-js';
 vi.mock('@/i18n.js', () => ({ i18n: {} }));
 
 describe('notification brands and live filters', () => {
-	test('アイコンデコ獲得だけはブランド・全解除・種類除外にかかわらず届く', () => {
+	test.each(['all', 'hatask'] as const)('アイコンデコ獲得は%sで種類を除外しても表示する', brand => {
 		const reward = { id: 'reward', type: 'hataskDecorationUnlocked', header: 'Hatask', body: '獲得しました', link: '/settings/avatar-decoration' } as Misskey.entities.Notification;
-		const allHidden = { brand: 'hatady' as const, includeBrands: [], excludeTypes: [...notificationTypes], includeHataskApp: false, includeHatadySubtypes: [], excludeBots: true };
+		const allHidden = { brand, includeBrands: ['hatask'] as const, excludeTypes: [...notificationTypes], includeHataskApp: false, includeHatadySubtypes: [], excludeBots: true };
 		expect(notificationBrand(reward)).toBe('hatask');
 		expect(matchesNotificationView(reward, allHidden)).toBe(true);
 		for (const type of ['app', 'hataskFlowerReady', 'achievementEarned'] as const) {
@@ -22,6 +22,23 @@ describe('notification brands and live filters', () => {
 		}
 		expect(HATASK_NOTIFICATION_TYPES).not.toContain(reward.type);
 		expect(STANDARD_NOTIFICATION_TYPES).not.toContain(reward.type);
+	});
+
+	test.each(['standard', 'hatady', 'hataFeed'] as const)('アイコンデコ獲得を%sへ混ぜない', brand => {
+		const reward = { type: 'hataskDecorationUnlocked' } as Misskey.entities.Notification;
+		expect(matchesNotificationView(reward, { brand })).toBe(false);
+		expect(matchesNotificationView(reward, { brand, includeBrands: ['hatask'] })).toBe(false);
+		expect(matchesNotificationView(reward, { brand: 'all', includeBrands: [brand] })).toBe(false);
+		expect(matchesNotificationView(reward, { brand: 'hatask', includeBrands: [brand] })).toBe(false);
+	});
+
+	test('獲得通知もブランド選択に従い、指定がなければ表示する', () => {
+		const reward = { type: 'hataskDecorationUnlocked' } as Misskey.entities.Notification;
+		expect(matchesNotificationView(reward, {})).toBe(true);
+		expect(matchesNotificationView(reward, { brand: 'all', includeBrands: null })).toBe(true);
+		expect(matchesNotificationView(reward, { includeBrands: [] })).toBe(false);
+		expect(matchesNotificationView(reward, { brand: 'hatask', includeBrands: [] })).toBe(false);
+		expect(matchesNotificationView(reward, { brand: 'all', includeBrands: ['standard', 'hatask'] })).toBe(true);
 	});
 
 	test('app classifications match backend path boundary and known HataFeed header', () => {

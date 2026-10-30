@@ -78,7 +78,7 @@ function groupNotifications(notifications: MiNotification[]) {
 	// (2) 分裂で水増しされたグループが slice(limit) で切られてリアクションが欠落する、
 	// という不具合があった。リアクションは全体を走査して noteId / notifierId で集約することで
 	// 飛び石でも 1 グループにまとめ、重複と欠落を解消する。
-	// renote / note のグルーピングは Misskey 標準の隣接比較のまま (問題が無いため変更しない)。
+	// renote / note のグルーピングは Misskey 標準の隣接比較のまま。
 
 	// (1) リアクション通知を noteId ごとに集約 (同じノートへの複数ユーザー → reaction:grouped 候補)
 	const reactionsByNote = new Map<string, FilterUnionByProperty<MiNotification, 'type', 'reaction'>[]>();
@@ -202,7 +202,7 @@ function groupNotifications(notifications: MiNotification[]) {
 						type: 'note:grouped',
 						id: '',
 						createdAt: notification.createdAt,
-						noteIds: [notification.noteId],
+						noteIds: [prev.noteId],
 						notifierIds: [prev.notifierId!],
 					};
 					target = groupedNotifications.at(-1)!;
@@ -236,7 +236,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const untilId = ps.untilId ?? (ps.untilDate ? this.idService.gen(ps.untilDate!) : undefined);
 			const sinceId = ps.sinceId ?? (ps.sinceDate ? this.idService.gen(ps.sinceDate!) : undefined);
 
-			// 空のフィルタ・全種類の除外でも、必須のアイコンデコ獲得通知を取得する。
+			// 種類の全解除・全除外でも、選択ブランド内の必須アイコンデコ獲得通知を取得する。
 			const includeTypes = ps.includeTypes && ps.includeTypes.filter(type => !(obsoleteNotificationTypes).includes(type as any)) as typeof groupedNotificationTypes[number][];
 			const excludeTypes = ps.excludeTypes && ps.excludeTypes.filter(type => !(obsoleteNotificationTypes).includes(type as any)) as typeof groupedNotificationTypes[number][];
 

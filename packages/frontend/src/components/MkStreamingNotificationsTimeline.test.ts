@@ -74,7 +74,7 @@ beforeEach(() => {
 });
 afterEach(() => { app?.unmount(); app = null; host?.remove(); vi.unstubAllGlobals(); vi.useRealTimers(); forgetNotificationUnreadState('owner-a'); });
 
-test('reward history and live events stay visible and can be read when every category is disabled', async () => {
+test.each(['all', 'hatask'])('reward history and live events stay visible and can be read in %s when optional types are disabled', async brand => {
 	vi.useFakeTimers();
 	fixture.account = { id: 'owner-a', hasUnreadNotification: true, unreadNotificationsCount: 1 };
 	const reward = { ...item('reward', 'earned'), type: 'hataskDecorationUnlocked' };
@@ -83,7 +83,7 @@ test('reward history and live events stay visible and can be read when every cat
 		: endpoint === 'notifications/unread-count'
 			? Promise.resolve({ unreadNotificationsCount: 0, revision: '1' })
 			: Promise.resolve());
-	mount({ brand: 'hatady', includeBrands: [], excludeTypes: ['hataskDecorationUnlocked', 'app'], excludeBots: true });
+	mount({ brand, includeBrands: ['hatask'], excludeTypes: ['hataskDecorationUnlocked', 'app'], excludeBots: true });
 	await settle();
 	expect(title()).toBe('earned');
 	expect(host.querySelectorAll('article')).toHaveLength(1);
@@ -99,6 +99,28 @@ test('reward history and live events stay visible and can be read when every cat
 	onNotification(item('next-ordinary', 'still hidden'));
 	await settle();
 	expect([...host.querySelectorAll('article')].map(element => element.getAttribute('data-title'))).toEqual(['earned next', 'earned']);
+});
+
+test.each([
+	{ brand: 'standard' }, { brand: 'hatady' }, { brand: 'hataFeed' },
+	{ brand: 'all', includeBrands: ['standard'] }, { brand: 'all', includeBrands: ['hatady'] },
+	{ brand: 'all', includeBrands: ['hataFeed'] }, { brand: 'all', includeBrands: [] },
+])('reward history and live events stay out of an unrelated brand selection: %j', async filters => {
+	vi.useFakeTimers();
+	fixture.account = { id: 'owner-a', hasUnreadNotification: true, unreadNotificationsCount: 1 };
+	const reward = { ...item('reward', 'earned'), type: 'hataskDecorationUnlocked' };
+	fixture.api.mockResolvedValue([reward]);
+	mount(filters); await settle();
+	expect(host.querySelectorAll('article')).toHaveLength(0);
+	const onNotification = fixture.events.get('notification');
+	if (!onNotification) throw new Error('Notification stream must be subscribed');
+	onNotification({ ...reward, id: 'next-reward', title: 'earned next' });
+	await settle();
+	expect(host.querySelectorAll('article')).toHaveLength(0);
+	expect([...fixture.observed].some(element => element.hasAttribute('data-notification-ids'))).toBe(false);
+	vi.advanceTimersByTime(80); await settle();
+	expect(fixture.api.mock.calls.some(([endpoint]) => endpoint === 'notifications/mark-as-read')).toBe(false);
+	expect(fixture.account).toMatchObject({ hasUnreadNotification: true, unreadNotificationsCount: 1 });
 });
 
 test('a visible read reconciles the badge without a stream event while realtime is disabled', async () => {

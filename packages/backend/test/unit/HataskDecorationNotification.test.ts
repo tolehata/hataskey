@@ -120,18 +120,29 @@ describe('mandatory Hatask decoration notifications', () => {
 		expect(f.push.pushNotification).not.toHaveBeenCalled();
 	});
 
-	test('全種類・全ブランドを除外しても獲得通知だけを取得し、通常通知を漏らさない', async () => {
+	test('Hataskを選んで全種類を除外しても獲得通知だけを取得し、通常通知を漏らさない', async () => {
 		const f = fixture([reward, flower, ordinary]);
 		const filters = {
-			includeTypes: [], excludeTypes: [...notificationFilterTypes], brand: 'hataFeed' as const,
-			includeBrands: [], includeHataskApp: false, excludeBots: true,
+			includeTypes: [], excludeTypes: [...notificationFilterTypes], brand: 'hatask' as const,
+			includeBrands: ['hatask'] as const, includeHataskApp: false, excludeBots: true,
 		};
 		expect(notificationBrand(reward)).toBe('hatask');
 		expect(matchesNotificationListFilter(reward, filters)).toBe(true);
 		expect(matchesNotificationListFilter(flower, filters)).toBe(false);
 		expect(matchesNotificationListFilter(ordinary, filters)).toBe(false);
-		expect(await f.service.getNotifications('owner', { ...filters, limit: 1 })).toEqual([reward]);
+		expect(await f.service.getNotifications('owner', { ...filters, includeBrands: [...filters.includeBrands], limit: 1 })).toEqual([reward]);
 		expect(f.redis.xrevrange).toHaveBeenCalledTimes(3);
+	});
+
+	test.each(['all', 'standard', 'hatask', 'hatady', 'hataFeed'] as const)('獲得通知は単一ブランド %s と複数ブランド指定の両方に従う', async brand => {
+		const choices = [undefined, [], ['hatask'], ['standard'], ['hatady'], ['hataFeed'], ['standard', 'hatask', 'hatady', 'hataFeed']] as const;
+		for (const includeBrands of choices) {
+			const expected = (brand === 'all' || brand === 'hatask') && (includeBrands === undefined || includeBrands.some(value => value === 'hatask'));
+			const filters = { brand, includeBrands, includeTypes: [], excludeTypes: [...notificationFilterTypes] };
+			expect(matchesNotificationListFilter(reward, filters), JSON.stringify(filters)).toBe(expected);
+			const f = fixture([reward]);
+			expect(await f.service.getNotifications('owner', { ...filters, includeBrands: includeBrands ? [...includeBrands] : undefined })).toEqual(expected ? [reward] : []);
+		}
 	});
 
 	test('通常の花通知だけを選択しても獲得通知を含め、無関係のapp通知は除外する', async () => {
@@ -142,13 +153,23 @@ describe('mandatory Hatask decoration notifications', () => {
 	test.each([
 		['i/notifications', NotificationsEndpoint],
 		['i/notifications-grouped', GroupedNotificationsEndpoint],
-	])('%s は空の種類・ブランドと全種類除外の各指定でも獲得通知を返す', async (_name, EndpointClass) => {
+	])('%s は種類の除外を越えて獲得通知を返すが、Hatask以外のブランドへ混入・既読化しない', async (_name, EndpointClass) => {
 		const f = fixture([reward, flower, ordinary]);
 		const endpoint = new EndpointClass(f.id as never, f.entity, f.service);
-		for (const filters of [{ includeTypes: [] }, { includeBrands: [] }, { excludeTypes: [...notificationFilterTypes] }]) {
+		const markRead = vi.spyOn(f.service, 'markNotificationsRead').mockResolvedValue();
+		for (const filters of [{ includeTypes: [] }, { excludeTypes: [...notificationFilterTypes] }]) {
 			const result = await endpoint.exec({ limit: 10, markAsRead: false, ...filters }, { id: 'owner' } as never, null, null) as MiNotification[];
 			expect(result.map(notification => notification.id)).toEqual([reward.id]);
 			expect(result[0]).toMatchObject({ type: 'hataskDecorationUnlocked', body: data.customBody, link: data.customLink });
+		}
+		for (const brand of ['all', 'standard', 'hatask', 'hatady', 'hataFeed'] as const) {
+			for (const includeBrands of [undefined, [], ['hatask'], ['standard', 'hatady', 'hataFeed']] as const) {
+				markRead.mockClear();
+				const expected = (brand === 'all' || brand === 'hatask') && (includeBrands === undefined || includeBrands.some(value => value === 'hatask'));
+				const result = await endpoint.exec({ limit: 10, markAsRead: true, brand, includeBrands: includeBrands ? [...includeBrands] : undefined, includeTypes: [] }, { id: 'owner' } as never, null, null) as MiNotification[];
+				expect(result.map(notification => notification.id)).toEqual(expected ? [reward.id] : []);
+				expect(markRead.mock.calls.flatMap(([, ids]) => ids)).toEqual(expected ? [reward.id] : []);
+			}
 		}
 	});
 });

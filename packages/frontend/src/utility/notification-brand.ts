@@ -35,10 +35,11 @@ export type NotificationViewPredicate = {
 };
 
 export function matchesNotificationView(notification: Misskey.entities.Notification, filter: NotificationViewPredicate): boolean {
-	if (isMandatoryNotificationType(notification.type)) return true;
 	const category = notificationBrand(notification);
 	if (filter.brand != null && filter.brand !== 'all' && category !== filter.brand) return false;
 	if (filter.includeBrands != null && !filter.includeBrands.includes(category)) return false;
+	// Reward delivery is mandatory, but its rows still belong to the selected brand.
+	if (isMandatoryNotificationType(notification.type)) return true;
 	if (category === 'hatask' && effectiveNotificationType(notification) === 'app' && filter.includeHataskApp != null) {
 		if (!filter.includeHataskApp) return false;
 	} else if (filter.excludeTypes?.includes(effectiveNotificationType(notification))) return false;

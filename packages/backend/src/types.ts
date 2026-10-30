@@ -64,7 +64,7 @@ export const notificationFilterTypes = [
 	...notificationTypes,
 	'addedToPrivateChannel',
 	'removedFromPrivateChannel',
-	// 獲得通知は受信設定・表示フィルタにかかわらず届ける。
+	// 獲得通知は受信設定・種類フィルタにかかわらず届ける。一覧のブランド選択には従う。
 	'hataskDecorationUnlocked',
 ] as const;
 

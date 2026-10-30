@@ -105,10 +105,11 @@ export function matchesNotificationListFilter(notification: MiNotification, opti
 	includeBrands?: readonly Exclude<NotificationBrand, 'all'>[];
 	includeHataskApp?: boolean;
 }): boolean {
-	if (notification.type === 'hataskDecorationUnlocked') return true;
 	const selectedBrand = notificationBrand(notification);
 	if (options.brand != null && options.brand !== 'all' && selectedBrand !== options.brand) return false;
 	if (options.includeBrands != null && !options.includeBrands.includes(selectedBrand)) return false;
+	// Reward delivery is mandatory, but its list entry still belongs only to Hatask.
+	if (notification.type === 'hataskDecorationUnlocked') return true;
 	if (notification.type === 'app' && selectedBrand === 'hatask' && options.includeHataskApp !== undefined) return options.includeHataskApp;
 	const effectiveType = notification.type === 'app' && selectedBrand === 'hataFeed' ? 'hataFeed' : notification.type;
 	if (options.includeTypes != null && !options.includeTypes.includes(effectiveType)) return false;
@@ -650,43 +651,9 @@ export class NotificationService implements OnApplicationShutdown {
 				} as unknown as typeof current;
 			}
 			this.pushNotificationService.pushNotification(notifieeId, 'notification', pushPayload);
-
-			if (type === 'follow') this.emailNotificationFollow(notifieeId, await this.usersRepository.findOneByOrFail({ id: notifierId! }));
-			if (type === 'receiveFollowRequest') this.emailNotificationReceiveFollowRequest(notifieeId, await this.usersRepository.findOneByOrFail({ id: notifierId! }));
 		}, () => { /* aborted, ignore it */ });
 
 		return notification;
-	}
-
-	// TODO
-	//const locales = await import('../../../../locales/index.js');
-
-	// TODO: locale ファイルをクライアント用とサーバー用で分けたい
-
-	@bindThis
-	private async emailNotificationFollow(userId: MiUser['id'], follower: MiUser) {
-		/*
-		const userProfile = await UserProfiles.findOneByOrFail({ userId: userId });
-		if (!userProfile.email || !userProfile.emailNotificationTypes.includes('follow')) return;
-		const locale = locales[userProfile.lang ?? 'ja-JP'];
-		const i18n = new I18n(locale);
-		// TODO: render user information html
-		const body = `${follower.name} (@${Acct.toString(follower)})`;
-		sendEmail(userProfile.email, i18n.t('_email._follow.title'), escapeHtml(body), body);
-		*/
-	}
-
-	@bindThis
-	private async emailNotificationReceiveFollowRequest(userId: MiUser['id'], follower: MiUser) {
-		/*
-		const userProfile = await UserProfiles.findOneByOrFail({ userId: userId });
-		if (!userProfile.email || !userProfile.emailNotificationTypes.includes('receiveFollowRequest')) return;
-		const locale = locales[userProfile.lang ?? 'ja-JP'];
-		const i18n = new I18n(locale);
-		// TODO: render user information html
-		const body = `${follower.name} (@${Acct.toString(follower)})`;
-		sendEmail(userProfile.email, i18n.t('_email._receiveFollowRequest.title'), escapeHtml(body), body);
-		*/
 	}
 
 	@bindThis
@@ -760,7 +727,7 @@ export class NotificationService implements OnApplicationShutdown {
 			excludeBots?: boolean,
 		},
 	): Promise<MiNotification[]> {
-		// 空のフィルタでも、必須のアイコンデコ獲得通知を探す。
+		// 種類フィルタが空でも、選択ブランド内の必須アイコンデコ獲得通知を探す。
 		let sinceTime = sinceId ? this.toXListId(sinceId) : null;
 		let untilTime = untilId ? this.toXListId(untilId) : null;
 

@@ -10,7 +10,7 @@ import { i18n } from '@/i18n.js';
 
 export type NotificationType = typeof notificationTypes[number];
 
-/** Hatask rewards remain visible even when every optional notification is hidden. */
+/** Hatask rewards bypass optional type filters within their selected brand. */
 export function isMandatoryNotificationType(type: string): boolean {
 	return type === 'hataskDecorationUnlocked';
 }
@@ -139,7 +139,8 @@ export function migrateNotificationFilterSnapshot(
 /**
  * 保存時点では存在しなかった通知種別を、利用者の確認なしに自動でONにしないための初期状態を作る。
  * knownTypes が無い旧設定は従来どおり現在の全種別を既知として扱い、既存表示を勝手に変えない。
- * アイコンデコの獲得通知だけは、スナップショットや過去の除外指定にかかわらず表示する。
+ * アイコンデコの獲得通知だけは、スナップショットや過去の種類除外にかかわらず有効とする。
+ * ブランド選択による表示の絞り込みは別途適用する。
  */
 export function resolveNotificationFilter(
 	excludeTypes: readonly string[] | null | undefined,

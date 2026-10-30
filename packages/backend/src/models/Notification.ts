@@ -210,7 +210,7 @@ export type MiNotification = {
 	customIcon: string | null;
 	customLink: string | null;
 } | {
-	// Hataskのアイコンデコ獲得通知。送信者を持たず、受信・表示フィルタの対象外。
+	// Hataskのアイコンデコ獲得通知。送信者を持たず、受信・種類フィルタの対象外。ブランド選択には従う。
 	type: 'hataskDecorationUnlocked';
 	id: string;
 	createdAt: string;
