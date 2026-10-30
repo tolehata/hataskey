@@ -72,7 +72,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, inject, watch, onMounted, onUnmounted, onActivated, onDeactivated, TransitionGroup, shallowRef } from 'vue';
+import { ref, computed, inject, onMounted, onUnmounted, onActivated, onDeactivated, TransitionGroup, shallowRef } from 'vue';
 import MkPullToRefresh from '@/components/MkPullToRefresh.vue';
 import { navbarPullRefreshKey } from '@/utility/navbar-pull-refresh.js';
 import MkExternalNote from '@/components/MkExternalNote.vue';
@@ -83,7 +83,6 @@ import * as sound from '@/utility/sound.js';
 import * as os from '@/os.js';
 import { preloadExternalEmojiMap, callExternalApi, getExternalAccount, getExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
 import { rebuildExternalNotePath, resolveExternalNotePresentation } from '@/utility/external-note-presentation.js';
-import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { useHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
 
@@ -132,7 +131,6 @@ const canFetchOlder = ref(true);
 
 // スクロール位置が最上部かどうか（リアルタイムTL更新用）
 const isAtTop = ref(true);
-const SCROLL_TOP_THRESHOLD = 50; // px以内なら「最上部」とみなす
 
 const queuedCount = computed(() => queuedNotes.value.length);
 const displayedNotes = computed(() => notes.value);

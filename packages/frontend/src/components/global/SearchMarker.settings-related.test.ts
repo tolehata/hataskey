@@ -4,7 +4,6 @@
  */
 
 import { createApp, defineComponent, h, KeepAlive, nextTick, ref } from 'vue';
-import type { App } from 'vue';
 import { describe, expect, test, vi } from 'vitest';
 import source from './SearchMarker.vue?raw';
 

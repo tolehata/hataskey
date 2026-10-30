@@ -87,7 +87,6 @@ import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
 import MkTextarea from '@/components/MkTextarea.vue';
 import { i18n } from '@/i18n.js';
-import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useHataGoesPickers } from '@/utility/hatagoes-pickers.js';
 import type { HataFeedEditableStatus } from '@/utility/hatafeed.js';

@@ -557,7 +557,6 @@ import MkLink from '@/components/MkLink.vue';
 import HatadyReactionPill from '@/components/HatadyReactionPill.vue';
 import HyMediaCover from '@/components/HyMediaCover.vue';
 import { i18n } from '@/i18n.js';
-import * as os from '@/os.js';
 import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
 import { confirmHatadyAction } from '@/utility/hatady-record-delete.js';

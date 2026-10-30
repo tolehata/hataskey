@@ -218,7 +218,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, computed, onMounted, useTemplateRef, nextTick, watch } from 'vue';
 import MkModal from '@/components/MkModal.vue';
-import { getExternalCustomEmojis, getExternalFavoriteEmojis, setExternalFavoriteEmojis, addExternalFavoriteEmoji, removeExternalFavoriteEmoji, getExternalRecentReactions, getExternalFavoriteEmojisDetailed, getExternalRecentReactionsDetailed, lookupExternalEmojiUrl, getExternalAccount, setExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
+import { getExternalCustomEmojis, getExternalFavoriteEmojis, addExternalFavoriteEmoji, removeExternalFavoriteEmoji, getExternalRecentReactions, getExternalFavoriteEmojisDetailed, getExternalRecentReactionsDetailed, lookupExternalEmojiUrl, getExternalAccount, setExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
 import type { ExternalCustomEmoji } from '@/utility/external-api.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';

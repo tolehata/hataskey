@@ -60,9 +60,9 @@ import { definePage } from '@/page.js';
 import { isBirthday } from '@/utility/is-birthday.js';
 import {
 	mascotData, mascotLoaded, loadMascot,
-	activeCharacter, currentPhrase, currentExpression,
+	activeCharacter, currentExpression,
 	pickRandomPhrase, expressionDisplayUrl, escapeText,
-	displayText, displaySettings, loadDisplaySettings, mascotVisible,
+	displayText, loadDisplaySettings, mascotVisible,
 	announceBirthday, announceUnread, announceCharBirthday, isCharBirthdayToday, clearAnnounce,
 	nextIdleDelayMs,
 } from '@/utility/mascot-store.js';

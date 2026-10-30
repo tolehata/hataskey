@@ -215,7 +215,6 @@ import { i18n } from '@/i18n.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import * as os from '@/os.js';
 import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { HATA_GOES_HOST } from '@/utility/hatagoes-context.js';
 import { usersSearchAvailable } from '@/utility/check-permissions.js';

@@ -802,16 +802,6 @@ const eBubbleStyle = computed(() => {
 	return s;
 });
 const eTail = computed<'left' | 'right'>(() => ((previewExpression.value as any)?.eBubbleTail === 'right' ? 'right' : 'left'));
-function setEBubbleScale(ev: Event) {
-	const target = targetExpr();
-	if (!target) return;
-	const v = parseFloat((ev.target as HTMLInputElement).value);
-	target.eBubbleScale = Math.min(1.6, Math.max(0.6, v));
-}
-function setEBubbleTail(tail: 'left' | 'right') {
-	const target = targetExpr();
-	if (target) target.eBubbleTail = tail;
-}
 function onEBubblePointerDown(ev: PointerEvent) {
 	const wrap = stageWrapEl.value;
 	if (!wrap) return;

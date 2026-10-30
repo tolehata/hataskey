@@ -21,7 +21,7 @@
 					</header>
 					<div :class="$style.filters"><div :class="$style.segment"><button type="button" :aria-pressed="!includeClosed" @click="setClosed(false)">受付中</button><button type="button" :aria-pressed="includeClosed" @click="setClosed(true)">終了分も含む</button></div><div :class="$style.dropdowns"><button type="button" @click="openCategoryMenu">{{ filterCategory ? categoryLabel[filterCategory] : copy.category }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openStatusMenu">{{ filterStatus ? statusLabel[filterStatus] : copy.status }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openAuthorMenu">{{ copy.author }}<i class="ti ti-chevron-down"></i></button></div></div>
 					<div v-if="!visibleIssues.length" class="hf-empty"><p>{{ activeTab === 'roadmap' ? copy.noPublishedPlans : 'イシューがありません' }}</p><button v-if="activeTab === 'roadmap' && isStaff" type="button" class="hy-secondary" @click="addRoadmap">改善予定を追加</button></div>
-					<div v-else ref="issueListEl" :class="$style.listCard">
+					<div v-else :class="$style.listCard">
 						<button
 							v-for="issue in visibleIssues"
 							:key="issue.id"
@@ -122,7 +122,7 @@ function setClosed(value: boolean) { includeClosed.value = value; }
 
 function applyStatus(status: string) { filterStatus.value = filterStatus.value === status ? '' : status; }
 
-const issuePage = 0, issuePageSize = ref(10), issueListEl = ref<HTMLElement>();
+const issuePage = 0, issuePageSize = ref(10);
 const addRoadmap = signin, openReviewQueue = signin, openApprove = signin;
 </script>
 <style module src="../components/hatafeed-page.module.css"></style>

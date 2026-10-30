@@ -1173,7 +1173,6 @@ function onPointerUp(ev: PointerEvent) {
 		const src = state.src;
 		if (hit.tabId) {
 			// タブの上 → 同frameなら並び替え、別frameなら束ね
-			const loc = findFrame(src.slotId, src.frameId);
 			// ドロップ先タブのframe/slotを特定
 			const destSlotId = hit.slotId!, destFrameId = hit.frameId!;
 			if (src.slotId === destSlotId && src.frameId === destFrameId) {

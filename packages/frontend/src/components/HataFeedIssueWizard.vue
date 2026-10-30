@@ -129,7 +129,6 @@ import MkTextarea from '@/components/MkTextarea.vue';
 import MkSelect from '@/components/MkSelect.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import { i18n } from '@/i18n.js';
-import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useHataGoesPickers } from '@/utility/hatagoes-pickers.js';
 import { iAmModerator } from '@/i.js';

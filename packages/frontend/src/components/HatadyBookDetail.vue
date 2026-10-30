@@ -341,9 +341,7 @@ import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
 import { hatadyNotify } from '@/utility/hatady-ui.js';
 import HyBookCover from '@/components/HyBookCover.vue';
-import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import { $i } from '@/i.js';
-import * as os from '@/os.js';
 import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { confirmHatadyAction } from '@/utility/hatady-record-delete.js';
 import { i18n } from '@/i18n.js';
@@ -351,7 +349,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { openRecordModeration } from '@/utility/record-moderation.js';
 import { isOwnHatadyProfile, openOwnHatadyProfileIfNeeded, useHatadyActivityActions } from '@/utility/hatady-activity-actions.js';
 import { versatileLang } from '@/utility/intl-const.js';
-import { hySubjectPalette, HY_BOOKMARK_COLORS, hyBookmarkColor } from '@/utility/hatady.js';
+import { HY_BOOKMARK_COLORS, hyBookmarkColor } from '@/utility/hatady.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
 const popup = useHataGoesPopup();
@@ -368,7 +366,6 @@ const theme = hatadyTheme;
 const copy = i18n.ts._hata._hatady._bookDetail;
 const bookExtra = i18n.ts._hata._hatady._bookDetailExtra;
 const homeCopy = i18n.ts._hata._hatady._home;
-const copyx = i18n.tsx._hata._hatady._bookDetail;
 const dateFormat = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'short', day: 'numeric' });
 
 const book = ref<any>(null);
@@ -597,17 +594,6 @@ function statusStyle(s: string) {
 
 function t(key: string): string {
 	return (copy as unknown as Record<string, string>)[key] ?? key;
-}
-
-function palAccent(subject: string): string {
-	return hySubjectPalette(subject).accent;
-}
-
-function fmtDuration(min: number): string {
-	if (min < 60) return copyx.durationMinutes({ minutes: min.toString() });
-	const h = Math.floor(min / 60);
-	const m = min % 60;
-	return copyx.durationHoursMinutes({ hours: h.toString(), minutes: m.toString() });
 }
 
 function fmtWhen(iso: string): string {

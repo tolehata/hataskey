@@ -197,7 +197,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, useTemplateRef, defineAsyncComponent } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef, defineAsyncComponent } from 'vue';
 import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
 import draggable from 'vuedraggable';
 import MkWindow from '@/components/MkWindow.vue';
@@ -296,10 +296,6 @@ function setOpacity(n: number) {
 	const v = Math.max(0, Math.min(100, Math.round(n)));
 	editedOpacity.value = v;
 	document.documentElement.style.setProperty('--htk-glass-card-opacity', v + '%');
-}
-function setGlassUi(v: boolean) {
-	editedGlassUi.value = !!v;
-	document.documentElement.classList.toggle('hataGlassUi', !!v);
 }
 function setGlassUiBubble(v: boolean) {
 	editedGlassUiBubble.value = !!v;

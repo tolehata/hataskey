@@ -7,7 +7,6 @@
  * key is renamed or a setting is device-local.
  */
 import { computed, onMounted, ref, watch } from 'vue';
-import { langs } from '@@/js/config.js';
 import type { Ref } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import type { PreferenceContainerKey } from './settings-preferences-catalog.js';
@@ -356,10 +355,6 @@ export function createSettingsPreferenceModels(): SettingsPreferenceModels {
 			urlPreviewThumbnail: value,
 			code: value,
 		};
-	}
-
-	function emojiLanguageName(language: typeof emojiIndexLangs[number]): string {
-		return langs.find(item => item[0] === language)?.[1] ?? (language === 'ja-JP_hira' ? 'ひらがな' : language);
 	}
 
 	function downloadEmojiIndex(language: typeof emojiIndexLangs[number]): void {

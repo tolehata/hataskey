@@ -2,7 +2,7 @@
 <template>
 <HyDialog ref="dialog" :title="title" :variant="variant" :back="currentIndex > 0 || embedded" :busy="saving" :embedded="embedded" :inert="closePrompt" @close="requestClose" @back="back" @closed="emit('closed')">
 	<div :class="$style.progress"><div><span><i :class="icon" aria-hidden="true"></i>{{ label }}</span><small>{{ currentIndex + 1 }} / {{ route.length }}</small></div><progress :value="currentIndex + 1" :max="route.length" :aria-label="copy.progress"></progress></div>
-	<p v-if="error" ref="errorBox" role="alert" tabindex="-1" :class="$style.error">{{ error }}</p>
+	<p v-if="error" role="alert" tabindex="-1" :class="$style.error">{{ error }}</p>
 	<form ref="form" novalidate @submit.prevent="next">
 		<fieldset :disabled="saving || hasSaved" :class="$style.formBody">
 			<section v-for="page in pages" v-show="page.id === currentPage" :key="page.id" :inert="page.id !== currentPage" :data-page="page.id" :data-direction="direction" :data-hatagoes="goesMotion" :class="$style.page" :aria-labelledby="`${id}-${page.id}`">
@@ -47,7 +47,7 @@ const copy = i18n.ts._hata._hatady._formWizard;
 const values = defineModel<HatadyFormValues>({ required: true });
 const props = withDefaults(defineProps<{ title: string; label: string; icon: string; pages: HatadyFormPage[]; draftId: string; embedded?: boolean; variant?: HatadySurfaceVariant; saveLabel?: string; summaryTitle?: string; restore?: (draft: HatadyFormValues) => HatadyFormValues; save: (values: HatadyFormValues) => Promise<any> }>(), { embedded: false, variant: 'hatady', saveLabel: i18n.ts._hata._hatady._formWizard.saveDefault, summaryTitle: '' });
 const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void; (event: 'back'): void }>();
-const dialog = useTemplateRef('dialog'), form = useTemplateRef('form'), errorBox = useTemplateRef('errorBox'), id = useId();
+const dialog = useTemplateRef('dialog'), form = useTemplateRef('form'), id = useId();
 const currentPage = ref(props.pages[0]?.id ?? ''), selectedGroups = ref(initialFormGroups(props.pages, values.value));
 values.value.__listDrafts ??= {};
 const hasSaved = ref(false);

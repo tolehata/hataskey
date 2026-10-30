@@ -93,20 +93,6 @@ function withoutRule(selector: string): string {
 	return styles.toString();
 }
 
-function changedDeclaration(selector: string, property: string, value: string): string {
-	const styles = parseCss(css);
-	let changed = false;
-	styles.walkRules(rule => {
-		if (!rule.selectors.includes(selector)) return;
-		rule.walkDecls(property, declaration => {
-			declaration.value = value;
-			changed = true;
-		});
-	});
-	assert.ok(changed, `positive control must actually change ${selector} ${property}`);
-	return styles.toString();
-}
-
 function heading(component: Component): HTMLElement {
 	const host = window.document.createElement('div');
 	const app = createApp({ render: () => h(component) });

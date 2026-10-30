@@ -231,10 +231,6 @@ function dueLabel(g: Goal): string {
 	return i18n.tsx._hata._hatady._goals.daysLeft({ days: dl.toString() });
 }
 
-function metricUnit(m: string): string {
-	return { minutes: copy.minutesUnit, logs: copy.logsUnit, books: copy.booksUnit }[m] ?? '';
-}
-
 function fmtMetric(m: string | null, v: number): string {
 	if (m === 'minutes') {
 		return hatadyDuration(Math.round(v * 60));

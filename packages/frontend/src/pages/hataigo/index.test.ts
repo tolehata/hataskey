@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { afterEach, expect, it, vi } from 'vitest';
  
-import { createApp, defineComponent, h, nextTick, ref } from 'vue';
+import { createApp, h, nextTick, ref } from 'vue';
 import Index from './index.vue';
 
 const popupSpy = vi.hoisted(() => vi.fn(() => ({ dispose: () => {} })));

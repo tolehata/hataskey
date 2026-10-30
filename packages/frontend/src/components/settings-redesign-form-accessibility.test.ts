@@ -68,7 +68,6 @@ import MkTextarea from '@/components/MkTextarea.vue';
 import MkCodeEditor from '@/components/MkCodeEditor.vue';
 import MkColorInput from '@/components/MkColorInput.vue';
 import MkRange from '@/components/MkRange.vue';
-import MkRadio from '@/components/MkRadio.vue';
 import MkRadios from '@/components/MkRadios.vue';
 import MkSelect from '@/components/MkSelect.vue';
 import MkSwitch from '@/components/MkSwitch.vue';

@@ -553,7 +553,7 @@ import { loadHatadyCollection } from '@/utility/hatady-collection.js';
 import { useHatadyActivityActions } from '@/utility/hatady-activity-actions.js';
 import { openHatadyRecord } from '@/utility/hatady-record-launcher.js';
 import { useHataMascotSuppression } from '@/utility/hata-mascot-suppression.js';
-import { HATADY_ACTIVITY_CHOICES, HATADY_RECORD_TAGS, hatadyDialogSurfaces, hatadyDuration, hatadyNotify } from '@/utility/hatady-ui.js';
+import { HATADY_ACTIVITY_CHOICES, HATADY_RECORD_TAGS, hatadyDialogSurfaces, hatadyDuration } from '@/utility/hatady-ui.js';
 import '@/components/hatady-ui.css';
 
 const popup = useHataGoesPopup();
@@ -1174,10 +1174,6 @@ function onActivityDeleted(activity: HatadyActivity): void {
 function removeCollectionWork(id: string): void {
 	collectionWorks.value = collectionWorks.value.filter(work => work.id !== id);
 }
-
-function deleteActivity(activity: HatadyActivity): Promise<void> { return activityActions.deleteActivity(activity); }
-
-function reportActivity(activity: HatadyActivity): Promise<void> { return activityActions.reportActivity(activity); }
 
 function openConversation(value: any): Promise<void> { return activityActions.openConversation(typeof value === 'string' ? value : value.id); }
 

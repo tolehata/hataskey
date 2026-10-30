@@ -199,7 +199,7 @@ import Hk3ShortcutGuide from './Hk3ShortcutGuide.vue';
 import { hk3PostContextKey } from './hk3-post-context.js';
 import type { Hk3PostReceipt } from './hk3-post-context.js';
 import { HK3_THEME_CONTEXT } from './hk3-theme.js';
-import { captureHk3ComposerMenu, registerHk3ComposerMenus, useHk3ComposerMenuReducedMotion } from './hk3-composer-menu.js';
+import { registerHk3ComposerMenus, useHk3ComposerMenuReducedMotion } from './hk3-composer-menu.js';
 import type { NoteActionConfirmation } from '@/utility/note-action-confirmation.js';
 import Hk3ComposerConfirmation from './Hk3ComposerConfirmation.vue';
 import { hk3ComposerEmojiHostKey } from './hk3-composer-emoji-host.js';

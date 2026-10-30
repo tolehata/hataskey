@@ -22,7 +22,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import * as os from '@/os.js';
 import { useHataGoesDialogs } from '@/utility/hatagoes-dialogs.js';
 import { useHataGoesPopup } from '@/utility/hatagoes-popup.js';
 import { $i } from '@/i.js';

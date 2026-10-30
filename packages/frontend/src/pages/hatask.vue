@@ -495,7 +495,7 @@
 					</Teleport>
 					<Teleport :to="captureDestination" :disabled="captureKind !== 'garden'">
 						<div v-if="activeTab==='garden' || captureKind === 'garden'" class="htk-tabpage htk-garden-page htk-panels" data-garden-layout="streams">
-  <HataskFlowerCare ref="flowerCare" :todos="todos" :folders="folders" :animations="flowerAnimations" :theme="plannerTheme" :mode="themeMode" :readOnly="plannerReadOnly" :completeTodo="completeGardenTodo" @state="applyFlowerState" @harvested="onFlowerHarvested" @hatady="routeRouter.push('/hatady')"/>
+  <HataskFlowerCare :todos="todos" :folders="folders" :animations="flowerAnimations" :theme="plannerTheme" :mode="themeMode" :readOnly="plannerReadOnly" :completeTodo="completeGardenTodo" @state="applyFlowerState" @harvested="onFlowerHarvested" @hatady="routeRouter.push('/hatady')"/>
   <section class="htk-lg htk-anim htk-seasonal-tree-panel" data-garden-group="seasonal-tree"><div class="htk-gc">
     <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{seasonalTreeCopy.title}}</h3><p class="htk-flower-summary">{{seasonalTreeCopy.description}}</p></div></header>
     <div class="htk-seasonal-tree-scene"><SeasonalTreeScene :animated="flowerAnimations" :windStrength="60" :showCaption="true"/></div>
@@ -805,9 +805,6 @@ const showMobileNav=ref(true);
 // 旗鯖fork(v2): きもち5段階は Tabler アイコンに統一(§05)。
 const moodIcons:Record<number,string>={1:'ti ti-mood-cry',2:'ti ti-mood-sad',3:'ti ti-mood-neutral',4:'ti ti-mood-smile',5:'ti ti-mood-heart'};
 // ===== 食事記録(meal) 定数。医療目的ではない自己記録メモ。数値評価・カロリー計算はしない =====
-const mealSlots=computed(() => [{id:'breakfast',emoji:'ti ti-sunrise',label:copy.mealSlotBreakfast},{id:'lunch',emoji:'ti ti-sun',label:copy.mealSlotLunch},{id:'dinner',emoji:'ti ti-moon',label:copy.mealSlotDinner},{id:'snack',emoji:'ti ti-cookie',label:copy.mealSlotSnack}]);
-// 3段階はすべて中立・等価に扱う。「食べれなかった」を否定的に強調しない
-const mealLevels=computed(() => [{id:'ate',emoji:'ti ti-bowl-chopsticks',label:copy.mealLevelAte,color:'#85cdca'},{id:'little',emoji:'ti ti-bowl-spoon',label:copy.mealLevelLittle,color:'#e8a87c'},{id:'none',emoji:'ti ti-cup',label:copy.mealLevelNone,color:'#c38d9e'}]);
 const mealDisclaimerText=computed(() => copy.mealDisclaimerFull);
 const eventColors=['#e27d60','#85cdca','#e8a87c','#c38d9e','#7bc67e','#f0c75e','#6cb4ee'];
 const eventEmojis=['⭐','💼','🎮','🔧','📚','🎂','✈️','🎨','🏃','🎤'];
@@ -837,7 +834,6 @@ function localDateKey(date = new Date()): string {
 const yearMonthFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'long' });
 const longDateFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 const monthDayFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric' });
-const monthDayWeekdayFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric', weekday: 'short' });
 const weekdayLongFormatter = new Intl.DateTimeFormat(versatileLang, { weekday: 'long' });
 const weekdayShortFormatter = new Intl.DateTimeFormat(versatileLang, { weekday: 'short' });
 
@@ -1021,7 +1017,7 @@ async function syncHataskFlowerCount(): Promise<void> {
 	}
 }
 
-const activeTab=ref('home');const isSaving=ref(false);const showSearch=ref(false);
+const activeTab=ref('home');const showSearch=ref(false);
 watch(canReviewRecords, allowed => { if (!allowed && activeTab.value === 'review') activeTab.value = 'home'; });
 const routeRouter = useRouter();
 // 旗鯖fork(v2 §16②): タブ切替方向を判定(activeTab宣言後に登録してTDZを回避)。
@@ -1098,7 +1094,6 @@ function showHataskIntroduction(): void {
 }
 
 const showTutorial=ref(false);const tutStep=ref(0);const tutTotalSteps=10;
-const isMobile=ref(window.innerWidth<=1024);
 // ===== Spotlight tutorial system =====
 const PAD=14;
 const spotRect=ref({x:0,y:0,w:0,h:0});
@@ -1270,7 +1265,6 @@ const homeApps=computed(()=>{
   return a;
 });
 // 旗鯖fork(v2): ホームの予定日付も Hataskey 共通言語の Intl 表示にする。
-function evMD(d:string){return d ? monthDayFormatter.format(parseIsoDate(d)) : ''}
 
 function eventTimeLabel(ev:any):string {return ev.allDay?copy.allDay:((ev.timeStart||'')+(ev.timeEnd?' - ' + ev.timeEnd : ''));}
 
@@ -1759,9 +1753,6 @@ let clockInterval:ReturnType<typeof setInterval>|null=null;
 // ========== LOGIN DAYS ==========
 const loginDays=computed(()=>$i?.loggedInDays??0);
 const loginRanking=ref(0);const loginTotal=ref(0);
-const loginMilestones=[3,7,15,30,60,100,200,300,400,500,600,700,800,900,1000];
-const loginNextReward=computed(()=>{const d=loginDays.value;for(const m of loginMilestones){if(d<m)return m-d}return 0});
-const loginMessage=computed(()=>{const d=loginDays.value;if(d<=1)return copy.loginFirst;if(d<7)return copy.loginGettingUsed;if(d<30)return copy.loginRegular;if(d<100)return copy.loginThankYou;if(d<365)return copy.loginAmazing;return copy.loginLegend});
 async function fetchLoginRanking(){try{const res=await misskeyApi('hata/login-ranking',{});if(res&&typeof res.rank==='number'){loginRanking.value=res.rank;loginTotal.value=res.totalUsers??0}}catch(e){console.warn('Login ranking unavailable:',e)}}
 const settings=ref<any>({darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,showFeedbackNotif:true,showEarthquake:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],theme:'akatsuki',animations:true,todoSortModes:{},todoMobileTabOrder:['today','upcoming','all','completed','more']});
 const hatadyCookingRoute = computed(() => routeRouter.currentRef.value.props.get('tab') === 'recipe'
@@ -1829,7 +1820,6 @@ function startHtkThemeWatch(){
   htk_themeObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-color-mode','class','style']});
 }
 function stopHtkThemeWatch(){htk_themeObserver?.disconnect();htk_themeObserver=null}
-function toggleAutoTheme(){settings.value.autoTheme=!settings.value.autoTheme;saveSettings()}
 async function saveSettings(){await registrySet('settings',settings.value)}
 function toggleNotifyTiming(t:string){const i=newEvent.value.notifyTimings.indexOf(t);if(i>=0)newEvent.value.notifyTimings.splice(i,1);else newEvent.value.notifyTimings.push(t)}
 
@@ -2070,7 +2060,6 @@ async function submitEventCapture():Promise<void>{
 }
 function eDateTimeKey(event:{date:string;timeStart?:string;allDay?:boolean}):string{return`${event.date}T${event.allDay?'00:00':event.timeStart||'23:59'}`}
 const upcomingEvents=computed(()=>visibleCalendarEvents.value.filter(e=>e.date>=td()).sort((a,b)=>eDateTimeKey(a).localeCompare(eDateTimeKey(b))));
-const publicEvents=computed(()=>visibleCalendarEvents.value.filter(e=>e.visibility==='public'&&e.date>=td()));
 function goToEvent(event: any, openDetails = true): void {
 	activeTab.value = 'cal';
 	const date = parseIsoDate(event.date);
@@ -2184,7 +2173,6 @@ const newFolderName=ref('');const newFolderEmoji=ref('📁');const newFolderColo
 const folderColors=computed(() => [{value:'#e57373',label:copy.colorRed},{value:'#ffb74d',label:copy.colorOrange},{value:'#fff176',label:copy.colorYellow},{value:'#81c784',label:copy.colorGreen},{value:'#64b5f6',label:copy.colorBlue},{value:'#ba68c8',label:copy.colorPurple}]);
 const todos=ref<HataskPlannerTodo[]>([]);const folders=ref<HataskPlannerFolder[]>([]);
 const activeFolders=computed(()=>folders.value.filter(folder=>folder.archivedAt==null).sort((a,b)=>(a.position??0)-(b.position??0)));
-const pendingCount=computed(()=>todos.value.filter(t=>!t.done&&t.archivedAt==null).length);
 function folderCount(fid:string){return todos.value.filter(t=>!t.done&&t.archivedAt==null&&t.folder===fid).length}
 function getFolder(fid:string){return folders.value.find(f=>f.id===fid)}
 
@@ -2861,7 +2849,6 @@ const plannerTodoLabels=computed<HataskTodoLabels>(()=>({
 	hideView: name => plannerCopyx.hideTodoTabLabel({ name }),
 	}));
 function recurrenceLabel(frequency:HataskRecurrenceFrequency):string{return frequency==='daily'?plannerCopy.recurrenceDaily:frequency==='weekly'?plannerCopy.recurrenceWeekly:frequency==='monthly'?plannerCopy.recurrenceMonthly:frequency==='yearly'?plannerCopy.recurrenceYearly:plannerCopy.recurrenceNone}
-function plannerTodoSource(item:HataskTodoItem):HataskPlannerTodo|undefined{return todos.value.find(todo=>todo.id===item.id)}
 function focusTodoEditor():void{if(plannerReadOnly.value)return;todoCaptureRef.value?.focus()}
 function togglePlannerTodoFilter(filterId:string):void{
 	if(filterId.startsWith('folder:')){const folderId=filterId.slice(7);activeFolder.value=activeFolder.value===folderId?'all':folderId;return}
@@ -2881,14 +2868,12 @@ const showMealDisclaimer=ref(false);
 const mealTodayCount=computed(()=>{const today=localDateKey();return meals.value.filter(m=>m.date===today).length});
 const mealSummaryMessage=computed(()=>{const c=mealTodayCount.value;if(c===0)return copy.mealSummaryNone;if(c===1)return copy.mealSummaryOne;return copy.mealSummaryMany});
 
-const weekMoods=computed(()=>{const now=new Date();const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);return Array.from({ length: 7 },(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const ds=d.toISOString().slice(0,10);const last=moods.value.filter(m=>m.date===ds).pop();return{day: weekdayShortFormatter.format(d),icon:last?moodIcons[last.level]:''};})});
 
 // Garden
 type FlowerVisibility = 'public' | 'followers' | 'private';
 type CommunityFlower = { id: string; clientFlowerId?: string; emoji: string; name: string; hanakotoba?: string; harvestedAt: string; isOwner?: boolean; user?: Misskey.entities.UserLite };
 const flower = ref<HataskGrowingFlower>(createHataskGrowingFlower({ emoji: '🌱', name: 'わかば' }));
 const gallery=ref<any[]>([]);
-const flowerCare = ref<InstanceType<typeof HataskFlowerCare> | null>(null);
 const flowerState = ref<HataskFlowerState | null>(null);
 const archiveVisibleCount = ref(100);
 const flowerVisibility = ref<FlowerVisibility>('public');
@@ -3141,7 +3126,6 @@ function onHataskFlowerGrowth(event: Event): void {
 	if (normalized) flower.value = normalized;
 }
 const currentFlowerDisplayName=computed(() => localizeFloraName(flower.value.name));
-function formatMinutes(m:number){const h=Math.floor(m/60);const mm=m%60;return h>0?copyx.hoursMinutes({ hours: h.toString(), minutes: mm.toString() }) : copyx.minutes({ minutes: mm.toString() })}
 const estimateRemaining=computed(()=>{const rem=Math.max(0,flower.value.targetMinutes-flower.value.totalMinutes);const h=Math.floor(rem/60);return h>0?copyx.hours({ hours: h.toString() }):copy.soon});
 function formatFlowerDate(item: { harvestedAt?: string; date?: string }): string {
 	const value = item.harvestedAt ?? item.date;
@@ -3189,11 +3173,8 @@ watch(activeTab, () => { showSearch.value = false; });
 // Helpers
 function generateId():string{return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function formatDue(d:string,t?:string):string{const todayDate=new Date();todayDate.setHours(0,0,0,0);const x=parseIsoDate(d);x.setHours(0,0,0,0);let l='';if(x.getTime()===todayDate.getTime())l=copy.today;else{const tomorrow=new Date(todayDate);tomorrow.setDate(tomorrow.getDate()+1);if(x.getTime()===tomorrow.getTime())l=copy.tomorrow;else l=monthDayFormatter.format(x)}if(t)l+=' '+t;return l}
-function isDueToday(d:string):boolean{return d===localDateKey()}
-function isOverdue(d:string):boolean{return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d<localDateKey()}
 
 // ========== GREETING SYSTEM (500+ variations) ==========
-const currentFlowerHanakotoba=computed(()=>{const flora=findHataskFlora(flower.value);return flora?.hanakotoba?localizeHanakotoba(flora.hanakotoba) : ''});
 
 // Hatask Eye phrase system
 function updateEyePhrase(){
@@ -3245,7 +3226,6 @@ try{const server=sharedEventData(eventId);if(!server?.revision)throw new Error('
 }
 
 // CRUD
-function dismissRsvpNotif(eventId:string){dismissedRsvpNotifs.value.push(eventId);closedRsvpNotifs.value=closedRsvpNotifs.value.filter(n=>n.eventId!==eventId)}
 function checkClosedRsvps(){
 const myId=$i?.id;if(!myId)return;
 // API共有イベントから締切済みのものを検出
@@ -3477,8 +3457,6 @@ async function saveMealTemplate(template: HataskMealTemplate, existingId?: strin
 
 async function deleteMealTemplate(id: string): Promise<void> { await commitJournalChange(HATASK_MEAL_TEMPLATE_KEY, { type: 'delete', id }); }
 
-function mealSlotInfo(id:string){return mealSlots.value.find(s=>s.id===id)||{emoji:'ti ti-tools-kitchen-2',label:''}}
-function mealLevelInfo(id:string){return mealLevels.value.find(l=>l.id===id)||{emoji:'ti ti-tools-kitchen-2',label:'',color:'var(--MI_THEME-fg)'}}
 
 // レシピの初回同意。同意しないまま閉じたら Hatask App 一覧へ戻る(同意フラグは registry settings に同期)。
 async function ackRecipeConsent(): Promise<void> {

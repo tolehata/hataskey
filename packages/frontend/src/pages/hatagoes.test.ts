@@ -669,7 +669,7 @@ describe('HataGoes common create', () => {
 		expect(context.surface.value?.paused?.value).toBe(false);
 	});
 	test('holds the notification host through glow exit and cancels the exit for a new notice', async () => {
-		const target = await mount(hatagoesUrl('/hatady?tab=home'));
+		await mount(hatagoesUrl('/hatady?tab=home'));
 		const context = getNotificationPageContext()!;
 		const host = context.surface.value?.target.value as HTMLElement;
 		vi.useFakeTimers();

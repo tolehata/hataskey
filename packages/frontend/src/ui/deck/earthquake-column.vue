@@ -14,7 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, useTemplateRef } from 'vue';
+import { useTemplateRef } from 'vue';
 import XColumn from './column.vue';
 import type { Column } from '@/deck.js';
 import MkEarthquakeColumn from '@/components/MkEarthquakeColumn.vue';

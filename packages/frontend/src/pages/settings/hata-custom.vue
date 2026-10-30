@@ -421,8 +421,8 @@ import { prefer } from '@/preferences.js';
 import { definePage } from '@/page.js';
 import { getHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
 // 旗鯖fork: deckIgnoreWidth / setDeckIgnoreWidth は Hataskey UI 設定モーダル側で消費するのみ。
-// 旗鯖fork(Hataskey UI 2): 端末ローカルの glassUi 系を hata-custom.vue から使うため import。
-import { glassUiLocal, setGlassUiLocal, glassUiBubbleLocal, setGlassUiBubbleLocal, hideMutedReactionsLocal, setHideMutedReactionsLocal, foldableLayoutMode, setFoldableLayoutMode } from '@/utility/hatasaba-device-prefs.js';
+// 旗鯖fork: 端末ローカルのミュートリアクション非表示と折りたたみ端末レイアウトを使うため import。
+import { hideMutedReactionsLocal, setHideMutedReactionsLocal, foldableLayoutMode, setFoldableLayoutMode } from '@/utility/hatasaba-device-prefs.js';
 import { HATA_FONT_PRESETS, DEFAULT_HATA_FONT_ID, SYSTEM_HATA_FONT_STACK, applyHataFont, resolveHataFontId } from '@/scripts/hata-font-manager.js';
 import { isDirectUploadCustomFontFile, isSupportedCustomFontFile } from '@/utility/hata-font-file.js';
 import { chooseDriveFile, uploadFile } from '@/utility/drive.js';
@@ -659,10 +659,6 @@ watch(hideMutedReactions, async (newVal) => {
 	fetchMutedUsers();
 });
 const timelineAnimationDirection = prefer.model('timelineAnimationDirection');
-const timelineAnimationOptions = [
-	{ value: 'top', label: generalCopy.slideFromTop }, { value: 'left', label: generalCopy.slideFromLeft },
-	{ value: 'right', label: generalCopy.slideFromRight }, { value: 'random', label: generalCopy.random },
-];
 const openUiSetup = async () => {
 	if (props.presentationCategory != null && settingsSearchContext != null) {
 		settingsSearchContext.navigateToSetting({ route: '/settings/hata-custom', activation: { kind: 'popup', category: 'general', popup: 'ui-setup' } });
@@ -726,8 +722,6 @@ const hiddenReactionCount = computed(() => { hiddenReactionsVersion.value; retur
 const widgetBorder = prefer.model('simpleUi.widgetBorder');
 const glassEffect = prefer.model('simpleUi.glassEffect');
 const deckNoBannerBg = prefer.model('simpleUi.deckNoBannerBg');
-// 旗鯖fork: 通常表示(デッキUIではないタイムライン)用のヘッダー画像ぼかし無効化トグル
-const normalNoBannerBg = prefer.model('simpleUi.normalNoBannerBg');
 // 旗鯖fork: bot ユーザーの投稿をタイムラインから非表示 + 許可アカウントリスト
 const hideBotsInTimeline = prefer.model('simpleUi.hideBotsInTimeline');
 const botAllowlist = prefer.model('simpleUi.botAllowlist');
@@ -793,45 +787,8 @@ const showTimelineDateOnMobile = prefer.model('simpleUi.showTimelineDateOnMobile
 const classicNoteSpacing = prefer.model('simpleUi.classicNoteSpacing');
 // 旗鯖fork: デッキタイムライン最上部インジケータをテキストに戻すオプトイン
 const deckLatestNoteText = prefer.model('simpleUi.deckLatestNoteText');
-// 旗鯖fork(Hataskey UI 2): プロフィールぼかしOFF
-const profileNoBannerBg = prefer.model('simpleUi.profileNoBannerBg');
-// 旗鯖fork(Hataskey UI 2): ノートカード/ナビの透過率 (0-100 %)。
-//   ローカル ref で v-model 表示、prefer.commit は `@change` (release) だけで発火させる。
-//   `@input` 経由や、mount 時の任意タイミングで setter が誤呼び出しされて既定値 55 へ
-//   リセットされる事象が発生していたため、コミット元を release 一箇所に絞る。
-//   prefer 側から値が変わった時 (別セッション同期・ロード直後 等) はローカル ref を追随させる。
-const glassUiCardOpacity = ref<number>((prefer.r['simpleUi.glassUiCardOpacity'].value as number) ?? 55);
-watch(() => prefer.r['simpleUi.glassUiCardOpacity'].value, v => {
-	if (typeof v === 'number' && Number.isFinite(v)) glassUiCardOpacity.value = v;
-});
-
-function commitOpacity(v: number) {
-	if (!Number.isFinite(v)) return; // 無効値 (NaN 等) は無視 (55 に戻す等の副作用を出さない)
-	const n = Math.max(0, Math.min(100, Math.round(v)));
-	if (prefer.r['simpleUi.glassUiCardOpacity'].value === n) return; // 変化なしなら skip
-	prefer.commit('simpleUi.glassUiCardOpacity', n);
-}
-
-// ドラッグ中も視覚フィードバックがほしいので、ローカル ref が変わったら即 CSS 変数を書き換える。
-// commit しないので永続化されないが、release 時に @change → commitOpacity → boot の watch で
-// 同じ値が改めて書き込まれるだけなので二重更新のコストは無視できる。
-watch(glassUiCardOpacity, v => {
-	if (typeof v === 'number' && Number.isFinite(v)) {
-		const n = Math.max(0, Math.min(100, Math.round(v)));
-		window.document.documentElement.style.setProperty('--htk-glass-card-opacity', n + '%');
-	}
-});
 // 旗鯖fork: 従来のチャンネル投稿ボタン (カラムヘッダ右のペン+ボタン + 三点メニュー項目) を表示するか
 const showLegacyChannelPostButton = prefer.model('simpleUi.showLegacyChannelPostButton');
-// 旗鯖fork(Hataskey UI 2): 端末ローカルのグラス系設定 (ref + setter を computed 経由で v-model 化)
-const glassUi = computed({
-	get: () => glassUiLocal.value,
-	set: (v: boolean) => setGlassUiLocal(v),
-});
-const glassUiBubble = computed({
-	get: () => glassUiBubbleLocal.value,
-	set: (v: boolean) => setGlassUiBubbleLocal(v),
-});
 // 旗鯖fork: 横開き折りたたみ端末向けレイアウト(端末ローカル・auto/on/off)
 const foldableLayout = computed({
 	get: () => foldableLayoutMode.value,

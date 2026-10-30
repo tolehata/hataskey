@@ -48,13 +48,13 @@ describe('HataGoes filter surface', () => {
 	});
 	test('wide embedded pages keep a centered dialog', () => {
 		Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1100 });
-		const { target } = mount(true);
+		mount(true);
 		expect(window.document.body.querySelector('[data-type=dialog]')).not.toBeNull();
 	});
 	test('a narrow app window uses a drawer even inside a wide browser', async () => {
 		Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1400 });
 		vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 390 } as DOMRect);
-		const { target } = mount(true);
+		mount(true);
 		await nextTick();
 		expect(window.document.body.querySelector('[data-type=drawer]')).not.toBeNull();
 	});

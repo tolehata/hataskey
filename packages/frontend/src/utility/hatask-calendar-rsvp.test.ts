@@ -62,7 +62,6 @@ type Runtime = {
 	all: CalendarSource[];
 	visible: CalendarSource[];
 	upcoming: CalendarSource[];
-	public: CalendarSource[];
 	akatsukiEvents: CalendarSource[];
 	days: HataskCalendarDay[];
 	filters: HataskPlannerFilter[];
@@ -84,12 +83,12 @@ function fixture(shared: CalendarSource[], options: { local?: CalendarSource[]; 
 		'plannerAnchorDate', 'addCalendarDays', 'startOfPlannerWeek',
 		'plannerEventServerId', 'sharedEventData', 'sharedRsvpResponses', 'sharedRsvpMyStatus', 'isRsvpSaving', 'setRsvp',
 	];
-	const variables = ['showDeclinedInvitations', 'plannerCalendarFilterIds', 'allCalendarEvents', 'visibleCalendarEvents', 'upcomingEvents', 'publicEvents', 'plannerCalendarDates', 'plannerCalendarDays', 'plannerCalendarFilters'];
+	const variables = ['showDeclinedInvitations', 'plannerCalendarFilterIds', 'allCalendarEvents', 'visibleCalendarEvents', 'upcomingEvents', 'plannerCalendarDates', 'plannerCalendarDays', 'plannerCalendarFilters'];
 	const code = `${functions.map(functionSource).join('\n')}
 		${variables.map(name => `const ${declaration(name).getText(script)};`).join('\n')}
 		({ ${functions.join(', ')},
 			get all() { return allCalendarEvents.value; }, get visible() { return visibleCalendarEvents.value; },
-			get upcoming() { return upcomingEvents.value; }, get public() { return publicEvents.value; },
+			get upcoming() { return upcomingEvents.value; },
 			get akatsukiEvents() { return ${akatsukiEventsBinding()}; },
 			get days() { return plannerCalendarDays.value; }, get filters() { return plannerCalendarFilters.value; },
 			get showDeclined() { return showDeclinedInvitations.value; }
@@ -149,12 +148,11 @@ describe('辞退した参加招待のカレンダー表示', () => {
 		const f = fixture([event('declined', { rsvpResponses: response('declined') })]);
 		const original = JSON.stringify(f.sharedEvents.value);
 		expect(f.runtime.upcoming).toEqual([]);
-		expect(f.runtime.public).toEqual([]);
 		expect(f.runtime.akatsukiEvents).toEqual([]);
 		expect(f.runtime.plannerEventForDate('2026-09-12')).toEqual([]);
 		expect(f.runtime.findPlannerCalendarSource({ id: 'declined' })?.id).toBe('declined');
 		f.runtime.togglePlannerCalendarFilter('declined');
-		for (const items of [f.runtime.upcoming, f.runtime.public, f.runtime.akatsukiEvents, f.runtime.plannerEventForDate('2026-09-12')]) expect(ids(items)).toEqual(['declined']);
+		for (const items of [f.runtime.upcoming, f.runtime.akatsukiEvents, f.runtime.plannerEventForDate('2026-09-12')]) expect(ids(items)).toEqual(['declined']);
 		expect(JSON.stringify(f.sharedEvents.value)).toBe(original);
 		expect(f.api).not.toHaveBeenCalled();
 	});

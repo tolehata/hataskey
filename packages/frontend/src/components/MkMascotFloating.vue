@@ -20,7 +20,6 @@
 <!-- 通常表示 -->
 <div
 	v-if="visible && shownUrl && !minimized"
-	ref="rootEl"
 	:class="$style.root"
 	:style="rootStyle"
 >
@@ -235,7 +234,6 @@ const flipStyle = computed(() => ({
 }));
 
 // ===== ドラッグ移動 + クリックで次の文言 =====
-const rootEl = ref<HTMLElement | null>(null);
 let dragging = false;
 let startPX = 0, startPY = 0, startX = 0, startY = 0;
 let moved = false;

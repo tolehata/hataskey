@@ -597,7 +597,7 @@ describe('note charm interaction', () => {
 	});
 
 	test('native button click holds and lowers a static charm with an accessible name', async () => {
-		const { container, button } = mountCharm();
+		const { button } = mountCharm();
 		expect(button.getAttribute('aria-label')).toBe('チャームを持ち上げる');
 		button.click();
 		await nextTick();
@@ -873,7 +873,7 @@ describe('note charm interaction', () => {
 	test('system reduced motion and the animation preference both request a static image', async () => {
 		const media = Object.assign(new EventTarget(), { matches: false }) as MediaQueryList;
 		vi.spyOn(window, 'matchMedia').mockReturnValue(media);
-		const { props, container, button } = mountCharm();
+		const { props, button } = mountCharm();
 		props.motion = true;
 		await nextTick();
 		await nextTick();

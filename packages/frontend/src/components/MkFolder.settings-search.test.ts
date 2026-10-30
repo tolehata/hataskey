@@ -81,7 +81,7 @@ describe('MkFolder settings search disclosure', () => {
 	});
 
 	test('無関係なfolderを開かず、marker targetも明示された祖先だけに限定する', async () => {
-		const { container, target } = mountFolder(ref({ route: '/settings/preferences', anchor: 'marker-target' }), 'settings.control.other');
+		const { container } = mountFolder(ref({ route: '/settings/preferences', anchor: 'marker-target' }), 'settings.control.other');
 		await nextTick();
 		await nextTick();
 		expect(container.querySelector('[role="group"]')?.getAttribute('aria-expanded')).toBe('false');
