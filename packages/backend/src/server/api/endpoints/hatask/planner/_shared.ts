@@ -288,12 +288,6 @@ export function appendPlannerBackup(
 	};
 }
 
-export function plannerRevision(rows: readonly MiRegistryItem[]): string | null {
-	const latest = latestPlannerRow(rows);
-	if (latest == null) return null;
-	return `${latest.updatedAt.toISOString()}:${hashPlannerValue(mergePlannerRows(rows))}`;
-}
-
 export function createPlannerMigrationShadowSource(rows: readonly MiRegistryItem[]): PlannerMigrationShadowSource {
 	return Object.fromEntries(HATASK_PLANNER_CORE_COLLECTIONS.map(collection => {
 		const collectionRows = rows.filter(row => row.key === collection);

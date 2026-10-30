@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
 import { DI } from '@/di-symbols.js';
 import type { ChannelFollowingsRepository } from '@/models/_.js';
@@ -17,7 +17,7 @@ import { IdentifiableError } from '@/misc/identifiable-error.js';
 import { isDuplicateKeyValueError } from '@/misc/is-duplicate-key-value-error.js';
 
 @Injectable()
-export class ChannelFollowingService implements OnModuleInit {
+export class ChannelFollowingService {
 	public userFollowingChannelsCache: RedisKVCache<Set<string>>;
 
 	constructor(
@@ -42,9 +42,6 @@ export class ChannelFollowingService implements OnModuleInit {
 		});
 
 		this.redisForSub.on('message', this.onMessage);
-	}
-
-	onModuleInit() {
 	}
 
 	@bindThis

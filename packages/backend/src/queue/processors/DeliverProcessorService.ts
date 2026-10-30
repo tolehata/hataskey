@@ -27,7 +27,6 @@ import type { DeliverJobData } from '../types.js';
 export class DeliverProcessorService {
 	private logger: Logger;
 	private suspendedHostsCache: MemorySingleCache<MiInstance[]>;
-	private latest: string | null;
 
 	constructor(
 		@Inject(DI.meta)

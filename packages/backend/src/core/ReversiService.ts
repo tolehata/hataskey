@@ -25,12 +25,12 @@ import { CustomEmojiService } from '@/core/CustomEmojiService.js';
 import { isCustomEmojiRegexp, ReactionService } from '@/core/ReactionService.js';
 import { Serialized } from '@/types.js';
 import { ReversiGameEntityService } from './entities/ReversiGameEntityService.js';
-import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
 
 const INVITATION_TIMEOUT_MS = 1000 * 20; // 20sec
 
 @Injectable()
-export class ReversiService implements OnApplicationShutdown, OnModuleInit {
+export class ReversiService implements OnModuleInit {
 	private notificationService: NotificationService;
 
 	constructor(
@@ -652,14 +652,5 @@ export class ReversiService implements OnApplicationShutdown, OnModuleInit {
 			userId: user.id,
 			reaction: _reaction,
 		});
-	}
-
-	@bindThis
-	public dispose(): void {
-	}
-
-	@bindThis
-	public onApplicationShutdown(signal?: string | undefined): void {
-		this.dispose();
 	}
 }
