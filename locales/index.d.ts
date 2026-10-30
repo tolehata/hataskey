@@ -1312,7 +1312,7 @@ export interface Locale extends ILocale {
      */
     "flagAsBotDescription": string;
     /**
-     * Hataskeyのユーザーパネルとプロフィールに表示する実績を選べます。他サーバーへは送信されません。
+     * Hataskeyのプロフィールに表示する実績を選べます。他サーバーへは送信されません。
      */
     "profileBadgeVisibilityDescription": string;
     /**
@@ -18410,17 +18410,9 @@ export interface Locale extends ILocale {
              */
             "deprecatedWarning": string;
             /**
-             * が使用可能になりました。
-             */
-            "announcementAvailable": string;
-            /**
              * Beta
              */
             "beta": string;
-            /**
-             * 切り替えて使ってみませんか？
-             */
-            "announcementTry": string;
             /**
              * Hataskey UIの良さはそのまま、シンプルで遊び心のあるUIです。
              */
@@ -20560,186 +20552,6 @@ export interface Locale extends ILocale {
                  * 変更を保存するには、ページ下部の「保存」ボタンを押してください。保存せずに閉じますか？
                  */
                 "unsavedText": string;
-            };
-            "_themeSelect": {
-                /**
-                 * まずは見た目を選びましょう
-                 */
-                "lead": string;
-                /**
-                 * あとで「Hatady設定」からいつでも変更できます
-                 */
-                "subNote": string;
-                /**
-                 * テーマ
-                 */
-                "theme": string;
-                /**
-                 * やわらかい紙
-                 */
-                "paper": string;
-                /**
-                 * クリーム地の落ち着いたライト。
-                 */
-                "paperDescription": string;
-                /**
-                 * 夜の書斎
-                 */
-                "espresso": string;
-                /**
-                 * 深い焙煎色のダーク。
-                 */
-                "espressoDescription": string;
-                /**
-                 * Hataskey準拠
-                 */
-                "hataskey": string;
-                /**
-                 * 本体テーマに追従。
-                 */
-                "hataskeyDescription": string;
-                /**
-                 * このテーマではじめる
-                 */
-                "start": string;
-                /**
-                 * 選択は保存され、全端末に同期されます。表示言語はHataskey本体の設定に従います。
-                 */
-                "saved": string;
-            };
-            "_startup": {
-                /**
-                 * 前のページ
-                 */
-                "previous": string;
-                /**
-                 * 次のページ
-                 */
-                "next": string;
-                /**
-                 * 一時停止
-                 */
-                "pause": string;
-                /**
-                 * 再開
-                 */
-                "resume": string;
-                /**
-                 * はじめる
-                 */
-                "start": string;
-                /**
-                 * hata ＋ study
-                 */
-                "tagline": string;
-                /**
-                 * 学びを、一冊のノートに。
-                 */
-                "catch": string;
-                /**
-                 * — CONCEPT —
-                 */
-                "conceptKicker": string;
-                /**
-                 * 読んでいる本や学んだことを、
-                 */
-                "conceptLine1": string;
-                /**
-                 * 本のページをめくるように
-                 */
-                "conceptLine2": string;
-                /**
-                 * やわらかく記録
-                 */
-                "conceptEmphasis": string;
-                /**
-                 * して振り返る。
-                 */
-                "conceptLine3": string;
-                /**
-                 * Hatady でできること
-                 */
-                "featuresTitle": string;
-                /**
-                 * FEATURES
-                 */
-                "featuresKicker": string;
-                /**
-                 * マイログ
-                 */
-                "myLog": string;
-                /**
-                 * 学びを時系列で記録。ヒートマップで継続を可視化。
-                 */
-                "myLogDescription": string;
-                /**
-                 * 🔥 24
-                 */
-                "demoStreak": string;
-                /**
-                 * 本棚
-                 */
-                "bookshelf": string;
-                /**
-                 * 自動生成カバーの本。しおりで栞のページを記録。
-                 */
-                "bookshelfDescription": string;
-                /**
-                 * みんなの活動
-                 */
-                "discover": string;
-                /**
-                 * 公開された学習・映画鑑賞・ゲームプレイの記録を見て、新しい刺激をもらう。
-                 */
-                "discoverDescription": string;
-                /**
-                 * さあ、最初のページを
-                 */
-                "ctaLine1": string;
-                /**
-                 * 開こう。
-                 */
-                "ctaLine2": string;
-                /**
-                 * あなたの学びを、今日からここに記録していきます。
-                 */
-                "ctaDescription": string;
-                /**
-                 * 夜と霧
-                 */
-                "demoBook1": string;
-                /**
-                 * 思考の整理学
-                 */
-                "demoBook2": string;
-                /**
-                 * 数学ガール
-                 */
-                "demoBook3": string;
-                /**
-                 * 独学の技法
-                 */
-                "demoBook4": string;
-                /**
-                 * Grammar in Use
-                 */
-                "demoBook5": string;
-                /**
-                 * 読書
-                 */
-                "demoSubjectReading": string;
-                /**
-                 * 数学
-                 */
-                "demoSubjectMath": string;
-                /**
-                 * 『夜と霧』3章。極限での意味づけに触れた。
-                 */
-                "demoFeedReading": string;
-                /**
-                 * 線形代数、固有値の直感がやっと掴めた回。
-                 */
-                "demoFeedMath": string;
             };
             "_tutorial": {
                 /**
@@ -32526,12 +32338,6 @@ export interface Locale extends ILocale {
                  */
                 "markReadFailed": string;
             };
-            "_text": {
-                /**
-                 * イシュー #{number} は見つかりませんでした。
-                 */
-                "issueNotFound": ParameterizedString<"number">;
-            };
             "_emojiApprove": {
                 /**
                  * 絵文字申請を連続確認
@@ -43205,17 +43011,9 @@ export interface Locale extends ILocale {
              */
             "settingsFilter": string;
             /**
-             * よく使う設定
-             */
-            "frequentlyUsedSettings": string;
-            /**
              * この画面の検索設定 {count} 件
              */
             "searchSettingsCount": ParameterizedString<"count">;
-            /**
-             * 端末とログイン
-             */
-            "sessionAndLogin": string;
             /**
              * こちらから設定を検索できます
              */
@@ -43498,33 +43296,9 @@ export interface Locale extends ILocale {
             };
             "mobile": {
                 /**
-                 * 使用中・推奨
-                 */
-                "recommendedInUse": string;
-                /**
                  * ナビ・透過率・吹き出し・デッキの表示をまとめて調整します
                  */
                 "featureDescription": string;
-                /**
-                 * 設定を開く
-                 */
-                "openSettings": string;
-                /**
-                 * すべてのカテゴリ
-                 */
-                "allCategories": string;
-                /**
-                 * 連携とデータ
-                 */
-                "connectionsAndData": string;
-                /**
-                 * Misskey UIに関連する設定
-                 */
-                "misskeyRelatedSettings": string;
-                /**
-                 * 非推奨
-                 */
-                "deprecated": string;
             };
             "search": {
                 /**

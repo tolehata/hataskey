@@ -74,7 +74,9 @@ describe('settings redesign translations', () => {
 		// ⚠️無操作のときに出す検索の案内文を足したので218へ。
 		// ⚠️「いまの値をすぐ変える」の節ごと mobile.changeCurrentValues を外したので217へ。
 		// ⚠️検索欄の例文（search.placeholder「お困りでしょうか？」）を足したので219へ。
-		expect(ja.size).toBe(219);
+		// ⚠️削除済みのモバイル一覧だけが使っていた frequentlyUsedSettings / sessionAndLogin と
+		//   mobile の6件を外したので211へ。mobile.featureDescription はカテゴリ面が使うので残す。
+		expect(ja.size).toBe(211);
 		assertSameLocaleShape(ja, en);
 		assertSameLocaleShape(ja, zh);
 		expect(ja.get('search.relatedHeading')).toBe('こちらをお探しですか？');
@@ -90,9 +92,8 @@ describe('settings redesign translations', () => {
 		expect(ja.get('ui2.basicItemCount')).toBe('{count}項目');
 		expect(ja.get('ui2.reorderKeyboardHint')).toBe('上・下矢印キーで並べ替えできます');
 		expect(ja.get('ui2.preview.title')).toBe('Hataskey UI プレビュー');
-		expect(ja.get('mobile.connectionsAndData')).toBe('連携とデータ');
-		expect(ja.get('mobile.misskeyRelatedSettings')).toBe('Misskey UIに関連する設定');
-		expect(ja.get('mobile.deprecated')).toBe('非推奨');
+		expect(ja.get('mobile.featureDescription')).toBe('ナビ・透過率・吹き出し・デッキの表示をまとめて調整します');
+		expect(ja.get('mobile.connectionsAndData')).toBeUndefined();
 		expect(ja.get('nav.tabletTools')).toBe('独自ツール');
 		expect(ja.get('actions.logoutAll')).toBe('すべての端末からログアウト');
 		expect(ja.get('immediate.title')).toBe('すぐ反映される設定');
