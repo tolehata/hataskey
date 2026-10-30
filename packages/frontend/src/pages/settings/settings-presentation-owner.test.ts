@@ -269,7 +269,7 @@ describe('Hataskey custom settings category presentation', () => {
 		expect(mocks.writes).toHaveBeenCalledExactlyOnceWith('showHashtagButtonInPostForm', true);
 		category.value = 'timeline';
 		await nextTick();
-		expect(visibleSwitches(container)).toEqual(['hideMutedReactions', 'directProfile', 'hideBotPostsLabel']);
+		expect(visibleSwitches(container)).toEqual(['hideMutedReactions', 'hideBotPostsLabel']);
 		expect(mocks.models).toHaveBeenCalledTimes(modelCount);
 		expect(mocks.writes).toHaveBeenCalledTimes(1);
 	});

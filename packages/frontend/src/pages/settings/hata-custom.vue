@@ -82,14 +82,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template #label>{{ generalCopy.loginDays }}</template>
 				<MkSwitch v-model="showLoginBonusPopup"><template #label>{{ generalCopy.showLoginDaysPopup }}</template></MkSwitch>
 			</FormSection>
-			<!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
-			<FormSection v-show="showsCategory('timeline')" data-settings-section-anchor="owner:hata-custom:timeline-actions" :data-settings-section-label="generalCopy.timelineActions" data-settings-section-icon="ti ti-user-search" tabindex="-1">
-				<template #label>{{ generalCopy.timelineActions }}</template>
-				<MkSwitch v-model="directProfile">
-					<template #label>{{ generalCopy.directProfile }}</template>
-					<template #caption>{{ generalCopy.directProfileCaption }}</template>
-				</MkSwitch>
-			</FormSection>
 			<!-- 旗鯖fork: bot ユーザーの投稿をタイムラインから非表示にする + 許可アカウント指定 -->
 			<FormSection v-show="showsCategory('timeline')" data-settings-section-anchor="owner:hata-custom:bot-filter" :data-settings-section-label="generalCopy.hideBotPosts" data-settings-section-icon="ti ti-robot-off" tabindex="-1">
 				<template #label>{{ generalCopy.hideBotPosts }}</template>
@@ -471,7 +463,7 @@ const otherCopy = copy._other;
 //   - Hataskey UI 2 タブ新設 (グラス系設定を集約)
 //   - ビジュアルタブ新設 (見た目系を集約)
 //   - accessibility タブは「その他」にリネームし、天気エフェクトなど余ったものだけ残す
-//   - 見た目に関わらない設定 (directProfile / postFormVisibilityBorder 等) は general に移動
+//   - 見た目に関わらない設定 (postFormVisibilityBorder 等) は general に移動
 // preferences のキー自体は変更しないため、既存ユーザーの設定は移動先タブでもそのまま保持される。
 // Hataskey fork: 各カテゴリタブにハタキュイラストを割り当てる。
 //   ⚠️地震ビューア(earthquake)は地震・津波情報機能に触れるため対象外(icon のみ・テンプレート側でも明示除外)。
@@ -736,7 +728,6 @@ const glassEffect = prefer.model('simpleUi.glassEffect');
 const deckNoBannerBg = prefer.model('simpleUi.deckNoBannerBg');
 // 旗鯖fork: 通常表示(デッキUIではないタイムライン)用のヘッダー画像ぼかし無効化トグル
 const normalNoBannerBg = prefer.model('simpleUi.normalNoBannerBg');
-const directProfile = prefer.model('simpleUi.directProfile');
 // 旗鯖fork: bot ユーザーの投稿をタイムラインから非表示 + 許可アカウントリスト
 const hideBotsInTimeline = prefer.model('simpleUi.hideBotsInTimeline');
 const botAllowlist = prefer.model('simpleUi.botAllowlist');

@@ -871,6 +871,8 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'Simple UI内のDeck表示状態で、hata-customは読取のみ', ['src/ui/simple.vue', 'src/pages/settings/hata-custom.vue']);
 	add('preference', keys('simpleUi.disableBubbleInDeck simpleUi.disableBubbleInDefault simpleUi.disableBubbleInHatasabaNormal'), 'deprecated',
 		'旧bubble無効化値で、現行UIから廃止済み', ['src/preferences/def.ts']);
+	add('preference', keys('simpleUi.directProfile'), 'deprecated',
+		'hata-13.0でユーザーパネルとともに廃止。保存済みプロファイルを読むために残す互換定義', ['src/preferences/def.ts']);
 	add('preference', keys('smoothTransitionAnimations'), 'internal',
 		'常時ONのdisabled表示用product policyで、利用者が変更できない', ['src/pages/settings/preferences.vue']);
 	add('preference', keys('weatherEffect.firstTipShown.heavyRain weatherEffect.firstTipShown.rain weatherEffect.firstTipShown.shootingStar weatherEffect.firstTipShown.snow weatherEffect.firstTipShown.sunny weatherEffect.firstTipShown.windy'), 'deprecated',
@@ -3613,7 +3615,6 @@ function explicitFeatureSemanticGroupV2(
 		if (/\bhideMutedReactions\b/u.test(identity)) return 'settings.semantic.feature.hidden-reactions';
 		if (/\btimelineAnimationDirection\b/u.test(identity)) return 'settings.semantic.feature.timeline-motion';
 		if (/\bshowLoginBonusPopup\b/u.test(identity)) return 'settings.semantic.feature.welcome-notices';
-		if (/\bsimpleUi\.directProfile\b/u.test(identity)) return 'settings.semantic.feature.profile-interaction';
 		if (/_font\.(?:resetDefault|uiFontSelection)/u.test(identity)) return 'settings.semantic.feature.font-customization';
 		if (/\b(?:foldableLayout|hataBranding\.useHatakyu)\b/u.test(identity)) return 'settings.semantic.feature.hatasaba-ui2';
 		if (/\bsimpleUi\.showTimelineDateOnMobile\b/u.test(identity)) return 'settings.semantic.feature.timeline-display';

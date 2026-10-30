@@ -915,6 +915,7 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.widgetBorder': {
 		default: true,
 	},
+	// 旗鯖fork: hata-13.0 でユーザーパネルを廃止し参照箇所はない。保存済みプロファイルを読むために残す互換定義
 	'simpleUi.directProfile': {
 		default: false,
 	},

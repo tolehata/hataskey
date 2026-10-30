@@ -94,7 +94,7 @@ const generalPreferenceKeys = [
 // お知らせ既読・チュートリアル完了などの進行状態は「設定」ではないため含めない。
 const hatasabaUiPreferenceKeys = [
 	'simpleUi.showTrendingTab', 'simpleUi.showHatadyTab', 'simpleUi.topNav', 'simpleUi.bottomNav', 'simpleUi.sidebar', 'simpleUi.widgetBorder',
-	'simpleUi.directProfile', 'simpleUi.glassEffect', 'simpleUi.showPageHeader', 'simpleUi.deckMode', 'simpleUi.sidebarCollapsed',
+	'simpleUi.glassEffect', 'simpleUi.showPageHeader', 'simpleUi.deckMode', 'simpleUi.sidebarCollapsed',
 	'simpleUi.topNavMode', 'simpleUi.deckNoBannerBg', 'simpleUi.normalNoBannerBg', 'simpleUi.profileNoBannerBg',
 	'simpleUi.deckLatestNoteText', 'simpleUi.glassUiCardOpacity', 'simpleUi.showLegacyChannelPostButton',
 	'simpleUi.hideBotsInTimeline', 'simpleUi.botAllowlist', 'simpleUi.deckLayout', 'simpleUi.deckColumns',

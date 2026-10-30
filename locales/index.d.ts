@@ -41752,18 +41752,6 @@ export interface Locale extends ILocale {
                  */
                 "showLoginDaysPopup": string;
                 /**
-                 * タイムライン操作
-                 */
-                "timelineActions": string;
-                /**
-                 * アバタークリックで直接プロフィールへ
-                 */
-                "directProfile": string;
-                /**
-                 * ONにするとユーザーパネルを経由せず、直接プロフィールページに遷移します。Hataskey UIでは上部の戻るボタンでタイムラインに戻れます。
-                 */
-                "directProfileCaption": string;
-                /**
                  * Bot 投稿の非表示
                  */
                 "hideBotPosts": string;
