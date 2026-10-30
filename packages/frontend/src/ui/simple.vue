@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div ref="timelineCollapseRoot" :class="[$style.root, { [$style.desktopLayout]: isDesktop }]" :style="{ '--simple-announcements-height': `${announcementsHeight}px`, '--note-charm-rail-width': `${CHARM_RAIL_WIDTH}px` }" :data-hata-foldable="isFoldableWide ? 'true' : undefined" :data-note-charm-lane="noteCharmShellAvailable && isDesktop && !deckActive ? 'on' : undefined">
+<div ref="timelineCollapseRoot" :class="[$style.root, { [$style.desktopLayout]: isDesktop }]" :style="{ '--simple-announcements-height': `${announcementsHeight}px`, '--note-charm-rail-width': `${CHARM_RAIL_WIDTH}px` }" :data-hata-foldable="isFoldableWide ? 'true' : undefined" :data-note-charm-lane="noteCharmShellAvailable && !isHataGoesPage && isDesktop && !deckActive ? 'on' : undefined">
 	<!-- PC/タブレット: オリジナル左サイドバー (上部メニューモード時は隠す) -->
 	<nav v-if="isDesktop && !topNavActive" ref="desktopNavEl" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarWide]: !sidebarFolded && studioProfile.expanded.width === 'wide', [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed }]">
 		<!-- バナーすりガラス背景 -->

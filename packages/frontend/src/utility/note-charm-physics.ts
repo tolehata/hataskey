@@ -16,14 +16,18 @@ export const CHARM_DEFAULT_SIZE = 60;
 export const CHARM_COMPACT_MAX_SIZE = 56;
 export const CHARM_CORD_LENGTH = 60;
 export const CHARM_RAIL_WIDTH = 110;
-export const CHARM_WIND_DURATION = 2.8;
+// Scale forces and damping, not elapsed time, to keep the integration cost fixed.
+const CHARM_MOTION_SPEED = 2;
+// A faster scroll response needs less launch gain than the full motion speed.
+const CHARM_SCROLL_IMPULSE_GAIN = 1.7;
+export const CHARM_WIND_DURATION = 2.8 / CHARM_MOTION_SPEED;
 export const clampCharm = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 type Point = { x: number; y: number };
 
 export function charmWindForce(elapsed: number, strength: number): number {
 	if (!Number.isFinite(elapsed) || !Number.isFinite(strength) || elapsed <= 0 || elapsed >= CHARM_WIND_DURATION) return 0;
 	const phase = elapsed / CHARM_WIND_DURATION;
-	return 560 * clampCharm(Math.abs(strength), 0, 1) * Math.sin(Math.PI * phase) ** 2 * (1 + .07 * Math.sin(phase * 5 * Math.PI));
+	return 560 * CHARM_MOTION_SPEED ** 2 * clampCharm(Math.abs(strength), 0, 1) * Math.sin(Math.PI * phase) ** 2 * (1 + .07 * Math.sin(phase * 5 * Math.PI));
 }
 export function createCharmState() {
 	return { angle: 0, velocity: 0, stretch: 0, stretchVelocity: 0, liftX: 0, liftY: 0, liftVX: 0, liftVY: 0, releasing: false };
@@ -48,18 +52,20 @@ export function charmGeometry(requestedWidth: number, anchorX = 3, requestedHeig
 }
 export function kickCharm(state: CharmState, amount: number) {
 	const impulse = clampCharm(Number.isFinite(amount) ? amount : 0, -1600, 1600);
-	// Preserve hand-release velocity while the scroll driver runs each frame;
-	// normal wind and scroll keep their existing speed limit.
+	// A scroll acceleration lifts the chain into a small slack arc. Gravity
+	// brings it back down; the outward velocity keeps both directions of
+	// scrolling away from the note text. Never override a hand release.
 	if (state.releasing) return;
-	state.liftVX = clampCharm(state.liftVX + Math.abs(impulse) * .06, -26, 26);
-	state.liftVY = clampCharm(state.liftVY - impulse * .006, -26, 26);
+	if (!impulse) return;
+	state.liftVX = clampCharm(state.liftVX + Math.abs(impulse) * .1 * CHARM_SCROLL_IMPULSE_GAIN, -50 * CHARM_SCROLL_IMPULSE_GAIN, 50 * CHARM_SCROLL_IMPULSE_GAIN);
+	state.liftVY = clampCharm(state.liftVY - Math.abs(impulse) * .22 * CHARM_SCROLL_IMPULSE_GAIN, -96 * CHARM_SCROLL_IMPULSE_GAIN, 96 * CHARM_SCROLL_IMPULSE_GAIN);
 }
 export function driveCharmScroll(state: CharmState, scroll: CharmScrollState, elapsed: number): boolean {
 	if (!Number.isFinite(elapsed) || elapsed > .25) { Object.assign(scroll, createCharmScrollState()); return false; }
 	const dt = clampCharm(elapsed, 0, .05);
 	if (!dt) return scroll.displacement !== 0 || scroll.velocity !== 0;
 	const speed = clampCharm(scroll.displacement / dt, -1600, 1600), previous = scroll.velocity;
-	scroll.velocity += (speed - previous) * (1 - Math.exp(-dt / .08));
+	scroll.velocity += (speed - previous) * (1 - Math.exp(-dt / (.08 / CHARM_MOTION_SPEED)));
 	if (!speed && Math.abs(scroll.velocity) < .1) scroll.velocity = 0;
 	scroll.displacement = 0;
 	kickCharm(state, scroll.velocity - previous);
@@ -95,19 +101,19 @@ export function constrainCharm(state: CharmState, geometry: CharmGeometry, held 
 }
 export function stepCharm(state: CharmState, geometry: CharmGeometry, elapsed: number, windAcceleration = 0): boolean {
 	const dt = clampCharm(Number.isFinite(elapsed) ? elapsed : 0, 0, .1);
-	const wind = clampCharm(Number.isFinite(windAcceleration) ? windAcceleration : 0, 0, 650);
+	const wind = clampCharm(Number.isFinite(windAcceleration) ? windAcceleration : 0, 0, 650 * CHARM_MOTION_SPEED ** 2);
 	const steps = Math.max(1, Math.ceil(dt / (1 / 120))), sub = dt / steps;
 	const restAngle = Math.atan2(geometry.restX - geometry.anchorX, geometry.restY - geometry.anchorY);
 	for (let n = 0; n < steps; n++) {
-		// Hand releases fall promptly; wind and scroll retain their gentler response.
-		const gravity = state.releasing ? 5400 : 1150 / (1 + geometry.bodyHeight / 120);
-		state.liftVX = (state.liftVX + wind * sub) * Math.exp(-1.4 * sub);
-		state.liftVY = (state.liftVY + gravity * sub) * Math.exp(-.7 * sub);
+		// Hand releases already fall promptly; accelerate ordinary wind and scroll motion.
+		const gravity = state.releasing ? 5400 : 1150 * CHARM_MOTION_SPEED ** 2 / (1 + geometry.bodyHeight / 120);
+		state.liftVX = (state.liftVX + wind * sub) * Math.exp(-1.4 * CHARM_MOTION_SPEED * sub);
+		state.liftVY = (state.liftVY + gravity * sub) * Math.exp(-.7 * CHARM_MOTION_SPEED * sub);
 		state.liftX += state.liftVX * sub; state.liftY += state.liftVY * sub;
 		constrainCharm(state, geometry);
 		const target = -(Math.atan2(geometry.restX + state.liftX - geometry.anchorX, Math.max(12, geometry.restY + state.liftY - geometry.anchorY)) - restAngle) * .58;
 		let angle = state.angle * Math.PI / 180, velocity = state.velocity * Math.PI / 180;
-		velocity += ((target - angle) * 64 * (60 / geometry.width) - velocity * 10) * sub;
+		velocity += ((target - angle) * 64 * CHARM_MOTION_SPEED ** 2 * (60 / geometry.width) - velocity * 10 * CHARM_MOTION_SPEED) * sub;
 		angle = clampCharm(angle + velocity * sub, -.14, .14);
 		state.angle = angle * 180 / Math.PI; state.velocity = velocity * 180 / Math.PI;
 		constrainCharm(state, geometry);

@@ -31,6 +31,33 @@ describe('approved acrylic endpoint motion', () => {
 		for (let i = 0; i < 2400; i++) stepCharm(state, geometry, 1 / 120);
 		expect(state).toEqual(createCharmState());
 	});
+	test.each([30, 60, 120])('scroll-driven vertical motion stays bounded and settles at %s fps', fps => {
+		for (const width of [48, 60, 64]) {
+			const geometry = charmGeometry(width), state = createCharmState(), scroll = createCharmScrollState();
+			let highest = 0, previousY = 0, largestStep = 0, active = false;
+			let firstReturn = Infinity, settledAt = Infinity, previousVelocity = 0;
+			for (let frame = 0; frame < fps * 4; frame++) {
+				scroll.displacement = frame < fps / 4 ? 600 / fps : 0;
+				const driven = driveCharmScroll(state, scroll, 1 / fps);
+				const moving = stepCharm(state, geometry, 1 / fps);
+				active = driven || moving;
+				if (previousVelocity < 0 && state.liftVY >= 0) firstReturn = Math.min(firstReturn, (frame + 1) / fps);
+				if (!active && frame >= fps / 4) settledAt = Math.min(settledAt, (frame + 1) / fps);
+				previousVelocity = state.liftVY;
+				highest = Math.min(highest, state.liftY);
+				largestStep = Math.max(largestStep, Math.abs(state.liftY - previousY));
+				previousY = state.liftY;
+				expect(Math.hypot(geometry.restX + state.liftX - geometry.anchorX, geometry.restY + state.liftY - geometry.anchorY)).toBeLessThanOrEqual(60.001);
+			}
+			expect(highest).toBeLessThan(-2);
+			expect(highest).toBeGreaterThan(-16);
+			expect(largestStep).toBeLessThan(3);
+			expect(firstReturn).toBeLessThanOrEqual(.2);
+			expect(settledAt).toBeLessThan(1.2);
+			expect(active).toBe(false);
+			expect(state).toEqual(createCharmState());
+		}
+	});
 	test.each([48, 60, 64])('a width %s charm released with a horizontal chain falls instead of sticking at its reach limit', width => {
 		const geometry = charmGeometry(width, 3, 110);
 		const state = { ...createCharmState(), liftX: geometry.anchorX + 60 - geometry.restX, liftY: geometry.anchorY - geometry.restY };
@@ -49,10 +76,8 @@ describe('approved acrylic endpoint motion', () => {
 		const geometry = charmGeometry(60, 3, 110);
 		const state = { ...createCharmState(), liftY: -60 };
 		for (let frame = 0; frame < fps / 3; frame++) stepCharm(state, geometry, 1 / fps);
-		// A third of a second of gravity should consume roughly half the 60px drop,
-		// even when the renderer supplies fewer frames.
-		expect(state.liftY).toBeGreaterThan(-34);
-		expect(state.liftY).toBeLessThan(-24);
+		// Ordinary motion returns promptly, even when the renderer supplies fewer frames.
+		expect(Math.abs(state.liftY)).toBeLessThan(1);
 	});
 	test.each([40, 76, 110])('releasing a height %spx charm drops 30–60px within 220ms without changing its launch velocity', height => {
 		const geometry = charmGeometry(60, 3, height);
@@ -96,17 +121,33 @@ describe('approved acrylic endpoint motion', () => {
 	});
 	test('outward gusts move the endpoint and independently tilt the plate', () => {
 		const geometry = charmGeometry(60), state = createCharmState();
-		for (let i = 0; i < 90; i++) stepCharm(state, geometry, 1 / 60, charmWindForce(i / 60, 1));
+		for (let i = 0; i < CHARM_WIND_DURATION * .65 * 60; i++) stepCharm(state, geometry, 1 / 60, charmWindForce(i / 60, 1));
 		expect(state.liftX).toBeGreaterThan(2);
 		expect(state.angle).toBeLessThan(0);
 		for (let i = 0; i < 1800; i++) stepCharm(state, geometry, 1 / 120);
+		expect(state).toEqual(createCharmState());
+	});
+	test.each([30, 60, 120])('a gust starts promptly and finishes within two seconds at %s fps', fps => {
+		const geometry = charmGeometry(60), state = createCharmState();
+		let firstMovement = Infinity, settledAt = Infinity, peak = 0;
+		for (let frame = 0; frame < fps * 4; frame++) {
+			const elapsed = (frame + 1) / fps;
+			const moving = stepCharm(state, geometry, 1 / fps, charmWindForce(elapsed, 1));
+			peak = Math.max(peak, state.liftX);
+			if (state.liftX > .5) firstMovement = Math.min(firstMovement, elapsed);
+			if (!moving && elapsed >= CHARM_WIND_DURATION) settledAt = Math.min(settledAt, elapsed);
+		}
+		expect(firstMovement).toBeLessThan(.7);
+		expect(settledAt).toBeLessThan(2);
+		expect(peak).toBeGreaterThan(5);
+		expect(peak).toBeLessThan(15);
 		expect(state).toEqual(createCharmState());
 	});
 	test.each([48, 60, 64])('keeps all rotated plate corners outside the note and inside its rail at width %s', width => {
 		const geometry = charmGeometry(width, 3, 110), state = createCharmState();
 		for (let i = 0; i < 800; i++) {
 			kickCharm(state, i % 2 ? 1600 : -1600);
-			stepCharm(state, geometry, 1 / 60, 600);
+			stepCharm(state, geometry, 1 / 60, charmWindForce(CHARM_WIND_DURATION / 2, 1));
 			const pose = getCharmPose(state, geometry), a = state.angle * Math.PI / 180;
 			expect(Math.hypot(pose.eyeX - geometry.anchorX, pose.eyeY - 4)).toBeLessThanOrEqual(60.001);
 			for (const x of [-width / 2, width / 2]) for (const y of [0, 110]) {
@@ -120,25 +161,34 @@ describe('approved acrylic endpoint motion', () => {
 		for (const sign of [-1, 1]) {
 			const state = createCharmState(); kickCharm(state, sign * 600);
 			expect(state.liftVX).toBeGreaterThan(0);
-			expect(Math.abs(state.liftVY)).toBeLessThanOrEqual(26);
+			expect(state.liftVY).toBeLessThan(0);
+			const extreme = createCharmState(); kickCharm(extreme, sign * 1_000_000);
+			expect(extreme.liftVX).toBe(state.liftVX);
+			expect(extreme.liftVY).toBe(state.liftVY);
 		}
 		const state = createCharmState(), scroll = { displacement: 1000, velocity: 600 };
 		expect(driveCharmScroll(state, scroll, 1)).toBe(false);
 		expect(scroll).toEqual(createCharmScrollState());
 		expect(state).toEqual(createCharmState());
 	});
-	test.each([-20, 20])('a single %spx scroll moves the charm outward before returning to rest', displacement => {
+	test.each([-20, 20])('a single %spx scroll moves the charm sideways and vertically before returning to rest', displacement => {
 		const geometry = charmGeometry(64), state = createCharmState();
 		const scroll = { ...createCharmScrollState(), displacement };
-		let peak = 0, active = true;
+		let peak = 0, highest = 0, previousY = 0, largestStep = 0, active = true;
 		for (let frame = 0; frame < 120; frame++) {
 			const driven = driveCharmScroll(state, scroll, 1 / 60);
 			const moving = stepCharm(state, geometry, 1 / 60);
 			active = driven || moving;
 			peak = Math.max(peak, state.liftX);
+			highest = Math.min(highest, state.liftY);
+			largestStep = Math.max(largestStep, Math.abs(state.liftY - previousY));
+			previousY = state.liftY;
 		}
-		expect(peak).toBeGreaterThan(.1);
-		expect(peak).toBeLessThan(1);
+		expect(peak).toBeGreaterThan(1);
+		expect(peak).toBeLessThan(12);
+		expect(highest).toBeLessThan(-2);
+		expect(highest).toBeGreaterThan(-12);
+		expect(largestStep).toBeLessThan(2);
 		expect(active).toBe(false);
 		expect(state).toEqual(createCharmState());
 	});
@@ -152,7 +202,7 @@ describe('approved acrylic endpoint motion', () => {
 			peak = Math.max(peak, state.liftX);
 		}
 		expect(peak).toBeGreaterThan(.5);
-		expect(peak).toBeLessThan(2);
+		expect(peak).toBeLessThan(20);
 		expect(state).toEqual(createCharmState());
 	});
 	test('gust fades to quiet at both ends and rejects nonfinite input', () => {

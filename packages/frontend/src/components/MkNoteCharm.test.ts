@@ -17,6 +17,11 @@ vi.mock('@/preferences.js', async () => {
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { _noteCharm: { lift: 'チャームを持ち上げる', lower: 'チャームを下ろす' } } } }));
 vi.mock('@/utility/media-proxy.js', () => ({ getStaticImageUrl: (url: string) => `${url}?static` }));
 vi.mock('@/utility/note-charm-image-cache.js', () => ({ acquireNoteCharmImage: async (url: string) => ({ url, release: () => {} }) }));
+vi.mock('@/utility/note-charm-artwork.js', async importOriginal => {
+	const artwork = await importOriginal<typeof import('@/utility/note-charm-artwork.js')>();
+	// Interaction tests do not need image decoding or network access.
+	return { ...artwork, loadCharmArtwork: async (_url: string, size: number, pattern: Parameters<typeof artwork.createCharmArtwork>[1]) => artwork.createCharmArtwork(size, pattern) };
+});
 
 const cleanup: (() => void)[] = [];
 
@@ -88,6 +93,91 @@ beforeEach(() => { prefer.r.animation.value = true; });
 afterEach(() => { cleanup.splice(0).forEach(fn => fn()); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('note charm interaction', () => {
+	test('offscreen ancestor resizes defer layout reads until the charm is visible again', async () => {
+		const intersections = new Map<Element, IntersectionObserverCallback>();
+		const resizes: { callback: ResizeObserverCallback; targets: Set<Element> }[] = [];
+		vi.stubGlobal('IntersectionObserver', class {
+			constructor(private callback: IntersectionObserverCallback) {}
+			observe(target: Element) { intersections.set(target, this.callback); }
+			disconnect() {}
+		});
+		vi.stubGlobal('ResizeObserver', class {
+			targets = new Set<Element>();
+			constructor(callback: ResizeObserverCallback) { resizes.push({ callback, targets: this.targets }); }
+			observe(target: Element) { this.targets.add(target); }
+			disconnect() { this.targets.clear(); }
+		});
+		const ancestor = window.document.createElement('div');
+		window.document.body.append(ancestor);
+		cleanup.push(() => ancestor.remove());
+		let top = 2000;
+		const rect = vi.fn(() => new DOMRect(100, top, 500, 200));
+		const { container, button } = mountCharm(ancestor, rect);
+		const visibility = intersections.get(container)!;
+		visibility([{ isIntersecting: false }] as IntersectionObserverEntry[], {} as IntersectionObserver);
+		await nextTick();
+		const styles = vi.spyOn(window, 'getComputedStyle');
+		rect.mockClear();
+		const affected = resizes.filter(observer => observer.targets.has(ancestor));
+		expect(affected).toHaveLength(1);
+		container.querySelector<HTMLElement>('span')!.style.setProperty('--MI_THEME-panel', '#123456');
+		for (const observer of affected) observer.callback([], {} as ResizeObserver);
+		await nextTick();
+		expect(styles).not.toHaveBeenCalled();
+		expect(rect).not.toHaveBeenCalled();
+		expect(button.closest<HTMLElement>('[data-note-charm-layer]')!.style.visibility).toBe('hidden');
+		// Positive control: re-entry must refresh the dirty geometry and theme.
+		top = 120;
+		visibility([{ isIntersecting: true }] as IntersectionObserverEntry[], {} as IntersectionObserver);
+		await nextTick();
+		expect(styles).toHaveBeenCalled();
+		expect(rect).toHaveBeenCalled();
+		expect(button.closest<HTMLElement>('[data-note-charm-layer]')!.style.visibility).toBe('visible');
+		expect(button.closest<HTMLElement>('[data-note-charm]')!.style.getPropertyValue('--MI_THEME-panel')).toBe('#123456');
+	});
+
+	test('a charm mounted in a hidden document observes its ancestors after returning', async () => {
+		let hidden = true;
+		vi.spyOn(window.document, 'hidden', 'get').mockImplementation(() => hidden);
+		const resizes: { callback: ResizeObserverCallback; targets: Set<Element> }[] = [];
+		vi.stubGlobal('ResizeObserver', class {
+			targets = new Set<Element>();
+			constructor(callback: ResizeObserverCallback) { resizes.push({ callback, targets: this.targets }); }
+			observe(target: Element) { this.targets.add(target); }
+			disconnect() { this.targets.clear(); }
+		});
+		const ancestor = window.document.createElement('div');
+		window.document.body.append(ancestor);
+		cleanup.push(() => ancestor.remove());
+		const { button } = mountCharm(ancestor, () => new DOMRect(100, 120, 500, 200));
+		const observer = resizes.find(observer => observer.targets.has(ancestor));
+		expect(observer).toBeDefined();
+		hidden = false;
+		window.document.dispatchEvent(new Event('visibilitychange'));
+		await nextTick();
+		expect(button.closest<HTMLElement>('[data-note-charm-layer]')!.style.visibility).toBe('visible');
+		ancestor.setAttribute('inert', '');
+		observer!.callback([], {} as ResizeObserver);
+		await nextTick();
+		expect(button.closest('[data-note-charm-layer]')!.hasAttribute('inert')).toBe(true);
+	});
+
+	test('a short clipped note keeps its full charm while outer scroll clipping remains', async () => {
+		const scroller = window.document.createElement('div');
+		scroller.style.overflowY = 'auto';
+		scroller.getBoundingClientRect = () => new DOMRect(0, 40, 700, 500);
+		window.document.body.append(scroller);
+		cleanup.push(() => scroller.remove());
+		const { container, button } = mountCharm(scroller, () => new DOMRect(100, 120, 500, 40));
+		container.style.overflow = 'clip';
+		window.dispatchEvent(new Event('resize'));
+		await nextTick();
+		const layer = button.closest<HTMLElement>('[data-note-charm-layer]')!;
+		expect(layer.style.top).toBe('40px');
+		expect(layer.style.height).toBe('500px');
+		expect(layer.style.visibility).toBe('visible');
+	});
+
 	test('resizing through mobile view forgets transitions from the removed source', async () => {
 		vi.stubGlobal('innerWidth', 1250);
 		const frames = new Map<number, FrameRequestCallback>();

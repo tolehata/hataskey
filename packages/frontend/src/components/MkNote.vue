@@ -1217,7 +1217,6 @@ function emitUpdReaction(emoji: string, delta: number) {
 	position: relative;
 	font-size: 1.05em;
 	overflow: clip;
-	&[data-note-charm-host='on'] { overflow: visible; contain: layout style; }
 	margin-bottom: 12px;
 	&::after {
 		content: "";

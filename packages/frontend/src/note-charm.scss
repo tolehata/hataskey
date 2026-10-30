@@ -10,9 +10,7 @@
 }
 
 [data-note-charm-host='on'] {
-	overflow: visible;
 	content-visibility: visible;
-	contain: layout style;
 }
 
 [data-note-charm-layout='on']:where([data-note-charm-compact='true']) {

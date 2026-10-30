@@ -22,6 +22,9 @@ async function styles(file: string, containerWidth?: number) {
 	expect(result.errors).toEqual([]);
 	const sheet = window.document.createElement('style');
 	const css = parseCss(result.code);
+	// The inline stylesheet is already Unicode. happy-dom otherwise drops the
+	// first qualified rule after Sass's @charset, including MkNote's root rule.
+	css.walkAtRules('charset', rule => { rule.remove(); });
 	if (containerWidth != null) {
 		// Supply the column size explicitly; the DOM shim has no container layout.
 		css.walkAtRules('container', rule => {
@@ -97,6 +100,45 @@ describe('note charm layout contracts', () => {
 		const layout = root.props.find(prop => prop.type === 7 && prop.name === 'bind' && prop.arg?.type === 4 && prop.arg.content === 'data-note-charm-layout');
 		expect(layout?.type === 7 && layout.exp?.type === 4 && layout.exp.content).toBe("charmLayout ? 'on' : null");
 		expect(root.children.some(node => node.type === 1 && node.tag === 'MkNoteCharm')).toBe(true);
+	});
+
+	test('the outside charm layer remains in a body teleport', () => {
+		const source = readFileSync(resolve(process.cwd(), 'src/components/MkNoteCharm.vue'), 'utf8');
+		const template = parse(source).descriptor.template!;
+		if (!template.ast) throw new Error('charm template missing');
+		const portal = template.ast.children.find(node => node.type === 1 && node.tag === 'Teleport');
+		if (portal?.type !== 1) throw new Error('charm teleport missing');
+		const target = portal.props.find(prop => prop.type === 6 && prop.name === 'to');
+		expect(target?.type === 6 && target.value?.content).toBe('body');
+		expect(portal.children.some(node => node.type === 1 && node.props.some(prop => prop.type === 6 && prop.name === 'data-note-charm-layer'))).toBe(true);
+	});
+
+	test.each(['MkNote.vue', 'MkNoteDetailed.vue'])('%s keeps its clipping and containment when a charm is equipped', async component => {
+		await styles('src/note-charm.scss');
+		const classes = await styles(`src/components/${component}`);
+		const host = window.document.createElement('div');
+		host.className = classes.root;
+		window.document.body.append(host);
+		cleanup.push(() => host.remove());
+		const containmentBefore = window.getComputedStyle(host).contain;
+		expect(window.getComputedStyle(host).overflow).toBe('clip');
+		if (component === 'MkNoteDetailed.vue') expect(containmentBefore).toBe('content');
+		host.dataset.noteCharmLayout = 'on';
+		host.dataset.noteCharmHost = 'on';
+		expect(window.getComputedStyle(host).overflow).toBe('clip');
+		expect(window.getComputedStyle(host).contain).toBe(containmentBefore);
+	});
+
+	test('the utage animation can still overflow an equipped note', async () => {
+		await styles('src/note-charm.scss');
+		const classes = await styles('src/components/MkNote.vue');
+		const host = window.document.createElement('div');
+		host.className = `${classes.root} ${classes.utageActive}`;
+		host.dataset.noteCharmLayout = 'on';
+		host.dataset.noteCharmHost = 'on';
+		window.document.body.append(host);
+		cleanup.push(() => host.remove());
+		expect(window.getComputedStyle(host).overflow).toBe('visible');
 	});
 
 	test('shared frame rules do not reserve horizontal space or change the box border', async () => {

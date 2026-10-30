@@ -15,6 +15,33 @@ function alphaFixture(width: number, height: number, rectangles: number[][]) {
 	return alpha;
 }
 
+function inspectedImageFixture(contentWidth: number, paddingAlpha: number) {
+	vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {
+		return {
+			drawImage() {},
+			getImageData: () => {
+				const data = new Uint8ClampedArray(this.width * this.height * 4);
+				const inspecting = this.width === 384 && this.height === 384;
+				const left = inspecting ? Math.floor((384 - contentWidth) / 2) : 30;
+				const top = inspecting ? left : 30;
+				const right = inspecting ? left + contentWidth : this.width - 30;
+				const bottom = inspecting ? right : this.height - 10;
+				for (let y = 0; y < this.height; y++) for (let x = 0; x < this.width; x++) {
+					data[(y * this.width + x) * 4 + 3] = x >= left && x < right && y >= top && y < bottom ? 255 : inspecting ? paddingAlpha : 0;
+				}
+				return { data };
+			},
+		} as unknown as CanvasRenderingContext2D;
+	});
+	vi.stubGlobal('Image', class {
+		naturalWidth = 4096;
+		naturalHeight = 4096;
+		onload: (() => void) | null = null;
+		onerror: (() => void) | null = null;
+		set src(_value: string) { queueMicrotask(() => this.onload?.()); }
+	});
+}
+
 describe('acrylic charm artwork', () => {
 	test('keeps the visible image inside the fallback plate and leaves space for its attachment hole', () => {
 		const artwork = createCharmArtwork(60, 'clear');
@@ -89,6 +116,28 @@ describe('acrylic charm artwork', () => {
 		expect(artwork.kind).toBe('plate');
 		expect(artwork.height).toBe(110);
 		expect(artwork.image).toEqual({ x: 6, y: 10, width: 48, height: 96 });
+	});
+
+	test.each([
+		[1, 0, 'clear'], [1, 15, 'clear'], [32, 0, 'clear'], [32, 15, 'clear'],
+		[1, 0, 'cutout'], [1, 15, 'cutout'], [32, 0, 'cutout'], [32, 15, 'cutout'],
+	] as const)('fits the whole image when %spx of content and alpha-%s padding would create an oversized %s filter surface', async (contentWidth, paddingAlpha, pattern) => {
+		inspectedImageFixture(contentWidth, paddingAlpha);
+		const artwork = await loadCharmArtwork(`https://example.test/padded-${contentWidth}-${paddingAlpha}-${pattern}.png`, 60, pattern);
+		expect(artwork.image.width).toBeLessThanOrEqual(60);
+		expect(artwork.image.height).toBeLessThanOrEqual(96);
+		expect(artwork.image.width).toBe(artwork.image.height);
+		expect(artwork.image.x).toBeGreaterThanOrEqual(0);
+		expect(artwork.image.y).toBeGreaterThanOrEqual(0);
+		expect(artwork.kind).toBe(pattern === 'cutout' ? 'cutout' : 'plate');
+	});
+
+	test.each(['clear', 'cutout'] as const)('keeps normal transparent-padding geometry and the %s outline', async pattern => {
+		inspectedImageFixture(128, 0);
+		const artwork = await loadCharmArtwork(`https://example.test/normal-padding-${pattern}.png`, 60, pattern);
+		expect(artwork.image.width).toBeCloseTo(pattern === 'cutout' ? 174 : 162);
+		expect(artwork.image.height).toBeCloseTo(artwork.image.width);
+		expect(artwork.kind).toBe(pattern === 'cutout' ? 'cutout' : 'silhouette');
 	});
 
 	test('shares one image request among repeated timeline charms and pattern-only changes', async () => {

@@ -923,7 +923,6 @@ function loadHistories() {
 	position: relative;
 	transition: box-shadow 0.1s ease;
 	overflow: clip;
-	&[data-note-charm-host='on'] { overflow: visible; contain: layout style; }
 	contain: content;
 
 	&:focus-visible {

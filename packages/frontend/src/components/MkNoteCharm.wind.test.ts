@@ -14,6 +14,7 @@ vi.mock('@@/js/config.js', () => ({ ui: 'default' }));
 vi.mock('@/preferences.js', async () => ({ prefer: { r: { animation: (await import('vue')).ref(true) } } }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: { _noteCharm: { lift: '持ち上げる', lower: '下ろす' } } } }));
 vi.mock('@/utility/media-proxy.js', () => ({ getStaticImageUrl: (url: string) => `${url}?static` }));
+vi.mock('@/utility/note-charm-image-cache.js', () => ({ acquireNoteCharmImage: async (url: string) => ({ url, release: () => {} }) }));
 // Isolate wind scheduling from image-network deadlines, tested by artwork tests.
 vi.mock('@/utility/note-charm-artwork.js', async importOriginal => {
 	const original = await importOriginal<typeof import('@/utility/note-charm-artwork.js')>();
@@ -27,6 +28,8 @@ let focused = true;
 let hidden = false;
 let reduced: MediaQueryList;
 const intersections = new Map<Element, IntersectionObserverCallback>();
+// Sample a moving charm after the first gust starts, regardless of gust duration.
+const firstGustActiveAt = 3000 + charmPhysics.CHARM_WIND_DURATION * 1000 * .65;
 
 beforeEach(() => {
 	vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
@@ -145,7 +148,7 @@ describe('periodic note charm wind', () => {
 
 	test('wind off preserves current inertia, then sleeps, while scroll still moves the charm', async () => {
 		const charm = await mountCharm();
-		await advance(4600);
+		await advance(firstGustActiveAt);
 		const angle = charm.angle();
 		expect(Math.abs(angle)).toBeGreaterThan(.5);
 		charm.props.wind = false;
@@ -163,7 +166,7 @@ describe('periodic note charm wind', () => {
 
 	test.each(['motion', 'animation', 'reduced'] as const)('%s stops wind and releases its timer', async gate => {
 		const charm = await mountCharm();
-		await advance(4600);
+		await advance(firstGustActiveAt);
 		expect(Math.abs(charm.angle())).toBeGreaterThan(.5);
 		if (gate === 'motion') charm.props.motion = false;
 		else if (gate === 'animation') prefer.r.animation.value = false;
@@ -177,7 +180,7 @@ describe('periodic note charm wind', () => {
 
 	test.each(['hidden', 'blur', 'offscreen', 'outside'] as const)('%s pauses wind without replaying an old gust on return', async gate => {
 		const charm = await mountCharm();
-		await advance(4600);
+		await advance(firstGustActiveAt);
 		expect(Math.abs(charm.angle())).toBeGreaterThan(.5);
 		if (gate === 'hidden') {
 			hidden = true;
@@ -208,7 +211,7 @@ describe('periodic note charm wind', () => {
 		}
 		await advance(1000);
 		expect(charm.angle()).toBe(0);
-		await advance(3600);
+		await advance(firstGustActiveAt - 1000);
 		expect(Math.abs(charm.angle())).toBeGreaterThan(.5);
 	});
 
@@ -220,7 +223,7 @@ describe('periodic note charm wind', () => {
 		expect(vi.getTimerCount()).toBe(0);
 		focused = true;
 		window.dispatchEvent(new Event('focus'));
-		await advance(4600);
+		await advance(firstGustActiveAt);
 		expect(Math.abs(charm.angle())).toBeGreaterThan(.5);
 	});
 
@@ -228,7 +231,7 @@ describe('periodic note charm wind', () => {
 		const first = await mountCharm();
 		const second = await mountCharm();
 		expect(vi.getTimerCount()).toBe(1);
-		await advance(4600);
+		await advance(firstGustActiveAt);
 		expect(Math.abs(first.angle())).toBeGreaterThan(.5);
 		expect(Math.abs(second.angle())).toBeGreaterThan(.5);
 		expect(frames.size).toBe(1);
@@ -241,7 +244,7 @@ describe('periodic note charm wind', () => {
 
 	test('holding a charm suspends wind until it is lowered', async () => {
 		const charm = await mountCharm();
-		await advance(4600);
+		await advance(firstGustActiveAt);
 		charm.button.click();
 		await nextTick();
 		const heldPose = charm.button.parentElement!.style.transform;
@@ -250,7 +253,7 @@ describe('periodic note charm wind', () => {
 		expect(charm.button.parentElement!.style.transform).toBe(heldPose);
 		expect(vi.getTimerCount()).toBe(0);
 		charm.button.click();
-		await advance(4600);
+		await advance(firstGustActiveAt);
 		expect(charm.button.getAttribute('aria-pressed')).toBe('false');
 		expect(Math.abs(charm.angle())).toBeGreaterThan(.5);
 	});
@@ -275,10 +278,10 @@ describe('periodic note charm wind', () => {
 
 	test('position updates do not postpone the first gust', async () => {
 		const charm = await mountCharm();
-		for (let n = 0; n < 46; n++) {
+		for (let elapsed = 0; elapsed < firstGustActiveAt; elapsed += 100) {
 			// A scroll event with zero displacement only repositions the portal.
 			charm.container.dispatchEvent(new Event('scroll'));
-			await advance(100);
+			await advance(Math.min(100, firstGustActiveAt - elapsed));
 		}
 		expect(Math.abs(charm.angle())).toBeGreaterThan(.5);
 		expect(vi.getTimerCount()).toBe(1);

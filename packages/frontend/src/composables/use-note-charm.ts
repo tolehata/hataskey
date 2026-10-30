@@ -376,14 +376,18 @@ export function useNoteCharm(options: {
 	}
 
 	function measure() {
-		reset();
 		contextDirty = true;
+		// All notes observe the growing timeline. Keep offscreen context dirty
+		// until re-entry instead of measuring every ancestor for every old note.
+		if (!visible.value) return;
+		reset();
 		position();
 	}
 
 	function refreshContext() {
 		const marker = source();
 		if (!marker) return;
+		const note = host();
 		const style = window.getComputedStyle(marker);
 		colorScheme = style.colorScheme;
 		stickyTop = Number.parseFloat(style.getPropertyValue('--MI-stickyTop')) || 0;
@@ -403,13 +407,24 @@ export function useNoteCharm(options: {
 			if (css.display === 'none' || css.visibility === 'hidden' || css.contentVisibility === 'hidden') sourceHidden = true;
 			const z = Number.parseInt(css.zIndex, 10);
 			if (Number.isFinite(z)) portalZ = Math.max(portalZ, z + 1);
-			if (ancestor !== window.document.body && ancestor !== window.document.documentElement && /(auto|scroll|hidden|clip)/.test(css.overflowY || css.overflow)) clipping.push(ancestor);
+			// The drawing is teleported outside its own note. Preserve clipping
+			// from the surrounding scroller, but not the note's shadow boundary.
+			if (ancestor !== note && ancestor !== window.document.body && ancestor !== window.document.documentElement && /(auto|scroll|hidden|clip)/.test(css.overflowY || css.overflow)) clipping.push(ancestor);
 		}
 		contextDirty = false;
 	}
 
 	function position() {
 		if (disposed) return;
+		if (!visible.value || window.document.hidden) {
+			const wasVisible = portalVisible;
+			portalVisible = false;
+			layerStyle.value = { ...layerStyle.value, visibility: 'hidden' };
+			tracking.delete(client);
+			positioning.delete(client);
+			if (wasVisible) reset(); else syncWind();
+			return;
+		}
 		if (contextDirty) refreshContext();
 		const note = host();
 		if (!note) return;
@@ -627,6 +642,7 @@ export function useNoteCharm(options: {
 
 	function observeSource() {
 		observer?.disconnect();
+		observer = undefined;
 		resize?.disconnect();
 		attributes?.disconnect();
 		transitions.clear();
@@ -639,15 +655,26 @@ export function useNoteCharm(options: {
 			layerStyle.value = { visibility: 'hidden' };
 			return;
 		}
+		// Collect observer targets without layout reads, even if the document
+		// is hidden and position() defers its first context refresh.
+		ancestors = [];
+		for (let ancestor = source()?.parentElement; ancestor; ancestor = ancestor.parentElement) ancestors.push(ancestor);
 		visible.value = true;
 		dispose = register(client, source());
 		measure();
 		if (typeof IntersectionObserver !== 'undefined' && options.rail.value) {
-			observer = new IntersectionObserver(entries => {
-				visible.value = entries[0]?.isIntersecting ?? false;
+			const sourceObserver = new IntersectionObserver(entries => {
+				// A disconnected observer can still have a queued notification.
+				if (disposed || observer !== sourceObserver) return;
+				// Each observer tracks one note. Zoom/resize changes can arrive
+				// together, so the final entry is the current visibility.
+				const latest = entries.at(-1);
+				if (!latest) return;
+				visible.value = latest.isIntersecting;
 				if (!visible.value) { tracking.delete(client); reset(); } else if (transitions.size && !window.document.hidden) { tracking.add(client); placeOnFrame(client); }
 				position();
 			});
+			observer = sourceObserver;
 			observer.observe(host()!);
 		}
 		if (typeof ResizeObserver !== 'undefined' && options.pendulum.value) {
@@ -663,7 +690,7 @@ export function useNoteCharm(options: {
 			}
 		}
 		if (typeof MutationObserver !== 'undefined') {
-			attributes = new MutationObserver(() => { contextDirty = true; if (!disposed) placeOnFrame(client); });
+			attributes = new MutationObserver(() => { contextDirty = true; if (!disposed && visible.value) placeOnFrame(client); });
 			for (const ancestor of ancestors) attributes.observe(ancestor, { attributes: true, attributeFilter: ['style', 'class', 'inert', 'hidden'] });
 		}
 	}

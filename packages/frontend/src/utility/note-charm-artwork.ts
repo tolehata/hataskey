@@ -25,6 +25,7 @@ type Asset = {
 };
 
 const SCALE = 3;
+const MAX_ASSET_EDGE = 384;
 const ASSET_CACHE_LIMIT = 32;
 const LAYOUT_CACHE_LIMIT = 64;
 const MAX_CONTOUR_EDGES = 8000;
@@ -219,7 +220,7 @@ function inspectAsset(image: HTMLImageElement): Asset | null {
 	if (!naturalWidth || !naturalHeight) return null;
 	const asset: Asset = { naturalWidth, naturalHeight, bounds: { x: 0, y: 0, width: naturalWidth, height: naturalHeight }, shaped: false, canvas: null };
 	try {
-		const ratio = Math.min(1, 384 / Math.max(naturalWidth, naturalHeight));
+		const ratio = Math.min(1, MAX_ASSET_EDGE / Math.max(naturalWidth, naturalHeight));
 		const canvas = window.document.createElement('canvas');
 		canvas.width = Math.max(1, Math.round(naturalWidth * ratio));
 		canvas.height = Math.max(1, Math.round(naturalHeight * ratio));
@@ -270,6 +271,19 @@ function getAsset(url: string): Promise<Asset | null> {
 }
 
 function fromAsset(asset: Asset, size: number, pattern: NoteCharm['pattern']): CharmArtwork {
+	const margin = pattern === 'cutout' ? 1 : asset.shaped ? 3 : 4;
+	const scale = Math.min((size - margin * 2) / asset.bounds.width, 96 / asset.bounds.height);
+	// The original <img> retains its transparent/low-alpha padding and shadows.
+	// Do not expand its CSS/filter surface beyond the raster we inspect. Extreme
+	// padding falls back to fitting the original image, preserving its animation.
+	if (Math.max(asset.naturalWidth, asset.naturalHeight) * scale > MAX_ASSET_EDGE) {
+		asset = {
+			...asset,
+			bounds: { x: 0, y: 0, width: asset.naturalWidth, height: asset.naturalHeight },
+			shaped: false,
+			canvas: null,
+		};
+	}
 	const artwork = plate(size, pattern, asset);
 	if (!asset.shaped || !asset.canvas) return artwork;
 	try {
