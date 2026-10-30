@@ -533,7 +533,7 @@
       <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{ i18n.ts._hata._hatask._records.archiveTitle }}</h3><p class="htk-flower-summary">{{ i18n.ts._hata._hatask._records.archiveDescription }}</p></div></header>
       <ul class="htk-record-archive-list">
         <li v-for="entry in flowerState.zukan.archivedEntries.slice(0, archiveVisibleCount)" :key="entry.id">
-          <details><summary><span aria-hidden="true">{{ entry.emoji }}</span> {{ entry.nickname || entry.name }} <time :datetime="entry.harvestedAt">{{ entry.harvestedAt.slice(0, 10) }}</time></summary>
+          <details><summary><HataskEmoji :emoji="entry.emoji"/> {{ entry.nickname || entry.name }} <time :datetime="entry.harvestedAt">{{ entry.harvestedAt.slice(0, 10) }}</time></summary>
             <dl><div><dt>{{ i18n.ts._hata._hatask._records.archiveName }}</dt><dd>{{ entry.name }}</dd></div>
             <div><dt>{{ i18n.ts._hata._hatask._records.archiveMeaning }}</dt><dd>{{ entry.hanakotoba }}</dd></div>
             <div><dt>{{ i18n.ts._hata._hatask._records.archiveMemory }}</dt><dd>{{ entry.memory?.join('、') || '—' }}</dd></div></dl>

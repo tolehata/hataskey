@@ -29,18 +29,37 @@ describe('hataskEmojiSources', () => {
 		]);
 	});
 
-	test('Hatask本体・花ウィジェット・HataSideStudioで動的絵文字を画像描画する', () => {
-		const sources = [
+	test('Hatask本体・花の各画面・ウィジェット・サイドバーで動的絵文字を画像描画する', () => {
+		const files = [
 			'src/pages/hatask.vue',
 			'src/widgets/WidgetHataskFlowers.vue',
 			'src/components/HataSideStudioFlowers.vue',
-		].map(readFrontendFile);
+			'src/components/hataskey3/Hk3RightPane.vue',
+			'src/components/hatask/HataskFlowerCare.vue',
+			'src/components/hatask/HataskFlowerZukan.vue',
+			'src/components/hatask/HataskFlowerStream.vue',
+			'src/components/hatask/HataskFlowerCollection.vue',
+			'src/components/hatask/HataskFlowerDetail.vue',
+			'src/components/hatask/HataskBloomDialog.vue',
+		];
 
-		for (const source of sources) {
-			expect(source).toContain('<HataskEmoji');
+		for (const file of files) {
+			const source = readFrontendFile(file);
+			expect(source.includes('<HataskEmoji'), file).toBe(true);
 			const directEmojiInterpolations = source.match(/\{\{[^}]*(?:emoji|Emoji)[^}]*\}\}/g) ?? [];
-			expect(directEmojiInterpolations.every((match) => match.includes('copy.emoji'))).toBe(true);
+			expect(directEmojiInterpolations.filter(match => !match.includes('copy.emoji')), file).toEqual([]);
 		}
+	});
+
+	test.each([
+		'src/components/hatask/HataskAkatsukiLayout.vue',
+		'src/components/hatagoes/HatagoesHome.vue',
+	])('%s の花も画像で描画し、本文中の文字へ戻さない', file => {
+		const source = readFrontendFile(file);
+		// These shells also contain journal text; inspect the flower data only.
+		const directFlowerInterpolations = source.match(/\{\{[^}]*\.flower(?:\?)?\.emoji[^}]*\}\}/g) ?? [];
+		expect(directFlowerInterpolations).toEqual([]);
+		expect(source.includes('<HataskEmoji')).toBe(true);
 	});
 
 	test('専用コンポーネントは画像が全滅してもOSネイティブ絵文字へ戻さない', () => {

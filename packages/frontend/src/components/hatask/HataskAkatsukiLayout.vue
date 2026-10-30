@@ -170,7 +170,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 										<div class="hak-actions"><button type="button" class="hak-action-button" @click="navigate('meal')">{{ copy.openMeals }}<i class="ti ti-arrow-right" aria-hidden="true"></i></button></div>
 									</div>
 									<div v-else-if="pane.id === 'flower'">
-										<button v-if="model.flower" class="hak-side-row hak-flower-row" type="button" @click="navigate('garden')"><span v-if="model.flower.emoji" class="hak-flower-emoji">{{ model.flower.emoji }}</span><i v-else class="ti ti-flower" aria-hidden="true"></i><span class="hak-side-row-main"><strong>{{ model.flower.name }}</strong><small><template v-if="flowerProgress !== null">{{ flowerProgress }}%<template v-if="model.flower.detail"> ・ </template></template>{{ model.flower.detail }}</small></span></button>
+										<button v-if="model.flower" class="hak-side-row hak-flower-row" type="button" @click="navigate('garden')"><HataskEmoji v-if="model.flower.emoji" :emoji="model.flower.emoji" class="hak-flower-emoji"/><i v-else class="ti ti-flower" aria-hidden="true"></i><span class="hak-side-row-main"><strong>{{ model.flower.name }}</strong><small><template v-if="flowerProgress !== null">{{ flowerProgress }}%<template v-if="model.flower.detail"> ・ </template></template>{{ model.flower.detail }}</small></span></button>
 										<p v-else class="hak-empty" role="status">{{ copy.flowerUnavailable }}</p>
 									</div>
 								</template>
@@ -195,7 +195,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div v-else-if="model.week?.length" class="hak-week" :aria-label="copy.weekMood"><button v-for="day in model.week" :key="day.id" class="hak-week-day" type="button" :data-today="day.today" :data-pending="day.pending" :aria-label="`${day.label} ${day.description}`" @click="navigate('mood')"><span>{{ day.label }}</span><span v-if="day.emoji" class="hak-week-emoji">{{ day.emoji }}</span><i v-else :class="day.icon || 'ti ti-point'" aria-hidden="true"></i></button></div>
 				</section>
 				<template v-if="!model.loading">
-					<button v-if="model.flower" class="hak-side-row hak-flower-row hak-side-case" type="button" @click="navigate('garden')"><span v-if="model.flower.emoji" class="hak-flower-emoji">{{ model.flower.emoji }}</span><i v-else class="ti ti-flower" aria-hidden="true"></i><span class="hak-side-row-main"><strong>{{ model.flower.name }}</strong><small><template v-if="flowerProgress !== null">{{ flowerProgress }}%<template v-if="model.flower.detail"> ・ </template></template>{{ model.flower.detail }}</small></span></button>
+					<button v-if="model.flower" class="hak-side-row hak-flower-row hak-side-case" type="button" @click="navigate('garden')"><HataskEmoji v-if="model.flower.emoji" :emoji="model.flower.emoji" class="hak-flower-emoji"/><i v-else class="ti ti-flower" aria-hidden="true"></i><span class="hak-side-row-main"><strong>{{ model.flower.name }}</strong><small><template v-if="flowerProgress !== null">{{ flowerProgress }}%<template v-if="model.flower.detail"> ・ </template></template>{{ model.flower.detail }}</small></span></button>
 					<div v-if="model.mealSummary" class="hak-side-row hak-meal-row hak-side-case"><i class="ti ti-soup" aria-hidden="true"></i><span class="hak-side-row-main">{{ mealSummary }}</span><button class="hak-small-button" type="button" @click="dispatch({ type: 'record-meal' })">{{ copy.recordButton }}</button></div>
 					<div v-if="model.streakLabel" class="hak-side-row hak-streak hak-side-case"><i class="ti ti-flame" aria-hidden="true"></i><span class="hak-side-row-main">{{ model.streakLabel }}</span><span v-if="model.rankLabel" class="hak-rank hak-num">{{ model.rankLabel }}</span></div>
 					<div v-if="model.eye" class="hak-side-eye hak-round hak-side-case">{{ model.eye.text }}<small v-if="model.eye.number !== undefined" class="hak-num"> — EYE {{ model.eye.number }}</small></div>
@@ -225,6 +225,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script setup lang="ts">
 import { computed, inject, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, onUpdated, ref, shallowRef, useId, watch } from 'vue';
 import HataAppLogo from '@/components/HataAppLogo.vue';
+import HataskEmoji from '@/components/HataskEmoji.vue';
 import HataFeatureIcon from '@/components/HataFeatureIcon.vue';
 import { hataFeatureForHataskApp } from '@/utility/hata-feature-icon.js';
 import HataAppWordmark from '@/components/HataAppWordmark.vue';

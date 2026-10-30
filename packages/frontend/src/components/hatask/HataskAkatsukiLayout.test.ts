@@ -9,6 +9,10 @@ import { compileStyleAsync, parse } from '@vue/compiler-sfc';
 import { computed, createApp, defineComponent, h, KeepAlive, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 vi.mock('@/i18n.js', async () => ({ i18n: (await import('@/utility/hatask-test-i18n.js')).createTestHataskI18n() }));
+vi.mock('@/preferences.js', async () => {
+	const { ref: preferenceRef } = await import('vue');
+	return { prefer: { r: { emojiStyle: preferenceRef('twemoji') } } };
+});
 import HataskAkatsukiLayout from './HataskAkatsukiLayout.vue';
 import type { App } from 'vue';
 import type { HataskAkatsukiFavoriteId, HataskAkatsukiHomeSectionId, HataskAkatsukiLayoutProps } from './hatask-akatsuki-types.js';
@@ -17,6 +21,7 @@ import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey } from 
 import { getHataskDaylightStyle } from '@/utility/hatask-daylight.js';
 import { globalEvents } from '@/events.js';
 import { buildHataskAkatsukiModel } from '@/utility/hatask-akatsuki.js';
+import { prefer } from '@/preferences.js';
 
 const mounted: { app: App<Element>; container: HTMLDivElement }[] = [];
 let size = { width: 1200, height: 800 };
@@ -25,6 +30,7 @@ let resizeCallbacks: (() => void)[] = [];
 let motionCallbacks: (() => void)[] = [];
 
 beforeEach(() => {
+	prefer.r.emojiStyle.value = 'twemoji';
 	size = { width: 1200, height: 800 };
 	prefersReducedMotion = false;
 	resizeCallbacks = [];
@@ -179,6 +185,31 @@ function observeTabMotion(container: ParentNode) {
 }
 
 describe('HataskAkatsukiLayout', () => {
+	test.each([
+		['light', 'twemoji', '/twemoji/1f33c.svg'],
+		['dark', 'twemoji', '/twemoji/1f33c.svg'],
+		['light', 'native', '/twemoji/1f33c.svg'],
+		['dark', 'native', '/twemoji/1f33c.svg'],
+		['light', 'fluentEmoji', '/fluent-emoji/1f33c.png'],
+		['dark', 'fluentEmoji', '/fluent-emoji/1f33c.png'],
+	] as const)('季の %s・%s 設定でホームとサイドの同じ花を画像描画する', async (mode, style, expected) => {
+		prefer.r.emojiStyle.value = style;
+		const model = { ...sideModel(), flower: { name: 'ヒナギク', emoji: '🌼', progress: 45 }, home: { ...adaptiveHome(), favorites: ['flower'] as HataskAkatsukiFavoriteId[] } };
+		const { container } = await mountLayout({ mode, model });
+		container.classList.add('htk-root');
+		container.dataset.theme = 'kisetsu';
+		container.dataset.mode = mode;
+		const flowers = [...container.querySelectorAll('.hak-flower-emoji')];
+		expect(flowers).toHaveLength(2);
+		for (const flower of flowers) {
+			expect(flower.tagName).toBe('IMG');
+			expect(flower.getAttribute('src')).toBe(expected);
+			expect(flower.getAttribute('aria-hidden')).toBe('true');
+		}
+		expect(required(container, '.hak-side').textContent).not.toContain('🌼');
+		expect(required(container, '[data-home-panel="flower"]').textContent).not.toContain('🌼');
+	});
+
 	test.each([599, 600, 1200])('表示を選ぶは幅%sでも所定の隣接位置にあり、同じ編集画面を開く', async width => {
 		size = { width, height: 844 };
 		const { container } = await mountLayout({ model: { home: adaptiveHome('calendar') } });
