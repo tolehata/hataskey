@@ -7,18 +7,19 @@ import { createApp, defineComponent, h, nextTick, computed, ref as createRef } f
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import MkHataWhatsNew from './MkHataWhatsNew.vue';
 import HataFeedHome from './HataFeedHome.vue';
-import NotificationPreview from './hata-whats-new/NotificationPreview.vue';
 import HataigoShowcase from './hata-whats-new/HataigoShowcase.vue';
-import { sampleIssues, sampleRequests, sampleActivity } from './hata-whats-new/samples.js';
 import type { Locale } from '../../../../locales/index.js';
+import type * as Misskey from 'cherrypick-js';
 import type { App, PropType } from 'vue';
+import type { HataFeedHomeIssue, HataFeedHomeActivity } from '@/utility/hatafeed-home.js';
+import type { HataFeedEmojiRequest } from '@/utility/hatafeed.js';
 import { prefer } from '@/preferences.js';
 import { store } from '@/store.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatadyNotice, hatadyNotify } from '@/utility/hatady-ui.js';
 import { createHataskeyNotificationToasts, getNotificationPageContext, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { hataFeedNotify, registerHataFeedNoticeHost } from '@/utility/hatafeed-ui.js';
-import { getHataWhatsNewStories } from '@/utility/hata-whats-new.js';
+import { getHataWhatsNewStories, HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
 
 vi.mock('@/i18n.js', async () => {
 	const { I18n } = await import('@@/js/i18n.js');
@@ -38,7 +39,6 @@ vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn(() => { throw new Error('Introductions must not request real records'); }) }));
 vi.mock('@/utility/hatakyu-assets.js', () => ({ useHatakyuBranding: () => true, hatakyuAssetUrl: (key: string) => `/client-assets/hatakyu/${key}.png` }));
 vi.mock('@/components/MkHatakyuIllustration.vue', () => ({ default: { template: '<img alt="" data-mascot>' } }));
-vi.mock('./hata-whats-new/UiS2Feature.vue', () => ({ default: { props: ['scene', 'motion'], template: '<div data-feature-mock inert aria-hidden="true">Hataskey UI S 2 scene {{ scene }}</div>' } }));
 vi.mock('./hatagoes/motion/HatagoesMergeMotion.vue', () => ({ default: { props: ['active', 'loop'], template: '<div :data-merge-active="active">HataGoes Merge</div>' } }));
 const routerPush = vi.hoisted(() => vi.fn());
 vi.mock('@/router.js', () => ({ mainRouter: { pushByPath: routerPush } }));
@@ -66,7 +66,6 @@ vi.mock('@/components/MkModal.vue', async () => {
 
 let app: App | undefined, host: HTMLDivElement;
 let bodyHeight: number, width: number, hidden: boolean;
-let resizeCallbacks: Set<() => void>;
 let motions: Array<{ element: HTMLElement; frames: Keyframe[]; options: KeyframeAnimationOptions; cancel: () => void; finish: () => void; done: boolean }>;
 let motionListeners: Set<() => void>;
 let animateDescriptor: PropertyDescriptor | undefined;
@@ -80,7 +79,20 @@ let modalCloseCalls: number;
 let deferModalClose: boolean;
 let closed: ReturnType<typeof vi.fn>;
 
-const approvedIds = ['hataigo', 'release-notes'];
+const twoPageIds = ['hataigo', 'release-notes'];
+
+const user: Misskey.entities.UserLite = { id: 'intro-sample-owner', name: 'こはる', username: 'koharu', host: null, avatarUrl: '', avatarBlurhash: null, avatarDecorations: [], isLocked: false, emojis: {}, onlineStatus: 'unknown' };
+const date = new Date(2026, 8, 14, 10, 24).toISOString();
+const sampleIssues: HataFeedHomeIssue[] = [
+	{ id: 'intro-feed-1', number: 42, title: '小さな画面でも、予定を見やすく', category: 'improvement', status: 'inProgress', commentsCount: 3, agreementsCount: 8 },
+	{ id: 'intro-feed-2', number: 43, title: '本棚の絞り込み条件を覚えてほしい', category: 'featureRequest', status: 'open', commentsCount: 2, agreementsCount: 5 },
+	{ id: 'intro-feed-3', number: 44, title: 'イシュー検索を使いやすく', category: 'improvement', status: 'planned', commentsCount: 1, agreementsCount: 4 },
+].map(issue => ({ ...issue, createdBy: user, createdAt: date, pinned: false, closed: false, assignees: [] })) as HataFeedHomeIssue[];
+const sampleRequests: HataFeedEmojiRequest[] = ['hatakyu', 'hatakyu_yay'].map((name, index) => ({ id: `intro-emoji-${index}`, name, status: index ? 'approved' : 'pending', createdAt: date, imageUrl: '/client-assets/hatakyu/treasureFound.png', requestedBy: user, category: null, aliases: [], license: 'AGPL-3.0-only', localOnly: false, isSensitive: false, sourceType: 'upload', originalUrl: null, remoteHost: null, resolvedComment: null, resolvedById: null, resolvedAt: null, resolvedEmojiId: null }));
+const sampleActivity: HataFeedHomeActivity[] = [
+	{ key: 'intro-feed-activity-1', user, verb: 'がコメントしました', label: sampleIssues[0].title, issueId: sampleIssues[0].id, time: date },
+	{ key: 'intro-feed-activity-2', user: { ...user, id: 'intro-feed-aoi', name: 'あおい' }, verb: 'が報告しました', label: sampleIssues[1].title, issueId: sampleIssues[1].id, time: date },
+];
 
 async function flush() { for (let i = 0; i < 10; i++) await nextTick(); }
 
@@ -104,16 +116,22 @@ function requiredElement<T extends Element = HTMLElement>(selector: string, pare
 
 async function next() { requiredElement<HTMLButtonElement>('[aria-label="次へ"]').click(); await flush(); }
 
+// The shipped notice has one page. Paging and the HataIgo showcase remain supported, so keep them on a two-page fixture.
+function withHataigoPage() {
+	const groups = HATA_WHATS_NEW.groups;
+	HATA_WHATS_NEW.groups = [{ label: 'HataIgo', title: '一局、打ちませんか。', feature: 'hataigo', cards: [{ id: 'hataigo', label: 'HataIgo', icon: 'ti ti-circles', title: 'HataIgo' }] }, ...groups];
+	cleanups.push(() => { HATA_WHATS_NEW.groups = groups; });
+}
+
 beforeEach(() => {
 	bodyHeight = 600; width = 870; hidden = false; reduced = false; errors = []; cleanups = [];
 	autoOpen = true;
 	deferModalClose = false; modalCloseCalls = 0; modalFinishClose = () => {};
 	closed = vi.fn();
-	resizeCallbacks = new Set(); motionListeners = new Set(); motions = [];
+	motionListeners = new Set(); motions = [];
 	vi.clearAllMocks();
 	prefer.r.animation.value = false; store.r.darkMode.value = false; hatadyNotice.value = null;
 	vi.stubGlobal('matchMedia', () => ({ get matches() { return reduced; }, addEventListener: (_: string, cb: () => void) => motionListeners.add(cb), removeEventListener: (_: string, cb: () => void) => motionListeners.delete(cb) }));
-	vi.stubGlobal('ResizeObserver', class { constructor(private callback: () => void) {} observe() { resizeCallbacks.add(this.callback); } disconnect() { resizeCallbacks.delete(this.callback); } unobserve() {} });
 	vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} });
 	vi.spyOn(window.document, 'hidden', 'get').mockImplementation(() => hidden);
 	vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => width);
@@ -135,13 +153,13 @@ afterEach(async () => {
 	if (animateDescriptor) Object.defineProperty(HTMLElement.prototype, 'animate', animateDescriptor);
 	else Reflect.deleteProperty(HTMLElement.prototype, 'animate');
 	expect(errors).toEqual([]);
-	expect(resizeCallbacks.size).toBe(0);
 	expect(motionListeners.size).toBe(0);
 	vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 
 describe('production update introduction', () => {
 	test('Introduce completes before the first story mounts and does not replay while paging', async () => {
+		withHataigoPage();
 		prefer.r.animation.value = true;
 		autoOpen = false;
 		await mount();
@@ -199,6 +217,7 @@ describe('production update introduction', () => {
 		expect(motions.length).toBe(count);
 	});
 	test.each(['preference', 'reduced', 'hidden'])('%s initially skips Introduce and immediately makes the first page usable', async (setting) => {
+		withHataigoPage();
 		prefer.r.animation.value = setting !== 'preference'; reduced = setting === 'reduced'; hidden = setting === 'hidden';
 		await mount();
 		expect(host.querySelector('[data-release-opening]')).toBeNull();
@@ -209,6 +228,7 @@ describe('production update introduction', () => {
 		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
 	});
 	test.each(['reduced', 'hidden'])('%s during Introduce settles to readable content without replaying on return', async (setting) => {
+		withHataigoPage();
 		prefer.r.animation.value = true;
 		await mount();
 		expect(host.querySelector('[data-release-opening]')).not.toBeNull();
@@ -236,7 +256,24 @@ describe('production update introduction', () => {
 		expect(motions.length).toBe(count);
 		expect(host.querySelector('[data-story]')).toBeNull();
 	});
-	test('the two release pages keep focus and show the release-notes link', async () => {
+	test('the shipped single page keeps focus and finishes with the release-notes link', async () => {
+		await mount();
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-13.0)');
+		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('release-notes');
+		expect(requiredElement('[data-story] h2').textContent).toBe('詳しくはリリースノートをご確認ください');
+		const link = requiredElement<HTMLAnchorElement>('[data-story] a');
+		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-130');
+		expect(link.target).toBe('_blank');
+		expect(link.rel).toBe('noopener noreferrer');
+		expect(host.querySelector('footer')?.textContent).toContain('1 / 1');
+		expect(host.querySelector('[aria-label="次へ"]')).toBeNull();
+		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
+		expect(requiredElement<HTMLButtonElement>('footer > button:last-child').textContent).toContain('わかった');
+		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
+	});
+
+	test('a two-page notice shows the HataIgo showcase before the release-notes link', async () => {
+		withHataigoPage();
 		await mount();
 		expect(requiredElement('[data-story] h2').textContent).toBe('一局、打ちませんか。');
 		const showcase = requiredElement('[data-hataigo-showcase]');
@@ -249,13 +286,14 @@ describe('production update introduction', () => {
 		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('release-notes');
 		expect(requiredElement('[data-story] h2').textContent).toBe('詳しくはリリースノートをご確認ください');
 		const link = requiredElement<HTMLAnchorElement>('[data-story] a');
-		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-129');
+		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-130');
 		expect(link.target).toBe('_blank');
 		expect(link.rel).toBe('noopener noreferrer');
 		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
 	});
 
 	test.each([600, 380])('two pages preserve live notification ownership at body height %s', async height => {
+		withHataigoPage();
 		bodyHeight = height;
 		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
 		cleanups.push(registerNotificationPageContext(context, () => true));
@@ -263,7 +301,7 @@ describe('production update introduction', () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
-		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.9)');
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-13.0)');
 		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hataigo');
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		store.r.darkMode.value = true; await flush();
@@ -280,7 +318,7 @@ describe('production update introduction', () => {
 			expect(getNotificationPageContext()).toBe(context);
 			if (pageNumber === 1) { requiredElement<HTMLElement>('[role="region"]').scrollTop = 72; await next(); expect(requiredElement<HTMLElement>('[role="region"]').scrollTop).toBe(0); }
 		}
-		expect(seen).toEqual(approvedIds);
+		expect(seen).toEqual(twoPageIds);
 		expect(host.querySelector('[aria-label="次へ"]')).toBeNull();
 		hataFeedNotify('本体での更新'); expect(received).toHaveBeenCalledWith('本体での更新');
 		expect(closed).not.toHaveBeenCalled();
@@ -292,16 +330,17 @@ describe('production update introduction', () => {
 	});
 
 	test('resizing keeps the same two pages and active story', async () => {
+		withHataigoPage();
 		bodyHeight = 380; width = 390;
 		await mount();
 		for (const height of [600, 469, 470, 380]) {
-			bodyHeight = height; resizeCallbacks.forEach(callback => callback()); await flush();
+			bodyHeight = height; window.dispatchEvent(new Event('resize')); await flush();
 			expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hataigo');
 			expect(host.querySelector('footer')?.textContent).toContain('/ 2');
 		}
 		await next();
 		for (const height of [600, 380]) {
-			bodyHeight = height; resizeCallbacks.forEach(callback => callback()); await flush();
+			bodyHeight = height; window.dispatchEvent(new Event('resize')); await flush();
 			expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('release-notes');
 			expect(host.querySelector('footer')?.textContent).toContain('/ 2');
 		}
@@ -310,7 +349,7 @@ describe('production update introduction', () => {
 	test('finishing the notice emits closed once and leaves persistence to the caller', async () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
-		for (let pageNumber = 1; pageNumber < getHataWhatsNewStories(bodyHeight).length; pageNumber++) await next();
+		for (let pageNumber = 1; pageNumber < getHataWhatsNewStories().length; pageNumber++) await next();
 		expect(closed).not.toHaveBeenCalled();
 		const finish = requiredElement<HTMLButtonElement>('footer > button:last-child');
 		expect(finish.textContent).toContain('わかった');
@@ -352,12 +391,14 @@ describe('production update introduction', () => {
 		expect(closed).toHaveBeenCalledTimes(1);
 	});
 	test.each(['preference', 'reduced', 'hidden'])('%s disables modal motion for the update notice', async setting => {
+		withHataigoPage();
 		prefer.r.animation.value = setting !== 'preference'; reduced = setting === 'reduced'; hidden = setting === 'hidden';
 		await mount();
 		expect(requiredElement('[data-modal]').getAttribute('data-motion-preset')).toBe('none');
 		expect(requiredElement('[data-hataigo-showcase]').querySelectorAll('svg [data-color]')).toHaveLength(16);
 	});
 	test('the HataIgo start button closes the notice once and opens HataIgo', async () => {
+		withHataigoPage();
 		routerPush.mockClear();
 		await mount();
 		const start = [...host.querySelectorAll<HTMLButtonElement>('[data-hataigo-showcase] button')].find(button => button.textContent.includes('HataIgoをはじめる'));
@@ -393,6 +434,7 @@ describe('production update introduction', () => {
 		}
 	});
 	test('back/forward labels stay accessible while visible buttons are icons, and motion stops on close', async () => {
+		withHataigoPage();
 		prefer.r.animation.value = true;
 		await mount(); await finishMotion();
 		expect(motions.length).toBeGreaterThan(0);
@@ -406,6 +448,7 @@ describe('production update introduction', () => {
 		expect(motions.every(item => item.done)).toBe(true);
 	});
 	test('reduced motion and a hidden document settle finite entrances without replay loops', async () => {
+		withHataigoPage();
 		prefer.r.animation.value = true;
 		await mount();
 		reduced = true; motionListeners.forEach(listener => listener()); await flush();
@@ -436,75 +479,41 @@ describe('production update introduction', () => {
 		expect(pending).toBeDefined();
 		requiredElement<HTMLButtonElement>('button', pending).click(); expect(approve).toHaveBeenCalledWith(sampleRequests[0]);
 	});
-	test('the notification example pauses offscreen and on hover, finishes once, and releases its clock', async () => {
-		let frameId = 0, now = 0;
-		const frames = new Map<number, FrameRequestCallback>();
-		vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.set(++frameId, callback); return frameId; });
-		vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
-		const advance = () => { now += 80; const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback(now)); };
-		app = createApp(NotificationPreview, { motion: true }); globals(app); app.mount(host); await flush();
-		expect(frames.size).toBeGreaterThan(0); advance();
-		requiredElement('[aria-hidden="true"]').dispatchEvent(new Event('pointerenter')); await flush();
-		expect(frames.size).toBe(0);
-		requiredElement('[aria-hidden="true"]').dispatchEvent(new Event('pointerleave')); await flush();
-		expect(frames.size).toBeGreaterThan(0);
-		hidden = true; window.document.dispatchEvent(new Event('visibilitychange')); await flush();
-		expect(frames.size).toBe(0);
-		hidden = false; window.document.dispatchEvent(new Event('visibilitychange')); await flush();
-		for (let count = 0; count < 200 && frames.size; count++) { advance(); await flush(); }
-		expect(frames.size).toBe(0);
-		requiredElement('[aria-hidden="true"]').dispatchEvent(new Event('pointerleave')); await flush();
-		expect(frames.size).toBe(0);
-		app.unmount(); app = undefined;
-		window.document.dispatchEvent(new Event('visibilitychange')); await flush();
-		expect(frames.size).toBe(0);
-	});
 	test('all CSS Module references resolve and the header uses balanced columns inside a centered panel', async () => {
 		const folder = path.join(process.cwd(), 'src/components');
 		const css = fs.readFileSync(path.join(folder, 'hata-whats-new/release.module.css'), 'utf8');
 		const compiled = await compileStyleAsync({ source: css, filename: 'release.module.css', id: 'release', modules: true });
 		expect(compiled.errors).toEqual([]);
-		const sources = ['MkHataWhatsNew.vue', ...['UpdatePreview.vue', 'HataskShowcase.vue', 'HatadyShowcase.vue', 'HataFeedShowcase.vue', 'HataIntroShowcase.vue', 'NotificationPreview.vue'].map(name => `hata-whats-new/${name}`)].map(name => fs.readFileSync(path.join(folder, name), 'utf8')).join('\n');
+		const sources = fs.readFileSync(path.join(folder, 'MkHataWhatsNew.vue'), 'utf8');
 		const missing = (source: string) => [...source.matchAll(/\$style\.([\w]+)/g)].map(match => match[1]).filter(name => !compiled.modules?.[name]);
 		expect(missing(`${sources}\n$style.missingExample`)).toContain('missingExample');
 		expect(missing(sources)).toEqual([]);
 		const centered = (source: string) => /\.releaseHeader\s*\{[^}]*grid-template-columns:\s*44px minmax\(0, 1fr\) 44px/.test(source) && /\.releaseHeading\s*\{[^}]*justify-content:\s*center/.test(source) && /\.releasePanel\s*\{[^}]*margin:\s*auto/.test(source);
 		expect(centered(css.replaceAll('44px minmax(0, 1fr) 44px', '1fr auto'))).toBe(false);
 		expect(centered(css)).toBe(true);
-		expect(css).toContain('mask-image: linear-gradient(to bottom');
 		expect(css).toContain('.releaseBody { overflow-y: auto; overflow-x: hidden;');
-		expect(css).toContain('.sceneTabs button[aria-current=\'step\']');
 	});
-	test('narrow or short containers hide decorative previews and keep a single copy column', async () => {
+	test('narrow and short containers retain readable release content and allow body scrolling', async () => {
 		const css = fs.readFileSync(path.join(process.cwd(), 'src/components/hata-whats-new/release.module.css'), 'utf8');
 		const contract = async (source: string) => {
 			const compiled = await compileStyleAsync({ source, filename: 'release.module.css', id: 'release', modules: true });
 			expect(compiled.errors).toEqual([]);
 			expect(compiled.rawResult?.root).toBeDefined();
-			const result = { narrowHidden: false, shortHidden: false, narrowSingle: false, shortSingle: false };
+			const result = { narrowPadding: false, shortStartsAtTop: false, compactPadding: false };
 			compiled.rawResult?.root.walkAtRules('container', container => {
 				const query = container.params.replaceAll(/\s/g, '');
-				if (query !== 'release(max-width:620px)' && query !== 'release-body(max-height:620px)') return;
 				container.walkRules(rule => {
-					if (compiled.modules?.updatePreview && rule.selector.includes(`.${compiled.modules.updatePreview}`)) {
-						rule.walkDecls('display', declaration => {
-							if (declaration.value !== 'none') return;
-							if (query === 'release(max-width:620px)') result.narrowHidden = true;
-							else result.shortHidden = true;
-						});
-					}
-					if (compiled.modules?.updateCard && rule.selector.includes(`.${compiled.modules.updateCard}`)) {
-						rule.walkDecls('grid-template', declaration => {
-							if (declaration.value.replaceAll(/\s/g, '') !== 'minmax(0,1fr)/minmax(0,1fr)') return;
-							if (query === 'release(max-width:620px)') result.narrowSingle = true;
-							else result.shortSingle = true;
-						});
-					}
+					if (!compiled.modules?.simplePage || rule.selector !== `.${compiled.modules.simplePage}`) return;
+					rule.walkDecls(declaration => {
+						if (query === 'release(max-width:620px)' && declaration.prop === 'padding' && declaration.value === '18px 18px 24px') result.narrowPadding = true;
+						if (query === 'release-body(max-height:560px)' && declaration.prop === 'justify-content' && declaration.value === 'flex-start') result.shortStartsAtTop = true;
+						if (query === 'release-body(max-height:380px)' && declaration.prop === 'padding' && declaration.value === '10px 14px') result.compactPadding = true;
+					});
 				});
 			});
 			return result;
 		};
-		expect(await contract(css.replaceAll('.updatePreview', '.missingPreviewExample'))).toMatchObject({ narrowHidden: false, shortHidden: false });
-		expect(await contract(css)).toEqual({ narrowHidden: true, shortHidden: true, narrowSingle: true, shortSingle: true });
+		expect(await contract(css.replaceAll('.simplePage', '.missingPageExample'))).toEqual({ narrowPadding: false, shortStartsAtTop: false, compactPadding: false });
+		expect(await contract(css)).toEqual({ narrowPadding: true, shortStartsAtTop: true, compactPadding: true });
 	});
 });

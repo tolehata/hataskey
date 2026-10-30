@@ -58,12 +58,11 @@ const releaseRoot = useTemplateRef('releaseRoot');
 const pageTitle = useTemplateRef('pageTitle');
 const pageBody = useTemplateRef('pageBody');
 const opening = useTemplateRef('opening');
-const noteBodyHeight = ref(600);
-const stories = computed(() => getHataWhatsNewStories(noteBodyHeight.value));
+const stories = getHataWhatsNewStories();
 const pageId = ref(HATA_WHATS_NEW.groups[0].cards[0].id);
-const page = computed(() => Math.max(0, stories.value.findIndex(story => story.id === pageId.value || story.cards.some(card => card.id === pageId.value))) + 1);
-const totalPages = computed(() => stories.value.length);
-const currentStory = computed(() => stories.value[page.value - 1]);
+const page = computed(() => Math.max(0, stories.findIndex(story => story.id === pageId.value || story.cards.some(card => card.id === pageId.value))) + 1);
+const totalPages = computed(() => stories.length);
+const currentStory = computed(() => stories[page.value - 1]);
 const isBrandLabel = computed(() => ['HataGoes', 'HataIgo', 'Hataskey UI S 2', 'HataFeed', 'Hatask'].includes(currentStory.value.label));
 const opened = ref(true);
 const closing = ref(false);
@@ -79,7 +78,6 @@ const mergeActive = computed(() => opened.value && contentReady.value && !changi
 const hataigoActive = computed(() => motion.value && contentReady.value && !changing.value && currentStory.value.feature === 'hataigo');
 const modalMotionPreset = computed<'none' | 'dissolve' | undefined>(() => !documentVisible.value ? 'none' : hataGoesHost ? undefined : !prefer.r.animation.value || reduced.value ? 'none' : contentReady.value ? 'dissolve' : undefined);
 const reveal = createReveal();
-let bodyObserver: ResizeObserver | undefined;
 let transitionRevision = 0;
 let entranceRevision = 0;
 let disposed = false;
@@ -120,14 +118,13 @@ async function enter(initial = false) {
 		] : []),
 		{ element: pageBody.value?.querySelector<HTMLElement>('[data-reveal="lead"]') ?? null, duration: 480, y: 10 },
 		{ element: pageBody.value?.querySelector<HTMLElement>('[data-reveal="stage"]') ?? null, delay: 110, duration: 650, y: 0, scale: .988 },
-		{ element: pageBody.value?.querySelector<HTMLElement>('[data-reveal="support"]') ?? null, delay: 570, duration: 480, y: 8 },
 	], motion.value);
 	if (ticket === entranceRevision) arrival.value = 'settled';
 }
 
 async function move(next: number) {
 	if (isClosed() || changing.value || next < 1 || next > totalPages.value) return;
-	const destinationId = stories.value[next - 1].id;
+	const destinationId = stories[next - 1].id;
 	const ticket = ++transitionRevision;
 	changing.value = true;
 	entranceRevision++;
@@ -150,7 +147,6 @@ function stop() {
 	arrival.value = 'settled';
 	opening.value?.cancel();
 	reveal.cancel();
-	bodyObserver?.disconnect();
 }
 
 function dismiss() {
@@ -188,8 +184,6 @@ function focusTitle() { if (opened.value && contentReady.value) pageTitle.value?
 
 watch(motion, enabled => { if (!enabled) settle(); });
 onMounted(() => {
-	bodyObserver = new ResizeObserver(() => { if (pageBody.value?.clientHeight) noteBodyHeight.value = pageBody.value.clientHeight; });
-	if (pageBody.value) { bodyObserver.observe(pageBody.value); if (pageBody.value.clientHeight) noteBodyHeight.value = pageBody.value.clientHeight; }
 	media.addEventListener('change', syncMotion);
 	window.document.addEventListener('visibilitychange', visibility);
 	if (!motion.value || window.document.hidden) void startOpening();
