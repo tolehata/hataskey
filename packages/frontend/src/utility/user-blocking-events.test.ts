@@ -7,10 +7,9 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { describe, expect, test, vi } from 'vitest';
 
-type Caller = 'menu' | 'panel' | 'settings';
+type Caller = 'menu' | 'settings';
 const sources: Record<Caller, string> = {
 	menu: 'utility/get-user-menu.ts',
-	panel: 'components/MkSimpleUserPanel.vue',
 	settings: 'pages/settings/mute-block.vue',
 };
 
@@ -45,20 +44,16 @@ function fixture(caller: Caller, blocked: boolean, options: { canceled?: boolean
 	const request = vi.fn(() => pending);
 	const emit = vi.fn();
 	const user = { id: 'acted-user', username: 'flower-owner', isBlocking: blocked };
-	const userRef = { value: user };
-	const isBlocked = { value: blocked };
 	const os = {
 		confirm: vi.fn().mockResolvedValue({ canceled: options.canceled === true }),
 		alert: vi.fn(), toast: vi.fn(), popupMenu: vi.fn(), apiWithDialog: request,
 	};
 	const action = operation(caller, {
-		user: caller === 'panel' ? userRef : user,
-		userIsAdmin: caller === 'panel' ? { value: options.admin === true } : options.admin === true,
-		isBlocked, blockLoading: { value: false },
+		user,
+		userIsAdmin: options.admin === true,
 		getConfirmed: vi.fn().mockResolvedValue(options.canceled !== true),
 		misskeyApi: request, globalEvents: { emit }, os,
 		i18n: { ts: { blockConfirm: '確認', unblockConfirm: '解除', unblock: '解除', cannotBlockOrMuteAdministrator: '対象外' } },
-		copy: { blockConfirm: '{user} をブロック', actionFailed: '失敗' },
 	});
 
 	async function openSettings(): Promise<void> { await action(user, { target: null }); }
@@ -69,11 +64,11 @@ function fixture(caller: Caller, blocked: boolean, options: { canceled?: boolean
 		await os.popupMenu.mock.calls[0][0][0].action();
 	}
 
-	return { request, emit, userRef, isBlocked, resolve, reject, run, openSettings };
+	return { request, emit, resolve, reject, run, openSettings };
 }
 
 const operations = [
-	['menu', false], ['menu', true], ['panel', false], ['panel', true], ['settings', true],
+	['menu', false], ['menu', true], ['settings', true],
 ] as const;
 
 describe('ブロック操作の完了通知', () => {
@@ -83,13 +78,10 @@ describe('ブロック操作の完了通知', () => {
 		await settle();
 		expect(f.request).toHaveBeenCalledExactlyOnceWith(blocked ? 'blocking/delete' : 'blocking/create', { userId: 'acted-user' });
 		expect(f.emit).not.toHaveBeenCalled();
-		// A profile preview can change while the API is pending; notify the acted-on user.
-		if (caller === 'panel') f.userRef.value = { id: 'next-profile', username: 'next', isBlocking: blocked };
 		f.resolve();
 		await finished;
 		await settle();
 		expect(f.emit).toHaveBeenCalledExactlyOnceWith('userBlockingChanged', { userId: 'acted-user' });
-		if (caller === 'panel') expect(f.isBlocked.value).toBe(blocked);
 	});
 
 	test.each(operations)('%s blocked=%s: API失敗では通知しない', async (caller, blocked) => {
@@ -103,7 +95,7 @@ describe('ブロック操作の完了通知', () => {
 		expect(f.emit).not.toHaveBeenCalled();
 	});
 
-	test.each(['menu', 'panel'] as const)('%s: 確認キャンセル・管理者拒否ではAPIも通知も発生しない', async caller => {
+	test.each(['menu'] as const)('%s: 確認キャンセル・管理者拒否ではAPIも通知も発生しない', async caller => {
 		for (const options of [{ canceled: true }, { admin: true }]) {
 			const f = fixture(caller, false, options);
 			await f.run();

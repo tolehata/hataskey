@@ -93,9 +93,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		     かけて対応する (下の .colorBar CSS 参照)。 -->
 		<div :style="[prefer.s.showGapBodyOfTheNote ? {} : { paddingBottom: '10px' }, appearNote.channel ? { paddingLeft: '7px' } : {}]" style="display: flex;">
 			<div v-if="appearNote.channel" :class="$style.colorBar" :style="{ borderLeftColor: appearNote.channel.color }"></div>
-			<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="[$style.avatar, prefer.s.useStickyIcons ? $style.useSticky : null, { [$style.avatarReplyTo]: appearNote.reply, [$style.showEl]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name === 'index', [$style.showElTab]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name !== 'index' }]" :user="appearNote.user" :link="false" :preview="!mock" noteClick @click="onAvatarClick"/>
+			<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="[$style.avatar, prefer.s.useStickyIcons ? $style.useSticky : null, { [$style.avatarReplyTo]: appearNote.reply, [$style.showEl]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name === 'index', [$style.showElTab]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name !== 'index' }]" :user="appearNote.user" :link="!mock" :preview="!mock" noteClick/>
 			<div :class="$style.main">
-				<MkNoteHeader :note="appearNote" :mini="true" @nameClick="openUserPanel"/>
+				<MkNoteHeader :note="appearNote" :mini="true"/>
 				<div v-if="prefer.s.showGapBodyOfTheNote" data-note-content :class="$style.noteContent" :style="prefer.s.showGapBodyOfTheNote ? 'margin-top: 4px;' : null" style="container-type: inline-size;">
 					<MkInfo v-if="appearNote.deleteAt != null" warn :class="$style.deleteAt">
 						<I18n :src="i18n.ts.scheduledToDeleteOnX" tag="span">
@@ -835,39 +835,11 @@ watch(() => viewTextSource.value, () => {
 	collapsed.value = false;
 });
 
-// ===== 旗鯖独自: ユーザーパネル（アバタークリック） =====
-
 const displayedReactions = computed(() => {
 	hiddenReactionsVersion.value;
 	if (!$appearNote.reactions) return {};
 	return filterHiddenReactions(appearNote.id, $appearNote.reactions);
 });
-
-function openUserPanel(userId: string) {
-	// Hataskey UIのデッキ表示中は、横幅の限られたカラム内でオリジナルユーザーパネルを出すと
-	// レイアウトと相性が悪いため、directProfile 設定に関わらず直接プロフィールを開く
-	const isDeckUi = prefer.s['simpleUi.deckMode'] === true;
-	if (isDeckUi || prefer.s['simpleUi.directProfile']) {
-		router.pushByPath(userPage(appearNote.user));
-		return;
-	}
-	const ev = new CustomEvent('simple-user-panel', { detail: { userId }, cancelable: true });
-	window.dispatchEvent(ev);
-	if (!ev.defaultPrevented) {
-		import('@/components/MkSimpleUserPanel.vue').then(m => {
-			const { dispose } = os.popup(m.default, {
-				userId,
-				isMobile: window.innerWidth < 700,
-			}, {
-				close: () => dispose(),
-			});
-		});
-	}
-}
-
-function onAvatarClick() {
-	openUserPanel(appearNote.userId);
-}
 
 function noteClick(ev: MouseEvent) {
 	if (!expandOnNoteClick || window.getSelection()?.toString() !== '' || prefer.s.expandOnNoteClickBehavior === 'doubleClick') ev.stopPropagation();

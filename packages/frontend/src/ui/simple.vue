@@ -159,7 +159,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 	</nav>
 
-	<div :class="[$style.mainColumn, { [$style.mainColumnShifted]: isDesktop && userPanelUserId }]">
+	<div :class="$style.mainColumn">
 		<!-- 同じ背景画像で、ノート列と外側のチャーム領域を覆う。スクロール領域の外に置く。 -->
 		<div v-if="timelineGlassBg && $i?.bannerUrl" :class="$style.timelineBanner">
 			<img :src="$i.bannerUrl" :class="$style.timelineBannerImg"/>
@@ -334,7 +334,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<div v-if="navbarSearchOpen" :class="$style.navbarSearchScrim" data-navbar-search-scrim @pointerdown.stop.prevent @click.stop.prevent="closeNavbarSearch()" @touchmove.prevent @wheel.prevent></div>
 			<!-- 通常TL: ナビバー（モバイルのみ） -->
-			<div v-show="!isDesktop && !isHataskPage && !isHataGoesPage && !isExternalTab && !isChannelDetailPage && (!isPageView || bottomNavHasPage) && !userPanelUserId" data-htk-weather-footer data-hata-collapse-group :data-search-open="navbarSearchOpen" :data-search-motion="newNotesMotionEnabled" :style="{ '--navbar-search-keyboard-inset': `${navbarSearchOpen ? navbarSearchKeyboardInset : 0}px` }" :class="[$style.bottomBar, $style.bottomSearchBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !navbarSearchOpen && (!showBottomBar || widgetsShowing) }]">
+			<div v-show="!isDesktop && !isHataskPage && !isHataGoesPage && !isExternalTab && !isChannelDetailPage && (!isPageView || bottomNavHasPage)" data-htk-weather-footer data-hata-collapse-group :data-search-open="navbarSearchOpen" :data-search-motion="newNotesMotionEnabled" :style="{ '--navbar-search-keyboard-inset': `${navbarSearchOpen ? navbarSearchKeyboardInset : 0}px` }" :class="[$style.bottomBar, $style.bottomSearchBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !navbarSearchOpen && (!showBottomBar || widgetsShowing) }]">
 				<button v-if="!isDesktop" :class="$style.sideBtn" :inert="navbarSearchOpen" @click="playSimpleNavMotion($event, 'layout'); simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
 				<div ref="navbarSearchShell" :class="[$style.navPill, $style.searchPill]" :data-search-open="navbarSearchOpen" :role="navbarSearchOpen ? 'dialog' : undefined" :aria-modal="navbarSearchOpen ? true : undefined" :aria-label="navbarSearchOpen ? i18n.ts.search : undefined" @keydown="onNavbarSearchKeydown">
 					<div :class="$style.navbarSearchBody" :style="{ height: `${navbarSearchOpen ? Math.min(navbarSearchHeight, navbarSearchMaxHeight) : 0}px` }" :inert="!navbarSearchOpen" :aria-hidden="!navbarSearchOpen">
@@ -362,7 +362,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<!-- 外部TL: 投稿 & 通知ボタン（モバイルのみ） -->
-			<div v-show="!isDesktop && isExternalTab && !isPageView && !userPanelUserId" data-htk-weather-footer data-hata-collapse-group :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar }]">
+			<div v-show="!isDesktop && isExternalTab && !isPageView" data-htk-weather-footer data-hata-collapse-group :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar }]">
 				<button v-if="!isDesktop" :class="$style.sideBtn" @click="playSimpleNavMotion($event, 'layout'); simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
 				<div :class="$style.navPill">
 					<!-- 旗鯖fork: 外部通知ボタン (連携ON時のみ)。通知→ノート作成の順で横一列。
@@ -375,19 +375,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 		</div>
-
-		<!-- デスクトップ: ユーザーパネル（TL横に表示） -->
-		<div v-if="isDesktop && userPanelUserId" data-hata-collapse-part :class="$style.userPanelDesktop">
-			<MkSimpleUserPanel :userId="userPanelUserId" :isMobile="false" :inline="true" @close="userPanelUserId = null"/>
-		</div>
 	</div>
-
-	<!-- モバイル: ユーザーパネル（フルスクリーンオーバーレイ） -->
-	<Teleport to="body">
-		<div v-if="!isDesktop && userPanelUserId" :class="$style.userPanelMobileOverlay" @click.self="userPanelUserId = null">
-			<MkSimpleUserPanel :userId="userPanelUserId" :isMobile="true" :inline="true" @close="userPanelUserId = null"/>
-		</div>
-	</Teleport>
 
 	<!-- モバイル: オリジナルドロワーメニュー -->
 	<Teleport to="body">
@@ -569,7 +557,6 @@ import {
 const XWidgets = defineAsyncComponent(() => import('./_common_/widgets.vue'));
 const XAnnouncements = defineAsyncComponent(() => import('./_common_/announcements.vue'));
 const HatasabaDeck = defineAsyncComponent(() => import('./_common_/hatasaba-deck.vue'));
-const MkSimpleUserPanel = defineAsyncComponent(() => import('@/components/MkSimpleUserPanel.vue'));
 // 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定で使用
 const MkPostForm = defineAsyncComponent(() => import('@/components/MkPostForm.vue'));
 const ConcrntTimeline = defineAsyncComponent(() => import('@/components/concrnt/ConcrntTimeline.vue'));
@@ -2290,9 +2277,6 @@ async function toggleRealtimeMode() {
 	window.location.reload();
 }
 
-// ===== ユーザーパネル =====
-const userPanelUserId = ref<string | null>(null);
-
 // ===== 通知バッジ / お知らせ未読 =====
 // hasUnreadNotif: 未読通知の有無 (boolean)
 // unreadNotifCount: 未読通知の件数 (number) - 表示用
@@ -2403,31 +2387,12 @@ const stopUnreadPoll = () => {
 	if (unreadPollTimer) { window.clearInterval(unreadPollTimer); unreadPollTimer = null; }
 };
 
-// ===== ユーザーパネルイベントリスナー =====
-function onSimpleUserPanel(ev: Event) {
-	const detail = (ev as CustomEvent).detail;
-	if (detail?.userId) {
-		ev.preventDefault(); // MkNote側のフォールバックポップアップを抑制
-		// directProfile ON → ユーザーパネルを経由せず直接プロフィールへ
-		if (prefer.s['simpleUi.directProfile']) {
-			import('@/utility/misskey-api.js').then(({ misskeyApi }) => {
-				misskeyApi('users/show', { userId: detail.userId }).then((u: any) => {
-					const path = u.host ? `/@${u.username}@${u.host}` : `/@${u.username}`;
-					mainRouter.pushByPath(path);
-				});
-			});
-			return;
-		}
-		userPanelUserId.value = detail.userId;
-	}
-}
-
 // 旗鯖fork: デッキ初表示時にチュートリアルを出す監視(全変数定義後に登録)
 watch(deckActive, (v) => { if (v) maybeShowDeckTutorial(); }, { immediate: true });
 
 watch([mainRouter.currentRef, tab], () => closeNavbarSearch(false));
-watch([isDesktop, deckActive, simpleDrawerShowing, widgetsShowing, userPanelUserId, timelinePickerKind], ([desktop, deck, drawer, widgets, user, picker]) => {
-	if (desktop || deck || drawer || widgets || user || picker) closeNavbarSearch(false);
+watch([isDesktop, deckActive, simpleDrawerShowing, widgetsShowing, timelinePickerKind], ([desktop, deck, drawer, widgets, picker]) => {
+	if (desktop || deck || drawer || widgets || picker) closeNavbarSearch(false);
 });
 watch(visibleBottomNav, items => { if (!items.some(item => item.id === 'search')) closeNavbarSearch(false); });
 
@@ -2455,7 +2420,6 @@ onMounted(() => {
 	initStream();
 	checkUnread();
 	startUnreadPoll();
-	window.addEventListener('simple-user-panel', onSimpleUserPanel);
 	nextTick(() => { startThemeWatch(); });
 	nextTick(() => { updateSbFade(); });
 	window.addEventListener('ext-tl-notif-count', onExtNotifCount);
@@ -2502,7 +2466,6 @@ onUnmounted(() => {
 	window.removeEventListener('external-notification', onExtNotifRealtime);
 	window.document.removeEventListener('pointerdown', closeTimelinePickerOnOutsidePointer, true);
 	window.removeEventListener('resize', onResize);
-	window.removeEventListener('simple-user-panel', onSimpleUserPanel);
 });
 </script>
 
@@ -3342,7 +3305,7 @@ onUnmounted(() => {
     transform:scale(1.1);
 }
 /* 背景はmainColumn全体に敷き、チャーム領域まで途切れず覆う。
-   後続のmainColumnInnerとユーザーパネルより奥で、スクロールには追従させない。 */
+   後続のmainColumnInnerより奥で、スクロールには追従させない。 */
 .timelineBanner {
     position:absolute;
     inset:0;
@@ -3496,18 +3459,6 @@ onUnmounted(() => {
         }
     }
 }
-.mainColumnShifted {
-    flex-direction:row;
-}
-.mainColumnShifted .mainColumnInner {
-    flex:1;
-    min-width:0;
-    display:flex;
-    flex-direction:column;
-    height:var(--MI-viewport-height, 100dvh);
-    overflow:hidden;
-    transition:flex .3s cubic-bezier(.22,1,.36,1);
-}
 /* 旗鯖fork: 上部メニューモードのナビバー */
 .topNav {
     flex-shrink: 0; display: flex; align-items: center; gap: 6px;
@@ -3561,35 +3512,6 @@ onUnmounted(() => {
     min-width:0;
     position:relative;
     z-index:201;
-}
-
-// ===== ユーザーパネル（デスクトップ） =====
-.userPanelDesktop {
-    z-index:0;
-    width:340px;
-    flex-shrink:0;
-    height:var(--MI-viewport-height, 100dvh);
-    border-left:1px solid var(--MI_THEME-divider);
-    background:var(--MI_THEME-bg);
-    overflow:hidden;
-    animation:supSlideIn .3s cubic-bezier(.22,1,.36,1) both;
-}
-@keyframes supSlideIn {
-    from { width:0; opacity:0; }
-    to { width:340px; opacity:1; }
-}
-
-// ===== ユーザーパネル（モバイル: フルスクリーン） =====
-.userPanelMobileOverlay {
-    position:fixed;
-    inset:var(--MI-fixed-top-inset, 0px) 0 0;
-    z-index:3200000;
-    background:var(--MI_THEME-bg);
-    animation:supMobileIn .3s cubic-bezier(.22,1,.36,1) both;
-}
-@keyframes supMobileIn {
-    from { transform:translateX(100%); }
-    to { transform:translateX(0); }
 }
 .desktopWidgets {
     // タイムラインの切替演出とウィジェットバーの重なり順を分離する。

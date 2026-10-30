@@ -10,14 +10,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-if="mock" :class="$style.name">
 				<MkUserName :user="note.user"/>
 			</div>
-			<span v-else v-user-preview="note.user.id" :class="[$style.name, $style.nameClickable]" @click.stop="emit('nameClick', note.user.id)">
+			<MkA v-else v-user-preview="note.user.id" :class="$style.name" :to="userPage(note.user)" noteClick>
 				<MkUserName :user="note.user"/>
-			</span>
+			</MkA>
 			<!-- 旗鯖fork: 承認制(フォロー許可制)アカウントを示す鍵アイコンはタイムラインのノートヘッダーでは非表示にする -->
 			<div v-if="note.user.isBot" :class="$style.userBadge"><i class="ti ti-robot"></i></div>
 			<div v-if="note.user.isProxy" :class="$style.userBadge"><i class="ti ti-ghost"></i></div>
 			<MkUserRoleBadges :user="note.user"/>
-			<div :class="[$style.username, $style.nameClickable]" @click.stop="emit('nameClick', note.user.id)"><MkAcct :user="note.user"/></div>
+			<div :class="$style.username"><MkAcct :user="note.user"/></div>
 		</div>
 	</div>
 	<div :class="$style.section">
@@ -79,10 +79,6 @@ const props = withDefaults(defineProps<{
 		hosts: string[];
 	} | null;
 }>(), { showTicker: true });
-
-const emit = defineEmits<{
-	(ev: 'nameClick', userId: string): void;
-}>();
 
 const mock = inject(DI.mock, false);
 
@@ -166,10 +162,6 @@ function showOnRemote() {
 		color: var(--MI_THEME-nameHover);
 		text-decoration: none;
 	}
-}
-
-.nameClickable {
-	cursor: pointer;
 }
 
 .userBadge {

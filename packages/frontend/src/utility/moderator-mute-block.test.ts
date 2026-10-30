@@ -5,14 +5,13 @@
 
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { describe, expect, test, vi } from 'vitest';
 
-type Caller = 'menu' | 'panel';
+type Caller = 'menu';
 type Handler = 'toggleMute' | 'toggleBlock' | 'toggleRenoteMute';
 const sources: Record<Caller, string> = {
 	menu: 'utility/get-user-menu.ts',
-	panel: 'components/MkSimpleUserPanel.vue',
 };
 
 // Execute the actual role declarations and handlers, without unrelated page setup.
@@ -52,8 +51,6 @@ const operations = [
 	['menu', 'toggleMute', 'mute/create'],
 	['menu', 'toggleBlock', 'blocking/create'],
 	['menu', 'toggleRenoteMute', 'renote-mute/create'],
-	['panel', 'toggleMute', 'mute/create'],
-	['panel', 'toggleBlock', 'blocking/create'],
 ] as const;
 
 describe.each(operations)('%s/%s: 対象の権限による操作可否', (caller, handler, endpoint) => {
@@ -72,12 +69,10 @@ describe.each(operations)('%s/%s: 対象の権限による操作可否', (caller
 			alert: vi.fn(), toast: vi.fn(),
 		};
 		const action = operation(caller, handler, {
-			user: caller === 'panel' ? ref(user) : user, computed,
-			isMuted: ref(false), isBlocked: ref(false), muteLoading: ref(false), blockLoading: ref(false),
+			user, computed,
 			getConfirmed: vi.fn().mockResolvedValue(true),
 			misskeyApi: request, updateMutedUserState, globalEvents: { emit }, os,
 			i18n: { ts: { cannotBlockOrMuteAdministrator: '管理者はミュート・ブロックできません' } },
-			copy: { muteConfirm: '{user} をミュート', blockConfirm: '{user} をブロック', actionFailed: '失敗' },
 		});
 
 		await action();

@@ -92,7 +92,7 @@ function mount() {
 		ref: Vue.ref, computed: Vue.computed, nextTick: Vue.nextTick, watch: Vue.watch,
 		mainRouter: { currentRef: Vue.ref({ path: '/' }), push: vi.fn() },
 		tab: Vue.ref('local'), isDesktop: Vue.ref(false), deckActive: Vue.ref(false),
-		userPanelUserId: Vue.ref(null), timelinePickerKind: Vue.ref<string | null>(null),
+		timelinePickerKind: Vue.ref<string | null>(null),
 		visibleBottomNav: Vue.ref([{ id: 'notifications' }, { id: 'search' }, { id: 'home' }]),
 		contentEl: Vue.ref<HTMLElement | null>(null), pullRefresh: { reset: vi.fn() },
 	};
