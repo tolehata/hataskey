@@ -12,6 +12,7 @@ import * as Vue from 'vue';
 import { afterEach, beforeAll, describe, expect, test } from 'vitest';
 import type { App, ComputedRef } from 'vue';
 import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
+import { hataAppForMenuIcon } from '@/utility/hata-app-brand.js';
 
 const filename = resolve(process.cwd(), 'src/ui/simple.vue');
 const source = readFileSync(filename, 'utf8');
@@ -136,7 +137,7 @@ async function mountCollapsed(mode: Mode, shape: Button['shape'] = 'circle', leg
 			...state.bindings, studioProfile: state.profile, deckActive: state.deckActive, sidebarCollapsed: state.sidebarCollapsed,
 			isDesktop: true, topNavActive: false, glassEffect: false, announcementsHeight: 0, isFoldableWide: false,
 			sbFadeTop: false, sbFadeBottom: false, hasUnreadNotif: false, showUnreadNotifCount: false, unreadNotifCount: 0,
-			hasUnreadAnnouncements: false, hasUnreadChat: false, extNotifHasUnread: unread,
+			hasUnreadAnnouncements: false, hasUnreadChat: false, extNotifHasUnread: unread, hataAppForMenuIcon, footerIsDark: false,
 			onSbScroll: () => {}, studioButtonLabel: (item: Button) => item.label, sidebarItemActive: () => false, studioItemClick: () => {},
 		}),
 	}));

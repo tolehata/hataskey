@@ -229,7 +229,7 @@ describe('HataskeyUIのお知らせバナー', () => {
 		}
 		const root = templateElements().find(({ node }) => node.props.some(prop => prop.type === 6 && prop.name === 'ref' && prop.value?.content === 'timelineCollapseRoot'));
 		if (!root) throw new Error('Missing root');
-		expect(expression(root.node, 'bind', 'style')).toBe('{ \'--simple-announcements-height\': `${announcementsHeight}px` }');
+		expect(expression(root.node, 'bind', 'style')).toBe('{ \'--simple-announcements-height\': `${announcementsHeight}px`, \'--note-charm-rail-width\': `${CHARM_RAIL_WIDTH}px` }');
 	});
 
 	test('コンパイル済みCSSでバナーの高さ確保とPC/モバイル上部ナビの押し下げを保つ', async () => {
@@ -238,7 +238,8 @@ describe('HataskeyUIのお知らせバナー', () => {
 		const compiled = await compileStyleAsync({ source: style.content, filename: resolve(process.cwd(), 'src/ui/simple.vue'), id: 'simple-announcements', preprocessLang: 'scss' });
 		expect(compiled.errors).toEqual([]);
 		const banner = compiled.code.match(/\.announcementsBanner\s*\{([^}]+)\}/u)?.[1];
-		const navbar = compiled.code.match(/\.topBar\s*\{([^}]+)\}/u)?.[1];
+		// Only the standalone rule; nested descendant rules such as the note charm lane also end in `.topBar`.
+		const navbar = compiled.code.match(/(?:^|\})\s*\.topBar\s*\{([^}]+)\}/u)?.[1];
 		expect(banner).toMatch(/flex-shrink:\s*0/u);
 		expect(banner).toMatch(/position:\s*relative/u);
 		expect(banner).toMatch(/z-index:\s*201/u);
