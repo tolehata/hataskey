@@ -10,7 +10,7 @@ import { Nirax } from '@/lib/nirax.js';
 import { ROUTE_DEF } from '@/router.definition.js';
 import { analytics } from '@/analytics.js';
 import { DI } from '@/di.js';
-import { isHatagoesPath, rememberHatagoesOrigin } from '@/utility/hatagoes-navigation.js';
+import { hatagoesUrlForStandaloneHatask, isHatagoesPath, rememberHatagoesOrigin } from '@/utility/hatagoes-navigation.js';
 import { hatagoesUsageScreenForPath, hatagoesUsageScreensForViewer, recordHatagoesScreenUsage } from '@/utility/hatagoes-launcher-usage.js';
 
 export type Router = Nirax<typeof ROUTE_DEF>;
@@ -23,7 +23,17 @@ export function createRouter(fullPath: string): Router {
 	return router;
 }
 
-export const mainRouter = createRouter(window.location.pathname + window.location.search + window.location.hash);
+// 旗鯖fork: 単独の Hatask 画面は廃止した。メインの画面で /hatask を開いたら HataGoes の中の Hatask へ置き換える。
+//   HataGoes のペインは createRouter で別のルーターを作って /hatask を描くので、ここで置き換えるのはメインのルーターだけ。
+//   navHook はほかの画面が差し替えるため使わず、pushByPath / replaceByPath そのものを包む。
+const withoutStandaloneHatask = (fullPath: string): string => hatagoesUrlForStandaloneHatask(fullPath) ?? fullPath;
+const initialFullPath = window.location.pathname + window.location.search + window.location.hash;
+export const mainRouter = createRouter(withoutStandaloneHatask(initialFullPath));
+if (mainRouter.getCurrentFullPath() !== initialFullPath) window.history.replaceState({ }, '', mainRouter.getCurrentFullPath());
+const pushMainByPath = mainRouter.pushByPath.bind(mainRouter);
+const replaceMainByPath = mainRouter.replaceByPath.bind(mainRouter);
+mainRouter.pushByPath = (fullPath, flag) => pushMainByPath(withoutStandaloneHatask(fullPath), flag);
+mainRouter.replaceByPath = fullPath => replaceMainByPath(withoutStandaloneHatask(fullPath));
 
 window.addEventListener('popstate', (event) => {
 	mainRouter.replaceByPath(window.location.pathname + window.location.search + window.location.hash);

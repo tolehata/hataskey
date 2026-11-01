@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { describe, expect, test } from 'vitest';
-import { getHatagoesOrigin, hatagoesAppForPath, hatagoesPageKey, hatagoesPaneKey, hatagoesTab, hatagoesUrl, isHatagoesCurrentScreen, isHatagoesIntroPath, readHatagoesLocation, rememberHatagoesOrigin, withHatagoesTab } from './hatagoes-navigation.js';
+import { getHatagoesOrigin, hatagoesAppForPath, hatagoesPageKey, hatagoesPaneKey, hatagoesTab, hatagoesUrl, hatagoesUrlForStandaloneHatask, isHatagoesCurrentScreen, isHatagoesIntroPath, readHatagoesLocation, rememberHatagoesOrigin, withHatagoesTab } from './hatagoes-navigation.js';
 import { getHatagoesScreen } from './hatagoes-catalog.js';
 
 describe('HataGoes navigation', () => {
@@ -82,5 +82,14 @@ describe('HataGoes navigation', () => {
 		rememberHatagoesOrigin(second, '//example.com', '/hatagoes');
 		expect(getHatagoesOrigin(first)).toBe('/my/notifications');
 		expect(getHatagoesOrigin(second)).toBe('/');
+	});
+
+	test('sends the retired standalone Hatask screen into HataGoes with its tab and record intact', () => {
+		expect(hatagoesUrlForStandaloneHatask('/hatask')).toBe(hatagoesUrl('/hatask'));
+		expect(hatagoesUrlForStandaloneHatask('/hatask?tab=garden')).toBe(hatagoesUrl('/hatask?tab=garden'));
+		expect(readHatagoesLocation(hatagoesUrlForStandaloneHatask('/hatask?tab=meal&meal=2') ?? '')).toEqual({ view: 'app', path: '/hatask?tab=meal&meal=2', app: 'hatask' });
+		for (const path of ['/hatask/intro', '/hatask/card-maker', '/hatagoes', hatagoesUrl('/hatask'), '/hatasky', '/', '/hatady']) {
+			expect(hatagoesUrlForStandaloneHatask(path)).toBeNull();
+		}
 	});
 });

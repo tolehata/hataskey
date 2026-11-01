@@ -58,6 +58,16 @@ export function hatagoesUrl(view: string): string {
 	return view === 'home' ? '/hatagoes' : `/hatagoes?${new URLSearchParams({ view })}`;
 }
 
+/**
+ * 旗鯖fork: 単独の Hatask 画面は廃止した。メインの画面で開かれた /hatask は、
+ * タブや記録の指定を保ったまま HataGoes の中の Hatask に置き換える。
+ * HataGoes のペインは自前のルーターで /hatask を描くので、置き換えるのはメインのルーターだけ。
+ * /hatask/intro などの下位画面はそれぞれ独立した画面なので対象にしない。
+ */
+export function hatagoesUrlForStandaloneHatask(fullPath: string): string | null {
+	return fullPath.split(/[?#]/u, 1)[0] === '/hatask' ? hatagoesUrl(fullPath) : null;
+}
+
 export function hatagoesScreenPath(screen: HatagoesCatalogEntry): string {
 	if (!screen.tab) return screen.path;
 	const url = new URL(screen.path, 'https://hatagoes.invalid');
