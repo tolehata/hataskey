@@ -7,7 +7,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
 
-import { findHataskFlora, floraData, getHataskFloraWeight, getHataskFlowerSeason, isRareHataskFlower, localizeFloraName, nameAdjectives, pickRandomFlora } from './hatask-flora.js';
+import { findHataskFlora, floraData, generateFlowerNickname, getHataskFloraWeight, getHataskFlowerSeason, isRareHataskFlower, localizeFloraName, nameAdjectives, pickRandomFlora } from './hatask-flora.js';
 import { floraTranslations } from './hatask-flora-i18n.js';
 
 const seasons = ['spring', 'summer', 'autumn', 'winter'] as const;
@@ -156,5 +156,14 @@ describe('Hatask flower identity', () => {
 		expect(isRareHataskFlower({ name: '宝石フラワー' })).toBe(false);
 		expect(isRareHataskFlower({ emoji: '🌈', name: 'にじ花' })).toBe(false);
 		expect(findHataskFlora({ name: 42, emoji: null })).toBeUndefined();
+	});
+
+	test('咲いたお花の自動の名前は上フレーズと品種名をつなぎ、引き直しで同じ名前を続けない', () => {
+		expect(generateFlowerNickname('コスモス', () => 0)).toBe(`${nameAdjectives[0]}コスモス`);
+		expect(generateFlowerNickname('コスモス', () => 0.9999999)).toBe(`${nameAdjectives.at(-1)}コスモス`);
+		expect(generateFlowerNickname('コスモス', () => Number.NaN)).toBe(`${nameAdjectives[0]}コスモス`);
+		expect(generateFlowerNickname('コスモス', () => 0, `${nameAdjectives[0]}コスモス`)).toBe(`${nameAdjectives[1]}コスモス`);
+		const flower = floraData.find(item => item.name === 'コスモス');
+		if (flower) expect(findHataskFlora({ name: generateFlowerNickname(flower.name), emoji: flower.emoji })).toBe(flower);
 	});
 });

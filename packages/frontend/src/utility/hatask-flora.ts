@@ -241,8 +241,20 @@ export function pickRandomFlora(date = new Date(), rng: () => number = Math.rand
 }
 
 export function generateFlowerName(flora: FloraItem): string {
-  const adj = nameAdjectives[Math.floor(Math.random() * nameAdjectives.length)];
-  return `${adj}${flora.name}`;
+  return generateFlowerNickname(flora.name);
+}
+
+/**
+ * 旗鯖fork: 咲いたお花の名前欄に入れる「きらめくコスモス」のような名前を作る。
+ * 上フレーズだけを抽選し、花の名前は渡された品種名をそのまま使う。
+ * avoid を渡すと、引き直しで同じ名前が続かないよう別の上フレーズを選ぶ。
+ */
+export function generateFlowerNickname(flowerName: string, rng: () => number = Math.random, avoid?: string): string {
+  let sample = Number(rng());
+  if (!Number.isFinite(sample)) sample = 0;
+  let index = Math.min(nameAdjectives.length - 1, Math.max(0, Math.floor(sample * nameAdjectives.length)));
+  if (`${nameAdjectives[index]}${flowerName}` === avoid) index = (index + 1) % nameAdjectives.length;
+  return `${nameAdjectives[index]}${flowerName}`;
 }
 
 export type HataskContentLanguage = 'ja' | 'en' | 'zh' | 'zhTW';

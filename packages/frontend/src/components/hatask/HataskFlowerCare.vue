@@ -50,7 +50,8 @@ import { HATASK_FLOWER_STATE_EVENT, getHataskFlowerState, pourHataskFlower, harv
 import { enqueuePageStatusToast } from '@/utility/hataskey-notification-toast.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { i18n } from '@/i18n.js';
-import { localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
+// 旗鯖fork: 咲いたお花の名前欄に「きらめくコスモス」のような名前を自動で入れる。
+import { generateFlowerNickname, localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
 
 const props = defineProps<{ todos: HataskPlannerTodo[]; folders: HataskPlannerFolder[]; animations: boolean; theme: string; mode: 'light' | 'dark'; readOnly: boolean; completeTodo: (id: string, done: boolean) => Promise<void> }>();
 const emit = defineEmits<{ state: [state: HataskFlowerState]; harvested: [state: HataskFlowerState]; hatady: [] }>();
@@ -76,7 +77,7 @@ function receive(next: HataskFlowerState) { if (disposed) return; state.value = 
 function onState(event: Event) { receive((event as CustomEvent<HataskFlowerState>).detail); }
 async function load() { if (loading.value || disposed || !active) return; loading.value = true; try { receive(await getHataskFlowerState()); } catch { if (!disposed) error.value = true; } finally { loading.value = false; } }
 function resume() { if (!document.hidden) void load(); }
-function openBloom() { if (active && state.value?.flower.progress === 100 && !busy.value) { lastBloomId = state.value.flower.id; bloomFlower.value = { ...state.value.flower, memory: [...state.value.flower.memory], meaning: meaning.value, nickname: state.value.flower.name }; bloom.value = true; } }
+function openBloom() { if (active && state.value?.flower.progress === 100 && !busy.value) { lastBloomId = state.value.flower.id; bloomFlower.value = { ...state.value.flower, memory: [...state.value.flower.memory], meaning: meaning.value, nickname: generateFlowerNickname(state.value.flower.name) }; bloom.value = true; } }
 watch(() => state.value?.flower, flower => {
 	window.clearTimeout(bloomTimer);
 	if (active && flower?.progress === 100 && flower.id !== lastBloomId) bloomTimer = window.setTimeout(() => { if (!disposed && active && !document.hidden) openBloom(); }, props.animations ? 700 : 0);

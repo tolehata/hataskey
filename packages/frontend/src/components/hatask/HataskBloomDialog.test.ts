@@ -91,6 +91,20 @@ describe('HataskBloomDialog with the real modal focus trap', () => {
 		expect(events.closed).toBe(0);
 	});
 
+	test('rerolls only the leading phrase and keeps the flower name', async () => {
+		await mount();
+		const input = required<HTMLInputElement>('[role="dialog"] input');
+		const label = required<HTMLLabelElement>('[role="dialog"] .name label');
+		expect(label.htmlFor).toBe(input.id);
+		const before = input.value;
+		required<HTMLButtonElement>('[role="dialog"] .reroll').click();
+		await nextTick();
+		expect(input.value).not.toBe(before);
+		expect(input.value.endsWith('デイジー')).toBe(true);
+		expect(input.value.length).toBeGreaterThan('デイジー'.length);
+		expect(window.document.activeElement).toBe(input);
+	});
+
 	test('Escape closes once, restores the background, and returns focus to the opener', async () => {
 		const { garden, source, events } = await mount();
 		required<HTMLInputElement>('[role="dialog"] input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

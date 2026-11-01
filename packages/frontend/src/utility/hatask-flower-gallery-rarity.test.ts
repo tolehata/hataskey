@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { findHataskFlora, floraData, isRareHataskFlower, localizeFloraName } from './hatask-flora.js';
+import { findHataskFlora, floraData, generateFlowerNickname, isRareHataskFlower, localizeFloraName, nameAdjectives } from './hatask-flora.js';
 
 const api = vi.hoisted(() => vi.fn());
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: api }));
@@ -37,7 +37,7 @@ function careFixture() {
 	const bloomDialog = { value: { close: vi.fn() } };
 	const harvestHataskFlower = vi.fn(), receive = vi.fn(), emit = vi.fn(), notify = vi.fn();
 	const bindings = { state, bloomFlower, busy, bloom, bloomDialog, harvestHataskFlower, receive, emit, notify,
-		active: true, lastBloomId: '', meaning: { value: '希望' }, nextTick: () => Promise.resolve(), copy: { harvested: '収穫', harvestFailed: '失敗' } };
+		active: true, lastBloomId: '', meaning: { value: '希望' }, nextTick: () => Promise.resolve(), copy: { harvested: '収穫', harvestFailed: '失敗' }, generateFlowerNickname };
 	return { ...bindings, original, open: handler(careScript, 'openBloom', bindings), harvest: handler(careScript, 'harvest', bindings) };
 }
 
@@ -63,6 +63,9 @@ describe('Hatask current flower harvest and rarity integration', () => {
 		await f.open();
 		expect(f.bloom.value).toBe(true);
 		expect(f.bloomFlower.value).toMatchObject({ id: 'flower-1', speciesId: 'meteor', rare: true, rank: 3, memory: ['本を読んだ'], meaning: '希望' });
+		// 旗鯖fork: 名前欄には「上フレーズ＋品種名」が自動で入る。
+		const nickname = String(f.bloomFlower.value?.nickname);
+		expect(nameAdjectives.some(prefix => nickname === `${prefix}流星花`)).toBe(true);
 		expect(care).toContain('@click="openBloom"');
 	});
 
