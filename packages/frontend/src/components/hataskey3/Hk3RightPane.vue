@@ -111,7 +111,7 @@ Hataskey UI 3: 右ペイン。「ウィジェット」(Hataskey UI と共通)と
 						</div>
 					</section>
 
-					<MkA v-if="flower" to="/hatask?tab=garden" :class="[$style.sec, $style.flowerSec]">
+					<MkA v-if="flower" :to="hatagoesUrl('/hatask?tab=garden')" :class="[$style.sec, $style.flowerSec]">
 						<span :class="$style.secHead"><Flower2 :size="18"/>{{ copy.growingFlower }}<span :class="$style.cnt">{{ flower.progress }}%</span></span>
 						<span :class="$style.flower">
 							<span :class="$style.flowerEm"><HataskEmoji :emoji="flower.emoji" :class="$style.flowerEmoji"/></span>
@@ -140,6 +140,8 @@ import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 import { mainRouter } from '@/router.js';
+// 旗鯖fork: 単独の Hatask 画面は廃止したので、おはなは HataGoes の中の Hatask で開く。
+import { hatagoesUrl } from '@/utility/hatagoes-navigation.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { localizeFloraName } from '@/utility/hatask-flora.js';
@@ -384,8 +386,10 @@ function onVisible() {
 }
 
 // Hatask本体で編集してから戻ってきたときは、右ペインも読み直す。
+// 旗鯖fork: Hatask は HataGoes の中で開くので、/hatagoes から戻ったときも読み直す。
+const isHataskPath = (path: string | undefined) => path != null && (path.startsWith('/hatask') || path === '/hatagoes');
 watch(() => mainRouter.currentRoute.value.path, (path, prev) => {
-	if (prev?.startsWith('/hatask') && !path.startsWith('/hatask')) void load();
+	if (isHataskPath(prev) && !isHataskPath(path)) void load();
 });
 
 let clockTimer: number | null = null;

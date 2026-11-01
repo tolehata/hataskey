@@ -43,6 +43,7 @@ import type { HataskFlowerState } from '@/utility/hatask-flower-v2.js';
 import MkContainer from '@/components/MkContainer.vue';
 import HataskEmoji from '@/components/HataskEmoji.vue';
 import { useRouter } from '@/router.js';
+import { hatagoesUrl } from '@/utility/hatagoes-navigation.js';
 import { getHataskFlowerState, pourHataskFlower, HATASK_FLOWER_STATE_EVENT } from '@/utility/hatask-flower-v2.js';
 import { getHataskFlowerSeason, localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
 import { i18n } from '@/i18n.js';
@@ -79,7 +80,8 @@ const seedIcon = computed(() => state.value?.zukan.seedClaimed.includes(nextSeas
 const seedTitle = computed(() => foundCount.value >= 8 ? copy.nextSeasonSeed : copy.seedAfterEight);
 async function loadFlowers(): Promise<void> { try { state.value = await getHataskFlowerState(); error.value = false; } catch { error.value = true; } finally { loading.value = false; } }
 async function pour(): Promise<void> { if (busy.value || !state.value || state.value.drops < 1 || progress.value >= 100) return; busy.value = true; try { state.value = await pourHataskFlower('self'); error.value = false; } catch { error.value = true; } finally { busy.value = false; } }
-function goHatask(): void { router.push('/hatask', { query: { tab: 'garden' } }); }
+// 旗鯖fork: 単独の Hatask 画面は廃止したので、HataGoes の中の Hatask のおはなを開く。
+function goHatask(): void { router.pushByPath(hatagoesUrl('/hatask?tab=garden')); }
 function onVisibilityChange(): void { if (!window.document.hidden) void loadFlowers(); }
 function onState(event: Event): void { const next = (event as CustomEvent<HataskFlowerState>).detail; if (next) { state.value = next; error.value = false; loading.value = false; } else void loadFlowers(); }
 onMounted(() => { void loadFlowers(); refreshTimer = window.setInterval(() => void loadFlowers(), 60_000); window.document.addEventListener('visibilitychange', onVisibilityChange); window.addEventListener(HATASK_FLOWER_STATE_EVENT, onState); });

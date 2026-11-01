@@ -64,7 +64,8 @@ function onPanelClick(event: MouseEvent) {
 	const anchor = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href]') : null;
 	if (anchor) {
 		const destination = new URL(anchor.href, window.location.href);
-		if (destination.origin === window.location.origin && destination.pathname.startsWith('/hatask')) emit('close');
+		// 旗鯖fork: おはなのリンクは HataGoes の中の Hatask を開くので、/hatagoes への移動でも閉じる。
+		if (destination.origin === window.location.origin && (destination.pathname.startsWith('/hatask') || destination.pathname === '/hatagoes')) emit('close');
 	}
 }
 

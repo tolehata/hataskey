@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 HataSideStudio のサイドメニュー専用。元の Hatask お花ウィジェットには影響させない。
 -->
 <template>
-<button type="button" :class="$style.root" :data-size="props.size" @click="router.push('/hatask')">
+<button type="button" :class="$style.root" :data-size="props.size" @click="router.pushByPath(hatagoesUrl('/hatask?tab=garden'))">
 	<span :class="$style.ring" :style="{ '--progress': `${flower.progress * 3.6}deg` }" role="progressbar" :aria-valuenow="flower.progress" aria-valuemin="0" aria-valuemax="100">
 		<span><HataskEmoji :emoji="flower.emoji"/></span>
 	</span>
@@ -26,6 +26,8 @@ import { HATASK_FLOWER_GROWTH_EVENT } from '@/utility/hatask-flower-growth.js';
 import { localizeFloraName } from '@/utility/hatask-flora.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
+// 旗鯖fork: 単独の Hatask 画面は廃止したので、HataGoes の中の Hatask のおはなを開く。
+import { hatagoesUrl } from '@/utility/hatagoes-navigation.js';
 import { i18n } from '@/i18n.js';
 import HataskEmoji from '@/components/HataskEmoji.vue';
 
