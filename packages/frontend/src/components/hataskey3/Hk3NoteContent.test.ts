@@ -1,15 +1,21 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, h, nextTick } from 'vue';
+import { createApp, h, nextTick, reactive } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import Hk3NoteContent from './Hk3NoteContent.vue';
 import Hk3Note from './Hk3Note.vue';
 import { prefer } from '@/preferences.js';
 
+const viewer = vi.hoisted(() => ({ current: null as {
+	id: string;
+	mutedWords: Array<string | string[]>;
+	hardMutedWords: Array<string | string[]>;
+} | null }));
+
 vi.mock('@/i18n.js', () => ({ i18n: { ts: {
-	showMore: 'Show more', showLess: 'Close', reply: 'Reply', renote: 'Renote', quote: 'Quote', more: 'More',
+	showMore: 'Show more', showLess: 'Close', show: 'Show', reply: 'Reply', renote: 'Renote', quote: 'Quote', more: 'More',
 	_ffVisibility: { private: 'private' },
-	_hata: { _hataskeyUi3: { reply: 'Reply', addReaction: 'React' } },
+	_hata: { _hataskeyUi3: { reply: 'Reply', addReaction: 'React', mutedNote: 'Muted note', sensitiveNote: 'Sensitive note' } },
 } } }));
 vi.mock('@/preferences.js', async () => {
 	const { ref } = await import('vue');
@@ -18,11 +24,10 @@ vi.mock('@/preferences.js', async () => {
 		r: { animation: ref(true), disableNyaize: ref(false), 'postFormVisibilityBorder.enabled': ref(false), collapseLongNoteContent: ref(true), collapseDefault: ref(true), allMediaNoteCollapse: ref(false) },
 	} };
 });
-vi.mock('@/i.js', () => ({ $i: null }));
+vi.mock('@/i.js', () => ({ get $i() { return viewer.current; } }));
 vi.mock('@/os.js', () => ({ apiWithDialog: vi.fn(), popupMenu: vi.fn() }));
 vi.mock('@/events.js', () => ({ globalEvents: { emit: vi.fn() } }));
 vi.mock('@/custom-emojis.js', () => ({ customEmojisMap: new Map() }));
-vi.mock('@/utility/check-word-mute.js', () => ({ checkWordMute: () => false }));
 vi.mock('@/composables/use-note-capture.js', () => ({
 	noteEvents: { emit: vi.fn() },
 	useNoteCapture: ({ note }: { note: { reactions: Record<string, number>; reactionEmojis: Record<string, string> } }) => ({
@@ -77,6 +82,7 @@ function note(text: string, extra: Record<string, unknown> = {}): Misskey.entiti
 }
 
 beforeEach(() => {
+	viewer.current = null;
 	observers.length = 0;
 	Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
 		configurable: true,
@@ -102,6 +108,59 @@ afterEach(() => {
 });
 
 describe('Hk3Note content collapse', () => {
+	it.each(['renote', 'reply', 'quote'] as const)('keeps a soft-muted %s body hidden until the user reveals it', async kind => {
+		viewer.current = { id: 'viewer', mutedWords: [['hidden word']], hardMutedWords: [] };
+		const original = note('hidden word inside another note', { id: 'original' });
+		const outer = kind === 'reply'
+			? note('outer reply', { replyId: original.id, reply: original })
+			: note(kind === 'renote' ? '' : 'outer quote', { text: kind === 'renote' ? null : 'outer quote', renoteId: original.id, renote: original });
+		const { target } = mount(Hk3Note, { note: outer });
+		expect(target.textContent).toContain('Muted note');
+		expect(target.textContent).not.toContain('hidden word');
+		expect(target.querySelector('article')).toBeNull();
+		(target.querySelector('button') as HTMLButtonElement).click();
+		await nextTick();
+		expect(target.textContent).toContain('hidden word');
+		expect(target.querySelector('article')).not.toBeNull();
+	});
+
+	it('keeps CW closed after revealing a soft-muted note', async () => {
+		viewer.current = { id: 'viewer', mutedWords: [['hidden word']], hardMutedWords: [] };
+		const { target } = mount(Hk3Note, { note: note('hidden word inside CW', { cw: 'Warning' }) });
+		(target.querySelector('button') as HTMLButtonElement).click();
+		await nextTick();
+		expect(target.textContent).toContain('Warning');
+		expect(target.textContent).not.toContain('hidden word');
+		(target.querySelector('button[aria-pressed]') as HTMLButtonElement).click();
+		await nextTick();
+		expect(target.textContent).toContain('hidden word');
+	});
+
+	it('retains the sensitive-content reveal control independently of word muting', async () => {
+		const { target } = mount(Hk3Note, { note: note('sensitive picture', { files: [{ id: 'file', type: 'image/png', isSensitive: true }] }), hideSensitive: true });
+		expect(target.textContent).toContain('Sensitive note');
+		expect(target.querySelector('[data-attachment]')).toBeNull();
+		(target.querySelector('button') as HTMLButtonElement).click();
+		await nextTick();
+		expect(target.querySelector('[data-attachment]')).not.toBeNull();
+	});
+
+	it('follows mute-setting changes and removes a nested hard-muted note without a reveal control', async () => {
+		const account = reactive({ id: 'viewer', mutedWords: [] as Array<string | string[]>, hardMutedWords: [] as Array<string | string[]> });
+		viewer.current = account;
+		const original = note('hidden word', { id: 'original' });
+		const { target } = mount(Hk3Note, { note: note('quote', { renoteId: original.id, renote: original }) });
+		expect(target.textContent).toContain('hidden word');
+		account.mutedWords = [['hidden word']];
+		await nextTick();
+		expect(target.textContent).not.toContain('hidden word');
+		expect(target.textContent).toContain('Muted note');
+		account.hardMutedWords = [['hidden word']];
+		await nextTick();
+		expect(target.querySelector('[data-note-id]')).toBeNull();
+		expect(target.querySelector('button')).toBeNull();
+	});
+
 	it('uses the shared long/MFM/media conditions and follows setting changes', async () => {
 		const short = mount(Hk3Note, { note: note('short') });
 		expect(short.target.querySelector('[data-note-content-viewport]')).not.toBeNull();

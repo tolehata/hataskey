@@ -211,7 +211,7 @@ import { reactionPicker } from '@/utility/reaction-picker.js';
 import { getAbuseNoteMenu, getCopyNoteLinkMenu, getNoteMenu, getRenoteMenu } from '@/utility/get-note-menu.js';
 import { requestNoteActionConfirmation } from '@/utility/note-action-confirmation.js';
 import { noteEvents, useNoteCapture } from '@/composables/use-note-capture.js';
-import { checkWordMute } from '@/utility/check-word-mute.js';
+import { checkNoteTreeWordMute } from '@/utility/check-note-tree-word-mute.js';
 import { getAppearNote } from '@/utility/get-appear-note.js';
 import { pleaseLogin } from '@/utility/please-login.js';
 import { notePage } from '@@/js/note.js';
@@ -279,8 +279,8 @@ const threadLoading = ref(false);
 const replies = ref<Misskey.entities.Note[]>([]);
 const now = ref(Date.now());
 
-const hardMuted = computed(() => $i != null && checkWordMute(note, $i, $i.hardMutedWords ?? []) !== false);
-const wordMuted = computed(() => $i != null && checkWordMute(note, $i, $i.mutedWords ?? []) !== false);
+const hardMuted = computed(() => $i != null && checkNoteTreeWordMute(note, $i, $i.hardMutedWords ?? []));
+const wordMuted = computed(() => $i != null && checkNoteTreeWordMute(note, $i, $i.mutedWords ?? []));
 // 「センシティブを表示」が無効のときも一覧からは消さず、通常UIと同じく畳んで見せる。
 const sensitiveMuted = computed(() => props.hideSensitive && (appearNote.files ?? []).some(file => file.isSensitive));
 const softMuted = computed(() => wordMuted.value || sensitiveMuted.value);
