@@ -15,11 +15,12 @@ describe('settings navigation IDs', () => {
 		const navigationIds = [...destinationsSource.matchAll(/destination\('([^']+)'/gu)].map(match => match[1]);
 		expect(navStart).toBeGreaterThan(-1);
 		expect(guardStart).toBeGreaterThan(navStart);
-		// コンカレント連携を独立した項目に追加した現在の destination は53件。
-		expect(navigationIds).toHaveLength(53);
+		// コンカレント連携と定期リノートの管理を加えた現在の destination は54件。
+		expect(navigationIds).toHaveLength(54);
 		expect(new Set(navigationIds).size).toBe(navigationIds.length);
 		expect(navigationIds).toContain('account-plugins');
 		expect(navigationIds).toContain('account-concrnt');
+		expect(navigationIds).toContain('timeline-auto-renote');
 
 		expect(() => assertUniqueNavigationIds([
 			{ items: [{ id: 'settings.unique' }] },

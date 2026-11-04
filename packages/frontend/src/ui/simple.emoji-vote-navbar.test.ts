@@ -175,6 +175,7 @@ function fixture(options: { host?: boolean; tab?: string; deck?: boolean; page?:
 			const bindings = {
 				ref: Vue.ref, computed: Vue.computed, watch: Vue.watch, tab, deckActive, isPageView,
 				isCollectionTimelinePage: Vue.ref(false), isDesktop: Vue.ref(true),
+				highlightsOpen: Vue.ref(false), highlightHistory: Vue.ref(false),
 				notificationToasts, navbarNewNotes, navbarNewNotesContent: navbarNewNotes,
 				punchBusy: Vue.ref(false), punchVisible: Vue.ref(false),
 				pullRefresh: {

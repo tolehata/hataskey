@@ -21,6 +21,8 @@ const setup = ts.createSourceFile(`${filename}.ts`, descriptor.scriptSetup.conte
 const declarations = [
 	'deckMode', 'deckActive', 'DESKTOP_THRESHOLD', 'windowWidth', 'isDesktop',
 	'contentEl', 'ltlEmojiVoteEffects', 'normalLtlVoteActive', 'ltlEmojiVoteViewport', 'isPageView', 'tab',
+	// The LTL vote pauses while the highlight view or its history context is shown.
+	'highlightsOpen', 'highlightHistory',
 ];
 
 function declares(statement: ts.Statement, name: string): boolean {
