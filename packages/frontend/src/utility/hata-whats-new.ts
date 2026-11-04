@@ -4,11 +4,11 @@ export type HataWhatsNewCard = { id: string; label: string; icon: string; title:
 export type HataWhatsNewGroup = { label: string; title: string; feature?: 'hatagoes' | 'hataigo' | 'ui-s' | 'ui-s-2' | 'recipes' | 'flowers'; scene?: 0 | 1 | 2 | 3; cards: HataWhatsNewCard[] };
 export type HataWhatsNewStory = HataWhatsNewGroup & { id: string };
 export const HATA_WHATS_NEW: { version: string; groups: HataWhatsNewGroup[] } = {
-	version: '2026.10.1-hata.13.0',
+	version: '2026.10.1-hata.13.1',
 	groups: [
 		{
 			label: 'リリースノート', title: '詳しくはリリースノートをご確認ください', cards: [
-				{ id: 'release-notes', label: 'リリースノート', icon: 'ti ti-notes', title: '詳しくはリリースノートをご確認ください', link: { label: 'リリースノートを開く', url: 'https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-130' } },
+				{ id: 'release-notes', label: 'リリースノート', icon: 'ti ti-notes', title: '詳しくはリリースノートをご確認ください', link: { label: 'リリースノートを開く', url: 'https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-131' } },
 			],
 		},
 	] satisfies HataWhatsNewGroup[],

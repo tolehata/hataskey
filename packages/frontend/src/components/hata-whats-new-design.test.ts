@@ -258,11 +258,11 @@ describe('production update introduction', () => {
 	});
 	test('the shipped single page keeps focus and finishes with the release-notes link', async () => {
 		await mount();
-		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-13.0)');
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-13.1)');
 		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('release-notes');
 		expect(requiredElement('[data-story] h2').textContent).toBe('詳しくはリリースノートをご確認ください');
 		const link = requiredElement<HTMLAnchorElement>('[data-story] a');
-		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-130');
+		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-131');
 		expect(link.target).toBe('_blank');
 		expect(link.rel).toBe('noopener noreferrer');
 		expect(host.querySelector('footer')?.textContent).toContain('1 / 1');
@@ -286,7 +286,7 @@ describe('production update introduction', () => {
 		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('release-notes');
 		expect(requiredElement('[data-story] h2').textContent).toBe('詳しくはリリースノートをご確認ください');
 		const link = requiredElement<HTMLAnchorElement>('[data-story] a');
-		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-130');
+		expect(link.href).toBe('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-131');
 		expect(link.target).toBe('_blank');
 		expect(link.rel).toBe('noopener noreferrer');
 		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
@@ -301,7 +301,7 @@ describe('production update introduction', () => {
 		const save = vi.spyOn(localStorage, 'setItem');
 		await mount();
 		expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
-		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-13.0)');
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-13.1)');
 		expect(requiredElement('[data-summary]').getAttribute('data-summary')).toBe('hataigo');
 		expect(host.querySelector('[aria-label="戻る"]')).toBeNull();
 		store.r.darkMode.value = true; await flush();

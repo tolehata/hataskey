@@ -10,10 +10,12 @@ describe('approved release stories', () => {
 	test('the displayed-version gate stays aligned with the package and release metadata', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 		expect(HATA_WHATS_NEW.version).toBe(pkg.version);
-		expect(HATA_WHATS_NEW.version).toBe('2026.10.1-hata.13.0');
+		expect(HATA_WHATS_NEW.version).toBe('2026.10.1-hata.13.1');
 		const version = getHataWhatsNewDisplayVersion(pkg.version);
-		expect(version).toBe('hata-13.0');
+		expect(version).toBe('hata-13.1');
 		const changelog = fs.readFileSync(path.join(root, 'HATA-CHANGELOG.md'), 'utf8');
+		expect(changelog.indexOf('## hata-13.1\n')).toBeGreaterThan(0);
+		expect(changelog.indexOf('## hata-13.1\n')).toBeLessThan(changelog.indexOf('## hata-13.0\n'));
 		expect(changelog.indexOf('## hata-13.0\n')).toBeGreaterThan(0);
 		expect(changelog.indexOf('## hata-13.0\n')).toBeLessThan(changelog.indexOf('## hata-12.9\n'));
 		expect(changelog.indexOf('## hata-12.9\n')).toBeGreaterThan(0);
@@ -45,7 +47,7 @@ describe('approved release stories', () => {
 	test('the final page links to this fork’s release notes', () => {
 		const cards = HATA_WHATS_NEW.groups.flatMap(group => group.cards);
 		expect(cards.map(card => card.id)).toEqual(ids);
-		expect(cards[0].link).toEqual({ label: 'リリースノートを開く', url: 'https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-130' });
+		expect(cards[0].link).toEqual({ label: 'リリースノートを開く', url: 'https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md#hata-131' });
 	});
 
 	test('release copy contains no implementation paths or internal storage and API terminology', () => {
