@@ -12,7 +12,7 @@ const fixtures = await vi.hoisted(async () => {
 	const { rememberHatagoesOrigin, getHatagoesOrigin } = await import('@/utility/hatagoes-navigation.js');
 	const { settingsSearchV2ContextKey } = await import('@/utility/settings-search-v2-context.js');
 	const empty = vue.defineComponent({ render: () => null });
-	const routes = ['/', '/settings', '/settings/:page(*)', '/hatask', '/hatady', '/hatafeed', '/hatagoes', '/hata-side-studio'].map(path => ({ path, component: empty }));
+	const routes = ['/', '/settings', '/settings/:page(*)', '/my/auto-renote', '/hatask', '/hatady', '/hatafeed', '/hatagoes', '/hata-side-studio'].map(path => ({ path, component: empty }));
 	const createRouter = () => new Nirax(routes, '/settings', true, empty);
 	const router = createRouter();
 	const pushes: string[] = [];
@@ -24,10 +24,10 @@ const fixtures = await vi.hoisted(async () => {
 	const page = vue.defineComponent({ setup: (_, { slots }) => () => vue.h('div', slots.default?.()) });
 	const category = vue.defineComponent({
 		emits: ['openDestination'],
-		setup: (_, { emit }) => () => vue.h('button', {
-			'data-settings-destination-id': 'hata-hatady',
-			onClick: (event: MouseEvent) => emit('openDestination', 'hata-hatady', event),
-		}, 'Hatady'),
+		setup: (_, { emit }) => () => vue.h('div', ['hata-hatady', 'timeline-auto-renote'].map(id => vue.h('button', {
+			'data-settings-destination-id': id,
+			onClick: (event: MouseEvent) => emit('openDestination', id, event),
+		}, id))),
 	});
 	const popup = vue.defineComponent({
 		emits: ['closed'],
@@ -236,6 +236,17 @@ afterEach(async () => {
 });
 
 describe('settings shell DOM focus', () => {
+	it.each([1024, 375])('設定の投稿カテゴリから自動リノート管理へ移動できる（幅=%s）', async width => {
+		fixtures.width = width;
+		fixtures.animation.value = false;
+		const container = await mountShell('/settings?category=post');
+		button(container, '[data-settings-destination-id="timeline-auto-renote"]').click();
+		await settle();
+		expect(fixtures.router.getCurrentFullPath()).toBe('/my/auto-renote');
+		expect(fixtures.pushes).toEqual(['/my/auto-renote']);
+		expect(fixtures.openPopup).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		{ deviceKind: 'smartphone', width: 375 },
 		...['desktop', 'tablet'].flatMap(deviceKind => [375, 600].map(width => ({ deviceKind, width }))),

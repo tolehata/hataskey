@@ -92,7 +92,7 @@ const $i = ensureSignin();
 
 const nonConfigurableNotificationTypes = ['note', 'roleAssigned', 'followRequestAccepted', 'test', 'exportCompleted', 'hataskDecorationUnlocked'] satisfies (typeof notificationTypes[number])[] as string[];
 
-const onlyOnOrOffNotificationTypes = ['app', 'hataskFlowerReady', 'hataskFlowerBloomed', 'hataskZukanUpdated', 'hataskFestivalBloomed', 'achievementEarned', 'login', 'createToken', 'scheduledNotePosted', 'scheduledNotePostFailed'] satisfies (typeof notificationTypes[number])[] as string[];
+const onlyOnOrOffNotificationTypes = ['app', 'hataskFlowerReady', 'hataskFlowerBloomed', 'hataskZukanUpdated', 'hataskFestivalBloomed', 'achievementEarned', 'login', 'createToken', 'scheduledNotePosted', 'scheduledNotePostFailed', 'autoRenoteStopped'] satisfies (typeof notificationTypes[number])[] as string[];
 
 const allowButton = useTemplateRef('allowButton');
 const pushRegistrationInServer = computed(() => allowButton.value?.pushRegistrationInServer);

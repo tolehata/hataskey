@@ -146,7 +146,7 @@ const linkSectionIcons: Partial<Record<SettingsBentoSectionId, string>> = {
 	'data.section1': 'ti ti-package',
 };
 const categoryDestinationSections = computed(() => bentoDestinationLinkSections.filter(section => section.sectionId.startsWith(`${props.categoryId}.`)).map(section => ({
-	...section, label: bentoSectionLabel(section.sectionId), navigationIcon: linkSectionIcons[section.sectionId] ?? bentoSectionIcon(section.sectionId),
+	...section, label: section.label ?? bentoSectionLabel(section.sectionId), navigationIcon: section.icon ?? linkSectionIcons[section.sectionId] ?? bentoSectionIcon(section.sectionId),
 	destinations: section.destinationIds.map(id => {
 		const destination = destinationForId(id);
 		if (destination == null) throw new Error(`[settings-bento] unknown destination: ${id}`);

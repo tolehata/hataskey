@@ -81,6 +81,9 @@ const REPEATABLE_SYSTEM_JOB_DEF = [{
 	name: 'checkHataskFlowers',
 	pattern: '* * * * *',
 }, {
+	name: 'checkAutoRenotes',
+	pattern: '* * * * *',
+}, {
 	name: 'checkHataskMoodReminders',
 	pattern: '* * * * *',
 }, {

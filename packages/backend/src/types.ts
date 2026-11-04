@@ -37,6 +37,7 @@ export const notificationTypes = [
 	'pollEnded',
 	'scheduledNotePosted',
 	'scheduledNotePostFailed',
+	'autoRenoteStopped',
 	'receiveFollowRequest',
 	'followRequestAccepted',
 	'groupInvited',

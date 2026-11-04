@@ -372,6 +372,12 @@ export class NotificationEntityService implements OnModuleInit {
 				exportedEntity: notification.exportedEntity,
 				fileId: notification.fileId,
 			} : {}),
+			...(notification.type === 'autoRenoteStopped' ? {
+				reason: notification.reason,
+				scheduleIds: notification.scheduleIds,
+				count: notification.count,
+				...(notification.adminReason !== undefined ? { adminReason: notification.adminReason } : {}),
+			} : {}),
 			...(notification.type === 'login' ? {
 				ip: notification.userIp,
 			} : {}),

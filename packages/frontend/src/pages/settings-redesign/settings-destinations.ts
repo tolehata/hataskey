@@ -12,6 +12,7 @@ export type SettingsDestination = SettingsSearchNavigationTargetV2 & {
 	icon: string;
 	showCount?: boolean;
 	primary?: boolean;
+	searchable?: boolean;
 	categoryId?: string;
 	description?: string;
 	legacyGroup?: string;
@@ -67,6 +68,7 @@ export const settingsDestinationSections: SettingsDestinationSection[] = [{
 	id: 'timeline-posting', label: copy.nav.timelineAndPosts, description: copy.nav.timelineAndPostsDescription, icon: 'ti ti-list', items: [
 		destination('timeline-note-display', copy.nav.noteDisplayAndCollapse, pref, 'ti ti-note', { controlId: 'settings.control.showreplytargetnote-1kw238d', legacyGroup: 'timelineAndNote', categoryId: 'timeline-posting' }),
 		destination('timeline-post-form', i18n.ts.postForm, pref, 'ti ti-pencil', { controlId: 'settings.control.showfixedpostform-h9wq8p', legacyGroup: 'postForm', categoryId: 'timeline-posting' }),
+		destination('timeline-auto-renote', i18n.ts._autoRenote.manage, '/my/auto-renote', 'ti ti-repeat', { primary: true, brand: 'Hataskey', searchable: true }),
 		destination('timeline-group', copy.nav.timelineOptions, pref, 'ti ti-list-details', { legacyGroup: 'timelineAndNote', categoryId: 'timeline-posting' }),
 	],
 }, {

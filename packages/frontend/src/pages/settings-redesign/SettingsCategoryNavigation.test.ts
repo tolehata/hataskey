@@ -205,6 +205,17 @@ describe('category settings entry points', () => {
 		expect(destinationForId('hataskey-ui-s')).toMatchObject({ route: '/settings/preferences', stableId: 'settings.destination.hataskey-ui-s' });
 	});
 
+	test('投稿と絵文字から自動リノート管理へ既存のナビゲーション経路で進める', async () => {
+		const { host, selected } = await mountCategory('post');
+		const button = destinationButton(host, 'timeline-auto-renote');
+		expect(host.querySelectorAll('[data-settings-destination-id="timeline-auto-renote"]')).toHaveLength(1);
+		expect(button.textContent).toContain('自動リノート');
+		expect(button.closest('[data-settings-link-section]')?.querySelector('h3')?.textContent).toBe('自動リノート');
+		button.click();
+		expect(selected).toEqual([{ id: 'timeline-auto-renote', opener: button }]);
+		expect(destinationForId('timeline-auto-renote')).toMatchObject({ route: '/my/auto-renote', stableId: 'settings.destination.timeline-auto-renote' });
+	});
+
 	test('全カテゴリを巡回しても既存の詳細設定入口を欠落・重複させない', async () => {
 		const { host, props } = await mountCategory('appearance');
 		const rendered: string[] = [];

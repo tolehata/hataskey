@@ -43,6 +43,7 @@ describe('Hatask flower push notification', () => {
 		const module = loadSwModule('scripts/create-notification.ts', {
 			'@/scripts/twemoji-base.js': {}, '@/scripts/operations.js': {}, '@/scripts/get-account-from-id.js': {},
 			'@/scripts/hata-custom-notification-copy.js': {}, '@/scripts/get-user-name.js': {},
+			'@@/js/auto-renote-notification.js': {},
 			'@/scripts/lang.js': { swLang: { i18n: { ts: locale } } },
 		}, { registration: { showNotification } });
 		await module.createNotification(flowerData);
@@ -88,6 +89,7 @@ describe('Hatask decoration unlock push notification', () => {
 		const module = loadSwModule('scripts/create-notification.ts', {
 			'@/scripts/twemoji-base.js': {}, '@/scripts/operations.js': {}, '@/scripts/get-account-from-id.js': {},
 			'@/scripts/hata-custom-notification-copy.js': {}, '@/scripts/get-user-name.js': {},
+			'@@/js/auto-renote-notification.js': {},
 			'@/scripts/lang.js': { swLang: { i18n: { ts: locales['ja-JP'] } } },
 		}, { registration: { showNotification } });
 		await module.createNotification(rewardData);

@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/i.js', () => ({ $i: mocks.account }));
-vi.mock('@/i18n.js', () => ({ i18n: { ts: {
+vi.mock('@/i18n.js', () => ({ i18n: { ts: { _autoRenote: { set: 'Automatic renotes', manage: 'Manage automatic renotes' },
 	delete: 'Delete', deleteAndEdit: 'Delete and edit', noteDeleteConfirm: 'Delete?',
 	deleteAndEditConfirm: 'Delete and edit?', error: 'Error',
 	_hata: { _navbarNotice: { noteDeleted: 'Deleted' }, _favoriteFolders: {} },

@@ -74,6 +74,10 @@ Hataskey UI 3: 画面下の投稿欄。返信・引用・チャンネルの文�
 		</div>
 	</div>
 
+	<div v-if="autoRenote" :class="$style.autoRenote">
+		<span>{{ i18n.ts._autoRenote.pending }} · {{ autoRenoteSummary(autoRenote) }}</span>
+		<button type="button" class="_textButton" :disabled="submitting" @click="autoRenote = null">{{ i18n.ts._autoRenote.clearPending }}</button>
+	</div>
 	<div v-if="editingNote" :class="$style.editing">
 		<Pencil :size="15"/><b>{{ i18n.ts.edit }}</b>
 		<button type="button" :class="$style.ctxClear" :title="i18n.ts.cancel" @click="cancelEditing"><X :size="16"/></button>
@@ -137,6 +141,7 @@ Hataskey UI 3: 画面下の投稿欄。返信・引用・チャンネルの文�
 		<div ref="inlineMenuEl" :class="$style.inlineMenu" :style="{ maxHeight: `${inlineMenuMaxHeight}px` }" :data-composer-menu="inlineMenuKind" :role="inlineMenuKind === 'emoji' ? undefined : 'menu'" :aria-label="inlineMenuLabel" @keydown="onInlineMenuKeydown(inlineMenuKind, $event)">
 			<div :key="inlineMenuKind" :class="$style.inlineMenuItems">
 				<template v-if="inlineMenuKind === 'tools'">
+					<button v-if="!editingNote" type="button" role="menuitem" :class="$style.toolItem" :data-active="autoRenote ? 'true' : undefined" :disabled="submitting || !$i?.policies.canAutoRenote || $i.policies.autoRenoteMonthlyLimit <= 0" @click="configureAutoRenote"><i class="ti ti-repeat" :class="$style.menuItemIcon"></i><span :class="$style.menuItemLabel">{{ i18n.ts._autoRenote.set }}</span></button>
 					<button v-for="tool in tools" :key="tool.id" type="button" role="menuitemcheckbox" :aria-checked="tool.active" :class="$style.toolItem" :data-active="tool.active ? 'true' : undefined" @click="runTool(tool.id, $event)"><component :is="tool.icon" :size="18" :class="$style.menuItemIcon"/><span :class="$style.menuItemLabel">{{ tool.label }}</span></button>
 				</template>
 				<template v-else-if="inlineMenuKind === 'visibility'">
@@ -180,6 +185,9 @@ import { instance } from '@/instance.js';
 import { prefer } from '@/preferences.js';
 import { store } from '@/store.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { editAutoRenote, registerPostedAutoRenote, autoRenoteSummary } from '@/utility/auto-renote.js';
+import { canComposeAutoRenote, parseAutoRenoteOptions } from '@/utility/auto-renote-schedule.js';
+import type { AutoRenoteOptions } from '@/utility/auto-renote-schedule.js';
 import { chooseDriveFile, chooseFileFromPcAndUpload, chooseFileFromUrl } from '@/utility/drive.js';
 import { mfmFunctionPicker } from '@/utility/mfm-function-picker.js';
 import { createPostSendDelayController, postSendDelayEnabled, postSendDelaySeconds } from '@/utility/post-send-delay.js';
@@ -268,6 +276,7 @@ const visibleUsers = ref<Misskey.entities.UserLite[]>([]);
 const context = ref<ComposerContext | null>(null);
 // 「編集」で開いたときの元ノート。送信は新規投稿ではなく、このノートの更新になる。
 const editingNote = shallowRef<Misskey.entities.Note | null>(null);
+const autoRenote = ref<AutoRenoteOptions | null>(null);
 const lastContext = ref<ComposerContext | null>(null);
 const composerDraft = useHataFormDraft({
 	id: props.draftId,
@@ -289,6 +298,7 @@ const composerDraft = useHataFormDraft({
 		visibleUsers: visibleUsers.value,
 		context: context.value,
 		editingNote: editingNote.value,
+		autoRenote: autoRenote.value,
 	}),
 	restore: (snapshot) => {
 		const data = parseHk3ComposerDraft(snapshot);
@@ -308,6 +318,7 @@ const composerDraft = useHataFormDraft({
 		visibleUsers.value = data.visibleUsers;
 		context.value = data.context;
 		editingNote.value = data.editingNote;
+		autoRenote.value = data.autoRenote ?? null;
 		lastContext.value = data.context;
 	},
 	isMeaningful: isMeaningfulHk3ComposerDraft,
@@ -745,7 +756,7 @@ let fullComposerDraftRevision = 0;
 watch([
 	draftText, draftFiles, cwEnabled, cwText, pollEnabled, pollChoices,
 	pollMultiple, pollExpiresAt, pollExpiredAfterUnit, event, reactionAcceptance,
-	visibility, localOnly, visibleUsers, context, editingNote,
+	visibility, localOnly, visibleUsers, context, editingNote, autoRenote,
 ], () => { fullComposerDraftRevision++; }, { deep: true, flush: 'sync' });
 
 function currentPoll(choices = pollChoices.value): PollEditorModelValue | null {
@@ -766,6 +777,7 @@ function openFullComposer() {
 		initialText: draftText.value,
 		initialPoll: currentPoll(),
 		initialEvent: event.value,
+		initialAutoRenote: autoRenote.value,
 		initialReactionAcceptance: reactionAcceptance.value,
 		initialCw: cwEnabled.value ? cwText.value : undefined,
 		initialFiles: draftFiles.value,
@@ -782,6 +794,7 @@ function openFullComposer() {
 
 function clearComposer() {
 	invalidateDraft();
+	autoRenote.value = null;
 	draftText.value = '';
 	draftFiles.value = [];
 	cwEnabled.value = false;
@@ -871,7 +884,26 @@ function isAnnoyingMfm(text: string): boolean {
 	return text.includes('$[x2') || text.includes('$[x3') || text.includes('$[x4') || text.includes('$[scale') || text.includes('$[position');
 }
 
+function autoRenoteAllowed() {
+	return canComposeAutoRenote({ visibility: effectiveVisibility.value, updateMode: editingNote.value != null, channel: composerChannel.value });
+}
+
+async function configureAutoRenote() {
+	closeInlineMenu();
+	if (!autoRenoteAllowed()) {
+		await os.alert({ type: 'warning', text: i18n.ts._autoRenote.composeUnavailable });
+		return;
+	}
+	const generation = draftGeneration;
+	const result = await editAutoRenote({ composer: true, draft: autoRenote.value });
+	if (result && !unmounted && generation === draftGeneration) autoRenote.value = result;
+}
+
 async function validateDraft(): Promise<boolean> {
+	if (autoRenote.value && !autoRenoteAllowed()) {
+		await os.alert({ type: 'warning', text: i18n.ts._autoRenote.composeUnavailable });
+		return false;
+	}
 	if (!hasValidContent.value) return false;
 	if (!composerChannel.value && visibility.value === 'specified' && visibleUsers.value.length === 0) {
 		await os.alert({ type: 'warning', text: copy.recipientRequired });
@@ -952,6 +984,7 @@ async function submitDraft() {
 	const submittedRevision = fullComposerDraftRevision;
 	const submittedGeneration = draftGeneration;
 	const submittedContext = deepClone(context.value as any) as typeof context.value;
+	const submittedAutoRenote = autoRenote.value ? { ...autoRenote.value } : null;
 	const editing = deepClone(editingNote.value as any) as typeof editingNote.value;
 	const submittedFiles = deepClone(draftFiles.value as any) as Misskey.entities.DriveFile[];
 	const choices = pollChoices.value.map(value => value.trim()).filter(Boolean);
@@ -1028,8 +1061,14 @@ async function submitDraft() {
 		} catch (error) {
 			console.error('Hataskey UI 3 post context begin failed', error);
 		}
+		if (submittedAutoRenote && (postData.visibility !== 'public' || postData.channelId != null)) {
+			await os.alert({ type: 'warning', text: i18n.ts._autoRenote.composeUnavailable });
+			cancelPostReceipt();
+			return;
+		}
 		const result = await misskeyApi('notes/create', postData as any);
 		const created = result?.createdNote;
+		if (created && submittedAutoRenote) await registerPostedAutoRenote(created, submittedAutoRenote);
 		if (created) {
 			globalEvents.emit('notePosted', created);
 			const receipt = pendingPostReceipt;
@@ -1094,6 +1133,7 @@ function adopt(request: PostFormProps): boolean {
 
 	if (request.initialNote) restoreFromNote(request.initialNote, channel, request.updateMode === true);
 
+	if (request.initialAutoRenote !== undefined) autoRenote.value = parseAutoRenoteOptions(request.initialAutoRenote);
 	if (request.initialText) draftText.value = draftText.value.trim().length === 0 ? request.initialText : `${draftText.value} ${request.initialText}`;
 	if (request.initialCw !== undefined) {
 		cwEnabled.value = true;
@@ -1399,6 +1439,16 @@ defineExpose({ adopt, focus, openConfirmation, cancelConfirmation, confirmationA
 </script>
 
 <style lang="scss" module>
+.autoRenote {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	padding: 8px 12px;
+	font-size: 0.85em;
+	line-height: 1.5;
+	color: var(--MI_THEME-fg);
+}
+
 .root {
 	position: relative;
 	display: flex;

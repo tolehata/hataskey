@@ -33,6 +33,7 @@ import { openFavoriteFolderPicker, removeFavoriteNote } from '@/utility/favorite
 import { requestNoteActionConfirmation } from '@/utility/note-action-confirmation.js';
 import { noteCharmDisplay, setNoteCharmDisplay } from '@/utility/hatasaba-device-prefs.js';
 import { isNoteCharmMobileDisplay } from '@/utility/note-charm-device.js';
+import { canAutoRenoteNote, editAutoRenote } from '@/utility/auto-renote.js';
 
 export async function getNoteClipMenu(props: {
 	note: Misskey.entities.Note;
@@ -526,6 +527,18 @@ export function getNoteMenu(props: {
 					icon: 'ti ti-icons',
 					text: i18n.ts.reactionsList,
 					action: showReactions,
+				});
+
+				noteChildMenu.push({ type: 'divider' }, {
+					icon: 'ti ti-repeat',
+					text: i18n.ts._autoRenote.set,
+					disabled: !canAutoRenoteNote(appearNote),
+					action: () => { void editAutoRenote({ note: appearNote }); },
+				}, {
+					type: 'link',
+					icon: 'ti ti-list',
+					text: i18n.ts._autoRenote.manage,
+					to: '/my/auto-renote',
 				});
 
 				if (link) {

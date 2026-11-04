@@ -1184,6 +1184,45 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
+			<MkFolder v-if="matchQuery([i18n.ts._role._options.canAutoRenote, 'canAutoRenote'])">
+				<template #label>{{ i18n.ts._role._options.canAutoRenote }}</template>
+				<template #suffix>
+					<span v-if="role.policies.canAutoRenote.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.canAutoRenote.value ? i18n.ts.yes : i18n.ts.no }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.canAutoRenote)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.canAutoRenote.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkSwitch v-model="role.policies.canAutoRenote.value" :disabled="role.policies.canAutoRenote.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts.enable }}</template>
+					</MkSwitch>
+					<MkRange v-model="role.policies.canAutoRenote.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<MkFolder v-if="matchQuery([i18n.ts._role._options.autoRenoteMonthlyLimit, 'autoRenoteMonthlyLimit'])">
+				<template #label>{{ i18n.ts._role._options.autoRenoteMonthlyLimit }}</template>
+				<template #suffix>
+					<span v-if="role.policies.autoRenoteMonthlyLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.autoRenoteMonthlyLimit.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.autoRenoteMonthlyLimit)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.autoRenoteMonthlyLimit.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkInput v-model="role.policies.autoRenoteMonthlyLimit.value" :disabled="role.policies.autoRenoteMonthlyLimit.useDefault" type="number" :min="0" :max="2147483647" :step="1" :readonly="readonly">
+					</MkInput>
+					<MkRange v-model="role.policies.autoRenoteMonthlyLimit.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
 			<MkFolder v-if="matchQuery([i18n.ts._role._options.watermarkAvailable, 'watermarkAvailable'])">
 				<template #label>{{ i18n.ts._role._options.watermarkAvailable }}</template>
 				<template #suffix>

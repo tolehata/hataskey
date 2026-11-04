@@ -37,6 +37,10 @@ import type {
 	AdminAnnouncementsUpdateRequest,
 	AdminApproveRegistrationRequest,
 	AdminApproveRegistrationResponse,
+	AdminAutoRenoteCancelRequest,
+	AdminAutoRenoteCancelResponse,
+	AdminAutoRenoteListRequest,
+	AdminAutoRenoteListResponse,
 	AdminAvatarDecorationsCopyRequest,
 	AdminAvatarDecorationsCopyResponse,
 	AdminAvatarDecorationsCreateRequest,
@@ -867,6 +871,18 @@ import type {
 	MyAppsResponse,
 	NotesRequest,
 	NotesResponse,
+	NotesAutoRenoteCancelRequest,
+	NotesAutoRenoteCancelResponse,
+	NotesAutoRenoteCreateRequest,
+	NotesAutoRenoteCreateResponse,
+	NotesAutoRenoteListRequest,
+	NotesAutoRenoteListResponse,
+	NotesAutoRenotePauseRequest,
+	NotesAutoRenotePauseResponse,
+	NotesAutoRenoteResumeRequest,
+	NotesAutoRenoteResumeResponse,
+	NotesAutoRenoteUpdateRequest,
+	NotesAutoRenoteUpdateResponse,
 	NotesBubbleTimelineRequest,
 	NotesBubbleTimelineResponse,
 	NotesChildrenRequest,
@@ -1102,6 +1118,8 @@ export type Endpoints = {
 	'admin/announcements/list': { req: AdminAnnouncementsListRequest; res: AdminAnnouncementsListResponse };
 	'admin/announcements/update': { req: AdminAnnouncementsUpdateRequest; res: EmptyResponse };
 	'admin/approve-registration': { req: AdminApproveRegistrationRequest; res: AdminApproveRegistrationResponse };
+	'admin/auto-renote/cancel': { req: AdminAutoRenoteCancelRequest; res: AdminAutoRenoteCancelResponse };
+	'admin/auto-renote/list': { req: AdminAutoRenoteListRequest; res: AdminAutoRenoteListResponse };
 	'admin/avatar-decorations/copy': { req: AdminAvatarDecorationsCopyRequest; res: AdminAvatarDecorationsCopyResponse };
 	'admin/avatar-decorations/create': { req: AdminAvatarDecorationsCreateRequest; res: AdminAvatarDecorationsCreateResponse };
 	'admin/avatar-decorations/delete': { req: AdminAvatarDecorationsDeleteRequest; res: EmptyResponse };
@@ -1631,6 +1649,13 @@ export type Endpoints = {
 	'mute/list': { req: MuteListRequest; res: MuteListResponse };
 	'my/apps': { req: MyAppsRequest; res: MyAppsResponse };
 	'notes': { req: NotesRequest; res: NotesResponse };
+	'notes/auto-renote/activity': { req: EmptyRequest; res: EmptyResponse };
+	'notes/auto-renote/cancel': { req: NotesAutoRenoteCancelRequest; res: NotesAutoRenoteCancelResponse };
+	'notes/auto-renote/create': { req: NotesAutoRenoteCreateRequest; res: NotesAutoRenoteCreateResponse };
+	'notes/auto-renote/list': { req: NotesAutoRenoteListRequest; res: NotesAutoRenoteListResponse };
+	'notes/auto-renote/pause': { req: NotesAutoRenotePauseRequest; res: NotesAutoRenotePauseResponse };
+	'notes/auto-renote/resume': { req: NotesAutoRenoteResumeRequest; res: NotesAutoRenoteResumeResponse };
+	'notes/auto-renote/update': { req: NotesAutoRenoteUpdateRequest; res: NotesAutoRenoteUpdateResponse };
 	'notes/bubble-timeline': { req: NotesBubbleTimelineRequest; res: NotesBubbleTimelineResponse };
 	'notes/children': { req: NotesChildrenRequest; res: NotesChildrenResponse };
 	'notes/clips': { req: NotesClipsRequest; res: NotesClipsResponse };

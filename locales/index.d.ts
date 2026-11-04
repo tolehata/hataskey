@@ -9674,6 +9674,14 @@ export interface Locale extends ILocale {
              */
             "scheduledNoteLimit": string;
             /**
+             * 自動リノートの利用を許可
+             */
+            "canAutoRenote": string;
+            /**
+             * 自動リノートの月間実行上限
+             */
+            "autoRenoteMonthlyLimit": string;
+            /**
              * ウォーターマーク機能の使用可否
              */
             "watermarkAvailable": string;
@@ -11413,6 +11421,14 @@ export interface Locale extends ILocale {
          */
         "read:admin:roles": string;
         /**
+         * ユーザーの自動リノートを見る
+         */
+        "read:admin:auto-renote": string;
+        /**
+         * ユーザーの自動リノートを解除する
+         */
+        "write:admin:auto-renote": string;
+        /**
          * リレーを操作する
          */
         "write:admin:relays": string;
@@ -12561,6 +12577,10 @@ export interface Locale extends ILocale {
          */
         "scheduledNotePostFailed": string;
         /**
+         * 自動リノートが停止しました
+         */
+        "autoRenoteStopped": string;
+        /**
          * 新しい投稿
          */
         "newNote": string;
@@ -12694,6 +12714,10 @@ export interface Locale extends ILocale {
              * 予約投稿が失敗した
              */
             "scheduledNotePostFailed": string;
+            /**
+             * 自動リノートが停止した
+             */
+            "autoRenoteStopped": string;
             /**
              * フォロー申請を受け取った
              */
@@ -45284,6 +45308,270 @@ export interface Locale extends ILocale {
              * チェック
              */
             "check": string;
+        };
+    };
+    "_autoRenote": {
+        /**
+         * ノート本文を検索
+         */
+        "searchNoteText": string;
+        /**
+         * 検索文字列は200文字以内で入力してください。
+         */
+        "searchTooLong": string;
+        /**
+         * 対象ノートのリンクまたはID
+         */
+        "targetNoteId": string;
+        /**
+         * 対象を変更する場合は、自分が投稿したノートのリンクまたはIDを入力してください。
+         */
+        "targetNoteHelp": string;
+        /**
+         * 自動リノート
+         */
+        "title": string;
+        /**
+         * 自動リノートを設定
+         */
+        "set": string;
+        /**
+         * 自動リノートの管理
+         */
+        "manage": string;
+        /**
+         * 繰り返し
+         */
+        "frequency": string;
+        /**
+         * 毎日
+         */
+        "daily": string;
+        /**
+         * 毎週
+         */
+        "weekly": string;
+        /**
+         * 毎月
+         */
+        "monthly": string;
+        /**
+         * 曜日
+         */
+        "weekday": string;
+        /**
+         * 日付
+         */
+        "day": string;
+        /**
+         * 時刻（日本時間）
+         */
+        "time": string;
+        /**
+         * 自動リノートの公開範囲は「パブリック」です。
+         */
+        "publicWarning": string;
+        /**
+         * 元のノートで「ローカルのみ」を選んでいる場合、自動リノートも他のサーバーには送信されません。
+         */
+        "localOnlyWarning": string;
+        /**
+         * 月間上限に達した場合、または最後のアカウント利用から72時間が経過した場合は停止し、理由を通知します。条件が解消しても、ご自身で再開するまで停止したままです。
+         */
+        "stopHelp": string;
+        /**
+         * 指定日がない月は実行しません。停止中に過ぎた予定はまとめて実行しません。
+         */
+        "monthlyHelp": string;
+        /**
+         * 投稿後に自動リノートを設定します
+         */
+        "pending": string;
+        /**
+         * 自動リノートの指定を外す
+         */
+        "clearPending": string;
+        /**
+         * 次回リノート予定日時
+         */
+        "nextRun": string;
+        /**
+         * 再開した場合の次回予定日時
+         */
+        "nextRunAfterResume": string;
+        /**
+         * 前回
+         */
+        "lastRun": string;
+        /**
+         * 今月の実行回数
+         */
+        "usage": string;
+        /**
+         * 自動リノートはありません。自分のノートの「…」→「ノート」から設定できます。
+         */
+        "empty": string;
+        /**
+         * 現在のロールでは自動リノートを利用できません。
+         */
+        "disabled": string;
+        /**
+         * 自分が投稿した、パブリックでリノートできるノートを指定してください。
+         */
+        "ineligible": string;
+        /**
+         * 自動リノートを指定した投稿は、このアカウントからパブリックで今すぐ投稿してください。予約投稿・下書き保存・編集・外部アカウントへの投稿では利用できません。
+         */
+        "composeUnavailable": string;
+        /**
+         * ノートは投稿されましたが、自動リノートを設定できませんでした。再投稿せず、投稿済みノートの「…」→「ノート」から設定してください。
+         */
+        "partialFailure": string;
+        /**
+         * 自動リノートの設定を保存できませんでした。設定内容を確認して、もう一度お試しください。
+         */
+        "saveFailed": string;
+        /**
+         * 時刻・曜日・日付を確認してください。
+         */
+        "invalidSchedule": string;
+        /**
+         * 一時停止
+         */
+        "pause": string;
+        /**
+         * 再開
+         */
+        "resume": string;
+        /**
+         * 解除
+         */
+        "cancelSchedule": string;
+        /**
+         * 今後の自動リノートを解除します。元のノートと、これまでのリノートは削除されません。
+         */
+        "cancelConfirm": string;
+        /**
+         * 解除する理由（本人に通知します）
+         */
+        "adminReason": string;
+        /**
+         * 状態
+         */
+        "status": string;
+        /**
+         * すべて
+         */
+        "all": string;
+        /**
+         * 実行中
+         */
+        "active": string;
+        /**
+         * 一時停止中
+         */
+        "paused": string;
+        /**
+         * 月間上限で停止
+         */
+        "quota": string;
+        /**
+         * 72時間の未利用で停止
+         */
+        "offline": string;
+        /**
+         * ロール制限で停止
+         */
+        "role": string;
+        /**
+         * 対象を利用できず停止
+         */
+        "unavailable": string;
+        /**
+         * 解除済み
+         */
+        "cancelled": string;
+        /**
+         * 実行エラーで停止
+         */
+        "error": string;
+        /**
+         * 対象ノートを表示できません
+         */
+        "noteDeleted": string;
+        /**
+         * ユーザーで絞り込む
+         */
+        "userFilter": string;
+        /**
+         * 絞り込みを解除
+         */
+        "clearUserFilter": string;
+        /**
+         * 一覧を読み込めませんでした。
+         */
+        "loadFailed": string;
+        /**
+         * 再読み込み
+         */
+        "refresh": string;
+        /**
+         * 前へ
+         */
+        "previous": string;
+        /**
+         * 次へ
+         */
+        "next": string;
+        /**
+         * 自動リノートを設定しました
+         */
+        "saved": string;
+        /**
+         * 対象ノート
+         */
+        "target": string;
+        /**
+         * 停止中の設定を変更しても自動では再開しません。内容を確認して「再開」を押してください。
+         */
+        "stoppedEdit": string;
+        /**
+         * 登録できる自動リノートの上限に達しています。不要な設定を解除してください。
+         */
+        "scheduleLimit": string;
+        /**
+         * 自動リノート{count}件を停止しました。
+         */
+        "stoppedCount": ParameterizedString<"count">;
+        /**
+         * 解除理由：{reason}
+         */
+        "notificationAdminReason": ParameterizedString<"reason">;
+        "_reasons": {
+            /**
+             * 今月の上限に達したため停止しました。翌月に回数がリセットされた後、ご自身で再開してください。
+             */
+            "quota": string;
+            /**
+             * 最後のアカウント利用から72時間が経過したため停止しました。利用を再開した後、ご自身で再開してください。
+             */
+            "offline": string;
+            /**
+             * 現在のロールまたはアカウントの状態では実行できないため停止しました。利用できる状態になった後、ご自身で再開してください。
+             */
+            "role": string;
+            /**
+             * 対象のノートを自動リノートできないため停止しました。自分が投稿した、パブリックでリノートできるノートに変更してから、ご自身で再開してください。
+             */
+            "unavailable": string;
+            /**
+             * 管理者がこの自動リノートを解除しました。詳しくは管理者に確認してください。
+             */
+            "admin": string;
+            /**
+             * 実行時に問題が発生したため停止しました。重複投稿を避けるため、投稿履歴と設定を確認してからご自身で再開してください。
+             */
+            "error": string;
         };
     };
 }

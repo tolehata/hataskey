@@ -704,3 +704,14 @@ export * as 'hata/hatagoes/show' from './endpoints/hata/hatagoes/show.js';
 export * as 'hata/hatagoes/notifications/unread-count' from './endpoints/hata/hatagoes/notifications/unread-count.js';
 export * as 'hata/hatagoes/home/issues' from './endpoints/hata/hatagoes/home/issues.js';
 export * as 'hata/hatagoes/home/daily' from './endpoints/hata/hatagoes/home/daily.js';
+
+// 旗鯖: 定期自動リノート
+export * as 'notes/auto-renote/activity' from './endpoints/notes/auto-renote/activity.js';
+export * as 'notes/auto-renote/list' from './endpoints/notes/auto-renote/list.js';
+export * as 'notes/auto-renote/create' from './endpoints/notes/auto-renote/create.js';
+export * as 'notes/auto-renote/update' from './endpoints/notes/auto-renote/update.js';
+export * as 'notes/auto-renote/pause' from './endpoints/notes/auto-renote/pause.js';
+export * as 'notes/auto-renote/resume' from './endpoints/notes/auto-renote/resume.js';
+export * as 'notes/auto-renote/cancel' from './endpoints/notes/auto-renote/cancel.js';
+export * as 'admin/auto-renote/list' from './endpoints/admin/auto-renote/list.js';
+export * as 'admin/auto-renote/cancel' from './endpoints/admin/auto-renote/cancel.js';

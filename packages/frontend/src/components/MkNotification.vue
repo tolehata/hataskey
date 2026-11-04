@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <div :class="$style.root" :data-content-visibility-auto="contentVisibilityAuto" :data-toast="toast" :data-notification-brand="brand">
 	<div :class="$style.head">
 		<MkAvatar v-if="['pollEnded', 'note'].includes(notification.type) && 'note' in notification" :class="$style.icon" :user="notification.note.user" link preview/>
-		<MkAvatar v-else-if="['roleAssigned', 'achievementEarned', 'exportCompleted', 'login', 'createToken', 'scheduledNotePosted', 'scheduledNotePostFailed'].includes(notification.type)" :class="$style.icon" :user="$i" link preview/>
+		<MkAvatar v-else-if="['roleAssigned', 'achievementEarned', 'exportCompleted', 'login', 'createToken', 'scheduledNotePosted', 'scheduledNotePostFailed', 'autoRenoteStopped'].includes(notification.type)" :class="$style.icon" :user="$i" link preview/>
 		<div v-else-if="notification.type === 'reaction:grouped' && notification.note.reactionAcceptance === 'likeOnly'" :class="[$style.icon, $style.icon_reactionGroupHeart]"><i class="ti ti-heart" style="line-height: 1;"></i></div>
 		<div v-else-if="notification.type === 'reaction:grouped'" :class="[$style.icon, $style.icon_reactionGroup]"><i class="ti ti-plus" style="line-height: 1;"></i></div>
 		<!-- 旗鯖fork: reaction:groupedByUser はそのユーザーのアバターを表示 -->
@@ -50,7 +50,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				[$style.t_quote]: notification.type === 'quote',
 				[$style.t_pollEnded]: notification.type === 'pollEnded',
 				[$style.t_scheduledNotePosted]: notification.type === 'scheduledNotePosted',
-				[$style.t_scheduledNotePostFailed]: notification.type === 'scheduledNotePostFailed',
+				[$style.t_scheduledNotePostFailed]: notification.type === 'scheduledNotePostFailed' || notification.type === 'autoRenoteStopped',
 				[$style.t_achievementEarned]: notification.type === 'achievementEarned',
 				[$style.t_exportCompleted]: notification.type === 'exportCompleted',
 				[$style.t_login]: notification.type === 'login',
@@ -70,7 +70,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<i v-else-if="notification.type === 'quote'" class="ti ti-quote"></i>
 			<i v-else-if="notification.type === 'pollEnded'" class="ti ti-chart-arrows"></i>
 			<i v-else-if="notification.type === 'scheduledNotePosted'" class="ti ti-send"></i>
-			<i v-else-if="notification.type === 'scheduledNotePostFailed'" class="ti ti-alert-triangle"></i>
+			<i v-else-if="notification.type === 'scheduledNotePostFailed' || notification.type === 'autoRenoteStopped'" class="ti ti-alert-triangle"></i>
 			<i v-else-if="notification.type === 'achievementEarned'" class="ti ti-medal"></i>
 			<i v-else-if="notification.type === 'exportCompleted'" class="ti ti-archive"></i>
 			<i v-else-if="notification.type === 'login'" class="ti ti-login-2"></i>
@@ -95,6 +95,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-if="notification.type === 'pollEnded'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.pollEnded" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'scheduledNotePosted'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.scheduledNotePosted" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'scheduledNotePostFailed'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.scheduledNotePostFailed" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'autoRenoteStopped'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.autoRenoteStopped" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'note'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.newNote" :wrap="toast"/>: <MkUserName :nowrap="!toast" :user="notification.note.user"/></span>
 			<span v-else-if="notification.type === 'roleAssigned'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.roleAssigned" :wrap="toast"/></span>
 			<span v-else-if="notification.type === 'chatRoomInvitationReceived'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.chatRoomInvitationReceived" :wrap="toast"/></span>
@@ -156,6 +157,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<i class="ti ti-quote" :class="$style.quote"></i>
 				<Mfm :punctuationWrap="toast" :text="getNoteSummary(notification.note)" :plain="true" :nowrap="!toast" :author="notification.note.user" :emojiUrls="notification.note.emojis"/>
 				<i class="ti ti-quote" :class="$style.quote"></i>
+			</MkA>
+			<MkA v-else-if="notification.type === 'autoRenoteStopped'" :class="$style.text" to="/my/auto-renote" data-notification-body>
+				<MkNotificationText :text="autoRenoteStoppedBody(notification, i18n)" :wrap="true"/>
 			</MkA>
 			<div v-else-if="notification.type === 'roleAssigned'" :class="$style.text">
 				{{ notification.role.name }}
@@ -291,6 +295,7 @@ import HataAppWordmark from '@/components/HataAppWordmark.vue';
 import { store } from '@/store.js';
 import { getNoteSummary } from '@/utility/get-note-summary.js';
 import { notePage } from '@@/js/note.js';
+import { autoRenoteStoppedBody } from '@@/js/auto-renote-notification.js';
 import { userPage } from '@/filters/user.js';
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';

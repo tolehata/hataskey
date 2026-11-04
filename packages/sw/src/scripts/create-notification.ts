@@ -13,6 +13,7 @@ import { getAccountFromId } from '@/scripts/get-account-from-id.js';
 import { hataFeedNotificationDisplayBody, privateChannelNotificationDisplayCopy } from '@/scripts/hata-custom-notification-copy.js';
 import { swLang } from '@/scripts/lang.js';
 import { getUserName } from '@/scripts/get-user-name.js';
+import { autoRenoteStoppedBody } from '@@/js/auto-renote-notification.js';
 
 const closeNotificationsByTags = async (tags: string[]): Promise<void> => {
 	for (const n of (await Promise.all(tags.map(tag => globalThis.registration.getNotifications({ tag })))).flat()) {
@@ -304,6 +305,13 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 					return [i18n.ts._notification.pollEnded, {
 						body: data.body.note.text ?? '',
 						badge: iconUrl('chart-arrows'),
+						data,
+					}];
+
+				case 'autoRenoteStopped':
+					return [i18n.ts._notification.autoRenoteStopped, {
+						body: autoRenoteStoppedBody(data.body, i18n),
+						badge: iconUrl('bell'),
 						data,
 					}];
 

@@ -111,6 +111,10 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		to: '/settings/notifications',
 		active: currentPage.value?.route.name === 'notifications',
 	}, {
+		icon: 'ti ti-repeat',
+		text: i18n.ts._autoRenote.title,
+		to: '/my/auto-renote',
+	}, {
 		icon: 'ti ti-mail',
 		hatakyuAsset: 'reviewingDocuments',
 		text: i18n.ts.email,

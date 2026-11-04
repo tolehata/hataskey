@@ -59,7 +59,7 @@ function setup() {
 		files: ref<Misskey.entities.DriveFile[]>([]), poll: ref(null), event: ref(null), quoteId: ref(null),
 		replyTargetNote: ref({ id: 'reply-note', userId: 'alice', visibility: 'specified', visibleUserIds: ['me', 'alice', 'bob'], user: user('alice') }),
 		renoteTargetNote: ref(null), targetChannel: ref<{ id: string } | null>(null), scheduledAt: ref<number | null>(null),
-		scheduledNoteDelete: ref(null), saveToDraft: ref(false), posting: ref(false), posted: ref(false),
+		autoRenote: ref(null), scheduledNoteDelete: ref(null), saveToDraft: ref(false), posting: ref(false), posted: ref(false),
 		submitMotionState: ref('idle'), reactionAcceptance: ref(null), disableRightClick: ref(false),
 		deliveryTargets: ref(null), withHashtags: ref(false), hashtags: ref(''), postAccount: ref(null),
 		useExternalAccount: ref(false), serverDraftId: ref(null), draftKey: ref('reply:reply-note'),

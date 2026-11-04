@@ -69,6 +69,14 @@ export type MiNotification = {
 	createdAt: string;
 	noteId: MiNote['id'];
 } | {
+	type: 'autoRenoteStopped';
+	id: string;
+	createdAt: string;
+	reason: 'quota' | 'offline' | 'role' | 'unavailable' | 'admin' | 'error';
+	scheduleIds: string[];
+	count: number;
+	adminReason?: string;
+} | {
 	type: 'scheduledNotePostFailed';
 	id: string;
 	createdAt: string;

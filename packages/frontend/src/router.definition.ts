@@ -453,6 +453,10 @@ export const ROUTE_DEF = [{
 		name: 'avatarDecorations',
 		component: page(() => import('@/pages/avatar-decorations.vue')),
 	}, {
+		path: '/auto-renote',
+		name: 'auto-renote',
+		component: iAmAdmin ? page(() => import('@/pages/admin/auto-renote.vue')) : page(() => import('@/pages/not-found.vue')),
+	}, {
 		path: '/hatask',
 		name: 'hatask',
 		component: iAmAdmin ? page(() => import('@/pages/admin/hatask.vue')) : page(() => import('@/pages/not-found.vue')),
@@ -577,6 +581,11 @@ export const ROUTE_DEF = [{
 		path: '/',
 		component: page(() => import('@/pages/_empty_.vue')),
 	}],
+}, {
+	path: '/my/auto-renote',
+	name: 'my-auto-renote',
+	component: page(() => import('@/pages/auto-renote.vue')),
+	loginRequired: true,
 }, {
 	path: '/my/notifications',
 	name: 'my-notifications',

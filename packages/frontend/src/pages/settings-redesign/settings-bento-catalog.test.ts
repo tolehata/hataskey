@@ -50,5 +50,7 @@ describe('settings presentation category contract', () => {
 		}
 		expect(bentoDestinationLinkSections.find(section => section.sectionId === 'timeline.section6')?.destinationIds).toEqual(['misskey-deck']);
 		expect(bentoDestinationLinkSections.find(section => section.sectionId === 'data.section3')?.destinationIds).toEqual(['account-external', 'account-concrnt', 'account-connect', 'account-apps']);
+		expect(bentoDestinationLinkSections.find(section => section.sectionId === 'post.section0')?.destinationIds).toEqual(['timeline-auto-renote']);
+		expect(bentoCategoryForDestination('timeline-auto-renote')).toBe('post');
 	});
 });

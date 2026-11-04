@@ -5,6 +5,7 @@
 
 import * as Misskey from 'cherrypick-js';
 import type { PollEditorModelValue } from '@/components/MkPollEditor.vue';
+import type { AutoRenoteOptions } from '@/utility/auto-renote-schedule.js';
 
 export interface ExternalNote {
 	id: string;
@@ -37,6 +38,7 @@ export interface PostFormProps {
 	mention?: Misskey.entities.User;
 	specified?: Misskey.entities.UserDetailed;
 	initialText?: string;
+	initialAutoRenote?: AutoRenoteOptions | null;
 	initialCw?: string;
 	initialVisibility?: (typeof Misskey.noteVisibilities)[number];
 	initialFiles?: Misskey.entities.DriveFile[];

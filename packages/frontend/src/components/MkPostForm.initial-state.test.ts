@@ -6,6 +6,7 @@ import ts from 'typescript';
 import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import { deepClone } from '@/utility/clone.js';
+import { parseAutoRenoteOptions } from '@/utility/auto-renote-schedule.js';
 import type { PostFormProps } from '@/types/post-form.js';
 import { hk3CanAdoptPostForm } from './hataskey3/hk3-state.js';
 import { createPostFormRecipients } from './post-form-recipients.js';
@@ -25,11 +26,11 @@ visit(ast);
 
 function initialize(props: PostFormProps) {
 	const values: Record<string, { value: unknown }> = {};
-	for (const key of ['text', 'useCw', 'cw', 'disableRightClick', 'saveToDraft', 'visibility', 'localOnly', 'files', 'quoteId', 'scheduledAt', 'scheduledNoteDelete', 'deliveryTargets']) values[key] = ref(null);
+	for (const key of ['text', 'useCw', 'cw', 'disableRightClick', 'saveToDraft', 'visibility', 'localOnly', 'files', 'quoteId', 'scheduledAt', 'autoRenote', 'scheduledNoteDelete', 'deliveryTargets']) values[key] = ref(null);
 	values.text.value = props.initialText;
 	values.files.value = props.initialFiles;
 	const draft = { data: { text: 'unrelated saved text', files: [{ id: 'saved' }], poll: { choices: ['saved a', 'saved b'] }, event: { title: 'saved event' }, reactionAcceptance: 'likeOnly' } };
-	const context = { props, ref, deepClone, store: { s: { reactionAcceptance: 'likeOnly' } }, ...values, draftKey: ref('note'), miLocalStorage: { getItem: () => JSON.stringify({ note: draft }) }, normalizeDeliveryTargets: () => [], output: undefined };
+	const context = { props, ref, deepClone, parseAutoRenoteOptions, store: { s: { reactionAcceptance: 'likeOnly' } }, ...values, draftKey: ref('note'), miLocalStorage: { getItem: () => JSON.stringify({ note: draft }) }, normalizeDeliveryTargets: () => [], output: undefined };
 	expect(initials).not.toBe('');
 	expect(restore).not.toBe('');
 	const compiled = ts.transpileModule(initials + '\n' + restore + '\noutput = { poll, event, reactionAcceptance, text, files };', { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;

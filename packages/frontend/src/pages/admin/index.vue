@@ -156,6 +156,11 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		to: '/admin/avatar-decorations',
 		active: currentPage.value?.route.name === 'avatarDecorations',
 	}, ...(iAmAdmin ? [{
+		icon: 'ti ti-repeat',
+		text: i18n.ts._autoRenote.manage,
+		to: '/admin/auto-renote',
+		active: currentPage.value?.route.name === 'auto-renote',
+	}, {
 		icon: 'ti ti-flower',
 		text: 'Hatask管理',
 		to: '/admin/hatask',

@@ -447,6 +447,7 @@ export function settingsDestinationCatalogItemsV2(): SettingsDestinationCatalogI
 			stableId: destination.stableId ?? `settings.destination.${destination.id}`,
 			route: destination.route,
 			label: destination.label,
+			searchable: destination.searchable ?? false,
 			...(destination.anchor ? { anchor: destination.anchor } : {}),
 			...(destination.controlId ? { controlId: destination.controlId } : {}),
 			aliases: [destination.id, ...(destination.brand ? [destination.brand] : [])],

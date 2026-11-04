@@ -37,3 +37,11 @@ describe('UI S composer draft snapshots', () => {
 		expect(parseHk3ComposerDraft(saved).context).toEqual(saved.context);
 	});
 });
+
+describe('UI S saved automatic renote settings', () => {
+	it('round trips valid settings while rejecting corrupt saved schedules', () => {
+		const autoRenote = { frequency: 'weekly', time: '10:00', weekday: 3, day: 1 };
+		expect(parseHk3ComposerDraft({ ...snapshot(), autoRenote }).autoRenote).toEqual(autoRenote);
+		expect(() => parseHk3ComposerDraft({ ...snapshot(), autoRenote: { ...autoRenote, weekday: 7 } })).toThrow('Invalid automatic renote draft');
+	});
+});

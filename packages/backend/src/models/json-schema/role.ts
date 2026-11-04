@@ -394,6 +394,14 @@ export const packedRolePoliciesSchema = {
 			type: 'integer',
 			optional: false, nullable: false,
 		},
+		canAutoRenote: {
+			type: 'boolean',
+			optional: false, nullable: false,
+		},
+		autoRenoteMonthlyLimit: {
+			type: 'integer',
+			optional: false, nullable: false,
+		},
 		scheduledNoteLimit: {
 			type: 'integer',
 			optional: false, nullable: false,

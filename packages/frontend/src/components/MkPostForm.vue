@@ -95,6 +95,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button class="_textButton" :aria-label="`${i18n.ts.remove}: ${id}`" @click="visibleRecipients.remove(id)">{{ i18n.ts.remove }}</button>
 		</div>
 	</MkInfo>
+	<MkInfo v-if="autoRenote" :class="$style.scheduledAt">
+		{{ i18n.ts._autoRenote.pending }} · {{ autoRenoteSummary(autoRenote) }}
+		<button type="button" class="_textButton" :disabled="posting" @click="autoRenote = null">{{ i18n.ts._autoRenote.clearPending }}</button>
+	</MkInfo>
 	<MkInfo v-if="scheduledAt != null" :class="$style.scheduledAt">
 		<I18n :src="i18n.ts.scheduleToPostOnX" tag="span">
 			<template #x>
@@ -197,6 +201,9 @@ import { extractMentions } from '@/utility/extract-mentions.js';
 import { formatTimeString } from '@/utility/format-time-string.js';
 import { Autocomplete } from '@/utility/autocomplete.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { editAutoRenote, registerPostedAutoRenote, autoRenoteSummary } from '@/utility/auto-renote.js';
+import { canComposeAutoRenote, parseAutoRenoteOptions } from '@/utility/auto-renote-schedule.js';
+import type { AutoRenoteOptions } from '@/utility/auto-renote-schedule.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import { store } from '@/store.js';
 import MkInfo from '@/components/MkInfo.vue';
@@ -307,6 +314,7 @@ if (props.initialVisibleUsers) {
 }
 const reactionAcceptance = ref(props.initialReactionAcceptance !== undefined ? props.initialReactionAcceptance : store.s.reactionAcceptance);
 const scheduledAt = ref<number | null>(null);
+const autoRenote = ref<AutoRenoteOptions | null>(props.initialAutoRenote ?? null);
 const draghover = ref(false);
 const quoteId = ref<string | null>(null);
 const hasNotSpecifiedMentions = ref(false);
@@ -550,6 +558,7 @@ function watchForDraft() {
 	watch(quoteId, () => saveDraft());
 	watch(reactionAcceptance, () => saveDraft());
 	watch(scheduledAt, () => saveDraft());
+	watch(autoRenote, () => saveDraft(), { deep: true });
 	watch(scheduledNoteDelete, () => saveDraft());
 	watch(deliveryTargets, () => saveDraft(), { deep: true });
 	watch(visibleRecipients.userIds, () => saveDraft());
@@ -770,6 +779,19 @@ async function toggleReactionAcceptance() {
 }
 
 //#region その他の設定メニューpopup
+function autoRenoteAllowed() {
+	return canComposeAutoRenote({ visibility: visibility.value, updateMode: props.updateMode, external: useExternalAccount.value, otherAccount: postAccount.value != null, scheduledAt: scheduledAt.value, saveToDraft: saveToDraft.value, channel: targetChannel.value });
+}
+
+async function configureAutoRenote() {
+	if (!autoRenoteAllowed()) {
+		await os.alert({ type: 'warning', text: i18n.ts._autoRenote.composeUnavailable });
+		return;
+	}
+	const result = await editAutoRenote({ composer: true, draft: autoRenote.value });
+	if (result) autoRenote.value = result;
+}
+
 function showOtherSettings() {
 	let reactionAcceptanceIcon = 'ti ti-icons';
 
@@ -797,7 +819,12 @@ function showOtherSettings() {
 		action: () => {
 			toggleDeliveryTargets();
 		},
-	}, { type: 'divider' }, ...($i.policies.scheduledNoteLimit > 0 ? [{
+	}, { type: 'divider' }, {
+		icon: 'ti ti-repeat',
+		text: i18n.ts._autoRenote.set,
+		disabled: posting.value || !$i.policies.canAutoRenote || $i.policies.autoRenoteMonthlyLimit <= 0,
+		action: configureAutoRenote,
+	}, ...($i.policies.scheduledNoteLimit > 0 ? [{
 		icon: 'ti ti-calendar-time',
 		text: i18n.ts.schedulePost + '...',
 		action: () => {
@@ -877,6 +904,7 @@ function clear() {
 	event.value = null;
 	quoteId.value = null;
 	scheduledAt.value = null;
+	autoRenote.value = null;
 	scheduledNoteDelete.value = null;
 	saveToDraft.value = false;
 	disableRightClick.value = false;
@@ -1057,6 +1085,7 @@ function saveDraft() {
 			quoteId: quoteId.value,
 			reactionAcceptance: reactionAcceptance.value,
 			scheduledAt: scheduledAt.value,
+			autoRenote: autoRenote.value,
 			scheduledNoteDelete: scheduledNoteDelete.value,
 			deliveryTargets: deliveryTargets.value,
 		},
@@ -1076,6 +1105,10 @@ function deleteDraft() {
 async function saveServerDraft(options: {
 	isActuallyScheduled?: boolean;
 } = {}) {
+	if (autoRenote.value) {
+		await os.alert({ type: 'warning', text: i18n.ts._autoRenote.composeUnavailable });
+		return;
+	}
 	if (!visibleRecipients.ready.value) return;
 
 	return await misskeyApi(serverDraftId.value == null ? 'notes/drafts/create' : 'notes/drafts/update', {
@@ -1124,6 +1157,10 @@ async function uploadFiles() {
 }
 
 async function post(ev?: MouseEvent) {
+	if (autoRenote.value && !autoRenoteAllowed()) {
+		await os.alert({ type: 'warning', text: i18n.ts._autoRenote.composeUnavailable });
+		return;
+	}
 	if (!visibleRecipients.ready.value) return;
 
 	if (ev) {
@@ -1311,6 +1348,12 @@ async function post(ev?: MouseEvent) {
 
 	posting.value = true;
 	submitMotionState.value = 'sending';
+	if (autoRenote.value && (token !== undefined || postData.visibility !== 'public' || postData.channelId != null || !autoRenoteAllowed())) {
+		posting.value = false;
+		submitMotionState.value = 'idle';
+		await os.alert({ type: 'warning', text: i18n.ts._autoRenote.composeUnavailable });
+		return;
+	}
 
 	// 外部アカウントでの投稿
 	if (useExternalAccount.value) {
@@ -1398,11 +1441,13 @@ async function post(ev?: MouseEvent) {
 		submitMotionState.value = 'idle';
 		throw new Error('Cannot update a note without a note ID');
 	}
+	const submittedAutoRenote = autoRenote.value ? { ...autoRenote.value } : null;
 	const request: Promise<Misskey.entities.Note | null> = props.updateMode
 		? misskeyApi('notes/update', { ...postData, noteId: postData.noteId!, text: postData.text ?? '' }, token).then(() => null)
 		: misskeyApi('notes/create', postData, token).then(res => res.createdNote);
 	request.then(async (createdNote) => {
 		posted.value = true;
+		if (createdNote && submittedAutoRenote) await registerPostedAutoRenote(createdNote, submittedAutoRenote);
 		submitMotionState.value = 'success';
 		await waitForSubmitMotion(720);
 		if (!props.freezeAfterPosted) {
@@ -1628,6 +1673,7 @@ async function openAccountMenu(ev: MouseEvent) {
 			scheduled,
 		}, {
 			restore: async (draft: Misskey.entities.NoteDraft) => {
+				autoRenote.value = null;
 				text.value = draft.text ?? '';
 				useCw.value = draft.cw != null;
 				cw.value = draft.cw ?? null;
@@ -1851,6 +1897,7 @@ onMounted(() => {
 				quoteId.value = draft.data.quoteId;
 				reactionAcceptance.value = draft.data.reactionAcceptance;
 				scheduledAt.value = draft.data.scheduledAt ?? null;
+				autoRenote.value = parseAutoRenoteOptions(draft.data.autoRenote);
 				scheduledNoteDelete.value = draft.data.scheduledNoteDelete ?? null;
 				deliveryTargets.value = normalizeDeliveryTargets(draft.data.deliveryTargets);
 			}
@@ -1858,6 +1905,7 @@ onMounted(() => {
 
 		// 削除して編集
 		if (props.initialNote) {
+			autoRenote.value = null;
 			const init = props.initialNote;
 			text.value = init.text ? init.text : '';
 			useCw.value = init.cw != null;

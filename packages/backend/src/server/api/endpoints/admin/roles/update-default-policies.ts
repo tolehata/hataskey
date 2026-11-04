@@ -26,6 +26,8 @@ export const paramDef = {
 				favoriteFolderLimit: { type: 'integer', minimum: 0, maximum: 5 },
 				canCreateFavoriteSubfolders: { type: 'boolean' },
 				canUseNoteCharm: { type: 'boolean' },
+				canAutoRenote: { type: 'boolean' },
+				autoRenoteMonthlyLimit: { type: 'integer', minimum: 0, maximum: 2147483647 },
 			},
 			additionalProperties: true,
 		},

@@ -170,6 +170,8 @@ export type SettingsDestinationCatalogItemV2 = {
 	stableId: string;
 	route: string;
 	label: string;
+	/** Standalone management pages may be searched directly without duplicating controls. */
+	searchable?: boolean;
 	/** Existing marker or sub-surface target retained from the manifest. */
 	anchor?: string;
 	controlId?: string;
@@ -209,6 +211,7 @@ const KNOWN_SETTINGS_ROUTES = new Set([
 	'/settings/account-data', '/settings/mute-block', '/settings/connect', '/settings/apps', '/settings/webhook/edit/:webhookId', '/settings/webhook/new',
 	'/settings/deck', '/settings/custom-css', '/settings/profiles', '/settings/accounts', '/settings/other', '/settings/hata-custom', '/settings/external-account',
 	'/settings/hidden-reactions', '/settings/account-stats', '/settings/cherrypick', '/settings/hatafeed', '/settings/concrnt',
+	'/my/auto-renote',
 ]);
 
 const ENGLISH_CATEGORY_LABELS_V2: Record<string, string> = {
@@ -1097,9 +1100,9 @@ export function buildSettingsCatalogV2(
 			...(item.controlId ? { controlId: item.controlId } : {}),
 			...(item.focusId ? { focusId: item.focusId } : {}),
 			...(item.activation ? { activation: item.activation } : {}),
-			// A destination is an explicit relation target, not a duplicate direct
-			// result for each control that is rendered inside it.
-			searchable: false,
+			// Keep control destinations out of direct results unless the manifest
+			// explicitly exposes a standalone management page.
+			searchable: item.searchable ?? false,
 			route: item.route,
 			label: item.label,
 			...(item.icon ? { icon: item.icon } : {}),

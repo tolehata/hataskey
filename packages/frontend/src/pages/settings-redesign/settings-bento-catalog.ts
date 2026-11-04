@@ -188,6 +188,8 @@ export const bentoDestinationLinkSections: readonly {
 	sectionId: SettingsBentoSectionId;
 	destinationIds: readonly string[];
 	explain: boolean;
+	label?: string;
+	icon?: string;
 }[] = [
 	{ sectionId: 'profile.section2', destinationIds: ['account-avatar'], explain: false },
 	{ sectionId: 'security.section3', destinationIds: ['account-stats', 'account-switch', 'account-migration'], explain: true },
@@ -197,6 +199,7 @@ export const bentoDestinationLinkSections: readonly {
 	{ sectionId: 'timeline.section0', destinationIds: ['timeline-display'], explain: false },
 	{ sectionId: 'timeline.section4', destinationIds: ['timeline-hidden-reactions'], explain: false },
 	{ sectionId: 'timeline.section6', destinationIds: ['misskey-deck'], explain: true },
+	{ sectionId: 'post.section0', destinationIds: ['timeline-auto-renote'], explain: false, label: i18n.ts._autoRenote.title, icon: 'ti ti-repeat' },
 	{ sectionId: 'drive.section0', destinationIds: ['account-drive-cleaner'], explain: false },
 	{ sectionId: 'apps.section0', destinationIds: ['hata-hatask', 'hata-hatady', 'hata-hatafeed'], explain: true },
 	{ sectionId: 'apps.section1', destinationIds: ['hata-earthquake', 'hata-mascot'], explain: true },
@@ -382,6 +385,7 @@ const destinationCategories: Readonly<Record<string, SettingsBentoCategoryId>> =
 	'display-preferences': 'appearance',
 	'timeline-note-display': 'timeline',
 	'timeline-post-form': 'post',
+	'timeline-auto-renote': 'post',
 	'timeline-group': 'timeline',
 	'notifications-page': 'notify',
 	'notifications-sounds': 'notify',

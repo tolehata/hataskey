@@ -191,6 +191,9 @@ globalThis.addEventListener('notificationclick', (ev: ServiceWorkerGlobalScopeEv
 							case 'chatRoomInvitationReceived':
 								client = await swos.openClient('push', '/chat', loginId);
 								break;
+							case 'autoRenoteStopped':
+								client = await swos.openClient('push', '/my/auto-renote', loginId);
+								break;
 							case 'app':
 							case 'hataFeed':
 							case 'hataskFlowerReady':

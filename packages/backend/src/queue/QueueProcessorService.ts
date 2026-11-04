@@ -8,6 +8,7 @@
 import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
 import * as Bull from 'bullmq';
 import * as Redis from 'ioredis';
+import { AutoRenoteService } from '@/core/AutoRenoteService.js';
 import type { Config } from '@/config.js';
 import { DI } from '@/di-symbols.js';
 import type Logger from '@/logger.js';
@@ -149,6 +150,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 		private aggregateRetentionProcessorService: AggregateRetentionProcessorService,
 		private checkHataskFlowersProcessorService: CheckHataskFlowersProcessorService,
 		private checkHataskMoodRemindersProcessorService: CheckHataskMoodRemindersProcessorService,
+		private autoRenoteService: AutoRenoteService,
 		private checkExpiredMutingsProcessorService: CheckExpiredMutingsProcessorService,
 		private archiveAnnouncementProcessorService: ArchiveAnnouncementProcessorService,
 		private bakeBufferedReactionsProcessorService: BakeBufferedReactionsProcessorService,
@@ -197,6 +199,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 					case 'cleanCharts': return this.cleanChartsProcessorService.process();
 					case 'aggregateRetention': return this.aggregateRetentionProcessorService.process();
 					case 'checkHataskFlowers': return this.checkHataskFlowersProcessorService.process();
+					case 'checkAutoRenotes': return this.autoRenoteService.process();
 					case 'checkHataskMoodReminders': return this.checkHataskMoodRemindersProcessorService.process();
 					case 'checkExpiredMutings': return this.checkExpiredMutingsProcessorService.process();
 					case 'archiveAnnouncement': return this.archiveAnnouncementProcessorService.process(job as Bull.Job<ArchiveAnnouncementJobData>);

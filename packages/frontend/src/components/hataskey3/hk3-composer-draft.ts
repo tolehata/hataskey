@@ -4,11 +4,14 @@
  */
 
 import type * as Misskey from 'cherrypick-js';
+import { parseAutoRenoteOptions } from '@/utility/auto-renote-schedule.js';
+import type { AutoRenoteOptions } from '@/utility/auto-renote-schedule.js';
 
 type Visibility = 'public' | 'home' | 'followers' | 'specified';
 type Channel = { id: string; name: string; isPrivate?: boolean };
 export type Hk3ComposerDraft = {
 	schemaVersion: 1;
+	autoRenote?: AutoRenoteOptions | null;
 	draftText: string;
 	draftFiles: Misskey.entities.DriveFile[];
 	cwEnabled: boolean;
@@ -56,7 +59,13 @@ export function parseHk3ComposerDraft(value: unknown): Hk3ComposerDraft {
 		&& ['reply', 'quote', 'channel'].includes(ctx.kind as string)
 		&& (ctx.channel === null || channel(ctx.channel))
 		&& (ctx.kind === 'channel' ? channel(ctx.channel) : note(ctx.note)))) throw new Error('Invalid UI S composer context');
-	return JSON.parse(JSON.stringify(value)) as Hk3ComposerDraft;
+	const restored = JSON.parse(JSON.stringify(value)) as Hk3ComposerDraft;
+	if (value.autoRenote != null) {
+		const options = parseAutoRenoteOptions(value.autoRenote);
+		if (!options) throw new Error('Invalid automatic renote draft');
+		restored.autoRenote = options;
+	}
+	return restored;
 }
 
 export function isMeaningfulHk3ComposerDraft(data: Hk3ComposerDraft): boolean {
@@ -64,5 +73,5 @@ export function isMeaningfulHk3ComposerDraft(data: Hk3ComposerDraft): boolean {
 		|| data.pollEnabled || data.pollChoices.some(choice => choice !== '') || data.pollMultiple
 		|| data.pollExpiredAfterUnit !== 'infinite' || data.pollExpiresAt !== null || data.event
 		|| data.reactionAcceptance || data.context || data.editingNote || data.visibleUsers.length
-		|| data.visibility !== 'public' || data.localOnly);
+		|| data.visibility !== 'public' || data.localOnly || data.autoRenote);
 }

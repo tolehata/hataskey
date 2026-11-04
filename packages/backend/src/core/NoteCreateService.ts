@@ -15,6 +15,8 @@ import { extractCustomEmojisFromMfm } from '@/misc/extract-custom-emojis-from-mf
 import { extractHashtags } from '@/misc/extract-hashtags.js';
 import type { IMentionedRemoteUsers } from '@/models/Note.js';
 import { MiNote } from '@/models/Note.js';
+import { MiAutoRenoteAttempt, MiAutoRenoteUsage } from '@/models/AutoRenote.js';
+import { AUTO_RENOTE_INACTIVITY_MS, autoRenoteMonth } from '@/misc/auto-renote.js';
 import { MiEvent } from '@/models/Event.js';
 import type { IEvent } from '@/models/Event.js';
 import type { BlockingsRepository, ChannelFollowingsRepository, ChannelMembersRepository, ChannelsRepository, DriveFilesRepository, FollowingsRepository, InstancesRepository, MiFollowing, MiMeta, MutingsRepository, NotesRepository, NoteThreadMutingsRepository, UserListMembershipsRepository, UserProfilesRepository, UsersRepository } from '@/models/_.js';
@@ -173,6 +175,8 @@ type MinimumUser = {
 };
 
 type Option = {
+	/** Internal worker receipt; never accepted by the public notes/create endpoint. */
+	autoRenoteAttemptId?: string;
 	createdAt?: Date | null;
 	updatedAt?: Date | null;
 	name?: string | null;
@@ -300,6 +304,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 		isBot: MiUser['isBot'];
 		isCat: MiUser['isCat'];
 	}, data: {
+		autoRenoteAttemptId?: string;
 		createdAt: Date;
 		updatedAt?: Date | null;
 		replyId: MiNote['id'] | null;
@@ -458,6 +463,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 		}
 
 		return this.create(user, {
+			autoRenoteAttemptId: data.autoRenoteAttemptId,
 			createdAt: data.createdAt,
 			updatedAt: data.updatedAt,
 			files: files,
@@ -710,7 +716,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 	@bindThis
 	private async insertNote(user: { id: MiUser['id']; host: MiUser['host']; }, data: Option, tags: string[], emojis: string[], mentionedUsers: MinimumUser[]) {
 		const insert = new MiNote({
-			id: this.idService.gen(data.createdAt?.getTime()),
+			id: data.autoRenoteAttemptId ?? this.idService.gen(data.createdAt?.getTime()),
 			fileIds: data.files ? data.files.map(file => file.id) : [],
 			replyId: data.reply ? data.reply.id : null,
 			renoteId: data.renote ? data.renote.id : null,
@@ -776,9 +782,26 @@ export class NoteCreateService implements OnApplicationShutdown {
 				...(data.reply ? [{ note: data.reply, kind: 'reply' as const }] : []),
 				...(data.renote ? [{ note: data.renote, kind: 'renote' as const }] : []),
 			];
-			if (insert.hasPoll || insert.hasEvent || this.utageService.isCandidate(insert) || utageParents.some(p => this.utageService.isCandidate(p.note))) {
+			if (data.autoRenoteAttemptId || insert.hasPoll || insert.hasEvent || this.utageService.isCandidate(insert) || utageParents.some(p => this.utageService.isCandidate(p.note))) {
 				// Start transaction
 				await this.db.transaction(async transactionalEntityManager => {
+					if (data.autoRenoteAttemptId) {
+						// Mark the receipt in the same commit as the note. Deletion or a crash after this
+						// point cannot erase the evidence used during worker recovery.
+						if (insert.visibility !== 'public' || !insert.renoteId) throw new Error('Auto-renote must remain public');
+						const currentUser = await this.usersRepository.findOneBy({ id: user.id });
+						const usage = await transactionalEntityManager.findOne(MiAutoRenoteUsage, { where: { userId: user.id }, lock: { mode: 'pessimistic_write' } });
+						const policies = await this.roleService.getUserPolicies(user.id);
+						if (!currentUser || currentUser.host != null || currentUser.isDeleted || currentUser.isSuspended || currentUser.movedToUri || !policies.canAutoRenote || !policies.canPublicNote) throw new Error('Auto-renote account is unavailable');
+						const now = new Date();
+						const count = usage?.month === autoRenoteMonth(now) ? usage.count : 0;
+						if (!usage || !Number.isFinite(policies.autoRenoteMonthlyLimit) || policies.autoRenoteMonthlyLimit <= count || now.getTime() - usage.lastUsedAt.getTime() >= AUTO_RENOTE_INACTIVITY_MS) throw new Error('Auto-renote limit or inactivity boundary reached');
+						const result = await transactionalEntityManager.update(MiAutoRenoteAttempt, {
+							id: data.autoRenoteAttemptId, userId: user.id, posted: false, settled: false,
+						}, { posted: true });
+						if (result.affected !== 1) throw new Error('Auto-renote attempt was already handled');
+						await transactionalEntityManager.update(MiAutoRenoteUsage, { userId: user.id }, { month: autoRenoteMonth(now), count: count + 1 });
+					}
 					await transactionalEntityManager.insert(MiNote, insert);
 					utageChanges = await this.utageService.onNoteSaved(transactionalEntityManager, insert, user, utageParents);
 

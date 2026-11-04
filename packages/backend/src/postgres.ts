@@ -51,6 +51,7 @@ import { MiNoteFavorite } from '@/models/NoteFavorite.js';
 import { MiNoteFavoriteFolder } from '@/models/NoteFavoriteFolder.js';
 import { MiNoteReaction } from '@/models/NoteReaction.js';
 import { MiNoteThreadMuting } from '@/models/NoteThreadMuting.js';
+import { MiAutoRenoteSchedule, MiAutoRenoteUsage, MiAutoRenoteAttempt } from '@/models/AutoRenote.js';
 import { MiNoteDraft } from '@/models/NoteDraft.js';
 import { MiPage } from '@/models/Page.js';
 import { MiPageLike } from '@/models/PageLike.js';
@@ -310,6 +311,9 @@ export const entities = [
 	MiNoteReaction,
 	MiNoteThreadMuting,
 	MiNoteDraft,
+	MiAutoRenoteSchedule,
+	MiAutoRenoteUsage,
+	MiAutoRenoteAttempt,
 	MiPage,
 	MiPageLike,
 	MiGalleryPost,

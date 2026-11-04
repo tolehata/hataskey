@@ -15,7 +15,7 @@ import type { NoteActionConfirmation } from '@/utility/note-action-confirmation.
 
 const mocks = vi.hoisted(() => ({
 	upload: vi.fn(), pc: vi.fn(), drive: vi.fn(), url: vi.fn(), menu: vi.fn(),
-	api: vi.fn(), alert: vi.fn(), actions: vi.fn(), postDirect: vi.fn(),
+	api: vi.fn(), alert: vi.fn(), popup: vi.fn(), actions: vi.fn(), postDirect: vi.fn(),
 	interruptors: [] as { handler: (data: unknown) => Promise<unknown> }[],
 	attachmentModels: [] as Misskey.entities.DriveFile[][],
 	storage: new Map<string, string>(),
@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('@/os.js', () => ({
 	launchUploader: mocks.upload, popupMenu: mocks.menu, alert: mocks.alert,
-	actions: mocks.actions, postDirect: mocks.postDirect,
+	actions: mocks.actions, postDirect: mocks.postDirect, popup: mocks.popup,
 }));
 vi.mock('@/utility/drive.js', () => ({
 	chooseFileFromPcAndUpload: mocks.pc, chooseDriveFile: mocks.drive, chooseFileFromUrl: mocks.url,
@@ -35,8 +35,9 @@ vi.mock('@/local-storage.js', () => ({ miLocalStorage: {
 	getItemAsJson: (key: string) => JSON.parse(mocks.storage.get(key) ?? 'null'),
 	setItemAsJson: (key: string, value: unknown) => mocks.storage.set(key, JSON.stringify(value)),
 } }));
-vi.mock('@/i.js', () => ({ $i: { id: 'me' }, incNotesCount: vi.fn(), notesCount: 10 }));
+vi.mock('@/i.js', () => ({ $i: { id: 'me', policies: { canAutoRenote: true, autoRenoteMonthlyLimit: 10, canPublicNote: true } }, incNotesCount: vi.fn(), notesCount: 10 }));
 vi.mock('@/i18n.js', () => ({ i18n: { ts: {
+	_autoRenote: { set: 'Set automatic renotes', pending: 'Automatic renotes after posting', clearPending: 'Remove automatic renotes', partialFailure: 'Posted successfully; schedule failed', composeUnavailable: 'Public immediate posts only', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' },
 	upload: 'Upload', fromDrive: 'Drive', fromUrl: 'URL', cancel: 'Cancel', close: 'Close', delete: 'Delete', deleteAndEdit: 'Delete and edit', unrenote: 'Remove renote', retry: 'Retry', noteDeleteConfirm: 'Delete this note?', deleteAndEditConfirm: 'Delete and edit this note?', unableToProcess: 'Could not complete',
 	_visibility: { public: 'Public', home: 'Home', followers: 'Followers', specified: 'Specified' },
 	_hata: {
@@ -209,6 +210,8 @@ beforeEach(() => {
 	mocks.api.mockReset().mockResolvedValue({ createdNote: null });
 	mocks.actions.mockReset().mockResolvedValue({ canceled: false, result: 'post' });
 	mocks.postDirect.mockReset().mockResolvedValue(undefined);
+	mocks.popup.mockReset().mockReturnValue({ dispose: vi.fn() });
+	mocks.alert.mockReset().mockResolvedValue(undefined);
 	postSendDelayEnabled.value = false;
 	prefer.r.animation.value = false;
 	prefer.r.hataskeyUi3ComposerEmojiPosition.value = 'afterShortcuts';
@@ -1746,5 +1749,81 @@ describe('UI S inline note confirmation', () => {
 		const deck = mount('uiS:composer:deck', { deck: true });
 		expect(deck.canConfirm()).toBe(false);
 		expect(deck.openConfirmation(request())).toBe(false);
+	});
+});
+
+describe('UI S automatic renote integration', () => {
+	const options = { frequency: 'daily' as const, time: '09:00', weekday: 0, day: 1 };
+
+	async function setAutomaticRenote(view: ReturnType<typeof mount>) {
+		view.target.querySelector<HTMLButtonElement>('button[title="Tools"]')!.click();
+		await settle();
+		const action = [...view.target.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(button => button.textContent?.includes('Set automatic renotes'));
+		expect(action).toBeDefined();
+		action!.click();
+		await settle();
+		const [, props, events] = mocks.popup.mock.calls.at(-1)!;
+		expect(props).toEqual({ composer: true, draft: null });
+		events.done(options);
+		events.closed();
+		await settle();
+	}
+
+	it('configures from the tools menu and binds to the created note before clearing the draft', async () => {
+		const view = mount();
+		setText(view, 'new post');
+		await settle();
+		await setAutomaticRenote(view);
+		mocks.api.mockImplementation(async (endpoint: string) => endpoint === 'notes/create' ? { createdNote: { id: 'posted-note' } } : {});
+		view.send().click();
+		await settle();
+		expect(mocks.api.mock.calls.map(call => call[0])).toEqual(['notes/create', 'notes/auto-renote/create']);
+		expect(mocks.api).toHaveBeenLastCalledWith('notes/auto-renote/create', { ...options, noteId: 'posted-note' });
+		expect(view.input().value).toBe('');
+		expect(view.target.textContent).not.toContain('Automatic renotes after posting');
+	});
+
+	it('preserves the draft and settings after a failed post and schedules only the retry result', async () => {
+		const view = mount();
+		setText(view, 'kept post');
+		await settle();
+		await setAutomaticRenote(view);
+		mocks.api.mockRejectedValueOnce(new Error('Post failed'));
+		view.send().click();
+		await settle();
+		expect(view.input().value).toBe('kept post');
+		expect(view.target.textContent).toContain('Automatic renotes after posting');
+		expect(mocks.api).toHaveBeenCalledOnce();
+		mocks.api.mockImplementation(async (endpoint: string) => endpoint === 'notes/create' ? { createdNote: { id: 'retried-note' } } : {});
+		view.send().click();
+		await settle();
+		expect(mocks.api.mock.calls.filter(call => call[0] === 'notes/auto-renote/create')).toEqual([['notes/auto-renote/create', { ...options, noteId: 'retried-note' }]]);
+	});
+
+	it('reports partial failure without offering a duplicate post or retaining the submitted draft', async () => {
+		const view = mount();
+		setText(view, 'posted once');
+		await settle();
+		await setAutomaticRenote(view);
+		mocks.api.mockImplementation(async (endpoint: string) => {
+			if (endpoint === 'notes/create') return { createdNote: { id: 'already-posted' } };
+			throw new Error('Schedule denied');
+		});
+		view.send().click();
+		await settle();
+		expect(mocks.alert).toHaveBeenCalledExactlyOnceWith({ type: 'warning', text: 'Posted successfully; schedule failed' });
+		expect(mocks.api.mock.calls.filter(call => call[0] === 'notes/create')).toHaveLength(1);
+		expect(view.input().value).toBe('');
+	});
+
+	it('transfers pending settings to the full form and keeps them if the full form closes', async () => {
+		const view = mount('uiS:composer:main', { compact: false });
+		setText(view, 'pending post');
+		await settle();
+		await setAutomaticRenote(view);
+		view.target.querySelector<HTMLButtonElement>('button[title="Full"]')!.click();
+		await settle();
+		expect(mocks.postDirect.mock.calls.at(-1)![0].initialAutoRenote).toEqual(options);
+		expect(view.target.textContent).toContain('Automatic renotes after posting');
 	});
 });

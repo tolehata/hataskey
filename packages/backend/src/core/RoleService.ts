@@ -99,6 +99,8 @@ export type RolePolicies = {
 	uploadableFileTypes: string[];
 	noteDraftLimit: number;
 	scheduledNoteLimit: number;
+	canAutoRenote: boolean;
+	autoRenoteMonthlyLimit: number;
 	watermarkAvailable: boolean;
 	canSetFederationAvatarShape: boolean;
 };
@@ -168,9 +170,17 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	],
 	noteDraftLimit: 10,
 	scheduledNoteLimit: 3,
+	canAutoRenote: true,
+	autoRenoteMonthlyLimit: 10,
 	watermarkAvailable: true,
 	canSetFederationAvatarShape: true,
 };
+
+/** Invalid values fail closed; the monthly counter is a PostgreSQL integer. */
+export function normalizeAutoRenoteMonthlyLimit(values: readonly unknown[]): number {
+	const limits = values.filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+	return Math.max(0, Math.min(2147483647, Math.floor(limits.length > 0 ? Math.max(...limits) : 0)));
+}
 
 export function normalizeHatadyGameTitleLimit(values: readonly unknown[]): number {
 	const finiteValues = values.map(Number).filter(Number.isFinite);
@@ -443,6 +453,8 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 		basePolicies.favoriteFolderLimit = normalizeFavoriteFolderLimit([basePolicies.favoriteFolderLimit]);
 		basePolicies.canCreateFavoriteSubfolders = basePolicies.canCreateFavoriteSubfolders === true;
 		basePolicies.canUseNoteCharm = basePolicies.canUseNoteCharm === true;
+		basePolicies.canAutoRenote = basePolicies.canAutoRenote === true;
+		basePolicies.autoRenoteMonthlyLimit = normalizeAutoRenoteMonthlyLimit([basePolicies.autoRenoteMonthlyLimit]);
 		if (userId == null) return basePolicies;
 
 		const roles = await this.getUserRoles(userId);
@@ -535,6 +547,8 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			}),
 			noteDraftLimit: calc('noteDraftLimit', vs => Math.max(...vs)),
 			scheduledNoteLimit: calc('scheduledNoteLimit', vs => Math.max(...vs)),
+			canAutoRenote: calc('canAutoRenote', vs => vs.some(v => v === true)),
+			autoRenoteMonthlyLimit: calc('autoRenoteMonthlyLimit', normalizeAutoRenoteMonthlyLimit),
 			watermarkAvailable: calc('watermarkAvailable', vs => vs.some(v => v === true)),
 			canSetFederationAvatarShape: calc('canSetFederationAvatarShape', vs => vs.some(v => v === true)),
 		};

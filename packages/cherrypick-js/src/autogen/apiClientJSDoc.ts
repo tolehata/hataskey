@@ -280,6 +280,32 @@ declare module '../api.js' {
     /**
      * No description provided.
      *
+     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+     * **Credential required**: *Yes* / **Permission**: *write:admin:auto-renote*
+     */
+    request<E extends 'admin/auto-renote/cancel', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+
+    /**
+     * No description provided.
+     *
+     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+     * **Credential required**: *Yes* / **Permission**: *read:admin:auto-renote*
+     */
+    request<E extends 'admin/auto-renote/list', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+
+    /**
+     * No description provided.
+     *
      * **Credential required**: *Yes* / **Permission**: *write:admin:avatar-decorations*
      */
     request<E extends 'admin/avatar-decorations/copy', P extends Endpoints[E]['req']>(
@@ -6715,6 +6741,97 @@ declare module '../api.js' {
      * **Credential required**: *No*
      */
     request<E extends 'notes', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+
+    /**
+     * No description provided.
+     *
+     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+     * **Credential required**: *Yes* / **Permission**: *write:notes*
+     */
+    request<E extends 'notes/auto-renote/activity', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+
+    /**
+     * No description provided.
+     *
+     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+     * **Credential required**: *Yes* / **Permission**: *write:notes*
+     */
+    request<E extends 'notes/auto-renote/cancel', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+
+    /**
+     * No description provided.
+     *
+     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+     * **Credential required**: *Yes* / **Permission**: *write:notes*
+     */
+    request<E extends 'notes/auto-renote/create', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+
+    /**
+     * No description provided.
+     *
+     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+     * **Credential required**: *Yes* / **Permission**: *read:account*
+     */
+    request<E extends 'notes/auto-renote/list', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+
+    /**
+     * No description provided.
+     *
+     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+     * **Credential required**: *Yes* / **Permission**: *write:notes*
+     */
+    request<E extends 'notes/auto-renote/pause', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+
+    /**
+     * No description provided.
+     *
+     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+     * **Credential required**: *Yes* / **Permission**: *write:notes*
+     */
+    request<E extends 'notes/auto-renote/resume', P extends Endpoints[E]['req']>(
+      endpoint: E,
+      params: P,
+      credential?: string | null,
+    ): Promise<SwitchCaseResponseType<E, P>>;
+
+
+    /**
+     * No description provided.
+     *
+     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+     * **Credential required**: *Yes* / **Permission**: *write:notes*
+     */
+    request<E extends 'notes/auto-renote/update', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,

@@ -230,6 +230,19 @@ export const packedNotificationSchema = {
 		type: 'object',
 		properties: {
 			...baseSchema.properties,
+			type: { type: 'string', optional: false, nullable: false, enum: ['autoRenoteStopped'] },
+			reason: { type: 'string', optional: false, nullable: false, enum: ['quota', 'offline', 'role', 'unavailable', 'admin', 'error'] },
+			scheduleIds: {
+				type: 'array', optional: false, nullable: false,
+				items: { type: 'string', optional: false, nullable: false, format: 'id' },
+			},
+			count: { type: 'integer', optional: false, nullable: false },
+			adminReason: { type: 'string', optional: true, nullable: false },
+		},
+	}, {
+		type: 'object',
+		properties: {
+			...baseSchema.properties,
 			type: {
 				type: 'string',
 				optional: false, nullable: false,

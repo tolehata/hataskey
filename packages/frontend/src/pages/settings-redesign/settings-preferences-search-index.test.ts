@@ -76,6 +76,19 @@ function legacyMarkers(): SearchIndexItem[] {
 }
 
 describe('redesigned preferences search index', () => {
+	test('自動リノートの管理は設定検索から直接開ける', () => {
+		const destinations = settingsDestinationCatalogItemsV2();
+		const catalog = buildSettingsCatalogV2([], mergeRedesignedPreferenceSearchItems([]), undefined, destinations);
+		const target = 'settings.destination.timeline-auto-renote';
+		expect(searchSettingsV2(catalog, '自動リノート').results.find(result => result.stableId === target)).toMatchObject({
+			route: '/my/auto-renote', label: '自動リノートの管理',
+		});
+		expect(catalog.byStableId.get(target)).toMatchObject({ searchable: true, source: 'destination' });
+		for (const destination of destinations.filter(item => item.stableId !== target)) {
+			expect(catalog.byStableId.get(destination.stableId)?.searchable, destination.stableId).toBe(false);
+		}
+	});
+
 	test('finds UI S display size as a device setting', () => {
 		const stableId = 'settings.control.device.hataskey-ui-s-display-size';
 		const merged = mergeRedesignedPreferenceSearchItems([]);
@@ -367,9 +380,9 @@ describe('redesigned preferences search index', () => {
 
 	test('manifest destinationと明示source mapが、旧markerではない関連fallbackの正本になる', () => {
 		const destinations = settingsDestinationCatalogItemsV2();
-		// Hataskey UI S と、コンカレント連携(BETA)を加えた現在の destination は53件。
-		expect(destinations).toHaveLength(53);
-		expect(new Set(destinations.map(item => item.destinationId)).size).toBe(53);
+		// 自動リノートの管理導線を含む destination は54件。
+		expect(destinations).toHaveLength(54);
+		expect(new Set(destinations.map(item => item.destinationId)).size).toBe(54);
 		for (const destination of destinations) expect(destination.label.trim(), destination.destinationId).not.toBe('');
 		const mappedSources = [
 			['src/pages/settings/accounts.vue', 'account-switch', 'account-profiles', '/settings/accounts'],

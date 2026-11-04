@@ -210,6 +210,26 @@ export type paths = {
          */
         post: operations["admin___approve-registration"];
     };
+    "/admin/auto-renote/cancel": {
+        /**
+         * admin/auto-renote/cancel
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:auto-renote*
+         */
+        post: operations["admin___auto-renote___cancel"];
+    };
+    "/admin/auto-renote/list": {
+        /**
+         * admin/auto-renote/list
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:admin:auto-renote*
+         */
+        post: operations["admin___auto-renote___list"];
+    };
     "/admin/avatar-decorations/copy": {
         /**
          * admin/avatar-decorations/copy
@@ -5067,6 +5087,76 @@ export type paths = {
          */
         post: operations["notes"];
     };
+    "/notes/auto-renote/activity": {
+        /**
+         * notes/auto-renote/activity
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:notes*
+         */
+        post: operations["notes___auto-renote___activity"];
+    };
+    "/notes/auto-renote/cancel": {
+        /**
+         * notes/auto-renote/cancel
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:notes*
+         */
+        post: operations["notes___auto-renote___cancel"];
+    };
+    "/notes/auto-renote/create": {
+        /**
+         * notes/auto-renote/create
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:notes*
+         */
+        post: operations["notes___auto-renote___create"];
+    };
+    "/notes/auto-renote/list": {
+        /**
+         * notes/auto-renote/list
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations["notes___auto-renote___list"];
+    };
+    "/notes/auto-renote/pause": {
+        /**
+         * notes/auto-renote/pause
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:notes*
+         */
+        post: operations["notes___auto-renote___pause"];
+    };
+    "/notes/auto-renote/resume": {
+        /**
+         * notes/auto-renote/resume
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:notes*
+         */
+        post: operations["notes___auto-renote___resume"];
+    };
+    "/notes/auto-renote/update": {
+        /**
+         * notes/auto-renote/update
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:notes*
+         */
+        post: operations["notes___auto-renote___update"];
+    };
     "/notes/bubble-timeline": {
         /**
          * notes/bubble-timeline
@@ -7150,6 +7240,19 @@ export type components = {
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
+            type: "autoRenoteStopped";
+            /** @enum {string} */
+            reason: "quota" | "offline" | "role" | "unavailable" | "admin" | "error";
+            scheduleIds: string[];
+            count: number;
+            adminReason?: string;
+        } | {
+            /** Format: id */
+            id: string;
+            notificationIds?: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
             type: "scheduledNotePostFailed";
             noteDraft: components["schemas"]["NoteDraft"];
         } | {
@@ -8015,6 +8118,8 @@ export type components = {
             /** @enum {string} */
             chatAvailability: "available" | "readonly" | "unavailable";
             noteDraftLimit: number;
+            canAutoRenote: boolean;
+            autoRenoteMonthlyLimit: number;
             scheduledNoteLimit: number;
             watermarkAvailable: boolean;
         };
@@ -10219,6 +10324,215 @@ export interface operations {
                     "application/json": {
                         success: boolean;
                         emailSent: boolean;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "admin___auto-renote___cancel": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    scheduleId: string;
+                    /** @default  */
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: id */
+                        id: string;
+                        /** Format: id */
+                        userId: string;
+                        /** Format: id */
+                        noteId: string;
+                        user: components["schemas"]["UserLite"];
+                        note: components["schemas"]["Note"] | null;
+                        /** @enum {string} */
+                        frequency: "daily" | "weekly" | "monthly";
+                        time: string;
+                        weekday: number;
+                        day: number;
+                        /** @enum {string} */
+                        status: "active" | "paused" | "quota" | "offline" | "role" | "unavailable" | "cancelled" | "error";
+                        stopReason: string | null;
+                        /** Format: date-time */
+                        nextRunAt: string | null;
+                        /** Format: date-time */
+                        lastRunAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        adminReason: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "admin___auto-renote___list": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default 100 */
+                    limit?: number;
+                    /** @default 0 */
+                    offset?: number;
+                    /** @enum {string} */
+                    status?: "active" | "paused" | "quota" | "offline" | "role" | "unavailable" | "cancelled" | "error";
+                    /** Format: misskey:id */
+                    userId?: string;
+                    query?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        schedules: {
+                            /** Format: id */
+                            id: string;
+                            /** Format: id */
+                            userId: string;
+                            /** Format: id */
+                            noteId: string;
+                            user: components["schemas"]["UserLite"];
+                            note: components["schemas"]["Note"] | null;
+                            /** @enum {string} */
+                            frequency: "daily" | "weekly" | "monthly";
+                            time: string;
+                            weekday: number;
+                            day: number;
+                            /** @enum {string} */
+                            status: "active" | "paused" | "quota" | "offline" | "role" | "unavailable" | "cancelled" | "error";
+                            stopReason: string | null;
+                            /** Format: date-time */
+                            nextRunAt: string | null;
+                            /** Format: date-time */
+                            lastRunAt: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            adminReason: string | null;
+                        }[];
                     };
                 };
             };
@@ -12995,13 +13309,13 @@ export interface operations {
                             hataConsentMascot: boolean;
                             /** Format: date-time */
                             hataConsentMascotDate: string | null;
+                            hataConsentNoteCharm: boolean;
+                            /** Format: date-time */
+                            hataConsentNoteCharmDate: string | null;
                             hataConsentDrawing: boolean;
                             /** Format: date-time */
                             hataConsentDrawingDate: string | null;
                             hataConsentDrawingVersion: string | null;
-                            hataConsentNoteCharm: boolean;
-                            /** Format: date-time */
-                            hataConsentNoteCharmDate: string | null;
                         }[];
                         total: number;
                     };
@@ -16456,6 +16770,24 @@ export interface operations {
                         } & {
                             [key: string]: unknown;
                         };
+                        canAutoRenote?: {
+                            value: boolean;
+                            /** @default 0 */
+                            priority?: number;
+                            /** @default false */
+                            useDefault?: boolean;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                        autoRenoteMonthlyLimit?: {
+                            value: number;
+                            /** @default 0 */
+                            priority?: number;
+                            /** @default false */
+                            useDefault?: boolean;
+                        } & {
+                            [key: string]: unknown;
+                        };
                     } & {
                         [key: string]: unknown;
                     };
@@ -16820,6 +17152,24 @@ export interface operations {
                         } & {
                             [key: string]: unknown;
                         };
+                        canAutoRenote?: {
+                            value: boolean;
+                            /** @default 0 */
+                            priority?: number;
+                            /** @default false */
+                            useDefault?: boolean;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                        autoRenoteMonthlyLimit?: {
+                            value: number;
+                            /** @default 0 */
+                            priority?: number;
+                            /** @default false */
+                            useDefault?: boolean;
+                        } & {
+                            [key: string]: unknown;
+                        };
                     } & {
                         [key: string]: unknown;
                     };
@@ -16888,6 +17238,8 @@ export interface operations {
                         favoriteFolderLimit?: number;
                         canCreateFavoriteSubfolders?: boolean;
                         canUseNoteCharm?: boolean;
+                        canAutoRenote?: boolean;
+                        autoRenoteMonthlyLimit?: number;
                     } & {
                         [key: string]: unknown;
                     };
@@ -48632,8 +48984,8 @@ export interface operations {
                     includeHataskApp?: boolean;
                     includeHatadySubtypes?: ("follow" | "comment" | "reaction" | "milestone" | "goalDone" | "mediaComment" | "mediaReply" | "mediaReaction")[];
                     excludeHatadySubtypes?: ("follow" | "comment" | "reaction" | "milestone" | "goalDone" | "mediaComment" | "mediaReply" | "mediaReaction")[];
-                    includeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
-                    excludeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
+                    includeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "autoRenoteStopped" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
+                    excludeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "autoRenoteStopped" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
                 };
             };
         };
@@ -48728,8 +49080,8 @@ export interface operations {
                     includeHataskApp?: boolean;
                     includeHatadySubtypes?: ("follow" | "comment" | "reaction" | "milestone" | "goalDone" | "mediaComment" | "mediaReply" | "mediaReaction")[];
                     excludeHatadySubtypes?: ("follow" | "comment" | "reaction" | "milestone" | "goalDone" | "mediaComment" | "mediaReply" | "mediaReaction")[];
-                    includeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
-                    excludeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
+                    includeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "autoRenoteStopped" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
+                    excludeTypes?: ("note" | "follow" | "mention" | "reply" | "renote" | "quote" | "reaction" | "pollEnded" | "scheduledNotePosted" | "scheduledNotePostFailed" | "autoRenoteStopped" | "receiveFollowRequest" | "followRequestAccepted" | "groupInvited" | "roleAssigned" | "chatRoomInvitationReceived" | "achievementEarned" | "exportCompleted" | "login" | "createToken" | "app" | "hataFeed" | "hatady" | "hataskFlowerReady" | "hataskFlowerBloomed" | "hataskZukanUpdated" | "hataskFestivalBloomed" | "earthquake" | "test" | "addedToPrivateChannel" | "removedFromPrivateChannel" | "hataskDecorationUnlocked" | "pollVote")[];
                 };
             };
         };
@@ -51657,6 +52009,694 @@ export interface operations {
             };
             /** @description I'm Ai */
             418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "notes___auto-renote___activity": {
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "notes___auto-renote___cancel": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    scheduleId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: id */
+                        id: string;
+                        /** Format: id */
+                        userId: string;
+                        /** Format: id */
+                        noteId: string;
+                        user: components["schemas"]["UserLite"];
+                        note: components["schemas"]["Note"] | null;
+                        /** @enum {string} */
+                        frequency: "daily" | "weekly" | "monthly";
+                        time: string;
+                        weekday: number;
+                        day: number;
+                        /** @enum {string} */
+                        status: "active" | "paused" | "quota" | "offline" | "role" | "unavailable" | "cancelled" | "error";
+                        stopReason: string | null;
+                        /** Format: date-time */
+                        nextRunAt: string | null;
+                        /** Format: date-time */
+                        lastRunAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        adminReason: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "notes___auto-renote___create": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    noteId: string;
+                    /** @enum {string} */
+                    frequency: "daily" | "weekly" | "monthly";
+                    time: string;
+                    /** @default 0 */
+                    weekday?: number;
+                    /** @default 1 */
+                    day?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: id */
+                        id: string;
+                        /** Format: id */
+                        userId: string;
+                        /** Format: id */
+                        noteId: string;
+                        user: components["schemas"]["UserLite"];
+                        note: components["schemas"]["Note"] | null;
+                        /** @enum {string} */
+                        frequency: "daily" | "weekly" | "monthly";
+                        time: string;
+                        weekday: number;
+                        day: number;
+                        /** @enum {string} */
+                        status: "active" | "paused" | "quota" | "offline" | "role" | "unavailable" | "cancelled" | "error";
+                        stopReason: string | null;
+                        /** Format: date-time */
+                        nextRunAt: string | null;
+                        /** Format: date-time */
+                        lastRunAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        adminReason: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "notes___auto-renote___list": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default 100 */
+                    limit?: number;
+                    /** @default 0 */
+                    offset?: number;
+                    /** @enum {string} */
+                    status?: "active" | "paused" | "quota" | "offline" | "role" | "unavailable" | "cancelled" | "error";
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        schedules: {
+                            /** Format: id */
+                            id: string;
+                            /** Format: id */
+                            userId: string;
+                            /** Format: id */
+                            noteId: string;
+                            user: components["schemas"]["UserLite"];
+                            note: components["schemas"]["Note"] | null;
+                            /** @enum {string} */
+                            frequency: "daily" | "weekly" | "monthly";
+                            time: string;
+                            weekday: number;
+                            day: number;
+                            /** @enum {string} */
+                            status: "active" | "paused" | "quota" | "offline" | "role" | "unavailable" | "cancelled" | "error";
+                            stopReason: string | null;
+                            /** Format: date-time */
+                            nextRunAt: string | null;
+                            /** Format: date-time */
+                            lastRunAt: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            adminReason: string | null;
+                        }[];
+                        usage: {
+                            month: string;
+                            count: number;
+                            limit: number;
+                        };
+                        enabled: boolean;
+                        /** Format: date-time */
+                        lastActiveAt: string;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "notes___auto-renote___pause": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    scheduleId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: id */
+                        id: string;
+                        /** Format: id */
+                        userId: string;
+                        /** Format: id */
+                        noteId: string;
+                        user: components["schemas"]["UserLite"];
+                        note: components["schemas"]["Note"] | null;
+                        /** @enum {string} */
+                        frequency: "daily" | "weekly" | "monthly";
+                        time: string;
+                        weekday: number;
+                        day: number;
+                        /** @enum {string} */
+                        status: "active" | "paused" | "quota" | "offline" | "role" | "unavailable" | "cancelled" | "error";
+                        stopReason: string | null;
+                        /** Format: date-time */
+                        nextRunAt: string | null;
+                        /** Format: date-time */
+                        lastRunAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        adminReason: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "notes___auto-renote___resume": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    scheduleId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: id */
+                        id: string;
+                        /** Format: id */
+                        userId: string;
+                        /** Format: id */
+                        noteId: string;
+                        user: components["schemas"]["UserLite"];
+                        note: components["schemas"]["Note"] | null;
+                        /** @enum {string} */
+                        frequency: "daily" | "weekly" | "monthly";
+                        time: string;
+                        weekday: number;
+                        day: number;
+                        /** @enum {string} */
+                        status: "active" | "paused" | "quota" | "offline" | "role" | "unavailable" | "cancelled" | "error";
+                        stopReason: string | null;
+                        /** Format: date-time */
+                        nextRunAt: string | null;
+                        /** Format: date-time */
+                        lastRunAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        adminReason: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "notes___auto-renote___update": {
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: misskey:id */
+                    scheduleId: string;
+                    /** Format: misskey:id */
+                    noteId?: string;
+                    /** @enum {string} */
+                    frequency: "daily" | "weekly" | "monthly";
+                    time: string;
+                    /** @default 0 */
+                    weekday?: number;
+                    /** @default 1 */
+                    day?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: id */
+                        id: string;
+                        /** Format: id */
+                        userId: string;
+                        /** Format: id */
+                        noteId: string;
+                        user: components["schemas"]["UserLite"];
+                        note: components["schemas"]["Note"] | null;
+                        /** @enum {string} */
+                        frequency: "daily" | "weekly" | "monthly";
+                        time: string;
+                        weekday: number;
+                        day: number;
+                        /** @enum {string} */
+                        status: "active" | "paused" | "quota" | "offline" | "role" | "unavailable" | "cancelled" | "error";
+                        stopReason: string | null;
+                        /** Format: date-time */
+                        nextRunAt: string | null;
+                        /** Format: date-time */
+                        lastRunAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        adminReason: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -18,6 +18,7 @@ import { SystemWebhookService } from '@/core/SystemWebhookService.js';
 import { UserSearchService } from '@/core/UserSearchService.js';
 import { WebhookTestService } from '@/core/WebhookTestService.js';
 import { FlashService } from '@/core/FlashService.js';
+import { RateLimiterService } from '@/server/api/RateLimiterService.js';
 import { AccountMoveService } from './AccountMoveService.js';
 import { AccountUpdateService } from './AccountUpdateService.js';
 import { SensitiveMediaDetectionService } from './SensitiveMediaDetectionService.js';
@@ -50,6 +51,7 @@ import { TimelineCollapseService } from './TimelineCollapseService.js';
 import { NoteUpdateService } from './NoteUpdateService.js';
 import { NoteDeleteService } from './NoteDeleteService.js';
 import { NotePiningService } from './NotePiningService.js';
+import { AutoRenoteService } from './AutoRenoteService.js';
 import { NoteDraftService } from './NoteDraftService.js';
 import { NoteFavoriteFolderService } from './NoteFavoriteFolderService.js';
 import { NotificationService } from './NotificationService.js';
@@ -237,6 +239,7 @@ const $NoteCreateService: Provider = { provide: 'NoteCreateService', useExisting
 const $NoteUpdateService: Provider = { provide: 'NoteUpdateService', useExisting: NoteUpdateService };
 const $NoteDeleteService: Provider = { provide: 'NoteDeleteService', useExisting: NoteDeleteService };
 const $NotePiningService: Provider = { provide: 'NotePiningService', useExisting: NotePiningService };
+const $AutoRenoteService: Provider = { provide: 'AutoRenoteService', useExisting: AutoRenoteService };
 const $NoteDraftService: Provider = { provide: 'NoteDraftService', useExisting: NoteDraftService };
 const $NotificationService: Provider = { provide: 'NotificationService', useExisting: NotificationService };
 const $RegistrationApplicationReviewService: Provider = { provide: 'RegistrationApplicationReviewService', useExisting: RegistrationApplicationReviewService };
@@ -422,6 +425,8 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		NoteDeleteService,
 		NotePiningService,
 		NoteDraftService,
+		AutoRenoteService,
+		RateLimiterService,
 		NoteFavoriteFolderService,
 		NotificationService,
 		RegistrationApplicationNotificationService,
@@ -613,6 +618,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$NoteDeleteService,
 		$NotePiningService,
 		$NoteDraftService,
+		$AutoRenoteService,
 		$NotificationService,
 		$RegistrationApplicationNotificationService,
 		$RegistrationApplicationReviewService,
@@ -792,6 +798,8 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		NoteDeleteService,
 		NotePiningService,
 		NoteDraftService,
+		AutoRenoteService,
+		RateLimiterService,
 		NoteFavoriteFolderService,
 		NotificationService,
 		RegistrationApplicationNotificationService,
@@ -981,6 +989,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$NoteDeleteService,
 		$NotePiningService,
 		$NoteDraftService,
+		$AutoRenoteService,
 		$NotificationService,
 		$RegistrationApplicationNotificationService,
 		$RegistrationApplicationReviewService,

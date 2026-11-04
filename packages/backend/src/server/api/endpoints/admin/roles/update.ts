@@ -50,6 +50,8 @@ export const paramDef = {
 				favoriteFolderLimit: { type: 'object', properties: { value: { type: 'integer', minimum: 0, maximum: 5 }, priority: { type: 'number', default: 0 }, useDefault: { type: 'boolean', default: false } }, required: ['value'], additionalProperties: true },
 				canCreateFavoriteSubfolders: { type: 'object', properties: { value: { type: 'boolean' }, priority: { type: 'number', default: 0 }, useDefault: { type: 'boolean', default: false } }, required: ['value'], additionalProperties: true },
 				canUseNoteCharm: { type: 'object', properties: { value: { type: 'boolean' }, priority: { type: 'number', default: 0 }, useDefault: { type: 'boolean', default: false } }, required: ['value'], additionalProperties: true },
+				canAutoRenote: { type: 'object', properties: { value: { type: 'boolean' }, priority: { type: 'integer', minimum: 0, maximum: 2, default: 0 }, useDefault: { type: 'boolean', default: false } }, required: ['value'], additionalProperties: true },
+				autoRenoteMonthlyLimit: { type: 'object', properties: { value: { type: 'integer', minimum: 0, maximum: 2147483647 }, priority: { type: 'integer', minimum: 0, maximum: 2, default: 0 }, useDefault: { type: 'boolean', default: false } }, required: ['value'], additionalProperties: true },
 			},
 			additionalProperties: true,
 		},
