@@ -38,6 +38,7 @@ import { enqueueHataDialog } from '@/utility/hata-dialog-queue.js';
 import { HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
 import { startHataskFlowerGrowthTracker } from '@/utility/hatask-flower-growth.js';
 import { acceptNotificationUnreadState } from '@/utility/notification-unread-state.js';
+import { migrateWelcomeBackToast } from '@/utility/welcome-back-toast-migration.js';
 
 export async function mainBoot() {
 	cleanupStaleUiElements();
@@ -358,16 +359,23 @@ export async function mainBoot() {
 		}
 
 		const lastUsed = miLocalStorage.getItem('lastUsed');
-		if (lastUsed) {
-			const lastUsedDate = parseInt(lastUsed, 10);
-			// 二時間以上前なら
-			if (prefer.s.welcomeBackToast && Date.now() - lastUsedDate > 1000 * 60 * 60 * 2) {
-				toast(i18n.tsx.welcomeBackWithName({
-					name: userName($i),
-				}), undefined, true);
+		const welcomeUser = $i;
+		const connectedAt = Date.now();
+		// 同期・移行後の値で今回の歓迎表示を判定する。アプリの起動は待たせない。
+		void migrateWelcomeBackToast(prefer, miLocalStorage).catch(() => {
+			console.warn('Welcome-back preference migration failed; retry on next boot.');
+		}).then(() => {
+			if (lastUsed) {
+				const lastUsedDate = parseInt(lastUsed, 10);
+				// 二時間以上前なら
+				if (prefer.s.welcomeBackToast && connectedAt - lastUsedDate > 1000 * 60 * 60 * 2) {
+					toast(i18n.tsx.welcomeBackWithName({
+						name: userName(welcomeUser),
+					}), undefined, true);
+				}
 			}
-		}
-		miLocalStorage.setItem('lastUsed', Date.now().toString());
+		});
+		miLocalStorage.setItem('lastUsed', connectedAt.toString());
 
 		const latestDonationInfoShownAt = miLocalStorage.getItem('latestDonationInfoShownAt');
 		const neverShowDonationInfo = miLocalStorage.getItem('neverShowDonationInfo');

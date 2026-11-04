@@ -52,6 +52,7 @@ export type Keys = (
 	'hata_docs_cleanup_migrated' |
 	'hata_support_cleanup_migrated' |
 	`hata_sound_default_migrated:${string}` | // プロファイル・設定キー・適用scopeごと
+	`hata_welcome_back_toast_migrated:${string}` | // 歓迎メッセージの有効化。プロファイル・適用scopeごと
 	`hata_portal_cleanup_migrated:${string}` | // アカウント・プロファイルごと。旧端末共通の完了印は引き継がない
 	'loginBonusLastShown' |
 	'hatasabaUiLastTab' | // 旗鯖fork: Hataskey UI で最後に開いていたタブ (再読み込み時の復元用)

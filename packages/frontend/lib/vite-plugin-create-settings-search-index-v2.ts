@@ -916,6 +916,8 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'端末保存形式・UI移行の一度だけ使うversion/marker', ['src/local-storage.ts', 'src/boot/common.ts']);
 	add('local', ['hata_sound_default_migrated:' + dynamicKey], 'migration',
 		'旧既定音の移行をプロファイル・設定キー・scopeごとに記録する完了印', ['src/utility/hataskey-sound-migration.ts']);
+	add('local', ['hata_welcome_back_toast_migrated:' + dynamicKey], 'migration',
+		'歓迎メッセージの有効化をプロファイル・scopeごとに一度だけ行う完了印', ['src/utility/welcome-back-toast-migration.ts']);
 	add('local', ['hata_portal_cleanup_migrated:' + dynamicKey], 'migration',
 		'廃止ポータルの保存メニュー移行をアカウント・プロファイルごとに記録する完了印', ['src/utility/retired-portal-migration.ts']);
 	add('local', ['hata_external_notifications_sidebar_migrated:' + dynamicKey], 'migration',
