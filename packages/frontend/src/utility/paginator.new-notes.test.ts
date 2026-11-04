@@ -12,6 +12,27 @@ function note(id: string) {
 }
 
 describe('paginator new notes preview snapshot', () => {
+	it.each(['init', 'older', 'newer'] as const)('replacing a timeline invalidates an outstanding %s response and its paging flags', async operation => {
+		const paginator = new Paginator('notes/local-timeline', {});
+		api.mockResolvedValueOnce([note('original')]);
+		await paginator.init();
+		let finish!: (notes: entities.Note[]) => void;
+		api.mockReturnValueOnce(new Promise<entities.Note[]>(resolve => { finish = resolve; }));
+		const pending = operation === 'init' ? paginator.init() : operation === 'older' ? paginator.fetchOlder() : paginator.fetchNewer();
+		paginator.enqueue(note('queued'));
+		paginator.replaceItems([note('selected')], { canFetchOlder: false, canFetchNewer: true, initialId: 'anchor' });
+		expect(paginator.items.value.map(item => item.id)).toEqual(['selected']);
+		expect(paginator.queuedAheadItems.value).toEqual([]);
+		expect(paginator.queuedAheadItemsCount.value).toBe(0);
+		expect(paginator.fetching.value || paginator.fetchingOlder.value || paginator.fetchingNewer.value).toBe(false);
+		expect(paginator.initialId).toBe('anchor');
+		finish([note('stale')]);
+		await pending;
+		expect(paginator.items.value.map(item => item.id)).toEqual(['selected']);
+		expect(paginator.canFetchOlder.value).toBe(false);
+		expect(paginator.canFetchNewer.value).toBe(true);
+	});
+
 	it('updates metadata at the queue limit even when its count stays unchanged', () => {
 		const paginator = new Paginator('notes/local-timeline', {});
 		for (let n = 0; n < 100; n++) paginator.enqueue(note(String(n)));

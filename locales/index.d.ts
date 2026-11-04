@@ -15464,6 +15464,108 @@ export interface Locale extends ILocale {
         "hasDeliveryTargets": string;
     };
     "_hata": {
+        "_highlights": {
+            /**
+             * ハイライト
+             */
+            "title": string;
+            /**
+             * 日付
+             */
+            "date": string;
+            /**
+             * 前の日
+             */
+            "previousDay": string;
+            /**
+             * 次の日
+             */
+            "nextDay": string;
+            /**
+             * 一日の全景
+             */
+            "overview": string;
+            /**
+             * 全景に近づく
+             */
+            "zoomOut": string;
+            /**
+             * 詳しく見る
+             */
+            "zoomIn": string;
+            /**
+             * {count}件
+             */
+            "count": ParameterizedString<"count">;
+            /**
+             * 取得済み {count}件
+             */
+            "partialCount": ParameterizedString<"count">;
+            /**
+             * 読み込み済みの範囲を表示しています
+             */
+            "partial": string;
+            /**
+             * 未取得
+             */
+            "unloaded": string;
+            /**
+             * 続きを読み込む
+             */
+            "loadMore": string;
+            /**
+             * 新しいノートを読み込む
+             */
+            "loadNewer": string;
+            /**
+             * ハイライトを読み込めませんでした
+             */
+            "loadFailed": string;
+            /**
+             * 続きを取得できませんでした。再読み込みしてください。
+             */
+            "cursorStalled": string;
+            /**
+             * 再読み込み
+             */
+            "retry": string;
+            /**
+             * この時刻へ
+             */
+            "toTimeline": string;
+            /**
+             * 最新へ
+             */
+            "latest": string;
+            /**
+             * 移動を止める
+             */
+            "pause": string;
+            /**
+             * 移動を再開
+             */
+            "resume": string;
+            /**
+             * この時刻へ移動中
+             */
+            "travelling": string;
+            /**
+             * このノートは表示できなくなりました
+             */
+            "unavailable": string;
+            /**
+             * タイムラインへ移動できませんでした
+             */
+            "jumpFailed": string;
+            /**
+             * {time}・{count}件
+             */
+            "density": ParameterizedString<"time" | "count">;
+            /**
+             * ノート
+             */
+            "note": string;
+        };
         "_seasonalTree": {
             /**
              * 季節の木

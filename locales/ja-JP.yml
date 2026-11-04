@@ -4158,6 +4158,32 @@ _deliveryTargetControl:
 
 # 旗鯖独自機能の翻訳。地震津波機能は翻訳対象外。
 _hata:
+  _highlights:
+    title: "ハイライト"
+    date: "日付"
+    previousDay: "前の日"
+    nextDay: "次の日"
+    overview: "一日の全景"
+    zoomOut: "全景に近づく"
+    zoomIn: "詳しく見る"
+    count: "{count}件"
+    partialCount: "取得済み {count}件"
+    partial: "読み込み済みの範囲を表示しています"
+    unloaded: "未取得"
+    loadMore: "続きを読み込む"
+    loadNewer: "新しいノートを読み込む"
+    loadFailed: "ハイライトを読み込めませんでした"
+    cursorStalled: "続きを取得できませんでした。再読み込みしてください。"
+    retry: "再読み込み"
+    toTimeline: "この時刻へ"
+    latest: "最新へ"
+    pause: "移動を止める"
+    resume: "移動を再開"
+    travelling: "この時刻へ移動中"
+    unavailable: "このノートは表示できなくなりました"
+    jumpFailed: "タイムラインへ移動できませんでした"
+    density: "{time}・{count}件"
+    note: "ノート"
   _seasonalTree:
     title: "季節の木"
     description: "季節と時刻に寄り添う、小さな景色"

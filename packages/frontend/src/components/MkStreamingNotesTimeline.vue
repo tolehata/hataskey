@@ -58,7 +58,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:leaveActiveClass="prefer.s.animation ? $style.transition_new_leaveActive : ''"
 		>
 			<div
-				v-if="!newNotesInNavbar && paginator.queuedAheadItemsCount.value > 0 && ['default', 'count'].includes(prefer.s.newNoteReceivedNotificationBehavior)"
+				v-if="!updatesPaused && !newNotesInNavbar && paginator.queuedAheadItemsCount.value > 0 && ['default', 'count'].includes(prefer.s.newNoteReceivedNotificationBehavior)"
 				:class="[$style.new2, { [$style.showEl]: (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && isMobile, [$style.reduceAnimation]: !prefer.s.animation }]"
 			>
 				<button class="_buttonPrimary" :class="$style.newButton2" @click="releaseQueue()">
@@ -78,6 +78,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button class="_button" :class="$style.newButton" @click="releaseQueue()"><i class="ti ti-circle-arrow-up"></i> {{ i18n.ts.newNote }}</button>
 		</div>
 		-->
+		<button v-if="historyViewing && paginator.canFetchNewer.value" class="_button" :class="$style.more" :disabled="paginator.fetchingNewer.value" @click="fetchHistoricalNewer">{{ i18n.ts._hata._highlights.loadNewer }}</button>
 		<component
 			:is="prefer.s.animation ? TransitionGroup : 'div'"
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
@@ -148,7 +149,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, watch, onBeforeUnmount, onUnmounted, provide, useTemplateRef, TransitionGroup, onMounted, shallowRef, ref, markRaw } from 'vue';
+import { computed, inject, watch, onBeforeUnmount, onUnmounted, provide, useTemplateRef, TransitionGroup, onMounted, shallowRef, ref, markRaw, nextTick } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { useInterval } from '@@/js/use-interval.js';
 import { useDocumentVisibility } from '@@/js/use-document-visibility.js';
@@ -188,6 +189,8 @@ import type { WeatherKind } from '@/utility/weather-effect-detector.js';
 import { haptic, hapticConfirm } from '@/utility/haptic.js';
 // 旗鯖fork(Hataskey UI 2): bot 非表示のフィルタで appearNote を参照するため。
 import { getAppearNote } from '@/utility/get-appear-note.js';
+import { checkWordMute } from '@/utility/check-word-mute.js';
+import { isMutedUser, mutedUsersRevision } from '@/utility/muted-users.js';
 import { useHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
 import { useNoteRemoval } from '@/composables/use-note-removal.js';
 
@@ -282,10 +285,17 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
 	emojiVoteNavbarState: [state: { visible: boolean; celebrating: boolean; leaving: boolean }];
+	historyChange: [active: boolean];
 }>();
 
 const navbarPull = inject(navbarPullRefreshKey, null);
-const updatesPaused = computed(() => props.updatesPaused || navbarPull?.active.value);
+const historyViewing = ref(false);
+let revealRevision = 0;
+let revealTargetId: string | null = null;
+let revealTargetDeleted = false;
+let revealAbort: AbortController | null = null;
+const updatesPaused = computed(() => props.updatesPaused || historyViewing.value || navbarPull?.active.value);
+watch(historyViewing, active => emit('historyChange', active), { flush: 'sync' });
 
 provide('inTimeline', true);
 provide('tl_withSensitive', computed(() => props.withSensitive));
@@ -544,7 +554,7 @@ function isHiddenBot(note: Misskey.entities.Note): boolean {
 }
 
 const visibleItems = computed<Misskey.entities.Note[]>(() =>
-	paginator.items.value.filter(n => !isHiddenBot(n)),
+	paginator.items.value.filter(n => !isHiddenBot(n) && (!historyViewing.value || canRevealNote(n))),
 );
 
 const emojiVoteActive = computed(() => isHatasaba && props.src === 'local' && props.emojiVoteActive && prefer.r.ltlEmojiVoteEnabled.value);
@@ -655,7 +665,7 @@ onMounted(() => {
 
 	if (paginator.computedParams) {
 		watch(paginator.computedParams, () => {
-			paginator.reload();
+			reloadTimeline();
 		}, { immediate: false, deep: true });
 	}
 });
@@ -719,6 +729,7 @@ const POLLING_INTERVAL =
 if (!store.s.realtimeMode) {
 	// TODO: 先頭のノートの作成日時が1日以上前であれば流速が遅いTLと見做してインターバルを通常より延ばす
 	useInterval(async () => {
+		if (historyViewing.value) return;
 		paginator.fetchNewer({
 			toQueue: !isTop() || isPausingUpdate || updatesPaused.value,
 		});
@@ -728,6 +739,7 @@ if (!store.s.realtimeMode) {
 	});
 
 	useGlobalEvent('notePosted', (note) => {
+		if (historyViewing.value) return;
 		paginator.fetchNewer({
 			toQueue: !isTop() || isPausingUpdate || updatesPaused.value,
 		});
@@ -735,6 +747,7 @@ if (!store.s.realtimeMode) {
 }
 
 useGlobalEvent('noteDeleted', (noteId) => {
+	if (noteId === revealTargetId) revealTargetDeleted = true;
 	removal.remove(noteId, () => paginator.removeItem(noteId));
 });
 
@@ -757,7 +770,7 @@ function releaseQueue() {
 const newNotesInNavbar = useHataskeyTimelineNewNotes(() => props.newNotesNavbarKey, () => {
 	const count = paginator.queuedAheadItemsCount.value;
 	const behavior = prefer.r.newNoteReceivedNotificationBehavior.value;
-	if (count === 0 || paginator.fetching.value || paginator.items.value.length === 0 || (paginator.error.value && !props.visitorMode) || !['default', 'count'].includes(behavior)) return null;
+	if (updatesPaused.value || count === 0 || paginator.fetching.value || paginator.items.value.length === 0 || (paginator.error.value && !props.visitorMode) || !['default', 'count'].includes(behavior)) return null;
 	return {
 		text: behavior === 'count' ? i18n.tsx.newNoteRecivedCount({ n: count }) : i18n.ts.newNoteRecived,
 		icon: 'ti ti-arrow-up',
@@ -768,6 +781,9 @@ const newNotesInNavbar = useHataskeyTimelineNewNotes(() => props.newNotesNavbarK
 });
 
 function prepend(note: Misskey.entities.Note & MisskeyEntity) {
+	// Historical paging must use its visible boundary, not a live queue's newest ID.
+	// Returning to latest performs a fresh load, including notes received meanwhile.
+	if (historyViewing.value) return;
 	// キューに入る投稿や、投稿応答で先に表示済みの同じノートも開始の合図として扱う。
 	if (emojiVoteActive.value && note.text?.trim() === '絵文字を選ぶぞ') void refreshEmojiVote(note.id);
 
@@ -926,27 +942,121 @@ watch(() => paginator.queuedAheadItemsCount.value, (q) => {
 	globalEvents.emit('queueUpdated', q);
 });
 
-onMounted(() => {
-	globalEvents.on('reloadTimeline', () => reloadTimeline());
-});
+useGlobalEvent('reloadTimeline', reloadTimeline);
 
 onUnmounted(() => {
+	cancelReveal();
 	disconnectChannel();
 });
 
-function reloadTimeline() {
-	return new Promise<void>((res) => {
-		removal.cancelAll();
-		adInsertionCounter = 0;
+function reloadTimeline(): Promise<void> {
+	cancelReveal();
+	removal.cancelAll();
+	adInsertionCounter = 0;
+	historyViewing.value = false;
+	paginator.initialId = null;
+	paginator.initialDate = null;
+	paginator.initialDirection = 'older';
+	paginator.canFetchNewer.value = false;
+	return paginator.reload();
+}
 
-		paginator.reload().then(() => {
-			res();
+function canRevealNote(note: Misskey.entities.Note): boolean {
+	const appearNote = getAppearNote(note) ?? note;
+	if (note.isHidden || appearNote.isHidden || isHiddenBot(note)) return false;
+	if ([note.userId, note.reply?.userId, note.renote?.userId, appearNote.reply?.userId, appearNote.renote?.userId].some(id => id && isMutedUser(id))) return false;
+	return ![appearNote, appearNote.reply, appearNote.renote].some(candidate => candidate && checkWordMute(candidate, $i, $i?.hardMutedWords ?? []));
+}
+
+function cancelReveal() {
+	++revealRevision;
+	revealAbort?.abort();
+	revealAbort = null;
+	revealTargetId = null;
+}
+
+function refreshHistoricalVisibility() {
+	if (historyViewing.value || revealTargetId) void reloadTimeline();
+}
+
+useGlobalEvent('userBlockingChanged', refreshHistoricalVisibility);
+watch(mutedUsersRevision, refreshHistoricalVisibility);
+
+/** Validate current timeline membership before inserting a previously selected note. */
+async function revealNote(note: Misskey.entities.Note): Promise<boolean> {
+	const endpoint = props.src === 'home' ? 'notes/timeline' : props.src === 'local' ? 'notes/local-timeline' : props.src === 'social' ? 'notes/hybrid-timeline' : props.src === 'global' ? 'notes/global-timeline' : null;
+	const date = Date.parse(note.createdAt);
+	if (!endpoint || !Number.isFinite(date)) return false;
+	cancelReveal();
+	const revision = revealRevision;
+	const controller = new AbortController();
+	revealAbort = controller;
+	revealTargetId = note.id;
+	revealTargetDeleted = false;
+	const params = {
+		withRenotes: props.withRenotes,
+		withReplies: props.withReplies,
+		withFiles: props.onlyFiles,
+		withCats: props.onlyCats,
+	};
+	let untilId: string | undefined;
+	let current: Misskey.entities.Note | undefined;
+	// A timestamp may contain several IDs. Walk actual pages, never fabricate an ID successor.
+	for (let page = 0; page < 8; page++) {
+		const notes = await misskeyApi(endpoint, { ...params, limit: 100, ...(untilId ? { untilId } : { untilDate: date + 1000 }) }, undefined, controller.signal);
+		if (revision !== revealRevision) return false;
+		current = notes.find(item => item.id === note.id);
+		if (current) break;
+		const oldest = notes.at(-1);
+		if (!oldest || oldest.id <= note.id || oldest.id === untilId) return false;
+		untilId = oldest.id;
+	}
+	if (!current || revealTargetDeleted || !canRevealNote(current)) return false;
+	const verifiedNote = current;
+	const alreadyLoaded = paginator.items.value.some(item => item.id === verifiedNote.id);
+	if (alreadyLoaded) {
+		if (!paginator.replaceItems) return false;
+		removal.cancelAll();
+		paginator.replaceItems(paginator.items.value.map(item => item.id === verifiedNote.id ? verifiedNote : item), {
+			canFetchOlder: paginator.canFetchOlder.value,
+			canFetchNewer: paginator.canFetchNewer.value,
+			initialId: paginator.initialId,
+			initialDate: paginator.initialDate,
 		});
+		historyViewing.value = true;
+		return true;
+	}
+	// Isolate every async write until the requested context is ready and still wanted.
+	const prepared = new Paginator(endpoint, { params, initialId: verifiedNote.id, useShallowRef: true });
+	await prepared.init();
+	if (revision !== revealRevision || prepared.error.value || revealTargetDeleted) return false;
+	// untilId excludes the anchor itself; insert only the fresh API-verified result.
+	prepared.insertItemAt(verifiedNote, 0);
+	prepared.canFetchNewer.value = true;
+	await prepared.fetchNewer();
+	if (revision !== revealRevision || revealTargetDeleted || !canRevealNote(verifiedNote) || !paginator.replaceItems) return false;
+	removal.cancelAll();
+	paginator.replaceItems(prepared.items.value, {
+		canFetchOlder: prepared.canFetchOlder.value,
+		canFetchNewer: prepared.canFetchNewer.value,
+		initialId: verifiedNote.id,
 	});
+	historyViewing.value = true;
+	return true;
+}
+
+async function fetchHistoricalNewer() {
+	const first = rootEl.value?.querySelector<HTMLElement>('[data-scroll-anchor]');
+	const top = first?.getBoundingClientRect().top;
+	await paginator.fetchNewer();
+	await nextTick();
+	if (first?.isConnected && top != null && scrollContainer) scrollContainer.scrollTop += first.getBoundingClientRect().top - top;
 }
 
 defineExpose({
 	reloadTimeline,
+	revealNote,
+	cancelReveal,
 	noteRoot: rootEl,
 });
 </script>

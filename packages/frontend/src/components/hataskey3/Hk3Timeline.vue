@@ -9,7 +9,8 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 		<div :class="$style.navbarContents" :inert="pullRefresh.active.value">
 			<div v-if="compact" :class="$style.mobileNavbar" data-mobile-navbar>
 				<nav ref="mobileCapsuleEl" :class="$style.mobileCapsule" :aria-label="i18n.ts.timeline" data-mobile-capsule>
-					<button v-for="choice in mobileCapsuleChoices" :key="choice.id" type="button" :class="$style.mobileTab" :data-mobile-choice="choice.id" :data-active="tab === choice.id ? 'true' : undefined" :aria-pressed="tab === choice.id" :aria-label="choice.id === tab ? timelineTitle : choice.label" :title="choice.id === tab ? timelineTitle : choice.label" :disabled="!mobileNavEnabled" @click.stop="selectMobileChoice(choice.id, $event)">
+					<button v-if="highlightSource" type="button" :class="$style.mobileTab" data-hk3-highlights-toggle :data-active="highlightSelected ? 'true' : undefined" :aria-pressed="highlightSelected" :aria-label="i18n.ts._hata._highlights.title" :title="i18n.ts._hata._highlights.title" :disabled="!mobileNavEnabled || loading" @click.stop="toggleHighlights"><i class="ti ti-sparkles" aria-hidden="true"></i><span :class="$style.mobileTabLabel" @transitionend="onMobileLabelTransition('highlights', $event)">{{ i18n.ts._hata._highlights.title }}</span></button>
+					<button v-for="choice in mobileCapsuleChoices" :key="choice.id" type="button" :class="$style.mobileTab" :data-mobile-choice="choice.id" :data-active="!highlightSelected && tab === choice.id ? 'true' : undefined" :aria-pressed="!highlightSelected && tab === choice.id" :aria-label="choice.id === tab ? timelineTitle : choice.label" :title="choice.id === tab ? timelineTitle : choice.label" :disabled="!mobileNavEnabled" @click.stop="selectMobileChoice(choice.id, $event)">
 						<i :class="choice.icon" aria-hidden="true"></i><span :class="$style.mobileTabLabel" @transitionend="onMobileLabelTransition(choice.id, $event)">{{ choice.id === tab ? timelineTitle : choice.label }}</span>
 					</button>
 					<button v-if="isCollectionTab" type="button" :class="$style.mobileAction" :aria-label="tab === 'list' ? collectionCopy.switchList : collectionCopy.switchAntenna" :title="tab === 'list' ? collectionCopy.switchList : collectionCopy.switchAntenna" :disabled="!mobileNavEnabled" @click.stop="switchMobileCollection(tab as CollectionKind, $event)"><i class="ti ti-selector" aria-hidden="true"></i></button>
@@ -28,13 +29,14 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 				<div v-if="!compact" ref="navEl" :class="$style.nav" role="navigation" :aria-label="i18n.ts.timeline" @click="onNavClick">
 					<div v-if="!compact" :class="$style.navSpacer"></div>
 					<div :class="$style.tabs">
+						<button v-if="highlightSource" type="button" :class="$style.tab" data-hk3-highlights-toggle :data-active="highlightSelected ? 'true' : undefined" :aria-pressed="highlightSelected" :aria-label="i18n.ts._hata._highlights.title" :title="i18n.ts._hata._highlights.title" :disabled="!mobileNavEnabled || loading" @click.stop="toggleHighlights"><i class="ti ti-sparkles" :class="$style.tabIcon" aria-hidden="true"></i><span :class="$style.railLabel">{{ i18n.ts._hata._highlights.title }}</span></button>
 						<button
 							v-for="t in tabs"
 							:key="t.id"
 							type="button"
 							:class="$style.tab"
-							:data-active="t.id === tab ? 'true' : undefined"
-							:aria-pressed="t.id === tab"
+							:data-active="!highlightSelected && t.id === tab ? 'true' : undefined"
+							:aria-pressed="!highlightSelected && t.id === tab"
 							:title="t.label"
 							:data-external="t.external ? 'true' : undefined"
 							@click.stop="onTabClick(t.id)"
@@ -138,51 +140,69 @@ Hataskey UI 3: タイムライン。タブ・表示フィルタ・LIVE切替・�
 	<aside v-if="!compact" :class="$style.desktopRailSlot">
 		<div ref="desktopRailEl" :class="$style.desktopRail" :data-menu-open="optionsOpen || pickerKind ? true : undefined" :inert="pullRefresh.active.value || confirmationActive"></div>
 	</aside>
-	<MkLtlPunch :active="active && !confirmationActive && tab === 'local' && !!$i" :navbarTarget="punchNavbarTarget" :navbarFrame="punchNavbarFrame" :timelineRoot="listEl" :viewportTarget="scrollEl" :animationEnabled="motionEnabled" @busy="punchBusy = $event"/>
+	<MkLtlPunch :active="active && !confirmationActive && !highlightSwitching && !highlightsOpen && !highlightHistory && tab === 'local' && !!$i" :navbarTarget="punchNavbarTarget" :navbarFrame="punchNavbarFrame" :timelineRoot="listEl" :viewportTarget="scrollEl" :animationEnabled="motionEnabled" @busy="punchBusy = $event"/>
 
 	<div :class="$style.scrollWrap" :inert="confirmationActive">
 		<div v-if="emojiVoteActive" ref="voteEffectsEl" :class="$style.voteEffects" aria-hidden="true"></div>
-		<div ref="scrollEl" data-timeline-tab-gestures :class="$style.scroll" @touchstart.passive="timelineTabGestures.touchStart" @touchmove="timelineTabGestures.touchMove" @touchend="timelineTabGestures.touchEnd" @touchcancel="timelineTabGestures.touchCancel" @wheel="timelineTabGestures.wheel">
-			<!-- 外部アカウントのタイムラインは、Hataskey UI と同じ外部TL部品で表示する。 -->
-			<ConcrntTimeline v-if="concrntMounted" v-show="isConcrntTab" ref="concrntTimelineRef" embedded hataskeyUi :active="active && isConcrntTab && !confirmationActive" :class="$style.external"/>
-			<MkExternalTimeline v-if="isExternalTab && externalHost && externalToken" :key="tab" ref="externalTimelineRef" :src="tab === 'ohtl' ? 'ohtl' : 'oltl'" :newNotesNavbarKey="`hk3:${tab}`" :host="externalHost" :token="externalToken" :sound="active" :simpleUi="true" :hataskeyUi="true" :class="$style.external"/>
+		<div ref="scrollEl" data-timeline-tab-gestures :class="$style.scroll" :aria-label="i18n.ts.timeline" tabindex="-1" @touchstart.passive="timelineTabGestures.touchStart" @touchmove="timelineTabGestures.touchMove" @touchend="timelineTabGestures.touchEnd" @touchcancel="timelineTabGestures.touchCancel" @wheel="timelineTabGestures.wheel">
+			<div v-if="highlightHistory && !highlightsOpen" ref="highlightControlsEl" data-highlight-navigation-controls :class="$style.highlightControls" tabindex="-1">
+				<span role="status" :class="$style.highlightStatus">{{ highlightError || (highlightTravel === 'moving' ? i18n.ts._hata._highlights.travelling : '') }}</span>
+				<button v-if="highlightTravel === 'moving' || highlightTravel === 'paused'" type="button" :class="$style.highlightAction" :aria-label="highlightTravel === 'moving' ? i18n.ts._hata._highlights.pause : i18n.ts._hata._highlights.resume" :title="highlightTravel === 'moving' ? i18n.ts._hata._highlights.pause : i18n.ts._hata._highlights.resume" @click="highlightTravel === 'moving' ? highlightNavigation.pause() : highlightNavigation.resume()"><i :class="highlightTravel === 'moving' ? 'ti ti-player-pause' : 'ti ti-player-play'" aria-hidden="true"></i></button>
+				<button v-if="highlightHasNewer" type="button" :class="$style.highlightAction" :disabled="highlightLoadingNewer || highlightTravel === 'moving'" :title="i18n.ts._hata._highlights.loadNewer" :aria-label="i18n.ts._hata._highlights.loadNewer" data-highlight-newer @click="loadHighlightNewer"><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
+				<button type="button" :class="$style.highlightAction" data-highlight-latest @click="returnToLatest"><i class="ti ti-arrow-up" aria-hidden="true"></i>{{ i18n.ts._hata._highlights.latest }}</button>
+			</div>
+			<div v-show="!highlightsOpen" data-hk3-native-timeline :class="$style.nativeTimeline" :inert="highlightSwitching">
+				<!-- 外部アカウントのタイムラインは、Hataskey UI と同じ外部TL部品で表示する。 -->
+				<ConcrntTimeline v-if="concrntMounted" v-show="isConcrntTab" ref="concrntTimelineRef" embedded hataskeyUi :active="active && isConcrntTab && !confirmationActive" :class="$style.external"/>
+				<MkExternalTimeline v-if="isExternalTab && externalHost && externalToken" :key="tab" ref="externalTimelineRef" :src="tab === 'ohtl' ? 'ohtl' : 'oltl'" :newNotesNavbarKey="`hk3:${tab}`" :host="externalHost" :token="externalToken" :sound="active" :simpleUi="true" :hataskeyUi="true" :class="$style.external"/>
 
-			<MkHatadyTimeline v-else-if="isHatadyTab" ref="hatadyTimelineRef" variant="uis" :active="active && !confirmationActive" newNotesNavbarKey="hk3:hatady"/>
-			<component :is="prefer.r.enablePullToRefresh.value ? MkPullToRefresh : 'div'" v-else-if="!isConcrntTab" :refresher="refreshFromPull">
-				<div v-if="isCollectionTab && !activeCollection" :class="$style.state">
-					<MkLoading v-if="loading || activeCollectionState === 'loading'"/>
-					<template v-else><span>{{ activeCollectionState === 'error' ? copy.loadFailed : tab === 'list' ? collectionCopy.noLists : collectionCopy.noAntennas }}</span><button type="button" :class="$style.retry" @click="openCollection(tab as CollectionKind, $event)">{{ activeCollectionState === 'error' ? copy.retry : tab === 'list' ? collectionCopy.selectList : collectionCopy.selectAntenna }}</button></template>
-				</div>
-				<div v-else-if="loading && notes.length === 0" :class="$style.state"><MkLoading/></div>
-				<div v-else-if="error && notes.length === 0" :class="$style.state">
-					<span>{{ copy.loadFailed }}</span>
-					<button type="button" :class="$style.retry" @click="reload()">{{ copy.retry }}</button>
-				</div>
-				<div v-else-if="notes.length === 0" :class="$style.state">{{ copy.noNotes }}</div>
+				<MkHatadyTimeline v-else-if="isHatadyTab" ref="hatadyTimelineRef" variant="uis" :active="active && !confirmationActive" newNotesNavbarKey="hk3:hatady"/>
+				<component :is="prefer.r.enablePullToRefresh.value ? MkPullToRefresh : 'div'" v-else-if="!isConcrntTab" :refresher="refreshFromPull">
+					<div v-if="isCollectionTab && !activeCollection" :class="$style.state">
+						<MkLoading v-if="loading || activeCollectionState === 'loading'"/>
+						<template v-else><span>{{ activeCollectionState === 'error' ? copy.loadFailed : tab === 'list' ? collectionCopy.noLists : collectionCopy.noAntennas }}</span><button type="button" :class="$style.retry" @click="openCollection(tab as CollectionKind, $event)">{{ activeCollectionState === 'error' ? copy.retry : tab === 'list' ? collectionCopy.selectList : collectionCopy.selectAntenna }}</button></template>
+					</div>
+					<div v-else-if="loading && notes.length === 0" :class="$style.state"><MkLoading/></div>
+					<div v-else-if="error && notes.length === 0" :class="$style.state">
+						<span>{{ copy.loadFailed }}</span>
+						<button type="button" :class="$style.retry" @click="reload()">{{ copy.retry }}</button>
+					</div>
+					<div v-else-if="notes.length === 0" :class="$style.state">{{ copy.noNotes }}</div>
 
-				<div ref="listEl" data-hata-collapse-items :class="$style.list">
-					<template v-for="note in notes" :key="note.id">
-						<Hk3Note
-							:data-note-removal-id="note.id"
-							:note="note"
-							instanceBadgePosition="left"
-							:size="compact || narrow ? 'sm' : 'lg'"
-							:linked="linkKindFor(note)"
-							:inLocal="tab === 'local'"
-							:inSocial="tab === 'social'"
-							:showAudienceIcons="tab === 'following' || tab === 'social'"
-							:showLocalOnlyIcon="tab === 'local' || tab === 'mixed'"
-							:hideSensitive="!filterState.withSensitive"
-						/>
-						<MkAd v-if="note._shouldInsertAd_" :class="$style.ad" :preferForms="['horizontal', 'horizontal-big']"/>
+					<div ref="listEl" data-hata-collapse-items :class="$style.list">
+						<template v-for="note in notes" :key="note.id">
+							<Hk3Note
+								:data-note-removal-id="note.id"
+								:data-scroll-anchor="note.id"
+								:note="note"
+								instanceBadgePosition="left"
+								:size="compact || narrow ? 'sm' : 'lg'"
+								:linked="linkKindFor(note)"
+								:inLocal="tab === 'local'"
+								:inSocial="tab === 'social'"
+								:showAudienceIcons="tab === 'following' || tab === 'social'"
+								:showLocalOnlyIcon="tab === 'local' || tab === 'mixed'"
+								:hideSensitive="!filterState.withSensitive"
+							/>
+							<MkAd v-if="note._shouldInsertAd_" :class="$style.ad" :preferForms="['horizontal', 'horizontal-big']"/>
+						</template>
+					</div>
+					<div v-if="notes.length > 0" ref="sentinelEl" :class="$style.sentinel">
+						<MkLoading v-if="loadingMore" :em="true"/>
+						<button v-else-if="loadMoreFailed" type="button" :class="$style.retry" @click="loadMore">{{ copy.loadOlderFailed }}</button>
+						<button v-else-if="highlightHistory && hasMore" type="button" :class="$style.retry" :disabled="highlightTravel === 'moving'" @click="loadMore">{{ i18n.ts.loadMore }}</button>
+						<span v-else-if="!hasMore" :class="$style.end">{{ copy.endOfTimeline }}</span>
+					</div>
+				</component>
+			</div>
+			<div v-if="highlightsMounted && highlightSource" v-show="highlightsOpen" ref="highlightHostEl" data-hk3-highlights :class="$style.highlightHost" :aria-label="i18n.ts._hata._highlights.title" :aria-busy="highlightLoading || highlightSwitching" :inert="highlightSwitching" tabindex="-1">
+				<div v-if="highlightLoading || highlightError" :class="$style.highlightMessage" role="status"><MkLoading v-if="highlightLoading" :em="true"/><span>{{ highlightError || i18n.ts._hata._highlights.travelling }}</span></div>
+				<MkTimelineHighlights :src="highlightSource" :withRenotes="filterState.withRenotes" :withSensitive="filterState.withSensitive" :onlyFiles="filterState.onlyFiles" :glassBg="false" :active="active && highlightsOpen && !confirmationActive" variant="uis" @navigate="navigateFromHighlight" @invalidate="invalidatePendingHighlight">
+					<template #note="{ note }">
+						<Hk3Note :note="note" instanceBadgePosition="left" :size="compact || narrow ? 'sm' : 'lg'" :linked="linkKindFor(note)" :inLocal="tab === 'local'" :inSocial="tab === 'social'" :showAudienceIcons="tab === 'following' || tab === 'social'" :showLocalOnlyIcon="tab === 'local' || tab === 'mixed'" :hideSensitive="!filterState.withSensitive"/>
 					</template>
-				</div>
-				<div v-if="notes.length > 0" ref="sentinelEl" :class="$style.sentinel">
-					<MkLoading v-if="loadingMore" :em="true"/>
-					<button v-else-if="loadMoreFailed" type="button" :class="$style.retry" @click="loadMore">{{ copy.loadOlderFailed }}</button>
-					<span v-else-if="!hasMore" :class="$style.end">{{ copy.endOfTimeline }}</span>
-				</div>
-			</component>
+				</MkTimelineHighlights>
+			</div>
 		</div>
 	</div>
 	<Teleport :to="mobileComposerTarget ?? 'body'" :disabled="!compact || !mobileComposerTarget">
@@ -238,6 +258,13 @@ import { markTimelineAdPage, shouldInsertStreamingAd } from '@/utility/timeline-
 import { deepMerge } from '@/utility/merge.js';
 import { createTimelineTabGestures } from '@/utility/timeline-tab-gestures.js';
 import { createHk3HomeScroll } from './hk3-home-scroll.js';
+import { prepareHk3HighlightContext, resolveHk3HighlightSource } from './hk3-highlights.js';
+import type { Hk3HighlightContextPage } from './hk3-highlights.js';
+import { createTimelineHighlightNavigation } from '@/utility/timeline-highlight-navigation.js';
+import type { TimelineHighlightNavigationState } from '@/utility/timeline-highlight-navigation.js';
+import { filterHighlightNotes } from '@/utility/timeline-highlights.js';
+import type { HighlightEndpoint } from '@/utility/timeline-highlights.js';
+import { isMutedUser, mutedUsersRevision } from '@/utility/muted-users.js';
 import { tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { getExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
@@ -247,6 +274,8 @@ import { isHataskeyTimelineAllowed } from '@/utility/hataskey-timeline-availabil
 import { mainRouter } from '@/router.js';
 import { userListsCache, antennasCache } from '@/cache.js';
 import * as sound from '@/utility/sound.js';
+
+const MkTimelineHighlights = defineAsyncComponent(() => import('@/components/MkTimelineHighlights.vue'));
 
 const props = withDefaults(defineProps<{
 	compact?: boolean;
@@ -441,6 +470,7 @@ async function selectCollection(kind: CollectionKind, id: string) {
 }
 
 function openCollectionSettings(kind: CollectionKind, manage = false) {
+	cancelHighlightSwitch();
 	navigationRevision++;
 	const id = selectedCollections.value[kind];
 	closeCollectionPicker();
@@ -448,6 +478,7 @@ function openCollectionSettings(kind: CollectionKind, manage = false) {
 }
 
 function goToChannels() {
+	cancelHighlightSwitch();
 	navigationRevision++;
 	closeCollectionPicker();
 	mainRouter.pushByPath('/channels');
@@ -519,12 +550,33 @@ const flashEl = shallowRef<HTMLElement | null>(null);
 const flash2El = shallowRef<HTMLElement | null>(null);
 
 const filterState = computed(() => store.r.tl.value.filter);
+const highlightSource = computed(() => tabs.value.some(item => item.id === tab.value) ? resolveHk3HighlightSource(tab.value) : null);
+const highlightsOpen = ref(false);
+const highlightSwitchTarget = ref<boolean | null>(null);
+const highlightSwitching = computed(() => highlightSwitchTarget.value != null);
+const highlightSelected = computed(() => highlightSwitchTarget.value ?? highlightsOpen.value);
+const highlightsMounted = ref(false);
+const highlightHistory = ref(false);
+const highlightLoading = ref(false);
+const highlightLoadingNewer = ref(false);
+const highlightHasNewer = ref(false);
+const highlightError = ref('');
+const highlightTravel = ref<TimelineHighlightNavigationState>('idle');
+const highlightHostEl = shallowRef<HTMLElement | null>(null);
+const highlightControlsEl = shallowRef<HTMLElement | null>(null);
+const highlightDeletedIds = new Set<string>();
+let highlightRevision = 0;
+let highlightController: AbortController | null = null;
+let highlightMapScroll = 0;
+let highlightNativeScroll = 0;
+let highlightOlderCursor: string | undefined;
+let highlightNewerCursor: string | undefined;
 
 // ===== LTL の絵文字投票 =====
 // Hataskey UI と同じ投票ストアを使い、投票・演出の「1回だけ」は UI をまたいで共有される。
 const VOTE_TRIGGER = '絵文字を選ぶぞ';
 const voteEffectsEl = shallowRef<HTMLElement | null>(null);
-const emojiVoteActive = computed(() => props.active && tab.value === 'local' && !punchBusy.value && prefer.r.ltlEmojiVoteEnabled.value);
+const emojiVoteActive = computed(() => props.active && !highlightSwitching.value && !highlightsOpen.value && !highlightHistory.value && tab.value === 'local' && !punchBusy.value && prefer.r.ltlEmojiVoteEnabled.value);
 const {
 	round: emojiVoteRound, choice: emojiVoteChoice, now: emojiVoteNow, phase: emojiVotePhase,
 	submitting: emojiVoteSubmitting, voteError: emojiVoteError, declined: emojiVoteDeclined,
@@ -573,7 +625,7 @@ watch([desktopRailActive, pickerKind, optionsOpen, pickerState, pickerItems], as
 }, { flush: 'post' });
 
 const timelineTabGestures = createTimelineTabGestures({
-	enabled: () => props.active && !props.confirmationActive && tabSwipeEnabled.value && !props.mobileMenuOpen && !pullRefresh.active.value && !punchBusy.value && !pickerKind.value && !optionsOpen.value,
+	enabled: () => props.active && !props.confirmationActive && !highlightSwitching.value && !highlightsOpen.value && highlightTravel.value !== 'moving' && tabSwipeEnabled.value && !props.mobileMenuOpen && !pullRefresh.active.value && !punchBusy.value && !pickerKind.value && !optionsOpen.value,
 	root: () => scrollEl.value,
 	canMove: direction => {
 		const index = tabs.value.findIndex(item => item.id === tab.value);
@@ -628,7 +680,7 @@ function linkKindFor(note: Misskey.entities.Note): 'reply' | 'quote' | null {
 }
 
 const currentToast = shallowRef(hk3Toasts.value[0] ?? null);
-const hasQueued = computed(() => queue.value.length > 0 || externalNotice.value != null);
+const hasQueued = computed(() => !highlightSwitching.value && !highlightsOpen.value && !highlightHistory.value && (queue.value.length > 0 || externalNotice.value != null));
 const bannerOn = computed(() => currentToast.value != null || hasQueued.value);
 const rssEnabled = computed(() => prefer.r.hataskeyUi3RssEnabled.value);
 const timelineCollapsing = ref(false);
@@ -708,10 +760,20 @@ const systemReducedMotion = ref(motionQuery.matches);
 const motionEnabled = computed(() => props.active && prefer.r.animation.value && !systemReducedMotion.value);
 const motion = () => motionEnabled.value;
 const homeScroll = createHk3HomeScroll(() => scrollEl.value, motion);
+const highlightNavigation = createTimelineHighlightNavigation({
+	container: () => scrollEl.value,
+	motion,
+	inset: () => (highlightControlsEl.value?.offsetHeight ?? 0) + 12,
+	onState: state => {
+		highlightTravel.value = state;
+		if (state === 'missing') highlightError.value = i18n.ts._hata._highlights.unavailable;
+	},
+});
 watch(motionEnabled, enabled => {
 	if (!enabled) {
 		if (props.active) homeScroll.finish();
 		else homeScroll.cancel();
+		if (props.active && highlightTravel.value === 'moving') highlightNavigation.resume();
 	}
 }, { flush: 'sync' });
 const mobileDocked = computed(() => props.compact && !!props.mobileComposerTarget);
@@ -725,7 +787,7 @@ function cancelMovingNotes() {
 }
 
 watch(motionEnabled, enabled => { if (!enabled) cancelMovingNotes(); }, { flush: 'sync' });
-const pullRefresh = createNavbarPullRefresh(computed(() => props.active && !props.confirmationActive && prefer.r.enablePullToRefresh.value && !props.mobileMenuOpen && !punchBusy.value && !pickerKind.value && !optionsOpen.value && !timelineCollapsing.value && !emojiHostOpen.value && !rssReaderOpen.value), motionEnabled, {
+const pullRefresh = createNavbarPullRefresh(computed(() => props.active && !props.confirmationActive && !highlightSwitching.value && !highlightsOpen.value && highlightTravel.value !== 'moving' && prefer.r.enablePullToRefresh.value && !props.mobileMenuOpen && !punchBusy.value && !pickerKind.value && !optionsOpen.value && !timelineCollapsing.value && !emojiHostOpen.value && !rssReaderOpen.value), motionEnabled, {
 	presentation: direction => mobileDocked.value && (direction === 'up' || props.mobileComposerOpen) ? 'dock' : 'navbar',
 	feedback: () => mobileDocked.value,
 	refresher: refreshFromPull,
@@ -773,7 +835,7 @@ watch([() => props.compact, mobileDocked], () => pullRefresh.reset());
 onBeforeUnmount(() => { pullRefresh.dispose(); setHk3ToastsPaused(pullToastOwner, false); });
 
 async function refreshFromPull() {
-	if (!props.active || props.confirmationActive) return Promise.resolve();
+	if (!props.active || props.confirmationActive || highlightsOpen.value) return Promise.resolve();
 	homeScroll.cancel();
 	if (isConcrntTab.value) await concrntTimelineRef.value?.reloadTimeline();
 	else if (isExternalTab.value) await externalTimelineRef.value?.reloadTimeline(true);
@@ -828,7 +890,211 @@ let loadSeq = 0;
 let adInsertionCounter = 0;
 const countedIncomingAds = new Map<string, boolean>();
 
+function cancelHighlightRequest() {
+	highlightRevision++;
+	highlightController?.abort();
+	highlightController = null;
+	highlightLoading.value = false;
+}
+
+function invalidatePendingHighlight() {
+	if (highlightLoading.value) cancelHighlightRequest();
+}
+
+function cancelHighlightSwitch() {
+	if (!highlightSwitching.value) return;
+	navigationRevision++;
+	navigationPending = false;
+	highlightSwitchTarget.value = null;
+	cancelMovingNotes();
+}
+
+function canRevealHighlight(note: Misskey.entities.Note): boolean {
+	if (highlightDeletedIds.has(note.id) || (Misskey.note.isPureRenote(note) && highlightDeletedIds.has(note.renoteId ?? ''))) return false;
+	return filterHighlightNotes([note], {
+		me: $i,
+		hardMutedWords: $i?.hardMutedWords,
+		hideBots: prefer.r['simpleUi.hideBotsInTimeline']?.value ?? false,
+		botAllowlist: prefer.r['simpleUi.botAllowlist']?.value ?? [],
+		isMutedUser,
+	}).length > 0;
+}
+
+function highlightFetcher() {
+	const source = highlightSource.value;
+	if (!source) return null;
+	const endpoint: HighlightEndpoint = ({ home: 'notes/timeline', local: 'notes/local-timeline', social: 'notes/hybrid-timeline', global: 'notes/global-timeline' } as const)[source];
+	const filters = { withRenotes: filterState.value.withRenotes, withFiles: filterState.value.onlyFiles ? true : undefined };
+	return (params: Hk3HighlightContextPage, signal?: AbortSignal) => misskeyApi(endpoint, { ...filters, ...params }, undefined, signal);
+}
+
+async function closeHighlights() {
+	await switchHighlights(false);
+}
+
+async function toggleHighlights() {
+	await switchHighlights(!highlightSelected.value);
+}
+
+async function switchHighlights(open: boolean) {
+	if (!props.active || props.confirmationActive || (open && (!highlightSource.value || loading.value))) return;
+	const wasOpen = highlightsOpen.value;
+	cancelHighlightRequest();
+	highlightNavigation.cancel();
+	homeScroll.cancel();
+	cancelPostEntrance();
+	cancelMovingNotes();
+	discardPendingPost();
+	pullRefresh.reset();
+	optionsOpen.value = false;
+	closeCollectionPicker();
+	const revision = ++navigationRevision;
+	navigationPending = true;
+	highlightSwitchTarget.value = open;
+	// Retire in-flight older/newer pages before hiding the native list.
+	++loadSeq;
+	loadingMore.value = false;
+	highlightLoadingNewer.value = false;
+	highlightError.value = '';
+	composerScroll.show();
+	try {
+		if (wasOpen === open) {
+			// A reversal before commit retains the current view and cancels its old exit.
+			revealList(60);
+			return;
+		}
+		if (wasOpen) highlightMapScroll = scrollEl.value?.scrollTop ?? 0;
+		else highlightNativeScroll = scrollEl.value?.scrollTop ?? 0;
+		await hideList();
+		if (revision !== navigationRevision || !props.active || props.confirmationActive) return;
+		if (open) highlightsMounted.value = true;
+		highlightsOpen.value = open;
+		await nextTick();
+		if (revision !== navigationRevision || !props.active || props.confirmationActive) return;
+		if (scrollEl.value) scrollEl.value.scrollTop = open ? highlightMapScroll : highlightNativeScroll;
+		revealList(60);
+	} finally {
+		if (revision === navigationRevision) {
+			navigationPending = false;
+			highlightSwitchTarget.value = null;
+			if (!connection && !highlightHistory.value) connect();
+		}
+	}
+	await nextTick();
+	if (revision === navigationRevision && open && props.active && !props.confirmationActive) highlightHostEl.value?.focus({ preventScroll: true });
+}
+
+async function navigateFromHighlight(note: Misskey.entities.Note) {
+	const fetchContextPage = highlightFetcher();
+	if (!props.active || props.confirmationActive || highlightSwitching.value || !highlightsOpen.value || !fetchContextPage) return;
+	cancelHighlightRequest();
+	const revision = highlightRevision;
+	const controller = new AbortController();
+	highlightController = controller;
+	highlightLoading.value = true;
+	highlightError.value = '';
+	const current = () => revision === highlightRevision && props.active && !props.confirmationActive && highlightsOpen.value;
+	try {
+		const context = await prepareHk3HighlightContext(note, { fetchPage: fetchContextPage, isCurrent: current, accept: canRevealHighlight, signal: controller.signal });
+		if (!current()) return;
+		if (!context) {
+			highlightError.value = i18n.ts._hata._highlights.unavailable;
+			return;
+		}
+		// Only this synchronous commit changes the visible timeline; canceled API work stays private.
+		++loadSeq;
+		disconnect();
+		discardPendingPost();
+		removal.cancelAll();
+		highlightHistory.value = true;
+		highlightHasNewer.value = context.hasNewer;
+		highlightOlderCursor = context.notes.at(-1)?.id;
+		highlightNewerCursor = context.notes[0]?.id;
+		notes.value = markTimelineAdPage(context.notes, 'initial');
+		queue.value = [];
+		hasMore.value = context.hasOlder;
+		loading.value = false;
+		loadingMore.value = false;
+		loadMoreFailed.value = false;
+		error.value = false;
+		highlightMapScroll = scrollEl.value?.scrollTop ?? 0;
+		highlightNativeScroll = 0;
+		highlightsOpen.value = false;
+		await nextTick();
+		if (revision !== highlightRevision || !props.active || props.confirmationActive || highlightsOpen.value) return;
+		if (scrollEl.value) scrollEl.value.scrollTop = 0;
+		highlightControlsEl.value?.focus({ preventScroll: true });
+		highlightNavigation.start(() => Array.from(listEl.value?.querySelectorAll<HTMLElement>('[data-scroll-anchor]') ?? []).find(element => element.dataset.scrollAnchor === note.id) ?? null);
+	} catch {
+		if (current() && !controller.signal.aborted) highlightError.value = i18n.ts._hata._highlights.jumpFailed;
+	} finally {
+		if (revision === highlightRevision) {
+			highlightLoading.value = false;
+			highlightController = null;
+		}
+	}
+}
+
+async function loadHighlightNewer() {
+	const fetchNewer = highlightFetcher();
+	if (!props.active || props.confirmationActive || highlightsOpen.value || !highlightHistory.value || highlightLoadingNewer.value || !highlightHasNewer.value || !highlightNewerCursor || !fetchNewer) return;
+	highlightNavigation.cancel();
+	highlightLoadingNewer.value = true;
+	highlightError.value = '';
+	const seq = loadSeq;
+	const cursor = highlightNewerCursor;
+	try {
+		const result = await fetchNewer({ limit: PAGE, sinceId: cursor });
+		if (seq !== loadSeq || !props.active || props.confirmationActive || highlightsOpen.value) return;
+		const newest = result.reduce((id, note) => note.id > id ? note.id : id, cursor);
+		highlightHasNewer.value = result.length > 0 && newest !== cursor;
+		highlightNewerCursor = newest;
+		const known = new Set(notes.value.map(note => note.id));
+		const incoming = result.filter(note => !known.has(note.id) && canRevealHighlight(note)).sort((a, b) => b.id.localeCompare(a.id));
+		const anchor = listEl.value?.querySelector<HTMLElement>('[data-scroll-anchor]');
+		const top = anchor?.getBoundingClientRect().top;
+		notes.value.unshift(...markTimelineAdPage(incoming, 'initial'));
+		await nextTick();
+		if (seq === loadSeq && anchor?.isConnected && top != null && scrollEl.value) scrollEl.value.scrollTop += anchor.getBoundingClientRect().top - top;
+	} catch {
+		if (seq === loadSeq) highlightError.value = i18n.ts._hata._highlights.jumpFailed;
+	} finally {
+		if (seq === loadSeq) highlightLoadingNewer.value = false;
+	}
+}
+
+async function returnToLatest() {
+	const task = reload();
+	const seq = loadSeq;
+	await task;
+	if (seq !== loadSeq || !props.active || highlightsOpen.value || props.confirmationActive) return;
+	scrollEl.value?.scrollTo({ top: 0 });
+	scrollEl.value?.focus({ preventScroll: true });
+}
+
+function invalidateHighlightVisibility() {
+	cancelHighlightRequest();
+	highlightNavigation.cancel();
+	if (highlightHistory.value) void reload();
+}
+
+useGlobalEvent('userBlockingChanged', invalidateHighlightVisibility);
+watch(mutedUsersRevision, invalidateHighlightVisibility, { flush: 'sync' });
+watch(() => [$i?.hardMutedWords, prefer.r['simpleUi.hideBotsInTimeline']?.value, prefer.r['simpleUi.botAllowlist']?.value], invalidateHighlightVisibility, { deep: true });
+watch(() => [filterState.value.withRenotes, filterState.value.onlyFiles, filterState.value.withSensitive], () => {
+	cancelHighlightRequest();
+	highlightNavigation.cancel();
+}, { flush: 'sync' });
+
 async function reload(collectionValidated = false, preserveIncoming = false) {
+	cancelHighlightSwitch();
+	cancelHighlightRequest();
+	highlightNavigation.cancel();
+	highlightsOpen.value = false;
+	highlightHistory.value = false;
+	highlightLoadingNewer.value = false;
+	highlightHasNewer.value = false;
+	highlightError.value = '';
 	if (isHatadyTab.value) {
 		++loadSeq;
 		disconnect();
@@ -904,17 +1170,23 @@ async function reload(collectionValidated = false, preserveIncoming = false) {
 }
 
 async function loadMore() {
-	if (!props.active || loadingMore.value || loading.value || !hasMore.value || notes.value.length === 0) return;
+	if (!props.active || highlightSwitching.value || highlightsOpen.value || highlightTravel.value === 'moving' || loadingMore.value || loading.value || !hasMore.value || notes.value.length === 0) return;
 	loadingMore.value = true;
 	const seq = loadSeq;
 	try {
 		const oldest = notes.value[notes.value.length - 1];
-		const result = await fetchPage(tab.value === 'trending' ? undefined : oldest.id, notes.value.length);
+		const cursor = highlightHistory.value ? highlightOlderCursor ?? oldest.id : oldest.id;
+		const result = await fetchPage(tab.value === 'trending' ? undefined : cursor, notes.value.length);
 		if (seq !== loadSeq) return;
 		const known = new Set(notes.value.map(note => note.id));
-		notes.value.push(...markTimelineAdPage(result, 'older').filter(note => !known.has(note.id)));
+		notes.value.push(...markTimelineAdPage(result, 'older').filter(note => !known.has(note.id) && (!highlightHistory.value || canRevealHighlight(note))));
 		// タイムラインは件数が上限未満でも続きがあることがある。空になった時だけ終端とする。
 		hasMore.value = result.length > 0;
+		if (highlightHistory.value) {
+			const nextCursor = result.reduce((id, note) => note.id < id ? note.id : id, cursor);
+			hasMore.value = result.length > 0 && nextCursor !== cursor;
+			highlightOlderCursor = nextCursor;
+		}
 		loadMoreFailed.value = false;
 	} catch {
 		if (seq !== loadSeq) return;
@@ -932,7 +1204,7 @@ let connection: { dispose: () => void } | null = null;
 let streamRevision = 0;
 
 function connect() {
-	if (tab.value === 'trending' || tab.value === 'hatady' || tab.value === 'ctl' || tab.value === 'ohtl' || tab.value === 'oltl') return;
+	if (highlightHistory.value || tab.value === 'trending' || tab.value === 'hatady' || tab.value === 'ctl' || tab.value === 'ohtl' || tab.value === 'oltl') return;
 	const filter = store.s.tl.filter;
 	const params = { withRenotes: filter.withRenotes, withFiles: filter.onlyFiles ? true : undefined };
 	const revision = streamRevision;
@@ -976,7 +1248,7 @@ function markIncomingAd(note: Misskey.entities.Note): TimelineNote {
 }
 
 function onStreamNote(note: Misskey.entities.Note) {
-	if (isKnown(note.id)) return;
+	if (highlightHistory.value || isKnown(note.id)) return;
 	// Hold this composer's echo until its API result identifies the new note.
 	// Other people's posts still arrive normally; a failed send releases the buffer.
 	if (pendingPost && pendingPost.seq === loadSeq && note.userId === $i?.id) {
@@ -985,9 +1257,9 @@ function onStreamNote(note: Misskey.entities.Note) {
 	}
 	const receivedNote = markIncomingAd(note);
 	// 通常UIと同じサウンド設定を使い、LIVE表示・新着待ちのどちらでも受信時に一度だけ鳴らす。
-	if (props.active) sound.playMisskeySfx($i && note.userId === $i.id ? 'noteMy' : 'note');
+	if (props.active && !highlightSwitching.value && !highlightsOpen.value) sound.playMisskeySfx($i && note.userId === $i.id ? 'noteMy' : 'note');
 	// LIVE中でも、読み進めている位置を動かさないよう、スクロール中の新着はバナーへ回す。
-	if (props.active && !pullRefresh.active.value && !punchBusy.value && live.value && (scrollEl.value?.scrollTop ?? 0) < 8) {
+	if (props.active && !highlightSwitching.value && !highlightsOpen.value && !pullRefresh.active.value && !punchBusy.value && live.value && (scrollEl.value?.scrollTop ?? 0) < 8) {
 		notes.value.unshift(receivedNote);
 		return;
 	}
@@ -996,6 +1268,7 @@ function onStreamNote(note: Misskey.entities.Note) {
 
 // 削除されたノート(自分の削除・ストリームの削除通知)は、その純リノートも含めて一覧と新着待ちから外す。
 useGlobalEvent('noteDeleted', noteId => {
+	highlightDeletedIds.add(noteId);
 	if (enteringPostId === noteId) cancelPostEntrance();
 	const keep = (note: Misskey.entities.Note) => note.id !== noteId && !(note.renoteId === noteId && Misskey.note.isPureRenote(note));
 	for (const note of notes.value.filter(note => !keep(note))) {
@@ -1016,11 +1289,17 @@ const composerEl = shallowRef<HTMLElement | null>(null);
 const composerScroll = createHk3ComposerScroll({
 	viewport: () => scrollEl.value,
 	composer: () => composerEl.value,
-	blocked: () => mobileDocked.value || !props.active || props.confirmationActive || props.mobileMenuOpen || pullRefresh.active.value || punchBusy.value || timelineCollapsing.value || postEntranceActive.value ||
+	blocked: () => mobileDocked.value || !props.active || props.confirmationActive || props.mobileMenuOpen || highlightSwitching.value || pullRefresh.active.value || punchBusy.value || timelineCollapsing.value || postEntranceActive.value ||
 		!!composerEl.value?.querySelector('[data-busy="true"], [aria-expanded="true"]'),
 });
 watch([pullRefresh.active, punchBusy, timelineCollapsing, postEntranceActive, composerPosition], () => composerScroll.show());
 watch([() => props.mobileMenuOpen, () => props.confirmationActive], () => { composerScroll.show(); timelineTabGestures.reset(); });
+watch(() => props.confirmationActive, active => {
+	if (!active) return;
+	cancelHighlightSwitch();
+	cancelHighlightRequest();
+	highlightNavigation.pause();
+}, { flush: 'sync' });
 
 function cancelPostEntrance() {
 	window.clearTimeout(postEntranceTimer);
@@ -1033,6 +1312,14 @@ function cancelPostEntrance() {
 
 watch(() => props.active, active => {
 	if (active) return;
+	cancelHighlightSwitch();
+	cancelHighlightRequest();
+	highlightNavigation.cancel();
+	if (highlightHistory.value || highlightsOpen.value) {
+		++loadSeq;
+		loadingMore.value = false;
+		highlightLoadingNewer.value = false;
+	}
 	homeScroll.cancel();
 	// The desktop rail and mobile composer can be teleported outside the hidden parent.
 	// Close popups without returning focus to a timeline that is no longer visible.
@@ -1059,10 +1346,10 @@ function acceptsPostedNote(note: Misskey.entities.Note): boolean {
 }
 
 async function showPostedNote(note: Misskey.entities.Note, source: DOMRectReadOnly | null = null) {
-	if (!acceptsPostedNote(note)) return;
+	if (highlightHistory.value || !acceptsPostedNote(note)) return;
 	if (notes.value.some(item => item.id === note.id)) return;
 	const incomingNote = markIncomingAd(note);
-	if (!props.active || punchBusy.value || pullRefresh.active.value || timelineCollapsing.value || loading.value) {
+	if (!props.active || highlightSwitching.value || highlightsOpen.value || punchBusy.value || pullRefresh.active.value || timelineCollapsing.value || loading.value) {
 		if (!isKnown(note.id)) queue.value = [incomingNote, ...queue.value].slice(0, QUEUE_MAX);
 		return;
 	}
@@ -1150,12 +1437,17 @@ watch(hk3PostedNote, note => {
 // ===== 操作 =====
 function scrollTop() {
 	if (!props.active) return;
+	if (highlightsOpen.value || highlightSwitching.value) { void closeHighlights(); return; }
+	highlightNavigation.cancel();
 	homeScroll.cancel();
 	scrollEl.value?.scrollTo({ top: 0, behavior: motion() ? 'smooth' : 'auto' });
 }
 
 function scrollHomeTop() {
-	if (props.active) homeScroll.start();
+	if (!props.active) return;
+	if (highlightsOpen.value || highlightSwitching.value) { void closeHighlights(); return; }
+	if (highlightHistory.value) { void returnToLatest(); return; }
+	homeScroll.start();
 }
 
 function onNavClick(ev: MouseEvent) {
@@ -1167,6 +1459,11 @@ let navigationRevision = 0;
 let navigationPending = false;
 
 async function onTabClick(id: TabId, force = false, collectionValidated = false) {
+	if (id === tab.value && (highlightsOpen.value || highlightSwitching.value) && !force) { await closeHighlights(); return; }
+	const wasHighlight = highlightsOpen.value || highlightSwitching.value;
+	cancelHighlightRequest();
+	highlightNavigation.cancel();
+	cancelMovingNotes();
 	homeScroll.cancel();
 	closeCollectionPicker();
 	const revision = ++navigationRevision;
@@ -1175,12 +1472,15 @@ async function onTabClick(id: TabId, force = false, collectionValidated = false)
 		return;
 	}
 	navigationPending = true;
+	highlightSwitchTarget.value = wasHighlight ? false : null;
 	++loadSeq;
 	disconnect();
 	queue.value = [];
 	try {
 		await hideList();
-		if (revision !== navigationRevision) return;
+		if (revision !== navigationRevision || !props.active) return;
+		highlightsOpen.value = false;
+		highlightSwitchTarget.value = null;
 		notes.value = [];
 		tab.value = id;
 		miLocalStorage.setItem('hataskeyUi3Tab', id);
@@ -1192,14 +1492,24 @@ async function onTabClick(id: TabId, force = false, collectionValidated = false)
 		await reload(collectionValidated);
 		if (revision !== navigationRevision) return;
 		await nextTick();
-		if (revision === navigationRevision) revealList(60);
+		if (revision === navigationRevision && props.active) revealList(60);
 	} finally {
-		if (revision === navigationRevision) navigationPending = false;
+		if (revision === navigationRevision) {
+			navigationPending = false;
+			highlightSwitchTarget.value = null;
+		}
 	}
 }
 
 function listChildren(): HTMLElement[] {
-	return Array.from(listEl.value?.children ?? []).slice(0, 8) as HTMLElement[];
+	if (highlightsOpen.value) return highlightHostEl.value ? [highlightHostEl.value] : [];
+	const children = Array.from(listEl.value?.children ?? []) as HTMLElement[];
+	const viewport = scrollEl.value?.getBoundingClientRect();
+	if (!viewport?.height) return children.slice(0, 8);
+	return children.filter(element => {
+		const rect = element.getBoundingClientRect();
+		return rect.bottom > viewport.top && rect.top < viewport.bottom;
+	}).slice(0, 8);
 }
 
 async function hideList(): Promise<void> {
@@ -1243,7 +1553,7 @@ function toggleLive() {
 }
 
 function flushQueue() {
-	if (!props.active || punchBusy.value) return;
+	if (!props.active || highlightSwitching.value || highlightsOpen.value || highlightHistory.value || punchBusy.value) return;
 	const known = new Set(notes.value.map(note => note.id));
 	const incoming = queue.value.filter(note => !known.has(note.id));
 	notes.value = [...incoming, ...notes.value];
@@ -1450,6 +1760,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	cancelHighlightRequest();
+	highlightNavigation.cancel();
 	scrollEl.value?.removeEventListener('scroll', syncTimelineAtTop);
 	homeScroll.cancel();
 	composerScroll.dispose();
@@ -1490,7 +1802,7 @@ const mobileCapsuleEl = shallowRef<HTMLElement | null>(null);
 
 function revealSelectedMobileTab() {
 	const nav = mobileCapsuleEl.value;
-	const selected = Array.from(nav?.querySelectorAll<HTMLElement>('[data-mobile-choice]') ?? []).find(button => button.dataset.mobileChoice === tab.value);
+	const selected = highlightSelected.value ? nav?.querySelector<HTMLElement>('[data-hk3-highlights-toggle]') : Array.from(nav?.querySelectorAll<HTMLElement>('[data-mobile-choice]') ?? []).find(button => button.dataset.mobileChoice === tab.value);
 	if (!nav || !selected) return;
 	const viewport = nav.getBoundingClientRect();
 	const button = selected.getBoundingClientRect();
@@ -1499,10 +1811,10 @@ function revealSelectedMobileTab() {
 }
 
 function onMobileLabelTransition(id: string, event: TransitionEvent) {
-	if (id === tab.value && event.propertyName === 'max-width') revealSelectedMobileTab();
+	if (id === (highlightSelected.value ? 'highlights' : tab.value) && event.propertyName === 'max-width') revealSelectedMobileTab();
 }
 
-watch([tab, timelineTitle, () => mobileCapsuleChoices.value.map(choice => choice.id).join('\0')], async () => {
+watch([tab, highlightSelected, timelineTitle, () => mobileCapsuleChoices.value.map(choice => choice.id).join('\0')], async () => {
 	await nextTick();
 	revealSelectedMobileTab();
 }, { flush: 'post' });
@@ -2371,6 +2683,84 @@ defineExpose({ focusConcrntComposer: () => concrntTimelineRef.value?.focusCompos
 		padding-bottom: calc(var(--hk3-mobile-dock-height) + env(safe-area-inset-bottom, 0px) + calc(24px * var(--hk3-ui-scale, 1)));
 		scroll-padding-bottom: calc(var(--hk3-mobile-dock-height) + 24px);
 	}
+}
+
+.nativeTimeline { display: contents; }
+
+.highlightHost {
+	max-width: var(--hk3-timeline-note-width);
+	margin-inline: auto;
+	outline: none;
+}
+
+.highlightControls {
+	position: sticky;
+	top: 0;
+	z-index: 6;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	box-sizing: border-box;
+	max-width: var(--hk3-timeline-note-width);
+	min-height: 44px;
+	margin-inline: auto;
+	padding: 4px 12px;
+	border-bottom: 1px solid var(--hk3-divider);
+	background: color-mix(in srgb, var(--hk3-bg) 90%, transparent);
+	backdrop-filter: blur(16px);
+	color: var(--hk3-text);
+	font-size: calc(12px * var(--hk3-ui-scale, 1));
+	outline: none;
+}
+
+.highlightStatus {
+	flex: 1;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.highlightAction {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	gap: 5px;
+	min-width: 36px;
+	min-height: 36px;
+	padding: 4px 8px;
+	border: 0;
+	border-radius: 18px;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+	&:hover, &:focus-visible { background: var(--hk3-accent-100); color: var(--hk3-accent-800); }
+	&:focus-visible { outline: 2px solid var(--hk3-accent); outline-offset: -2px; }
+	&:disabled { opacity: 0.5; cursor: default; }
+}
+
+.highlightMessage {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 20px;
+	font-size: calc(13px * var(--hk3-ui-scale, 1));
+	color: var(--hk3-neutral-700);
+}
+
+.root :global([data-highlight-arrival]) { position: relative; }
+.root :global([data-highlight-arrival-marker]) {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	border: 2px solid var(--hk3-accent);
+	border-radius: inherit;
+	pointer-events: none;
+}
+.root[data-motion='true'] :global([data-highlight-arrival-marker]) { animation: highlightArrival 1.8s ease-out both; }
+@keyframes highlightArrival {
+	0%, 35% { opacity: 1; }
+	100% { opacity: 0; }
 }
 
 .banner {

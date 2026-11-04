@@ -3993,6 +3993,32 @@ _deliveryTargetControl:
 
 # Hataskey-specific features. Hanaawase and earthquake/tsunami features are intentionally excluded.
 _hata:
+  _highlights:
+    title: "Highlights"
+    date: "Date"
+    previousDay: "Previous day"
+    nextDay: "Next day"
+    overview: "Day overview"
+    zoomOut: "Zoom out"
+    zoomIn: "Zoom in"
+    count: "{count} notes"
+    partialCount: "{count} notes loaded"
+    partial: "Showing the time range loaded so far"
+    unloaded: "Not loaded"
+    loadMore: "Load more"
+    loadNewer: "Load newer notes"
+    loadFailed: "Could not load highlights"
+    cursorStalled: "Could not load more notes. Please reload."
+    retry: "Reload"
+    toTimeline: "Go to this time"
+    latest: "Back to latest"
+    pause: "Pause navigation"
+    resume: "Resume navigation"
+    travelling: "Going to this time"
+    unavailable: "This note is no longer available"
+    jumpFailed: "Could not open this time in the timeline"
+    density: "{time} · {count} notes"
+    note: "Note"
   _seasonalTree:
     title: "Seasonal Tree"
     description: "A little scene that follows the season and time of day"

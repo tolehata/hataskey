@@ -28,6 +28,14 @@ export type PaginatorCompatibleEndpoints = {
 	[K in PaginatorCompatibleEndpointPaths]: Misskey.Endpoints[K];
 };
 
+export type PaginatorReplacementState = {
+	canFetchOlder: boolean;
+	canFetchNewer: boolean;
+	initialId?: string | null;
+	initialDate?: number | null;
+	initialDirection?: 'newer' | 'older';
+};
+
 export interface IPaginator<T = unknown, _T = T & MisskeyEntity> {
 	/**
 	 * 外部から直接操作しないでください
@@ -64,6 +72,8 @@ export interface IPaginator<T = unknown, _T = T & MisskeyEntity> {
 	removeItem(id: string): void;
 	updateItem(id: string, updater: (item: _T) => _T): void;
 	insertItemAt(item: _T, index: number, queue?: boolean): void;
+	/** Commit a fully prepared page and retire requests belonging to the previous page. */
+	replaceItems?(items: _T[], state: PaginatorReplacementState): void;
 }
 
 export class Paginator<
@@ -175,6 +185,7 @@ export class Paginator<
 		this.removeItem = this.removeItem.bind(this);
 		this.updateItem = this.updateItem.bind(this);
 		this.insertItemAt = this.insertItemAt.bind(this);
+		this.replaceItems = this.replaceItems.bind(this);
 	}
 
 	private getNewestId(): string | null | undefined {
@@ -256,6 +267,23 @@ export class Paginator<
 
 	public reload(): Promise<void> {
 		return this.init();
+	}
+
+	public replaceItems(items: T[], state: PaginatorReplacementState): void {
+		++this.requestGeneration;
+		this.aheadQueue = [];
+		this.queuedAheadItems.value = [];
+		this.queuedAheadItemsCount.value = 0;
+		this.initialId = state.initialId ?? null;
+		this.initialDate = state.initialDate ?? null;
+		this.initialDirection = state.initialDirection ?? 'older';
+		this.items.value = items.slice();
+		this.canFetchOlder.value = state.canFetchOlder;
+		this.canFetchNewer.value = state.canFetchNewer;
+		this.error.value = false;
+		this.fetching.value = false;
+		this.fetchingOlder.value = false;
+		this.fetchingNewer.value = false;
 	}
 
 	public async fetchOlder(): Promise<void> {

@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
 	entrance: vi.fn(), stopEntrance: vi.fn(),
 	commit: vi.fn(),
 	blockedTabs: new Set<string>(),
+	highlightNote: null as Misskey.entities.Note | null,
 }));
 vi.mock('./hk3-post-entrance.js', () => ({ animateHk3PostEntrance: mocks.entrance }));
 vi.mock('@/cache.js', async () => {
@@ -43,6 +44,7 @@ vi.mock('@/utility/concrnt/runtime.js', () => ({ concrntState: { connection: nul
 vi.mock('@/i18n.js', () => ({ i18n: { tsx: { newNoteRecivedCount: ({ n }: { n: number }) => `${n} new notes` }, ts: {
 	options: 'Options', showRenotes: 'Renotes', fileAttachedOnly: 'Files', withSensitive: 'Sensitive', retry: 'Retry',
 	_hata: {
+		_highlights: { title: 'Highlights', latest: 'Latest', pause: 'Pause', resume: 'Resume', travelling: 'Travelling', unavailable: 'Unavailable', jumpFailed: 'Jump failed', loadNewer: 'Load newer' },
 		_hataskeyUi3: { tabHome: 'Home', tabLocal: 'Local', tabSocial: 'Social', tabGlobal: 'Global', tabTrending: 'Trending', tabHatady: 'Hatady', tabExternalHome: 'External home', tabExternalLocal: 'External local', realtime: 'LIVE', retry: 'Retry', loadFailed: 'Load failed', _rss: { settings: 'RSS settings' } },
 		_hatasabaUi: { _simple: { list: 'Lists', channel: 'Channels', antenna: 'Antennas', selectList: 'Select list', selectAntenna: 'Select antenna', switchList: 'Switch list', switchAntenna: 'Switch antenna', configureList: 'Configure list', configureAntenna: 'Configure antenna', noLists: 'No lists', noAntennas: 'No antennas', options: 'Options' } },
 	},
@@ -81,6 +83,10 @@ vi.mock('@/local-storage.js', () => ({ miLocalStorage: {
 } }));
 vi.mock('@/utility/external-api.js', () => ({ getExternalEmojiUrlMapForHost: () => ({}) }));
 vi.mock('@/events.js', () => ({ useGlobalEvent: vi.fn() }));
+vi.mock('@/utility/muted-users.js', async () => {
+	const { ref } = await import('vue');
+	return { isMutedUser: () => false, mutedUsersRevision: ref(0) };
+});
 vi.mock('@/composables/use-note-removal.js', () => ({ useNoteRemoval: () => ({ cancelAll: vi.fn(), remove: vi.fn() }) }));
 vi.mock('@/utility/hataskey-timeline-availability.js', () => ({ isHataskeyTimelineAllowed: (id: string) => !mocks.blockedTabs.has(id) }));
 vi.mock('@/utility/ltl-emoji-vote-anchor.js', () => ({ getLtlEmojiVoteAnchor: () => null }));
@@ -94,9 +100,23 @@ vi.mock('./Hk3RssReader.vue', () => ({ default: {
 	template: '<div data-rss-reader :data-interrupted="String(interrupted)" :data-paused="String(paused)">Reader</div>',
 } }));
 vi.mock('./Hk3Note.vue', () => ({ default: {
-	props: ['note', 'instanceBadgePosition', 'showAudienceIcons', 'showLocalOnlyIcon', 'size', 'inLocal', 'inSocial'],
-	template: '<div :data-rendered-note="note.id" :data-badge-position="instanceBadgePosition" :data-audience-enabled="String(showAudienceIcons)" :data-local-only-enabled="String(showLocalOnlyIcon)" :data-note-size="size" :data-utage-local="String(inLocal)" :data-utage-social="String(inSocial)" />',
+	props: ['note', 'instanceBadgePosition', 'showAudienceIcons', 'showLocalOnlyIcon', 'size', 'inLocal', 'inSocial', 'hideSensitive', 'linked'],
+	template: '<div :data-rendered-note="note.id" :data-badge-position="instanceBadgePosition" :data-audience-enabled="String(showAudienceIcons)" :data-local-only-enabled="String(showLocalOnlyIcon)" :data-note-size="size" :data-utage-local="String(inLocal)" :data-utage-social="String(inSocial)" :data-hide-sensitive="String(hideSensitive)" />',
 } }));
+vi.mock('@/components/MkTimelineHighlights.vue', async () => {
+	const { defineComponent, h } = await import('vue');
+	return { __esModule: true, default: defineComponent({
+		props: ['src', 'active', 'variant', 'withRenotes', 'withSensitive', 'onlyFiles', 'glassBg'],
+		emits: ['navigate', 'invalidate'],
+		setup(props, { emit, slots }) {
+			return () => h('div', { 'data-highlights-stub': '', 'data-source': props.src, 'data-active': String(props.active), 'data-variant': props.variant }, [
+				...(mocks.highlightNote ? slots.note?.({ note: mocks.highlightNote }) ?? [] : []),
+				h('button', { 'data-highlight-navigate': '', onClick: () => emit('navigate', mocks.highlightNote) }, 'Go'),
+				h('button', { 'data-highlight-invalidate': '', onClick: () => emit('invalidate') }, 'Change date'),
+			]);
+		},
+	}) };
+});
 vi.mock('./Hk3PostSuccess.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/MkLtlPunch.vue', () => ({ default: {
 	props: ['active'],
@@ -131,7 +151,10 @@ vi.mock('@/components/MkNoteActionAnimation.vue', () => ({ default: { render: ()
 const cleanups: (() => void)[] = [];
 let timelineVm: InstanceType<typeof Hk3Timeline> | null = null;
 
-async function settle() { for (let i = 0; i < 10; i++) { await Promise.resolve(); await nextTick(); } }
+async function settle() {
+	await vi.dynamicImportSettled();
+	for (let i = 0; i < 10; i++) { await Promise.resolve(); await nextTick(); }
+}
 
 async function mount(compact = false, composer?: Component, extraProps: Record<string, unknown> = {}) {
 	const host = window.document.createElement('div');
@@ -173,6 +196,7 @@ beforeEach(() => {
 	mocks.live = false;
 	mocks.storage.clear();
 	mocks.blockedTabs.clear();
+	mocks.highlightNote = null;
 	mocks.api.mockReset().mockResolvedValue([]);
 	mocks.externalReload.mockReset().mockResolvedValue(undefined);
 	mocks.hatadyReload.mockReset().mockResolvedValue(undefined);
@@ -377,6 +401,395 @@ describe('UI S collection navigation', () => {
 		await settle();
 		expect(host.querySelector('[data-collection-picker]')).toBeNull();
 		expect(window.document.activeElement).toBe(opener);
+	});
+});
+
+describe('UI S highlights', () => {
+	const note = (id: string) => ({
+		id, createdAt: new Date(Date.UTC(2026, 10, 1) + Number(id) * 1000).toISOString(),
+		userId: 'other', user: { id: 'other', username: 'other', host: null },
+		text: id, files: [], fileIds: [], visibility: 'public', renoteId: null, replyId: null,
+	}) as unknown as Misskey.entities.Note;
+	const nativeNotes = (host: HTMLElement) => [...host.querySelectorAll<HTMLElement>('[data-hk3-native-timeline] [data-rendered-note]')].map(element => element.dataset.renderedNote);
+	const toggle = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('[data-hk3-highlights-toggle]')!;
+	const navigate = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('[data-highlight-navigate]')!.click();
+
+	function controlledMotion() {
+		const entries: { element: HTMLElement; frames: Keyframe[]; animation: Animation; finish: () => void }[] = [];
+		const spy = vi.spyOn(HTMLElement.prototype, 'animate').mockImplementation(function (this: HTMLElement, frames, options) {
+			let finish!: (animation: Animation) => void;
+			let reject!: (reason: unknown) => void;
+			const animation = {
+				playState: 'running',
+				finished: new Promise<Animation>((resolve, fail) => { finish = resolve; reject = fail; }),
+				cancel: vi.fn(() => { Object.assign(animation, { playState: 'idle' }); reject(new DOMException('Cancelled', 'AbortError')); }),
+				effect: { getTiming: () => typeof options === 'object' ? options : {} },
+			} as unknown as Animation;
+			entries.push({
+				element: this,
+				frames: Array.isArray(frames) ? frames : [],
+				animation,
+				finish: () => { if (animation.playState === 'running') { Object.assign(animation, { playState: 'finished' }); finish(animation); } },
+			});
+			return animation;
+		});
+		cleanups.push(() => spy.mockRestore());
+		return {
+			entries,
+			forElement: (element: Element, entering: boolean) => entries.filter(entry => entry.element === element && entry.frames[0]?.opacity === (entering ? 0 : 1) && entry.frames.at(-1)?.opacity === (entering ? 1 : 0)),
+			async finishAll() {
+				for (let turn = 0; turn < 8; turn++) {
+					const running = entries.filter(entry => entry.animation.playState === 'running');
+					if (running.length === 0) return;
+					running.forEach(entry => entry.finish());
+					await settle();
+				}
+				throw new Error('Highlight transition did not settle');
+			},
+		};
+	}
+
+	it.each([false, true])('keeps the native notes and composer mounted and renders the same UI S note props (compact=%s)', async compact => {
+		mocks.api.mockResolvedValue([note('100')]);
+		mocks.highlightNote = note('020');
+		let mounts = 0;
+		const host = await mount(compact, { setup: () => { mounts++; return () => h('textarea', { 'aria-label': 'Draft' }); } });
+		const original = host.querySelector('[data-rendered-note="100"]')!;
+		const input = host.querySelector('textarea')!;
+		input.value = 'An unsent draft';
+		const opener = toggle(host);
+		const local = navButton(host, 'Local');
+		const viewport = host.querySelector<HTMLElement>('[data-timeline-tab-gestures]')!;
+		viewport.scrollTop = 87;
+		expect(local.getAttribute('aria-pressed')).toBe('true');
+		expect(opener.querySelector('span')?.textContent).toBe('Highlights');
+		expect(opener.querySelector('span')?.className).toBe(local.querySelector('span')?.className);
+		expect(opener.className).toBe(local.className);
+		expect(opener.getAttribute('aria-label')).toBe('Highlights');
+		expect(opener.querySelector('.ti-sparkles')).not.toBeNull();
+		opener.click();
+		await settle();
+		const map = host.querySelector<HTMLElement>('[data-hk3-highlights]')!;
+		const stub = map.querySelector('[data-highlights-stub]')!;
+		expect(stub.getAttribute('data-source')).toBe('local');
+		expect(stub.getAttribute('data-active')).toBe('true');
+		expect(stub.getAttribute('data-variant')).toBe('uis');
+		expect(opener.getAttribute('aria-pressed')).toBe('true');
+		expect(opener.getAttribute('data-active')).toBe('true');
+		expect(opener.textContent?.trim()).toBe('Highlights');
+		expect(local.getAttribute('aria-pressed')).toBe('false');
+		expect(local.hasAttribute('data-active')).toBe(false);
+		const highlighted = map.querySelector('[data-rendered-note="020"]')!;
+		for (const attribute of ['data-badge-position', 'data-audience-enabled', 'data-local-only-enabled', 'data-note-size', 'data-utage-local', 'data-utage-social', 'data-hide-sensitive']) {
+			expect(highlighted.getAttribute(attribute), attribute).toBe(original.getAttribute(attribute));
+		}
+		expect(host.querySelector('[data-rendered-note="100"]')).toBe(original);
+		expect(host.querySelector<HTMLElement>('[data-hk3-native-timeline]')!.style.display).toBe('none');
+		expect(host.querySelector('textarea')).toBe(input);
+		expect(input.value).toBe('An unsent draft');
+		expect(mounts).toBe(1);
+		viewport.scrollTop = 37;
+		opener.click();
+		await settle();
+		expect(stub.getAttribute('data-active')).toBe('false');
+		expect(host.querySelector('[data-rendered-note="100"]')).toBe(original);
+		expect(host.querySelector<HTMLElement>('[data-hk3-native-timeline]')!.style.display).not.toBe('none');
+		expect(host.querySelector('textarea')).toBe(input);
+		expect(viewport.scrollTop).toBe(87);
+		expect(local.getAttribute('aria-pressed')).toBe('true');
+		expect(local.getAttribute('data-active')).toBe('true');
+		expect(opener.getAttribute('aria-pressed')).toBe('false');
+		expect(opener.hasAttribute('data-active')).toBe(false);
+		opener.click();
+		await settle();
+		expect(viewport.scrollTop).toBe(37);
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+	});
+
+	it('animates the native rows out, the stable highlight host in, and the retained rows back in', async () => {
+		mocks.api.mockResolvedValue([note('100')]);
+		mocks.highlightNote = note('020');
+		const host = await mount(false, { render: () => h('textarea', { 'aria-label': 'Draft' }) });
+		const original = host.querySelector<HTMLElement>('[data-rendered-note="100"]')!;
+		const input = host.querySelector('textarea')!;
+		input.value = 'Keep this draft';
+		const viewport = host.querySelector<HTMLElement>('[data-timeline-tab-gestures]')!;
+		viewport.scrollTop = 93;
+		prefer.r.animation.value = true;
+		await settle();
+		const motion = controlledMotion();
+		toggle(host).click();
+		await settle();
+		const exit = motion.forElement(original, false);
+		expect(exit).toHaveLength(1);
+		expect(host.querySelector<HTMLElement>('[data-hk3-native-timeline]')!.style.display).not.toBe('none');
+		exit[0].finish();
+		await settle();
+		const map = host.querySelector<HTMLElement>('[data-hk3-highlights]')!;
+		expect(motion.forElement(map, true)).toHaveLength(1);
+		expect(host.querySelector<HTMLElement>('[data-hk3-native-timeline]')!.style.display).toBe('none');
+		await motion.finishAll();
+		viewport.scrollTop = 31;
+		toggle(host).click();
+		await settle();
+		const mapExit = motion.forElement(map, false);
+		expect(mapExit).toHaveLength(1);
+		mapExit[0].finish();
+		await settle();
+		expect(motion.forElement(original, true)).toHaveLength(1);
+		await motion.finishAll();
+		expect(host.querySelector('[data-rendered-note="100"]')).toBe(original);
+		expect(host.querySelector('textarea')).toBe(input);
+		expect(input.value).toBe('Keep this draft');
+		expect(viewport.scrollTop).toBe(93);
+		expect(map.style.display).toBe('none');
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the last open intent when open-close-open overtakes unfinished motion', async () => {
+		mocks.api.mockResolvedValue([note('100')]);
+		mocks.highlightNote = note('020');
+		const host = await mount();
+		const original = host.querySelector('[data-rendered-note="100"]')!;
+		prefer.r.animation.value = true;
+		await settle();
+		const motion = controlledMotion();
+		toggle(host).click();
+		await settle();
+		const oldExit = motion.forElement(original, false)[0];
+		expect(oldExit).toBeDefined();
+		toggle(host).click();
+		await settle();
+		toggle(host).click();
+		await settle();
+		await motion.finishAll();
+		expect(oldExit.animation.cancel).toHaveBeenCalled();
+		expect(toggle(host).getAttribute('aria-pressed')).toBe('true');
+		expect(host.querySelector<HTMLElement>('[data-hk3-highlights]')!.style.display).not.toBe('none');
+		expect(host.querySelector<HTMLElement>('[data-hk3-native-timeline]')!.style.display).toBe('none');
+		expect(host.querySelector('[data-rendered-note="100"]')).toBe(original);
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not reopen the map when an old exit finishes after another tab wins', async () => {
+		prefer.r['simpleUi.topNav'].value = ['local', 'following'].map(id => ({ id, icon: '', label: id, visible: true }));
+		mocks.api.mockImplementation(async (endpoint: string) => [note(endpoint === 'notes/timeline' ? '110' : '100')]);
+		mocks.highlightNote = note('020');
+		const host = await mount();
+		const original = host.querySelector('[data-rendered-note="100"]')!;
+		prefer.r.animation.value = true;
+		await settle();
+		const motion = controlledMotion();
+		toggle(host).click();
+		await settle();
+		const oldExit = motion.forElement(original, false)[0];
+		expect(oldExit).toBeDefined();
+		navButton(host, 'Home').click();
+		await settle();
+		await motion.finishAll();
+		expect(nativeNotes(host)).toEqual(['110']);
+		expect(oldExit.animation.cancel).toHaveBeenCalled();
+		expect(toggle(host).getAttribute('aria-pressed')).toBe('false');
+		expect(host.querySelector<HTMLElement>('[data-hk3-native-timeline]')!.style.display).not.toBe('none');
+		expect(host.querySelector<HTMLElement>('[data-hk3-highlights]')?.style.display ?? 'none').toBe('none');
+		expect(navButton(host, 'Home').getAttribute('aria-pressed')).toBe('true');
+	});
+
+	it('cancels pending motion when hidden without a delayed focus or scroll change', async () => {
+		mocks.api.mockResolvedValue([note('100')]);
+		mocks.highlightNote = note('020');
+		const props = reactive({ active: true });
+		const host = await mount(false, undefined, props);
+		const original = host.querySelector('[data-rendered-note="100"]')!;
+		const viewport = host.querySelector<HTMLElement>('[data-timeline-tab-gestures]')!;
+		viewport.scrollTop = 67;
+		prefer.r.animation.value = true;
+		await settle();
+		const motion = controlledMotion();
+		toggle(host).click();
+		await settle();
+		const oldExit = motion.forElement(original, false)[0];
+		expect(oldExit).toBeDefined();
+		const elsewhere = window.document.createElement('button');
+		window.document.body.append(elsewhere);
+		cleanups.push(() => elsewhere.remove());
+		elsewhere.focus();
+		props.active = false;
+		await settle();
+		await motion.finishAll();
+		expect(oldExit.animation.cancel).toHaveBeenCalled();
+		expect(window.document.activeElement).toBe(elsewhere);
+		expect(viewport.scrollTop).toBe(67);
+		expect(host.querySelector('[data-rendered-note="100"]')).toBe(original);
+		props.active = true;
+		await settle();
+		expect(window.document.activeElement).toBe(elsewhere);
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+	});
+
+	it('completes the selected switch immediately when animation is disabled mid-exit', async () => {
+		mocks.api.mockResolvedValue([note('100')]);
+		mocks.highlightNote = note('020');
+		const host = await mount();
+		const original = host.querySelector('[data-rendered-note="100"]')!;
+		prefer.r.animation.value = true;
+		await settle();
+		const motion = controlledMotion();
+		toggle(host).click();
+		await settle();
+		const oldExit = motion.forElement(original, false)[0];
+		expect(oldExit).toBeDefined();
+		prefer.r.animation.value = false;
+		await settle();
+		expect(oldExit.animation.cancel).toHaveBeenCalled();
+		expect(toggle(host).getAttribute('aria-pressed')).toBe('true');
+		expect(host.querySelector<HTMLElement>('[data-hk3-highlights]')!.style.display).not.toBe('none');
+		expect(host.querySelector<HTMLElement>('[data-hk3-native-timeline]')!.style.display).toBe('none');
+		expect(motion.entries.filter(entry => entry.animation.playState === 'running')).toEqual([]);
+	});
+
+	it('holds LIVE arrivals in the queue while the map is open and releases them after returning', async () => {
+		mocks.live = true;
+		mocks.api.mockResolvedValue([note('100')]);
+		mocks.highlightNote = note('020');
+		const host = await mount();
+		const original = host.querySelector('[data-rendered-note="100"]');
+		toggle(host).click();
+		await settle();
+		mocks.note?.(note('101'));
+		await settle();
+		expect(nativeNotes(host)).toEqual(['100']);
+		expect(mocks.sound).not.toHaveBeenCalled();
+		expect(host.querySelector('[data-kind="queue"]')).toBeNull();
+		toggle(host).click();
+		await settle();
+		const queue = host.querySelector<HTMLButtonElement>('[data-kind="queue"]')!;
+		expect(queue.getAttribute('aria-label')).toBe('1 new notes');
+		queue.click();
+		await settle();
+		expect(nativeNotes(host)).toEqual(['101', '100']);
+		expect(host.querySelector('[data-rendered-note="100"]')).toBe(original);
+		expect(mocks.api).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['close', 'inactive', 'confirmation', 'date', 'tab'] as const)('ignores a late context response after %s', async cancellation => {
+		prefer.r['simpleUi.topNav'].value = ['local', 'following'].map(id => ({ id, icon: '', label: id, visible: true }));
+		mocks.highlightNote = note('020');
+		let finish!: (notes: Misskey.entities.Note[]) => void;
+		const pending = new Promise<Misskey.entities.Note[]>(resolve => { finish = resolve; });
+		mocks.api.mockImplementation(async (endpoint: string, params: { untilDate?: number }) => {
+			if (params?.untilDate != null) return pending;
+			return [note(endpoint === 'notes/timeline' ? '110' : '100')];
+		});
+		const props = reactive({ active: true, confirmationActive: false });
+		const host = await mount(false, undefined, props);
+		const original = host.querySelector('[data-rendered-note="100"]');
+		toggle(host).click();
+		await settle();
+		navigate(host);
+		await settle();
+		const contextCall = mocks.api.mock.calls.find(([, params]) => params?.untilDate != null)!;
+		expect(contextCall).toBeDefined();
+		const elsewhere = window.document.createElement('button');
+		window.document.body.append(elsewhere);
+		cleanups.push(() => elsewhere.remove());
+		if (cancellation === 'close') toggle(host).click();
+		if (cancellation === 'inactive') { elsewhere.focus(); props.active = false; }
+		if (cancellation === 'confirmation') { elsewhere.focus(); props.confirmationActive = true; }
+		if (cancellation === 'date') host.querySelector<HTMLButtonElement>('[data-highlight-invalidate]')!.click();
+		if (cancellation === 'tab') navButton(host, 'Home').click();
+		await settle();
+		expect((contextCall[3] as AbortSignal).aborted).toBe(true);
+		finish([note('020')]);
+		await settle();
+		expect(nativeNotes(host)).toEqual(cancellation === 'tab' ? ['110'] : ['100']);
+		if (cancellation !== 'tab') expect(host.querySelector('[data-rendered-note="100"]')).toBe(original);
+		expect(host.querySelector('[data-highlight-latest]')).toBeNull();
+		expect(mocks.api.mock.calls.some(([, params]) => params?.untilId === '020' || params?.sinceId === '020')).toBe(false);
+		if (cancellation === 'inactive' || cancellation === 'confirmation') expect(window.document.activeElement).toBe(elsewhere);
+	});
+
+	it('commits verified context into the native timeline, focuses its target and reloads latest explicitly', async () => {
+		mocks.highlightNote = note('020');
+		let latestReads = 0;
+		mocks.api.mockImplementation(async (_endpoint: string, params: { untilDate?: number; untilId?: string; sinceId?: string }) => {
+			if (params?.untilDate != null) return [note('020')];
+			if (params?.untilId === '020') return [note('019')];
+			if (params?.sinceId === '020') return [note('021')];
+			return [note(++latestReads === 1 ? '100' : '200')];
+		});
+		const host = await mount();
+		toggle(host).click();
+		await settle();
+		navigate(host);
+		await settle();
+		expect(nativeNotes(host)).toEqual(['021', '020', '019']);
+		expect(host.querySelector<HTMLElement>('[data-hk3-native-timeline]')!.style.display).not.toBe('none');
+		expect(host.querySelector<HTMLElement>('[data-hk3-highlights]')!.style.display).toBe('none');
+		const target = host.querySelector('[data-scroll-anchor="020"]')!;
+		expect(target.getAttribute('data-highlight-arrival')).toBe('true');
+		expect(window.document.activeElement).toBe(target);
+		mocks.note?.(note('102'));
+		await settle();
+		expect(nativeNotes(host)).toEqual(['021', '020', '019']);
+		host.querySelector<HTMLButtonElement>('[data-highlight-latest]')!.click();
+		await settle();
+		expect(nativeNotes(host)).toEqual(['200']);
+		expect(host.querySelector('[data-highlight-latest]')).toBeNull();
+		expect(latestReads).toBe(2);
+		mocks.note?.(note('201'));
+		await settle();
+		expect(host.querySelector('[data-kind="queue"]')?.getAttribute('aria-label')).toBe('1 new notes');
+	});
+
+	it('does not scroll a newly selected timeline when an older latest request finishes late', async () => {
+		prefer.r['simpleUi.topNav'].value = ['local', 'following'].map(id => ({ id, icon: '', label: id, visible: true }));
+		mocks.highlightNote = note('020');
+		let localReads = 0;
+		let finish!: (notes: Misskey.entities.Note[]) => void;
+		const pending = new Promise<Misskey.entities.Note[]>(resolve => { finish = resolve; });
+		mocks.api.mockImplementation(async (endpoint: string, params: { untilDate?: number; untilId?: string; sinceId?: string }) => {
+			if (params?.untilDate != null) return [note('020')];
+			if (params?.untilId === '020') return [note('019')];
+			if (params?.sinceId === '020') return [note('021')];
+			if (endpoint === 'notes/timeline') return [note('110')];
+			return ++localReads === 1 ? [note('100')] : pending;
+		});
+		const host = await mount();
+		toggle(host).click();
+		await settle();
+		navigate(host);
+		await settle();
+		host.querySelector<HTMLButtonElement>('[data-highlight-latest]')!.click();
+		await settle();
+		navButton(host, 'Home').click();
+		await settle();
+		expect(nativeNotes(host)).toEqual(['110']);
+		const viewport = host.querySelector<HTMLElement>('[data-timeline-tab-gestures]')!;
+		const scroll = vi.spyOn(viewport, 'scrollTo');
+		viewport.scrollTop = 75;
+		finish([note('200')]);
+		await settle();
+		expect(nativeNotes(host)).toEqual(['110']);
+		expect(scroll).not.toHaveBeenCalled();
+		expect(viewport.scrollTop).toBe(75);
+		scroll.mockRestore();
+	});
+
+	it.each(['ohtl', 'trending', 'list'] as const)('does not offer a native highlight entry for %s', async tab => {
+		mocks.storage.set('hataskeyUi3Tab', tab);
+		if (tab === 'ohtl') {
+			prefer.r['external.enabled'].value = true;
+			prefer.r['external.token'].value = 'token';
+			prefer.r['external.host'].value = 'remote.example';
+			prefer.r['external.enableOHTL'].value = true;
+		}
+		if (tab === 'trending') prefer.r['simpleUi.showTrendingTab'].value = true;
+		if (tab === 'list') mocks.lists.mockResolvedValue([{ id: 'one', name: 'One list' }]);
+		const host = await mount();
+		expect(timelineVm!.mobileNavigation.active).toBe(tab);
+		expect(host.querySelector('[data-hk3-highlights-toggle]')).toBeNull();
+		expect(host.querySelector('[data-highlights-stub]')).toBeNull();
 	});
 });
 

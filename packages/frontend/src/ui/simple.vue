@@ -218,24 +218,28 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${navbarNotificationShowing ? navbarNotificationHeight : 0}px` }"></div>
 								<div v-show="!mobileNotificationOnly || punchVisible" ref="emojiVoteNavbarNav" :class="$style.topPillNav">
 									<div ref="emojiVoteNavbarTabs" :class="$style.topPillTabs">
+										<button v-if="highlightSource && !isPageView && !deckActive" ref="highlightsButton" type="button" :class="$style.topTabBtn" :data-highlights-active="highlightsOpen" :aria-pressed="highlightsOpen" :aria-label="i18n.ts._hata._highlights.title" :title="i18n.ts._hata._highlights.title" @click="playSimpleNavMotion($event, 'highlights'); toggleHighlights()">
+											<i class="ti ti-sparkles" aria-hidden="true"></i>
+											<span v-if="highlightsOpen" :class="$style.topTabLabel">{{ i18n.ts._hata._highlights.title }}</span>
+										</button>
 										<template v-for="item in visibleTopTabs" :key="item.id">
-											<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
+											<button :class="$style.topTabBtn" :data-timeline-active="!highlightsOpen && !isCollectionTimelinePage && tab === item.id" :aria-pressed="!highlightsOpen && !isCollectionTimelinePage && tab === item.id" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
 												<i :class="item.icon"></i>
-												<span v-if="!isCollectionTimelinePage && tab === item.id" :class="$style.topTabLabel">{{ simpleMenuDisplayLabel(item.id, item.label) }}</span>
+												<span v-if="!highlightsOpen && !isCollectionTimelinePage && tab === item.id" :class="$style.topTabLabel">{{ simpleMenuDisplayLabel(item.id, item.label) }}</span>
 											</button>
 										</template>
 										<!-- 旗鯖fork: 外部アカウント連携のタブ（外部ホーム・外部ローカル・CTL）を前後の区切り線でまとめる。 -->
 										<div v-if="showOHTL || showOLTL || showCTL" :class="$style.topTabDivider" data-external-tabs-start></div>
-										<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'ohtl' }]" @click="playSimpleNavMotion($event, 'timeline:external-home'); switchTab('ohtl')">
+										<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt]" :data-timeline-active="!highlightsOpen && !isCollectionTimelinePage && tab === 'ohtl'" :aria-pressed="!highlightsOpen && !isCollectionTimelinePage && tab === 'ohtl'" @click="playSimpleNavMotion($event, 'timeline:external-home'); switchTab('ohtl')">
 											<i class="ti ti-home"></i>
-											<span v-if="!isCollectionTimelinePage && tab === 'ohtl'" :class="$style.topTabLabel">{{ copy.externalHome }}</span>
+											<span v-if="!highlightsOpen && !isCollectionTimelinePage && tab === 'ohtl'" :class="$style.topTabLabel">{{ copy.externalHome }}</span>
 										</button>
-										<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'oltl' }]" @click="playSimpleNavMotion($event, 'timeline:external-local'); switchTab('oltl')">
+										<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt]" :data-timeline-active="!highlightsOpen && !isCollectionTimelinePage && tab === 'oltl'" :aria-pressed="!highlightsOpen && !isCollectionTimelinePage && tab === 'oltl'" @click="playSimpleNavMotion($event, 'timeline:external-local'); switchTab('oltl')">
 											<i class="ti ti-planet"></i>
-											<span v-if="!isCollectionTimelinePage && tab === 'oltl'" :class="$style.topTabLabel">{{ copy.externalLocal }}</span>
+											<span v-if="!highlightsOpen && !isCollectionTimelinePage && tab === 'oltl'" :class="$style.topTabLabel">{{ copy.externalLocal }}</span>
 										</button>
-										<button v-if="showCTL" type="button" :class="[$style.topTabBtn, $style.topTabExt]" :data-concrnt-active="!isCollectionTimelinePage && isConcrntTab" :aria-pressed="!isCollectionTimelinePage && isConcrntTab" aria-label="CTL（コンカレント）" @click="playSimpleNavMotion($event, 'timeline:concrnt'); switchTab('ctl')">
-											<i class="concrnt-icon" aria-hidden="true"></i><span v-if="!isCollectionTimelinePage && isConcrntTab" :class="$style.topTabLabel">CTL</span>
+										<button v-if="showCTL" type="button" :class="[$style.topTabBtn, $style.topTabExt]" :data-concrnt-active="!highlightsOpen && !isCollectionTimelinePage && isConcrntTab" :aria-pressed="!highlightsOpen && !isCollectionTimelinePage && isConcrntTab" aria-label="CTL（コンカレント）" @click="playSimpleNavMotion($event, 'timeline:concrnt'); switchTab('ctl')">
+											<i class="concrnt-icon" aria-hidden="true"></i><span v-if="!highlightsOpen && !isCollectionTimelinePage && isConcrntTab" :class="$style.topTabLabel">CTL</span>
 										</button>
 										<div :class="$style.topTabDivider"></div>
 										<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isListTimelinePage }]">
@@ -302,20 +306,31 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<div ref="contentEl" :inert="navbarSearchOpen" data-timeline-tab-gestures :class="$style.content" @scroll="onContentScroll" @wheel="onContentWheel">
 				<div v-show="!isPageView && !deckActive" style="height: 100%;">
-					<div v-if="showFixedPostForm" v-show="!isExternalTab && !isHatadyTab && !isConcrntTab" :inert="isExternalTab || isHatadyTab || isConcrntTab" :class="$style.fixedFormHost"><MkPostForm :class="$style.fixedPostForm" class="_panel" fixed :autofocus="false"/></div>
+					<div v-if="showFixedPostForm" v-show="!isExternalTab && !isHatadyTab && !isConcrntTab && !highlightsOpen" :inert="isExternalTab || isHatadyTab || isConcrntTab || highlightsOpen" :class="$style.fixedFormHost"><MkPostForm :class="$style.fixedPostForm" class="_panel" fixed :autofocus="false"/></div>
 					<Transition :css="newNotesMotionEnabled" :enterActiveClass="$style.timelineEnterActive" :leaveActiveClass="$style.timelineLeaveActive" :enterFromClass="$style.timelineEnterFrom" :enterToClass="$style.timelineEnterTo" :leaveFromClass="$style.timelineLeaveFrom" :leaveToClass="$style.timelineLeaveTo" :mode="newNotesMotionEnabled ? 'out-in' : undefined" @beforeLeave="prepareTimelineLeave">
-						<div :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="[$style.timelineContainer, { [$style.timelineContainerWithFixedForm]: showFixedPostForm && !isExternalTab && !isHatadyTab, [$style.timelineContainerConcrntHidden]: isConcrntTab }]" :style="{ '--timeline-slide-direction': timelineSlideDirection }" :data-timeline-motion="newNotesMotionEnabled" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart.passive="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" @touchcancel="onTouchCancel">
+						<div :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="[$style.timelineContainer, { [$style.timelineContainerWithFixedForm]: showFixedPostForm && !isExternalTab && !isHatadyTab && !highlightsOpen, [$style.timelineContainerConcrntHidden]: isConcrntTab }]" :style="{ '--timeline-slide-direction': timelineSlideDirection }" :data-timeline-motion="newNotesMotionEnabled" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart.passive="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" @touchcancel="onTouchCancel">
+							<div v-show="!highlightsOpen" ref="highlightNativeView" :inert="highlightViewTarget != null" data-highlight-native-view>
+								<div v-if="highlightHistory || highlightLoading || highlightError" ref="highlightNavigationBar" tabindex="-1" data-highlight-navigation-controls :class="$style.highlightNavigation" :data-motion="newNotesMotionEnabled">
+									<span role="status" aria-live="polite">{{ highlightError || (highlightLoading || highlightTravel === 'moving' ? i18n.ts._hata._highlights.travelling : '') }}</span>
+									<button v-if="highlightTravel === 'moving' || highlightTravel === 'paused'" type="button" class="_button" :aria-label="highlightTravel === 'moving' ? i18n.ts._hata._highlights.pause : i18n.ts._hata._highlights.resume" @click="highlightTravel === 'moving' ? highlightNavigation.pause() : highlightNavigation.resume()"><i :class="highlightTravel === 'moving' ? 'ti ti-player-pause' : 'ti ti-player-play'" aria-hidden="true"></i></button>
+									<button type="button" class="_button" @click="returnToLatest"><i class="ti ti-arrow-up" aria-hidden="true"></i> {{ i18n.ts._hata._highlights.latest }}</button>
+								</div>
 							<KeepAlive>
-								<MkStreamingNotesTimeline v-if="tab === 'mixed'" key="mixed" newNotesNavbarKey="main:mixed" src="global" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-								<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" ref="punchTimeline" :updatesPaused="punchBusy" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive && !punchBusy" :emojiVoteEffectTarget="ltlEmojiVoteEffects" :emojiVoteNavbar="normalLtlVoteActive && nativeNavbarVisible" :emojiVoteNavbarTarget="normalLtlVoteActive && nativeNavbarVisible ? ltlEmojiVoteNavbarTarget : null" @emojiVoteNavbarState="emojiVoteNavbarState = $event"/>
-								<MkStreamingNotesTimeline v-else-if="tab === 'social'" key="social" newNotesNavbarKey="main:social" src="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-								<MkStreamingNotesTimeline v-else-if="tab === 'following'" key="following" newNotesNavbarKey="main:following" src="home" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
+								<MkStreamingNotesTimeline v-if="tab === 'mixed'" key="mixed" ref="nativeTimeline" :updatesPaused="highlightsOpen || highlightLoading" newNotesNavbarKey="main:mixed" src="global" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" @historyChange="onHighlightHistoryChange"/>
+								<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" ref="nativeTimeline" :updatesPaused="punchBusy || highlightsOpen || highlightLoading" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive && !punchBusy" :emojiVoteEffectTarget="ltlEmojiVoteEffects" :emojiVoteNavbar="normalLtlVoteActive && nativeNavbarVisible" :emojiVoteNavbarTarget="normalLtlVoteActive && nativeNavbarVisible ? ltlEmojiVoteNavbarTarget : null" @emojiVoteNavbarState="emojiVoteNavbarState = $event" @historyChange="onHighlightHistoryChange"/>
+								<MkStreamingNotesTimeline v-else-if="tab === 'social'" key="social" ref="nativeTimeline" :updatesPaused="highlightsOpen || highlightLoading" newNotesNavbarKey="main:social" src="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" @historyChange="onHighlightHistoryChange"/>
+								<MkStreamingNotesTimeline v-else-if="tab === 'following'" key="following" ref="nativeTimeline" :updatesPaused="highlightsOpen || highlightLoading" newNotesNavbarKey="main:following" src="home" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" @historyChange="onHighlightHistoryChange"/>
 								<!-- 旗鯖fork: トレンドタイムライン (TTL) -->
 								<MkTrendingTimeline v-else-if="tab === 'trending'" key="trending" newNotesNavbarKey="main:trending" :glassBg="timelineGlassBg"/>
 								<MkHatadyTimeline v-else-if="tab === 'hatady'" ref="hatadyTimeline" key="hatady" variant="ui" :active="!isPageView && !deckActive && isHatadyTab" newNotesNavbarKey="main:hatady"/>
 								<MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" key="ohtl" newNotesNavbarKey="main:ohtl" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
 								<MkExternalTimeline v-else-if="tab === 'oltl' && externalHost && externalToken" key="oltl" newNotesNavbarKey="main:oltl" src="oltl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
 							</KeepAlive>
+							</div>
+							<div v-if="highlightsMounted && highlightSource" v-show="highlightsOpen" ref="highlightsView" tabindex="-1" :inert="highlightViewTarget != null" :aria-busy="highlightLoading">
+								<div v-if="highlightError || highlightLoading" :class="$style.highlightError" role="status">{{ highlightError || i18n.ts._hata._highlights.travelling }}</div>
+								<MkTimelineHighlights :src="highlightSource" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :scrollInset="getHighlightScrollInset" :scrollInsetTarget="topNavStackEl" :active="highlightsOpen && !isPageView && !deckActive" @navigate="navigateHighlight" @invalidate="invalidateHighlightRequest"/>
+							</div>
 						</div>
 					</Transition>
 					<div v-if="concrntMounted" v-show="isConcrntTab" :class="$style.timelineContainer" @touchstart.passive="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" @touchcancel="onTouchCancel"><ConcrntTimeline ref="concrntTimeline" embedded hataskeyUi :glassBg="timelineGlassBg" :active="isConcrntTab && !isPageView && !deckActive"/></div>
@@ -480,6 +495,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, defineAsyncComponent, watch } from 'vue';
+import type * as Misskey from 'cherrypick-js';
 import { noteCharmDeckActiveKey, useNoteCharmAvailability } from '@/composables/use-note-charm-context.js';
 import { CHARM_RAIL_WIDTH } from '@/utility/note-charm-physics.js';
 import { instanceName } from '@@/js/config.js';
@@ -503,6 +519,10 @@ import type { TimelineCollectionKind } from '@/utility/hatasaba-navigation.js';
 import type { HataSideButton, HataSideGroup, HataSideWidget, HataSideWidgetKind } from '@/utility/hata-side-studio.js';
 import { globalEvents } from '@/events.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
+import MkTimelineHighlights from '@/components/MkTimelineHighlights.vue';
+import { createTimelineHighlightTabMotion } from '@/utility/timeline-highlight-tab-motion.js';
+import { createTimelineHighlightNavigation } from '@/utility/timeline-highlight-navigation.js';
+import type { TimelineHighlightNavigationState } from '@/utility/timeline-highlight-navigation.js';
 import MkLtlPunch from '@/components/MkLtlPunch.vue';
 import MkLtlEmojiVoteOutline from '@/components/MkLtlEmojiVoteOutline.vue';
 import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
@@ -979,12 +999,31 @@ const ltlEmojiVoteEffects = ref<HTMLElement | null>(null);
 const punchBusy = ref(false);
 const punchVisible = ref(false);
 const punchNavbarTarget = ref<HTMLElement | null>(null);
-const punchTimeline = ref<InstanceType<typeof MkStreamingNotesTimeline> | null>(null);
-const punchNoteRoot = computed(() => punchTimeline.value?.noteRoot ?? null);
+const nativeTimeline = ref<InstanceType<typeof MkStreamingNotesTimeline> | null>(null);
+const punchNoteRoot = computed(() => tab.value === 'local' ? nativeTimeline.value?.noteRoot ?? null : null);
+const highlightsOpen = ref(false);
+const highlightsMounted = ref(false);
+const highlightsButton = ref<HTMLButtonElement | null>(null);
+const highlightsView = ref<HTMLElement | null>(null);
+const highlightNativeView = ref<HTMLElement | null>(null);
+const highlightViewTarget = ref<boolean | null>(null);
+let highlightViewRevision = 0;
+const highlightNavigationBar = ref<HTMLElement | null>(null);
+const highlightHistory = ref(false);
+const highlightLoading = ref(false);
+const highlightError = ref('');
+const highlightTravel = ref<TimelineHighlightNavigationState>('idle');
+const highlightSource = computed<'home' | 'local' | 'social' | 'global' | null>(() => {
+	if (!isHataskeyTimelineAllowed(tab.value)) return null;
+	return tab.value === 'following' ? 'home' : tab.value === 'mixed' ? 'global' : tab.value === 'local' ? 'local' : tab.value === 'social' ? 'social' : null;
+});
+let highlightRevision = 0;
+let highlightMapScroll = 0;
+let highlightTimelineScroll = 0;
 watch(punchBusy, busy => {
 	if (busy) timelineCollapseEffect.cancel();
 });
-const normalLtlVoteActive = computed(() => tab.value === 'local' && !isPageView.value && !deckActive.value);
+const normalLtlVoteActive = computed(() => tab.value === 'local' && !isPageView.value && !deckActive.value && !highlightsOpen.value && !highlightHistory.value);
 const ltlEmojiVoteViewport = ref({ top: '0px', left: '0px', width: '0px', height: '0px' });
 // watchは登録時にもgetterを評価するので、tab・isPageViewの初期化後に登録する。
 // 上部メニュー・お知らせの高さが変わっても、実際のLTLスクロール領域に合わせる。
@@ -1023,6 +1062,7 @@ const tabOrder = computed<TabType[]>(() => {
 });
 
 watch(tab, (next, previous) => {
+	if (highlightsOpen.value) { timelineSlideDirection.value = 1; return; }
 	const order = tabOrder.value;
 	const from = order.indexOf(previous);
 	const to = order.indexOf(next);
@@ -1572,6 +1612,8 @@ function prepareTimelineLeave(element: Element) {
 
 const switchTab = (t:TabType) => {
 	if (!isHataskeyTimelineAllowed(t)) return;
+	if ((highlightsOpen.value || highlightViewTarget.value === true) && tab.value === t) { void closeHighlights(); return; }
+	cancelHighlightViewSwitch();
 	pullRefresh.reset();
 	if (isCollectionTimelinePage.value) mainRouter.push('/');
 	timelinePickerKind.value = null;
@@ -1587,7 +1629,7 @@ async function openAccountMenu(ev: MouseEvent) {
 
 // ===== スワイプ =====
 const timelineTabGestures = createTimelineTabGestures({
-	enabled: () => !navbarSearchOpen.value && tabSwipeEnabled.value && !isPageView.value && !deckActive.value && !punchBusy.value,
+	enabled: () => !navbarSearchOpen.value && tabSwipeEnabled.value && !isPageView.value && !deckActive.value && !punchBusy.value && !highlightsOpen.value && highlightViewTarget.value == null && highlightTravel.value !== 'moving',
 	root: () => contentEl.value,
 	canMove: (direction, source) => {
 		const index = tabOrder.value.indexOf(tab.value);
@@ -2232,6 +2274,174 @@ const onlyFiles = computed<boolean>({
 	set: (x) => saveTlFilter('onlyFiles', x),
 });
 const showFixedPostForm = prefer.model('showFixedPostForm');
+
+const highlightNavigation = createTimelineHighlightNavigation({
+	container: () => contentEl.value,
+	motion: () => newNotesMotionEnabled.value,
+	inset: () => {
+		const container = contentEl.value;
+		if (!container) return 72;
+		const pillBottom = topNavStackEl.value?.getBoundingClientRect().bottom ?? 0;
+		return Math.max(72, pillBottom - container.getBoundingClientRect().top + 12) + (highlightNavigationBar.value?.offsetHeight ?? 0);
+	},
+	onState: state => {
+		highlightTravel.value = state;
+		if (state === 'missing') highlightError.value = i18n.ts._hata._highlights.unavailable;
+	},
+});
+
+function stopHighlightRequest() {
+	++highlightRevision;
+	nativeTimeline.value?.cancelReveal();
+	highlightLoading.value = false;
+	highlightNavigation.cancel();
+}
+
+function invalidateHighlightRequest() {
+	if (highlightLoading.value) stopHighlightRequest();
+}
+
+function getHighlightScrollInset(): number {
+	const container = contentEl.value;
+	const stack = topNavStackEl.value;
+	if (!container || !stack) return 0;
+	// Scrolling upward reveals the navbar, so reserve its shown position even mid-hide animation.
+	const transform = stack.parentElement ? window.getComputedStyle(stack.parentElement).transform : 'none';
+	let offset = 0;
+	if (transform && transform !== 'none' && typeof window.DOMMatrixReadOnly === 'function') {
+		offset = new window.DOMMatrixReadOnly(transform).m42;
+	}
+	return Math.max(0, stack.getBoundingClientRect().bottom - offset - container.getBoundingClientRect().top - container.clientTop + 12);
+}
+
+const highlightViewMotion = createTimelineHighlightTabMotion({ motion: () => newNotesMotionEnabled.value });
+
+function cancelHighlightViewSwitch() {
+	highlightViewRevision++;
+	highlightViewMotion.cancel();
+	highlightViewTarget.value = null;
+}
+
+function toggleHighlights() {
+	return setHighlightView(!(highlightViewTarget.value ?? highlightsOpen.value));
+}
+
+function closeHighlights() {
+	return setHighlightView(false);
+}
+
+async function setHighlightView(open: boolean) {
+	if (isPageView.value || deckActive.value || (open && !highlightSource.value)) return;
+	cancelHighlightViewSwitch();
+	stopHighlightRequest();
+	if (open === highlightsOpen.value) return;
+	const revision = highlightViewRevision;
+	const current = () => revision === highlightViewRevision && !isPageView.value && !deckActive.value;
+	const direction = open ? -1 : 1;
+	highlightViewTarget.value = open;
+	highlightError.value = '';
+	if (highlightsOpen.value) highlightMapScroll = contentEl.value?.scrollTop ?? 0;
+	else highlightTimelineScroll = contentEl.value?.scrollTop ?? 0;
+	try {
+		if (!await highlightViewMotion.play(highlightsOpen.value ? highlightsView.value : highlightNativeView.value, 'leave', direction) || !current()) return;
+		if (open) highlightsMounted.value = true;
+		highlightsOpen.value = open;
+		await nextTick();
+		if (!current()) return;
+		if (contentEl.value) {
+			contentEl.value.scrollTop = open ? highlightMapScroll : highlightTimelineScroll;
+			lastScrollY = contentEl.value.scrollTop;
+		}
+		showTopBar.value = true;
+		if (!await highlightViewMotion.play(open ? highlightsView.value : highlightNativeView.value, 'enter', direction) || !current()) return;
+		// Inertness is removed before focus is returned to the live view.
+		highlightViewTarget.value = null;
+		await nextTick();
+		if (!current()) return;
+		(open ? highlightsView.value : highlightsButton.value)?.focus({ preventScroll: true });
+	} finally {
+		if (revision === highlightViewRevision) highlightViewTarget.value = null;
+	}
+}
+
+watch(newNotesMotionEnabled, enabled => { if (!enabled) highlightViewMotion.finish(); });
+
+async function navigateHighlight(note: Misskey.entities.Note) {
+	const timeline = nativeTimeline.value;
+	if (!timeline || !highlightSource.value) return;
+	cancelHighlightViewSwitch();
+	stopHighlightRequest();
+	const revision = highlightRevision;
+	highlightLoading.value = true;
+	highlightError.value = '';
+	const selector = `[data-scroll-anchor="${CSS.escape(note.id)}"]`;
+	const wasLoaded = !!timeline.noteRoot?.querySelector(selector);
+	try {
+		const found = await timeline.revealNote(note);
+		if (revision !== highlightRevision) return;
+		if (!found) {
+			highlightError.value = i18n.ts._hata._highlights.unavailable;
+			return;
+		}
+		highlightMapScroll = contentEl.value?.scrollTop ?? 0;
+		highlightsOpen.value = false;
+		await nextTick();
+		if (revision !== highlightRevision) return;
+		if (contentEl.value) contentEl.value.scrollTop = wasLoaded ? highlightTimelineScroll : 0;
+		showTopBar.value = true;
+		highlightNavigationBar.value?.focus({ preventScroll: true });
+		highlightNavigation.start(() => nativeTimeline.value?.noteRoot?.querySelector<HTMLElement>(selector) ?? null);
+	} catch {
+		if (revision === highlightRevision) highlightError.value = i18n.ts._hata._highlights.jumpFailed;
+	} finally {
+		if (revision === highlightRevision) highlightLoading.value = false;
+	}
+}
+
+async function returnToLatest() {
+	cancelHighlightViewSwitch();
+	stopHighlightRequest();
+	const revision = highlightRevision;
+	highlightError.value = '';
+	highlightsOpen.value = false;
+	await nativeTimeline.value?.reloadTimeline();
+	await nextTick();
+	if (revision !== highlightRevision) return;
+	if (contentEl.value) contentEl.value.scrollTop = 0;
+	showTopBar.value = true;
+	highlightsButton.value?.focus({ preventScroll: true });
+}
+
+function onHighlightHistoryChange(active: boolean) {
+	highlightHistory.value = active;
+	if (!active) highlightNavigation.cancel();
+}
+
+watch([tab, withRenotes, withSensitive, onlyFiles], () => {
+	cancelHighlightViewSwitch();
+	stopHighlightRequest();
+	highlightsOpen.value = false;
+	highlightsMounted.value = false;
+	highlightHistory.value = false;
+	highlightError.value = '';
+	highlightMapScroll = 0;
+	highlightTimelineScroll = 0;
+}, { flush: 'sync' });
+watch([isPageView, deckActive], () => {
+	if (!isPageView.value && !deckActive.value) {
+		if (highlightsOpen.value) void nextTick(() => {
+			if (highlightsOpen.value && !isPageView.value && !deckActive.value && contentEl.value) contentEl.value.scrollTop = highlightMapScroll;
+		});
+		return;
+	}
+	cancelHighlightViewSwitch();
+	stopHighlightRequest();
+	if (highlightsOpen.value) highlightMapScroll = contentEl.value?.scrollTop ?? 0;
+});
+onUnmounted(() => {
+	cancelHighlightViewSwitch();
+	stopHighlightRequest();
+});
 
 function saveTlFilter(key: string, newValue: boolean) {
 	const out = deepMerge({ filter: { [key]: newValue } }, store.s.tl);
@@ -3830,12 +4040,13 @@ onUnmounted(() => {
 }
 .topBarDark .topTabBtn { color:rgba(255,255,255,.4); }
 .topBarLight .topTabBtn { color:rgba(0,0,0,.38); }
-.topTabActive { color:var(--MI_THEME-accent) !important; }
+.topTabActive, .topTabBtn[data-timeline-active='true'] { color:var(--MI_THEME-accent) !important; }
 .topTabBtn[data-concrnt-active='true'] { color:var(--MI_THEME-accent) !important; opacity:1; }
+.topTabBtn[data-highlights-active='true'] { color:var(--MI_THEME-accent) !important; background:var(--MI_THEME-accentedBg); }
 .topBarDark .topTabBtn[data-concrnt-active='true'] { background:rgba(255,255,255,.1); }
 .topBarLight .topTabBtn[data-concrnt-active='true'] { background:rgba(0,0,0,.06); }
-.topBarDark .topTabActive { background:rgba(255,255,255,.1); }
-.topBarLight .topTabActive { background:rgba(0,0,0,.06); }
+.topBarDark .topTabActive, .topBarDark .topTabBtn[data-timeline-active='true'] { background:rgba(255,255,255,.1); }
+.topBarLight .topTabActive, .topBarLight .topTabBtn[data-timeline-active='true'] { background:rgba(0,0,0,.06); }
 .listTabPill {
     display:flex; align-items:center; flex-shrink:0; border-radius:9999px;
     transition:background .25s ease,box-shadow .25s ease;
@@ -3863,7 +4074,7 @@ onUnmounted(() => {
 .topTabName { max-width:112px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.62em; line-height:1; opacity:.72; }
 // 外部TL (OH/OL) のアイコン色を変えて区別
 .topTabExt { color:var(--MI_THEME-accent) !important; opacity:.45; }
-.topTabExt.topTabActive { opacity:1; }
+.topTabExt.topTabActive, .topTabExt[data-timeline-active='true'] { opacity:1; }
 // ピル内のディバイダー（TLタブとページ遷移タブの区切り）
 .topTabDivider {
     width:1px; height:20px; flex-shrink:0; margin:0 4px;
@@ -3910,6 +4121,34 @@ onUnmounted(() => {
 /* 旗鯖fork: CTL 表示中は通常TLを隠す。Transition 直下の子に v-show を付けると persisted 扱いになり、
    キー付きの入れ替えが壊れる (タブ切り替えで投稿欄・TL が消える不具合の再発)。クラスで隠す。 */
 .timelineContainerConcrntHidden { display:none!important; }
+.highlightNavigation {
+    position:sticky;
+    top:calc(60px + env(safe-area-inset-top, 0px));
+    z-index:4;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:flex-end;
+    gap:6px;
+    padding:6px 12px;
+    background:var(--MI_THEME-panel);
+    border-bottom:1px solid var(--MI_THEME-divider);
+    font-size:0.8em;
+    > span { flex:1; min-width:0; overflow-wrap:anywhere; }
+    > span:empty { display:none; }
+    > button { padding:9px 10px; border-radius:24px; color:var(--MI_THEME-accent); }
+}
+.highlightError { padding:12px 16px; color:var(--MI_THEME-fg); font-size:0.85em; }
+.timelineContainer :global([data-highlight-arrival]) { position:relative; }
+.timelineContainer :global([data-highlight-arrival-marker]) { position:absolute; inset:0; border:2px solid var(--MI_THEME-accent); border-radius:inherit; pointer-events:none; z-index:2; }
+.timelineContainer[data-timeline-motion='true'] :global([data-highlight-arrival-marker]) { animation:highlightArrival 1.8s ease-out both; }
+@keyframes highlightArrival {
+    0%, 35% { opacity:1; }
+    100% { opacity:0; }
+}
+@media (prefers-reduced-motion:reduce) {
+    .timelineContainer :global([data-highlight-arrival-marker]) { animation:none!important; }
+}
 .fixedFormHost { max-width:800px; margin:0 auto; padding-top:calc(56px + env(safe-area-inset-top,0px)); }
 .desktopLayout .fixedFormHost { padding-top:56px; }
 /* 旗鯖fork: タイムライン上部固定投稿フォーム */
